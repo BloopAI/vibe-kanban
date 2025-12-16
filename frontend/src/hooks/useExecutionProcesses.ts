@@ -28,7 +28,7 @@ export const useExecutionProcesses = (
   let endpoint: string | undefined;
 
   if (taskAttemptId) {
-    const params = new URLSearchParams({ task_attempt_id: taskAttemptId });
+    const params = new URLSearchParams({ workspace_id: taskAttemptId });
     if (typeof showSoftDeleted === 'boolean') {
       params.set('show_soft_deleted', String(showSoftDeleted));
     }

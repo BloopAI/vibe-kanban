@@ -28,7 +28,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   } = useTaskAttempts(task?.id);
 
   const { data: parentAttempt, isLoading: isParentLoading } = useTaskAttempt(
-    task?.parent_task_attempt || undefined
+    task?.parent_workspace_id || undefined
   );
 
   const formatTimeAgo = (iso: string) => {
@@ -109,7 +109,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
           </div>
 
           <div className="mt-6 flex-shrink-0 space-y-4">
-            {task.parent_task_attempt && (
+            {task.parent_workspace_id && (
               <DataTable
                 data={parentAttempt ? [parentAttempt] : []}
                 columns={attemptColumns}

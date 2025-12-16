@@ -761,7 +761,7 @@ export function ProjectTasks() {
           title: task.title,
           description: task.description,
           status: newStatus,
-          parent_task_attempt: task.parent_task_attempt,
+          parent_workspace_id: task.parent_workspace_id,
           image_ids: null,
         });
       } catch (err) {

@@ -61,7 +61,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       enabled: modal.visible,
     });
 
-    const parentAttemptId = task?.parent_task_attempt ?? undefined;
+    const parentAttemptId = task?.parent_workspace_id ?? undefined;
     const { data: parentAttempt, isLoading: isLoadingParent } = useAttempt(
       parentAttemptId,
       { enabled: modal.visible && !!parentAttemptId }

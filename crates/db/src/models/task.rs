@@ -5,7 +5,10 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, workspace::Workspace};
+use super::{
+    project::Project,
+    workspace::{TaskAttempt, Workspace},
+};
 
 #[derive(
     Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
@@ -61,8 +64,8 @@ impl std::ops::DerefMut for TaskWithAttemptStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskRelationships {
     pub parent_task: Option<Task>, // The task that owns the parent workspace
-    pub current_workspace: Workspace, // The workspace we're viewing
-    pub children: Vec<Task>,       // Tasks created from this workspace
+    pub current_attempt: TaskAttempt, // The workspace we're viewing (as TaskAttempt for frontend compat)
+    pub children: Vec<Task>,          // Tasks created from this workspace
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -483,9 +486,14 @@ ORDER BY t.created_at DESC"#,
         // 3. Get children tasks (created from this workspace)
         let children = Self::find_children_by_workspace_id(pool, workspace.id).await?;
 
+        // 4. Convert workspace to TaskAttempt for frontend compatibility
+        let current_attempt = TaskAttempt::from_workspace(pool, workspace.clone())
+            .await
+            .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
         Ok(TaskRelationships {
             parent_task,
-            current_workspace: workspace.clone(),
+            current_attempt,
             children,
         })
     }

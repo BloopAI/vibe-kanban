@@ -45,16 +45,16 @@ export function TaskCard({
   const handleParentClick = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!task.parent_task_attempt || isNavigatingToParent) return;
+      if (!task.parent_workspace_id || isNavigatingToParent) return;
 
       setIsNavigatingToParent(true);
       try {
-        const parentAttempt = await attemptsApi.get(task.parent_task_attempt);
+        const parentAttempt = await attemptsApi.get(task.parent_workspace_id);
         navigate(
           paths.attempt(
             projectId,
             parentAttempt.task_id,
-            task.parent_task_attempt
+            task.parent_workspace_id
           )
         );
       } catch (error) {
@@ -62,7 +62,7 @@ export function TaskCard({
         setIsNavigatingToParent(false);
       }
     },
-    [task.parent_task_attempt, projectId, navigate, isNavigatingToParent]
+    [task.parent_workspace_id, projectId, navigate, isNavigatingToParent]
   );
 
   const localRef = useRef<HTMLDivElement>(null);
@@ -116,7 +116,7 @@ export function TaskCard({
               {task.last_attempt_failed && (
                 <XCircle className="h-4 w-4 text-destructive" />
               )}
-              {task.parent_task_attempt && (
+              {task.parent_workspace_id && (
                 <Button
                   variant="icon"
                   onClick={handleParentClick}

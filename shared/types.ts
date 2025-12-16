@@ -44,15 +44,15 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
@@ -70,9 +70,11 @@ export type Image = { id: string, file_path: string, original_name: string, mime
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
 
+export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, setup_completed_at: string | null, created_at: string, updated_at: string, };
+
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, executor: string, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
+export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**
  * dropped: true if this process is excluded from the current
  * history view (due to restore/trimming). Hidden from logs/timeline;
@@ -88,9 +90,9 @@ export type ExecutionProcessRepoState = { id: string, execution_process_id: stri
 
 export type Merge = { "type": "direct" } & DirectMerge | { "type": "pr" } & PrMerge;
 
-export type DirectMerge = { id: string, task_attempt_id: string, repo_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
+export type DirectMerge = { id: string, workspace_id: string, repo_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
 
-export type PrMerge = { id: string, task_attempt_id: string, repo_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
+export type PrMerge = { id: string, workspace_id: string, repo_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
