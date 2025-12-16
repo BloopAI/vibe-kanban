@@ -15,6 +15,7 @@ import {
   getGitHubAppStatus,
   getGitHubAppInstallUrl,
   disconnectGitHubApp,
+  updateRepositoryReviewEnabled,
   type Organization,
   type OrganizationMemberWithProfile,
   type OrganizationInvitation,
@@ -41,6 +42,7 @@ export default function OrganizationPage() {
   const [githubAppError, setGithubAppError] = useState<string | null>(null);
   const [showGithubDisconnectConfirm, setShowGithubDisconnectConfirm] = useState(false);
   const [githubAppSuccess, setGithubAppSuccess] = useState<string | null>(null);
+  const [repoToggleLoading, setRepoToggleLoading] = useState<string | null>(null);
 
   // Edit name state
   const [isEditingName, setIsEditingName] = useState(false);
@@ -264,6 +266,29 @@ export default function OrganizationPage() {
       setGithubAppError(e instanceof Error ? e.message : "Failed to disconnect");
     } finally {
       setGithubAppLoading(false);
+    }
+  };
+
+  const handleToggleRepoReview = async (repoId: string, enabled: boolean) => {
+    if (!orgId) return;
+
+    setRepoToggleLoading(repoId);
+
+    try {
+      const updatedRepo = await updateRepositoryReviewEnabled(orgId, repoId, enabled);
+      setGithubAppStatus((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          repositories: prev.repositories.map((r) =>
+            r.id === repoId ? { ...r, review_enabled: updatedRepo.review_enabled } : r,
+          ),
+        };
+      });
+    } catch (e) {
+      setGithubAppError(e instanceof Error ? e.message : "Failed to update repository");
+    } finally {
+      setRepoToggleLoading(null);
     }
   };
 
@@ -688,40 +713,53 @@ export default function OrganizationPage() {
                 </div>
 
                 <div className="text-sm text-gray-600 mb-4">
-                  {githubAppStatus.installation.repository_selection === "all" ? (
-                    <p>All repositories are being monitored.</p>
-                  ) : (
-                    <p>
-                      {githubAppStatus.repositories.length} selected{" "}
-                      {githubAppStatus.repositories.length === 1
-                        ? "repository"
-                        : "repositories"}{" "}
-                      being monitored.
-                    </p>
-                  )}
+                  <p>
+                    {githubAppStatus.repositories.filter((r) => r.review_enabled).length} of{" "}
+                    {githubAppStatus.repositories.length}{" "}
+                    {githubAppStatus.repositories.length === 1
+                      ? "repository"
+                      : "repositories"}{" "}
+                    have reviews enabled.
+                  </p>
                 </div>
 
-                {/* Repository list (if selected) */}
-                {githubAppStatus.installation.repository_selection === "selected" &&
-                  githubAppStatus.repositories.length > 0 && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs font-medium text-gray-500 mb-2">
-                        Monitored repositories:
-                      </p>
-                      <div className="space-y-1">
-                        {githubAppStatus.repositories.slice(0, 5).map((repo) => (
-                          <p key={repo.id} className="text-sm text-gray-700">
+                {/* Repository list with toggles */}
+                {githubAppStatus.repositories.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 mb-2">
+                      Repositories:
+                    </p>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {githubAppStatus.repositories.map((repo) => (
+                        <div
+                          key={repo.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                        >
+                          <span className="text-sm text-gray-700 truncate flex-1 mr-3">
                             {repo.repo_full_name}
-                          </p>
-                        ))}
-                        {githubAppStatus.repositories.length > 5 && (
-                          <p className="text-xs text-gray-500">
-                            +{githubAppStatus.repositories.length - 5} more
-                          </p>
-                        )}
-                      </div>
+                          </span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={repo.review_enabled}
+                              onChange={(e) =>
+                                handleToggleRepoReview(repo.id, e.target.checked)
+                              }
+                              disabled={repoToggleLoading === repo.id}
+                              className="sr-only peer"
+                            />
+                            <div
+                              className={`w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500 ${repoToggleLoading === repo.id ? "opacity-50" : ""}`}
+                            ></div>
+                            <span className="ml-2 text-xs text-gray-500 whitespace-nowrap">
+                              {repo.review_enabled ? "On" : "Off"}
+                            </span>
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
                 {/* Disconnect section */}
                 {showGithubDisconnectConfirm ? (

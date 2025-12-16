@@ -35,6 +35,7 @@ pub struct GitHubAppRepository {
     pub installation_id: Uuid,
     pub github_repo_id: i64,
     pub repo_full_name: String,
+    pub review_enabled: bool,
     pub created_at: DateTime<Utc>,
 }
 
@@ -293,23 +294,27 @@ impl<'a> GitHubAppRepository2<'a> {
         installation_id: Uuid,
         repos: &[(i64, String)], // (github_repo_id, repo_full_name)
     ) -> Result<(), GitHubAppDbError> {
-        // Delete all existing repos for this installation
+        // Get current repo IDs to preserve review_enabled settings
+        let current_repo_ids: Vec<i64> = repos.iter().map(|(id, _)| *id).collect();
+
+        // Delete repos that are no longer in the list
         sqlx::query!(
             r#"
             DELETE FROM github_app_repositories
-            WHERE installation_id = $1
+            WHERE installation_id = $1 AND NOT (github_repo_id = ANY($2))
             "#,
-            installation_id
+            installation_id,
+            &current_repo_ids
         )
         .execute(self.pool)
         .await?;
 
-        // Insert new repos
+        // Upsert repos, preserving review_enabled for existing ones
         for (github_repo_id, repo_full_name) in repos {
             sqlx::query!(
                 r#"
-                INSERT INTO github_app_repositories (installation_id, github_repo_id, repo_full_name)
-                VALUES ($1, $2, $3)
+                INSERT INTO github_app_repositories (installation_id, github_repo_id, repo_full_name, review_enabled)
+                VALUES ($1, $2, $3, true)
                 ON CONFLICT (installation_id, github_repo_id) DO UPDATE SET
                     repo_full_name = EXCLUDED.repo_full_name
                 "#,
@@ -336,6 +341,7 @@ impl<'a> GitHubAppRepository2<'a> {
                 installation_id,
                 github_repo_id,
                 repo_full_name,
+                review_enabled,
                 created_at
             FROM github_app_repositories
             WHERE installation_id = $1
@@ -390,6 +396,60 @@ impl<'a> GitHubAppRepository2<'a> {
         .await?;
 
         Ok(())
+    }
+
+    /// Update the review_enabled flag for a repository
+    pub async fn update_repository_review_enabled(
+        &self,
+        repo_id: Uuid,
+        installation_id: Uuid,
+        enabled: bool,
+    ) -> Result<GitHubAppRepository, GitHubAppDbError> {
+        let repo = sqlx::query_as!(
+            GitHubAppRepository,
+            r#"
+            UPDATE github_app_repositories
+            SET review_enabled = $3
+            WHERE id = $1 AND installation_id = $2
+            RETURNING
+                id,
+                installation_id,
+                github_repo_id,
+                repo_full_name,
+                review_enabled,
+                created_at
+            "#,
+            repo_id,
+            installation_id,
+            enabled
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(GitHubAppDbError::NotFound)?;
+
+        Ok(repo)
+    }
+
+    /// Check if a repository has reviews enabled (for webhook filtering)
+    pub async fn is_repository_review_enabled(
+        &self,
+        installation_id: Uuid,
+        github_repo_id: i64,
+    ) -> Result<bool, GitHubAppDbError> {
+        let result = sqlx::query_scalar!(
+            r#"
+            SELECT review_enabled
+            FROM github_app_repositories
+            WHERE installation_id = $1 AND github_repo_id = $2
+            "#,
+            installation_id,
+            github_repo_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        // If repo not found, default to true (for "all repos" mode where repo might not be in DB yet)
+        Ok(result.unwrap_or(true))
     }
 
     // ========== Pending Installations ==========
