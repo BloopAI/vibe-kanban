@@ -49,6 +49,7 @@ export default function OrganizationPage() {
   const [repositories, setRepositories] = useState<GitHubAppRepository[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [repoSearch, setRepoSearch] = useState("");
+  const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [bulkLoading, setBulkLoading] = useState(false);
 
   // Edit name state
@@ -331,14 +332,12 @@ export default function OrganizationPage() {
     .filter((repo) =>
       repo.repo_full_name.toLowerCase().includes(repoSearch.toLowerCase()),
     )
-    .sort((a, b) => {
-      // Enabled repos first
-      if (a.review_enabled !== b.review_enabled) {
-        return a.review_enabled ? -1 : 1;
-      }
-      // Then alphabetically by name
-      return a.repo_full_name.localeCompare(b.repo_full_name);
-    });
+    .filter((repo) => {
+      if (repoFilter === "enabled") return repo.review_enabled;
+      if (repoFilter === "disabled") return !repo.review_enabled;
+      return true;
+    })
+    .sort((a, b) => a.repo_full_name.localeCompare(b.repo_full_name));
 
   if (loading) {
     return (
@@ -795,7 +794,7 @@ export default function OrganizationPage() {
 
                       {repositories.length > 0 && (
                         <>
-                          {/* Search and bulk actions */}
+                          {/* Search, filter, and bulk actions */}
                           <div className="flex flex-col sm:flex-row gap-2 mb-3">
                             <input
                               type="text"
@@ -804,6 +803,15 @@ export default function OrganizationPage() {
                               onChange={(e) => setRepoSearch(e.target.value)}
                               className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent"
                             />
+                            <select
+                              value={repoFilter}
+                              onChange={(e) => setRepoFilter(e.target.value as "all" | "enabled" | "disabled")}
+                              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-300"
+                            >
+                              <option value="all">All</option>
+                              <option value="enabled">Enabled</option>
+                              <option value="disabled">Disabled</option>
+                            </select>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleBulkToggle(true)}
