@@ -228,6 +228,16 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
+      - name: Configure sccache (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo '@echo off' > sccache-helper.bat
+          echo 'sccache clang-cl.exe %*' >> sccache-helper.bat
+          HELPER_PATH=$(cygpath -w "$(pwd)/sccache-helper.bat")
+          echo "CC=$HELPER_PATH" >> $GITHUB_ENV
+          echo "CXX=$HELPER_PATH" >> $GITHUB_ENV
+
       - name: Cache Cargo registry
         uses: actions/cache@v4
         with:
@@ -294,6 +304,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          ls target/
+          ls target/*
+          ls target/*/*
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
