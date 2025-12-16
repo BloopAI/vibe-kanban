@@ -30,7 +30,7 @@ import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
-import { branchKeys } from '@/hooks/useBranches';
+import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -330,7 +330,7 @@ export function ProjectSettings() {
         queryKey: ['projectRepositories', selectedProjectId],
       });
       queryClient.invalidateQueries({
-        queryKey: branchKeys.byProject(selectedProjectId),
+        queryKey: repoBranchKeys.byRepo(newRepo.id),
       });
     } catch (err) {
       setRepoError(
@@ -353,7 +353,7 @@ export function ProjectSettings() {
         queryKey: ['projectRepositories', selectedProjectId],
       });
       queryClient.invalidateQueries({
-        queryKey: branchKeys.byProject(selectedProjectId),
+        queryKey: repoBranchKeys.byRepo(repoId),
       });
     } catch (err) {
       setRepoError(

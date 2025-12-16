@@ -10,7 +10,6 @@ import type {
   GitBranch,
   TaskAttempt,
   RepoBranchStatus,
-  RepositoryBranches,
 } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
@@ -23,9 +22,13 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import {
+  useBranchStatus,
+  useAttemptExecution,
+  useProjectRepos,
+  useBranches,
+} from '@/hooks';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
@@ -298,15 +301,9 @@ export function ProjectTasks() {
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const { selectedRepoId } = useAttemptRepo(attempt?.id);
-  const [repoBranches, setRepoBranches] = useState<RepositoryBranches[]>([]);
 
-  useEffect(() => {
-    if (!projectId) return;
-    projectsApi
-      .getBranches(projectId)
-      .then(setRepoBranches)
-      .catch(() => setRepoBranches([]));
-  }, [projectId]);
+  const { data: repos = [] } = useProjectRepos(projectId);
+  const { data: repoBranches } = useBranches(repos);
 
   const branches = useMemo(
     () =>
