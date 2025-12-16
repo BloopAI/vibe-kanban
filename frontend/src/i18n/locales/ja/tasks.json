@@ -319,6 +319,7 @@
     "common": {
       "action": "リベース",
       "inProgress": "リベース中...",
+      "completed": "リベース完了",
       "withTarget": "{{branch}} にリベース"
     },
     "dialog": {
