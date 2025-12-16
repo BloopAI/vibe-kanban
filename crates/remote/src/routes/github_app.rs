@@ -199,26 +199,25 @@ pub async fn get_status(
 
     match installation {
         Some(inst) => {
-            // If repository_selection is "all", fetch repos from GitHub API and sync to DB
+            // Always fetch repos from GitHub API and sync to DB
             // This ensures users always see the full list of accessible repos
-            if inst.repository_selection == "all"
-                && let Some(github_app) = state.github_app() {
-                    match github_app
-                        .list_installation_repos(inst.github_installation_id)
-                        .await
-                    {
-                        Ok(repos) => {
-                            let repo_data: Vec<(i64, String)> =
-                                repos.into_iter().map(|r| (r.id, r.full_name)).collect();
-                            if let Err(e) = gh_repo.sync_repositories(inst.id, &repo_data).await {
-                                warn!(?e, "Failed to sync repositories from GitHub API");
-                            }
-                        }
-                        Err(e) => {
-                            warn!(?e, "Failed to fetch repositories from GitHub API");
+            if let Some(github_app) = state.github_app() {
+                match github_app
+                    .list_installation_repos(inst.github_installation_id)
+                    .await
+                {
+                    Ok(repos) => {
+                        let repo_data: Vec<(i64, String)> =
+                            repos.into_iter().map(|r| (r.id, r.full_name)).collect();
+                        if let Err(e) = gh_repo.sync_repositories(inst.id, &repo_data).await {
+                            warn!(?e, "Failed to sync repositories from GitHub API");
                         }
                     }
+                    Err(e) => {
+                        warn!(?e, "Failed to fetch repositories from GitHub API");
+                    }
                 }
+            }
 
             let repositories = gh_repo.get_repositories(inst.id).await.map_err(|e| {
                 error!(?e, "Failed to get repositories");
