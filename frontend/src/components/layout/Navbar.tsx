@@ -84,9 +84,7 @@ export function Navbar() {
   const { data: repos } = useQuery({
     queryKey: ['projectRepositories', projectId],
     queryFn: () =>
-      projectId
-        ? projectsApi.getRepositories(projectId)
-        : Promise.resolve([]),
+      projectId ? projectsApi.getRepositories(projectId) : Promise.resolve([]),
     enabled: !!projectId,
   });
   const isSingleRepoProject = repos?.length === 1;
