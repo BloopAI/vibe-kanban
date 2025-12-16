@@ -18,7 +18,9 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        identity_errors::IdentityError, organization_members, organizations::OrganizationRepository,
+        identity_errors::IdentityError,
+        organization_members,
+        organizations::OrganizationRepository,
         reviews::{ReviewListItem, ReviewRepository},
     },
 };
@@ -318,27 +320,28 @@ pub async fn trigger_review(
 
     // Check if we have a GitHub App installation for this org
     let gh_repo = GitHubAppRepository2::new(&state.pool);
-    let installation = gh_repo
-        .get_by_organization(org_id)
-        .await
-        .map_err(|e| {
-            error!(?e, "Failed to get GitHub App installation");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error")
-        })?;
+    let installation = gh_repo.get_by_organization(org_id).await.map_err(|e| {
+        error!(?e, "Failed to get GitHub App installation");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+    })?;
 
     // Validate services are configured
     let github_app = state.github_app().ok_or_else(|| {
         ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "GitHub App not configured")
     })?;
-    let r2 = state.r2().ok_or_else(|| {
-        ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "R2 not configured")
-    })?;
-    let worker_base_url = state.config.review_worker_base_url.as_ref().ok_or_else(|| {
-        ErrorResponse::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "Review worker not configured",
-        )
-    })?;
+    let r2 = state
+        .r2()
+        .ok_or_else(|| ErrorResponse::new(StatusCode::SERVICE_UNAVAILABLE, "R2 not configured"))?;
+    let worker_base_url = state
+        .config
+        .review_worker_base_url
+        .as_ref()
+        .ok_or_else(|| {
+            ErrorResponse::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Review worker not configured",
+            )
+        })?;
 
     // Get the installation_id - either from our installation or look up by owner
     let installation_id = if let Some(ref inst) = installation {
@@ -399,7 +402,10 @@ pub async fn trigger_review(
         .await
         .map_err(|e| {
             error!(?e, "Failed to process PR review");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Review failed: {}", e))
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Review failed: {}", e),
+            )
         })?;
 
     info!(
