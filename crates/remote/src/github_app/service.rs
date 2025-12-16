@@ -283,11 +283,15 @@ impl GitHubAppService {
         // Clone the repository with security flags to prevent code execution from untrusted repos
         let output = Command::new("git")
             .args([
-                "-c", "core.hooksPath=/dev/null",
-                "-c", "core.autocrlf=false",
-                "-c", "core.symlinks=false",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "core.autocrlf=false",
+                "-c",
+                "core.symlinks=false",
                 "clone",
-                "--depth", "1",
+                "--depth",
+                "1",
                 &clone_url,
                 ".",
             ])
@@ -317,9 +321,11 @@ impl GitHubAppService {
         // Fetch the specific commit (in case it's not in shallow clone)
         let output = Command::new("git")
             .args([
-                "-c", "core.hooksPath=/dev/null",
+                "-c",
+                "core.hooksPath=/dev/null",
                 "fetch",
-                "--depth", "1",
+                "--depth",
+                "1",
                 "origin",
                 head_sha,
             ])
