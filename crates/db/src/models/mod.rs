@@ -1,14 +1,15 @@
 pub mod attempt_repo;
+pub mod coding_agent_turn;
 pub mod execution_process;
 pub mod execution_process_logs;
 pub mod execution_process_repo_state;
-pub mod executor_session;
 pub mod image;
 pub mod merge;
 pub mod project;
 pub mod project_repo;
 pub mod repo;
 pub mod scratch;
+pub mod session;
 pub mod tag;
 pub mod task;
-pub mod task_attempt;
+pub mod workspace;

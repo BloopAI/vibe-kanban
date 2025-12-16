@@ -1,6 +1,6 @@
 use db::models::{
     execution_process::ExecutionProcess, project::Project, scratch::Scratch,
-    task::TaskWithAttemptStatus, task_attempt::TaskAttempt,
+    task::TaskWithAttemptStatus, workspace::Workspace,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -132,45 +132,45 @@ pub mod execution_process_patch {
     }
 }
 
-/// Helper functions for creating task attempt-specific patches
-pub mod task_attempt_patch {
+/// Helper functions for creating workspace-specific patches
+pub mod workspace_patch {
     use super::*;
 
-    fn attempt_path(attempt_id: Uuid) -> String {
+    fn workspace_path(workspace_id: Uuid) -> String {
         format!(
-            "/task_attempts/{}",
-            escape_pointer_segment(&attempt_id.to_string())
+            "/workspaces/{}",
+            escape_pointer_segment(&workspace_id.to_string())
         )
     }
 
-    /// Create patch for adding a new task attempt
-    pub fn add(attempt: &TaskAttempt) -> Patch {
+    /// Create patch for adding a new workspace
+    pub fn add(workspace: &Workspace) -> Patch {
         Patch(vec![PatchOperation::Add(AddOperation {
-            path: attempt_path(attempt.id)
+            path: workspace_path(workspace.id)
                 .try_into()
-                .expect("Task attempt path should be valid"),
-            value: serde_json::to_value(attempt)
-                .expect("Task attempt serialization should not fail"),
+                .expect("Workspace path should be valid"),
+            value: serde_json::to_value(workspace)
+                .expect("Workspace serialization should not fail"),
         })])
     }
 
-    /// Create patch for updating an existing task attempt
-    pub fn replace(attempt: &TaskAttempt) -> Patch {
+    /// Create patch for updating an existing workspace
+    pub fn replace(workspace: &Workspace) -> Patch {
         Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: attempt_path(attempt.id)
+            path: workspace_path(workspace.id)
                 .try_into()
-                .expect("Task attempt path should be valid"),
-            value: serde_json::to_value(attempt)
-                .expect("Task attempt serialization should not fail"),
+                .expect("Workspace path should be valid"),
+            value: serde_json::to_value(workspace)
+                .expect("Workspace serialization should not fail"),
         })])
     }
 
-    /// Create patch for removing a task attempt
-    pub fn remove(attempt_id: Uuid) -> Patch {
+    /// Create patch for removing a workspace
+    pub fn remove(workspace_id: Uuid) -> Patch {
         Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: attempt_path(attempt_id)
+            path: workspace_path(workspace_id)
                 .try_into()
-                .expect("Task attempt path should be valid"),
+                .expect("Workspace path should be valid"),
         })])
     }
 }

@@ -6,8 +6,8 @@ use axum::{
 };
 use db::models::{
     execution_process::ExecutionProcessError, project::ProjectError,
-    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError,
-    task_attempt::TaskAttemptError,
+    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError, session::SessionError,
+    workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
@@ -35,7 +35,9 @@ pub enum ApiError {
     #[error(transparent)]
     Repo(#[from] RepoError),
     #[error(transparent)]
-    TaskAttempt(#[from] TaskAttemptError),
+    Workspace(#[from] WorkspaceError),
+    #[error(transparent)]
+    Session(#[from] SessionError),
     #[error(transparent)]
     ScratchError(#[from] ScratchError),
     #[error(transparent)]
@@ -99,7 +101,8 @@ impl IntoResponse for ApiError {
         let (status_code, error_type) = match &self {
             ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
             ApiError::Repo(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectRepoError"),
-            ApiError::TaskAttempt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "TaskAttemptError"),
+            ApiError::Workspace(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorkspaceError"),
+            ApiError::Session(_) => (StatusCode::INTERNAL_SERVER_ERROR, "SessionError"),
             ApiError::ScratchError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ScratchError"),
             ApiError::ExecutionProcess(err) => match err {
                 ExecutionProcessError::ExecutionProcessNotFound => {

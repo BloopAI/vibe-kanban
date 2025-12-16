@@ -4,7 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::task_attempt::{TaskAttempt, TaskAttemptContext};
+use db::models::workspace::{Workspace, WorkspaceContext};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
@@ -20,15 +20,15 @@ pub struct ContainerQuery {
 pub async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
-) -> Result<ResponseJson<ApiResponse<TaskAttemptContext>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<WorkspaceContext>>, ApiError> {
     let result =
-        TaskAttempt::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
+        Workspace::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
 
     match result {
         Ok(info) => {
-            let ctx = TaskAttempt::load_context(
+            let ctx = Workspace::load_context(
                 &deployment.db().pool,
-                info.attempt_id,
+                info.workspace_id,
                 info.task_id,
                 info.project_id,
             )

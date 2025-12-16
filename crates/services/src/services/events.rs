@@ -4,7 +4,7 @@ use db::{
     DBService,
     models::{
         execution_process::ExecutionProcess, project::Project, scratch::Scratch, task::Task,
-        task_attempt::TaskAttempt,
+        workspace::Workspace,
     },
 };
 use serde_json::json;
@@ -21,7 +21,7 @@ mod streams;
 pub mod types;
 
 pub use patches::{
-    execution_process_patch, project_patch, scratch_patch, task_attempt_patch, task_patch,
+    execution_process_patch, project_patch, scratch_patch, task_patch, workspace_patch,
 };
 pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
@@ -62,13 +62,16 @@ impl EventService {
         Ok(())
     }
 
-    async fn push_task_update_for_attempt(
+    async fn push_task_update_for_session(
         pool: &SqlitePool,
         msg_store: Arc<MsgStore>,
-        attempt_id: Uuid,
+        session_id: Uuid,
     ) -> Result<(), SqlxError> {
-        if let Some(attempt) = TaskAttempt::find_by_id(pool, attempt_id).await? {
-            Self::push_task_update_for_task(pool, msg_store, attempt.task_id).await?;
+        use db::models::session::Session;
+        if let Some(session) = Session::find_by_id(pool, session_id).await?
+            && let Some(workspace) = Workspace::find_by_id(pool, session.workspace_id).await?
+        {
+            Self::push_task_update_for_task(pool, msg_store, workspace.task_id).await?;
         }
 
         Ok(())
@@ -117,11 +120,12 @@ impl EventService {
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
-                            "task_attempts" => {
+                            "workspaces" => {
                                 if let Ok(value) = preupdate.get_old_column_value(0)
-                                    && let Ok(attempt_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                    && let Ok(workspace_id) =
+                                        <Uuid as Decode<Sqlite>>::decode(value)
                                 {
-                                    let patch = task_attempt_patch::remove(attempt_id);
+                                    let patch = workspace_patch::remove(workspace_id);
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
@@ -162,7 +166,7 @@ impl EventService {
                             let record_type: RecordTypes = match (table, hook.operation.clone()) {
                                 (HookTables::Tasks, SqliteOperation::Delete)
                                 | (HookTables::Projects, SqliteOperation::Delete)
-                                | (HookTables::TaskAttempts, SqliteOperation::Delete)
+                                | (HookTables::Workspaces, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
                                 | (HookTables::Scratch, SqliteOperation::Delete) => {
                                     // Deletions handled in preupdate hook for reliable data capture
@@ -195,16 +199,16 @@ impl EventService {
                                         }
                                     }
                                 }
-                                (HookTables::TaskAttempts, _) => {
-                                    match TaskAttempt::find_by_rowid(&db.pool, rowid).await {
-                                        Ok(Some(attempt)) => RecordTypes::TaskAttempt(attempt),
-                                        Ok(None) => RecordTypes::DeletedTaskAttempt {
+                                (HookTables::Workspaces, _) => {
+                                    match Workspace::find_by_rowid(&db.pool, rowid).await {
+                                        Ok(Some(workspace)) => RecordTypes::Workspace(workspace),
+                                        Ok(None) => RecordTypes::DeletedWorkspace {
                                             rowid,
                                             task_id: None,
                                         },
                                         Err(e) => {
                                             tracing::error!(
-                                                "Failed to fetch task_attempt: {:?}",
+                                                "Failed to fetch workspace: {:?}",
                                                 e
                                             );
                                             return;
@@ -216,7 +220,7 @@ impl EventService {
                                         Ok(Some(process)) => RecordTypes::ExecutionProcess(process),
                                         Ok(None) => RecordTypes::DeletedExecutionProcess {
                                             rowid,
-                                            task_attempt_id: None,
+                                            session_id: None,
                                             process_id: None,
                                         },
                                         Err(e) => {
@@ -312,10 +316,10 @@ impl EventService {
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }
-                                RecordTypes::TaskAttempt(attempt) => {
-                                    // Task attempts should update the parent task with fresh data
+                                RecordTypes::Workspace(workspace) => {
+                                    // Workspaces should update the parent task with fresh data
                                     if let Ok(Some(task)) =
-                                        Task::find_by_id(&db.pool, attempt.task_id).await
+                                        Task::find_by_id(&db.pool, workspace.task_id).await
                                         && let Ok(task_list) =
                                             Task::find_by_project_id_with_attempt_status(
                                                 &db.pool,
@@ -323,18 +327,18 @@ impl EventService {
                                             )
                                             .await
                                         && let Some(task_with_status) =
-                                            task_list.into_iter().find(|t| t.id == attempt.task_id)
+                                            task_list.into_iter().find(|t| t.id == workspace.task_id)
                                     {
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
                                         return;
                                     }
                                 }
-                                RecordTypes::DeletedTaskAttempt {
+                                RecordTypes::DeletedWorkspace {
                                     task_id: Some(task_id),
                                     ..
                                 } => {
-                                    // Task attempt deletion should update the parent task with fresh data
+                                    // Workspace deletion should update the parent task with fresh data
                                     if let Ok(Some(task)) =
                                         Task::find_by_id(&db.pool, *task_id).await
                                         && let Ok(task_list) =
@@ -363,10 +367,10 @@ impl EventService {
                                     };
                                     msg_store_for_hook.push_patch(patch);
 
-                                    if let Err(err) = EventService::push_task_update_for_attempt(
+                                    if let Err(err) = EventService::push_task_update_for_session(
                                         &db.pool,
                                         msg_store_for_hook.clone(),
-                                        process.task_attempt_id,
+                                        process.session_id,
                                     )
                                     .await
                                     {
@@ -380,18 +384,18 @@ impl EventService {
                                 }
                                 RecordTypes::DeletedExecutionProcess {
                                     process_id: Some(process_id),
-                                    task_attempt_id,
+                                    session_id,
                                     ..
                                 } => {
                                     let patch = execution_process_patch::remove(*process_id);
                                     msg_store_for_hook.push_patch(patch);
 
-                                    if let Some(task_attempt_id) = task_attempt_id
+                                    if let Some(session_id) = session_id
                                         && let Err(err) =
-                                            EventService::push_task_update_for_attempt(
+                                            EventService::push_task_update_for_session(
                                                 &db.pool,
                                                 msg_store_for_hook.clone(),
-                                                *task_attempt_id,
+                                                *session_id,
                                             )
                                             .await
                                         {

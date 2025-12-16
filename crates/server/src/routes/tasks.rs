@@ -17,7 +17,7 @@ use db::models::{
     image::TaskImage,
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::{CreateTaskAttempt, TaskAttempt},
+    workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
@@ -180,13 +180,12 @@ pub async fn create_task_and_start(
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
-        .git_branch_from_task_attempt(&attempt_id, &task.title)
+        .git_branch_from_workspace(&attempt_id, &task.title)
         .await;
 
-    let task_attempt = TaskAttempt::create(
+    let workspace = Workspace::create(
         pool,
-        &CreateTaskAttempt {
-            executor: payload.executor_profile_id.executor,
+        &CreateWorkspace {
             branch: git_branch_name,
         },
         attempt_id,
@@ -202,11 +201,11 @@ pub async fn create_task_and_start(
             target_branch: r.target_branch.clone(),
         })
         .collect();
-    AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;
+    AttemptRepo::create_many(&deployment.db().pool, workspace.id, &attempt_repos).await?;
 
     let is_attempt_running = deployment
         .container()
-        .start_attempt(&task_attempt, payload.executor_profile_id.clone())
+        .start_workspace(&workspace, payload.executor_profile_id.clone())
         .await
         .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
         .is_ok();
@@ -217,7 +216,7 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "executor": &payload.executor_profile_id.executor,
                 "variant": &payload.executor_profile_id.variant,
-                "attempt_id": task_attempt.id.to_string(),
+                "attempt_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -231,7 +230,7 @@ pub async fn create_task_and_start(
         task,
         has_in_progress_attempt: is_attempt_running,
         last_attempt_failed: false,
-        executor: task_attempt.executor,
+        executor: payload.executor_profile_id.executor.to_string(),
     })))
 }
 
@@ -251,9 +250,9 @@ pub async fn update_task(
         None => existing_task.description,      // Field omitted = keep existing
     };
     let status = payload.status.unwrap_or(existing_task.status);
-    let parent_task_attempt = payload
-        .parent_task_attempt
-        .or(existing_task.parent_task_attempt);
+    let parent_workspace_id = payload
+        .parent_workspace_id
+        .or(existing_task.parent_workspace_id);
 
     let task = Task::update(
         &deployment.db().pool,
@@ -262,7 +261,7 @@ pub async fn update_task(
         title,
         description,
         status,
-        parent_task_attempt,
+        parent_workspace_id,
     )
     .await?;
 
@@ -315,11 +314,11 @@ pub async fn delete_task(
     let pool = &deployment.db().pool;
 
     // Gather task attempts data needed for background cleanup
-    let attempts = TaskAttempt::fetch_all(pool, Some(task.id))
+    let attempts = Workspace::fetch_all(pool, Some(task.id))
         .await
         .map_err(|e| {
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
-            ApiError::TaskAttempt(e)
+            ApiError::Workspace(e)
         })?;
 
     let repositories = AttemptRepo::find_unique_repos_for_task(pool, task.id).await?;
@@ -340,11 +339,12 @@ pub async fn delete_task(
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
     let mut tx = pool.begin().await?;
 
-    // Nullify parent_task_attempt for all child tasks before deletion
+    // Nullify parent_workspace_id for all child tasks before deletion
     // This breaks parent-child relationships to avoid foreign key constraint violations
     let mut total_children_affected = 0u64;
     for attempt in &attempts {
-        let children_affected = Task::nullify_children_by_attempt_id(&mut *tx, attempt.id).await?;
+        let children_affected =
+            Task::nullify_children_by_workspace_id(&mut *tx, attempt.id).await?;
         total_children_affected += children_affected;
     }
 

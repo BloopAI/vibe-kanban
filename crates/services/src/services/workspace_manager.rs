@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use db::models::{repo::Repo, task_attempt::TaskAttempt};
+use db::models::{repo::Repo, workspace::Workspace as DbWorkspace};
 use sqlx::{Pool, Sqlite};
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
@@ -328,7 +328,7 @@ impl WorkspaceManager {
             }
 
             let workspace_path_str = path.to_string_lossy().to_string();
-            if let Ok(false) = TaskAttempt::container_ref_exists(db, &workspace_path_str).await {
+            if let Ok(false) = DbWorkspace::container_ref_exists(db, &workspace_path_str).await {
                 info!("Found orphaned workspace: {}", workspace_path_str);
                 if let Err(e) = Self::cleanup_workspace_without_repos(&path).await {
                     error!(

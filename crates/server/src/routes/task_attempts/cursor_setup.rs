@@ -1,6 +1,7 @@
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    task_attempt::{TaskAttempt, TaskAttemptError},
+    session::{CreateSession, Session},
+    workspace::{Workspace, WorkspaceError},
 };
 use deployment::Deployment;
 use executors::actions::ExecutorAction;
@@ -13,16 +14,17 @@ use executors::{
     executors::cursor::CursorAgent,
 };
 use services::services::container::ContainerService;
+use uuid::Uuid;
 
 use crate::error::ApiError;
 
 pub async fn run_cursor_setup(
     deployment: &crate::DeploymentImpl,
-    task_attempt: &TaskAttempt,
+    workspace: &Workspace,
 ) -> Result<ExecutionProcess, ApiError> {
-    let latest_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+    let latest_process = ExecutionProcess::find_latest_by_workspace_and_run_reason(
         &deployment.db().pool,
-        task_attempt.id,
+        workspace.id,
         &ExecutionProcessRunReason::CodingAgent,
     )
     .await?;
@@ -30,7 +32,7 @@ pub async fn run_cursor_setup(
     let executor_action = if let Some(latest_process) = latest_process {
         let latest_action = latest_process
             .executor_action()
-            .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?;
+            .map_err(|e| ApiError::Workspace(WorkspaceError::ValidationError(e.to_string())))?;
         get_setup_helper_action()
             .await?
             .append_action(latest_action.to_owned())
@@ -39,13 +41,31 @@ pub async fn run_cursor_setup(
     };
     deployment
         .container()
-        .ensure_container_exists(task_attempt)
+        .ensure_container_exists(workspace)
         .await?;
+
+    // Get or create a session for setup scripts
+    let session =
+        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
+            Some(s) => s,
+            None => {
+                Session::create(
+                    &deployment.db().pool,
+                    &CreateSession {
+                        executor: "cursor".to_string(),
+                    },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await?
+            }
+        };
 
     let execution_process = deployment
         .container()
         .start_execution(
-            task_attempt,
+            workspace,
+            &session,
             &executor_action,
             &ExecutionProcessRunReason::SetupScript,
         )

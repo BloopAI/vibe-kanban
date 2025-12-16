@@ -8,7 +8,7 @@ use db::{
     models::{
         project::{CreateProject, Project},
         project_repo::CreateProjectRepo,
-        task_attempt::TaskAttemptError,
+        workspace::WorkspaceError,
     },
 };
 use executors::executors::ExecutorError;
@@ -56,7 +56,7 @@ pub enum DeploymentError {
     #[error(transparent)]
     FilesystemWatcherError(#[from] FilesystemWatcherError),
     #[error(transparent)]
-    TaskAttempt(#[from] TaskAttemptError),
+    Workspace(#[from] WorkspaceError),
     #[error(transparent)]
     Container(#[from] ContainerError),
     #[error(transparent)]

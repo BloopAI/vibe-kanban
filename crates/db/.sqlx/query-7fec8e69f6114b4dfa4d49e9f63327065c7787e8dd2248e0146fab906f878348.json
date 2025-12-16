@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT cat.session_id\n               FROM execution_processes ep\n               JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id\n               JOIN sessions s ON ep.session_id = s.id\n               WHERE s.workspace_id = $1\n                 AND ep.run_reason = 'codingagent'\n                 AND ep.dropped = FALSE\n                 AND cat.session_id IS NOT NULL\n               ORDER BY ep.created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "session_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "7fec8e69f6114b4dfa4d49e9f63327065c7787e8dd2248e0146fab906f878348"
+}

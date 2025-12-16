@@ -1,6 +1,7 @@
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    task_attempt::TaskAttempt,
+    session::{CreateSession, Session},
+    workspace::Workspace,
 };
 use deployment::Deployment;
 use executors::actions::ExecutorAction;
@@ -15,6 +16,7 @@ use executors::{
 use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
 use ts_rs::TS;
+use uuid::Uuid;
 
 use crate::error::ApiError;
 
@@ -28,19 +30,37 @@ pub enum GhCliSetupError {
 
 pub async fn run_gh_cli_setup(
     deployment: &crate::DeploymentImpl,
-    task_attempt: &TaskAttempt,
+    workspace: &Workspace,
 ) -> Result<ExecutionProcess, ApiError> {
     let executor_action = get_gh_cli_setup_helper_action().await?;
 
     deployment
         .container()
-        .ensure_container_exists(task_attempt)
+        .ensure_container_exists(workspace)
         .await?;
+
+    // Get or create a session for setup scripts
+    let session =
+        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
+            Some(s) => s,
+            None => {
+                Session::create(
+                    &deployment.db().pool,
+                    &CreateSession {
+                        executor: "gh-cli".to_string(),
+                    },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await?
+            }
+        };
 
     let execution_process = deployment
         .container()
         .start_execution(
-            task_attempt,
+            workspace,
+            &session,
             &executor_action,
             &ExecutionProcessRunReason::SetupScript,
         )

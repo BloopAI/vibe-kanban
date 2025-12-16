@@ -93,8 +93,8 @@ impl Project {
             WHERE p.id IN (
                 SELECT DISTINCT t.project_id
                 FROM tasks t
-                INNER JOIN task_attempts ta ON ta.task_id = t.id
-                ORDER BY ta.updated_at DESC
+                INNER JOIN workspaces w ON w.task_id = t.id
+                ORDER BY w.updated_at DESC
             )
             LIMIT $1
             "#,

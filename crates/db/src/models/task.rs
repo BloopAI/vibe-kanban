@@ -5,7 +5,7 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, task_attempt::TaskAttempt};
+use super::{project::Project, workspace::Workspace};
 
 #[derive(
     Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
@@ -29,7 +29,7 @@ pub struct Task {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt
+    pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
     pub shared_task_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -60,9 +60,9 @@ impl std::ops::DerefMut for TaskWithAttemptStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskRelationships {
-    pub parent_task: Option<Task>,    // The task that owns this attempt
-    pub current_attempt: TaskAttempt, // The attempt we're viewing
-    pub children: Vec<Task>,          // Tasks created by this attempt
+    pub parent_task: Option<Task>, // The task that owns the parent workspace
+    pub current_workspace: Workspace, // The workspace we're viewing
+    pub children: Vec<Task>,       // Tasks created from this workspace
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -71,7 +71,7 @@ pub struct CreateTask {
     pub title: String,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub parent_task_attempt: Option<Uuid>,
+    pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
 }
@@ -87,7 +87,7 @@ impl CreateTask {
             title,
             description,
             status: Some(TaskStatus::Todo),
-            parent_task_attempt: None,
+            parent_workspace_id: None,
             image_ids: None,
             shared_task_id: None,
         }
@@ -105,7 +105,7 @@ impl CreateTask {
             title,
             description,
             status: Some(status),
-            parent_task_attempt: None,
+            parent_workspace_id: None,
             image_ids: None,
             shared_task_id: Some(shared_task_id),
         }
@@ -117,7 +117,7 @@ pub struct UpdateTask {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub parent_task_attempt: Option<Uuid>,
+    pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -145,38 +145,39 @@ impl Task {
   t.title,
   t.description,
   t.status                        AS "status!: TaskStatus",
-  t.parent_task_attempt           AS "parent_task_attempt: Uuid",
+  t.parent_workspace_id           AS "parent_workspace_id: Uuid",
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
   CASE WHEN EXISTS (
     SELECT 1
-      FROM task_attempts ta
-      JOIN execution_processes ep
-        ON ep.task_attempt_id = ta.id
-     WHERE ta.task_id       = t.id
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      JOIN execution_processes ep ON ep.session_id = s.id
+     WHERE w.task_id       = t.id
        AND ep.status        = 'running'
        AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
      LIMIT 1
   ) THEN 1 ELSE 0 END            AS "has_in_progress_attempt!: i64",
-  
+
   CASE WHEN (
     SELECT ep.status
-      FROM task_attempts ta
-      JOIN execution_processes ep
-        ON ep.task_attempt_id = ta.id
-     WHERE ta.task_id       = t.id
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      JOIN execution_processes ep ON ep.session_id = s.id
+     WHERE w.task_id       = t.id
      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
      ORDER BY ep.created_at DESC
      LIMIT 1
   ) IN ('failed','killed') THEN 1 ELSE 0 END
                                  AS "last_attempt_failed!: i64",
 
-  ( SELECT ta.executor
-      FROM task_attempts ta
-      WHERE ta.task_id = t.id
-     ORDER BY ta.created_at DESC
+  ( SELECT s.executor
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      WHERE w.task_id = t.id
+     ORDER BY s.created_at DESC
       LIMIT 1
     )                               AS "executor!: String"
 
@@ -197,7 +198,7 @@ ORDER BY t.created_at DESC"#,
                     title: rec.title,
                     description: rec.description,
                     status: rec.status,
-                    parent_task_attempt: rec.parent_task_attempt,
+                    parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
@@ -214,8 +215,8 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE id = $1"#,
             id
         )
@@ -226,8 +227,8 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE rowid = $1"#,
             rowid
         )
@@ -244,7 +245,7 @@ ORDER BY t.created_at DESC"#,
     {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
@@ -257,7 +258,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id IS NOT NULL"#
         )
@@ -273,15 +274,15 @@ ORDER BY t.created_at DESC"#,
         let status = data.status.clone().unwrap_or_default();
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, shared_task_id) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7) 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             status,
-            data.parent_task_attempt,
+            data.parent_workspace_id,
             data.shared_task_id
         )
         .fetch_one(pool)
@@ -295,20 +296,20 @@ ORDER BY t.created_at DESC"#,
         title: String,
         description: Option<String>,
         status: TaskStatus,
-        parent_task_attempt: Option<Uuid>,
+        parent_workspace_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"UPDATE tasks 
-               SET title = $3, description = $4, status = $5, parent_task_attempt = $6 
-               WHERE id = $1 AND project_id = $2 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE tasks
+               SET title = $3, description = $4, status = $5, parent_workspace_id = $6
+               WHERE id = $1 AND project_id = $2
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
             description,
             status,
-            parent_task_attempt
+            parent_workspace_id
         )
         .fetch_one(pool)
         .await
@@ -329,34 +330,34 @@ ORDER BY t.created_at DESC"#,
         Ok(())
     }
 
-    /// Update the parent_task_attempt field for a task
-    pub async fn update_parent_task_attempt(
+    /// Update the parent_workspace_id field for a task
+    pub async fn update_parent_workspace_id(
         pool: &SqlitePool,
         task_id: Uuid,
-        parent_task_attempt: Option<Uuid>,
+        parent_workspace_id: Option<Uuid>,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE tasks SET parent_task_attempt = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE tasks SET parent_workspace_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             task_id,
-            parent_task_attempt
+            parent_workspace_id
         )
         .execute(pool)
         .await?;
         Ok(())
     }
 
-    /// Nullify parent_task_attempt for all tasks that reference the given attempt ID
+    /// Nullify parent_workspace_id for all tasks that reference the given workspace ID
     /// This breaks parent-child relationships before deleting a parent task
-    pub async fn nullify_children_by_attempt_id<'e, E>(
+    pub async fn nullify_children_by_workspace_id<'e, E>(
         executor: E,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<u64, sqlx::Error>
     where
         E: Executor<'e, Database = Sqlite>,
     {
         let result = sqlx::query!(
-            "UPDATE tasks SET parent_task_attempt = NULL WHERE parent_task_attempt = $1",
-            attempt_id
+            "UPDATE tasks SET parent_workspace_id = NULL WHERE parent_workspace_id = $1",
+            workspace_id
         )
         .execute(executor)
         .await?;
@@ -438,39 +439,40 @@ ORDER BY t.created_at DESC"#,
         Ok(result.rows_affected())
     }
 
-    pub async fn find_children_by_attempt_id(
+    pub async fn find_children_by_workspace_id(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        // Find only child tasks that have this attempt as their parent
+        // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
-               WHERE parent_task_attempt = $1
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
+               WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,
-            attempt_id,
+            workspace_id,
         )
         .fetch_all(pool)
         .await
     }
 
-    pub async fn find_relationships_for_attempt(
+    pub async fn find_relationships_for_workspace(
         pool: &SqlitePool,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
     ) -> Result<TaskRelationships, sqlx::Error> {
-        // 1. Get the current task (task that owns this attempt)
-        let current_task = Self::find_by_id(pool, task_attempt.task_id)
+        // 1. Get the current task (task that owns this workspace)
+        let current_task = Self::find_by_id(pool, workspace.task_id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        // 2. Get parent task (if current task was created by another task's attempt)
-        let parent_task = if let Some(parent_attempt_id) = current_task.parent_task_attempt {
-            // Find the attempt that created the current task
-            if let Ok(Some(parent_attempt)) = TaskAttempt::find_by_id(pool, parent_attempt_id).await
+        // 2. Get parent task (if current task was created by another workspace)
+        let parent_task = if let Some(parent_workspace_id) = current_task.parent_workspace_id {
+            // Find the workspace that created the current task
+            if let Ok(Some(parent_workspace)) =
+                Workspace::find_by_id(pool, parent_workspace_id).await
             {
-                // Find the task that owns that parent attempt - THAT's the real parent
-                Self::find_by_id(pool, parent_attempt.task_id).await?
+                // Find the task that owns that parent workspace - THAT's the real parent
+                Self::find_by_id(pool, parent_workspace.task_id).await?
             } else {
                 None
             }
@@ -478,12 +480,12 @@ ORDER BY t.created_at DESC"#,
             None
         };
 
-        // 3. Get children tasks (created by this attempt)
-        let children = Self::find_children_by_attempt_id(pool, task_attempt.id).await?;
+        // 3. Get children tasks (created from this workspace)
+        let children = Self::find_children_by_workspace_id(pool, workspace.id).await?;
 
         Ok(TaskRelationships {
             parent_task,
-            current_attempt: task_attempt.clone(),
+            current_workspace: workspace.clone(),
             children,
         })
     }

@@ -13,16 +13,17 @@ use db::{
     DBService,
     models::{
         attempt_repo::AttemptRepo,
+        coding_agent_turn::CodingAgentTurn,
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
-        executor_session::ExecutorSession,
         project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
+        session::{CreateSession, Session},
         task::{Task, TaskStatus},
-        task_attempt::TaskAttempt,
+        workspace::Workspace,
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
@@ -142,20 +143,20 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    pub async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
-        let Some(container_ref) = &attempt.container_ref else {
+    pub async fn cleanup_workspace_container(db: &DBService, workspace: &Workspace) {
+        let Some(container_ref) = &workspace.container_ref else {
             return;
         };
         let workspace_dir = PathBuf::from(container_ref);
 
-        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, attempt.id)
+        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, workspace.id)
             .await
             .unwrap_or_default();
 
         if repositories.is_empty() {
             tracing::warn!(
-                "No repositories found for attempt {}, cleaning up workspace directory only",
-                attempt.id
+                "No repositories found for workspace {}, cleaning up workspace directory only",
+                workspace.id
             );
             if workspace_dir.exists()
                 && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
@@ -167,29 +168,29 @@ impl LocalContainerService {
                 .await
                 .unwrap_or_else(|e| {
                     tracing::warn!(
-                        "Failed to clean up workspace for attempt {}: {}",
-                        attempt.id,
+                        "Failed to clean up workspace for workspace {}: {}",
+                        workspace.id,
                         e
                     );
                 });
         }
 
-        // Clear container_ref so this attempt won't be picked up again
-        let _ = TaskAttempt::clear_container_ref(&db.pool, attempt.id).await;
+        // Clear container_ref so this workspace won't be picked up again
+        let _ = Workspace::clear_container_ref(&db.pool, workspace.id).await;
     }
 
-    pub async fn cleanup_expired_attempts(db: &DBService) -> Result<(), DeploymentError> {
-        let expired_attempts = TaskAttempt::find_expired_for_cleanup(&db.pool).await?;
-        if expired_attempts.is_empty() {
+    pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+        let expired_workspaces = Workspace::find_expired_for_cleanup(&db.pool).await?;
+        if expired_workspaces.is_empty() {
             tracing::debug!("No expired workspaces found");
             return Ok(());
         }
         tracing::info!(
             "Found {} expired workspaces to clean up",
-            expired_attempts.len()
+            expired_workspaces.len()
         );
-        for attempt in &expired_attempts {
-            Self::cleanup_attempt_workspace(db, attempt).await;
+        for workspace in &expired_workspaces {
+            Self::cleanup_workspace_container(db, workspace).await;
         }
         Ok(())
     }
@@ -202,10 +203,10 @@ impl LocalContainerService {
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic workspace cleanup...");
-                Self::cleanup_expired_attempts(&db)
+                Self::cleanup_expired_workspaces(&db)
                     .await
                     .unwrap_or_else(|e| {
-                        tracing::error!("Failed to clean up expired workspace attempts: {}", e)
+                        tracing::error!("Failed to clean up expired workspaces: {}", e)
                     });
             }
         });
@@ -216,7 +217,7 @@ impl LocalContainerService {
     /// and failure should not block process finalization.
     async fn update_after_head_commits(&self, exec_id: Uuid) {
         if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, exec_id).await {
-            let workspace_root = self.task_attempt_to_current_dir(&ctx.task_attempt);
+            let workspace_root = self.workspace_to_current_dir(&ctx.workspace);
             for repo in &ctx.repos {
                 let repo_path = workspace_root.join(&repo.name);
                 if let Ok(head) = self.git().get_head_info(&repo_path) {
@@ -236,23 +237,23 @@ impl LocalContainerService {
     async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
         match ctx.execution_process.run_reason {
             ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the executor session
+                // Try to retrieve the task summary from the coding agent turn
                 // otherwise fallback to default message
-                match ExecutorSession::find_by_execution_process_id(
+                match CodingAgentTurn::find_by_execution_process_id(
                     &self.db().pool,
                     ctx.execution_process.id,
                 )
                 .await
                 {
-                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
+                    Ok(Some(turn)) if turn.summary.is_some() => turn.summary.unwrap(),
                     Ok(_) => {
                         tracing::debug!(
                             "No summary found for execution process {}, using default message",
                             ctx.execution_process.id
                         );
                         format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
+                            "Commit changes from coding agent for workspace {}",
+                            ctx.workspace.id
                         )
                     }
                     Err(e) => {
@@ -262,17 +263,14 @@ impl LocalContainerService {
                             e
                         );
                         format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
+                            "Commit changes from coding agent for workspace {}",
+                            ctx.workspace.id
                         )
                     }
                 }
             }
             ExecutionProcessRunReason::CleanupScript => {
-                format!(
-                    "Cleanup script changes for task attempt {}",
-                    ctx.task_attempt.id
-                )
+                format!("Cleanup script changes for workspace {}", ctx.workspace.id)
             }
             _ => format!(
                 "Changes from execution process {}",
@@ -459,8 +457,8 @@ impl LocalContainerService {
                         }
                     } else {
                         tracing::info!(
-                            "Skipping cleanup script for task attempt {} - no changes made by coding agent",
-                            ctx.task_attempt.id
+                            "Skipping cleanup script for workspace {} - no changes made by coding agent",
+                            ctx.workspace.id
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
@@ -478,18 +476,18 @@ impl LocalContainerService {
 
                     if let Some(queued_msg) = container
                         .queued_message_service
-                        .take_queued(ctx.task_attempt.id)
+                        .take_queued(ctx.workspace.id)
                     {
                         if should_execute_queued {
                             tracing::info!(
-                                "Found queued message for attempt {}, starting follow-up execution",
-                                ctx.task_attempt.id
+                                "Found queued message for workspace {}, starting follow-up execution",
+                                ctx.workspace.id
                             );
 
                             // Delete the scratch since we're consuming the queued message
                             if let Err(e) = Scratch::delete(
                                 &db.pool,
-                                ctx.task_attempt.id,
+                                ctx.workspace.id,
                                 &ScratchType::DraftFollowUp,
                             )
                             .await
@@ -512,8 +510,8 @@ impl LocalContainerService {
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
                             tracing::info!(
-                                "Discarding queued message for attempt {} due to execution status {:?}",
-                                ctx.task_attempt.id,
+                                "Discarding queued message for workspace {} due to execution status {:?}",
+                                ctx.workspace.id,
                                 ctx.execution_process.status
                             );
                             container.finalize_task(publisher.as_ref().ok(), &ctx).await;
@@ -534,7 +532,8 @@ impl LocalContainerService {
                     analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
                         "task_id": ctx.task.id.to_string(),
                         "project_id": ctx.task.project_id.to_string(),
-                        "attempt_id": ctx.task_attempt.id.to_string(),
+                        "workspace_id": ctx.workspace.id.to_string(),
+                        "session_id": ctx.session.id.to_string(),
                         "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
                         "exit_code": ctx.execution_process.exit_code,
                     })));
@@ -601,9 +600,9 @@ impl LocalContainerService {
         rx
     }
 
-    pub fn dir_name_from_task_attempt(attempt_id: &Uuid, task_title: &str) -> String {
+    pub fn dir_name_from_workspace(workspace_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
-        format!("{}-{}", short_uuid(attempt_id), task_title_id)
+        format!("{}-{}", short_uuid(workspace_id), task_title_id)
     }
 
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
@@ -681,17 +680,16 @@ impl LocalContainerService {
         None
     }
 
-    /// Update the executor session summary with the final assistant message
+    /// Update the coding agent turn summary with the final assistant message
     async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
-        // Check if there's an executor session for this execution process
-        let session =
-            ExecutorSession::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
+        // Check if there's a coding agent turn for this execution process
+        let turn = CodingAgentTurn::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
 
-        if let Some(session) = session {
+        if let Some(turn) = turn {
             // Only update if summary is not already set
-            if session.summary.is_none() {
+            if turn.summary.is_none() {
                 if let Some(summary) = self.extract_last_assistant_message(exec_id) {
-                    ExecutorSession::update_summary(&self.db.pool, *exec_id, &summary).await?;
+                    CodingAgentTurn::update_summary(&self.db.pool, *exec_id, &summary).await?;
                 } else {
                     tracing::debug!("No assistant message found for execution {}", exec_id);
                 }
@@ -706,9 +704,9 @@ impl LocalContainerService {
     async fn copy_files_and_images(
         &self,
         workspace_dir: &Path,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
     ) -> Result<(), ContainerError> {
-        let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, task_attempt.id).await?;
+        let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, workspace.id).await?;
 
         for repo in &repos {
             if let Some(copy_files) = &repo.copy_files
@@ -729,7 +727,7 @@ impl LocalContainerService {
 
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(workspace_dir, task_attempt.task_id)
+            .copy_images_by_task_to_worktree(workspace_dir, workspace.task_id)
             .await
         {
             tracing::warn!("Failed to copy task images to workspace: {}", e);
@@ -745,9 +743,9 @@ impl LocalContainerService {
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Get executor profile from the latest CodingAgent process
-        let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
+        let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_workspace(
             &self.db.pool,
-            ctx.task_attempt.id,
+            ctx.workspace.id,
         )
         .await
         .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?;
@@ -757,21 +755,22 @@ impl LocalContainerService {
             variant: queued_data.variant.clone(),
         };
 
-        // Get latest session ID for session continuity
-        let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
-            &self.db.pool,
-            ctx.task_attempt.id,
-        )
-        .await?;
+        // Get latest external session ID for session continuity (from coding agent turns)
+        let latest_external_session_id =
+            ExecutionProcess::find_latest_external_session_id_by_workspace(
+                &self.db.pool,
+                ctx.workspace.id,
+            )
+            .await?;
 
         let project_repos =
             ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        let action_type = if let Some(session_id) = latest_session_id {
+        let action_type = if let Some(external_session_id) = latest_external_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
-                session_id,
+                session_id: external_session_id,
                 executor_profile_id: executor_profile_id.clone(),
             })
         } else {
@@ -783,8 +782,20 @@ impl LocalContainerService {
 
         let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
+        // Create a new session for this follow-up
+        let session = Session::create(
+            &self.db.pool,
+            &CreateSession {
+                executor: executor_profile_id.to_string(),
+            },
+            Uuid::new_v4(),
+            ctx.workspace.id,
+        )
+        .await?;
+
         self.start_execution(
-            &ctx.task_attempt,
+            &ctx.workspace,
+            &session,
             &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
@@ -831,29 +842,28 @@ impl ContainerService for LocalContainerService {
         self.config.read().await.git_branch_prefix.clone()
     }
 
-    fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
-        PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
+    fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf {
+        PathBuf::from(workspace.container_ref.clone().unwrap_or_default())
     }
 
-    async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
-        let task = task_attempt
+    async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError> {
+        let task = workspace
             .parent_task(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let workspace_dir_name =
-            LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
+            LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, workspace.id).await?;
         if attempt_repos.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Attempt has no repositories configured"
+                "Workspace has no repositories configured"
             )));
         }
 
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
 
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
@@ -868,83 +878,81 @@ impl ContainerService for LocalContainerService {
             })
             .collect();
 
-        let workspace = WorkspaceManager::create_workspace(
+        let created_workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
             &workspace_inputs,
-            &task_attempt.branch,
+            &workspace.branch,
         )
         .await?;
 
         // Copy project files and images to workspace
-        self.copy_files_and_images(&workspace.workspace_dir, task_attempt)
+        self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
             .await?;
 
-        TaskAttempt::update_container_ref(
+        Workspace::update_container_ref(
             &self.db.pool,
-            task_attempt.id,
-            &workspace.workspace_dir.to_string_lossy(),
+            workspace.id,
+            &created_workspace.workspace_dir.to_string_lossy(),
         )
         .await?;
 
-        Ok(workspace.workspace_dir.to_string_lossy().to_string())
+        Ok(created_workspace
+            .workspace_dir
+            .to_string_lossy()
+            .to_string())
     }
 
-    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        self.try_stop(task_attempt, true).await;
-        Self::cleanup_attempt_workspace(&self.db, task_attempt).await;
+    async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError> {
+        self.try_stop(workspace, true).await;
+        Self::cleanup_workspace_container(&self.db, workspace).await;
         Ok(())
     }
 
     async fn ensure_container_exists(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Attempt has no repositories configured"
+                "Workspace has no repositories configured"
             )));
         }
 
-        let workspace_dir = if let Some(container_ref) = &task_attempt.container_ref {
+        let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
             PathBuf::from(container_ref)
         } else {
-            let task = task_attempt
+            let task = workspace
                 .parent_task(&self.db.pool)
                 .await?
                 .ok_or(sqlx::Error::RowNotFound)?;
             let workspace_dir_name =
-                LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
+                LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
             WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
         };
 
-        WorkspaceManager::ensure_workspace_exists(
-            &workspace_dir,
-            &repositories,
-            &task_attempt.branch,
-        )
-        .await?;
+        WorkspaceManager::ensure_workspace_exists(&workspace_dir, &repositories, &workspace.branch)
+            .await?;
 
-        if task_attempt.container_ref.is_none() {
-            TaskAttempt::update_container_ref(
+        if workspace.container_ref.is_none() {
+            Workspace::update_container_ref(
                 &self.db.pool,
-                task_attempt.id,
+                workspace.id,
                 &workspace_dir.to_string_lossy(),
             )
             .await?;
         }
 
         // Copy project files and images (fast no-op if already exist)
-        self.copy_files_and_images(&workspace_dir, task_attempt)
+        self.copy_files_and_images(&workspace_dir, workspace)
             .await?;
 
         Ok(workspace_dir.to_string_lossy().to_string())
     }
 
-    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
-        let Some(container_ref) = &task_attempt.container_ref else {
+    async fn is_container_clean(&self, workspace: &Workspace) -> Result<bool, ContainerError> {
+        let Some(container_ref) = &workspace.container_ref else {
             return Ok(true);
         };
 
@@ -953,8 +961,7 @@ impl ContainerService for LocalContainerService {
             return Ok(true);
         }
 
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
@@ -968,16 +975,16 @@ impl ContainerService for LocalContainerService {
 
     async fn start_execution_inner(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
         execution_process: &ExecutionProcess,
         executor_action: &ExecutorAction,
     ) -> Result<(), ContainerError> {
         // Get the worktree path
-        let container_ref = task_attempt
+        let container_ref = workspace
             .container_ref
             .as_ref()
             .ok_or(ContainerError::Other(anyhow!(
-                "Container ref not found for task attempt"
+                "Container ref not found for workspace"
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
@@ -1002,11 +1009,11 @@ impl ContainerService for LocalContainerService {
         let mut env = ExecutionEnv::new();
 
         // Load task and project context for environment variables
-        let task = task_attempt
+        let task = workspace
             .parent_task(&self.db.pool)
             .await?
             .ok_or(ContainerError::Other(anyhow!(
-                "Task not found for task attempt"
+                "Task not found for workspace"
             )))?;
         let project = task
             .parent_project(&self.db.pool)
@@ -1016,8 +1023,8 @@ impl ContainerService for LocalContainerService {
         env.insert("VK_PROJECT_NAME", &project.name);
         env.insert("VK_PROJECT_ID", project.id.to_string());
         env.insert("VK_TASK_ID", task.id.to_string());
-        env.insert("VK_ATTEMPT_ID", task_attempt.id.to_string());
-        env.insert("VK_ATTEMPT_BRANCH", &task_attempt.branch);
+        env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
+        env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
 
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
@@ -1156,27 +1163,26 @@ impl ContainerService for LocalContainerService {
 
     async fn stream_diff(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
     {
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, workspace.id).await?;
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
             .map(|ar| (ar.repo_id, ar.target_branch.clone()))
             .collect();
 
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
 
         let mut streams = Vec::new();
 
-        let container_ref = self.ensure_container_exists(task_attempt).await?;
+        let container_ref = self.ensure_container_exists(workspace).await?;
         let workspace_root = PathBuf::from(container_ref);
 
         for repo in repositories {
             let worktree_path = workspace_root.join(&repo.name);
-            let branch = &task_attempt.branch;
+            let branch = &workspace.branch;
 
             let Some(target_branch) = target_branches.get(&repo.id) else {
                 tracing::warn!(
@@ -1232,7 +1238,7 @@ impl ContainerService for LocalContainerService {
         let message = self.get_commit_message(ctx).await;
 
         let container_ref = ctx
-            .task_attempt
+            .workspace
             .container_ref
             .as_ref()
             .ok_or_else(|| ContainerError::Other(anyhow!("Container reference not found")))?;

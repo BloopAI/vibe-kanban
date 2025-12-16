@@ -9,7 +9,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
-use db::models::{task::Task, task_attempt::TaskAttempt};
+use db::models::{task::Task, workspace::Workspace};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::{container::ContainerService, image::ImageError};
@@ -21,7 +21,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::load_task_attempt_middleware,
+    middleware::load_workspace_middleware,
     routes::images::{ImageMetadata, ImageResponse, process_image_upload},
 };
 
@@ -31,15 +31,15 @@ pub struct ImageMetadataQuery {
     pub path: String,
 }
 
-/// Upload an image and immediately copy it to the task attempt's worktree.
+/// Upload an image and immediately copy it to the workspace's worktree.
 /// This allows images to be available in the container before follow-up is sent.
 pub async fn upload_image(
-    Extension(task_attempt): Extension<TaskAttempt>,
+    Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     multipart: Multipart,
 ) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
     // Get the task for this attempt
-    let task = Task::find_by_id(&deployment.db().pool, task_attempt.task_id)
+    let task = Task::find_by_id(&deployment.db().pool, workspace.task_id)
         .await?
         .ok_or_else(|| ApiError::Image(ImageError::NotFound))?;
 
@@ -48,7 +48,7 @@ pub async fn upload_image(
 
     let container_ref = deployment
         .container()
-        .ensure_container_exists(&task_attempt)
+        .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
     deployment
@@ -59,9 +59,9 @@ pub async fn upload_image(
     Ok(ResponseJson(ApiResponse::success(image_response)))
 }
 
-/// Get metadata about an image in the task attempt's worktree.
+/// Get metadata about an image in the workspace's worktree.
 pub async fn get_image_metadata(
-    Extension(task_attempt): Extension<TaskAttempt>,
+    Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ImageMetadataQuery>,
 ) -> Result<ResponseJson<ApiResponse<ImageMetadata>>, ApiError> {
@@ -92,7 +92,7 @@ pub async fn get_image_metadata(
 
     let container_ref = deployment
         .container()
-        .ensure_container_exists(&task_attempt)
+        .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
     let full_path = workspace_path.join(&query.path);
@@ -126,7 +126,7 @@ pub async fn get_image_metadata(
     let image_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
         "/api/task-attempts/{}/images/file/{}",
-        task_attempt.id, image_path
+        workspace.id, image_path
     );
 
     Ok(ResponseJson(ApiResponse::success(ImageMetadata {
@@ -139,10 +139,10 @@ pub async fn get_image_metadata(
     })))
 }
 
-/// Serve an image file from the task attempt's .vibe-images folder.
+/// Serve an image file from the workspace's .vibe-images folder.
 pub async fn serve_image(
     axum::extract::Path((_id, path)): axum::extract::Path<(Uuid, String)>,
-    Extension(task_attempt): Extension<TaskAttempt>,
+    Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Response, ApiError> {
     // Reject paths with .. to prevent traversal
@@ -151,7 +151,7 @@ pub async fn serve_image(
     }
     let container_ref = deployment
         .container()
-        .ensure_container_exists(&task_attempt)
+        .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
 
@@ -211,14 +211,14 @@ pub async fn serve_image(
     Ok(response)
 }
 
-/// Middleware to load TaskAttempt for routes with wildcard path params.
-async fn load_task_attempt_with_wildcard(
+/// Middleware to load Workspace for routes with wildcard path params.
+async fn load_workspace_with_wildcard(
     State(deployment): State<DeploymentImpl>,
     axum::extract::Path((id, _path)): axum::extract::Path<(Uuid, String)>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let attempt = match TaskAttempt::find_by_id(&deployment.db().pool, id).await {
+    let attempt = match Workspace::find_by_id(&deployment.db().pool, id).await {
         Ok(Some(a)) => a,
         Ok(None) => return Err(StatusCode::NOT_FOUND),
         Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -236,14 +236,14 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .layer(from_fn_with_state(
             deployment.clone(),
-            load_task_attempt_middleware,
+            load_workspace_middleware,
         ));
 
     let file_router = Router::new()
         .route("/file/{*path}", get(serve_image))
         .layer(from_fn_with_state(
             deployment.clone(),
-            load_task_attempt_with_wildcard,
+            load_workspace_with_wildcard,
         ));
 
     metadata_router.merge(file_router)

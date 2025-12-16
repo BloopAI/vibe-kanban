@@ -5,7 +5,7 @@ use db::models::{
     repo::Repo,
     tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::{TaskAttempt, TaskAttemptContext},
+    workspace::{Workspace, WorkspaceContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use regex::Regex;
@@ -278,7 +278,6 @@ pub struct McpContext {
     pub attempt_branch: String,
     #[schemars(description = "Repository info and target branches for each repo in this attempt")]
     pub attempt_repos: Vec<McpRepoContext>,
-    pub executor: String,
 }
 
 impl TaskServer {
@@ -327,7 +326,7 @@ impl TaskServer {
             return None;
         }
 
-        let api_response: ApiResponseEnvelope<TaskAttemptContext> = response.json().await.ok()?;
+        let api_response: ApiResponseEnvelope<WorkspaceContext> = response.json().await.ok()?;
 
         if !api_response.success {
             return None;
@@ -350,10 +349,9 @@ impl TaskServer {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
             task_title: ctx.task.title,
-            attempt_id: ctx.task_attempt.id,
-            attempt_branch: ctx.task_attempt.branch,
+            attempt_id: ctx.workspace.id,
+            attempt_branch: ctx.workspace.branch,
             attempt_repos,
-            executor: ctx.task_attempt.executor,
         })
     }
 }
@@ -702,8 +700,7 @@ impl TaskServer {
         };
 
         let url = self.url("/api/task-attempts");
-        let attempt: TaskAttempt = match self.send_json(self.client.post(&url).json(&payload)).await
-        {
+        let attempt: Workspace = match self.send_json(self.client.post(&url).json(&payload)).await {
             Ok(attempt) => attempt,
             Err(e) => return Ok(e),
         };
@@ -752,7 +749,7 @@ impl TaskServer {
             title,
             description: expanded_description,
             status,
-            parent_task_attempt: None,
+            parent_workspace_id: None,
             image_ids: None,
         };
         let url = self.url(&format!("/api/tasks/{}", task_id));

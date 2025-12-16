@@ -24,7 +24,7 @@ pub enum Merge {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DirectMerge {
     pub id: Uuid,
-    pub task_attempt_id: Uuid,
+    pub workspace_id: Uuid,
     pub repo_id: Uuid,
     pub merge_commit: String,
     pub target_branch_name: String,
@@ -35,7 +35,7 @@ pub struct DirectMerge {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PrMerge {
     pub id: Uuid,
-    pub task_attempt_id: Uuid,
+    pub workspace_id: Uuid,
     pub repo_id: Uuid,
     pub created_at: DateTime<Utc>,
     pub target_branch_name: String,
@@ -61,7 +61,7 @@ pub enum MergeType {
 #[derive(FromRow)]
 struct MergeRow {
     id: Uuid,
-    task_attempt_id: Uuid,
+    workspace_id: Uuid,
     repo_id: Uuid,
     merge_type: MergeType,
     merge_commit: Option<String>,
@@ -85,7 +85,7 @@ impl Merge {
     /// Create a direct merge record
     pub async fn create_direct(
         pool: &SqlitePool,
-        task_attempt_id: Uuid,
+        workspace_id: Uuid,
         repo_id: Uuid,
         target_branch_name: &str,
         merge_commit: &str,
@@ -96,11 +96,11 @@ impl Merge {
         sqlx::query_as!(
             MergeRow,
             r#"INSERT INTO merges (
-                id, task_attempt_id, repo_id, merge_type, merge_commit, created_at, target_branch_name
+                id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name
             ) VALUES ($1, $2, $3, 'direct', $4, $5, $6)
             RETURNING
                 id as "id!: Uuid",
-                task_attempt_id as "task_attempt_id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
@@ -113,7 +113,7 @@ impl Merge {
                 target_branch_name as "target_branch_name!: String"
             "#,
             id,
-            task_attempt_id,
+            workspace_id,
             repo_id,
             merge_commit,
             now,
@@ -126,7 +126,7 @@ impl Merge {
     /// Create a new PR record (when PR is opened)
     pub async fn create_pr(
         pool: &SqlitePool,
-        task_attempt_id: Uuid,
+        workspace_id: Uuid,
         repo_id: Uuid,
         target_branch_name: &str,
         pr_number: i64,
@@ -138,11 +138,11 @@ impl Merge {
         sqlx::query_as!(
             MergeRow,
             r#"INSERT INTO merges (
-                id, task_attempt_id, repo_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
+                id, workspace_id, repo_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
             ) VALUES ($1, $2, $3, 'pr', $4, $5, 'open', $6, $7)
             RETURNING
                 id as "id!: Uuid",
-                task_attempt_id as "task_attempt_id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
@@ -155,7 +155,7 @@ impl Merge {
                 target_branch_name as "target_branch_name!: String"
             "#,
             id,
-            task_attempt_id,
+            workspace_id,
             repo_id,
             pr_number,
             pr_url,
@@ -173,7 +173,7 @@ impl Merge {
             MergeRow,
             r#"SELECT
                 id as "id!: Uuid",
-                task_attempt_id as "task_attempt_id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
@@ -194,7 +194,7 @@ impl Merge {
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
-    /// Update PR status for a task attempt
+    /// Update PR status for a workspace
     pub async fn update_status(
         pool: &SqlitePool,
         merge_id: Uuid,
@@ -208,8 +208,8 @@ impl Merge {
         };
 
         sqlx::query!(
-            r#"UPDATE merges 
-            SET pr_status = $1, 
+            r#"UPDATE merges
+            SET pr_status = $1,
                 pr_merge_commit_sha = $2,
                 pr_merged_at = $3
             WHERE id = $4"#,
@@ -223,17 +223,17 @@ impl Merge {
 
         Ok(())
     }
-    /// Find all merges for a task attempt (returns both direct and PR merges)
-    pub async fn find_by_task_attempt_id(
+    /// Find all merges for a workspace (returns both direct and PR merges)
+    pub async fn find_by_workspace_id(
         pool: &SqlitePool,
-        task_attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         // Get raw data from database
         let rows = sqlx::query_as!(
             MergeRow,
             r#"SELECT
                 id as "id!: Uuid",
-                task_attempt_id as "task_attempt_id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
@@ -245,9 +245,9 @@ impl Merge {
                 target_branch_name as "target_branch_name!: String",
                 created_at as "created_at!: DateTime<Utc>"
             FROM merges
-            WHERE task_attempt_id = $1
+            WHERE workspace_id = $1
             ORDER BY created_at DESC"#,
-            task_attempt_id
+            workspace_id
         )
         .fetch_all(pool)
         .await?;
@@ -256,17 +256,17 @@ impl Merge {
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
-    /// Find all merges for a task attempt and specific repo
-    pub async fn find_by_task_attempt_and_repo_id(
+    /// Find all merges for a workspace and specific repo
+    pub async fn find_by_workspace_and_repo_id(
         pool: &SqlitePool,
-        task_attempt_id: Uuid,
+        workspace_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
             MergeRow,
             r#"SELECT
                 id as "id!: Uuid",
-                task_attempt_id as "task_attempt_id!: Uuid",
+                workspace_id as "workspace_id!: Uuid",
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
@@ -278,9 +278,9 @@ impl Merge {
                 target_branch_name as "target_branch_name!: String",
                 created_at as "created_at!: DateTime<Utc>"
             FROM merges
-            WHERE task_attempt_id = $1 AND repo_id = $2
+            WHERE workspace_id = $1 AND repo_id = $2
             ORDER BY created_at DESC"#,
-            task_attempt_id,
+            workspace_id,
             repo_id
         )
         .fetch_all(pool)
@@ -295,7 +295,7 @@ impl From<MergeRow> for DirectMerge {
     fn from(row: MergeRow) -> Self {
         DirectMerge {
             id: row.id,
-            task_attempt_id: row.task_attempt_id,
+            workspace_id: row.workspace_id,
             repo_id: row.repo_id,
             merge_commit: row
                 .merge_commit
@@ -310,7 +310,7 @@ impl From<MergeRow> for PrMerge {
     fn from(row: MergeRow) -> Self {
         PrMerge {
             id: row.id,
-            task_attempt_id: row.task_attempt_id,
+            workspace_id: row.workspace_id,
             repo_id: row.repo_id,
             target_branch_name: row.target_branch_name,
             pr_info: PullRequestInfo {

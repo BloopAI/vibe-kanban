@@ -10,6 +10,7 @@ use db::{
     DBService,
     models::{
         attempt_repo::AttemptRepo,
+        coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
             ExecutionProcessStatus,
@@ -18,12 +19,12 @@ use db::{
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
-        executor_session::{CreateExecutorSession, ExecutorSession},
         project::{Project, UpdateProject},
         project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
+        session::{CreateSession, Session, SessionError},
         task::{Task, TaskStatus},
-        task_attempt::{TaskAttempt, TaskAttemptError},
+        workspace::{Workspace, WorkspaceError},
     },
 };
 use executors::{
@@ -51,7 +52,7 @@ use crate::services::{
     git::{GitService, GitServiceError},
     notification::NotificationService,
     share::SharePublisher,
-    workspace_manager::WorkspaceError,
+    workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
@@ -68,12 +69,14 @@ pub enum ContainerError {
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
+    #[error(transparent)]
+    WorkspaceManager(#[from] WorkspaceManagerError),
+    #[error(transparent)]
+    Session(#[from] SessionError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
     KillFailed(std::io::Error),
-    #[error(transparent)]
-    TaskAttemptError(#[from] TaskAttemptError),
     #[error(transparent)]
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
@@ -90,25 +93,28 @@ pub trait ContainerService {
 
     fn notification_service(&self) -> &NotificationService;
 
-    fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
+    fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf;
 
-    async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
+    async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError>;
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
 
-    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
+    async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
     /// Check if a task has any running execution processes
     async fn has_running_processes(&self, task_id: Uuid) -> Result<bool, ContainerError> {
-        let attempts = TaskAttempt::fetch_all(&self.db().pool, Some(task_id)).await?;
+        let workspaces = Workspace::fetch_all(&self.db().pool, Some(task_id)).await?;
 
-        for attempt in attempts {
-            if let Ok(processes) =
-                ExecutionProcess::find_by_task_attempt_id(&self.db().pool, attempt.id, false).await
-            {
-                for process in processes {
-                    if process.status == ExecutionProcessStatus::Running {
-                        return Ok(true);
+        for workspace in workspaces {
+            let sessions = Session::find_by_workspace_id(&self.db().pool, workspace.id).await?;
+            for session in sessions {
+                if let Ok(processes) =
+                    ExecutionProcess::find_by_session_id(&self.db().pool, session.id, false).await
+                {
+                    for process in processes {
+                        if process.status == ExecutionProcessStatus::Running {
+                            return Ok(true);
+                        }
                     }
                 }
             }
@@ -187,16 +193,16 @@ pub trait ContainerService {
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
                 "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
+                ctx.task.title, ctx.workspace.branch, ctx.session.executor
             ),
             ExecutionProcessStatus::Failed => format!(
                 "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
+                ctx.task.title, ctx.workspace.branch, ctx.session.executor
             ),
             _ => {
                 tracing::warn!(
-                    "Tried to notify attempt completion for {} but process is still running!",
-                    ctx.task_attempt.id
+                    "Tried to notify workspace completion for {} but process is still running!",
+                    ctx.workspace.id
                 );
                 return;
             }
@@ -209,9 +215,9 @@ pub trait ContainerService {
         let running_processes = ExecutionProcess::find_running(&self.db().pool).await?;
         for process in running_processes {
             tracing::info!(
-                "Found orphaned execution process {} for task attempt {}",
+                "Found orphaned execution process {} for session {}",
                 process.id,
-                process.task_attempt_id
+                process.session_id
             );
             // Update the execution process status first
             if let Err(e) = ExecutionProcess::update_completion(
@@ -231,7 +237,7 @@ pub trait ContainerService {
             }
             // Capture after-head commit OID per repository
             if let Ok(ctx) = ExecutionProcess::load_context(&self.db().pool, process.id).await
-                && let Some(ref container_ref) = ctx.task_attempt.container_ref
+                && let Some(ref container_ref) = ctx.workspace.container_ref
             {
                 let workspace_root = PathBuf::from(container_ref);
                 for repo in &ctx.repos {
@@ -262,9 +268,11 @@ pub trait ContainerService {
                 ExecutionProcessRunReason::CodingAgent
                     | ExecutionProcessRunReason::SetupScript
                     | ExecutionProcessRunReason::CleanupScript
-            ) && let Ok(Some(task_attempt)) =
-                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
-                && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
+            ) && let Ok(Some(session)) =
+                Session::find_by_id(&self.db().pool, process.session_id).await
+                && let Ok(Some(workspace)) =
+                    Workspace::find_by_id(&self.db().pool, session.workspace_id).await
+                && let Ok(Some(task)) = workspace.parent_task(&self.db().pool).await
             {
                 match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
                     Ok(_) => {
@@ -280,7 +288,7 @@ pub trait ContainerService {
                     }
                     Err(e) => {
                         tracing::error!(
-                            "Failed to update task status to InReview for orphaned attempt: {}",
+                            "Failed to update task status to InReview for orphaned session: {}",
                             e
                         );
                     }
@@ -313,8 +321,8 @@ pub trait ContainerService {
                     Ok(oid) => before = Some(oid),
                     Err(e) => {
                         tracing::warn!(
-                            "Backfill: Failed to resolve base branch OID for attempt {} (branch {}): {}",
-                            row.task_attempt_id,
+                            "Backfill: Failed to resolve base branch OID for workspace {} (branch {}): {}",
+                            row.workspace_id,
                             row.target_branch,
                             e
                         );
@@ -504,28 +512,36 @@ pub trait ContainerService {
         chained
     }
 
-    async fn try_stop(&self, task_attempt: &TaskAttempt, include_dev_server: bool) {
-        // stop execution processes for this attempt
-        if let Ok(processes) =
-            ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id, false).await
-        {
-            for process in processes {
-                // Skip dev server processes unless explicitly included
-                if !include_dev_server && process.run_reason == ExecutionProcessRunReason::DevServer
-                {
-                    continue;
-                }
-                if process.status == ExecutionProcessStatus::Running {
-                    self.stop_execution(&process, ExecutionProcessStatus::Killed)
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::debug!(
-                                "Failed to stop execution process {} for task attempt {}: {}",
-                                process.id,
-                                task_attempt.id,
-                                e
-                            );
-                        });
+    async fn try_stop(&self, workspace: &Workspace, include_dev_server: bool) {
+        // stop execution processes for this workspace's sessions
+        let sessions = match Session::find_by_workspace_id(&self.db().pool, workspace.id).await {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+
+        for session in sessions {
+            if let Ok(processes) =
+                ExecutionProcess::find_by_session_id(&self.db().pool, session.id, false).await
+            {
+                for process in processes {
+                    // Skip dev server processes unless explicitly included
+                    if !include_dev_server
+                        && process.run_reason == ExecutionProcessRunReason::DevServer
+                    {
+                        continue;
+                    }
+                    if process.status == ExecutionProcessStatus::Running {
+                        self.stop_execution(&process, ExecutionProcessStatus::Killed)
+                            .await
+                            .unwrap_or_else(|e| {
+                                tracing::debug!(
+                                    "Failed to stop execution process {} for workspace {}: {}",
+                                    process.id,
+                                    workspace.id,
+                                    e
+                                );
+                            });
+                    }
                 }
             }
         }
@@ -533,14 +549,14 @@ pub trait ContainerService {
 
     async fn ensure_container_exists(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError>;
 
-    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError>;
+    async fn is_container_clean(&self, workspace: &Workspace) -> Result<bool, ContainerError>;
 
     async fn start_execution_inner(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
         execution_process: &ExecutionProcess,
         executor_action: &ExecutorAction,
     ) -> Result<(), ContainerError>;
@@ -563,7 +579,7 @@ pub trait ContainerService {
     /// Stream diff updates as LogMsg for WebSocket endpoints.
     async fn stream_diff(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>;
 
@@ -575,14 +591,14 @@ pub trait ContainerService {
 
     async fn git_branch_prefix(&self) -> String;
 
-    async fn git_branch_from_task_attempt(&self, attempt_id: &Uuid, task_title: &str) -> String {
+    async fn git_branch_from_workspace(&self, workspace_id: &Uuid, task_title: &str) -> String {
         let task_title_id = git_branch_id(task_title);
         let prefix = self.git_branch_prefix().await;
 
         if prefix.is_empty() {
-            format!("{}-{}", short_uuid(attempt_id), task_title_id)
+            format!("{}-{}", short_uuid(workspace_id), task_title_id)
         } else {
-            format!("{}/{}-{}", prefix, short_uuid(attempt_id), task_title_id)
+            format!("{}/{}-{}", prefix, short_uuid(workspace_id), task_title_id)
         }
     }
 
@@ -697,32 +713,36 @@ pub trait ContainerService {
                 }
             };
 
-            // Get the task attempt to determine correct directory
-            let task_attempt = match process.parent_task_attempt(&self.db().pool).await {
-                Ok(Some(task_attempt)) => task_attempt,
-                Ok(None) => {
-                    tracing::error!("No task attempt found for ID: {}", process.task_attempt_id);
-                    return None;
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to fetch task attempt {}: {}",
-                        process.task_attempt_id,
-                        e
-                    );
-                    return None;
-                }
-            };
+            // Get the workspace to determine correct directory
+            let (workspace, _session) =
+                match process.parent_workspace_and_session(&self.db().pool).await {
+                    Ok(Some((workspace, session))) => (workspace, session),
+                    Ok(None) => {
+                        tracing::error!(
+                            "No workspace/session found for session ID: {}",
+                            process.session_id
+                        );
+                        return None;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to fetch workspace for session {}: {}",
+                            process.session_id,
+                            e
+                        );
+                        return None;
+                    }
+                };
 
-            if let Err(err) = self.ensure_container_exists(&task_attempt).await {
+            if let Err(err) = self.ensure_container_exists(&workspace).await {
                 tracing::warn!(
-                    "Failed to recreate worktree before log normalization for task attempt {}: {}",
-                    task_attempt.id,
+                    "Failed to recreate worktree before log normalization for workspace {}: {}",
+                    workspace.id,
                     err
                 );
             }
 
-            let current_dir = self.task_attempt_to_current_dir(&task_attempt);
+            let current_dir = self.workspace_to_current_dir(&workspace);
 
             let executor_action = if let Ok(executor_action) = process.executor_action() {
                 executor_action
@@ -813,18 +833,18 @@ pub trait ContainerService {
                                 }
                             }
                         }
-                        LogMsg::SessionId(session_id) => {
+                        LogMsg::SessionId(external_session_id) => {
                             // Append this line to the database
-                            if let Err(e) = ExecutorSession::update_session_id(
+                            if let Err(e) = CodingAgentTurn::update_session_id(
                                 &db.pool,
                                 execution_id,
-                                session_id,
+                                external_session_id,
                             )
                             .await
                             {
                                 tracing::error!(
-                                    "Failed to update session_id {} for execution process {}: {}",
-                                    session_id,
+                                    "Failed to update external session_id {} for execution process {}: {}",
+                                    external_session_id,
                                     execution_id,
                                     e
                                 );
@@ -840,16 +860,16 @@ pub trait ContainerService {
         })
     }
 
-    async fn start_attempt(
+    async fn start_workspace(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
         executor_profile_id: ExecutorProfileId,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
-        self.create(task_attempt).await?;
+        self.create(workspace).await?;
 
         // Get parent task
-        let task = task_attempt
+        let task = workspace
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
@@ -863,9 +883,20 @@ pub trait ContainerService {
         let project_repos =
             ProjectRepo::find_by_project_id_with_names(&self.db().pool, project.id).await?;
 
-        let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)
+        let workspace = Workspace::find_by_id(&self.db().pool, workspace.id)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
+
+        // Create a session for this workspace
+        let session = Session::create(
+            &self.db().pool,
+            &CreateSession {
+                executor: executor_profile_id.to_string(),
+            },
+            Uuid::new_v4(),
+            workspace.id,
+        )
+        .await?;
 
         let prompt = task.to_prompt();
 
@@ -892,7 +923,8 @@ pub trait ContainerService {
                 if let Some(action) = Self::setup_action_for_repo(repo)
                     && let Err(e) = self
                         .start_execution(
-                            &task_attempt,
+                            &workspace,
+                            &session,
                             &action,
                             &ExecutionProcessRunReason::SetupScript,
                         )
@@ -902,7 +934,8 @@ pub trait ContainerService {
                 }
             }
             self.start_execution(
-                &task_attempt,
+                &workspace,
+                &session,
                 &coding_action,
                 &ExecutionProcessRunReason::CodingAgent,
             )
@@ -911,7 +944,8 @@ pub trait ContainerService {
             // Any sequential: chain ALL setups → coding agent via next_action
             let main_action = Self::build_sequential_setup_chain(&repos_with_setup, coding_action);
             self.start_execution(
-                &task_attempt,
+                &workspace,
+                &session,
                 &main_action,
                 &ExecutionProcessRunReason::SetupScript,
             )
@@ -923,12 +957,13 @@ pub trait ContainerService {
 
     async fn start_execution(
         &self,
-        task_attempt: &TaskAttempt,
+        workspace: &Workspace,
+        session: &Session,
         executor_action: &ExecutorAction,
         run_reason: &ExecutionProcessRunReason,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Update task status to InProgress when starting an attempt
-        let task = task_attempt
+        // Update task status to InProgress when starting an execution
+        let task = workspace
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
@@ -950,14 +985,14 @@ pub trait ContainerService {
         // Create new execution process record
         // Capture current HEAD per repository as the "before" commit for this execution
         let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db().pool, task_attempt.id).await?;
+            AttemptRepo::find_repos_for_attempt(&self.db().pool, workspace.id).await?;
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Attempt has no repositories configured"
+                "Workspace has no repositories configured"
             )));
         }
 
-        let workspace_root = task_attempt
+        let workspace_root = workspace
             .container_ref
             .as_ref()
             .map(std::path::PathBuf::from)
@@ -975,7 +1010,7 @@ pub trait ContainerService {
             });
         }
         let create_execution_process = CreateExecutionProcess {
-            task_attempt_id: task_attempt.id,
+            session_id: session.id,
             executor_action: executor_action.clone(),
             run_reason: run_reason.clone(),
         };
@@ -997,24 +1032,23 @@ pub trait ContainerService {
             }
             _ => None,
         } {
-            let create_executor_data = CreateExecutorSession {
-                task_attempt_id: task_attempt.id,
+            let create_coding_agent_turn = CreateCodingAgentTurn {
                 execution_process_id: execution_process.id,
                 prompt: Some(prompt),
             };
 
-            let executor_session_record_id = Uuid::new_v4();
+            let coding_agent_turn_id = Uuid::new_v4();
 
-            ExecutorSession::create(
+            CodingAgentTurn::create(
                 &self.db().pool,
-                &create_executor_data,
-                executor_session_record_id,
+                &create_coding_agent_turn,
+                coding_agent_turn_id,
             )
             .await?;
         }
 
         if let Err(start_error) = self
-            .start_execution_inner(task_attempt, &execution_process, executor_action)
+            .start_execution_inner(workspace, &execution_process, executor_action)
             .await
         {
             // Mark process as failed
@@ -1086,7 +1120,7 @@ pub trait ContainerService {
             if let Some(executor) =
                 ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
             {
-                executor.normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+                executor.normalize_logs(msg_store, &self.workspace_to_current_dir(workspace));
             } else {
                 tracing::error!(
                     "Failed to resolve profile '{:?}' for normalization",
@@ -1125,7 +1159,7 @@ pub trait ContainerService {
             ) => ExecutionProcessRunReason::CodingAgent,
         };
 
-        self.start_execution(&ctx.task_attempt, next_action, &next_run_reason)
+        self.start_execution(&ctx.workspace, &ctx.session, next_action, &next_run_reason)
             .await?;
 
         tracing::debug!("Started next action: {:?}", next_action);

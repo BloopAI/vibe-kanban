@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use db::models::{
     attempt_repo::AttemptRepo, execution_process::ExecutionProcess,
-    execution_process_repo_state::ExecutionProcessRepoState, task_attempt::TaskAttempt,
+    execution_process_repo_state::ExecutionProcessRepoState, workspace::Workspace,
 };
 use deployment::Deployment;
 use services::services::{container::ContainerService, git::WorktreeResetOptions};
@@ -17,12 +17,12 @@ use crate::{DeploymentImpl, error::ApiError};
 pub async fn restore_worktrees_to_process(
     deployment: &DeploymentImpl,
     pool: &SqlitePool,
-    task_attempt: &TaskAttempt,
+    workspace: &Workspace,
     target_process_id: Uuid,
     perform_git_reset: bool,
     force_when_dirty: bool,
 ) -> Result<(), ApiError> {
-    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
+    let repos = AttemptRepo::find_repos_for_attempt(pool, workspace.id).await?;
 
     // Get all repo states for the target process
     let repo_states =
@@ -30,14 +30,14 @@ pub async fn restore_worktrees_to_process(
 
     let container_ref = deployment
         .container()
-        .ensure_container_exists(task_attempt)
+        .ensure_container_exists(workspace)
         .await?;
     let workspace_dir = PathBuf::from(container_ref);
 
     // Check if workspace is dirty (any repo has uncommitted changes)
     let is_dirty = deployment
         .container()
-        .is_container_clean(task_attempt)
+        .is_container_clean(workspace)
         .await
         .map(|is_clean| !is_clean)
         .unwrap_or(false);
@@ -53,7 +53,7 @@ pub async fn restore_worktrees_to_process(
             None => {
                 ExecutionProcess::find_prev_after_head_commit(
                     pool,
-                    task_attempt.id,
+                    workspace.id,
                     target_process_id,
                     repo.id,
                 )

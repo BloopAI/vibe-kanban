@@ -6,7 +6,7 @@ use axum::{
 };
 use db::models::{
     execution_process::ExecutionProcess, project::Project, tag::Tag, task::Task,
-    task_attempt::TaskAttempt,
+    workspace::Workspace,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -67,27 +67,27 @@ pub async fn load_task_middleware(
     Ok(next.run(request).await)
 }
 
-pub async fn load_task_attempt_middleware(
+pub async fn load_workspace_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(task_attempt_id): Path<Uuid>,
+    Path(workspace_id): Path<Uuid>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Load the TaskAttempt from the database
-    let attempt = match TaskAttempt::find_by_id(&deployment.db().pool, task_attempt_id).await {
-        Ok(Some(a)) => a,
+    // Load the Workspace from the database
+    let workspace = match Workspace::find_by_id(&deployment.db().pool, workspace_id).await {
+        Ok(Some(w)) => w,
         Ok(None) => {
-            tracing::warn!("TaskAttempt {} not found", task_attempt_id);
+            tracing::warn!("Workspace {} not found", workspace_id);
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch TaskAttempt {}: {}", task_attempt_id, e);
+            tracing::error!("Failed to fetch Workspace {}: {}", workspace_id, e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
-    // Insert the attempt into extensions
-    request.extensions_mut().insert(attempt);
+    // Insert the workspace into extensions
+    request.extensions_mut().insert(workspace);
 
     // Continue on
     Ok(next.run(request).await)

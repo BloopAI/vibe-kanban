@@ -5,7 +5,7 @@ use db::{
     models::{
         merge::{Merge, MergeStatus, PrMerge},
         task::{Task, TaskStatus},
-        task_attempt::{TaskAttempt, TaskAttemptError},
+        workspace::{Workspace, WorkspaceError},
     },
 };
 use serde_json::json;
@@ -25,7 +25,7 @@ enum PrMonitorError {
     #[error(transparent)]
     GitHubServiceError(#[from] GitHubServiceError),
     #[error(transparent)]
-    TaskAttemptError(#[from] TaskAttemptError),
+    WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
 }
@@ -85,8 +85,8 @@ impl PrMonitorService {
         for pr_merge in open_prs {
             if let Err(e) = self.check_pr_status(&pr_merge).await {
                 error!(
-                    "Error checking PR #{} for attempt {}: {}",
-                    pr_merge.pr_info.number, pr_merge.task_attempt_id, e
+                    "Error checking PR #{} for workspace {}: {}",
+                    pr_merge.pr_info.number, pr_merge.workspace_id, e
                 );
             }
         }
@@ -121,40 +121,37 @@ impl PrMonitorService {
 
             // If the PR was merged, update the task status to done
             if matches!(&pr_status.status, MergeStatus::Merged)
-                && let Some(task_attempt) =
-                    TaskAttempt::find_by_id(&self.db.pool, pr_merge.task_attempt_id).await?
+                && let Some(workspace) =
+                    Workspace::find_by_id(&self.db.pool, pr_merge.workspace_id).await?
             {
                 info!(
                     "PR #{} was merged, updating task {} to done",
-                    pr_merge.pr_info.number, task_attempt.task_id
+                    pr_merge.pr_info.number, workspace.task_id
                 );
-                Task::update_status(&self.db.pool, task_attempt.task_id, TaskStatus::Done).await?;
+                Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
 
                 // Track analytics event
                 if let Some(analytics) = &self.analytics
-                    && let Ok(Some(task)) =
-                        Task::find_by_id(&self.db.pool, task_attempt.task_id).await
+                    && let Ok(Some(task)) = Task::find_by_id(&self.db.pool, workspace.task_id).await
                 {
                     analytics.analytics_service.track_event(
                         &analytics.user_id,
                         "pr_merged",
                         Some(json!({
-                            "task_id": task_attempt.task_id.to_string(),
-                            "task_attempt_id": task_attempt.id.to_string(),
+                            "task_id": workspace.task_id.to_string(),
+                            "workspace_id": workspace.id.to_string(),
                             "project_id": task.project_id.to_string(),
                         })),
                     );
                 }
 
                 if let Some(publisher) = &self.publisher
-                    && let Err(err) = publisher
-                        .update_shared_task_by_id(task_attempt.task_id)
-                        .await
+                    && let Err(err) = publisher.update_shared_task_by_id(workspace.task_id).await
                 {
                     tracing::warn!(
                         ?err,
                         "Failed to propagate shared task update for {}",
-                        task_attempt.task_id
+                        workspace.task_id
                     );
                 }
             }

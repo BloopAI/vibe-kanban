@@ -194,9 +194,9 @@ impl AttemptRepo {
         Ok(())
     }
 
-    pub async fn update_target_branch_for_children_of_attempt(
+    pub async fn update_target_branch_for_children_of_workspace(
         pool: &SqlitePool,
-        parent_attempt_id: Uuid,
+        parent_workspace_id: Uuid,
         old_branch: &str,
         new_branch: &str,
     ) -> Result<u64, sqlx::Error> {
@@ -205,13 +205,13 @@ impl AttemptRepo {
                SET target_branch = $1, updated_at = datetime('now')
                WHERE target_branch = $2
                  AND attempt_id IN (
-                     SELECT ta.id FROM task_attempts ta
-                     JOIN tasks t ON ta.task_id = t.id
-                     WHERE t.parent_task_attempt = $3
+                     SELECT w.id FROM workspaces w
+                     JOIN tasks t ON w.task_id = t.id
+                     WHERE t.parent_workspace_id = $3
                  )"#,
             new_branch,
             old_branch,
-            parent_attempt_id
+            parent_workspace_id
         )
         .execute(pool)
         .await?;
@@ -232,8 +232,8 @@ impl AttemptRepo {
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
                JOIN attempt_repos ar ON r.id = ar.repo_id
-               JOIN task_attempts ta ON ar.attempt_id = ta.id
-               WHERE ta.task_id = $1
+               JOIN workspaces w ON ar.attempt_id = w.id
+               WHERE w.task_id = $1
                ORDER BY r.display_name ASC"#,
             task_id
         )
@@ -241,21 +241,21 @@ impl AttemptRepo {
         .await
     }
 
-    /// Find repos for an attempt with their copy_files configuration.
+    /// Find repos for a workspace with their copy_files configuration.
     /// Uses LEFT JOIN so repos without project_repo entries still appear (with NULL copy_files).
     pub async fn find_repos_with_copy_files(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<RepoWithCopyFiles>, sqlx::Error> {
         let rows = sqlx::query!(
             r#"SELECT r.id as "id!: Uuid", r.path, r.name, pr.copy_files
                FROM repos r
                JOIN attempt_repos ar ON r.id = ar.repo_id
-               JOIN task_attempts ta ON ta.id = ar.attempt_id
-               JOIN tasks t ON t.id = ta.task_id
+               JOIN workspaces w ON w.id = ar.attempt_id
+               JOIN tasks t ON t.id = w.task_id
                LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id
                WHERE ar.attempt_id = $1"#,
-            attempt_id
+            workspace_id
         )
         .fetch_all(pool)
         .await?;
