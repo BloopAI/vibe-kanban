@@ -31,12 +31,11 @@ import RepoBranchSelector from '@/components/tasks/RepoBranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
 import {
-  useBranches,
   useTaskImages,
   useImageUpload,
   useTaskMutations,
   useProjectRepos,
-  type RepoBranchConfig,
+  useRepoBranchSelection,
 } from '@/hooks';
 import {
   useKeySubmitTask,
@@ -109,34 +108,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
-  const { data: branchMap, isLoading: branchesLoading } = useBranches(
-    projectRepos,
-    { enabled: modal.visible && projectRepos.length > 0 }
-  );
-
-  const repoBranchConfigs = useMemo((): RepoBranchConfig[] => {
-    return projectRepos.map((repo) => {
-      const branches = branchMap.get(repo.id) ?? [];
-
-      let targetBranch: string | null = null;
-      const initialBranch =
-        mode === 'subtask' ? props.initialBaseBranch : undefined;
-
-      if (initialBranch && branches.some((b) => b.name === initialBranch)) {
-        targetBranch = initialBranch;
-      } else {
-        const currentBranch = branches.find((b) => b.is_current);
-        targetBranch = currentBranch?.name ?? branches[0]?.name ?? null;
-      }
-
-      return {
-        repoId: repo.id,
-        repoDisplayName: repo.display_name,
-        targetBranch,
-        branches,
-      };
+  const initialBranch =
+    mode === 'subtask' ? props.initialBaseBranch : undefined;
+  const { configs: repoBranchConfigs, isLoading: branchesLoading } =
+    useRepoBranchSelection({
+      repos: projectRepos,
+      initialBranch,
+      enabled: modal.visible && projectRepos.length > 0,
     });
-  }, [projectRepos, branchMap, mode, props]);
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {
     return repoBranchConfigs

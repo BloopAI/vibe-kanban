@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useBranches } from './useBranches';
+import { useQueries } from '@tanstack/react-query';
+import { repoApi } from '@/lib/api';
+import { repoBranchKeys } from './useRepoBranches';
 import type { GitBranch, Repo } from 'shared/types';
 
 export type RepoBranchConfig = {
@@ -32,13 +34,20 @@ export function useRepoBranchSelection({
     Record<string, string | null>
   >({});
 
-  const { data: branchMap, isLoading: isLoadingBranches } = useBranches(repos, {
-    enabled,
+  const queries = useQueries({
+    queries: repos.map((repo) => ({
+      queryKey: repoBranchKeys.byRepo(repo.id),
+      queryFn: () => repoApi.getBranches(repo.id),
+      enabled,
+      staleTime: 60_000,
+    })),
   });
 
+  const isLoadingBranches = queries.some((q) => q.isLoading);
+
   const configs = useMemo((): RepoBranchConfig[] => {
-    return repos.map((repo) => {
-      const branches = branchMap.get(repo.id) ?? [];
+    return repos.map((repo, i) => {
+      const branches = queries[i]?.data ?? [];
 
       let targetBranch: string | null = userOverrides[repo.id] ?? null;
 
@@ -58,7 +67,7 @@ export function useRepoBranchSelection({
         branches,
       };
     });
-  }, [repos, branchMap, userOverrides, initialBranch]);
+  }, [repos, queries, userOverrides, initialBranch]);
 
   const setRepoBranch = useCallback((repoId: string, branch: string) => {
     setUserOverrides((prev) => ({

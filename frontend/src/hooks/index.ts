@@ -16,7 +16,6 @@ export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
 export { useTask } from './useTask';
 export { useAttempt } from './useAttempt';
-export { useBranches } from './useBranches';
 export { useRepoBranches } from './useRepoBranches';
 export { useProjectRepos } from './useProjectRepos';
 export { useRepoBranchSelection } from './useRepoBranchSelection';
