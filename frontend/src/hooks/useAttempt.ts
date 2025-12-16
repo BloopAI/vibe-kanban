@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt } from '@/types/attempt';
+import type { Workspace } from 'shared/types';
 
 export const attemptKeys = {
   byId: (attemptId: string | undefined) => ['attempt', attemptId] as const,
@@ -13,7 +13,7 @@ type Options = {
 export function useAttempt(attemptId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!attemptId;
 
-  return useQuery<TaskAttempt>({
+  return useQuery<Workspace>({
     queryKey: attemptKeys.byId(attemptId),
     queryFn: () => attemptsApi.get(attemptId!),
     enabled,

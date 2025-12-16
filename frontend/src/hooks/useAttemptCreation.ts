@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type { ExecutorProfileId, AttemptRepoInput } from 'shared/types';
-import type { TaskAttempt } from '@/types/attempt';
+import type {
+  ExecutorProfileId,
+  AttemptRepoInput,
+  Workspace,
+} from 'shared/types';
 
 type CreateAttemptArgs = {
   profile: ExecutorProfileId;
@@ -10,7 +13,7 @@ type CreateAttemptArgs = {
 
 type UseAttemptCreationArgs = {
   taskId: string;
-  onSuccess?: (attempt: TaskAttempt) => void;
+  onSuccess?: (attempt: Workspace) => void;
 };
 
 export function useAttemptCreation({
@@ -26,10 +29,10 @@ export function useAttemptCreation({
         executor_profile_id: profile,
         repos,
       }),
-    onSuccess: (newAttempt: TaskAttempt) => {
+    onSuccess: (newAttempt: Workspace) => {
       queryClient.setQueryData(
         ['taskAttempts', taskId],
-        (old: TaskAttempt[] = []) => [newAttempt, ...old]
+        (old: Workspace[] = []) => [newAttempt, ...old]
       );
       onSuccess?.(newAttempt);
     },

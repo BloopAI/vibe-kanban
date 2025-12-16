@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import type { TaskAttempt } from '@/types/attempt';
+import type { Workspace } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
@@ -30,7 +30,7 @@ import { useAuth } from '@/hooks';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
-  attempt?: TaskAttempt | null;
+  attempt?: Workspace | null;
   sharedTask?: SharedTaskRecord;
 }
 

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi, sessionsApi } from '@/lib/api';
-import type { TaskAttempt, WorkspaceWithSession } from '@/types/attempt';
+import type { Workspace } from 'shared/types';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
 export const taskAttemptKeys = {
@@ -19,7 +20,7 @@ export function useTaskAttempts(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
   const refetchInterval = opts?.refetchInterval ?? 5000;
 
-  return useQuery<TaskAttempt[]>({
+  return useQuery<Workspace[]>({
     queryKey: taskAttemptKeys.byTask(taskId),
     queryFn: () => attemptsApi.getAll(taskId!),
     enabled,

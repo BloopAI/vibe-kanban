@@ -88,8 +88,9 @@ import {
   RepoBranchStatus,
   AbortConflictsRequest,
   Session,
+  Workspace,
 } from 'shared/types';
-import type { TaskAttempt, WorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
 export class ApiError<E = unknown> extends Error {
@@ -485,14 +486,14 @@ export const attemptsApi = {
     return handleApiResponse<TaskRelationships>(response);
   },
 
-  getAll: async (taskId: string): Promise<TaskAttempt[]> => {
+  getAll: async (taskId: string): Promise<Workspace[]> => {
     const response = await makeRequest(`/api/task-attempts?task_id=${taskId}`);
-    return handleApiResponse<TaskAttempt[]>(response);
+    return handleApiResponse<Workspace[]>(response);
   },
 
-  get: async (attemptId: string): Promise<TaskAttempt> => {
+  get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
-    return handleApiResponse<TaskAttempt>(response);
+    return handleApiResponse<Workspace>(response);
   },
 
   /** Get workspace with executor from latest session (for components that need executor) */
@@ -505,12 +506,12 @@ export const attemptsApi = {
     return createWorkspaceWithSession(workspace, executor);
   },
 
-  create: async (data: CreateTaskAttemptBody): Promise<TaskAttempt> => {
+  create: async (data: CreateTaskAttemptBody): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskAttempt>(response);
+    return handleApiResponse<Workspace>(response);
   },
 
   stop: async (attemptId: string): Promise<void> => {

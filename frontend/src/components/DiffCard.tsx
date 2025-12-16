@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt } from '@/types/attempt';
+import type { Workspace } from 'shared/types';
 import {
   useReview,
   type ReviewDraft,
@@ -40,7 +40,7 @@ type Props = {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
-  selectedAttempt: TaskAttempt | null;
+  selectedAttempt: Workspace | null;
 };
 
 function labelAndIcon(diff: Diff) {

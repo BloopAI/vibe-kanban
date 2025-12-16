@@ -11,7 +11,7 @@ import type {
   ComponentInfo,
   SelectedComponent,
 } from '@/utils/previewBridge';
-import type { TaskAttempt } from '@/types/attempt';
+import type { Workspace } from 'shared/types';
 import { genId } from '@/utils/id';
 
 export interface ClickedEntry {
@@ -47,7 +47,7 @@ export function useClickedElements() {
 
 interface ClickedElementsProviderProps {
   children: ReactNode;
-  attempt?: TaskAttempt | null;
+  attempt?: Workspace | null;
 }
 
 const MAX_ELEMENTS = 20;
