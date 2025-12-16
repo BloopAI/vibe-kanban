@@ -206,10 +206,6 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type CurrentUserResponse = { user_id: string, };
 
-export type RepositoryBranches = { repository_id: string, repository_name: string, branches: Array<GitBranch>, };
-
-export type ProjectBranchesResponse = { repositories: Array<RepositoryBranches>, };
-
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
