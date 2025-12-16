@@ -140,11 +140,7 @@ impl PrReviewService {
         debug!(review_id = %review_id, "Review record created");
 
         // 5. Start the review worker
-        let codebase_url = format!(
-            "{}/reviews/{}/payload.tar.gz",
-            self.r2_public_url(),
-            review_id
-        );
+        let codebase_url = format!("r2://reviews/{}/payload.tar.gz", review_id);
         let callback_url = format!("{}/review/{}", self.server_base_url, review_id);
 
         let start_request = serde_json::json!({
