@@ -327,9 +327,18 @@ export default function OrganizationPage() {
     }
   };
 
-  const filteredRepositories = repositories.filter((repo) =>
-    repo.repo_full_name.toLowerCase().includes(repoSearch.toLowerCase()),
-  );
+  const filteredRepositories = repositories
+    .filter((repo) =>
+      repo.repo_full_name.toLowerCase().includes(repoSearch.toLowerCase()),
+    )
+    .sort((a, b) => {
+      // Enabled repos first
+      if (a.review_enabled !== b.review_enabled) {
+        return a.review_enabled ? -1 : 1;
+      }
+      // Then alphabetically by name
+      return a.repo_full_name.localeCompare(b.repo_full_name);
+    });
 
   if (loading) {
     return (
