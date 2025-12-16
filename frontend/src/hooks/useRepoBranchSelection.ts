@@ -32,15 +32,13 @@ export function useRepoBranchSelection({
     Record<string, string | null>
   >({});
 
-  const { data: repositoryBranches = [], isLoading: isLoadingBranches } =
-    useBranches(repos, { enabled });
+  const { data: branchMap, isLoading: isLoadingBranches } = useBranches(repos, {
+    enabled,
+  });
 
   const configs = useMemo((): RepoBranchConfig[] => {
     return repos.map((repo) => {
-      const repoBranchData = repositoryBranches.find(
-        (rb) => rb.repository_id === repo.id
-      );
-      const branches = repoBranchData?.branches ?? [];
+      const branches = branchMap.get(repo.id) ?? [];
 
       let targetBranch: string | null = userOverrides[repo.id] ?? null;
 
@@ -60,7 +58,7 @@ export function useRepoBranchSelection({
         branches,
       };
     });
-  }, [repos, repositoryBranches, userOverrides, initialBranch]);
+  }, [repos, branchMap, userOverrides, initialBranch]);
 
   const setRepoBranch = useCallback((repoId: string, branch: string) => {
     setUserOverrides((prev) => ({

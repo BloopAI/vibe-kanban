@@ -3,12 +3,6 @@ import { repoApi } from '@/lib/api';
 import type { GitBranch, Repo } from 'shared/types';
 import { repoBranchKeys } from './useRepoBranches';
 
-export type RepositoryBranches = {
-  repository_id: string;
-  repository_name: string;
-  branches: GitBranch[];
-};
-
 type Options = {
   enabled?: boolean;
 };
@@ -27,11 +21,9 @@ export function useBranches(repos: Repo[], opts?: Options) {
 
   const isLoading = queries.some((q) => q.isLoading);
 
-  const data: RepositoryBranches[] = repos.map((repo, i) => ({
-    repository_id: repo.id,
-    repository_name: repo.name,
-    branches: queries[i]?.data ?? [],
-  }));
+  const data = new Map<string, GitBranch[]>(
+    repos.map((repo, i) => [repo.id, queries[i]?.data ?? []])
+  );
 
   return { data, isLoading };
 }

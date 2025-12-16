@@ -109,17 +109,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
-  const { data: repoBranches = [], isLoading: branchesLoading } = useBranches(
+  const { data: branchMap, isLoading: branchesLoading } = useBranches(
     projectRepos,
     { enabled: modal.visible && projectRepos.length > 0 }
   );
 
   const repoBranchConfigs = useMemo((): RepoBranchConfig[] => {
     return projectRepos.map((repo) => {
-      const repoBranchData = repoBranches?.find(
-        (rb) => rb.repository_id === repo.id
-      );
-      const branches = repoBranchData?.branches ?? [];
+      const branches = branchMap.get(repo.id) ?? [];
 
       let targetBranch: string | null = null;
       const initialBranch =
@@ -139,7 +136,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         branches,
       };
     });
-  }, [projectRepos, repoBranches, mode, props]);
+  }, [projectRepos, branchMap, mode, props]);
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {
     return repoBranchConfigs
