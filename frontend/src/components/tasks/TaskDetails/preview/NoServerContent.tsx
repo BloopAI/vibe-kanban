@@ -88,7 +88,10 @@ export function NoServerContent({
     }
 
     updateProject.mutate(
-      { projectId: project.id, data: { name: null, dev_script: script } },
+      {
+        projectId: project.id,
+        data: { name: null, dev_script: script, dev_script_working_dir: null },
+      },
       {
         onSuccess: () => {
           setIsEditingExistingScript(false);
