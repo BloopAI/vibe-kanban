@@ -140,11 +140,7 @@ impl PrReviewService {
         debug!(review_id = %review_id, "Review record created");
 
         // 5. Start the review worker
-        let codebase_url = format!(
-            "{}/reviews/{}/payload.tar.gz",
-            self.r2_public_url(),
-            review_id
-        );
+        let codebase_url = format!("r2://reviews/{}/payload.tar.gz", review_id);
         let callback_url = format!("{}/review/{}", self.server_base_url, review_id);
 
         let start_request = serde_json::json!({
@@ -179,16 +175,6 @@ impl PrReviewService {
         info!(review_id = %review_id, "Review worker started successfully");
 
         Ok(review_id)
-    }
-
-    /// Get the public URL for R2 (used to construct codebase URLs for the worker).
-    /// This assumes the R2 bucket has public read access configured.
-    fn r2_public_url(&self) -> &str {
-        // The worker needs to be able to fetch the tarball from R2.
-        // This is typically configured via a public bucket URL or CDN.
-        // For now, we'll use the worker base URL as a proxy assumption.
-        // In production, this should be configured separately.
-        &self.worker_base_url
     }
 }
 
