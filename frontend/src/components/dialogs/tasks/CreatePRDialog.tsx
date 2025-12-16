@@ -17,12 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
-import {
-  GitBranch,
-  RepositoryBranches,
-  TaskWithAttemptStatus,
-  Workspace,
-} from 'shared/types';
+import { TaskWithAttemptStatus, Workspace } from 'shared/types';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useAuth, useRepoBranches } from '@/hooks';

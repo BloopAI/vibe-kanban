@@ -1,9 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type {
-  ExecutorProfileId,
-  AttemptRepoInput,
-} from 'shared/types';
+import type { ExecutorProfileId, AttemptRepoInput } from 'shared/types';
 import type { TaskAttempt } from '@/types/attempt';
 
 type CreateAttemptArgs = {

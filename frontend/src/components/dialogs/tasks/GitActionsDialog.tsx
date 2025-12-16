@@ -16,13 +16,7 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import type {
-  GitBranch,
-  Merge,
-  RepositoryBranches,
-  TaskWithAttemptStatus,
-  Workspace,
-} from 'shared/types';
+import type { Merge, TaskWithAttemptStatus, Workspace } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 

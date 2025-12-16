@@ -6,12 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus, X } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
-import type {
-  GitBranch,
-  RepoBranchStatus,
-  RepositoryBranches,
-  Workspace,
-} from 'shared/types';
+import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { showcases } from '@/config/showcases';
@@ -21,7 +16,7 @@ import { usePostHog } from 'posthog-js/react';
 import { useSearch } from '@/contexts/SearchContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
-import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { paths } from '@/lib/paths';
@@ -287,7 +282,7 @@ export function ProjectTasks() {
 
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
   const isTaskView = !!taskId && !effectiveAttemptId;
-  const { data: attempt } = useTaskAttempt(effectiveAttemptId);
+  const { data: attempt } = useTaskAttemptWithSession(effectiveAttemptId);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
 

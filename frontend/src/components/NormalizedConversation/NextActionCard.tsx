@@ -60,8 +60,8 @@ export function NextActionCard({
   const [copied, setCopied] = useState(false);
 
   const { data: attempt } = useQuery({
-    queryKey: ['attempt', attemptId],
-    queryFn: () => attemptsApi.get(attemptId!),
+    queryKey: ['attemptWithSession', attemptId],
+    queryFn: () => attemptsApi.getWithSession(attemptId!),
     enabled: !!attemptId && failed,
   });
   const { capabilities } = useUserSystem();

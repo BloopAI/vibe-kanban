@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { BaseAgentCapability } from 'shared/types';
-import type { TaskAttempt } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
@@ -14,7 +14,7 @@ const UserMessage = ({
 }: {
   content: string;
   executionProcessId?: string;
-  taskAttempt?: TaskAttempt;
+  taskAttempt?: WorkspaceWithSession;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const { capabilities } = useUserSystem();

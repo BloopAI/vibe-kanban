@@ -60,9 +60,9 @@ impl std::ops::DerefMut for TaskWithAttemptStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskRelationships {
-    pub parent_task: Option<Task>,     // The task that owns the parent workspace
-    pub current_workspace: Workspace,  // The workspace we're viewing
-    pub children: Vec<Task>,           // Tasks created from this workspace
+    pub parent_task: Option<Task>, // The task that owns the parent workspace
+    pub current_workspace: Workspace, // The workspace we're viewing
+    pub children: Vec<Task>,       // Tasks created from this workspace
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

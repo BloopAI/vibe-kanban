@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom';
 import { AppWithStyleOverride } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
-import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
@@ -22,7 +22,7 @@ export function FullAttemptLogsPage() {
     attemptId: string;
   }>();
 
-  const { data: attempt } = useTaskAttempt(attemptId);
+  const { data: attempt } = useTaskAttemptWithSession(attemptId);
   const { tasksById } = useProjectTasks(projectId);
   const task = taskId ? (tasksById[taskId] ?? null) : null;
 

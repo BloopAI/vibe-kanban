@@ -19,7 +19,6 @@ import { useCallback, useMemo, useState } from 'react';
 import type {
   RepoBranchStatus,
   Merge,
-  GitBranch,
   TaskWithAttemptStatus,
   Workspace,
 } from 'shared/types';

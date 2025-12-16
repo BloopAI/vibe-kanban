@@ -1,20 +1,26 @@
 import type { Workspace } from 'shared/types';
 
 /**
- * TaskAttempt combines Workspace with executor from the latest Session.
- * This is constructed on the frontend from Workspace + Session data.
+ * TaskAttempt is an alias for Workspace.
+ * Most code doesn't need the executor field.
  */
-export type TaskAttempt = Workspace & {
+export type TaskAttempt = Workspace;
+
+/**
+ * WorkspaceWithSession includes executor from the latest Session.
+ * Only used by components that actually need the executor field.
+ */
+export type WorkspaceWithSession = Workspace & {
   executor: string;
 };
 
 /**
- * Create a TaskAttempt from a Workspace and executor string.
+ * Create a WorkspaceWithSession from a Workspace and executor string.
  */
-export function createTaskAttempt(
+export function createWorkspaceWithSession(
   workspace: Workspace,
   executor: string
-): TaskAttempt {
+): WorkspaceWithSession {
   return {
     ...workspace,
     executor,

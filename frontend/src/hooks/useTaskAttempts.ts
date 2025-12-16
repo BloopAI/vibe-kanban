@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt } from '@/types/attempt';
+import { attemptsApi, sessionsApi } from '@/lib/api';
+import type { TaskAttempt, WorkspaceWithSession } from '@/types/attempt';
+import { createWorkspaceWithSession } from '@/types/attempt';
 
 export const taskAttemptKeys = {
   all: ['taskAttempts'] as const,
   byTask: (taskId: string | undefined) => ['taskAttempts', taskId] as const,
+  byTaskWithSessions: (taskId: string | undefined) =>
+    ['taskAttemptsWithSessions', taskId] as const,
 };
 
 type Options = {
@@ -19,6 +22,32 @@ export function useTaskAttempts(taskId?: string, opts?: Options) {
   return useQuery<TaskAttempt[]>({
     queryKey: taskAttemptKeys.byTask(taskId),
     queryFn: () => attemptsApi.getAll(taskId!),
+    enabled,
+    refetchInterval,
+  });
+}
+
+/**
+ * Hook for components that need executor field for all attempts.
+ * Fetches all attempts and their sessions in parallel.
+ */
+export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
+  const enabled = (opts?.enabled ?? true) && !!taskId;
+  const refetchInterval = opts?.refetchInterval ?? 5000;
+
+  return useQuery<WorkspaceWithSession[]>({
+    queryKey: taskAttemptKeys.byTaskWithSessions(taskId),
+    queryFn: async () => {
+      const attempts = await attemptsApi.getAll(taskId!);
+      // Fetch sessions for all attempts in parallel
+      const sessionsResults = await Promise.all(
+        attempts.map((attempt) => sessionsApi.getByWorkspace(attempt.id))
+      );
+      return attempts.map((attempt, i) => {
+        const executor = sessionsResults[i][0]?.executor ?? 'unknown';
+        return createWorkspaceWithSession(attempt, executor);
+      });
+    },
     enabled,
     refetchInterval,
   });

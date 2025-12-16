@@ -17,16 +17,16 @@ import {
 } from '@/hooks/useConversationHistory';
 import { Loader2 } from 'lucide-react';
 import { TaskWithAttemptStatus } from 'shared/types';
-import type { TaskAttempt } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 
 interface VirtualizedListProps {
-  attempt: TaskAttempt;
+  attempt: WorkspaceWithSession;
   task?: TaskWithAttemptStatus;
 }
 
 interface MessageListContext {
-  attempt: TaskAttempt;
+  attempt: WorkspaceWithSession;
   task?: TaskWithAttemptStatus;
 }
 
