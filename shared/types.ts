@@ -48,7 +48,7 @@ export type Task = { id: string, project_id: string, title: string, description:
 
 export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
+export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
 export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
 
@@ -72,7 +72,7 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, executor: string, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type Session = { id: string, workspace_id: string, executor: string, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**

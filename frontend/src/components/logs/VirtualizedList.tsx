@@ -16,7 +16,8 @@ import {
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
 import { Loader2 } from 'lucide-react';
-import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 
 interface VirtualizedListProps {

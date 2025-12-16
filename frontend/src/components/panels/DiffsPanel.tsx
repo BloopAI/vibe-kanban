@@ -14,7 +14,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskAttempt, Diff, DiffChangeKind } from 'shared/types';
+import type { Diff, DiffChangeKind } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';

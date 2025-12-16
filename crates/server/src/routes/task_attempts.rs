@@ -31,7 +31,7 @@ use db::models::{
     scratch::{Scratch, ScratchType},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
-    workspace::{CreateWorkspace, TaskAttempt, Workspace, WorkspaceError},
+    workspace::{CreateWorkspace, Workspace, WorkspaceError},
 };
 use deployment::Deployment;
 use executors::{
@@ -96,19 +96,16 @@ pub struct DiffStreamQuery {
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<TaskAttempt>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<Workspace>>>, ApiError> {
     let pool = &deployment.db().pool;
-    let attempts = TaskAttempt::fetch_all(pool, query.task_id).await?;
-    Ok(ResponseJson(ApiResponse::success(attempts)))
+    let workspaces = Workspace::fetch_all(pool, query.task_id).await?;
+    Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
 pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
-    let pool = &deployment.db().pool;
-    let attempt = TaskAttempt::from_workspace(pool, workspace).await?;
-    Ok(ResponseJson(ApiResponse::success(attempt)))
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -136,7 +133,7 @@ pub struct RunAgentSetupResponse {}
 pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
-) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let executor_profile_id = payload.executor_profile_id.clone();
 
     if payload.repos.is_empty() {
@@ -199,9 +196,7 @@ pub async fn create_task_attempt(
 
     tracing::info!("Created attempt for task {}", task.id);
 
-    // Convert to TaskAttempt for frontend compatibility
-    let attempt = TaskAttempt::from_workspace(pool, workspace).await?;
-    Ok(ResponseJson(ApiResponse::success(attempt)))
+    Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
 #[axum::debug_handler]

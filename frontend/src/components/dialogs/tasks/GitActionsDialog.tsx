@@ -16,7 +16,13 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import type { Merge, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import type {
+  GitBranch,
+  Merge,
+  RepositoryBranches,
+  TaskWithAttemptStatus,
+  Workspace,
+} from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 
@@ -26,7 +32,7 @@ export interface GitActionsDialogProps {
 }
 
 interface GitActionsDialogContentProps {
-  attempt: TaskAttempt;
+  attempt: Workspace;
   task: TaskWithAttemptStatus;
 }
 

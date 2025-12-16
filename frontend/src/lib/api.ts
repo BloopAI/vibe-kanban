@@ -26,7 +26,6 @@ import {
   SearchResult,
   ShareTaskResponse,
   Task,
-  TaskAttempt,
   TaskRelationships,
   Tag,
   TagSearchParams,
@@ -88,7 +87,10 @@ import {
   PushTaskAttemptRequest,
   RepoBranchStatus,
   AbortConflictsRequest,
+  Workspace,
+  Session,
 } from 'shared/types';
+import { TaskAttempt, createTaskAttempt } from '@/types/attempt';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -464,6 +466,24 @@ export const tasksApi = {
   },
 };
 
+// Sessions API
+export const sessionsApi = {
+  getByWorkspace: async (workspaceId: string): Promise<Session[]> => {
+    const response = await makeRequest(
+      `/api/sessions?workspace_id=${workspaceId}`
+    );
+    return handleApiResponse<Session[]>(response);
+  },
+};
+
+// Helper to convert Workspace + Sessions to TaskAttempt
+async function workspaceToTaskAttempt(workspace: Workspace): Promise<TaskAttempt> {
+  const sessions = await sessionsApi.getByWorkspace(workspace.id);
+  const latestSession = sessions[0]; // Sessions are ordered by created_at DESC
+  const executor = latestSession?.executor ?? 'unknown';
+  return createTaskAttempt(workspace, executor);
+}
+
 // Task Attempts APIs
 export const attemptsApi = {
   getChildren: async (attemptId: string): Promise<TaskRelationships> => {
@@ -475,12 +495,14 @@ export const attemptsApi = {
 
   getAll: async (taskId: string): Promise<TaskAttempt[]> => {
     const response = await makeRequest(`/api/task-attempts?task_id=${taskId}`);
-    return handleApiResponse<TaskAttempt[]>(response);
+    const workspaces = await handleApiResponse<Workspace[]>(response);
+    return Promise.all(workspaces.map(workspaceToTaskAttempt));
   },
 
   get: async (attemptId: string): Promise<TaskAttempt> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
-    return handleApiResponse<TaskAttempt>(response);
+    const workspace = await handleApiResponse<Workspace>(response);
+    return workspaceToTaskAttempt(workspace);
   },
 
   create: async (data: CreateTaskAttemptBody): Promise<TaskAttempt> => {
@@ -488,7 +510,8 @@ export const attemptsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskAttempt>(response);
+    const workspace = await handleApiResponse<Workspace>(response);
+    return workspaceToTaskAttempt(workspace);
   },
 
   stop: async (attemptId: string): Promise<void> => {

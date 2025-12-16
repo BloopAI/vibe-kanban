@@ -11,7 +11,7 @@ import type {
   ComponentInfo,
   SelectedComponent,
 } from '@/utils/previewBridge';
-import type { TaskAttempt } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import { genId } from '@/utils/id';
 
 export interface ClickedEntry {

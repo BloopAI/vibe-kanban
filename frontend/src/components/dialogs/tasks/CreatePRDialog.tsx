@@ -17,7 +17,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
-import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import {
+  GitBranch,
+  RepositoryBranches,
+  TaskWithAttemptStatus,
+  Workspace,
+} from 'shared/types';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useAuth, useRepoBranches } from '@/hooks';
@@ -35,7 +40,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { defineModal } from '@/lib/modals';
 
 interface CreatePRDialogProps {
-  attempt: TaskAttempt;
+  attempt: Workspace;
   task: TaskWithAttemptStatus;
   repoId: string;
   targetBranch?: string;

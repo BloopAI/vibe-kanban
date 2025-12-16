@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import {
   useReview,
   type ReviewDraft,

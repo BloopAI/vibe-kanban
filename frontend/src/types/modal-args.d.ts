@@ -1,4 +1,5 @@
-import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 // Extend nice-modal-react to provide type safety for modal arguments

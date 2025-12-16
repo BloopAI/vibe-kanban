@@ -3,12 +3,12 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import {
   ActionType,
   NormalizedEntry,
-  TaskAttempt,
   ToolStatus,
   type NormalizedEntryType,
   type TaskWithAttemptStatus,
   type JsonValue,
 } from 'shared/types.ts';
+import type { TaskAttempt } from '@/types/attempt';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
 import { useExpandable } from '@/stores/useExpandableStore';

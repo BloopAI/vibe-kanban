@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { TaskAttempt, BaseAgentCapability } from 'shared/types';
+import { BaseAgentCapability } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';

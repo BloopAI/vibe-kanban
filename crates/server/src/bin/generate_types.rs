@@ -45,7 +45,7 @@ fn generate_types_content() -> String {
         db::models::image::Image::decl(),
         db::models::image::CreateImage::decl(),
         db::models::workspace::Workspace::decl(),
-        db::models::workspace::TaskAttempt::decl(),
+        db::models::session::Session::decl(),
         db::models::execution_process::ExecutionProcess::decl(),
         db::models::execution_process::ExecutionProcessStatus::decl(),
         db::models::execution_process::ExecutionProcessRunReason::decl(),

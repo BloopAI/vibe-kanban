@@ -9,7 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
-import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
+import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';

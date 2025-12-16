@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 
 export const taskAttemptKeys = {
   all: ['taskAttempts'] as const,

@@ -6,9 +6,9 @@ import {
   ExecutorAction,
   NormalizedEntry,
   PatchType,
-  TaskAttempt,
   ToolStatus,
 } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';

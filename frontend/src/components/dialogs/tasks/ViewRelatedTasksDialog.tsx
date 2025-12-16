@@ -12,7 +12,8 @@ import { PlusIcon } from 'lucide-react';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useTaskRelationships } from '@/hooks/useTaskRelationships';
 import { DataTable, type ColumnDef } from '@/components/ui/table/data-table';
-import type { Task, TaskAttempt } from 'shared/types';
+import type { Task } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 
 export interface ViewRelatedTasksDialogProps {
   attemptId: string;

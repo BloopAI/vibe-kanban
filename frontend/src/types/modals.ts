@@ -1,4 +1,5 @@
-import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskAttempt } from '@/types/attempt';
 import type {
   ConfirmDialogProps,
   DeleteTaskConfirmationDialogProps,

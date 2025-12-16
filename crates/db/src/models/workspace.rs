@@ -8,7 +8,6 @@ use uuid::Uuid;
 use super::{
     attempt_repo::{AttemptRepo, RepoWithTargetBranch},
     project::Project,
-    session::Session,
     task::Task,
 };
 
@@ -54,57 +53,6 @@ pub struct Workspace {
     pub setup_completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// API response struct that combines Workspace with executor from latest Session.
-/// This maintains backwards compatibility with the frontend's TaskAttempt type.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct TaskAttempt {
-    pub id: Uuid,
-    pub task_id: Uuid,
-    pub container_ref: Option<String>,
-    pub branch: String,
-    pub executor: String,
-    pub setup_completed_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-impl TaskAttempt {
-    /// Convert a Workspace to TaskAttempt by fetching the latest session's executor
-    pub async fn from_workspace(
-        pool: &SqlitePool,
-        workspace: Workspace,
-    ) -> Result<Self, WorkspaceError> {
-        let executor = Session::find_latest_by_workspace_id(pool, workspace.id)
-            .await?
-            .map(|s| s.executor)
-            .unwrap_or_else(|| "unknown".to_string());
-
-        Ok(TaskAttempt {
-            id: workspace.id,
-            task_id: workspace.task_id,
-            container_ref: workspace.container_ref,
-            branch: workspace.branch,
-            executor,
-            setup_completed_at: workspace.setup_completed_at,
-            created_at: workspace.created_at,
-            updated_at: workspace.updated_at,
-        })
-    }
-
-    /// Fetch all as TaskAttempts (for API responses)
-    pub async fn fetch_all(
-        pool: &SqlitePool,
-        task_id: Option<Uuid>,
-    ) -> Result<Vec<Self>, WorkspaceError> {
-        let workspaces = Workspace::fetch_all(pool, task_id).await?;
-        let mut attempts = Vec::with_capacity(workspaces.len());
-        for ws in workspaces {
-            attempts.push(Self::from_workspace(pool, ws).await?);
-        }
-        Ok(attempts)
-    }
 }
 
 /// GitHub PR creation parameters
