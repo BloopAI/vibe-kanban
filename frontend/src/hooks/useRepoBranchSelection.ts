@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useBranches } from './useBranches';
-import type { GitBranch, Repo, RepositoryBranches } from 'shared/types';
+import type { GitBranch, Repo } from 'shared/types';
 
 export type RepoBranchConfig = {
   repoId: string;
@@ -17,7 +17,6 @@ type UseRepoBranchSelectionOptions = {
 
 type UseRepoBranchSelectionReturn = {
   configs: RepoBranchConfig[];
-  repositoryBranches: RepositoryBranches[];
   isLoading: boolean;
   setRepoBranch: (repoId: string, branch: string) => void;
   getAttemptRepoInputs: () => Array<{ repo_id: string; target_branch: string }>;
@@ -85,7 +84,6 @@ export function useRepoBranchSelection({
 
   return {
     configs,
-    repositoryBranches,
     isLoading: isLoadingBranches,
     setRepoBranch,
     getAttemptRepoInputs,

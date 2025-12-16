@@ -1,7 +1,13 @@
 import { useQueries } from '@tanstack/react-query';
 import { repoApi } from '@/lib/api';
-import type { Repo, RepositoryBranches } from 'shared/types';
+import type { GitBranch, Repo } from 'shared/types';
 import { repoBranchKeys } from './useRepoBranches';
+
+export type RepositoryBranches = {
+  repository_id: string;
+  repository_name: string;
+  branches: GitBranch[];
+};
 
 type Options = {
   enabled?: boolean;

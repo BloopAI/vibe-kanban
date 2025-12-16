@@ -14,9 +14,9 @@ use db::models::{
     repo::Repo,
 };
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery, git::GitBranch, project::ProjectServiceError,
+    file_search_cache::SearchQuery, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -27,20 +27,6 @@ use utils::{
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
-
-/// Branches for a single repository
-#[derive(Debug, Serialize, TS)]
-pub struct RepositoryBranches {
-    pub repository_id: Uuid,
-    pub repository_name: String,
-    pub branches: Vec<GitBranch>,
-}
-
-/// Response containing branches grouped by repository
-#[derive(Debug, Serialize, TS)]
-pub struct ProjectBranchesResponse {
-    pub repositories: Vec<RepositoryBranches>,
-}
 
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
@@ -64,33 +50,6 @@ pub async fn get_project(
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(project)))
-}
-
-pub async fn get_project_branches(
-    Extension(project): Extension<Project>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ProjectBranchesResponse>>, ApiError> {
-    let repositories = deployment
-        .project()
-        .get_repositories(&deployment.db().pool, project.id)
-        .await?;
-
-    let mut repo_branches = Vec::with_capacity(repositories.len());
-
-    for repo in repositories {
-        let branches = deployment.git().get_all_branches(&repo.path)?;
-        repo_branches.push(RepositoryBranches {
-            repository_id: repo.id,
-            repository_name: repo.name,
-            branches,
-        });
-    }
-
-    Ok(ResponseJson(ApiResponse::success(
-        ProjectBranchesResponse {
-            repositories: repo_branches,
-        },
-    )))
 }
 
 pub async fn link_project_to_existing_remote(
@@ -583,7 +542,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/remote/members", get(get_project_remote_members))
-        .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .route(

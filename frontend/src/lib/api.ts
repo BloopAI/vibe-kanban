@@ -20,8 +20,6 @@ import {
   ProjectRepo,
   Repo,
   RepoWithTargetBranch,
-  RepositoryBranches,
-  ProjectBranchesResponse,
   CreateProject,
   CreateProjectRepo,
   UpdateProjectRepo,
@@ -286,12 +284,6 @@ export const projectsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<OpenEditorResponse>(response);
-  },
-
-  getBranches: async (id: string): Promise<RepositoryBranches[]> => {
-    const response = await makeRequest(`/api/projects/${id}/branches`);
-    const data = await handleApiResponse<ProjectBranchesResponse>(response);
-    return data.repositories;
   },
 
   searchFiles: async (
