@@ -342,7 +342,7 @@
         },
         "dev": {
           "label": "Script del Servidor de Desarrollo",
-          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio) a menos que se especifique un directorio de trabajo a continuación."
+          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio) a menos que se especifique un directorio de trabajo abajo."
         },
         "devWorkingDir": {
           "label": "Directorio de Trabajo del Servidor de Desarrollo",
