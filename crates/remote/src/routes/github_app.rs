@@ -880,9 +880,9 @@ async fn handle_pull_request_event(
         .as_str()
         .unwrap_or("")
         .to_string();
-    let base_sha = payload["pull_request"]["base"]["sha"]
+    let base_ref = payload["pull_request"]["base"]["ref"]
         .as_str()
-        .unwrap_or("")
+        .unwrap_or("main")
         .to_string();
 
     // Spawn async task to process PR review
@@ -912,7 +912,7 @@ async fn handle_pull_request_event(
             pr_title,
             pr_body,
             head_sha,
-            base_sha,
+            base_ref,
         };
 
         if let Err(e) = service.process_pr_review(&pool, params).await {
@@ -1022,7 +1022,7 @@ pub async fn trigger_pr_review(
         pr_title: pr_details.title,
         pr_body: pr_details.body.unwrap_or_default(),
         head_sha: pr_details.head.sha,
-        base_sha: pr_details.base.sha,
+        base_ref: pr_details.base.ref_name,
     };
 
     let review_id = service

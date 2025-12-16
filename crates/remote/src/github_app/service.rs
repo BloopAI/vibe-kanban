@@ -76,6 +76,8 @@ pub struct PrDetails {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PrRef {
     pub sha: String,
+    #[serde(rename = "ref")]
+    pub ref_name: String,
 }
 
 /// Service for interacting with the GitHub App API
@@ -294,6 +296,7 @@ impl GitHubAppService {
         debug!(owner, repo, head_sha, "Cloning repository");
 
         // Clone the repository with security flags to prevent code execution from untrusted repos
+        // Note: We do a full clone (not shallow) to ensure git history is available for merge-base calculation
         let output = Command::new("git")
             .args([
                 "-c",
@@ -303,8 +306,6 @@ impl GitHubAppService {
                 "-c",
                 "core.symlinks=false",
                 "clone",
-                "--depth",
-                "1",
                 &clone_url,
                 ".",
             ])
@@ -331,14 +332,12 @@ impl GitHubAppService {
             )));
         }
 
-        // Fetch the specific commit (in case it's not in shallow clone)
+        // Fetch the specific commit (in case it's not in the default branch)
         let output = Command::new("git")
             .args([
                 "-c",
                 "core.hooksPath=/dev/null",
                 "fetch",
-                "--depth",
-                "1",
                 "origin",
                 head_sha,
             ])
@@ -390,6 +389,31 @@ impl GitHubAppService {
 
         info!(owner, repo, head_sha, "Repository cloned successfully");
         Ok(temp_dir)
+    }
+
+    /// Calculate the merge-base between the current HEAD and the base branch.
+    /// This gives the correct base commit for computing diffs, even if the base branch has moved.
+    pub async fn get_merge_base(
+        repo_dir: &std::path::Path,
+        base_ref: &str,
+    ) -> Result<String, GitHubAppError> {
+        let output = Command::new("git")
+            .args(["merge-base", &format!("origin/{}", base_ref), "HEAD"])
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .current_dir(repo_dir)
+            .output()
+            .await
+            .map_err(|e| GitHubAppError::GitOperation(format!("merge-base failed: {e}")))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(GitHubAppError::GitOperation(format!(
+                "merge-base failed: {stderr}"
+            )));
+        }
+
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     }
 
     /// Get details about a pull request

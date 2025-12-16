@@ -26,7 +26,7 @@ pub struct PrReviewParams {
     pub pr_title: String,
     pub pr_body: String,
     pub head_sha: String,
-    pub base_sha: String,
+    pub base_ref: String, // Branch name like "main" - used to calculate merge-base
 }
 
 #[derive(Debug, Error)]
@@ -107,18 +107,23 @@ impl PrReviewService {
 
         debug!(review_id = %review_id, "Repository cloned");
 
-        // 2. Create tarball
+        // 2. Calculate merge-base for accurate diff computation
+        let base_commit = GitHubAppService::get_merge_base(temp_dir.path(), &params.base_ref)
+            .await?;
+        debug!(review_id = %review_id, base_commit = %base_commit, "Merge-base calculated");
+
+        // 3. Create tarball
         let tarball =
             create_tarball(temp_dir.path()).map_err(|e| PrReviewError::Archive(e.to_string()))?;
 
         let tarball_size_mb = tarball.len() as f64 / 1_048_576.0;
         debug!(review_id = %review_id, size_mb = tarball_size_mb, "Tarball created");
 
-        // 3. Upload to R2
+        // 4. Upload to R2
         let r2_path = self.r2.upload_bytes(review_id, tarball).await?;
         debug!(review_id = %review_id, r2_path = %r2_path, "Uploaded to R2");
 
-        // 4. Create review record in database
+        // 5. Create review record in database
         let gh_pr_url = format!(
             "https://github.com/{}/{}/pull/{}",
             params.owner, params.repo, params.pr_number
@@ -139,7 +144,7 @@ impl PrReviewService {
 
         debug!(review_id = %review_id, "Review record created");
 
-        // 5. Start the review worker
+        // 6. Start the review worker
         let codebase_url = format!(
             "{}/reviews/{}/payload.tar.gz",
             self.r2_public_url(),
@@ -154,7 +159,7 @@ impl PrReviewService {
             "org": params.owner,
             "repo": params.repo,
             "codebaseUrl": codebase_url,
-            "baseCommit": params.base_sha,
+            "baseCommit": base_commit,
             "callbackUrl": callback_url,
         });
 
