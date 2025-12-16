@@ -1,16 +1,13 @@
 import { useQueries } from '@tanstack/react-query';
 import { repoApi } from '@/lib/api';
-import type { RepositoryBranches } from 'shared/types';
+import type { Repo, RepositoryBranches } from 'shared/types';
 import { repoBranchKeys } from './useRepoBranches';
 
 type Options = {
   enabled?: boolean;
 };
 
-export function useBranches(
-  repos: Array<{ id: string; name: string }>,
-  opts?: Options
-) {
+export function useBranches(repos: Repo[], opts?: Options) {
   const enabled = opts?.enabled ?? true;
 
   const queries = useQueries({
