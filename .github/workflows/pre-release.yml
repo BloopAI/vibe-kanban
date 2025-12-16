@@ -27,6 +27,7 @@ env:
   NODE_VERSION: 22
   PNPM_VERSION: 10.13.1
   RUST_TOOLCHAIN: nightly-2025-12-04
+  CARGO_XWIN_VERSION: 0.20.2
 
 jobs:
   bump-version:
@@ -119,7 +120,7 @@ jobs:
 
   build-frontend:
     needs: bump-version
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest-x64-l
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -169,23 +170,19 @@ jobs:
   build-backend:
     needs: [bump-version, build-frontend]
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     strategy:
       # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest-x64-l
-            container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
             name: linux-x64
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest-arm64-l
             name: linux-arm64
-            container: *zigbuild_container
           - target: x86_64-pc-windows-msvc
-            os: windows-latest-l
+            os: ubuntu-latest-x64-l
             name: windows-x64
-          # Intel-only runner; last supported x86_64 image (EOL Aug 2027)
           - target: x86_64-apple-darwin
             os: macos-15-xlarge
             name: macos-x64
@@ -193,12 +190,29 @@ jobs:
             os: macos-15-xlarge
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: windows-latest-l
+            os: ubuntu-latest-x64-l
             name: windows-arm64
+    env:
+      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
+
+      - name: Cache Rust toolchain
+        uses: actions/cache@v4
+        with:
+          path: .rustup/toolchains
+          key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -207,21 +221,65 @@ jobs:
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
 
-      - name: Install libclang (Linux)
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang libclang-dev lld llvm nasm cmake ninja-build
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-19 clang-tools-19 llvm-19 lld-19
+            echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v5
         with:
-          workspaces: "."
-          prefix-key: "cache-v1.0"
-          key: ${{ matrix.target }}_${{ matrix.os }}
-          cache-on-failure: true
-          shared-key: "shared"
-          cache-all-crates: true
+          path: |
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Install Zig
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
+        uses: BloopAI/setup-zig@main
+        with:
+          version: 0.15.2
+
+      - name: Install cargo zigbuild
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-zigbuild --version 0.20.1
+
+      - name: Install cargo xwin
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-xwin --version ${{ env.CARGO_XWIN_VERSION }}
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-${{ env.CARGO_XWIN_VERSION }}
+
+      - name: Cache target
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Setup cargo-sweep
+        shell: bash
+        run: |
+          cargo install --locked cargo-sweep --version 0.8.0
 
       - name: Download frontend artifact
         uses: actions/download-artifact@v4
@@ -230,26 +288,39 @@ jobs:
           path: frontend/dist/
 
       - name: Build backend (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
-          cargo zigbuild --release --target ${{ matrix.target }} -p server
-          cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo zigbuild --release --target ${{ matrix.target }} -p review
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
-      - name: Build backend (non-Linux)
-        if: runner.os != 'Linux'
+      - name: Build backend (macOS)
+        if: runner.os == 'macOS'
         run: |
-          cargo build --release --target ${{ matrix.target }} -p server
-          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo build --release --target ${{ matrix.target }} -p review
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=10.12
+          elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+          fi
+          cargo build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Build backend (Windows)
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: |
+          cargo xwin build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          # Avoid aws-lc-sys CMake failures when Rust's `release` profile includes debug info.
+          # Without this, cmake-rs selects RelWithDebInfo and CMake fails when ASM is enabled.
+          CARGO_PROFILE_RELEASE_DEBUG: 0
 
       - name: Setup Sentry CLI
         uses: matbour/setup-sentry-cli@v2
@@ -267,7 +338,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ matrix.os }}" == "windows-latest-l" ]]; then
+          if [[ "${{ matrix.name }}" == *"windows"* ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review-${{ matrix.name }}.exe
@@ -291,7 +362,7 @@ jobs:
 
       - name: Sign main binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/server
           output_path: vibe-kanban
@@ -304,19 +375,9 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban.zip vibe-kanban
 
-      - name: Notarize signed binary (macOS)
-        if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
-        continue-on-error: true
-        with:
-          input_path: vibe-kanban.zip
-          sign: false
-          notarize: true
-          app_store_connect_api_key_json_file: app_store_key.json
-
       - name: Sign MCP binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/mcp_task_server
           output_path: vibe-kanban-mcp
@@ -329,19 +390,9 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
 
-      - name: Notarize signed MCP binary (macOS)
-        if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
-        continue-on-error: true
-        with:
-          input_path: vibe-kanban-mcp.zip
-          sign: false
-          notarize: true
-          app_store_connect_api_key_json_file: app_store_key.json
-
       - name: Sign Review binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/review
           output_path: vibe-kanban-review
@@ -354,12 +405,15 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban-review.zip vibe-kanban-review
 
-      - name: Notarize signed Review binary (macOS)
+      - name: Notarize signed binaries (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@main
         continue-on-error: true
         with:
-          input_path: vibe-kanban-review.zip
+          input_path: |
+            vibe-kanban.zip
+            vibe-kanban-mcp.zip
+            vibe-kanban-review.zip
           sign: false
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
@@ -384,6 +438,13 @@ jobs:
           name: backend-binary-${{ matrix.name }}
           path: dist/
           retention-days: 1
+
+      - name: Sweep Cargo target cache
+        shell: bash
+        run: |
+          cargo sweep --maxsize 10GB
+          cargo sweep --time 30
+
 
   package-npx-cli:
     needs: [bump-version, build-frontend, build-backend]

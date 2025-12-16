@@ -19,8 +19,8 @@ rust-embed = "8.2"
 directories = "6.0.0"
 open = "5.3.2"
 regex = "1.11.1"
-sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
-sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
+sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
+sentry-tracing = { version = "0.41.0", default-features = false, features = ["backtrace"] }
 futures-util = "0.3"
 json-patch = "2.0"
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
@@ -30,11 +30,11 @@ tokio-stream = { version = "0.1.17", features = ["sync"] }
 shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
-git2 = "0.19"
+git2 = { workspace = true }
 dirs = "5.0"
 thiserror = { workspace = true }
 url = "2.5"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }
 
 [target.'cfg(windows)'.dependencies]
