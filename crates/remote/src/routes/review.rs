@@ -126,6 +126,16 @@ impl IntoResponse for ReviewError {
     }
 }
 
+/// Ensures the GitHub URL has the https:// protocol prefix
+fn normalize_github_url(url: &str) -> String {
+    let url = url.trim();
+    if url.starts_with("https://") || url.starts_with("http://") {
+        url.to_string()
+    } else {
+        format!("https://{}", url)
+    }
+}
+
 /// Extract client IP from headers, with fallbacks for local development
 fn extract_client_ip(headers: &HeaderMap) -> Option<IpAddr> {
     // Try Cloudflare header first (production)
@@ -204,11 +214,14 @@ pub async fn init_review_upload(
     let content_type = payload.content_type.as_deref();
     let upload = r2.create_presigned_upload(review_id, content_type).await?;
 
-    // 6. Insert DB record with the same review ID, storing folder path
+    // 6. Normalize the GitHub PR URL to ensure it has https:// prefix
+    let normalized_url = normalize_github_url(&payload.gh_pr_url);
+
+    // 7. Insert DB record with the same review ID, storing folder path
     let review = repo
         .create(CreateReviewParams {
             id: review_id,
-            gh_pr_url: &payload.gh_pr_url,
+            gh_pr_url: &normalized_url,
             claude_code_session_id: payload.claude_code_session_id.as_deref(),
             ip_address: ip,
             r2_path: &upload.folder_path,
@@ -217,7 +230,7 @@ pub async fn init_review_upload(
         })
         .await?;
 
-    // 7. Return response with review_id
+    // 8. Return response with review_id
     Ok(Json(InitReviewResponse {
         review_id: review.id,
         upload_url: upload.upload_url,
