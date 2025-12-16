@@ -180,6 +180,9 @@ jobs:
     needs: [bump-version, build-frontend]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    env:
+      CC: ${{ contains(matrix.os, 'windows') && 'sccache clang-cl.exe' || 'sccache clang' }}
+      CXX: ${{ contains(matrix.os, 'windows') && 'sccache clang-cl.exe' || 'sccache clang++' }}
     strategy:
       # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
@@ -294,6 +297,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          ls target/
+          ls target/*
+          ls target/*/*
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
