@@ -176,16 +176,6 @@ impl PrReviewService {
 
         Ok(review_id)
     }
-
-    /// Get the public URL for R2 (used to construct codebase URLs for the worker).
-    /// This assumes the R2 bucket has public read access configured.
-    fn r2_public_url(&self) -> &str {
-        // The worker needs to be able to fetch the tarball from R2.
-        // This is typically configured via a public bucket URL or CDN.
-        // For now, we'll use the worker base URL as a proxy assumption.
-        // In production, this should be configured separately.
-        &self.worker_base_url
-    }
 }
 
 /// Create a tar.gz archive from a directory
