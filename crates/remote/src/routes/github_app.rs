@@ -46,12 +46,12 @@ pub fn protected_router() -> Router<AppState> {
             get(fetch_repositories),
         )
         .route(
-            "/organizations/{org_id}/github-app/repositories/{repo_id}/review-enabled",
-            patch(update_repo_review_enabled),
-        )
-        .route(
             "/organizations/{org_id}/github-app/repositories/review-enabled",
             patch(bulk_update_review_enabled),
+        )
+        .route(
+            "/organizations/{org_id}/github-app/repositories/{repo_id}/review-enabled",
+            patch(update_repo_review_enabled),
         )
         .route("/debug/pr-review/trigger", post(trigger_pr_review))
 }
