@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE github_app_repositories\n            SET review_enabled = $3\n            WHERE id = $1 AND installation_id = $2\n            RETURNING\n                id,\n                installation_id,\n                github_repo_id,\n                repo_full_name,\n                review_enabled,\n                created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "installation_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_repo_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2129f33c4fdf5d1bf52cfac30238e36ffacaab20fb2cf4111fa70ba4e5aa1bca"
+}

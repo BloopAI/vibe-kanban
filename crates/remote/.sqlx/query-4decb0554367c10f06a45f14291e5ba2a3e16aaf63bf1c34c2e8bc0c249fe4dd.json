@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT review_enabled\n            FROM github_app_repositories\n            WHERE installation_id = $1 AND github_repo_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4decb0554367c10f06a45f14291e5ba2a3e16aaf63bf1c34c2e8bc0c249fe4dd"
+}

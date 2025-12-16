@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                installation_id,\n                github_repo_id,\n                repo_full_name,\n                created_at\n            FROM github_app_repositories\n            WHERE installation_id = $1\n            ORDER BY repo_full_name\n            ",
+  "query": "\n            SELECT\n                id,\n                installation_id,\n                github_repo_id,\n                repo_full_name,\n                review_enabled,\n                created_at\n            FROM github_app_repositories\n            WHERE installation_id = $1\n            ORDER BY repo_full_name\n            ",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,11 @@
       },
       {
         "ordinal": 4,
+        "name": "review_enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -39,8 +44,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "9c77a2c9fafd0e5418eb1c67dc8f276910980a22c0eeb17a8f4028d07d36515b"
+  "hash": "3239a6b54374bfba7c1ee16f151333563e21af8994d0431acf029e6a2ca08bfd"
 }

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM github_app_repositories\n            WHERE installation_id = $1 AND NOT (github_repo_id = ANY($2))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "68494b64181d1ca4293962abfcf0af30e5b4d6947dd4e9509bfc21d8fe4b93d5"
+}
