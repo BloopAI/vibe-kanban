@@ -426,21 +426,19 @@ function GitOperations({
       <div className={containerClasses}>
         {isVertical ? (
           <>
+            {repos.length > 1 && (
+              <RepoSelector
+                repos={repos}
+                selectedRepoId={getSelectedRepoId() ?? null}
+                onRepoSelect={setSelectedRepoId}
+                disabled={isAttemptRunning}
+                placeholder={t('repos.selector.placeholder', 'Select repo')}
+              />
+            )}
             <div className="flex flex-wrap items-center gap-2 min-w-0">
-              {repos.length > 0 && (
-                <RepoSelector
-                  repos={repos}
-                  selectedRepoId={getSelectedRepoId() ?? null}
-                  onRepoSelect={setSelectedRepoId}
-                  disabled={isAttemptRunning}
-                  placeholder={t('repos.selector.placeholder', 'Select repo')}
-                />
-              )}
-              <div className="flex items-center gap-2 min-w-0">
-                {branchChips}
-              </div>
+              {branchChips}
+              {statusChips}
             </div>
-            {statusChips}
           </>
         ) : (
           <>
