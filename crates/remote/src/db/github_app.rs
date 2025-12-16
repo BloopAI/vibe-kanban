@@ -452,6 +452,27 @@ impl<'a> GitHubAppRepository2<'a> {
         Ok(result.unwrap_or(true))
     }
 
+    /// Bulk update review_enabled for all repositories in an installation
+    pub async fn set_all_repositories_review_enabled(
+        &self,
+        installation_id: Uuid,
+        enabled: bool,
+    ) -> Result<u64, GitHubAppDbError> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE github_app_repositories
+            SET review_enabled = $2
+            WHERE installation_id = $1
+            "#,
+            installation_id,
+            enabled
+        )
+        .execute(self.pool)
+        .await?;
+
+        Ok(result.rows_affected())
+    }
+
     // ========== Pending Installations ==========
 
     pub async fn create_pending(

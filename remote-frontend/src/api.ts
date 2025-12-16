@@ -562,3 +562,35 @@ export async function updateRepositoryReviewEnabled(
   }
   return res.json();
 }
+
+export async function fetchGitHubAppRepositories(
+  orgId: string,
+): Promise<GitHubAppRepository[]> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/github-app/repositories`,
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to fetch repositories (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function bulkUpdateRepositoryReviewEnabled(
+  orgId: string,
+  enabled: boolean,
+): Promise<{ updated_count: number }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/github-app/repositories/review-enabled`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to update repositories (${res.status})`);
+  }
+  return res.json();
+}

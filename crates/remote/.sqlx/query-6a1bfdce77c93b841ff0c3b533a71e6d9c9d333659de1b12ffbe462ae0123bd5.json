@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE github_app_repositories\n            SET review_enabled = $2\n            WHERE installation_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a1bfdce77c93b841ff0c3b533a71e6d9c9d333659de1b12ffbe462ae0123bd5"
+}
