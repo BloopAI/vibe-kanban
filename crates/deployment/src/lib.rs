@@ -167,6 +167,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         cleanup_script: None,
                         copy_files: None,
                         parallel_setup_script: None,
+                        release_ports_on_completion: None,
+                        port_range_start: None,
+                        port_range_end: None,
                     };
                     // Ensure existing repo has a main branch if it's empty
                     if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {

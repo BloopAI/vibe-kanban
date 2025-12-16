@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       target_branch,\n                       executor AS \"executor!\",\n                       worktree_deleted  AS \"worktree_deleted!: bool\",\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts\n               WHERE   rowid = $1",
+  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\",\n                      ta.container_ref, ta.branch, ta.target_branch,\n                      ta.executor as \"executor!\", ta.worktree_deleted as \"worktree_deleted!: bool\",\n                      ta.setup_completed_at as \"setup_completed_at: DateTime<Utc>\",\n                      ta.assigned_ports,\n                      ta.created_at as \"created_at!: DateTime<Utc>\",\n                      ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE t.project_id = ? AND ta.branch = ?\n               ORDER BY ta.created_at DESC\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,23 @@
         "type_info": "Datetime"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "assigned_ports",
         "ordinal": 8,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -66,9 +71,10 @@
       true,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "e1e95d9c5f4c13404e222f101438c15e30611d4cd86a7c05a3fb20618e9ce2f2"
+  "hash": "2b296754506f0aea71784b0f324468400ec4feeae5ea2127100899689a116585"
 }

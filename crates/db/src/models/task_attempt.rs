@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use chrono::{DateTime, Utc};
 use executors::executors::BaseCodingAgent;
 use serde::{Deserialize, Serialize};
@@ -45,6 +47,7 @@ pub struct TaskAttempt {
     // "GEMINI", etc.)
     pub worktree_deleted: bool, // Flag indicating if worktree has been cleaned up
     pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed
+    pub assigned_ports: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -107,6 +110,7 @@ impl TaskAttempt {
                               executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                              assigned_ports,
                               created_at AS "created_at!: DateTime<Utc>",
                               updated_at AS "updated_at!: DateTime<Utc>"
                        FROM task_attempts
@@ -127,6 +131,7 @@ impl TaskAttempt {
                               executor AS "executor!",
                               worktree_deleted AS "worktree_deleted!: bool",
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                              assigned_ports,
                               created_at AS "created_at!: DateTime<Utc>",
                               updated_at AS "updated_at!: DateTime<Utc>"
                        FROM task_attempts
@@ -158,6 +163,7 @@ impl TaskAttempt {
                        ta.executor AS "executor!",
                        ta.worktree_deleted  AS "worktree_deleted!: bool",
                        ta.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                       ta.assigned_ports,
                        ta.created_at        AS "created_at!: DateTime<Utc>",
                        ta.updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts ta
@@ -231,6 +237,7 @@ impl TaskAttempt {
                        executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                       assigned_ports,
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts
@@ -252,6 +259,7 @@ impl TaskAttempt {
                        executor AS "executor!",
                        worktree_deleted  AS "worktree_deleted!: bool",
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                       assigned_ports,
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
                FROM    task_attempts
@@ -348,9 +356,9 @@ impl TaskAttempt {
         // Insert the record into the database
         Ok(sqlx::query_as!(
             TaskAttempt,
-            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, target_branch, executor, worktree_deleted, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, target_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_attempts (id, task_id, container_ref, branch, target_branch, executor, worktree_deleted, setup_completed_at, assigned_ports)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, target_branch, executor as "executor!",  worktree_deleted as "worktree_deleted!: bool", setup_completed_at as "setup_completed_at: DateTime<Utc>", assigned_ports, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             task_id,
             Option::<String>::None, // Container isn't known yet
@@ -358,7 +366,8 @@ impl TaskAttempt {
             data.base_branch, // Target branch is same as base branch during creation
             data.executor,
             false, // worktree_deleted is false during creation
-            Option::<DateTime<Utc>>::None // setup_completed_at is None during creation
+            Option::<DateTime<Utc>>::None, // setup_completed_at is None during creation
+            Option::<String>::None // assigned_ports is None during creation
         )
         .fetch_one(pool)
         .await?)
@@ -433,6 +442,7 @@ impl TaskAttempt {
                       ta.container_ref, ta.branch, ta.target_branch,
                       ta.executor as "executor!", ta.worktree_deleted as "worktree_deleted!: bool",
                       ta.setup_completed_at as "setup_completed_at: DateTime<Utc>",
+                      ta.assigned_ports,
                       ta.created_at as "created_at!: DateTime<Utc>",
                       ta.updated_at as "updated_at!: DateTime<Utc>"
                FROM task_attempts ta
@@ -465,5 +475,70 @@ impl TaskAttempt {
         .ok_or(sqlx::Error::RowNotFound)?;
 
         Ok((result.attempt_id, result.task_id, result.project_id))
+    }
+
+    /// Update assigned_ports for a task attempt (stores JSON string of port assignments)
+    pub async fn update_assigned_ports(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        ports_json: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET assigned_ports = $1, updated_at = datetime('now') WHERE id = $2",
+            ports_json,
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Release (clear) assigned_ports for a task attempt, freeing ports for reuse
+    pub async fn release_assigned_ports(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET assigned_ports = NULL, updated_at = datetime('now') WHERE id = $1",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Release assigned_ports for all task attempts belonging to a task
+    pub async fn release_assigned_ports_for_task(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
+            "UPDATE task_attempts SET assigned_ports = NULL, updated_at = datetime('now') WHERE task_id = $1 AND assigned_ports IS NOT NULL",
+            task_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    /// Get all ports currently in use by active worktrees (not deleted)
+    /// Returns a HashSet of port numbers extracted from assigned_ports JSON
+    pub async fn get_all_active_ports(pool: &SqlitePool) -> Result<HashSet<u16>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"SELECT assigned_ports FROM task_attempts WHERE worktree_deleted = FALSE AND assigned_ports IS NOT NULL"#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let mut ports = HashSet::new();
+        for record in records {
+            if let Some(json_str) = record.assigned_ports {
+                // Parse JSON and extract port values
+                if let Ok(port_map) = serde_json::from_str::<HashMap<String, u16>>(&json_str) {
+                    ports.extend(port_map.values());
+                }
+            }
+        }
+        Ok(ports)
     }
 }

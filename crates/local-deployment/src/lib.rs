@@ -32,6 +32,7 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 mod copy;
+pub mod env_vibe;
 
 #[derive(Clone)]
 pub struct LocalDeployment {

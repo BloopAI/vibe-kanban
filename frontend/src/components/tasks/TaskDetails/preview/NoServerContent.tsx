@@ -95,6 +95,9 @@ export function NoServerContent({
           cleanup_script: project.cleanup_script ?? null,
           copy_files: project.copy_files ?? null,
           parallel_setup_script: project.parallel_setup_script ?? null,
+          release_ports_on_completion: project.release_ports_on_completion,
+          port_range_start: project.port_range_start,
+          port_range_end: project.port_range_end,
         },
       },
       {

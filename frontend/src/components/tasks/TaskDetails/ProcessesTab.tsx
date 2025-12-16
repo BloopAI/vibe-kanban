@@ -13,7 +13,9 @@ import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';
+import { AssignedPortsCard } from './AssignedPortsCard';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -25,6 +27,7 @@ interface ProcessesTabProps {
 
 function ProcessesTab({ attemptId }: ProcessesTabProps) {
   const { t } = useTranslation('tasks');
+  const { data: taskAttempt } = useTaskAttempt(attemptId);
   const {
     executionProcesses,
     executionProcessesById,
@@ -171,11 +174,17 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
               {!isConnected && ` ${t('processes.reconnecting')}`}
             </div>
           )}
+          {taskAttempt?.assigned_ports && (
+            <div className="mb-3">
+              <AssignedPortsCard assignedPorts={taskAttempt.assigned_ports} />
+            </div>
+          )}
+
           {processesLoading && executionProcesses.length === 0 ? (
             <div className="flex items-center justify-center text-muted-foreground py-10">
               <p>{t('processes.loading')}</p>
             </div>
-          ) : executionProcesses.length === 0 ? (
+          ) : executionProcesses.length === 0 && !taskAttempt?.assigned_ports ? (
             <div className="flex items-center justify-center text-muted-foreground py-10">
               <div className="text-center">
                 <Cog className="h-12 w-12 mx-auto mb-4 opacity-50" />

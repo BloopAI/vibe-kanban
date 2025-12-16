@@ -92,6 +92,7 @@ export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
+export { AssignedPortsDialog } from './tasks/AssignedPortsDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
 
 // Auth dialogs
