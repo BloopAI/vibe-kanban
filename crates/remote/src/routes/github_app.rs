@@ -368,9 +368,9 @@ pub async fn fetch_repositories(
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "GitHub App not installed"))?;
 
     // Fetch repos from GitHub API and sync to DB
-    let github_app = state
-        .github_app()
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "GitHub App not configured"))?;
+    let github_app = state.github_app().ok_or_else(|| {
+        ErrorResponse::new(StatusCode::NOT_IMPLEMENTED, "GitHub App not configured")
+    })?;
 
     match github_app
         .list_installation_repos(installation.github_installation_id)
@@ -390,10 +390,13 @@ pub async fn fetch_repositories(
     }
 
     // Return the (now updated) list from DB
-    let repositories = gh_repo.get_repositories(installation.id).await.map_err(|e| {
-        error!(?e, "Failed to get repositories");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error")
-    })?;
+    let repositories = gh_repo
+        .get_repositories(installation.id)
+        .await
+        .map_err(|e| {
+            error!(?e, "Failed to get repositories");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+        })?;
 
     Ok(Json(
         repositories
