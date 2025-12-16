@@ -9,7 +9,7 @@ import {
 import { Loader } from '@/components/ui/loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
-import { useBranchStatus, useAttemptExecution, useRepoBranches } from '@/hooks';
+import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useProject } from '@/contexts/ProjectContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -17,12 +17,7 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import type {
-  GitBranch,
-  Merge,
-  TaskAttempt,
-  TaskWithAttemptStatus,
-} from 'shared/types';
+import type { Merge, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 
@@ -36,14 +31,12 @@ interface GitActionsDialogContentProps {
   attempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
-  branches: GitBranch[];
 }
 
 function GitActionsDialogContent({
   attempt,
   task,
   projectId,
-  branches,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus } = useBranchStatus(attempt.id);
@@ -95,7 +88,6 @@ function GitActionsDialogContent({
         task={task}
         projectId={projectId}
         branchStatus={branchStatus ?? null}
-        branches={branches}
         isAttemptRunning={isAttemptRunning}
         selectedBranch={getSelectedRepoStatus()?.target_branch_name ?? null}
         layout="vertical"
@@ -112,12 +104,6 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
-    const { selectedRepoId } = useAttemptRepo(attemptId);
-
-    const { data: branches = [], isLoading: loadingBranches } = useRepoBranches(
-      selectedRepoId,
-      { enabled: !!selectedRepoId }
-    );
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
@@ -125,8 +111,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
       }
     };
 
-    const isLoading =
-      !attempt || !effectiveProjectId || loadingBranches || !task;
+    const isLoading = !attempt || !effectiveProjectId || !task;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -149,7 +134,6 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
                   attempt={attempt}
                   task={task}
                   projectId={effectiveProjectId}
-                  branches={branches}
                 />
               </ExecutionProcessesProvider>
             </GitOperationsProvider>
