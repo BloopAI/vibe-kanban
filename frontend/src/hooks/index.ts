@@ -17,6 +17,7 @@ export { useGitOperations } from './useGitOperations';
 export { useTask } from './useTask';
 export { useAttempt } from './useAttempt';
 export { useBranches } from './useBranches';
+export { useRepoBranches } from './useRepoBranches';
 export { useRepoBranchSelection } from './useRepoBranchSelection';
 export type { RepoBranchConfig } from './useRepoBranchSelection';
 export { useTaskAttempts } from './useTaskAttempts';

@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, GitPullRequest } from 'lucide-react';
 import {
@@ -10,7 +9,7 @@ import {
 import { Loader } from '@/components/ui/loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
-import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import { useBranchStatus, useAttemptExecution, useRepoBranches } from '@/hooks';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useProject } from '@/contexts/ProjectContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -18,11 +17,9 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import { projectsApi } from '@/lib/api';
 import type {
   GitBranch,
   Merge,
-  RepositoryBranches,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
@@ -117,24 +114,9 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
     const { data: attempt } = useTaskAttempt(attemptId);
     const { selectedRepoId } = useAttemptRepo(attemptId);
 
-    const [repoBranches, setRepoBranches] = useState<RepositoryBranches[]>([]);
-    const [loadingBranches, setLoadingBranches] = useState(true);
-
-    useEffect(() => {
-      if (!effectiveProjectId) return;
-      setLoadingBranches(true);
-      projectsApi
-        .getBranches(effectiveProjectId)
-        .then(setRepoBranches)
-        .catch(() => setRepoBranches([]))
-        .finally(() => setLoadingBranches(false));
-    }, [effectiveProjectId]);
-
-    const branches = useMemo(
-      () =>
-        repoBranches.find((r) => r.repository_id === selectedRepoId)
-          ?.branches ?? [],
-      [repoBranches, selectedRepoId]
+    const { data: branches = [], isLoading: loadingBranches } = useRepoBranches(
+      selectedRepoId,
+      { enabled: !!selectedRepoId }
     );
 
     const handleOpenChange = (open: boolean) => {

@@ -256,7 +256,6 @@ function GitOperations({
     CreatePRDialog.show({
       attempt: selectedAttempt,
       task,
-      projectId,
       repoId: getSelectedRepoId(),
     });
   };
