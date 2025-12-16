@@ -201,8 +201,8 @@ pub async fn get_status(
         Some(inst) => {
             // If repository_selection is "all", fetch repos from GitHub API and sync to DB
             // This ensures users always see the full list of accessible repos
-            if inst.repository_selection == "all" {
-                if let Some(github_app) = state.github_app() {
+            if inst.repository_selection == "all"
+                && let Some(github_app) = state.github_app() {
                     match github_app
                         .list_installation_repos(inst.github_installation_id)
                         .await
@@ -219,7 +219,6 @@ pub async fn get_status(
                         }
                     }
                 }
-            }
 
             let repositories = gh_repo.get_repositories(inst.id).await.map_err(|e| {
                 error!(?e, "Failed to get repositories");
