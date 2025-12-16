@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
 import {
   Card,
@@ -29,6 +30,7 @@ import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
+import { branchKeys } from '@/hooks/useBranches';
 import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -65,6 +67,7 @@ export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdParam = searchParams.get('projectId') ?? '';
   const { t } = useTranslation('settings');
+  const queryClient = useQueryClient();
 
   // Fetch all projects
   const {
@@ -321,6 +324,12 @@ export function ProjectSettings() {
         git_repo_path: repo.path,
       });
       setRepositories((prev) => [...prev, newRepo]);
+      queryClient.invalidateQueries({
+        queryKey: ['projectRepositories', selectedProjectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: branchKeys.byProject(selectedProjectId),
+      });
     } catch (err) {
       setRepoError(
         err instanceof Error ? err.message : 'Failed to add repository'
@@ -338,6 +347,12 @@ export function ProjectSettings() {
     try {
       await projectsApi.deleteRepository(selectedProjectId, repoId);
       setRepositories((prev) => prev.filter((r) => r.id !== repoId));
+      queryClient.invalidateQueries({
+        queryKey: ['projectRepositories', selectedProjectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: branchKeys.byProject(selectedProjectId),
+      });
     } catch (err) {
       setRepoError(
         err instanceof Error ? err.message : 'Failed to delete repository'
