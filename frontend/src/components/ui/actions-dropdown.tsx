@@ -128,7 +128,6 @@ export function ActionsDropdown({
     GitActionsDialog.show({
       attemptId: attempt.id,
       task,
-      projectId,
     });
   };
 

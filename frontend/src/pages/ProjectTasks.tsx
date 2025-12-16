@@ -101,12 +101,10 @@ function GitErrorBanner() {
 function DiffsPanelContainer({
   attempt,
   selectedTask,
-  projectId,
   branchStatus,
 }: {
   attempt: TaskAttempt | null;
   selectedTask: TaskWithAttemptStatus | null;
-  projectId: string;
   branchStatus: RepoBranchStatus[] | null;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
@@ -118,7 +116,6 @@ function DiffsPanelContainer({
         attempt && selectedTask
           ? {
               task: selectedTask,
-              projectId,
               branchStatus: branchStatus ?? null,
               isAttemptRunning,
               selectedBranch: branchStatus?.[0]?.target_branch_name ?? null,
@@ -1001,7 +998,6 @@ export function ProjectTasks() {
           <DiffsPanelContainer
             attempt={attempt}
             selectedTask={selectedTask}
-            projectId={projectId!}
             branchStatus={branchStatus ?? null}
           />
         )}

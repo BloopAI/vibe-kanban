@@ -2,10 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, Result } from '@/lib/api';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
+import { repoBranchKeys } from './useRepoBranches';
 
 export function useRebase(
   attemptId: string | undefined,
-  projectId: string | undefined,
+  repoId: string | undefined,
   onSuccess?: () => void,
   onError?: (err: Result<void, GitOperationError>) => void
 ) {
@@ -47,10 +48,10 @@ export function useRebase(
           queryKey: ['taskAttempt', attemptId],
         });
 
-        // Refresh branch list used by PR dialog
-        if (projectId) {
+        // Refresh branch list
+        if (repoId) {
           queryClient.invalidateQueries({
-            queryKey: ['projectBranches', projectId],
+            queryKey: repoBranchKeys.byRepo(repoId),
           });
         }
 

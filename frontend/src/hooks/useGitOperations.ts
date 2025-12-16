@@ -10,13 +10,13 @@ import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 
 export function useGitOperations(
   attemptId: string | undefined,
-  projectId: string | undefined
+  repoId: string | undefined
 ) {
   const { setError } = useGitOperationsError();
 
   const rebase = useRebase(
     attemptId,
-    projectId,
+    repoId,
     () => setError(null),
     (err: Result<void, GitOperationError>) => {
       if (!err.success) {
@@ -78,7 +78,7 @@ export function useGitOperations(
 
   const changeTargetBranch = useChangeTargetBranch(
     attemptId,
-    projectId,
+    repoId,
     () => setError(null),
     (err: unknown) => {
       const message =

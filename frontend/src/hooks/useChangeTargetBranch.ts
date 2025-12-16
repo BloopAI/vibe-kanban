@@ -4,6 +4,7 @@ import type {
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
 } from 'shared/types';
+import { repoBranchKeys } from './useRepoBranches';
 
 type ChangeTargetBranchParams = {
   newTargetBranch: string;
@@ -12,7 +13,7 @@ type ChangeTargetBranchParams = {
 
 export function useChangeTargetBranch(
   attemptId: string | undefined,
-  projectId: string | undefined,
+  repoId: string | undefined,
   onSuccess?: (data: ChangeTargetBranchResponse) => void,
   onError?: (err: unknown) => void
 ) {
@@ -45,9 +46,9 @@ export function useChangeTargetBranch(
         });
       }
 
-      if (projectId) {
+      if (repoId) {
         queryClient.invalidateQueries({
-          queryKey: ['projectBranches', projectId],
+          queryKey: repoBranchKeys.byRepo(repoId),
         });
       }
 

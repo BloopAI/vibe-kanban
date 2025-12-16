@@ -11,7 +11,6 @@ import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useProject } from '@/contexts/ProjectContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import {
   GitOperationsProvider,
@@ -24,19 +23,16 @@ import { defineModal } from '@/lib/modals';
 export interface GitActionsDialogProps {
   attemptId: string;
   task?: TaskWithAttemptStatus;
-  projectId?: string;
 }
 
 interface GitActionsDialogContentProps {
   attempt: TaskAttempt;
   task: TaskWithAttemptStatus;
-  projectId: string;
 }
 
 function GitActionsDialogContent({
   attempt,
   task,
-  projectId,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus } = useBranchStatus(attempt.id);
@@ -86,7 +82,6 @@ function GitActionsDialogContent({
       <GitOperations
         selectedAttempt={attempt}
         task={task}
-        projectId={projectId}
         branchStatus={branchStatus ?? null}
         isAttemptRunning={isAttemptRunning}
         selectedBranch={getSelectedRepoStatus()?.target_branch_name ?? null}
@@ -97,12 +92,10 @@ function GitActionsDialogContent({
 }
 
 const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
-  ({ attemptId, task, projectId: providedProjectId }) => {
+  ({ attemptId, task }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
-    const { project } = useProject();
 
-    const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
 
     const handleOpenChange = (open: boolean) => {
@@ -111,7 +104,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
       }
     };
 
-    const isLoading = !attempt || !effectiveProjectId || !task;
+    const isLoading = !attempt || !task;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -130,11 +123,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
                 key={attempt.id}
                 attemptId={attempt.id}
               >
-                <GitActionsDialogContent
-                  attempt={attempt}
-                  task={task}
-                  projectId={effectiveProjectId}
-                />
+                <GitActionsDialogContent attempt={attempt} task={task} />
               </ExecutionProcessesProvider>
             </GitOperationsProvider>
           )}

@@ -122,9 +122,8 @@ export function NextActionCard({
     GitActionsDialog.show({
       attemptId,
       task,
-      projectId: project?.id,
     });
-  }, [attemptId, task, project?.id]);
+  }, [attemptId, task]);
 
   const handleRunSetup = useCallback(async () => {
     if (!attemptId || !attempt) return;

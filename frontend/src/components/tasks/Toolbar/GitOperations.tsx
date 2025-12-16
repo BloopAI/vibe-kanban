@@ -34,7 +34,6 @@ import { useRepoBranches } from '@/hooks';
 interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
   task: TaskWithAttemptStatus;
-  projectId: string;
   branchStatus: RepoBranchStatus[] | null;
   isAttemptRunning: boolean;
   selectedBranch: string | null;
@@ -46,7 +45,6 @@ export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
 function GitOperations({
   selectedAttempt,
   task,
-  projectId,
   branchStatus,
   isAttemptRunning,
   selectedBranch,
@@ -54,10 +52,10 @@ function GitOperations({
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
-  const git = useGitOperations(selectedAttempt.id, projectId);
   const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(
     selectedAttempt.id
   );
+  const git = useGitOperations(selectedAttempt.id, selectedRepoId ?? undefined);
   const { data: branches = [] } = useRepoBranches(selectedRepoId);
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
