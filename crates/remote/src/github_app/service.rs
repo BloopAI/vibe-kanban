@@ -280,9 +280,20 @@ impl GitHubAppService {
 
         debug!(owner, repo, head_sha, "Cloning repository");
 
-        // Clone the repository
+        // Clone the repository with security flags to prevent code execution from untrusted repos
         let output = Command::new("git")
-            .args(["clone", "--depth", "1", &clone_url, "."])
+            .args([
+                "-c", "core.hooksPath=/dev/null",
+                "-c", "core.autocrlf=false",
+                "-c", "core.symlinks=false",
+                "clone",
+                "--depth", "1",
+                &clone_url,
+                ".",
+            ])
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
             .current_dir(temp_dir.path())
             .output()
             .await
@@ -305,7 +316,16 @@ impl GitHubAppService {
 
         // Fetch the specific commit (in case it's not in shallow clone)
         let output = Command::new("git")
-            .args(["fetch", "--depth", "1", "origin", head_sha])
+            .args([
+                "-c", "core.hooksPath=/dev/null",
+                "fetch",
+                "--depth", "1",
+                "origin",
+                head_sha,
+            ])
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
             .current_dir(temp_dir.path())
             .output()
             .await
@@ -327,7 +347,10 @@ impl GitHubAppService {
 
         // Checkout the specific commit
         let output = Command::new("git")
-            .args(["checkout", head_sha])
+            .args(["-c", "core.hooksPath=/dev/null", "checkout", head_sha])
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
             .current_dir(temp_dir.path())
             .output()
             .await
