@@ -4,8 +4,9 @@ on:
   pull_request:
     branches:
       - main
-      - louis/fe-revision
-      - gabriel/share
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -16,10 +17,16 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: 22
   PNPM_VERSION: 10.13.1
+  RUST_TOOLCHAIN: nightly-2025-12-04
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  CC: "sccache clang"
+  CXX: "sccache clang++"
+  CACHE_SCOPE: ${{ github.ref == 'refs/heads/main' && 'main' || (github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('ref-{0}', github.ref_name)) }}
 
 jobs:
   test:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: depot-ubuntu-24.04-16
     steps:
       - uses: actions/checkout@v4
 
@@ -46,27 +53,45 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-12-04
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt, clippy
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        env:
-          RUST_CACHE_DEBUG: true
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Start sccache server
+        run: sccache --start-server
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
         with:
-          workspaces: "."
-          cache-provider: "buildjet"
-          cache-on-failure: true
-          shared-key: "shared"
-          cache-all-crates: true
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
+            ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite,postgres
+        run: cargo install --locked sqlx-cli --no-default-features --features sqlite,postgres
 
       - name: Build frontend
         run: cd frontend && npm run build
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Cache target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ env.CACHE_SCOPE }}-${{ github.sha }}
+          restore-keys: |
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ env.CACHE_SCOPE }}-
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-main-
 
       - name: Checks
         run: |
@@ -75,4 +100,4 @@ jobs:
           npm run prepare-db:check
           npm run remote:prepare-db:check
           cargo test --workspace
-          cargo clippy --all --all-targets -- -D warnings  
+          cargo clippy --all --all-targets -- -D warnings
