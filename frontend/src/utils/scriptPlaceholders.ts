@@ -15,7 +15,6 @@ class WindowsScriptPlaceholderStrategy implements ScriptPlaceholderStrategy {
 npm install
 REM Add any setup commands here...`,
       dev: `@echo off
-cd my_website
 npm run dev
 REM Add dev server start command here...`,
       cleanup: `@echo off
@@ -32,7 +31,6 @@ class UnixScriptPlaceholderStrategy implements ScriptPlaceholderStrategy {
 npm install
 # Add any setup commands here...`,
       dev: `#!/bin/bash
-cd my_website
 npm run dev
 # Add dev server start command here...`,
       cleanup: `#!/bin/bash
