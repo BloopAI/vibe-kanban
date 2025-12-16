@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +18,10 @@ import {
   useAttempt,
   useRepoBranchSelection,
   useTaskAttempts,
+  useProjectRepos,
 } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -68,14 +67,8 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       { enabled: modal.visible && !!parentAttemptId }
     );
 
-    const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
-      queryKey: ['projectRepositories', projectId],
-      queryFn: () =>
-        projectId
-          ? projectsApi.getRepositories(projectId)
-          : Promise.resolve([]),
-      enabled: modal.visible && !!projectId,
-    });
+    const { data: projectRepos = [], isLoading: isLoadingRepos } =
+      useProjectRepos(projectId, { enabled: modal.visible });
 
     const {
       configs: repoBranchConfigs,

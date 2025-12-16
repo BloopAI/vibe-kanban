@@ -35,6 +35,7 @@ import {
   useTaskImages,
   useImageUpload,
   useTaskMutations,
+  useProjectRepos,
   type RepoBranchConfig,
 } from '@/hooks';
 import {
@@ -50,8 +51,6 @@ import type {
   ExecutorProfileId,
   ImageResponse,
 } from 'shared/types';
-import { projectsApi } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
 
 interface Task {
   id: string;
@@ -107,9 +106,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
-  const { data: projectRepos = [] } = useQuery({
-    queryKey: ['projectRepositories', projectId],
-    queryFn: () => projectsApi.getRepositories(projectId),
+  const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
   const { data: repoBranches = [], isLoading: branchesLoading } = useBranches(

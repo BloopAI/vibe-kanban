@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import {
   Play,
   Edit3,
@@ -21,7 +20,7 @@ import {
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { projectsApi } from '@/lib/api';
+import { useProjectRepos } from '@/hooks';
 import {
   COMPANION_INSTALL_TASK_TITLE,
   COMPANION_INSTALL_TASK_DESCRIPTION,
@@ -53,14 +52,7 @@ export function NoServerContent({
   const { createAndStart } = useTaskMutations(project?.id);
   const { updateProject } = useProjectMutations();
 
-  const { data: projectRepos = [] } = useQuery({
-    queryKey: ['projectRepositories', project?.id],
-    queryFn: () =>
-      project?.id
-        ? projectsApi.getRepositories(project.id)
-        : Promise.resolve([]),
-    enabled: !!project?.id,
-  });
+  const { data: projectRepos = [] } = useProjectRepos(project?.id);
 
   // Create strategy-based placeholders
   const placeholders = system.environment
