@@ -157,17 +157,17 @@ jobs:
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           VITE_POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
 
-      - name: Create Sentry release
-        uses: getsentry/action-release@v3
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        with:
-          release: ${{ needs.bump-version.outputs.new_version }}
-          environment: production
-          sourcemaps: "./frontend/dist"
-          ignore_missing: true
+      # - name: Create Sentry release
+      #   uses: getsentry/action-release@v3
+      #   env:
+      #     SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      #     SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      #     SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      #   with:
+      #     release: ${{ needs.bump-version.outputs.new_version }}
+      #     environment: production
+      #     sourcemaps: "./frontend/dist"
+      #     ignore_missing: true
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
@@ -278,16 +278,16 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
-      - name: Setup Sentry CLI
-        uses: matbour/setup-sentry-cli@v2
-        with:
-          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          organization: ${{ secrets.SENTRY_ORG }}
-          project: ${{ secrets.SENTRY_PROJECT }}
-          version: 2.21.2
+      # - name: Setup Sentry CLI
+      #   uses: matbour/setup-sentry-cli@v2
+      #   with:
+      #     token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      #     organization: ${{ secrets.SENTRY_ORG }}
+      #     project: ${{ secrets.SENTRY_PROJECT }}
+      #     version: 2.21.2
 
-      - name: Upload source maps to Sentry
-        run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
+      # - name: Upload source maps to Sentry
+      #   run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
 
       - name: Prepare binaries (non-macOS)
         if: runner.os != 'macOS'
@@ -567,24 +567,24 @@ jobs:
             for binary in vibe-kanban vibe-kanban-mcp vibe-kanban-review; do
               if [ -f "binaries/$platform/$binary.zip" ]; then
                 echo "Uploading binaries/$platform/$binary.zip..."
-                aws s3 cp "binaries/$platform/$binary.zip" \
-                  "s3://$BUCKET/binaries/$TAG/$platform/$binary.zip" \
-                  --endpoint-url "$ENDPOINT"
+                # aws s3 cp "binaries/$platform/$binary.zip" \
+                #   "s3://$BUCKET/binaries/$TAG/$platform/$binary.zip" \
+                #   --endpoint-url "$ENDPOINT"
               fi
             done
           done
 
           # Upload version manifest
           echo "Uploading version manifest..."
-          aws s3 cp version-manifest.json \
-            "s3://$BUCKET/binaries/$TAG/manifest.json" \
-            --endpoint-url "$ENDPOINT" --content-type "application/json"
+          # aws s3 cp version-manifest.json \
+          #   "s3://$BUCKET/binaries/$TAG/manifest.json" \
+          #   --endpoint-url "$ENDPOINT" --content-type "application/json"
 
           # Update global manifest
           echo "Updating global manifest..."
-          echo "{\"latest\": \"$TAG\"}" | aws s3 cp - \
-            "s3://$BUCKET/binaries/manifest.json" \
-            --endpoint-url "$ENDPOINT" --content-type "application/json"
+          # echo "{\"latest\": \"$TAG\"}" | aws s3 cp - \
+          #   "s3://$BUCKET/binaries/manifest.json" \
+          #   --endpoint-url "$ENDPOINT" --content-type "application/json"
 
       - name: Verify upload
         run: |
@@ -593,9 +593,9 @@ jobs:
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
 
           echo "Listing uploaded files..."
-          aws s3 ls "s3://$BUCKET/binaries/$TAG/" \
-            --endpoint-url "$ENDPOINT" \
-            --recursive
+          # aws s3 ls "s3://$BUCKET/binaries/$TAG/" \
+          #   --endpoint-url "$ENDPOINT" \
+          #   --recursive
 
   create-prerelease:
     needs: [bump-version, build-frontend, upload-to-r2]
@@ -633,13 +633,13 @@ jobs:
           sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/download.js
           npm pack
 
-      - name: Create GitHub Pre-Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.bump-version.outputs.new_tag }}
-          name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
-          prerelease: true
-          generate_release_notes: true
-          files: |
-            vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
-            npx-cli/vibe-kanban-*.tgz
+      # - name: Create GitHub Pre-Release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     tag_name: ${{ needs.bump-version.outputs.new_tag }}
+      #     name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
+      #     prerelease: true
+      #     generate_release_notes: true
+      #     files: |
+      #       vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
+      #       npx-cli/vibe-kanban-*.tgz
