@@ -1,4 +1,3 @@
-import { generateDiffFile } from '@git-diff-view/file';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,24 +35,13 @@ const DEFAULT_DIFF_COLLAPSE_DEFAULTS: DiffCollapseDefaults = {
   permissionChange: true,
 };
 
-const DEFAULT_COLLAPSE_MAX_LINES = 500;
+const DEFAULT_COLLAPSE_MAX_LINES = 200;
 
 const exceedsMaxLineCount = (d: Diff, maxLines: number): boolean => {
   if (d.additions != null || d.deletions != null)
     return (d.additions ?? 0) + (d.deletions ?? 0) > maxLines;
 
-  const oldContent = d.oldContent || '';
-  const newContent = d.newContent || '';
-  const diffFile = generateDiffFile(
-    '',
-    oldContent,
-    '',
-    newContent,
-    'plaintext',
-    'plaintext'
-  );
-  diffFile.initRaw();
-  return diffFile.additionLength + diffFile.deletionLength > maxLines;
+  return true;
 };
 
 const getDiffId = ({ diff, index }: { diff: Diff; index: number }) =>
