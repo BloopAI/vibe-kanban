@@ -210,11 +210,7 @@ function WYSIWYGEditor({
                 <RichTextPlugin
                   contentEditable={
                     <ContentEditable
-                      className={cn(
-                        'outline-none',
-                        !disabled && 'min-h-[200px]',
-                        className
-                      )}
+                      className={cn('outline-none', className)}
                       aria-label={
                         disabled ? 'Markdown content' : 'Markdown editor'
                       }

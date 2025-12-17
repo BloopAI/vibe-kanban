@@ -28,7 +28,7 @@ export function SessionChatBox({
   filesChanged = 0,
   linesAdded,
   linesRemoved,
-  placeholder = 'Type some text here...',
+  placeholder = 'If whales could talk, what would they tell us?',
   value = '',
   onChange,
   onSend,
