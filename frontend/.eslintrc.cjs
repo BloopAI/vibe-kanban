@@ -279,5 +279,19 @@ module.exports = {
         ],
       },
     },
+    {
+      // ui-new components must use Tailwind size classes for icons, not size prop
+      files: ['src/components/ui-new/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
+            message:
+              'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
+          },
+        ],
+      },
+    },
   ],
 };
