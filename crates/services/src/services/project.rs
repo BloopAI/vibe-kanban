@@ -106,21 +106,16 @@ impl ProjectService {
 
         let id = Uuid::new_v4();
 
-        // Start transaction
-        let mut tx = pool.begin().await?;
-
-        let project = Project::create(&mut *tx, &payload, id)
+        let project = Project::create(pool, &payload, id)
             .await
             .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
 
         for repo in normalized_repos {
             let repo_entity =
-                Repo::find_or_create(&mut *tx, Path::new(&repo.git_repo_path), &repo.display_name)
+                Repo::find_or_create(pool, Path::new(&repo.git_repo_path), &repo.display_name)
                     .await?;
-            ProjectRepo::create(&mut *tx, project.id, repo_entity.id).await?;
+            ProjectRepo::create(pool, project.id, repo_entity.id).await?;
         }
-
-        tx.commit().await?;
 
         Ok(project)
     }
