@@ -185,7 +185,7 @@ function WYSIWYGEditor({
   const placeholderElement = useMemo(
     () =>
       !disabled ? (
-        <div className="absolute top-0 left-0 text-sm text-secondary-foreground text-low pointer-events-none">
+        <div className="absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate">
           {placeholder}
         </div>
       ) : null,
@@ -193,7 +193,7 @@ function WYSIWYGEditor({
   );
 
   const editorContent = (
-    <div className="wysiwyg text-sm">
+    <div className="wysiwyg text-base">
       <TaskAttemptContext.Provider value={taskAttemptId}>
         <TaskContext.Provider value={taskId}>
           <LocalImagesContext.Provider value={localImages ?? []}>
