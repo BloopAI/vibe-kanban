@@ -193,7 +193,7 @@ jobs:
             name: linux-arm64
             container: *zigbuild_container
           - target: x86_64-pc-windows-msvc
-            os: depot-windows-2022-16
+            os: windows-latest-l
             name: windows-x64
           - target: x86_64-apple-darwin
             os: depot-macos-15
@@ -202,7 +202,7 @@ jobs:
             os: depot-macos-14
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: depot-windows-2022-16
+            os: windows-latest-arm64-l
             name: windows-arm64
     steps:
       - uses: actions/checkout@v4
