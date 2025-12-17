@@ -31,16 +31,21 @@ async function fetchJson(url) {
 }
 
 async function downloadFile(url, destPath, expectedSha256, onProgress) {
+  const tempPath = destPath + ".tmp";
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(destPath);
+    const file = fs.createWriteStream(tempPath);
     const hash = crypto.createHash("sha256");
+
+    const cleanup = () => {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {}
+    };
 
     https.get(url, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
-        try {
-          fs.unlinkSync(destPath);
-        } catch {}
+        cleanup();
         return downloadFile(res.headers.location, destPath, expectedSha256, onProgress)
           .then(resolve)
           .catch(reject);
@@ -48,9 +53,7 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
 
       if (res.statusCode !== 200) {
         file.close();
-        try {
-          fs.unlinkSync(destPath);
-        } catch {}
+        cleanup();
         return reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
       }
 
@@ -68,19 +71,21 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
         file.close();
         const actualSha256 = hash.digest("hex");
         if (expectedSha256 && actualSha256 !== expectedSha256) {
-          try {
-            fs.unlinkSync(destPath);
-          } catch {}
+          cleanup();
           reject(new Error(`Checksum mismatch: expected ${expectedSha256}, got ${actualSha256}`));
         } else {
-          resolve(destPath);
+          try {
+            fs.renameSync(tempPath, destPath);
+            resolve(destPath);
+          } catch (err) {
+            cleanup();
+            reject(err);
+          }
         }
       });
     }).on("error", (err) => {
       file.close();
-      try {
-        fs.unlinkSync(destPath);
-      } catch {}
+      cleanup();
       reject(err);
     });
   });
@@ -109,7 +114,7 @@ async function ensureBinary(platform, binaryName, onProgress) {
 
 async function getLatestVersion() {
   const manifest = await fetchJson(`${R2_BASE_URL}/binaries/manifest.json`);
-  return manifest.latest;
+  return manifest.latestVersion;
 }
 
 module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, ensureBinary, getLatestVersion };

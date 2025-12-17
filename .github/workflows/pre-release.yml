@@ -554,8 +554,9 @@ jobs:
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
           # Update global manifest
+          VERSION="${{ needs.bump-version.outputs.new_version }}"
           echo "Updating global manifest..."
-          echo "{\"latest\": \"$TAG\"}" | aws s3 cp - \
+          echo "{\"latest\": \"$TAG\", \"latestVersion\": \"$VERSION\"}" | aws s3 cp - \
             "s3://$BUCKET/binaries/manifest.json" \
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
