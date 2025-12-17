@@ -207,6 +207,8 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.7
 
+      - run: sccache --start-server
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
