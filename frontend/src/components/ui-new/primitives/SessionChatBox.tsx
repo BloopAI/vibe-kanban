@@ -68,7 +68,7 @@ export function SessionChatBox({
       </div>
 
       {/* Editor area */}
-      <div className="flex flex-col gap-base bg-primary px-double py-plusfifty">
+      <div className="flex flex-col gap-plusfifty bg-primary px-double py-plusfifty">
         <WYSIWYGEditor
           placeholder={placeholder}
           value={value}
