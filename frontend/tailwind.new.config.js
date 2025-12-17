@@ -10,6 +10,7 @@ const sizes = {
 
 const lineHeightMultiplier = 1.5;
 const radiusMultiplier = 0.25;
+const iconMultiplier = 1.25;
 const chatMaxWidth = '48rem';
 
 function getSize(sizeLabel, multiplier = 1) {
@@ -58,11 +59,11 @@ module.exports = {
         chat: chatMaxWidth,
       },
       size: {
-        'icon-xs': getSize('xs'),
-        'icon-sm': getSize('sm'),
-        'icon-base': getSize('base'),
-        'icon-lg': getSize('lg'),
-        'icon-xl': getSize('xl'),
+        'icon-xs': getSize('xs', iconMultiplier),
+        'icon-sm': getSize('sm', iconMultiplier),
+        'icon-base': getSize('base', iconMultiplier),
+        'icon-lg': getSize('lg', iconMultiplier),
+        'icon-xl': getSize('xl', iconMultiplier),
       },
       backgroundImage: {
         'diagonal-lines': `
