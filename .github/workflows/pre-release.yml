@@ -175,7 +175,7 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest-l
+            os: ubuntu-latest-x64-l
             container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
             name: linux-x64
           - target: aarch64-unknown-linux-musl
