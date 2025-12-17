@@ -48,7 +48,6 @@ export function WorkspacesMain({
           filesChanged={19}
           linesAdded={10}
           linesRemoved={3}
-          placeholder="Type some text here..."
           value={chatValue}
           onChange={onChatChange}
           onSend={onSend}
