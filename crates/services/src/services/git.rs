@@ -8,7 +8,7 @@ use git2::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
-use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
+use utils::diff::{Diff, DiffChangeKind, FileDiffDetails, compute_line_change_counts};
 
 mod cli;
 
@@ -517,16 +517,15 @@ impl GitService {
                     }
                 }
 
-                // If contents are omitted, try to compute line stats via libgit2 Patch
-                let mut additions: Option<usize> = None;
-                let mut deletions: Option<usize> = None;
-                if content_omitted
-                    && let Ok(Some(patch)) = git2::Patch::from_diff(&diff, delta_index)
+                // Always compute line stats via libgit2 Patch
+                let (additions, deletions) = if let Ok(Some(patch)) =
+                    git2::Patch::from_diff(&diff, delta_index)
                     && let Ok((_ctx, adds, dels)) = patch.line_stats()
                 {
-                    additions = Some(adds);
-                    deletions = Some(dels);
-                }
+                    (Some(adds), Some(dels))
+                } else {
+                    (None, None)
+                };
 
                 file_diffs.push(Diff {
                     change,
@@ -732,6 +731,23 @@ impl GitService {
             change = DiffChangeKind::PermissionChange;
         }
 
+        // Compute line stats from available content
+        let (additions, deletions) = match (&old_content, &new_content) {
+            (Some(old), Some(new)) => {
+                let (adds, dels) = compute_line_change_counts(old, new);
+                (Some(adds), Some(dels))
+            }
+            (Some(old), None) => {
+                // File deleted - all lines are deletions
+                (Some(0), Some(old.lines().count()))
+            }
+            (None, Some(new)) => {
+                // File added - all lines are additions
+                (Some(new.lines().count()), Some(0))
+            }
+            (None, None) => (None, None),
+        };
+
         Diff {
             change,
             old_path: old_path_opt,
@@ -739,8 +755,8 @@ impl GitService {
             old_content,
             new_content,
             content_omitted,
-            additions: None,
-            deletions: None,
+            additions,
+            deletions,
         }
     }
 
