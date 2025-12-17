@@ -114,7 +114,7 @@ async function ensureBinary(platform, binaryName, onProgress) {
 
 async function getLatestVersion() {
   const manifest = await fetchJson(`${R2_BASE_URL}/binaries/manifest.json`);
-  return manifest.latestVersion;
+  return manifest.latest;
 }
 
 module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, ensureBinary, getLatestVersion };
