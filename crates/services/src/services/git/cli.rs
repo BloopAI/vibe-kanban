@@ -689,6 +689,8 @@ impl GitCli {
 
         if stdin.is_some() {
             cmd.stdin(Stdio::piped());
+        } else {
+            cmd.stdin(Stdio::null());
         }
 
         cmd.stdout(Stdio::piped());
