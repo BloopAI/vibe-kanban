@@ -1,5 +1,10 @@
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { SessionChatBox } from '@/components/ui-new/primitives/SessionChatBox';
+import {
+  MockConversationList,
+  type MockPatchEntry,
+} from '../MockConversationList';
+import mockEntries from '@/mock/normalized_entries.json';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
@@ -34,14 +39,11 @@ export function WorkspacesMain({
 
   return (
     <main className="flex flex-1 flex-col bg-primary">
-      <header className="p-base">
-        <h1 className="text-xl font-semibold text-high">
-          {selectedWorkspace.name}
-        </h1>
-        <p className="mt-1 text-normal">{selectedWorkspace.description}</p>
-      </header>
-      {/* Spacer to push chat to bottom */}
-      <div className="flex-1" />
+      <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
+        <div className="w-chat max-w-full h-full">
+          <MockConversationList entries={mockEntries as MockPatchEntry[]} />
+        </div>
+      </div>
       {/* Chat box centered at bottom */}
       <div className="flex justify-center @container">
         <SessionChatBox
