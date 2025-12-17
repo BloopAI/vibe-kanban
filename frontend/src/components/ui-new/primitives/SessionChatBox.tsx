@@ -37,13 +37,15 @@ export function SessionChatBox({
   return (
     <div
       className={cn(
-        'flex w-[600px] max-w-full flex-col border-t',
-        '@[600px]:border-x @[600px]:rounded-t-md',
+        `flex w-chat max-w-full flex-col border-t`,
+        `@chat:border-x @chat:rounded-t-md`,
         className
       )}
     >
       {/* Header - File stats and version selector */}
-      <div className="flex items-center gap-base bg-secondary px-double py-[9px] @[600px]:rounded-t-md border-b">
+      <div
+        className={`flex items-center gap-base bg-secondary px-double py-[9px] @chat:rounded-t-md border-b`}
+      >
         <div className="flex flex-1 items-center gap-base text-sm">
           <span className="text-low">
             {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
