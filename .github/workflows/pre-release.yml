@@ -199,15 +199,23 @@ jobs:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      SCCACHE_DIR: ${{ github.workspace }}/.sccache
+      SCCACHE_CACHE_SIZE: "2G"
     steps:
       - uses: actions/checkout@v4
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.7
+        uses: mozilla-actions/sccache-action@v0.0.9
 
-      - run: sccache --start-server
+      - name: Cache sccache
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.sccache
+          key: sccache-${{ runner.os }}-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: |
+            sccache-${{ runner.os }}-${{ matrix.target }}-
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
