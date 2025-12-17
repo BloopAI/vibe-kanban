@@ -213,15 +213,33 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
         with:
-          workspaces: "."
-          prefix-key: "cache-v1.0"
-          key: ${{ matrix.target }}_${{ matrix.os }}
-          cache-on-failure: true
-          shared-key: "shared"
-          cache-all-crates: true
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
+            ~/.cargo/bin
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Cache target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.sha }}
+          restore-keys: |
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Setup cargo-sweep
+        shell: bash
+        run: |
+          cargo install --locked cargo-sweep --version 0.8.0
+          cargo sweep --stamp
 
       # - name: Download frontend artifact
       #   uses: actions/download-artifact@v4
@@ -384,6 +402,10 @@ jobs:
           name: backend-binary-${{ matrix.name }}
           path: dist/
           retention-days: 1
+
+      - name: Sweep Cargo target cache
+        shell: bash
+        run: cargo sweep --file
 
   # package-npx-cli:
   #   needs: [bump-version, build-frontend, build-backend]
