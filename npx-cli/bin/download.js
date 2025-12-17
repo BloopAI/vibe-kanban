@@ -4,8 +4,8 @@ const path = require("path");
 const crypto = require("crypto");
 
 // Replaced during npm pack by workflow
-const R2_BASE_URL = "__R2_PUBLIC_URL__";
-const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135-20251215122030
+const R2_BASE_URL = "https://npm-cdn.vibekanban.com";
+const BINARY_TAG = "v0.0.137-20251216142426"; // e.g., v0.0.135-20251215122030
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 
 async function fetchJson(url) {
