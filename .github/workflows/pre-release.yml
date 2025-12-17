@@ -275,18 +275,25 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
-      - name: Build backend (non-Linux)
-        shell: bash
-        if: runner.os != 'Linux'
+      - name: Build backend (macOS)
+        if: runner.os == 'macOS'
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            # Use lld linker for Windows to speed up linking
-            export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-          fi
           cargo build --release --target ${{ matrix.target }} -p server
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
           cargo build --release --target ${{ matrix.target }} -p review
         env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Build backend (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p server
+          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
+          cargo build --release --target ${{ matrix.target }} -p review
+        env:
+          RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
