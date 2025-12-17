@@ -196,6 +196,7 @@ jobs:
             os: windows-latest-arm64-l
             name: windows-arm64
     env:
+      CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
