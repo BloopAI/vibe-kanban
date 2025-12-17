@@ -302,7 +302,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, diff_collapse_defaults: DiffCollapseDefaults, diff_collapse_max_lines: number | null, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -321,8 +321,6 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS";
 
 export type ShowcaseState = { seen_features: Array<string>, };
-
-export type DiffCollapseDefaults = { added: boolean, deleted: boolean, modified: boolean, renamed: boolean, copied: boolean, permissionChange: boolean, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
@@ -495,12 +493,3 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
-
-export const DEFAULT_DIFF_COLLAPSE_DEFAULTS: DiffCollapseDefaults = {
-  "added": false,
-  "deleted": true,
-  "modified": false,
-  "renamed": true,
-  "copied": true,
-  "permissionChange": true
-};

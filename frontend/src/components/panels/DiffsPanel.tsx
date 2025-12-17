@@ -15,9 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskAttempt, Diff } from 'shared/types';
-import { DEFAULT_DIFF_COLLAPSE_DEFAULTS } from 'shared/types';
-import { useUserSystem } from '@/components/ConfigProvider';
+import type { TaskAttempt, Diff, DiffChangeKind } from 'shared/types';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';
@@ -26,6 +24,17 @@ interface DiffsPanelProps {
   selectedAttempt: TaskAttempt | null;
   gitOps?: GitOperationsInputs;
 }
+
+type DiffCollapseDefaults = Record<DiffChangeKind, boolean>;
+
+const DEFAULT_DIFF_COLLAPSE_DEFAULTS: DiffCollapseDefaults = {
+  added: false,
+  deleted: true,
+  modified: false,
+  renamed: true,
+  copied: true,
+  permissionChange: true,
+};
 
 const DEFAULT_COLLAPSE_MAX_LINES = 500;
 
@@ -52,7 +61,6 @@ const getDiffId = ({ diff, index }: { diff: Diff; index: number }) =>
 
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
-  const { config } = useUserSystem();
   const [loadingState, setLoadingState] = useState<
     'loading' | 'loaded' | 'timed-out'
   >('loading');
@@ -75,11 +83,6 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   }
 
   if (diffs.length > 0) {
-    const collapseDefaults =
-      config?.diff_collapse_defaults ?? DEFAULT_DIFF_COLLAPSE_DEFAULTS;
-    const maxLines =
-      config?.diff_collapse_max_lines ?? DEFAULT_COLLAPSE_MAX_LINES;
-
     const newDiffs = diffs
       .map((d, index) => ({ diff: d, index }))
       .filter((d) => {
@@ -92,8 +95,8 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       const toCollapse = newDiffs
         .filter(
           ({ diff }) =>
-            collapseDefaults[diff.change] ||
-            (maxLines > 0 && exceedsMaxLineCount(diff, maxLines))
+            DEFAULT_DIFF_COLLAPSE_DEFAULTS[diff.change] ||
+            exceedsMaxLineCount(diff, DEFAULT_COLLAPSE_MAX_LINES)
         )
         .map(getDiffId);
 

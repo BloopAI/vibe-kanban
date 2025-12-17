@@ -147,26 +147,6 @@
           "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Usa {pr_number} y {pr_url} como marcadores de posición."
         }
       },
-      "review": {
-        "title": "Revisión",
-        "description": "Configura cómo se muestran los cambios de archivos en el panel de revisión.",
-        "collapseDefaults": {
-          "label": "Contraer por Defecto",
-          "helper": "Selecciona qué tipos de cambios deben estar contraídos por defecto al ver los diffs."
-        },
-        "collapseMaxLines": {
-          "label": "Contraer Diffs Grandes",
-          "helper": "Contrae automáticamente los diffs con más de este número de líneas. Establece 0 para desactivar."
-        },
-        "changeTypes": {
-          "added": "Agregado",
-          "deleted": "Eliminado",
-          "modified": "Modificado",
-          "renamed": "Renombrado",
-          "copied": "Copiado",
-          "permissionChange": "Cambio de Permisos"
-        }
-      },
       "notifications": {
         "title": "Notificaciones",
         "description": "Controla cuándo y cómo recibes notificaciones.",

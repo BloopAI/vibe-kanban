@@ -22,7 +22,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
 import {
-  DEFAULT_DIFF_COLLAPSE_DEFAULTS,
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
   SoundFile,
@@ -529,81 +528,6 @@ export function GeneralSettings() {
             />
             <p className="text-sm text-muted-foreground">
               {t('settings.general.pullRequests.customPrompt.helper')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.general.review.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.general.review.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>{t('settings.general.review.collapseDefaults.label')}</Label>
-            <p className="text-sm text-muted-foreground mb-3">
-              {t('settings.general.review.collapseDefaults.helper')}
-            </p>
-            <div className="grid gap-2">
-              {(
-                [
-                  'added',
-                  'modified',
-                  'copied',
-                  'deleted',
-                  'permissionChange',
-                  'renamed',
-                ] as const
-              ).map((kind) => (
-                <div key={kind} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`collapse-${kind}`}
-                    checked={draft?.diff_collapse_defaults?.[kind] ?? false}
-                    onCheckedChange={(checked: boolean) => {
-                      const currentDefaults =
-                        draft?.diff_collapse_defaults ??
-                        DEFAULT_DIFF_COLLAPSE_DEFAULTS;
-                      updateDraft({
-                        diff_collapse_defaults: {
-                          ...currentDefaults,
-                          [kind]: checked,
-                        },
-                      });
-                    }}
-                  />
-                  <Label
-                    htmlFor={`collapse-${kind}`}
-                    className="cursor-pointer"
-                  >
-                    {t(`settings.general.review.changeTypes.${kind}`)}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="collapse-max-lines">
-              {t('settings.general.review.collapseMaxLines.label')}
-            </Label>
-            <Input
-              id="collapse-max-lines"
-              type="number"
-              min={0}
-              placeholder="500"
-              value={draft?.diff_collapse_max_lines ?? ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                updateDraft({
-                  diff_collapse_max_lines:
-                    value === '' ? null : Math.max(0, parseInt(value, 10) || 0),
-                });
-              }}
-            />
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.review.collapseMaxLines.helper')}
             </p>
           </div>
         </CardContent>
