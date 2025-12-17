@@ -195,10 +195,16 @@ jobs:
           - target: aarch64-pc-windows-msvc
             os: windows-latest-arm64-l
             name: windows-arm64
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -259,8 +265,13 @@ jobs:
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
       - name: Build backend (non-Linux)
+        shell: bash
         if: runner.os != 'Linux'
         run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            # Use lld linker for Windows to speed up linking
+            export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+          fi
           cargo build --release --target ${{ matrix.target }} -p server
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
           cargo build --release --target ${{ matrix.target }} -p review
