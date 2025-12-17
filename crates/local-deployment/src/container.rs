@@ -742,13 +742,13 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor profile from the latest CodingAgent process
-        let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_workspace(
-            &self.db.pool,
-            ctx.workspace.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?;
+        // Get executor profile from the latest CodingAgent process in this session
+        let initial_executor_profile_id =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await
+                .map_err(|e| {
+                    ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
+                })?;
 
         let executor_profile_id = ExecutorProfileId {
             executor: initial_executor_profile_id.executor,

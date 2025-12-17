@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
-import { attemptsApi } from '@/lib/api';
+import { sessionsApi } from '@/lib/api';
 import type { CreateFollowUpAttempt } from 'shared/types';
 
 type Args = {
-  attemptId?: string;
+  sessionId?: string;
   message: string;
   conflictMarkdown: string | null;
   reviewMarkdown: string;
@@ -15,7 +15,7 @@ type Args = {
 };
 
 export function useFollowUpSend({
-  attemptId,
+  sessionId,
   message,
   conflictMarkdown,
   reviewMarkdown,
@@ -29,7 +29,7 @@ export function useFollowUpSend({
   const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const onSendFollowUp = useCallback(async () => {
-    if (!attemptId) return;
+    if (!sessionId) return;
     const extraMessage = message.trim();
     const finalPrompt = [
       conflictMarkdown,
@@ -50,7 +50,7 @@ export function useFollowUpSend({
         force_when_dirty: null,
         perform_git_reset: null,
       };
-      await attemptsApi.followUp(attemptId, body);
+      await sessionsApi.followUp(sessionId, body);
       clearComments();
       clearClickedElements?.();
       onAfterSendCleanup();
@@ -64,7 +64,7 @@ export function useFollowUpSend({
       setIsSendingFollowUp(false);
     }
   }, [
-    attemptId,
+    sessionId,
     message,
     conflictMarkdown,
     reviewMarkdown,

@@ -475,6 +475,33 @@ export const sessionsApi = {
     );
     return handleApiResponse<Session[]>(response);
   },
+
+  getById: async (sessionId: string): Promise<Session> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}`);
+    return handleApiResponse<Session>(response);
+  },
+
+  create: async (data: {
+    workspace_id: string;
+    executor?: string;
+  }): Promise<Session> => {
+    const response = await makeRequest('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Session>(response);
+  },
+
+  followUp: async (
+    sessionId: string,
+    data: CreateFollowUpAttempt
+  ): Promise<ExecutionProcess> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/follow-up`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ExecutionProcess>(response);
+  },
 };
 
 // Task Attempts APIs
@@ -496,14 +523,13 @@ export const attemptsApi = {
     return handleApiResponse<Workspace>(response);
   },
 
-  /** Get workspace with executor from latest session (for components that need executor) */
+  /** Get workspace with latest session */
   getWithSession: async (attemptId: string): Promise<WorkspaceWithSession> => {
     const [workspace, sessions] = await Promise.all([
       attemptsApi.get(attemptId),
       sessionsApi.getByWorkspace(attemptId),
     ]);
-    const executor = sessions[0]?.executor ?? 'unknown';
-    return createWorkspaceWithSession(workspace, executor);
+    return createWorkspaceWithSession(workspace, sessions[0]);
   },
 
   create: async (data: CreateTaskAttemptBody): Promise<Workspace> => {
@@ -518,20 +544,6 @@ export const attemptsApi = {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/stop`, {
       method: 'POST',
     });
-    return handleApiResponse<void>(response);
-  },
-
-  followUp: async (
-    attemptId: string,
-    data: CreateFollowUpAttempt
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/follow-up`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
     return handleApiResponse<void>(response);
   },
 
@@ -1244,43 +1256,37 @@ export const scratchApi = {
     `/api/scratch/${scratchType}/${id}/stream/ws`,
 };
 
-// Queue API for task attempt follow-up messages
+// Queue API for session follow-up messages
 export const queueApi = {
   /**
    * Queue a follow-up message to be executed when current execution finishes
    */
   queue: async (
-    attemptId: string,
+    sessionId: string,
     data: { message: string; variant: string | null }
   ): Promise<QueueStatus> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/queue`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
+    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<QueueStatus>(response);
   },
 
   /**
    * Cancel a queued follow-up message
    */
-  cancel: async (attemptId: string): Promise<QueueStatus> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/queue`,
-      {
-        method: 'DELETE',
-      }
-    );
+  cancel: async (sessionId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<QueueStatus>(response);
   },
 
   /**
-   * Get the current queue status for a task attempt
+   * Get the current queue status for a session
    */
-  getStatus: async (attemptId: string): Promise<QueueStatus> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/queue`);
+  getStatus: async (sessionId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
   },
 };

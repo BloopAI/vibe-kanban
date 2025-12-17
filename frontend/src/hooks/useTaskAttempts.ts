@@ -29,7 +29,7 @@ export function useTaskAttempts(taskId?: string, opts?: Options) {
 }
 
 /**
- * Hook for components that need executor field for all attempts.
+ * Hook for components that need session data for all attempts.
  * Fetches all attempts and their sessions in parallel.
  */
 export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
@@ -45,8 +45,8 @@ export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
         attempts.map((attempt) => sessionsApi.getByWorkspace(attempt.id))
       );
       return attempts.map((attempt, i) => {
-        const executor = sessionsResults[i][0]?.executor ?? 'unknown';
-        return createWorkspaceWithSession(attempt, executor);
+        const session = sessionsResults[i][0];
+        return createWorkspaceWithSession(attempt, session);
       });
     },
     enabled,

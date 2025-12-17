@@ -119,12 +119,25 @@ async fn trigger_pr_description_follow_up(
 
     drop(config); // Release the lock before async operations
 
-    // Get executor profile from the latest coding agent process
-    let executor_profile_id = ExecutionProcess::latest_executor_profile_for_workspace(
-        &deployment.db().pool,
-        workspace.id,
-    )
-    .await?;
+    // Get or create a session for this follow-up
+    let session =
+        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
+            Some(s) => s,
+            None => {
+                Session::create(
+                    &deployment.db().pool,
+                    &CreateSession { executor: None },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await?
+            }
+        };
+
+    // Get executor profile from the latest coding agent process in this session
+    let executor_profile_id =
+        ExecutionProcess::latest_executor_profile_for_session(&deployment.db().pool, session.id)
+            .await?;
 
     // Get latest agent session ID if one exists (for coding agent continuity)
     let latest_agent_session_id = ExecutionProcess::find_latest_agent_session_id_by_workspace(
@@ -148,23 +161,6 @@ async fn trigger_pr_description_follow_up(
     };
 
     let action = ExecutorAction::new(action_type, None);
-
-    // Get or create a session for this follow-up
-    let session =
-        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
-            Some(s) => s,
-            None => {
-                Session::create(
-                    &deployment.db().pool,
-                    &CreateSession {
-                        executor: Some(executor_profile_id.to_string()),
-                    },
-                    Uuid::new_v4(),
-                    workspace.id,
-                )
-                .await?
-            }
-        };
 
     deployment
         .container()

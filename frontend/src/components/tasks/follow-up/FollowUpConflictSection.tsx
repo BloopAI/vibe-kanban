@@ -5,7 +5,7 @@ import { useAttemptConflicts } from '@/hooks/useAttemptConflicts';
 import type { RepoBranchStatus } from 'shared/types';
 
 type Props = {
-  selectedAttemptId?: string;
+  workspaceId?: string;
   attemptBranch: string | null;
   branchStatus: RepoBranchStatus[] | undefined;
   isEditable: boolean;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export function FollowUpConflictSection({
-  selectedAttemptId,
+  workspaceId,
   attemptBranch,
   branchStatus,
   onResolve,
@@ -28,9 +28,9 @@ export function FollowUpConflictSection({
     (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
   );
   const op = repoWithConflicts?.conflict_op ?? null;
-  const openInEditor = useOpenInEditor(selectedAttemptId);
+  const openInEditor = useOpenInEditor(workspaceId);
   const repoId = repoWithConflicts?.repo_id;
-  const { abortConflicts } = useAttemptConflicts(selectedAttemptId, repoId);
+  const { abortConflicts } = useAttemptConflicts(workspaceId, repoId);
 
   // write using setAborting and read through abortingRef in async handlers
   const [aborting, setAborting] = useState(false);
@@ -51,12 +51,12 @@ export function FollowUpConflictSection({
         onResolve={onResolve}
         enableResolve={enableResolve && !aborting}
         onOpenEditor={() => {
-          if (!selectedAttemptId) return;
+          if (!workspaceId) return;
           const first = repoWithConflicts.conflicted_files?.[0];
           openInEditor(first ? { filePath: first } : undefined);
         }}
         onAbort={async () => {
-          if (!selectedAttemptId) return;
+          if (!workspaceId) return;
           if (!enableAbort || abortingRef.current) return;
           try {
             setAborting(true);

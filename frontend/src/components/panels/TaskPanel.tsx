@@ -80,7 +80,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
     {
       id: 'executor',
       header: '',
-      accessor: (attempt) => attempt.executor || 'Base Agent',
+      accessor: (attempt) => attempt.session?.executor || 'Base Agent',
       className: 'pr-4',
     },
     {

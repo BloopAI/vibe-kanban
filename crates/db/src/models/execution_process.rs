@@ -629,12 +629,12 @@ impl ExecutionProcess {
         })
     }
 
-    /// Fetch the latest CodingAgent executor profile for a workspace (across all sessions)
-    pub async fn latest_executor_profile_for_workspace(
+    /// Fetch the latest CodingAgent executor profile for a session
+    pub async fn latest_executor_profile_for_session(
         pool: &SqlitePool,
-        workspace_id: Uuid,
+        session_id: Uuid,
     ) -> Result<ExecutorProfileId, ExecutionProcessError> {
-        // Find the latest CodingAgent execution process across all sessions for this workspace
+        // Find the latest CodingAgent execution process for this session
         let latest_execution_process = sqlx::query_as!(
             ExecutionProcess,
             r#"SELECT
@@ -650,10 +650,9 @@ impl ExecutionProcess {
                     ep.created_at as "created_at!: DateTime<Utc>",
                     ep.updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes ep
-               JOIN sessions s ON ep.session_id = s.id
-               WHERE s.workspace_id = ? AND ep.run_reason = ? AND ep.dropped = FALSE
+               WHERE ep.session_id = ? AND ep.run_reason = ? AND ep.dropped = FALSE
                ORDER BY ep.created_at DESC LIMIT 1"#,
-            workspace_id,
+            session_id,
             ExecutionProcessRunReason::CodingAgent
         )
         .fetch_optional(pool)

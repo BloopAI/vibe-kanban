@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
+import { sessionsApi } from '@/lib/api';
 import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,
@@ -22,7 +22,7 @@ class RetryDialogCancelledError extends Error {
 }
 
 export function useRetryProcess(
-  attemptId: string,
+  sessionId: string,
   onSuccess?: () => void,
   onError?: (err: unknown) => void
 ) {
@@ -50,7 +50,7 @@ export function useRetryProcess(
       }
 
       // Send the retry request
-      await attemptsApi.followUp(attemptId, {
+      await sessionsApi.followUp(sessionId, {
         prompt: message,
         variant,
         retry_process_id: executionProcessId,

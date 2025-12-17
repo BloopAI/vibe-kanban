@@ -19,55 +19,55 @@ interface UseQueueStatusResult {
   refresh: () => Promise<void>;
 }
 
-export function useQueueStatus(attemptId?: string): UseQueueStatusResult {
+export function useQueueStatus(sessionId?: string): UseQueueStatusResult {
   const [queueStatus, setQueueStatus] = useState<QueueStatus>({
     status: 'empty',
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!attemptId) return;
+    if (!sessionId) return;
     try {
-      const status = await queueApi.getStatus(attemptId);
+      const status = await queueApi.getStatus(sessionId);
       setQueueStatus(status);
     } catch (e) {
       console.error('Failed to fetch queue status:', e);
     }
-  }, [attemptId]);
+  }, [sessionId]);
 
   const queueMessage = useCallback(
     async (message: string, variant: string | null) => {
-      if (!attemptId) return;
+      if (!sessionId) return;
       setIsLoading(true);
       try {
-        const status = await queueApi.queue(attemptId, { message, variant });
+        const status = await queueApi.queue(sessionId, { message, variant });
         setQueueStatus(status);
       } finally {
         setIsLoading(false);
       }
     },
-    [attemptId]
+    [sessionId]
   );
 
   const cancelQueue = useCallback(async () => {
-    if (!attemptId) return;
+    if (!sessionId) return;
     setIsLoading(true);
     try {
-      const status = await queueApi.cancel(attemptId);
+      const status = await queueApi.cancel(sessionId);
       setQueueStatus(status);
     } finally {
       setIsLoading(false);
     }
-  }, [attemptId]);
+  }, [sessionId]);
 
-  // Fetch initial status when attemptId changes
+  // Fetch initial status when sessionId changes
   useEffect(() => {
-    if (attemptId) {
+    if (sessionId) {
       refresh();
     } else {
       setQueueStatus({ status: 'empty' });
     }
-  }, [attemptId, refresh]);
+  }, [sessionId, refresh]);
 
   const isQueued = queueStatus.status === 'queued';
   const queuedMessage = isQueued

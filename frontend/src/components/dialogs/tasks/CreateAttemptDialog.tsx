@@ -99,8 +99,8 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     }, [modal.visible, resetBranchSelection]);
 
     const defaultProfile: ExecutorProfileId | null = useMemo(() => {
-      if (latestAttempt?.executor) {
-        const lastExec = latestAttempt.executor as BaseCodingAgent;
+      if (latestAttempt?.session?.executor) {
+        const lastExec = latestAttempt.session.executor as BaseCodingAgent;
         // If the last attempt used the same executor as the user's current preference,
         // we assume they want to use their preferred variant as well.
         // Otherwise, we default to the "default" variant (null) since we don't know
@@ -116,7 +116,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
         };
       }
       return config?.executor_profile ?? null;
-    }, [latestAttempt?.executor, config?.executor_profile]);
+    }, [latestAttempt?.session?.executor, config?.executor_profile]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
 

@@ -1,22 +1,22 @@
-import type { Workspace } from 'shared/types';
+import type { Workspace, Session } from 'shared/types';
 
 /**
- * WorkspaceWithSession includes executor from the latest Session.
- * Only used by components that actually need the executor field.
+ * WorkspaceWithSession includes the latest Session for the workspace.
+ * Provides access to session.id, session.executor, etc.
  */
 export type WorkspaceWithSession = Workspace & {
-  executor: string;
+  session: Session | undefined;
 };
 
 /**
- * Create a WorkspaceWithSession from a Workspace and executor string.
+ * Create a WorkspaceWithSession from a Workspace and Session.
  */
 export function createWorkspaceWithSession(
   workspace: Workspace,
-  executor: string
+  session: Session | undefined
 ): WorkspaceWithSession {
   return {
     ...workspace,
-    executor,
+    session,
   };
 }

@@ -5,7 +5,7 @@ use axum::{
     response::Response,
 };
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, tag::Tag, task::Task,
+    execution_process::ExecutionProcess, project::Project, session::Session, tag::Tag, task::Task,
     workspace::Workspace,
 };
 use deployment::Deployment;
@@ -145,5 +145,27 @@ pub async fn load_tag_middleware(
     request.extensions_mut().insert(tag);
 
     // Continue with the next middleware/handler
+    Ok(next.run(request).await)
+}
+
+pub async fn load_session_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(session_id): Path<Uuid>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let session = match Session::find_by_id(&deployment.db().pool, session_id).await {
+        Ok(Some(session)) => session,
+        Ok(None) => {
+            tracing::warn!("Session {} not found", session_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch session {}: {}", session_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    request.extensions_mut().insert(session);
     Ok(next.run(request).await)
 }

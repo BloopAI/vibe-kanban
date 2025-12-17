@@ -60,24 +60,30 @@ import { useQueueStatus } from '@/hooks/useQueueStatus';
 import { imagesApi, attemptsApi } from '@/lib/api';
 import { GitHubCommentsDialog } from '@/components/dialogs/tasks/GitHubCommentsDialog';
 import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/github-comment-node';
+import type { Session } from 'shared/types';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
-  selectedAttemptId?: string;
+  session?: Session;
 }
 
 export function TaskFollowUpSection({
   task,
-  selectedAttemptId,
+  session,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
 
+  // Derive IDs from session
+  const workspaceId = session?.workspace_id;
+  const sessionId = session?.id;
+
   const { isAttemptRunning, stopExecution, isStopping, processes } =
-    useAttemptExecution(selectedAttemptId, task.id);
+    useAttemptExecution(workspaceId, task.id);
+
   const { data: branchStatus, refetch: refetchBranchStatus } =
-    useBranchStatus(selectedAttemptId);
-  const { repos, selectedRepoId } = useAttemptRepo(selectedAttemptId);
+    useBranchStatus(workspaceId);
+  const { repos, selectedRepoId } = useAttemptRepo(workspaceId);
 
   const getSelectedRepoId = useCallback(() => {
     return selectedRepoId ?? repos[0]?.id;
@@ -91,7 +97,7 @@ export function TaskFollowUpSection({
     [branchStatus]
   );
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
-    useAttemptBranch(selectedAttemptId);
+    useAttemptBranch(workspaceId);
   const { profiles } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
   const {
@@ -127,7 +133,7 @@ export function TaskFollowUpSection({
     scratch,
     updateScratch,
     isLoading: isScratchLoading,
-  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, selectedAttemptId ?? '');
+  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, workspaceId ?? '');
 
   // Derive the message and variant from scratch
   const scratchData: DraftFollowUpData | undefined =
@@ -201,7 +207,7 @@ export function TaskFollowUpSection({
   // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
-      if (!selectedAttemptId) return;
+      if (!workspaceId) return;
       // Don't create empty scratch entries - only save if there's actual content,
       // a variant is selected, or scratch already exists (to allow clearing a draft)
       if (!message.trim() && !variant && !scratchRef.current) return;
@@ -216,7 +222,7 @@ export function TaskFollowUpSection({
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [selectedAttemptId, updateScratch]
+    [workspaceId, updateScratch]
   );
 
   // Wrapper to update variant and save to scratch immediately
@@ -259,7 +265,7 @@ export function TaskFollowUpSection({
     queueMessage,
     cancelQueue,
     refresh: refreshQueueStatus,
-  } = useQueueStatus(selectedAttemptId);
+  } = useQueueStatus(sessionId);
 
   // Track previous process count to detect new processes
   const prevProcessCountRef = useRef(processes.length);
@@ -269,7 +275,7 @@ export function TaskFollowUpSection({
     const prevCount = prevProcessCountRef.current;
     prevProcessCountRef.current = processes.length;
 
-    if (!selectedAttemptId) return;
+    if (!workspaceId) return;
 
     // Refresh when execution stops
     if (!isAttemptRunning) {
@@ -286,7 +292,7 @@ export function TaskFollowUpSection({
     }
   }, [
     isAttemptRunning,
-    selectedAttemptId,
+    workspaceId,
     processes.length,
     refreshQueueStatus,
     scratchData?.message,
@@ -312,7 +318,7 @@ export function TaskFollowUpSection({
   // Send follow-up action
   const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
     useFollowUpSend({
-      attemptId: selectedAttemptId,
+      sessionId,
       message: localMessage,
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
@@ -329,7 +335,7 @@ export function TaskFollowUpSection({
 
   // Separate logic for when textarea should be disabled vs when send button should be disabled
   const canTypeFollowUp = useMemo(() => {
-    if (!selectedAttemptId || processes.length === 0 || isSendingFollowUp) {
+    if (!workspaceId || processes.length === 0 || isSendingFollowUp) {
       return false;
     }
 
@@ -338,7 +344,7 @@ export function TaskFollowUpSection({
     // Note: isQueued no longer blocks typing - editing auto-cancels the queue
     return true;
   }, [
-    selectedAttemptId,
+    workspaceId,
     processes.length,
     isSendingFollowUp,
     isRetryActive,
@@ -369,22 +375,22 @@ export function TaskFollowUpSection({
   const hasAnyScript = true;
 
   const handleRunSetupScript = useCallback(async () => {
-    if (!selectedAttemptId || isAttemptRunning) return;
+    if (!workspaceId || isAttemptRunning) return;
     try {
-      await attemptsApi.runSetupScript(selectedAttemptId);
+      await attemptsApi.runSetupScript(workspaceId);
     } catch (error) {
       console.error('Failed to run setup script:', error);
     }
-  }, [selectedAttemptId, isAttemptRunning]);
+  }, [workspaceId, isAttemptRunning]);
 
   const handleRunCleanupScript = useCallback(async () => {
-    if (!selectedAttemptId || isAttemptRunning) return;
+    if (!workspaceId || isAttemptRunning) return;
     try {
-      await attemptsApi.runCleanupScript(selectedAttemptId);
+      await attemptsApi.runCleanupScript(workspaceId);
     } catch (error) {
       console.error('Failed to run cleanup script:', error);
     }
-  }, [selectedAttemptId, isAttemptRunning]);
+  }, [workspaceId, isAttemptRunning]);
 
   // Handler to queue the current message for execution after agent finishes
   const handleQueueMessage = useCallback(async () => {
@@ -469,14 +475,11 @@ export function TaskFollowUpSection({
   // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
-      if (!selectedAttemptId) return;
+      if (!workspaceId) return;
 
       for (const file of files) {
         try {
-          const response = await imagesApi.uploadForAttempt(
-            selectedAttemptId,
-            file
-          );
+          const response = await imagesApi.uploadForAttempt(workspaceId, file);
           // Append markdown image to current message
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
 
@@ -503,7 +506,7 @@ export function TaskFollowUpSection({
         }
       }
     },
-    [selectedAttemptId]
+    [workspaceId]
   );
 
   // Attachment button - file input ref and handlers
@@ -527,12 +530,12 @@ export function TaskFollowUpSection({
 
   // Handler for GitHub comments insertion
   const handleGitHubCommentClick = useCallback(async () => {
-    if (!selectedAttemptId) return;
+    if (!workspaceId) return;
     const repoId = getSelectedRepoId();
     if (!repoId) return;
 
     const result = await GitHubCommentsDialog.show({
-      attemptId: selectedAttemptId,
+      attemptId: workspaceId,
       repoId,
     });
     if (result.comments.length > 0) {
@@ -575,7 +578,7 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [selectedAttemptId, getSelectedRepoId]);
+  }, [workspaceId, getSelectedRepoId]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
@@ -637,19 +640,19 @@ export function TaskFollowUpSection({
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
   useEffect(() => {
-    if (prevRunningRef.current && !isAttemptRunning && selectedAttemptId) {
+    if (prevRunningRef.current && !isAttemptRunning && workspaceId) {
       refetchBranchStatus();
       refetchAttemptBranch();
     }
     prevRunningRef.current = isAttemptRunning;
   }, [
     isAttemptRunning,
-    selectedAttemptId,
+    workspaceId,
     refetchBranchStatus,
     refetchAttemptBranch,
   ]);
 
-  if (!selectedAttemptId) return null;
+  if (!workspaceId) return null;
 
   if (isScratchLoading) {
     return (
@@ -688,7 +691,7 @@ export function TaskFollowUpSection({
             {/* Conflict notice and actions (optional UI) */}
             {branchStatus && (
               <FollowUpConflictSection
-                selectedAttemptId={selectedAttemptId}
+                workspaceId={workspaceId}
                 attemptBranch={attemptBranch}
                 branchStatus={branchStatus}
                 isEditable={isEditable}
@@ -734,7 +737,7 @@ export function TaskFollowUpSection({
                 disabled={!isEditable}
                 onPasteFiles={handlePasteFiles}
                 projectId={projectId}
-                taskAttemptId={selectedAttemptId}
+                taskAttemptId={workspaceId}
                 onCmdEnter={handleSubmitShortcut}
                 className="min-h-[40px]"
               />

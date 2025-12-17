@@ -3,7 +3,6 @@ pub mod cursor_setup;
 pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
-pub mod queue;
 pub mod util;
 
 use std::{
@@ -27,7 +26,6 @@ use db::models::{
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project_repo::ProjectRepo,
     repo::{Repo, RepoError},
-    scratch::{Scratch, ScratchType},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
@@ -37,7 +35,6 @@ use deployment::Deployment;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
-        coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
@@ -56,10 +53,8 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::load_workspace_middleware,
-    routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::restore_worktrees_to_process},
+    DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
+    routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -229,158 +224,6 @@ pub async fn run_agent_setup(
         .await;
 
     Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {})))
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct CreateFollowUpAttempt {
-    pub prompt: String,
-    pub variant: Option<String>,
-    pub retry_process_id: Option<Uuid>,
-    pub force_when_dirty: Option<bool>,
-    pub perform_git_reset: Option<bool>,
-}
-
-pub async fn follow_up(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateFollowUpAttempt>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
-    tracing::info!("{:?}", workspace);
-
-    let pool = &deployment.db().pool;
-
-    deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-
-    // Get executor profile data from the latest CodingAgent process
-    let initial_executor_profile_id =
-        ExecutionProcess::latest_executor_profile_for_workspace(pool, workspace.id).await?;
-
-    let executor_profile_id = ExecutorProfileId {
-        executor: initial_executor_profile_id.executor,
-        variant: payload.variant,
-    };
-
-    // Get parent task
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // If retry settings provided, perform replace-logic before proceeding
-    if let Some(proc_id) = payload.retry_process_id {
-        // Validate process belongs to this workspace (via session)
-        let process =
-            ExecutionProcess::find_by_id(pool, proc_id)
-                .await?
-                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
-                    "Process not found".to_string(),
-                )))?;
-        let process_session =
-            Session::find_by_id(pool, process.session_id)
-                .await?
-                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
-                    "Session not found".to_string(),
-                )))?;
-        if process_session.workspace_id != workspace.id {
-            return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                "Process does not belong to this workspace".to_string(),
-            )));
-        }
-
-        // Reset all repository worktrees to the state before the target process
-        let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
-        let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
-        restore_worktrees_to_process(
-            &deployment,
-            pool,
-            &workspace,
-            proc_id,
-            perform_git_reset,
-            force_when_dirty,
-        )
-        .await?;
-
-        // Stop any running processes for this workspace (except dev server)
-        deployment.container().try_stop(&workspace, false).await;
-
-        // Soft-drop the target process and all later processes in that session
-        let _ = ExecutionProcess::drop_at_and_after(pool, process.session_id, proc_id).await?;
-    }
-
-    // Get or create a session for the follow-up
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
-        None => {
-            Session::create(
-                pool,
-                &CreateSession {
-                    executor: Some(executor_profile_id.executor.to_string()),
-                },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
-        }
-    };
-
-    let latest_agent_session_id =
-        ExecutionProcess::find_latest_agent_session_id_by_workspace(pool, workspace.id).await?;
-
-    let prompt = payload.prompt;
-
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let cleanup_action = deployment
-        .container()
-        .cleanup_actions_for_repos(&project_repos);
-
-    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
-        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-            prompt: prompt.clone(),
-            session_id: agent_session_id,
-            executor_profile_id: executor_profile_id.clone(),
-        })
-    } else {
-        ExecutorActionType::CodingAgentInitialRequest(
-            executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                prompt,
-                executor_profile_id: executor_profile_id.clone(),
-            },
-        )
-    };
-
-    let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?;
-
-    // Clear the draft follow-up scratch on successful spawn
-    // This ensures the scratch is wiped even if the user navigates away quickly
-    if let Err(e) = Scratch::delete(pool, workspace.id, &ScratchType::DraftFollowUp).await {
-        // Log but don't fail the request - scratch deletion is best-effort
-        tracing::debug!(
-            "Failed to delete draft follow-up scratch for attempt {}: {}",
-            workspace.id,
-            e
-        );
-    }
-
-    Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
 #[axum::debug_handler]
@@ -1616,7 +1459,6 @@ pub async fn get_task_attempt_repos(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
-        .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route("/start-dev-server", post(start_dev_server))
@@ -1646,8 +1488,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
         .nest("/{id}", task_attempt_id_router)
-        .nest("/{id}/images", images::router(deployment))
-        .nest("/{id}/queue", queue::router(deployment));
+        .nest("/{id}/images", images::router(deployment));
 
     Router::new().nest("/task-attempts", task_attempts_router)
 }

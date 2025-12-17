@@ -126,11 +126,11 @@ export function NextActionCard({
   }, [attemptId, task]);
 
   const handleRunSetup = useCallback(async () => {
-    if (!attemptId || !attempt) return;
+    if (!attemptId || !attempt?.session?.executor) return;
     try {
       await attemptsApi.runAgentSetup(attemptId, {
         executor_profile_id: {
-          executor: attempt.executor as BaseCodingAgent,
+          executor: attempt.session.executor as BaseCodingAgent,
           variant: null,
         },
       });
@@ -140,12 +140,14 @@ export function NextActionCard({
   }, [attemptId, attempt]);
 
   const canAutoSetup = !!(
-    attempt?.executor &&
-    capabilities?.[attempt.executor]?.includes(BaseAgentCapability.SETUP_HELPER)
+    attempt?.session?.executor &&
+    capabilities?.[attempt.session.executor]?.includes(
+      BaseAgentCapability.SETUP_HELPER
+    )
   );
 
   const setupHelpText = canAutoSetup
-    ? t('attempt.setupHelpText', { agent: attempt?.executor })
+    ? t('attempt.setupHelpText', { agent: attempt?.session?.executor })
     : null;
 
   const editorName = getIdeName(config?.editor?.editor_type);

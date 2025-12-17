@@ -23,8 +23,8 @@ const UserMessage = ({
   const { isAttemptRunning } = useAttemptExecution(taskAttempt?.id);
 
   const canFork = !!(
-    taskAttempt?.executor &&
-    capabilities?.[taskAttempt.executor]?.includes(
+    taskAttempt?.session?.executor &&
+    capabilities?.[taskAttempt.session.executor]?.includes(
       BaseAgentCapability.SESSION_FORK
     )
   );

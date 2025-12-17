@@ -37,6 +37,9 @@ export function RetryEditorInline({
   const [message, setMessage] = useState(initialContent);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // Get sessionId from attempt's session
+  const sessionId = attempt.session?.id;
+
   // Extract variant from the process being retried
   const processVariant = useMemo<string | null>(() => {
     const process = attemptData.processes?.find(
@@ -71,13 +74,13 @@ export function RetryEditorInline({
   });
 
   const retryMutation = useRetryProcess(
-    attemptId,
+    sessionId ?? '',
     () => onCancelled?.(),
     (err) => setSendError((err as Error)?.message || 'Failed to send retry')
   );
 
   const isSending = retryMutation.isPending;
-  const canSend = !isAttemptRunning && !!message.trim();
+  const canSend = !isAttemptRunning && !!message.trim() && !!sessionId;
 
   const onCancel = () => {
     onCancelled?.();
@@ -170,7 +173,7 @@ export function RetryEditorInline({
         <VariantSelector
           selectedVariant={selectedVariant}
           onChange={setSelectedVariant}
-          currentProfile={profiles?.[attempt.executor] ?? null}
+          currentProfile={profiles?.[attempt.session?.executor ?? ''] ?? null}
         />
         <input
           ref={fileInputRef}

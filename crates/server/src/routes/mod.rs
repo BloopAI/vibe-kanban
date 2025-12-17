@@ -45,7 +45,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
-        .merge(sessions::router())
+        .merge(sessions::router(&deployment))
         .nest("/images", images::routes())
         .with_state(deployment);
 
