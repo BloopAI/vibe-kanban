@@ -6,8 +6,6 @@
 -- - Rename merges.task_attempt_id -> workspace_id
 -- - Rename tasks.parent_task_attempt -> parent_workspace_id
 
-PRAGMA foreign_keys = OFF;
-
 -- 1. Rename task_attempts to workspaces (FK refs auto-update in schema)
 ALTER TABLE task_attempts RENAME TO workspaces;
 
@@ -42,6 +40,15 @@ WHERE merge_type = 'pr' AND pr_status = 'open';
 DROP INDEX IF EXISTS idx_tasks_parent_task_attempt;
 ALTER TABLE tasks RENAME COLUMN parent_task_attempt TO parent_workspace_id;
 CREATE INDEX idx_tasks_parent_workspace_id ON tasks(parent_workspace_id);
+
+-- Steps 7-8 need FK disabled to avoid cascade deletes during DROP TABLE
+-- sqlx workaround: end auto-transaction to allow PRAGMA to take effect
+-- https://github.com/launchbadge/sqlx/issues/2085#issuecomment-1499859906
+COMMIT;
+
+PRAGMA foreign_keys = OFF;
+
+BEGIN TRANSACTION;
 
 -- 7. Update execution_processes to reference session_id instead of task_attempt_id
 -- (needs rebuild because FK target changes from workspaces to sessions)
@@ -78,6 +85,13 @@ CREATE INDEX idx_execution_processes_session_id ON execution_processes(session_i
 CREATE INDEX idx_execution_processes_status ON execution_processes(status);
 CREATE INDEX idx_execution_processes_run_reason ON execution_processes(run_reason);
 
+-- Composite indexes for Task::find_by_project_id_with_attempt_status query optimization
+CREATE INDEX idx_execution_processes_session_status_run_reason
+ON execution_processes (session_id, status, run_reason);
+
+CREATE INDEX idx_execution_processes_session_run_reason_created
+ON execution_processes (session_id, run_reason, created_at DESC);
+
 -- 8. Rename executor_sessions to coding_agent_turns and drop task_attempt_id
 -- (needs rebuild to drop the redundant task_attempt_id column)
 CREATE TABLE coding_agent_turns (
@@ -103,4 +117,12 @@ CREATE INDEX idx_coding_agent_turns_session_id ON coding_agent_turns(session_id)
 
 -- 9. attempt_repos: no changes needed - FK auto-updated when task_attempts renamed to workspaces
 
+-- Verify foreign key constraints before committing
+PRAGMA foreign_key_check;
+
+COMMIT;
+
 PRAGMA foreign_keys = ON;
+
+-- sqlx workaround: start empty transaction for sqlx to close gracefully
+BEGIN TRANSACTION;
