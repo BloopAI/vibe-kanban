@@ -126,7 +126,11 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
                 key={attempt.id}
                 attemptId={attempt.id}
               >
-                <GitActionsDialogContent attempt={attempt} task={task} onClose={modal.hide} />
+                <GitActionsDialogContent
+                  attempt={attempt}
+                  task={task}
+                  onClose={modal.hide}
+                />
               </ExecutionProcessesProvider>
             </GitOperationsProvider>
           )}
