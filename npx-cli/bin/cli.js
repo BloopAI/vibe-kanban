@@ -141,21 +141,23 @@ async function extractAndRun(baseName, launch) {
 async function main() {
   fs.mkdirSync(versionCacheDir, { recursive: true });
 
-  // Non-blocking update check
-  getLatestVersion()
-    .then((latest) => {
-      if (latest && latest !== CLI_VERSION) {
-        setTimeout(() => {
-          console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-          console.log(`Run: npx vibe-kanban@latest`);
-        }, 2000);
-      }
-    })
-    .catch(() => {});
-
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
+
+  // Non-blocking update check (skip in MCP mode to avoid stdout pollution)
+  if (!isMcpMode) {
+    getLatestVersion()
+      .then((latest) => {
+        if (latest && latest !== CLI_VERSION) {
+          setTimeout(() => {
+            console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
+            console.log(`Run: npx vibe-kanban@latest`);
+          }, 2000);
+        }
+      })
+      .catch(() => {});
+  }
 
   if (isMcpMode) {
     await extractAndRun("vibe-kanban-mcp", (bin) => {
