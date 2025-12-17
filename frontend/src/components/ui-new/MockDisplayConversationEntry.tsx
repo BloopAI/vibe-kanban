@@ -34,18 +34,18 @@ type Props = {
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
-  const iconSize = 12;
+  const iconClassName = 'size-icon-xs';
   if (entryType.type === 'user_message' || entryType.type === 'user_feedback') {
-    return <User size={iconSize} />;
+    return <User className={iconClassName} />;
   }
   if (entryType.type === 'assistant_message') {
-    return <Robot size={iconSize} />;
+    return <Robot className={iconClassName} />;
   }
   if (entryType.type === 'system_message') {
-    return <Gear size={iconSize} />;
+    return <Gear className={iconClassName} />;
   }
   if (entryType.type === 'error_message') {
-    return <WarningCircle size={iconSize} />;
+    return <WarningCircle className={iconClassName} />;
   }
   if (entryType.type === 'tool_use') {
     const { action_type, tool_name } = entryType;
@@ -57,29 +57,29 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
           tool_name.toLowerCase()
         ))
     ) {
-      return <CheckSquare size={iconSize} />;
+      return <CheckSquare className={iconClassName} />;
     }
 
     if (action_type.action === 'file_read') {
-      return <Eye size={iconSize} />;
+      return <Eye className={iconClassName} />;
     } else if (action_type.action === 'file_edit') {
-      return <PencilSimple size={iconSize} />;
+      return <PencilSimple className={iconClassName} />;
     } else if (action_type.action === 'command_run') {
-      return <Terminal size={iconSize} />;
+      return <Terminal className={iconClassName} />;
     } else if (action_type.action === 'search') {
-      return <MagnifyingGlass size={iconSize} />;
+      return <MagnifyingGlass className={iconClassName} />;
     } else if (action_type.action === 'web_fetch') {
-      return <Globe size={iconSize} />;
+      return <Globe className={iconClassName} />;
     } else if (action_type.action === 'task_create') {
-      return <Plus size={iconSize} />;
+      return <Plus className={iconClassName} />;
     } else if (action_type.action === 'plan_presentation') {
-      return <CheckSquare size={iconSize} />;
+      return <CheckSquare className={iconClassName} />;
     } else if (action_type.action === 'tool') {
-      return <Hammer size={iconSize} />;
+      return <Hammer className={iconClassName} />;
     }
-    return <Gear size={iconSize} />;
+    return <Gear className={iconClassName} />;
   }
-  return <Gear size={iconSize} />;
+  return <Gear className={iconClassName} />;
 };
 
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) =>
@@ -150,9 +150,8 @@ const ExpandChevron: React.FC<{
 
   return (
     <CaretDown
-      size={16}
       onClick={onClick}
-      className={`cursor-pointer transition-transform ${color} ${
+      className={`size-icon-base cursor-pointer transition-transform ${color} ${
         expanded ? '' : '-rotate-90'
       }`}
     />
@@ -365,7 +364,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
     return (
       <div className="px-4 py-2 text-base">
         <div className="flex items-start gap-2">
-          <User size={16} className="mt-0.5 text-muted-foreground" />
+          <User className="size-icon-base mt-0.5 text-muted-foreground" />
           <div className="flex-1">
             <WYSIWYGEditor
               value={entry.content}
@@ -428,7 +427,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
     return (
       <div className="px-4 py-2 text-base">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-          <CheckCircle size={16} />
+          <CheckCircle className="size-icon-base" />
           <span>Task completed</span>
         </div>
       </div>
@@ -439,7 +438,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
   return (
     <div className="px-4 py-2 text-base">
       <div className="flex items-start gap-2">
-        <Robot size={16} className="mt-0.5 text-muted-foreground" />
+        <Robot className="size-icon-base mt-0.5 text-muted-foreground" />
         <div className={cn('flex-1', getContentClassName(entryType))}>
           {shouldRenderMarkdown(entryType) ? (
             <WYSIWYGEditor

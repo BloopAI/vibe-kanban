@@ -45,9 +45,8 @@ export function ChatFileEntry({
       </div>
       {onToggle && (
         <CaretDown
-          size={12}
           className={cn(
-            'shrink-0 text-low transition-transform',
+            'size-icon-xs shrink-0 text-low transition-transform',
             !expanded && '-rotate-90'
           )}
         />
