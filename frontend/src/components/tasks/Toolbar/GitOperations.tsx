@@ -38,6 +38,7 @@ interface GitOperationsProps {
   isAttemptRunning: boolean;
   selectedBranch: string | null;
   layout?: 'horizontal' | 'vertical';
+  onClose?: () => void;
 }
 
 export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
@@ -49,6 +50,7 @@ function GitOperations({
   isAttemptRunning,
   selectedBranch,
   layout = 'horizontal',
+  onClose,
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
@@ -77,6 +79,7 @@ function GitOperations({
   };
 
   const handleChangeTargetBranchDialogOpen = async () => {
+    onClose?.();
     try {
       const result = await ChangeTargetBranchDialog.show({
         branches,
@@ -220,6 +223,7 @@ function GitOperations({
   };
 
   const handleRebaseDialogOpen = async () => {
+    onClose?.();
     try {
       const defaultTargetBranch = getSelectedRepoStatus()?.target_branch_name;
       const result = await RebaseDialog.show({
@@ -250,6 +254,7 @@ function GitOperations({
       return;
     }
 
+    onClose?.();
     CreatePRDialog.show({
       attempt: selectedAttempt,
       task,

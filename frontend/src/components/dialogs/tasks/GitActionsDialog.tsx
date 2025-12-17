@@ -28,11 +28,13 @@ export interface GitActionsDialogProps {
 interface GitActionsDialogContentProps {
   attempt: TaskAttempt;
   task: TaskWithAttemptStatus;
+  onClose: () => void;
 }
 
 function GitActionsDialogContent({
   attempt,
   task,
+  onClose,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus } = useBranchStatus(attempt.id);
@@ -86,6 +88,7 @@ function GitActionsDialogContent({
         isAttemptRunning={isAttemptRunning}
         selectedBranch={getSelectedRepoStatus()?.target_branch_name ?? null}
         layout="vertical"
+        onClose={onClose}
       />
     </div>
   );
@@ -123,7 +126,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
                 key={attempt.id}
                 attemptId={attempt.id}
               >
-                <GitActionsDialogContent attempt={attempt} task={task} />
+                <GitActionsDialogContent attempt={attempt} task={task} onClose={modal.hide} />
               </ExecutionProcessesProvider>
             </GitOperationsProvider>
           )}
