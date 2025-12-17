@@ -125,6 +125,9 @@ importers:
       clsx:
         specifier: ^2.0.0
         version: 2.1.1
+      devicons-react:
+        specifier: ^1.5.0
+        version: 1.5.0(react@18.3.1)
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@18.3.1)
@@ -2238,6 +2241,11 @@ packages:
 
   devalue@5.4.2:
     resolution: {integrity: sha512-MwPZTKEPK2k8Qgfmqrd48ZKVvzSQjgW0lXLxiIBA8dQjtf/6mw6pggHNLcyDKyf+fI6eXxlQwPsfaCMTU5U+Bw==}
+
+  devicons-react@1.5.0:
+    resolution: {integrity: sha512-8DYsWpgdbwI7ENDyC6Z9eqV72H01zUIAeRRo+UxBAq4clpPWcFhtqDrWSm0i5GUqbn/iNyiIfT1K69y0XLsscg==}
+    peerDependencies:
+      react: '*'
 
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
@@ -5600,6 +5608,10 @@ snapshots:
   detect-node-es@1.1.0: {}
 
   devalue@5.4.2: {}
+
+  devicons-react@1.5.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   devlop@1.1.0:
     dependencies:

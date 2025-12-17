@@ -1,5 +1,6 @@
 import { CaretDown } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { getFileIcon } from '@/utils/fileTypeIcon';
 
 interface ChatFileEntryProps {
   filename: string;
@@ -19,6 +20,7 @@ export function ChatFileEntry({
   className,
 }: ChatFileEntryProps) {
   const hasStats = additions !== undefined || deletions !== undefined;
+  const FileIcon = getFileIcon(filename);
 
   return (
     <div
@@ -30,6 +32,7 @@ export function ChatFileEntry({
       onClick={onToggle}
     >
       <div className="flex-1 flex items-center gap-base min-w-0">
+        <FileIcon className="shrink-0 size-icon-base" />
         <span className="text-sm text-normal truncate">{filename}</span>
         {hasStats && (
           <span className="text-sm shrink-0">
