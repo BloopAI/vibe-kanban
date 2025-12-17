@@ -223,11 +223,11 @@ jobs:
           shared-key: "shared"
           cache-all-crates: true
 
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
+      # - name: Download frontend artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: frontend-dist
+      #     path: frontend/dist/
 
       - name: Build backend (Linux)
         if: runner.os == 'Linux'
