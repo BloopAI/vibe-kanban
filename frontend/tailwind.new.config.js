@@ -10,6 +10,7 @@ const sizes = {
 
 const lineHeightMultiplier = 1.5;
 const radiusMultiplier = 0.25;
+const chatMaxWidth = '48rem';
 
 function getSize(sizeLabel, multiplier = 1) {
 
@@ -55,6 +56,12 @@ module.exports = {
       semibold: "600",
     },
     extend: {
+      width: {
+        chat: chatMaxWidth,
+      },
+      containers: {
+        chat: chatMaxWidth,
+      },
       size: {
         'icon-xs': getSize('xs'),
         'icon-sm': getSize('sm'),
