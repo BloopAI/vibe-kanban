@@ -39,9 +39,8 @@ export function ChatPlan({
         <span className="flex-1 text-sm text-normal truncate">{title}</span>
         {onToggle && (
           <CaretDown
-            size={12}
             className={cn(
-              'shrink-0 text-low transition-transform',
+              'size-icon-xs shrink-0 text-low transition-transform',
               !expanded && '-rotate-90'
             )}
           />
