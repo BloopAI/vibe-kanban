@@ -38,10 +38,11 @@ interface CreatePRDialogProps {
   attempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   repoId: string;
+  targetBranch?: string;
 }
 
 const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
-  ({ attempt, task, repoId }) => {
+  ({ attempt, task, repoId, targetBranch }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { isLoaded } = useAuth();
@@ -84,12 +85,18 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
     // Set default base branch when branches are loaded
     useEffect(() => {
       if (branches.length > 0 && !prBaseBranch) {
+        // First priority: use the target branch from attempt config
+        if (targetBranch && branches.some((b) => b.name === targetBranch)) {
+          setPrBaseBranch(targetBranch);
+          return;
+        }
+        // Fallback: use the current branch
         const currentBranch = branches.find((b) => b.is_current);
         if (currentBranch) {
           setPrBaseBranch(currentBranch.name);
         }
       }
-    }, [branches, prBaseBranch]);
+    }, [branches, prBaseBranch, targetBranch]);
 
     const isMacEnvironment = useMemo(
       () => environment?.os_type?.toLowerCase().includes('mac'),

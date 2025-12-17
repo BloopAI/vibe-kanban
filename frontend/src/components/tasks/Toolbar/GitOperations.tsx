@@ -254,6 +254,7 @@ function GitOperations({
       attempt: selectedAttempt,
       task,
       repoId: getSelectedRepoId(),
+      targetBranch: getSelectedRepoStatus()?.target_branch_name,
     });
   };
 
