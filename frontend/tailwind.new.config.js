@@ -50,11 +50,6 @@ module.exports = {
         "2xl": "1400px",
       },
     },
-    fontWeight: {
-      thin: "100",
-      normal: "500",
-      semibold: "600",
-    },
     extend: {
       width: {
         chat: chatMaxWidth,
@@ -110,7 +105,7 @@ module.exports = {
         'on-brand': "hsl(var(--text-on-brand))",
         // shadcn-style colors (used by @apply in CSS base layer)
         background: "hsl(var(--bg-primary))",
-        foreground: "hsl(var(--text-high))",
+        foreground: "hsl(var(--text-normal))",
         border: "hsl(var(--border))",
       },
       borderColor: {
