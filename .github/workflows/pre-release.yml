@@ -251,16 +251,16 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
-      - name: Setup Sentry CLI
-        uses: matbour/setup-sentry-cli@v2
-        with:
-          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          organization: ${{ secrets.SENTRY_ORG }}
-          project: ${{ secrets.SENTRY_PROJECT }}
-          version: 2.21.2
+      # - name: Setup Sentry CLI
+      #   uses: matbour/setup-sentry-cli@v2
+      #   with:
+      #     token: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      #     organization: ${{ secrets.SENTRY_ORG }}
+      #     project: ${{ secrets.SENTRY_PROJECT }}
+      #     version: 2.21.2
 
-      - name: Upload source maps to Sentry
-        run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
+      # - name: Upload source maps to Sentry
+      #   run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
 
       - name: Prepare binaries (non-macOS)
         if: runner.os != 'macOS'
