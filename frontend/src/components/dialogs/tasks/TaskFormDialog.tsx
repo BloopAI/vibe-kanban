@@ -105,6 +105,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
+  // Track whether we've synced repoBranches to prevent infinite loops
+  const hasSyncedRepoBranches = useRef(false);
 
   // Draft persistence via scratch (only for create mode)
   const shouldUseScratch = mode === 'create';
@@ -310,11 +312,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   // Sync repoBranches field when branches finish loading
   // This is needed because form initializes before defaultRepoBranches is populated
+  // Note: form intentionally excluded from deps to prevent infinite loop
   useEffect(() => {
-    if (defaultRepoBranches.length > 0) {
+    if (defaultRepoBranches.length > 0 && !hasSyncedRepoBranches.current) {
+      hasSyncedRepoBranches.current = true;
       form.setFieldValue('repoBranches', defaultRepoBranches);
     }
-  }, [defaultRepoBranches, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultRepoBranches]);
 
   // Subscribe to form values for auto-save (only in create mode)
   const formValues = useStore(form.store, (state) => state.values);
