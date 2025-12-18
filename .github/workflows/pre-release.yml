@@ -492,7 +492,7 @@ jobs:
       - name: Sweep Cargo target cache
         shell: bash
         run: |
-          cargo sweep --maxsize 7GB
+          cargo sweep --maxsize 10GB
           cargo sweep --time 30
 
 
