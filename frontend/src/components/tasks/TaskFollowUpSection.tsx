@@ -32,8 +32,11 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
 //
-import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
+import {
+  useCodeReferenceInsertion,
+  type CodeReferenceData,
+} from '@/contexts/CodeReferenceInsertionContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import { useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
@@ -93,17 +96,17 @@ export function TaskFollowUpSection({
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
-  const { comments, generateReviewMarkdown, clearComments } = useReview();
   const {
     generateMarkdown: generateClickedMarkdown,
     clearElements: clearClickedElements,
   } = useClickedElements();
   const { enableScope, disableScope } = useHotkeysContext();
-
-  const reviewMarkdown = useMemo(
-    () => generateReviewMarkdown(),
-    [generateReviewMarkdown]
-  );
+  const {
+    registerInsertionCallback,
+    unregisterInsertionCallback,
+    pendingFocus,
+    clearPendingFocus,
+  } = useCodeReferenceInsertion();
 
   const clickedMarkdown = useMemo(
     () => generateClickedMarkdown(),
@@ -315,10 +318,10 @@ export function TaskFollowUpSection({
       attemptId: selectedAttemptId,
       message: localMessage,
       conflictMarkdown: conflictResolutionInstructions,
-      reviewMarkdown,
+      reviewMarkdown: null,
       clickedMarkdown,
       selectedVariant,
-      clearComments,
+      clearComments: () => {},
       clearClickedElements,
       onAfterSendCleanup: () => {
         cancelDebouncedSave(); // Cancel any pending debounced save to avoid race condition
@@ -350,17 +353,13 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Allow sending if conflict instructions, review comments, clicked elements, or message is present
+    // Allow sending if conflict instructions, clicked elements, or message is present
     return Boolean(
-      conflictResolutionInstructions ||
-        reviewMarkdown ||
-        clickedMarkdown ||
-        localMessage.trim()
+      conflictResolutionInstructions || clickedMarkdown || localMessage.trim()
     );
   }, [
     canTypeFollowUp,
     conflictResolutionInstructions,
-    reviewMarkdown,
     clickedMarkdown,
     localMessage,
   ]);
@@ -391,7 +390,6 @@ export function TaskFollowUpSection({
     if (
       !localMessage.trim() &&
       !conflictResolutionInstructions &&
-      !reviewMarkdown &&
       !clickedMarkdown
     ) {
       return;
@@ -406,7 +404,6 @@ export function TaskFollowUpSection({
     const parts = [
       conflictResolutionInstructions,
       clickedMarkdown,
-      reviewMarkdown,
       localMessage,
     ].filter(Boolean);
     const combinedMessage = parts.join('\n\n');
@@ -414,7 +411,6 @@ export function TaskFollowUpSection({
   }, [
     localMessage,
     conflictResolutionInstructions,
-    reviewMarkdown,
     clickedMarkdown,
     selectedVariant,
     queueMessage,
@@ -592,7 +588,7 @@ export function TaskFollowUpSection({
   );
 
   // Memoize placeholder to avoid re-renders
-  const hasExtraContext = !!(reviewMarkdown || conflictResolutionInstructions);
+  const hasExtraContext = !!conflictResolutionInstructions;
   const editorPlaceholder = useMemo(
     () =>
       hasExtraContext
@@ -600,6 +596,49 @@ export function TaskFollowUpSection({
         : 'Continue working on this task attempt... Type @ to insert tags or search files.',
     [hasExtraContext]
   );
+
+  // Helper function to generate code reference markdown
+  const generateCodeReferenceMarkdown = useCallback(
+    (data: CodeReferenceData) => {
+      return '```code-ref\n' + JSON.stringify(data, null, 2) + '\n```';
+    },
+    []
+  );
+
+  // Register code reference insertion callback
+  useEffect(() => {
+    const handleCodeReferenceInsertion = (data: CodeReferenceData) => {
+      const markdown = generateCodeReferenceMarkdown(data);
+
+      // Same pattern as handleGitHubCommentClick / image paste
+      if (isQueuedRef.current && queuedMessageRef.current) {
+        cancelQueueRef.current();
+        const base = queuedMessageRef.current.data.message;
+        const newMessage = base ? `${base}\n\n${markdown}` : markdown;
+        setLocalMessage(newMessage);
+        setFollowUpMessageRef.current(newMessage);
+      } else {
+        setLocalMessage((prev) => {
+          const newMessage = prev ? `${prev}\n\n${markdown}` : markdown;
+          setFollowUpMessageRef.current(newMessage);
+          return newMessage;
+        });
+      }
+    };
+
+    registerInsertionCallback(handleCodeReferenceInsertion);
+    return () => unregisterInsertionCallback();
+  }, [
+    registerInsertionCallback,
+    unregisterInsertionCallback,
+    generateCodeReferenceMarkdown,
+  ]);
+
+  // Handle focus after code reference insertion
+  // Use the WYSIWYG editor's shouldFocus prop instead of DOM manipulation
+  const handleEditorFocused = useCallback(() => {
+    clearPendingFocus();
+  }, [clearPendingFocus]);
 
   // Register keyboard shortcuts
   useKeySubmitFollowUp(handleSubmitShortcut, {
@@ -676,15 +715,6 @@ export function TaskFollowUpSection({
             </Alert>
           )}
           <div className="space-y-2">
-            {/* Review comments preview */}
-            {reviewMarkdown && (
-              <div className="mb-4">
-                <div className="text-sm whitespace-pre-wrap break-words rounded-md border bg-muted p-3">
-                  {reviewMarkdown}
-                </div>
-              </div>
-            )}
-
             {/* Conflict notice and actions (optional UI) */}
             {branchStatus && (
               <FollowUpConflictSection
@@ -737,6 +767,8 @@ export function TaskFollowUpSection({
                 taskAttemptId={selectedAttemptId}
                 onCmdEnter={handleSubmitShortcut}
                 className="min-h-[40px]"
+                shouldFocus={pendingFocus}
+                onFocused={handleEditorFocused}
               />
             </div>
           </div>
@@ -850,7 +882,6 @@ export function TaskFollowUpSection({
                     isQueueLoading ||
                     (!localMessage.trim() &&
                       !conflictResolutionInstructions &&
-                      !reviewMarkdown &&
                       !clickedMarkdown)
                   }
                   size="sm"
@@ -883,16 +914,6 @@ export function TaskFollowUpSection({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              {comments.length > 0 && (
-                <Button
-                  onClick={clearComments}
-                  size="sm"
-                  variant="destructive"
-                  disabled={!isEditable}
-                >
-                  {t('followUp.clearReviewComments')}
-                </Button>
-              )}
               <Button
                 onClick={onSendFollowUp}
                 disabled={!canSendFollowUp || !isEditable}

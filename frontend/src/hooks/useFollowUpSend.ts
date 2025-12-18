@@ -6,10 +6,10 @@ type Args = {
   attemptId?: string;
   message: string;
   conflictMarkdown: string | null;
-  reviewMarkdown: string;
+  reviewMarkdown?: string | null;
   clickedMarkdown?: string;
   selectedVariant: string | null;
-  clearComments: () => void;
+  clearComments?: () => void;
   clearClickedElements?: () => void;
   onAfterSendCleanup: () => void;
 };
@@ -51,7 +51,7 @@ export function useFollowUpSend({
         perform_git_reset: null,
       };
       await attemptsApi.followUp(attemptId, body);
-      clearComments();
+      clearComments?.();
       clearClickedElements?.();
       onAfterSendCleanup();
       // Don't call jumpToLogsTab() - preserves focus on the follow-up editor

@@ -1,5 +1,6 @@
-import { useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useState, useCallback, memo, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -12,6 +13,11 @@ import {
   GITHUB_COMMENT_TRANSFORMER,
   GITHUB_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/github-comment-node';
+import {
+  CodeReferenceNode,
+  CODE_REFERENCE_TRANSFORMER,
+  CODE_REFERENCE_EXPORT_TRANSFORMER,
+} from './wysiwyg/nodes/code-reference-node';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import {
   TaskAttemptContext,
@@ -40,6 +46,26 @@ import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
+/** Plugin to programmatically focus the editor via props */
+function FocusPlugin({
+  shouldFocus,
+  onFocused,
+}: {
+  shouldFocus: boolean;
+  onFocused?: () => void;
+}) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (shouldFocus) {
+      editor.focus();
+      onFocused?.();
+    }
+  }, [editor, shouldFocus, onFocused]);
+
+  return null;
+}
+
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
 
@@ -67,6 +93,10 @@ type WysiwygProps = {
   onDelete?: () => void;
   /** Auto-focus the editor on mount */
   autoFocus?: boolean;
+  /** Programmatic focus trigger - set to true to focus the editor */
+  shouldFocus?: boolean;
+  /** Callback when editor has been focused via shouldFocus */
+  onFocused?: () => void;
 };
 
 function WYSIWYGEditor({
@@ -86,6 +116,8 @@ function WYSIWYGEditor({
   onEdit,
   onDelete,
   autoFocus = false,
+  shouldFocus = false,
+  onFocused,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -145,17 +177,20 @@ function WYSIWYGEditor({
         LinkNode,
         ImageNode,
         GitHubCommentNode,
+        CodeReferenceNode,
       ],
     }),
     []
   );
 
-  // Extended transformers with image, GitHub comment, and code block support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image, GitHub comment, code reference, and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
       IMAGE_TRANSFORMER,
       GITHUB_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
       GITHUB_COMMENT_TRANSFORMER, // Import transformer for fenced code block
+      CODE_REFERENCE_EXPORT_TRANSFORMER, // Export transformer for code reference
+      CODE_REFERENCE_TRANSFORMER, // Import transformer for code reference fenced block
       CODE_BLOCK_TRANSFORMER,
       ...TRANSFORMERS,
     ],
@@ -232,6 +267,10 @@ function WYSIWYGEditor({
               {!disabled && (
                 <>
                   {autoFocus && <AutoFocusPlugin />}
+                  <FocusPlugin
+                    shouldFocus={shouldFocus}
+                    onFocused={onFocused}
+                  />
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
                   <FileTagTypeaheadPlugin projectId={projectId} />
