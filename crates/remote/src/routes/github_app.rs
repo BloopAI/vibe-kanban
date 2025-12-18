@@ -872,7 +872,12 @@ async fn try_trigger_pr_review(
         Some(meta) => (meta.title, meta.body, meta.head_sha, meta.base_ref),
         None => {
             let pr_details = github_app
-                .get_pr_details(ctx.installation_id, ctx.repo_owner, ctx.repo_name, ctx.pr_number)
+                .get_pr_details(
+                    ctx.installation_id,
+                    ctx.repo_owner,
+                    ctx.repo_name,
+                    ctx.pr_number,
+                )
                 .await
                 .map_err(|_| "Failed to fetch PR details")?;
             (
@@ -919,8 +924,7 @@ async fn try_trigger_pr_review(
         if let Err(e) = service.process_pr_review(&pool, params).await {
             error!(
                 ?e,
-                installation_id, pr_number, repo_owner, repo_name,
-                "Failed to start PR review"
+                installation_id, pr_number, repo_owner, repo_name, "Failed to start PR review"
             );
         }
     });
