@@ -493,9 +493,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   // This ensures draft data is available when form initializes
   const scratchReady = isScratchConnected || scratchError !== null;
   const loading =
-    branchesLoading ||
-    userSystemLoading ||
-    (shouldUseScratch && !scratchReady);
+    branchesLoading || userSystemLoading || (shouldUseScratch && !scratchReady);
   if (loading) return <></>;
 
   return (
