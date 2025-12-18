@@ -169,19 +169,16 @@ jobs:
   build-backend:
     # needs: [bump-version, build-frontend]
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     strategy:
       # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest-x64-l
-            container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
             name: linux-x64
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest-arm64-l
             name: linux-arm64
-            container: *zigbuild_container
           - target: x86_64-pc-windows-msvc
             os: windows-latest-l
             name: windows-x64
@@ -233,8 +230,8 @@ jobs:
       - name: Install libclang (Linux)
         if: runner.os == 'Linux'
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang libclang-dev
 
       - name: Cache Cargo registry
         uses: actions/cache@v5
@@ -249,6 +246,16 @@ jobs:
           key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Install Zig
+        if: runner.os == 'Linux'
+        uses: BloopAI/setup-zig@main
+        with:
+          version: 0.15.2
+
+      - name: Install cargo zigbuild
+        if: runner.os == 'Linux'
+        run: cargo install --locked cargo-zigbuild --version 0.20.1
 
       - name: Cache target
         uses: actions/cache@v5
