@@ -473,9 +473,8 @@ impl LocalContainerService {
                         ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
                     );
 
-                    if let Some(queued_msg) = container
-                        .queued_message_service
-                        .take_queued(ctx.session.id)
+                    if let Some(queued_msg) =
+                        container.queued_message_service.take_queued(ctx.session.id)
                     {
                         if should_execute_queued {
                             tracing::info!(

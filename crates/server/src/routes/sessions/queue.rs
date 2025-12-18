@@ -75,9 +75,7 @@ pub async fn get_queue_status(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
-    let status = deployment
-        .queued_message_service()
-        .get_status(session.id);
+    let status = deployment.queued_message_service().get_status(session.id);
 
     Ok(ResponseJson(ApiResponse::success(status)))
 }
