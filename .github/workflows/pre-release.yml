@@ -203,38 +203,6 @@ jobs:
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Optimize Windows Runner
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Install and Configure ImDisk RAM Disk
-          Write-Host "Installing ImDisk..."
-          choco install imdisk -y --no-progress
-
-          # Refresh env to ensure imdisk is in path
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          if (Get-Command imdisk -ErrorAction SilentlyContinue) {
-            # allocated 40GB out of ~64GB available
-            Write-Host "Creating 40GB RAM disk on R:..."
-            imdisk -a -s 40G -m R: -p "/fs:ntfs /q /y"
-
-            if (Test-Path R:) {
-              Write-Host "RAM disk created on R:"
-
-              # Create directories on RAM disk
-              New-Item -ItemType Directory -Path "R:\target"
-              # Link workspace 'target'
-              if (Test-Path "target") { Remove-Item "target" -Recurse -Force }
-              New-Item -ItemType Junction -Path "target" -Value "R:\target"
-
-              Write-Host "Linked 'target' to RAM disk"
-            } else {
-              Write-Warning "Failed to create RAM disk on R:"
-            }
-          } else {
-            Write-Warning "ImDisk command not found after installation."
-          }
-
       - name: Setup sccache
         uses: BloopAI/sccache-action@main
 
