@@ -261,8 +261,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: target
-          key: target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.sha }}
+          key: target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
+            target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-
             target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Setup cargo-sweep
