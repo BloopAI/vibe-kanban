@@ -31,29 +31,23 @@ export function KeyboardCommandsPlugin({
           return false;
         }
 
-        // Handle Cmd+Period for stop execution
+        // Determine which handler to call based on the key
+        let handler: (() => void) | undefined;
+
         if (event.key === '.' && onCmdPeriod) {
+          handler = onCmdPeriod;
+        } else if (event.key === 'Enter') {
+          if (event.shiftKey && onShiftCmdEnter) {
+            handler = onShiftCmdEnter;
+          } else if (!event.shiftKey && onCmdEnter) {
+            handler = onCmdEnter;
+          }
+        }
+
+        if (handler) {
           event.preventDefault();
           event.stopPropagation();
-          onCmdPeriod();
-          return true;
-        }
-
-        // Handle Cmd+Enter and Cmd+Shift+Enter
-        if (event.key !== 'Enter') {
-          return false;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (event.shiftKey && onShiftCmdEnter) {
-          onShiftCmdEnter();
-          return true;
-        }
-
-        if (!event.shiftKey && onCmdEnter) {
-          onCmdEnter();
+          handler();
           return true;
         }
 
