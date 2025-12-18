@@ -872,6 +872,16 @@ export default function OrganizationPage() {
                   )}
                 </div>
 
+                {/* !reviewfast tip */}
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium mb-1">
+                    Tip: Trigger reviews on-demand
+                  </p>
+                  <p className="text-sm text-blue-700">
+                    Comment <code className="px-1 py-0.5 bg-blue-100 rounded text-xs font-mono">!reviewfast</code> on any pull request to trigger an AI code review instantly.
+                  </p>
+                </div>
+
                 {/* Disconnect section */}
                 {showGithubDisconnectConfirm ? (
                   <div className="bg-red-50 rounded-lg p-4">
