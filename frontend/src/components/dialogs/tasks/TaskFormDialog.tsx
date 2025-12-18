@@ -308,6 +308,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const isDirty = useStore(form.store, (state) => state.isDirty);
   const canSubmit = useStore(form.store, (state) => state.canSubmit);
 
+  // Sync repoBranches field when branches finish loading
+  // This is needed because form initializes before defaultRepoBranches is populated
+  useEffect(() => {
+    if (defaultRepoBranches.length > 0) {
+      form.setFieldValue('repoBranches', defaultRepoBranches);
+    }
+  }, [defaultRepoBranches, form]);
+
   // Subscribe to form values for auto-save (only in create mode)
   const formValues = useStore(form.store, (state) => state.values);
   useEffect(() => {
