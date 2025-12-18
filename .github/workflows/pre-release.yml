@@ -203,49 +203,18 @@ jobs:
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Disk Diagnostics (Windows)
+      - name: Optimize Windows Runner
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Get-PSDrive -PSProvider FileSystem
-          
-          $testSizeMB = 100
-          $bytes = [byte[]]::new($testSizeMB * 1024 * 1024)
-          (new-object Random).NextBytes($bytes)
-          
-          function Test-DiskSpeed {
-              param($DriveLetter)
-              $path = "$($DriveLetter):\disk_speed_test.tmp"
-              
-              if (!(Test-Path "$($DriveLetter):\")) {
-                  Write-Host "Drive $DriveLetter not found."
-                  return $null
-              }
-              
-              Write-Host "Testing write speed on ${DriveLetter}: ..."
-              $sw = [System.Diagnostics.Stopwatch]::StartNew()
-              [IO.File]::WriteAllBytes($path, $bytes)
-              $sw.Stop()
-              $writeTime = $sw.Elapsed.TotalSeconds
-              
-              Remove-Item $path -ErrorAction SilentlyContinue
-              
-              $mbPerSec = $testSizeMB / $writeTime
-              Write-Host "Write time: $($writeTime.ToString('F4')) s ($($mbPerSec.ToString('F2')) MB/s)"
-              return $writeTime
-          }
-          $cTime = Test-DiskSpeed -DriveLetter "C"
-          $dTime = Test-DiskSpeed -DriveLetter "D"
-          
-          if ($null -ne $dTime) {
-              if ($dTime -lt $cTime) {
-                  Write-Host "RESULT: D: drive is FASTER than C:"
-              } elseif ($dTime -gt $cTime) {
-                  Write-Host "RESULT: C: drive is FASTER than D:"
-              } else {
-                  Write-Host "RESULT: Speeds are effectively equal."
-              }
-          }
+          # Disable Windows Search Indexing
+          Write-Host "Disabling Windows Search Indexing..."
+          Set-Service -Name "WSearch" -StartupType Disabled -Status Stopped -ErrorAction SilentlyContinue
+          # Configure Windows Defender
+          Write-Host "Configuring Windows Defender Exclusions..."
+          Add-MpPreference -ExclusionPath $env:USERPROFILE\.cargo
+          Add-MpPreference -ExclusionPath $env:GITHUB_WORKSPACE
+          Set-MpPreference -DisableRealtimeMonitoring $true
 
       - name: Setup sccache
         uses: BloopAI/sccache-action@main
