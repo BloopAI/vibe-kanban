@@ -670,7 +670,7 @@ pub async fn open_task_attempt_in_editor(
     // For single-repo projects, open from the repo directory
     let workspace_repos =
         WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
-    let workspace_path = if workspace_repos.len() == 1 {
+    let workspace_path = if workspace_repos.len() == 1 && payload.file_path.is_none() {
         workspace_path.join(&workspace_repos[0].name)
     } else {
         workspace_path.to_path_buf()
