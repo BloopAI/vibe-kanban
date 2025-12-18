@@ -617,6 +617,7 @@ export function TaskFollowUpSection({
       }
     },
     {
+      scope: Scope.FOLLOW_UP_READY,
       enableOnFormTags: ['textarea', 'TEXTAREA'],
       when: isAttemptRunning && !isStopping,
     }
