@@ -145,3 +145,12 @@ export const useKeySubmitComment = createSemanticHook(Action.SUBMIT_COMMENT);
 export const useKeyCycleViewBackward = createSemanticHook(
   Action.CYCLE_VIEW_BACKWARD
 );
+
+/**
+ * Stop execution action - typically Cmd+Period
+ * Stops the current running attempt execution
+ *
+ * @example
+ * useKeyStopExecution(() => stopExecution(), { scope: Scope.FOLLOW_UP });
+ */
+export const useKeyStopExecution = createSemanticHook(Action.STOP_EXECUTION);

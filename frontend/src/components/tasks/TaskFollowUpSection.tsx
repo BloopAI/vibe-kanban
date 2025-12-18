@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useKeySubmitFollowUp, Scope } from '@/keyboard';
+import { useKeySubmitFollowUp, useKeyStopExecution, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
 //
@@ -607,6 +607,20 @@ export function TaskFollowUpSection({
     enableOnFormTags: ['textarea', 'TEXTAREA'],
     when: canSendFollowUp && isEditable,
   });
+
+  // Stop execution shortcut (Cmd+Period)
+  useKeyStopExecution(
+    (e) => {
+      e?.preventDefault();
+      if (isAttemptRunning && !isStopping) {
+        stopExecution();
+      }
+    },
+    {
+      enableOnFormTags: ['textarea', 'TEXTAREA'],
+      when: isAttemptRunning && !isStopping,
+    }
+  );
 
   // Enable FOLLOW_UP scope when textarea is focused AND editable
   useEffect(() => {
