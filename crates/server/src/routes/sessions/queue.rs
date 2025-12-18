@@ -31,7 +31,7 @@ pub async fn queue_message(
 
     let queued = deployment
         .queued_message_service()
-        .queue_message(session.workspace_id, data);
+        .queue_message(session.id, data);
 
     deployment
         .track_if_analytics_allowed(
@@ -55,7 +55,7 @@ pub async fn cancel_queued_message(
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
     deployment
         .queued_message_service()
-        .cancel_queued(session.workspace_id);
+        .cancel_queued(session.id);
 
     deployment
         .track_if_analytics_allowed(
@@ -77,7 +77,7 @@ pub async fn get_queue_status(
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
     let status = deployment
         .queued_message_service()
-        .get_status(session.workspace_id);
+        .get_status(session.id);
 
     Ok(ResponseJson(ApiResponse::success(status)))
 }

@@ -475,18 +475,18 @@ impl LocalContainerService {
 
                     if let Some(queued_msg) = container
                         .queued_message_service
-                        .take_queued(ctx.workspace.id)
+                        .take_queued(ctx.session.id)
                     {
                         if should_execute_queued {
                             tracing::info!(
-                                "Found queued message for workspace {}, starting follow-up execution",
-                                ctx.workspace.id
+                                "Found queued message for session {}, starting follow-up execution",
+                                ctx.session.id
                             );
 
                             // Delete the scratch since we're consuming the queued message
                             if let Err(e) = Scratch::delete(
                                 &db.pool,
-                                ctx.workspace.id,
+                                ctx.session.id,
                                 &ScratchType::DraftFollowUp,
                             )
                             .await
@@ -509,8 +509,8 @@ impl LocalContainerService {
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
                             tracing::info!(
-                                "Discarding queued message for workspace {} due to execution status {:?}",
-                                ctx.workspace.id,
+                                "Discarding queued message for session {} due to execution status {:?}",
+                                ctx.session.id,
                                 ctx.execution_process.status
                             );
                             container.finalize_task(publisher.as_ref().ok(), &ctx).await;

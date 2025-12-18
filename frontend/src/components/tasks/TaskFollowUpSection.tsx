@@ -133,7 +133,7 @@ export function TaskFollowUpSection({
     scratch,
     updateScratch,
     isLoading: isScratchLoading,
-  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, workspaceId ?? '');
+  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, sessionId ?? '');
 
   // Derive the message and variant from scratch
   const scratchData: DraftFollowUpData | undefined =

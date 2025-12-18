@@ -330,9 +330,9 @@ export type SharedTaskDetails = { id: string, project_id: string, title: string,
 
 export type QueuedMessage = { 
 /**
- * The task attempt this message is queued for
+ * The session this message is queued for
  */
-task_attempt_id: string, 
+session_id: string, 
 /**
  * The follow-up data (message + variant)
  */
