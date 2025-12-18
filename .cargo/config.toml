@@ -1,7 +1,7 @@
-# Set macOS deployment target to avoid linker warnings
-# Use Rust project defaults: 10.12 for x86_64, 11.0 for aarch64
-[target.x86_64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "10.12"
+# macOS deployment targets should be set via environment variables:
+# - x86_64-apple-darwin: MACOSX_DEPLOYMENT_TARGET=10.12
+# - aarch64-apple-darwin: MACOSX_DEPLOYMENT_TARGET=11.0
+# Note: [target.*.env] sections are not supported by cargo-xwin's config parser
 
 [target.x86_64-apple-darwin]
 rustflags = [
@@ -12,9 +12,6 @@ rustflags = [
     "-C", "link-arg=-framework",
     "-C", "link-arg=Foundation",
 ]
-
-[target.aarch64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "11.0"
 
 [target.aarch64-apple-darwin]
 rustflags = [

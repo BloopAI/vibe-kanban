@@ -173,23 +173,26 @@ jobs:
       # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
         include:
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest-x64-l
-            name: linux-x64
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest-arm64-l
-            name: linux-arm64
+          # - target: x86_64-unknown-linux-musl
+          #   os: ubuntu-latest-x64-l
+          #   name: linux-x64
+          # - target: aarch64-unknown-linux-musl
+          #   os: ubuntu-latest-arm64-l
+          #   name: linux-arm64
           - target: x86_64-pc-windows-msvc
-            os: windows-latest-l
+            os: ubuntu-latest-x64-l
             name: windows-x64
-          - target: x86_64-apple-darwin
-            os: macos-15-xlarge
-            name: macos-x64
-          - target: aarch64-apple-darwin
-            os: macos-14-xlarge
-            name: macos-arm64
+          # - target: x86_64-apple-darwin
+          #   os: macos-15-xlarge
+          #   name: macos-x64
+          # - target: aarch64-apple-darwin
+          #   os: macos-14-xlarge
+          #   name: macos-arm64
+          # Windows ARM64 cross-compilation requires:
+          # - cargo-xwin 0.20.2+ for proper ARM64 library paths
+          # - CMAKE_POLICY_DEFAULT_CMP0141=OLD to avoid ASM compiler debug format errors
           - target: aarch64-pc-windows-msvc
-            os: windows-latest-arm64-l
+            os: ubuntu-latest-x64-l
             name: windows-arm64
     env:
       CARGO_INCREMENTAL: "0"
@@ -227,11 +230,12 @@ jobs:
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
 
-      - name: Install libclang (Linux)
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang libclang-dev
+          SUDO=$(id -u | grep -q '^0$' && echo "" || echo "sudo ")
+          $SUDO apt-get update
+          DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y clang libclang-dev lld llvm nasm cmake ninja-build
 
       - name: Cache Cargo registry
         uses: actions/cache@v5
@@ -248,14 +252,18 @@ jobs:
             cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Install Zig
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         uses: BloopAI/setup-zig@main
         with:
           version: 0.15.2
 
       - name: Install cargo zigbuild
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: cargo install --locked cargo-zigbuild --version 0.20.1
+
+      - name: Install cargo xwin
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-xwin --version 0.20.2
 
       - name: Cache target
         uses: actions/cache@v5
@@ -278,7 +286,7 @@ jobs:
       #     path: frontend/dist/
 
       - name: Build backend (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
           cargo zigbuild --release --target ${{ matrix.target }} -p server
           cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
@@ -300,16 +308,18 @@ jobs:
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
       - name: Build backend (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: |
-          cargo build --release --target ${{ matrix.target }} -p server
-          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo build --release --target ${{ matrix.target }} -p review
+          cargo xwin build --release --target ${{ matrix.target }} -p server
+          cargo xwin build --release --target ${{ matrix.target }} --bin mcp_task_server
+          cargo xwin build --release --target ${{ matrix.target }} -p review
         env:
-          RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          # Required for ARM64 cross-compilation to avoid CMake ASM compiler errors
+          # See: https://cmake.org/cmake/help/latest/policy/CMP0141.html
+          CMAKE_POLICY_DEFAULT_CMP0141: OLD
 
       # - name: Setup Sentry CLI
       #   uses: matbour/setup-sentry-cli@v2
@@ -327,7 +337,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ matrix.os }}" == "windows-latest-l" ]]; then
+          if [[ "${{ matrix.name }}" == *"windows"* ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review-${{ matrix.name }}.exe
