@@ -199,6 +199,7 @@ jobs:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
       SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
     steps:
       - uses: actions/checkout@v4
         # with:
@@ -232,12 +233,12 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            ~/.cargo/registry/cache
-            ~/.cargo/registry/index
-            ~/.cargo/git/db
-            ~/.cargo/bin
-            ~/.cargo/.crates.toml
-            ~/.cargo/.crates2.json
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
           key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
