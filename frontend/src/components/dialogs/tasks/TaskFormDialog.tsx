@@ -116,7 +116,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     deleteScratch,
     isConnected: isScratchConnected,
     error: scratchError,
-  } = useScratch(ScratchType.DRAFT_TASK, shouldUseScratch ? projectId : undefined);
+  } = useScratch(
+    ScratchType.DRAFT_TASK,
+    shouldUseScratch ? projectId : undefined
+  );
 
   // Derive draft data from scratch
   const scratchData: DraftTaskData | undefined =
