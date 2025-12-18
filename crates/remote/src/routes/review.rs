@@ -403,8 +403,8 @@ pub async fn review_success(
             let comment = format!(
                 "## Review Complete\n\n\
                 Your review story is ready!\n\n\
-                **[View Story]({})**\n\n
-                Comment `!reviewfast` on this PR to re-generate the story.",
+                **[View Story]({})**\n\n\
+                Comment **!reviewfast** on this PR to re-generate the story.",
                 review_url
             );
 
