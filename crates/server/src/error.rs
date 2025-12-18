@@ -12,6 +12,7 @@ use db::models::{
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
+use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
@@ -68,6 +69,8 @@ pub enum ApiError {
     EditorOpen(#[from] EditorOpenError),
     #[error(transparent)]
     RemoteClient(#[from] RemoteClientError),
+    #[error(transparent)]
+    Pty(#[from] PtyError),
     #[error("Unauthorized")]
     Unauthorized,
     #[error("Bad request: {0}")]
@@ -141,6 +144,11 @@ impl IntoResponse for ApiError {
                 _ => (StatusCode::BAD_REQUEST, "EditorOpenError"),
             },
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
+            ApiError::Pty(err) => match err {
+                PtyError::SessionNotFound(_) => (StatusCode::NOT_FOUND, "PtyError"),
+                PtyError::SessionClosed => (StatusCode::GONE, "PtyError"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "PtyError"),
+            },
             ApiError::RemoteClient(err) => match err {
                 RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),
                 RemoteClientError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "RemoteClientError"),

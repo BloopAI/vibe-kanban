@@ -22,6 +22,16 @@ pub fn get_shell_command() -> (String, &'static str) {
     }
 }
 
+/// Returns the path to an interactive shell for the current platform.
+/// Used for spawning PTY sessions.
+pub fn get_interactive_shell() -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from("cmd.exe")
+    } else {
+        UnixShell::current_shell().path()
+    }
+}
+
 /// Resolve an executable by name, falling back to a refreshed PATH if needed.
 ///
 /// The search order is:
