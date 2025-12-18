@@ -203,19 +203,6 @@ jobs:
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Optimize Windows Runner
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Disable Windows Search Indexing
-          Write-Host "Disabling Windows Search Indexing..."
-          Set-Service -Name "WSearch" -StartupType Disabled -Status Stopped -ErrorAction SilentlyContinue
-          # Configure Windows Defender
-          Write-Host "Configuring Windows Defender Exclusions..."
-          Add-MpPreference -ExclusionPath $env:USERPROFILE\.cargo
-          Add-MpPreference -ExclusionPath $env:GITHUB_WORKSPACE
-          Set-MpPreference -DisableRealtimeMonitoring $true
-
       - name: Setup sccache
         uses: BloopAI/sccache-action@main
 
