@@ -8,6 +8,7 @@ import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
+import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
@@ -41,6 +42,9 @@ function AppContent() {
     useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
+
+  // Track previous path for back navigation
+  usePreviousPath();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
