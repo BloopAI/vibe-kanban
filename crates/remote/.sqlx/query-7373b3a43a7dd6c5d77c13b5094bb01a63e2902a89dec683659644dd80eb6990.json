@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS(\n                SELECT 1 FROM reviews\n                WHERE pr_owner = $1\n                  AND pr_repo = $2\n                  AND pr_number = $3\n                  AND status = 'pending'\n                  AND deleted_at IS NULL\n            ) as \"exists!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7373b3a43a7dd6c5d77c13b5094bb01a63e2902a89dec683659644dd80eb6990"
+}

@@ -249,4 +249,32 @@ impl<'a> ReviewRepository<'a> {
 
         Ok(())
     }
+
+    /// Check if there's a pending review for a specific PR
+    pub async fn has_pending_review_for_pr(
+        &self,
+        pr_owner: &str,
+        pr_repo: &str,
+        pr_number: i32,
+    ) -> Result<bool, ReviewError> {
+        let result = sqlx::query!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM reviews
+                WHERE pr_owner = $1
+                  AND pr_repo = $2
+                  AND pr_number = $3
+                  AND status = 'pending'
+                  AND deleted_at IS NULL
+            ) as "exists!"
+            "#,
+            pr_owner,
+            pr_repo,
+            pr_number
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(result.exists)
+    }
 }

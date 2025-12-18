@@ -18,7 +18,7 @@ use crate::{
     auth::RequestContext,
     db::{
         github_app::GitHubAppRepository2, identity_errors::IdentityError,
-        organizations::OrganizationRepository,
+        organizations::OrganizationRepository, reviews::ReviewRepository,
     },
     github_app::{PrReviewParams, PrReviewService, verify_webhook_signature},
 };
@@ -654,6 +654,7 @@ pub async fn handle_webhook(
         "installation" => handle_installation_event(&state, &payload).await,
         "installation_repositories" => handle_installation_repos_event(&state, &payload).await,
         "pull_request" => handle_pull_request_event(&state, github_app, &payload).await,
+        "issue_comment" => handle_issue_comment_event(&state, github_app, &payload).await,
         _ => {
             info!(event_type, "Ignoring unhandled webhook event");
             StatusCode::OK.into_response()
@@ -795,95 +796,93 @@ async fn handle_installation_repos_event(
     StatusCode::OK.into_response()
 }
 
-async fn handle_pull_request_event(
+// ========== Shared PR Review Trigger Logic ==========
+
+/// Parameters for triggering a PR review from webhook events
+struct TriggerReviewContext<'a> {
+    installation_id: i64,
+    github_repo_id: i64,
+    repo_owner: &'a str,
+    repo_name: &'a str,
+    pr_number: u64,
+    /// PR metadata - if None, will be fetched from GitHub API
+    pr_metadata: Option<PrMetadata>,
+}
+
+struct PrMetadata {
+    title: String,
+    body: String,
+    head_sha: String,
+    base_ref: String,
+}
+
+/// Shared logic to validate and trigger a PR review.
+/// Returns Ok(()) if review was triggered, Err with reason if skipped.
+async fn try_trigger_pr_review(
     state: &AppState,
     github_app: &crate::github_app::GitHubAppService,
-    payload: &serde_json::Value,
-) -> Response {
-    use crate::github_app::{PrReviewParams, PrReviewService};
-
-    let action = payload["action"].as_str().unwrap_or("");
-
-    // Only handle opened PRs
-    if action != "opened" {
-        return StatusCode::OK.into_response();
-    }
-
-    let installation_id = payload["installation"]["id"].as_i64().unwrap_or(0);
-    let pr_number = payload["pull_request"]["number"].as_u64().unwrap_or(0);
-    let repo_owner = payload["repository"]["owner"]["login"]
-        .as_str()
-        .unwrap_or("");
-    let repo_name = payload["repository"]["name"].as_str().unwrap_or("");
-
-    info!(
-        installation_id,
-        pr_number, repo_owner, repo_name, "Processing pull_request.opened event"
-    );
-
+    ctx: TriggerReviewContext<'_>,
+    check_pending: bool,
+) -> Result<(), &'static str> {
     // Check if we have this installation
     let gh_repo = GitHubAppRepository2::new(state.pool());
-    let installation = match gh_repo.get_by_github_id(installation_id).await {
-        Ok(Some(inst)) => inst,
-        Ok(None) => {
-            info!(installation_id, "Installation not found, ignoring PR");
-            return StatusCode::OK.into_response();
-        }
-        Err(e) => {
-            error!(?e, "Failed to get installation");
-            return StatusCode::OK.into_response();
-        }
-    };
+    let installation = gh_repo
+        .get_by_github_id(ctx.installation_id)
+        .await
+        .map_err(|_| "Failed to get installation")?
+        .ok_or("Installation not found")?;
 
     // Check if installation is suspended
     if installation.suspended_at.is_some() {
-        info!(installation_id, "Installation is suspended, ignoring PR");
-        return StatusCode::OK.into_response();
+        return Err("Installation is suspended");
     }
 
-    // Check if this repository has reviews enabled
-    let github_repo_id = payload["repository"]["id"].as_i64().unwrap_or(0);
+    // Check if repository has reviews enabled
     let is_review_enabled = gh_repo
-        .is_repository_review_enabled(installation.id, github_repo_id)
+        .is_repository_review_enabled(installation.id, ctx.github_repo_id)
         .await
-        .unwrap_or(true); // Default to true if lookup fails
+        .unwrap_or(true);
 
     if !is_review_enabled {
-        info!(
-            installation_id,
-            github_repo_id, repo_owner, repo_name, "Repository has reviews disabled, ignoring PR"
-        );
-        return StatusCode::OK.into_response();
+        return Err("Repository has reviews disabled");
+    }
+
+    // Optionally check for pending review
+    if check_pending {
+        let review_repo = ReviewRepository::new(state.pool());
+        if review_repo
+            .has_pending_review_for_pr(ctx.repo_owner, ctx.repo_name, ctx.pr_number as i32)
+            .await
+            .unwrap_or(false)
+        {
+            return Err("Review already pending");
+        }
     }
 
     // Check if R2 and review worker are configured
-    let Some(r2) = state.r2() else {
-        info!("R2 not configured, skipping PR review");
-        return StatusCode::OK.into_response();
-    };
+    let r2 = state.r2().ok_or("R2 not configured")?;
+    let worker_base_url = state
+        .config
+        .review_worker_base_url
+        .as_ref()
+        .ok_or("Review worker not configured")?;
 
-    let Some(worker_base_url) = state.config.review_worker_base_url.as_ref() else {
-        info!("Review worker not configured, skipping PR review");
-        return StatusCode::OK.into_response();
+    // Get PR metadata (from payload or fetch from API)
+    let (pr_title, pr_body, head_sha, base_ref) = match ctx.pr_metadata {
+        Some(meta) => (meta.title, meta.body, meta.head_sha, meta.base_ref),
+        None => {
+            let pr_details = github_app
+                .get_pr_details(ctx.installation_id, ctx.repo_owner, ctx.repo_name, ctx.pr_number)
+                .await
+                .map_err(|_| "Failed to fetch PR details")?;
+            (
+                pr_details.title,
+                pr_details.body.unwrap_or_default(),
+                pr_details.head.sha,
+                pr_details.base.ref_name,
+            )
+        }
     };
-
-    // Extract PR metadata from payload
-    let pr_title = payload["pull_request"]["title"]
-        .as_str()
-        .unwrap_or("Untitled PR")
-        .to_string();
-    let pr_body = payload["pull_request"]["body"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-    let head_sha = payload["pull_request"]["head"]["sha"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-    let base_ref = payload["pull_request"]["base"]["ref"]
-        .as_str()
-        .unwrap_or("main")
-        .to_string();
 
     // Spawn async task to process PR review
     let github_app_clone = github_app.clone();
@@ -892,8 +891,10 @@ async fn handle_pull_request_event(
     let worker_url = worker_base_url.clone();
     let server_url = state.server_public_base_url.clone();
     let pool = state.pool.clone();
-    let repo_owner = repo_owner.to_string();
-    let repo_name = repo_name.to_string();
+    let installation_id = ctx.installation_id;
+    let pr_number = ctx.pr_number;
+    let repo_owner = ctx.repo_owner.to_string();
+    let repo_name = ctx.repo_name.to_string();
 
     tokio::spawn(async move {
         let service = PrReviewService::new(
@@ -918,10 +919,122 @@ async fn handle_pull_request_event(
         if let Err(e) = service.process_pr_review(&pool, params).await {
             error!(
                 ?e,
-                installation_id, pr_number, repo_owner, repo_name, "Failed to start PR review"
+                installation_id, pr_number, repo_owner, repo_name,
+                "Failed to start PR review"
             );
         }
     });
+
+    Ok(())
+}
+
+async fn handle_pull_request_event(
+    state: &AppState,
+    github_app: &crate::github_app::GitHubAppService,
+    payload: &serde_json::Value,
+) -> Response {
+    let action = payload["action"].as_str().unwrap_or("");
+
+    if action != "opened" {
+        return StatusCode::OK.into_response();
+    }
+
+    let ctx = TriggerReviewContext {
+        installation_id: payload["installation"]["id"].as_i64().unwrap_or(0),
+        github_repo_id: payload["repository"]["id"].as_i64().unwrap_or(0),
+        repo_owner: payload["repository"]["owner"]["login"]
+            .as_str()
+            .unwrap_or(""),
+        repo_name: payload["repository"]["name"].as_str().unwrap_or(""),
+        pr_number: payload["pull_request"]["number"].as_u64().unwrap_or(0),
+        pr_metadata: Some(PrMetadata {
+            title: payload["pull_request"]["title"]
+                .as_str()
+                .unwrap_or("Untitled PR")
+                .to_string(),
+            body: payload["pull_request"]["body"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            head_sha: payload["pull_request"]["head"]["sha"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            base_ref: payload["pull_request"]["base"]["ref"]
+                .as_str()
+                .unwrap_or("main")
+                .to_string(),
+        }),
+    };
+
+    info!(
+        installation_id = ctx.installation_id,
+        pr_number = ctx.pr_number,
+        repo_owner = ctx.repo_owner,
+        repo_name = ctx.repo_name,
+        "Processing pull_request.opened event"
+    );
+
+    if let Err(reason) = try_trigger_pr_review(state, github_app, ctx, false).await {
+        info!(reason, "Skipping PR review");
+    }
+
+    StatusCode::OK.into_response()
+}
+
+async fn handle_issue_comment_event(
+    state: &AppState,
+    github_app: &crate::github_app::GitHubAppService,
+    payload: &serde_json::Value,
+) -> Response {
+    let action = payload["action"].as_str().unwrap_or("");
+
+    // Only handle new comments
+    if action != "created" {
+        return StatusCode::OK.into_response();
+    }
+
+    // Check if comment is on a PR (issues don't have pull_request field)
+    if payload["issue"]["pull_request"].is_null() {
+        return StatusCode::OK.into_response();
+    }
+
+    // Check for exact "!reviewfast" trigger
+    let comment_body = payload["comment"]["body"].as_str().unwrap_or("").trim();
+    if comment_body != "!reviewfast" {
+        return StatusCode::OK.into_response();
+    }
+
+    // Ignore bot comments to prevent loops
+    let user_type = payload["comment"]["user"]["type"].as_str().unwrap_or("");
+    if user_type == "Bot" {
+        info!("Ignoring !reviewfast from bot user");
+        return StatusCode::OK.into_response();
+    }
+
+    let ctx = TriggerReviewContext {
+        installation_id: payload["installation"]["id"].as_i64().unwrap_or(0),
+        github_repo_id: payload["repository"]["id"].as_i64().unwrap_or(0),
+        repo_owner: payload["repository"]["owner"]["login"]
+            .as_str()
+            .unwrap_or(""),
+        repo_name: payload["repository"]["name"].as_str().unwrap_or(""),
+        pr_number: payload["issue"]["number"].as_u64().unwrap_or(0),
+        pr_metadata: None, // Will fetch from GitHub API
+    };
+
+    info!(
+        installation_id = ctx.installation_id,
+        pr_number = ctx.pr_number,
+        repo_owner = ctx.repo_owner,
+        repo_name = ctx.repo_name,
+        "Processing !reviewfast comment"
+    );
+
+    // Pass check_pending=true to skip if review already in progress
+    if let Err(reason) = try_trigger_pr_review(state, github_app, ctx, true).await {
+        info!(reason, "Skipping PR review from !reviewfast");
+    }
 
     StatusCode::OK.into_response()
 }
