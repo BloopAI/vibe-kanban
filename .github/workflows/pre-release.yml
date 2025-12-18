@@ -204,8 +204,8 @@ jobs:
         # with:
         #   ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
 
       # - name: Cache sccache
       #   uses: actions/cache@v5
