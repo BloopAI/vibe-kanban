@@ -156,7 +156,10 @@ impl GitCli {
 
     /// Return true if there are any changes in the working tree (staged or unstaged).
     pub fn has_changes(&self, worktree_path: &Path) -> Result<bool, GitCliError> {
-        let out = self.git(worktree_path, ["status", "--porcelain"])?;
+        let out = self.git(
+            worktree_path,
+            ["--no-optional-locks", "status", "--porcelain"],
+        )?;
         Ok(!out.is_empty())
     }
 
@@ -229,6 +232,7 @@ impl GitCli {
         // Using -z for NUL-separated output which correctly handles paths with special chars.
         // Format: XY<space>PATH<NUL>[ORIGPATH<NUL>] where ORIGPATH only present for R/C.
         let args = Self::apply_default_excludes(vec![
+            "--no-optional-locks",
             "status",
             "--porcelain",
             "-z",
