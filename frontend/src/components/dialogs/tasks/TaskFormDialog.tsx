@@ -489,7 +489,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   });
 
   const loading =
-    branchesLoading || userSystemLoading || (shouldUseScratch && isScratchLoading);
+    branchesLoading ||
+    userSystemLoading ||
+    (shouldUseScratch && isScratchLoading);
   if (loading) return <></>;
 
   return (
