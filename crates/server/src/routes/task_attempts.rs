@@ -667,11 +667,20 @@ pub async fn open_task_attempt_in_editor(
         .await?;
     let workspace_path = Path::new(&container_ref);
 
+    // For single-repo projects, open from the repo directory
+    let workspace_repos =
+        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
+    let workspace_path = if workspace_repos.len() == 1 {
+        workspace_path.join(&workspace_repos[0].name)
+    } else {
+        workspace_path.to_path_buf()
+    };
+
     // If a specific file path is provided, use it; otherwise use the base path
     let path = if let Some(file_path) = payload.file_path.as_ref() {
         workspace_path.join(file_path)
     } else {
-        workspace_path.to_path_buf()
+        workspace_path
     };
 
     let editor_config = {
