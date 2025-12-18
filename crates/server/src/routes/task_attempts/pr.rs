@@ -140,9 +140,9 @@ async fn trigger_pr_description_follow_up(
             .await?;
 
     // Get latest agent session ID if one exists (for coding agent continuity)
-    let latest_agent_session_id = ExecutionProcess::find_latest_agent_session_id_by_workspace(
+    let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
         &deployment.db().pool,
-        workspace.id,
+        session.id,
     )
     .await?;
 

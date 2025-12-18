@@ -679,34 +679,4 @@ impl ExecutionProcess {
             )),
         }
     }
-
-    /// Find latest coding_agent_turn agent_session_id by workspace (across all sessions)
-    pub async fn find_latest_agent_session_id_by_workspace(
-        pool: &SqlitePool,
-        workspace_id: Uuid,
-    ) -> Result<Option<String>, sqlx::Error> {
-        tracing::info!(
-            "Finding latest coding agent turn session id for workspace {}",
-            workspace_id
-        );
-        let row = sqlx::query!(
-            r#"SELECT cat.agent_session_id
-               FROM execution_processes ep
-               JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
-               JOIN sessions s ON ep.session_id = s.id
-               WHERE s.workspace_id = $1
-                 AND ep.run_reason = 'codingagent'
-                 AND ep.dropped = FALSE
-                 AND cat.agent_session_id IS NOT NULL
-               ORDER BY ep.created_at DESC
-               LIMIT 1"#,
-            workspace_id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        tracing::info!("Latest coding agent turn session id: {:?}", row);
-
-        Ok(row.and_then(|r| r.agent_session_id))
-    }
 }
