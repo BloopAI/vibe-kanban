@@ -10,7 +10,7 @@ use axum::{
     routing::get,
 };
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
-use db::models::task_attempt::TaskAttempt;
+use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize)]
 pub struct TerminalQuery {
-    pub attempt_id: Uuid,
+    pub workspace_id: Uuid,
     #[serde(default = "default_cols")]
     pub cols: u16,
     #[serde(default = "default_rows")]
@@ -55,7 +55,7 @@ pub async fn terminal_ws(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let attempt = TaskAttempt::find_by_id(&deployment.db().pool, query.attempt_id)
+    let attempt = Workspace::find_by_id(&deployment.db().pool, query.workspace_id)
         .await?
         .ok_or_else(|| ApiError::BadRequest("Attempt not found".to_string()))?;
 
@@ -63,11 +63,29 @@ pub async fn terminal_ws(
         .container_ref
         .ok_or_else(|| ApiError::BadRequest("Attempt has no workspace directory".to_string()))?;
 
-    let working_dir = PathBuf::from(&container_ref);
-    if !working_dir.exists() {
+    let base_dir = PathBuf::from(&container_ref);
+    if !base_dir.exists() {
         return Err(ApiError::BadRequest(
             "Workspace directory does not exist".to_string(),
         ));
+    }
+
+    let mut working_dir = base_dir.clone();
+    match WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, query.workspace_id).await {
+        Ok(repos) if repos.len() == 1 => {
+            let repo_dir = base_dir.join(&repos[0].name);
+            if repo_dir.exists() {
+                working_dir = repo_dir;
+            }
+        }
+        Ok(_) => {}
+        Err(e) => {
+            tracing::warn!(
+                "Failed to resolve repos for workspace {}: {}",
+                attempt.id,
+                e
+            );
+        }
     }
 
     Ok(ws.on_upgrade(move |socket| {

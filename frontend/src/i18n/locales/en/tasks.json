@@ -311,7 +311,13 @@
   "attemptHeaderActions": {
     "preview": "Preview",
     "diffs": "Diffs",
+    "terminal": "Terminal",
     "relatedTasks": "Related tasks"
+  },
+  "terminal": {
+    "noAttempt": "Select an attempt to open terminal",
+    "newTab": "New terminal",
+    "closeTab": "Close terminal"
   },
   "actionsMenu": {
     "attempt": "Attempt",

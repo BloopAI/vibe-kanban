@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Eye, FileDiff, X } from 'lucide-react';
+import { Eye, FileDiff, Terminal, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -58,6 +58,12 @@ export const AttemptHeaderActions = ({
                   timestamp: new Date().toISOString(),
                   source: 'frontend',
                 });
+              } else if (newMode === 'terminal') {
+                posthog?.capture('terminal_navigated', {
+                  trigger: 'button',
+                  timestamp: new Date().toISOString(),
+                  source: 'frontend',
+                });
               } else if (newMode === null) {
                 // Closing the view (clicked active button)
                 posthog?.capture('view_closed', {
@@ -100,6 +106,21 @@ export const AttemptHeaderActions = ({
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 {t('attemptHeaderActions.diffs')}
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem
+                  value="terminal"
+                  aria-label="Terminal"
+                  active={mode === 'terminal'}
+                >
+                  <Terminal className="h-4 w-4" />
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t('attemptHeaderActions.terminal', 'Terminal')}
               </TooltipContent>
             </Tooltip>
           </ToggleGroup>

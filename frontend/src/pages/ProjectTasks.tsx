@@ -54,6 +54,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
 import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
+import { TerminalPanel } from '@/components/panels/TerminalPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
@@ -288,7 +289,9 @@ export function ProjectTasks() {
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
-    rawMode === 'preview' || rawMode === 'diffs' ? rawMode : null;
+    rawMode === 'preview' || rawMode === 'diffs' || rawMode === 'terminal'
+      ? rawMode
+      : null;
 
   // TODO: Remove this redirect after v0.1.0 (legacy URL support for bookmarked links)
   // Migrates old `view=logs` to `view=diffs`
@@ -1002,6 +1005,7 @@ export function ProjectTasks() {
             branchStatus={branchStatus ?? null}
           />
         )}
+        {mode === 'terminal' && <TerminalPanel />}
       </div>
     ) : (
       <div className="relative h-full w-full" />
