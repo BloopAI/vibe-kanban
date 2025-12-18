@@ -37,6 +37,8 @@ import {
   useProjectRepos,
   useRepoBranchSelection,
 } from '@/hooks';
+import { useScratch } from '@/hooks/useScratch';
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -45,10 +47,12 @@ import {
 } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
-import type {
-  TaskStatus,
-  ExecutorProfileId,
-  ImageResponse,
+import {
+  ScratchType,
+  type TaskStatus,
+  type ExecutorProfileId,
+  type ImageResponse,
+  type DraftTaskData,
 } from 'shared/types';
 
 interface Task {
@@ -102,6 +106,48 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
 
+  // Draft persistence via scratch (only for create mode)
+  const shouldUseScratch = mode === 'create';
+  const {
+    scratch,
+    updateScratch,
+    deleteScratch,
+    isLoading: isScratchLoading,
+  } = useScratch(ScratchType.DRAFT_TASK, shouldUseScratch ? projectId : '');
+
+  // Derive draft data from scratch
+  const scratchData: DraftTaskData | undefined =
+    scratch?.payload?.type === 'DRAFT_TASK' ? scratch.payload.data : undefined;
+
+  // Ref to track current scratch for stable callbacks
+  const scratchRef = useRef(scratch);
+  useEffect(() => {
+    scratchRef.current = scratch;
+  }, [scratch]);
+
+  // Save draft to scratch (debounced)
+  const saveToScratch = useCallback(
+    async (title: string, description: string, autoStart: boolean) => {
+      if (!shouldUseScratch) return;
+      // Don't create empty scratches - only save if there's content or scratch already exists
+      if (!title.trim() && !description.trim() && !scratchRef.current) return;
+      try {
+        await updateScratch({
+          payload: {
+            type: 'DRAFT_TASK',
+            data: { title, description, auto_start: autoStart },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to save task draft', e);
+      }
+    },
+    [shouldUseScratch, updateScratch]
+  );
+
+  const { debounced: debouncedSaveToScratch, cancel: cancelDebouncedSave } =
+    useDebouncedCallback(saveToScratch, 500);
+
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
@@ -151,16 +197,23 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       case 'subtask':
       case 'create':
       default:
+        // For create mode, load from draft if available
         return {
-          title: '',
-          description: '',
+          title: scratchData?.title ?? '',
+          description: scratchData?.description ?? '',
           status: 'todo',
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
-          autoStart: true,
+          autoStart: scratchData?.auto_start ?? true,
         };
     }
-  }, [mode, props, system.config?.executor_profile, defaultRepoBranches]);
+  }, [
+    mode,
+    props,
+    system.config?.executor_profile,
+    defaultRepoBranches,
+    scratchData,
+  ]);
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {
@@ -192,6 +245,20 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         shared_task_id: null,
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
+
+      // On successful submission, clear the draft
+      const onSuccess = async () => {
+        cancelDebouncedSave();
+        if (shouldUseScratch && scratchRef.current) {
+          try {
+            await deleteScratch();
+          } catch {
+            // Ignore deletion errors
+          }
+        }
+        modal.remove();
+      };
+
       if (shouldAutoStart) {
         const repos = value.repoBranches.map((rb) => ({
           repo_id: rb.repoId,
@@ -203,10 +270,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             executor_profile_id: value.executorProfileId!,
             repos,
           },
-          { onSuccess: () => modal.remove() }
+          { onSuccess }
         );
       } else {
-        await createTask.mutateAsync(task, { onSuccess: () => modal.remove() });
+        await createTask.mutateAsync(task, { onSuccess });
       }
     }
   };
@@ -239,6 +306,24 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
   const isDirty = useStore(form.store, (state) => state.isDirty);
   const canSubmit = useStore(form.store, (state) => state.canSubmit);
+
+  // Subscribe to form values for auto-save (only in create mode)
+  const formValues = useStore(form.store, (state) => state.values);
+  useEffect(() => {
+    if (!shouldUseScratch || !isDirty) return;
+    debouncedSaveToScratch(
+      formValues.title,
+      formValues.description,
+      formValues.autoStart
+    );
+  }, [
+    shouldUseScratch,
+    isDirty,
+    formValues.title,
+    formValues.description,
+    formValues.autoStart,
+    debouncedSaveToScratch,
+  ]);
 
   // Load images for edit mode
   useEffect(() => {
@@ -366,7 +451,16 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     }
   };
 
-  const handleDiscardChanges = () => {
+  const handleDiscardChanges = async () => {
+    cancelDebouncedSave();
+    // Clear the draft when discarding changes
+    if (shouldUseScratch && scratchRef.current) {
+      try {
+        await deleteScratch();
+      } catch {
+        // Ignore deletion errors
+      }
+    }
     form.reset();
     setImages([]);
     setNewlyUploadedImageIds([]);
@@ -394,7 +488,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     when: () => modal.visible && showDiscardWarning,
   });
 
-  const loading = branchesLoading || userSystemLoading;
+  const loading =
+    branchesLoading || userSystemLoading || (shouldUseScratch && isScratchLoading);
   if (loading) return <></>;
 
   return (

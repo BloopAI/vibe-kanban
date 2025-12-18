@@ -56,7 +56,9 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
-export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };
+export type DraftTaskData = { title: string, description: string, auto_start: boolean, };
+
+export type ScratchPayload = { "type": "DRAFT_TASK", "data": DraftTaskData } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };
 
 export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP" }
 
