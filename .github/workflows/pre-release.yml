@@ -200,6 +200,7 @@ jobs:
       RUSTC_WRAPPER: "sccache"
       SCCACHE_CACHE_SIZE: "10G"
       CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
     steps:
       - uses: actions/checkout@v4
         # with:
@@ -215,6 +216,12 @@ jobs:
       #     key: sccache-${{ runner.os }}-${{ matrix.target }}-${{ github.run_id }}
       #     restore-keys: |
       #       sccache-${{ runner.os }}-${{ matrix.target }}-
+
+      - name: Cache Rust toolchain
+        uses: actions/cache@v4
+        with:
+          path: .rustup/toolchains
+          key: rust-toolchain-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
