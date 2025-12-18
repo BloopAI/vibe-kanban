@@ -138,22 +138,16 @@ pub async fn follow_up(
 
     // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {
-        // Validate process belongs to this workspace (via session)
+        // Validate process belongs to this session
         let process =
             ExecutionProcess::find_by_id(pool, proc_id)
                 .await?
                 .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
                     "Process not found".to_string(),
                 )))?;
-        let process_session =
-            Session::find_by_id(pool, process.session_id)
-                .await?
-                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
-                    "Session not found".to_string(),
-                )))?;
-        if process_session.workspace_id != workspace.id {
+        if process.session_id != session.id {
             return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                "Process does not belong to this workspace".to_string(),
+                "Process does not belong to this session".to_string(),
             )));
         }
 
