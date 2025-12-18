@@ -22,9 +22,9 @@ export interface UseScratchResult {
  */
 export const useScratch = (
   scratchType: ScratchType,
-  id: string
+  id: string | null
 ): UseScratchResult => {
-  const endpoint = scratchApi.getStreamUrl(scratchType, id);
+  const endpoint = id ? scratchApi.getStreamUrl(scratchType, id) : undefined;
 
   const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
@@ -40,12 +40,14 @@ export const useScratch = (
 
   const updateScratch = useCallback(
     async (update: UpdateScratch) => {
+      if (!id) return;
       await scratchApi.update(scratchType, id, update);
     },
     [scratchType, id]
   );
 
   const deleteScratch = useCallback(async () => {
+    if (!id) return;
     await scratchApi.delete(scratchType, id);
   }, [scratchType, id]);
 
