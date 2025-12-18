@@ -401,9 +401,10 @@ pub async fn review_success(
         // Post PR comment instead of sending email
         if let Some(github_app) = state.github_app() {
             let comment = format!(
-                "## Vibe Kanban Review Complete\n\n\
-                Your code review is ready!\n\n\
-                **[View Review]({})**",
+                "## Review Complete\n\n\
+                Your review story is ready!\n\n\
+                **[View Story]({})**\n\n
+                Comment `!reviewfast` on this PR to re-generate the story.",
                 review_url
             );
 
