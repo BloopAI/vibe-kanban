@@ -269,7 +269,6 @@ jobs:
         shell: bash
         run: |
           cargo install --locked cargo-sweep --version 0.8.0
-          cargo sweep --stamp
 
       # - name: Download frontend artifact
       #   uses: actions/download-artifact@v4
@@ -447,7 +446,10 @@ jobs:
 
       - name: Sweep Cargo target cache
         shell: bash
-        run: cargo sweep --file
+        run: |
+          cargo sweep --maxsize 7GB
+          cargo sweep --time 30
+
 
   # package-npx-cli:
   #   needs: [bump-version, build-frontend, build-backend]
