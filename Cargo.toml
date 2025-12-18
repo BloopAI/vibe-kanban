@@ -28,6 +28,6 @@ schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1", "pres
 async-trait = "0.1"
 
 [profile.release]
-debug = true
+debug = 1
 split-debuginfo = "packed"
 strip = true
