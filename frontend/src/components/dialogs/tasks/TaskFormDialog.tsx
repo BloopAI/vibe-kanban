@@ -112,7 +112,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     scratch,
     updateScratch,
     deleteScratch,
-    isLoading: isScratchLoading,
+    isConnected: isScratchConnected,
+    error: scratchError,
   } = useScratch(ScratchType.DRAFT_TASK, shouldUseScratch ? projectId : '');
 
   // Derive draft data from scratch
@@ -488,10 +489,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     when: () => modal.visible && showDiscardWarning,
   });
 
+  // Wait for scratch WebSocket to connect (or error out) before rendering form
+  // This ensures draft data is available when form initializes
+  const scratchReady = isScratchConnected || scratchError !== null;
   const loading =
     branchesLoading ||
     userSystemLoading ||
-    (shouldUseScratch && isScratchLoading);
+    (shouldUseScratch && !scratchReady);
   if (loading) return <></>;
 
   return (
