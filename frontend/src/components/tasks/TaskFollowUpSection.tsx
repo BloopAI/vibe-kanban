@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useKeySubmitFollowUp, useKeyStopExecution, Scope } from '@/keyboard';
+import { useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
 //
@@ -438,6 +438,13 @@ export function TaskFollowUpSection({
     [isAttemptRunning, isQueued, handleQueueMessage, onSendFollowUp]
   );
 
+  // Keyboard shortcut handler - stop execution (Cmd+Period)
+  const handleStopShortcut = useCallback(() => {
+    if (isAttemptRunning && !isStopping) {
+      stopExecution();
+    }
+  }, [isAttemptRunning, isStopping, stopExecution]);
+
   // Ref to access setFollowUpMessage without adding it as a dependency
   const setFollowUpMessageRef = useRef(setFollowUpMessage);
   useEffect(() => {
@@ -608,21 +615,6 @@ export function TaskFollowUpSection({
     when: canSendFollowUp && isEditable,
   });
 
-  // Stop execution shortcut (Cmd+Period)
-  useKeyStopExecution(
-    (e) => {
-      e?.preventDefault();
-      if (isAttemptRunning && !isStopping) {
-        stopExecution();
-      }
-    },
-    {
-      scope: Scope.FOLLOW_UP_READY,
-      enableOnFormTags: ['textarea', 'TEXTAREA'],
-      when: isAttemptRunning && !isStopping,
-    }
-  );
-
   // Enable FOLLOW_UP scope when textarea is focused AND editable
   useEffect(() => {
     if (isEditable && isTextareaFocused) {
@@ -751,6 +743,7 @@ export function TaskFollowUpSection({
                 projectId={projectId}
                 taskAttemptId={selectedAttemptId}
                 onCmdEnter={handleSubmitShortcut}
+                onCmdPeriod={handleStopShortcut}
                 className="min-h-[40px]"
               />
             </div>
