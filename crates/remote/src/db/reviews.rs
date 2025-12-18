@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use chrono::{DateTime, Utc};
 use ipnetwork::IpNetwork;
 use serde::Serialize;
-use sqlx::{PgPool, query_as};
+use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -34,6 +34,18 @@ pub struct Review {
     pub pr_owner: Option<String>,
     pub pr_repo: Option<String>,
     pub pr_number: Option<i32>,
+    // Organization tracking
+    pub organization_id: Option<Uuid>,
+}
+
+/// A lightweight review item for list responses
+#[derive(Debug, Clone, sqlx::FromRow, Serialize)]
+pub struct ReviewListItem {
+    pub id: Uuid,
+    pub gh_pr_url: String,
+    pub pr_title: String,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
 }
 
 impl Review {
@@ -64,6 +76,19 @@ pub struct CreateWebhookReviewParams<'a> {
     pub pr_owner: &'a str,
     pub pr_repo: &'a str,
     pub pr_number: i32,
+    pub organization_id: Uuid,
+}
+
+/// Parameters for creating a manually-triggered review (no webhook)
+pub struct CreateManualReviewParams<'a> {
+    pub id: Uuid,
+    pub gh_pr_url: &'a str,
+    pub r2_path: &'a str,
+    pub pr_title: &'a str,
+    pub pr_owner: &'a str,
+    pub pr_repo: &'a str,
+    pub pr_number: i32,
+    pub organization_id: Uuid,
 }
 
 pub struct ReviewRepository<'a> {
@@ -78,37 +103,20 @@ impl<'a> ReviewRepository<'a> {
     pub async fn create(&self, params: CreateReviewParams<'_>) -> Result<Review, ReviewError> {
         let ip_network = IpNetwork::from(params.ip_address);
 
-        query_as!(
-            Review,
+        sqlx::query_as::<_, Review>(
             r#"
             INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path, email, pr_title)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING
-                id,
-                gh_pr_url,
-                claude_code_session_id,
-                ip_address AS "ip_address: IpNetwork",
-                review_cache,
-                last_viewed_at,
-                r2_path,
-                deleted_at,
-                created_at,
-                email,
-                pr_title,
-                status,
-                github_installation_id,
-                pr_owner,
-                pr_repo,
-                pr_number
+            RETURNING *
             "#,
-            params.id,
-            params.gh_pr_url,
-            params.claude_code_session_id,
-            ip_network,
-            params.r2_path,
-            params.email,
-            params.pr_title
         )
+        .bind(params.id)
+        .bind(params.gh_pr_url)
+        .bind(params.claude_code_session_id)
+        .bind(ip_network)
+        .bind(params.r2_path)
+        .bind(params.email)
+        .bind(params.pr_title)
         .fetch_one(self.pool)
         .await
         .map_err(ReviewError::from)
@@ -119,38 +127,47 @@ impl<'a> ReviewRepository<'a> {
         &self,
         params: CreateWebhookReviewParams<'_>,
     ) -> Result<Review, ReviewError> {
-        query_as!(
-            Review,
+        sqlx::query_as::<_, Review>(
             r#"
-            INSERT INTO reviews (id, gh_pr_url, r2_path, pr_title, github_installation_id, pr_owner, pr_repo, pr_number)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING
-                id,
-                gh_pr_url,
-                claude_code_session_id,
-                ip_address AS "ip_address: IpNetwork",
-                review_cache,
-                last_viewed_at,
-                r2_path,
-                deleted_at,
-                created_at,
-                email,
-                pr_title,
-                status,
-                github_installation_id,
-                pr_owner,
-                pr_repo,
-                pr_number
+            INSERT INTO reviews (id, gh_pr_url, r2_path, pr_title, github_installation_id, pr_owner, pr_repo, pr_number, organization_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
             "#,
-            params.id,
-            params.gh_pr_url,
-            params.r2_path,
-            params.pr_title,
-            params.github_installation_id,
-            params.pr_owner,
-            params.pr_repo,
-            params.pr_number
         )
+        .bind(params.id)
+        .bind(params.gh_pr_url)
+        .bind(params.r2_path)
+        .bind(params.pr_title)
+        .bind(params.github_installation_id)
+        .bind(params.pr_owner)
+        .bind(params.pr_repo)
+        .bind(params.pr_number)
+        .bind(params.organization_id)
+        .fetch_one(self.pool)
+        .await
+        .map_err(ReviewError::from)
+    }
+
+    /// Create a manually-triggered review (no webhook, no email/IP)
+    pub async fn create_manual_review(
+        &self,
+        params: CreateManualReviewParams<'_>,
+    ) -> Result<Review, ReviewError> {
+        sqlx::query_as::<_, Review>(
+            r#"
+            INSERT INTO reviews (id, gh_pr_url, r2_path, pr_title, pr_owner, pr_repo, pr_number, organization_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+            "#,
+        )
+        .bind(params.id)
+        .bind(params.gh_pr_url)
+        .bind(params.r2_path)
+        .bind(params.pr_title)
+        .bind(params.pr_owner)
+        .bind(params.pr_repo)
+        .bind(params.pr_number)
+        .bind(params.organization_id)
         .fetch_one(self.pool)
         .await
         .map_err(ReviewError::from)
@@ -159,34 +176,47 @@ impl<'a> ReviewRepository<'a> {
     /// Get a review by its ID.
     /// Returns NotFound if the review doesn't exist or has been deleted.
     pub async fn get_by_id(&self, id: Uuid) -> Result<Review, ReviewError> {
-        query_as!(
-            Review,
+        sqlx::query_as::<_, Review>(
+            r#"
+            SELECT *
+            FROM reviews
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(ReviewError::NotFound)
+    }
+
+    /// List reviews for an organization, ordered by created_at descending
+    pub async fn list_by_organization(
+        &self,
+        organization_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<ReviewListItem>, ReviewError> {
+        let reviews = sqlx::query_as::<_, ReviewListItem>(
             r#"
             SELECT
                 id,
                 gh_pr_url,
-                claude_code_session_id,
-                ip_address AS "ip_address: IpNetwork",
-                review_cache,
-                last_viewed_at,
-                r2_path,
-                deleted_at,
-                created_at,
-                email,
                 pr_title,
                 status,
-                github_installation_id,
-                pr_owner,
-                pr_repo,
-                pr_number
+                created_at
             FROM reviews
-            WHERE id = $1 AND deleted_at IS NULL
+            WHERE organization_id = $1 AND deleted_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
             "#,
-            id
         )
-        .fetch_optional(self.pool)
-        .await?
-        .ok_or(ReviewError::NotFound)
+        .bind(organization_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(reviews)
     }
 
     /// Count reviews from an IP address since a given timestamp.

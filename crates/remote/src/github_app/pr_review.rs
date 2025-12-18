@@ -20,6 +20,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct PrReviewParams {
     pub installation_id: i64,
+    pub organization_id: Uuid,
     pub owner: String,
     pub repo: String,
     pub pr_number: u64,
@@ -139,6 +140,7 @@ impl PrReviewService {
             pr_owner: &params.owner,
             pr_repo: &params.repo,
             pr_number: params.pr_number as i32,
+            organization_id: params.organization_id,
         })
         .await?;
 

@@ -18,12 +18,15 @@ import {
   updateRepositoryReviewEnabled,
   fetchGitHubAppRepositories,
   bulkUpdateRepositoryReviewEnabled,
+  listOrganizationReviews,
+  triggerOrganizationReview,
   type Organization,
   type OrganizationMemberWithProfile,
   type OrganizationInvitation,
   type MemberRole,
   type GitHubAppStatus,
   type GitHubAppRepository,
+  type ReviewListItem,
 } from "../api";
 
 export default function OrganizationPage() {
@@ -51,6 +54,15 @@ export default function OrganizationPage() {
   const [repoSearch, setRepoSearch] = useState("");
   const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  // PR Reviews state
+  const [reviews, setReviews] = useState<ReviewListItem[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [prUrl, setPrUrl] = useState("");
+  const [triggerLoading, setTriggerLoading] = useState(false);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [triggerSuccess, setTriggerSuccess] = useState<string | null>(null);
 
   // Edit name state
   const [isEditingName, setIsEditingName] = useState(false);
@@ -136,11 +148,30 @@ export default function OrganizationPage() {
           // GitHub App may not be configured on the server
           setGithubAppStatus(null);
         }
+
+        // Load reviews for non-personal orgs
+        loadReviews();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load organization");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadReviews() {
+    if (!orgId) return;
+
+    setReviewsLoading(true);
+    setReviewsError(null);
+
+    try {
+      const data = await listOrganizationReviews(orgId);
+      setReviews(data.reviews);
+    } catch (e) {
+      setReviewsError(e instanceof Error ? e.message : "Failed to load reviews");
+    } finally {
+      setReviewsLoading(false);
     }
   }
 
@@ -338,6 +369,27 @@ export default function OrganizationPage() {
       return true;
     })
     .sort((a, b) => a.repo_full_name.localeCompare(b.repo_full_name));
+
+  const handleTriggerReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgId || !prUrl.trim()) return;
+
+    setTriggerLoading(true);
+    setTriggerError(null);
+    setTriggerSuccess(null);
+
+    try {
+      const result = await triggerOrganizationReview(orgId, prUrl.trim());
+      setTriggerSuccess(`Review started! ID: ${result.review_id}`);
+      setPrUrl("");
+      // Refresh the reviews list
+      loadReviews();
+    } catch (e) {
+      setTriggerError(e instanceof Error ? e.message : "Failed to trigger review");
+    } finally {
+      setTriggerLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -924,6 +976,117 @@ export default function OrganizationPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* PR Reviews Card (non-personal orgs only) */}
+        {!organization?.is_personal && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              PR Reviews
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Manually trigger code reviews for pull requests or view previous reviews.
+            </p>
+
+            {/* Trigger Review Form (admin only) */}
+            {isAdmin && (
+              <form
+                onSubmit={handleTriggerReview}
+                className="mb-6 p-4 bg-gray-50 rounded-lg"
+              >
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Review a Pull Request
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={prUrl}
+                    onChange={(e) => setPrUrl(e.target.value)}
+                    placeholder="https://github.com/owner/repo/pull/123"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={triggerLoading}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {triggerLoading ? "Starting..." : "Start Review"}
+                  </button>
+                </div>
+                {triggerError && (
+                  <p className="text-sm text-red-600 mt-2">{triggerError}</p>
+                )}
+                {triggerSuccess && (
+                  <p className="text-sm text-green-600 mt-2">{triggerSuccess}</p>
+                )}
+              </form>
+            )}
+
+            {/* Review History */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">
+                Review History
+              </h3>
+              {reviewsLoading ? (
+                <p className="text-gray-500 text-sm">Loading reviews...</p>
+              ) : reviewsError ? (
+                <p className="text-red-600 text-sm">{reviewsError}</p>
+              ) : reviews.length === 0 ? (
+                <p className="text-gray-500 text-sm">No reviews yet.</p>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {reviews.map((review) => (
+                    <ReviewListRow key={review.id} review={review} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Helper component for review list rows
+function ReviewListRow({ review }: { review: ReviewListItem }) {
+  const statusColors: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-700",
+    completed: "bg-green-100 text-green-700",
+    failed: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <div className="flex items-center justify-between py-3">
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900 truncate">{review.pr_title}</p>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <a
+            href={review.gh_pr_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline truncate max-w-xs"
+          >
+            {review.gh_pr_url.replace("https://github.com/", "")}
+          </a>
+          <span>&middot;</span>
+          <span>{new Date(review.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 ml-4">
+        <span
+          className={`text-xs px-2 py-0.5 rounded ${statusColors[review.status] || "bg-gray-100 text-gray-700"}`}
+        >
+          {review.status}
+        </span>
+        {review.status === "completed" && (
+          <Link
+            to={`/review/${review.id}`}
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            View
+          </Link>
         )}
       </div>
     </div>
