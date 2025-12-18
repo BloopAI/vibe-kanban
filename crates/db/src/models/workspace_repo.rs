@@ -9,9 +9,9 @@ use uuid::Uuid;
 use super::repo::Repo;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct AttemptRepo {
+pub struct WorkspaceRepo {
     pub id: Uuid,
-    pub attempt_id: Uuid,
+    pub workspace_id: Uuid,
     pub repo_id: Uuid,
     pub target_branch: String,
     #[ts(type = "Date")]
@@ -21,7 +21,7 @@ pub struct AttemptRepo {
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
-pub struct CreateAttemptRepo {
+pub struct CreateWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
 }
@@ -43,62 +43,62 @@ pub struct RepoWithCopyFiles {
     pub copy_files: Option<String>,
 }
 
-impl AttemptRepo {
+impl WorkspaceRepo {
     pub async fn create_many(
         pool: &SqlitePool,
-        attempt_id: Uuid,
-        repos: &[CreateAttemptRepo],
+        workspace_id: Uuid,
+        repos: &[CreateWorkspaceRepo],
     ) -> Result<Vec<Self>, sqlx::Error> {
         let mut results = Vec::with_capacity(repos.len());
 
         for repo in repos {
             let id = Uuid::new_v4();
-            let attempt_repo = sqlx::query_as!(
-                AttemptRepo,
-                r#"INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch)
+            let workspace_repo = sqlx::query_as!(
+                WorkspaceRepo,
+                r#"INSERT INTO workspace_repos (id, workspace_id, repo_id, target_branch)
                    VALUES ($1, $2, $3, $4)
                    RETURNING id as "id!: Uuid",
-                             attempt_id as "attempt_id!: Uuid",
+                             workspace_id as "workspace_id!: Uuid",
                              repo_id as "repo_id!: Uuid",
                              target_branch,
                              created_at as "created_at!: DateTime<Utc>",
                              updated_at as "updated_at!: DateTime<Utc>""#,
                 id,
-                attempt_id,
+                workspace_id,
                 repo.repo_id,
                 repo.target_branch
             )
             .fetch_one(pool)
             .await?;
-            results.push(attempt_repo);
+            results.push(workspace_repo);
         }
 
         Ok(results)
     }
 
-    pub async fn find_by_attempt_id(
+    pub async fn find_by_workspace_id(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            AttemptRepo,
+            WorkspaceRepo,
             r#"SELECT id as "id!: Uuid",
-                      attempt_id as "attempt_id!: Uuid",
+                      workspace_id as "workspace_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       target_branch,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM attempt_repos
-               WHERE attempt_id = $1"#,
-            attempt_id
+               FROM workspace_repos
+               WHERE workspace_id = $1"#,
+            workspace_id
         )
         .fetch_all(pool)
         .await
     }
 
-    pub async fn find_repos_for_attempt(
+    pub async fn find_repos_for_workspace(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<Repo>, sqlx::Error> {
         sqlx::query_as!(
             Repo,
@@ -109,18 +109,18 @@ impl AttemptRepo {
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
-               JOIN attempt_repos ar ON r.id = ar.repo_id
-               WHERE ar.attempt_id = $1
+               JOIN workspace_repos wr ON r.id = wr.repo_id
+               WHERE wr.workspace_id = $1
                ORDER BY r.display_name ASC"#,
-            attempt_id
+            workspace_id
         )
         .fetch_all(pool)
         .await
     }
 
-    pub async fn find_repos_with_target_branch_for_attempt(
+    pub async fn find_repos_with_target_branch_for_workspace(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<RepoWithTargetBranch>, sqlx::Error> {
         let rows = sqlx::query!(
             r#"SELECT r.id as "id!: Uuid",
@@ -129,12 +129,12 @@ impl AttemptRepo {
                       r.display_name,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>",
-                      ar.target_branch
+                      wr.target_branch
                FROM repos r
-               JOIN attempt_repos ar ON r.id = ar.repo_id
-               WHERE ar.attempt_id = $1
+               JOIN workspace_repos wr ON r.id = wr.repo_id
+               WHERE wr.workspace_id = $1
                ORDER BY r.display_name ASC"#,
-            attempt_id
+            workspace_id
         )
         .fetch_all(pool)
         .await?;
@@ -155,22 +155,22 @@ impl AttemptRepo {
             .collect())
     }
 
-    pub async fn find_by_attempt_and_repo_id(
+    pub async fn find_by_workspace_and_repo_id(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            AttemptRepo,
+            WorkspaceRepo,
             r#"SELECT id as "id!: Uuid",
-                      attempt_id as "attempt_id!: Uuid",
+                      workspace_id as "workspace_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       target_branch,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM attempt_repos
-               WHERE attempt_id = $1 AND repo_id = $2"#,
-            attempt_id,
+               FROM workspace_repos
+               WHERE workspace_id = $1 AND repo_id = $2"#,
+            workspace_id,
             repo_id
         )
         .fetch_optional(pool)
@@ -179,14 +179,14 @@ impl AttemptRepo {
 
     pub async fn update_target_branch(
         pool: &SqlitePool,
-        attempt_id: Uuid,
+        workspace_id: Uuid,
         repo_id: Uuid,
         new_target_branch: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2 AND repo_id = $3",
+            "UPDATE workspace_repos SET target_branch = $1, updated_at = datetime('now') WHERE workspace_id = $2 AND repo_id = $3",
             new_target_branch,
-            attempt_id,
+            workspace_id,
             repo_id
         )
         .execute(pool)
@@ -201,10 +201,10 @@ impl AttemptRepo {
         new_branch: &str,
     ) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
-            r#"UPDATE attempt_repos
+            r#"UPDATE workspace_repos
                SET target_branch = $1, updated_at = datetime('now')
                WHERE target_branch = $2
-                 AND attempt_id IN (
+                 AND workspace_id IN (
                      SELECT w.id FROM workspaces w
                      JOIN tasks t ON w.task_id = t.id
                      WHERE t.parent_workspace_id = $3
@@ -231,8 +231,8 @@ impl AttemptRepo {
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
-               JOIN attempt_repos ar ON r.id = ar.repo_id
-               JOIN workspaces w ON ar.attempt_id = w.id
+               JOIN workspace_repos wr ON r.id = wr.repo_id
+               JOIN workspaces w ON wr.workspace_id = w.id
                WHERE w.task_id = $1
                ORDER BY r.display_name ASC"#,
             task_id
@@ -250,11 +250,11 @@ impl AttemptRepo {
         let rows = sqlx::query!(
             r#"SELECT r.id as "id!: Uuid", r.path, r.name, pr.copy_files
                FROM repos r
-               JOIN attempt_repos ar ON r.id = ar.repo_id
-               JOIN workspaces w ON w.id = ar.attempt_id
+               JOIN workspace_repos wr ON r.id = wr.repo_id
+               JOIN workspaces w ON w.id = wr.workspace_id
                JOIN tasks t ON t.id = w.task_id
                LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id
-               WHERE ar.attempt_id = $1"#,
+               WHERE wr.workspace_id = $1"#,
             workspace_id
         )
         .fetch_all(pool)

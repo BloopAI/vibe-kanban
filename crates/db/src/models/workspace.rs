@@ -6,9 +6,9 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    attempt_repo::{AttemptRepo, RepoWithTargetBranch},
     project::Project,
     task::Task,
+    workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 
 #[derive(Debug, Error)]
@@ -83,7 +83,7 @@ pub struct WorkspaceContext {
     pub workspace: Workspace,
     pub task: Task,
     pub project: Project,
-    pub attempt_repos: Vec<RepoWithTargetBranch>,
+    pub workspace_repos: Vec<RepoWithTargetBranch>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -176,14 +176,14 @@ impl Workspace {
             .await?
             .ok_or(WorkspaceError::ProjectNotFound)?;
 
-        let attempt_repos =
-            AttemptRepo::find_repos_with_target_branch_for_attempt(pool, workspace_id).await?;
+        let workspace_repos =
+            WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace_id).await?;
 
         Ok(WorkspaceContext {
             workspace,
             task,
             project,
-            attempt_repos,
+            workspace_repos,
         })
     }
 

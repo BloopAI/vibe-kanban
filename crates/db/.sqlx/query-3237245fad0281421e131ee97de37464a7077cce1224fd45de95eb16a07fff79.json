@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE execution_process_id = $1",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE execution_process_id = $1",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "session_id",
+        "name": "agent_session_id",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "e7f994f8ba76f24705d9b0fc02dd59a3ff82eab72edc2df8f7dc32cd0466e32f"
+  "hash": "3237245fad0281421e131ee97de37464a7077cce1224fd45de95eb16a07fff79"
 }

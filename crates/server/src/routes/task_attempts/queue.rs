@@ -37,7 +37,7 @@ pub async fn queue_message(
         .track_if_analytics_allowed(
             "follow_up_queued",
             serde_json::json!({
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -60,7 +60,7 @@ pub async fn cancel_queued_message(
         .track_if_analytics_allowed(
             "follow_up_queue_cancelled",
             serde_json::json!({
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;

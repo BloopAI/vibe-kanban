@@ -23,7 +23,6 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    attempt_repo::{AttemptRepo, CreateAttemptRepo, RepoWithTargetBranch},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project_repo::ProjectRepo,
@@ -32,6 +31,7 @@ use db::models::{
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
+    workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
 use executors::{
@@ -112,11 +112,11 @@ pub async fn get_task_attempt(
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
     pub executor_profile_id: ExecutorProfileId,
-    pub repos: Vec<AttemptRepoInput>,
+    pub repos: Vec<WorkspaceRepoInput>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
-pub struct AttemptRepoInput {
+pub struct WorkspaceRepoInput {
     pub repo_id: Uuid,
     pub target_branch: String,
 }
@@ -163,16 +163,16 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let attempt_repos: Vec<CreateAttemptRepo> = payload
+    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
         .repos
         .iter()
-        .map(|r| CreateAttemptRepo {
+        .map(|r| CreateWorkspaceRepo {
             repo_id: r.repo_id,
             target_branch: r.target_branch.clone(),
         })
         .collect();
 
-    AttemptRepo::create_many(pool, workspace.id, &attempt_repos).await?;
+    WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
     if let Err(err) = deployment
         .container()
         .start_workspace(&workspace, executor_profile_id.clone())
@@ -188,7 +188,7 @@ pub async fn create_task_attempt(
                 "task_id": workspace.task_id.to_string(),
                 "variant": &executor_profile_id.variant,
                 "executor": &executor_profile_id.executor,
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
                 "repository_count": payload.repos.len(),
             }),
         )
@@ -223,7 +223,7 @@ pub async fn run_agent_setup(
             "agent_setup_script_executed",
             serde_json::json!({
                 "executor_profile_id": executor_profile_id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -332,8 +332,8 @@ pub async fn follow_up(
         }
     };
 
-    let latest_external_session_id =
-        ExecutionProcess::find_latest_external_session_id_by_workspace(pool, workspace.id).await?;
+    let latest_agent_session_id =
+        ExecutionProcess::find_latest_agent_session_id_by_workspace(pool, workspace.id).await?;
 
     let prompt = payload.prompt;
 
@@ -342,10 +342,10 @@ pub async fn follow_up(
         .container()
         .cleanup_actions_for_repos(&project_repos);
 
-    let action_type = if let Some(external_session_id) = latest_external_session_id {
+    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
-            session_id: external_session_id,
+            session_id: agent_session_id,
             executor_profile_id: executor_profile_id.clone(),
         })
     } else {
@@ -463,12 +463,12 @@ pub async fn merge_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let attempt_repo =
-        AttemptRepo::find_by_attempt_and_repo_id(pool, workspace.id, request.repo_id)
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
 
-    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+    let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
         .await?
         .ok_or(RepoError::NotFound)?;
 
@@ -500,15 +500,15 @@ pub async fn merge_task_attempt(
         &repo.path,
         &worktree_path,
         &workspace.branch,
-        &attempt_repo.target_branch,
+        &workspace_repo.target_branch,
         &commit_message,
     )?;
 
     Merge::create_direct(
         pool,
         workspace.id,
-        attempt_repo.repo_id,
-        &attempt_repo.target_branch,
+        workspace_repo.repo_id,
+        &workspace_repo.target_branch,
         &merge_commit_id,
     )
     .await?;
@@ -560,7 +560,7 @@ pub async fn merge_task_attempt(
             "task_attempt_merged",
             serde_json::json!({
                 "task_id": task.id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -578,12 +578,12 @@ pub async fn push_task_attempt_branch(
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
-    let attempt_repo =
-        AttemptRepo::find_by_attempt_and_repo_id(pool, workspace.id, request.repo_id)
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
 
-    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+    let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
         .await?
         .ok_or(RepoError::NotFound)?;
 
@@ -616,12 +616,12 @@ pub async fn force_push_task_attempt_branch(
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
-    let attempt_repo =
-        AttemptRepo::find_by_attempt_and_repo_id(pool, workspace.id, request.repo_id)
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
 
-    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+    let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
         .await?
         .ok_or(RepoError::NotFound)?;
 
@@ -693,7 +693,7 @@ pub async fn open_task_attempt_in_editor(
                 .track_if_analytics_allowed(
                     "task_attempt_editor_opened",
                     serde_json::json!({
-                        "attempt_id": workspace.id.to_string(),
+                        "workspace_id": workspace.id.to_string(),
                         "editor_type": payload.editor_type.as_ref(),
                         "remote_mode": url.is_some(),
                     }),
@@ -749,11 +749,11 @@ pub async fn get_task_attempt_branch_status(
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoBranchStatus>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let repositories = AttemptRepo::find_repos_for_attempt(pool, workspace.id).await?;
-    let attempt_repos = AttemptRepo::find_by_attempt_id(pool, workspace.id).await?;
-    let target_branches: HashMap<_, _> = attempt_repos
+    let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let workspace_repos = WorkspaceRepo::find_by_workspace_id(pool, workspace.id).await?;
+    let target_branches: HashMap<_, _> = workspace_repos
         .iter()
-        .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+        .map(|wr| (wr.repo_id, wr.target_branch.clone()))
         .collect();
 
     let container_ref = deployment
@@ -936,7 +936,7 @@ pub async fn change_target_branch(
         )));
     };
 
-    AttemptRepo::update_target_branch(pool, workspace.id, repo_id, &new_target_branch).await?;
+    WorkspaceRepo::update_target_branch(pool, workspace.id, repo_id, &new_target_branch).await?;
 
     let status =
         deployment
@@ -948,7 +948,7 @@ pub async fn change_target_branch(
             "task_attempt_target_branch_changed",
             serde_json::json!({
                 "repo_id": repo_id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -999,7 +999,7 @@ pub async fn rename_branch(
         )));
     }
 
-    let repos = AttemptRepo::find_repos_for_attempt(pool, workspace.id).await?;
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let container_ref = deployment
         .container()
         .ensure_container_exists(&workspace)
@@ -1072,7 +1072,7 @@ pub async fn rename_branch(
 
     Workspace::update_branch_name(pool, workspace.id, new_branch_name).await?;
     // What will become of me?
-    let updated_children_count = AttemptRepo::update_target_branch_for_children_of_workspace(
+    let updated_children_count = WorkspaceRepo::update_target_branch_for_children_of_workspace(
         pool,
         workspace.id,
         &old_branch,
@@ -1110,28 +1110,28 @@ pub async fn rebase_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let attempt_repo =
-        AttemptRepo::find_by_attempt_and_repo_id(pool, workspace.id, payload.repo_id)
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, payload.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
 
-    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+    let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
         .await?
         .ok_or(RepoError::NotFound)?;
 
     let old_base_branch = payload
         .old_base_branch
-        .unwrap_or_else(|| attempt_repo.target_branch.clone());
+        .unwrap_or_else(|| workspace_repo.target_branch.clone());
     let new_base_branch = payload
         .new_base_branch
-        .unwrap_or_else(|| attempt_repo.target_branch.clone());
+        .unwrap_or_else(|| workspace_repo.target_branch.clone());
 
     match deployment
         .git()
         .check_branch_exists(&repo.path, &new_base_branch)?
     {
         true => {
-            AttemptRepo::update_target_branch(
+            WorkspaceRepo::update_target_branch(
                 pool,
                 workspace.id,
                 payload.repo_id,
@@ -1190,7 +1190,7 @@ pub async fn rebase_task_attempt(
         .track_if_analytics_allowed(
             "task_attempt_rebased",
             serde_json::json!({
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
                 "repo_id": payload.repo_id.to_string(),
             }),
         )
@@ -1332,7 +1332,7 @@ pub async fn start_dev_server(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "project_id": project.id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -1350,7 +1350,7 @@ pub async fn get_task_attempt_children(
                 .track_if_analytics_allowed(
                     "task_attempt_children_viewed",
                     serde_json::json!({
-                        "attempt_id": workspace.id.to_string(),
+                        "workspace_id": workspace.id.to_string(),
                         "children_count": relationships.children.len(),
                         "parent_count": if relationships.parent_task.is_some() { 1 } else { 0 },
                     }),
@@ -1380,7 +1380,7 @@ pub async fn stop_task_attempt_execution(
         .track_if_analytics_allowed(
             "task_attempt_stopped",
             serde_json::json!({
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -1472,7 +1472,7 @@ pub async fn run_setup_script(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "project_id": project.id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -1556,7 +1556,7 @@ pub async fn run_cleanup_script(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "project_id": project.id.to_string(),
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -1575,7 +1575,7 @@ pub async fn gh_cli_setup_handler(
                 .track_if_analytics_allowed(
                     "gh_cli_setup_executed",
                     serde_json::json!({
-                        "attempt_id": workspace.id.to_string(),
+                        "workspace_id": workspace.id.to_string(),
                     }),
                 )
                 .await;
@@ -1607,7 +1607,8 @@ pub async fn get_task_attempt_repos(
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoWithTargetBranch>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let repos = AttemptRepo::find_repos_with_target_branch_for_attempt(pool, workspace.id).await?;
+    let repos =
+        WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id).await?;
 
     Ok(ResponseJson(ApiResponse::success(repos)))
 }

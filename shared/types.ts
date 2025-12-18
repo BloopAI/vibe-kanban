@@ -30,9 +30,9 @@ export type CreateProjectRepo = { display_name: string, git_repo_path: string, }
 
 export type UpdateProjectRepo = { setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
 
-export type AttemptRepo = { id: string, attempt_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
+export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 
-export type CreateAttemptRepo = { repo_id: string, target_branch: string, };
+export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
 export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
 
@@ -230,7 +230,7 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<AttemptRepoInput>, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
@@ -238,9 +238,9 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
 
-export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<AttemptRepoInput>, };
+export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
-export type AttemptRepoInput = { repo_id: string, target_branch: string, };
+export type WorkspaceRepoInput = { repo_id: string, target_branch: string, };
 
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 

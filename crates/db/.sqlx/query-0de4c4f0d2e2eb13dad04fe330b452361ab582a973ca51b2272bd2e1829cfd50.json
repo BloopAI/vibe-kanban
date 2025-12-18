@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT DISTINCT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN attempt_repos ar ON r.id = ar.repo_id\n               JOIN workspaces w ON ar.attempt_id = w.id\n               WHERE w.task_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT DISTINCT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               JOIN workspaces w ON wr.workspace_id = w.id\n               WHERE w.task_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "32abf00d046b64514d7e37cc97cf04946f7734d0c6abeb452e6fa2a6ade7e265"
+  "hash": "0de4c4f0d2e2eb13dad04fe330b452361ab582a973ca51b2272bd2e1829cfd50"
 }

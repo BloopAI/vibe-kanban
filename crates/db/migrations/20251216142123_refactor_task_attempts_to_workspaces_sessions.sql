@@ -21,9 +21,9 @@ CREATE TABLE sessions (
 
 CREATE INDEX idx_sessions_workspace_id ON sessions(workspace_id);
 
--- 3. Migrate data: create one session per workspace (using workspace.id as session.id for simplicity)
+-- 3. Migrate data: create one session per workspace
 INSERT INTO sessions (id, workspace_id, executor, created_at, updated_at)
-SELECT id, id, executor, created_at, updated_at FROM workspaces;
+SELECT randomblob(16), id, executor, created_at, updated_at FROM workspaces;
 
 -- 4. Drop executor column from workspaces
 ALTER TABLE workspaces DROP COLUMN executor;
@@ -72,10 +72,11 @@ CREATE TABLE execution_processes_new (
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
--- Since we used workspace.id as session.id, the task_attempt_id values map directly
+-- Join through sessions to get the correct session_id for each execution_process
 INSERT INTO execution_processes_new (id, session_id, run_reason, executor_action, status, exit_code, dropped, started_at, completed_at, created_at, updated_at)
-SELECT id, task_attempt_id, run_reason, executor_action, status, exit_code, dropped, started_at, completed_at, created_at, updated_at
-FROM execution_processes;
+SELECT ep.id, s.id, ep.run_reason, ep.executor_action, ep.status, ep.exit_code, ep.dropped, ep.started_at, ep.completed_at, ep.created_at, ep.updated_at
+FROM execution_processes ep
+JOIN sessions s ON ep.task_attempt_id = s.workspace_id;
 
 DROP TABLE execution_processes;
 ALTER TABLE execution_processes_new RENAME TO execution_processes;
@@ -94,10 +95,11 @@ ON execution_processes (session_id, run_reason, created_at DESC);
 
 -- 8. Rename executor_sessions to coding_agent_turns and drop task_attempt_id
 -- (needs rebuild to drop the redundant task_attempt_id column)
+-- Also rename session_id to agent_session_id for clarity
 CREATE TABLE coding_agent_turns (
     id                    BLOB PRIMARY KEY,
     execution_process_id  BLOB NOT NULL,
-    session_id            TEXT,
+    agent_session_id      TEXT,
     prompt                TEXT,
     summary               TEXT,
     created_at            TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
@@ -105,7 +107,7 @@ CREATE TABLE coding_agent_turns (
     FOREIGN KEY (execution_process_id) REFERENCES execution_processes(id) ON DELETE CASCADE
 );
 
-INSERT INTO coding_agent_turns (id, execution_process_id, session_id, prompt, summary, created_at, updated_at)
+INSERT INTO coding_agent_turns (id, execution_process_id, agent_session_id, prompt, summary, created_at, updated_at)
 SELECT id, execution_process_id, session_id, prompt, summary, created_at, updated_at
 FROM executor_sessions;
 
@@ -113,9 +115,15 @@ DROP TABLE executor_sessions;
 
 -- Recreate coding_agent_turns indexes
 CREATE INDEX idx_coding_agent_turns_execution_process_id ON coding_agent_turns(execution_process_id);
-CREATE INDEX idx_coding_agent_turns_session_id ON coding_agent_turns(session_id);
+CREATE INDEX idx_coding_agent_turns_agent_session_id ON coding_agent_turns(agent_session_id);
 
--- 9. attempt_repos: no changes needed - FK auto-updated when task_attempts renamed to workspaces
+-- 9. Rename attempt_repos to workspace_repos and attempt_id to workspace_id
+ALTER TABLE attempt_repos RENAME TO workspace_repos;
+ALTER TABLE workspace_repos RENAME COLUMN attempt_id TO workspace_id;
+DROP INDEX idx_attempt_repos_attempt_id;
+DROP INDEX idx_attempt_repos_repo_id;
+CREATE INDEX idx_workspace_repos_workspace_id ON workspace_repos(workspace_id);
+CREATE INDEX idx_workspace_repos_repo_id ON workspace_repos(repo_id);
 
 -- Verify foreign key constraints before committing
 PRAGMA foreign_key_check;

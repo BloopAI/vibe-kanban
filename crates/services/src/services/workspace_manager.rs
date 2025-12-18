@@ -44,9 +44,9 @@ pub struct RepoWorktree {
     pub worktree_path: PathBuf,
 }
 
-/// A workspace containing worktrees for all project repos
+/// A container directory holding worktrees for all project repos
 #[derive(Debug, Clone)]
-pub struct Workspace {
+pub struct WorktreeContainer {
     pub workspace_dir: PathBuf,
     pub worktrees: Vec<RepoWorktree>,
 }
@@ -60,7 +60,7 @@ impl WorkspaceManager {
         workspace_dir: &Path,
         repos: &[RepoWorkspaceInput],
         branch_name: &str,
-    ) -> Result<Workspace, WorkspaceError> {
+    ) -> Result<WorktreeContainer, WorkspaceError> {
         if repos.is_empty() {
             return Err(WorkspaceError::NoRepositories);
         }
@@ -131,7 +131,7 @@ impl WorkspaceManager {
             created_worktrees.len()
         );
 
-        Ok(Workspace {
+        Ok(WorktreeContainer {
             workspace_dir: workspace_dir.to_path_buf(),
             worktrees: created_worktrees,
         })

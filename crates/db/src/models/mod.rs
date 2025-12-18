@@ -1,4 +1,3 @@
-pub mod attempt_repo;
 pub mod coding_agent_turn;
 pub mod execution_process;
 pub mod execution_process_logs;
@@ -13,3 +12,4 @@ pub mod session;
 pub mod tag;
 pub mod task;
 pub mod workspace;
+pub mod workspace_repo;

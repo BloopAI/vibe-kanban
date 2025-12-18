@@ -21,7 +21,10 @@ type UseRepoBranchSelectionReturn = {
   configs: RepoBranchConfig[];
   isLoading: boolean;
   setRepoBranch: (repoId: string, branch: string) => void;
-  getAttemptRepoInputs: () => Array<{ repo_id: string; target_branch: string }>;
+  getWorkspaceRepoInputs: () => Array<{
+    repo_id: string;
+    target_branch: string;
+  }>;
   reset: () => void;
 };
 
@@ -80,7 +83,7 @@ export function useRepoBranchSelection({
     setUserOverrides({});
   }, []);
 
-  const getAttemptRepoInputs = useCallback(() => {
+  const getWorkspaceRepoInputs = useCallback(() => {
     return configs
       .filter((config) => config.targetBranch !== null)
       .map((config) => ({
@@ -93,7 +96,7 @@ export function useRepoBranchSelection({
     configs,
     isLoading: isLoadingBranches,
     setRepoBranch,
-    getAttemptRepoInputs,
+    getWorkspaceRepoInputs,
     reset,
   };
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO coding_agent_turns (\n                id, execution_process_id, session_id, prompt, summary,\n                created_at, updated_at\n               )\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE agent_session_id = ?\n               ORDER BY updated_at DESC\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "session_id",
+        "name": "agent_session_id",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -40,7 +40,7 @@
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 1
     },
     "nullable": [
       true,
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "f5e826170ec53320a62f822dcea43fb1ab13f65b108f180f5031eb154f213ca9"
+  "hash": "6c4d08764c41abb08c07ffda411d6a8e3456db56d9ea6c3d71f3554afc1dd213"
 }

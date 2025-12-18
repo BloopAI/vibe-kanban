@@ -12,7 +12,6 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        attempt_repo::AttemptRepo,
         coding_agent_turn::CodingAgentTurn,
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
@@ -24,6 +23,7 @@ use db::{
         session::{CreateSession, Session},
         task::{Task, TaskStatus},
         workspace::Workspace,
+        workspace_repo::WorkspaceRepo,
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
@@ -143,13 +143,13 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    pub async fn cleanup_workspace_container(db: &DBService, workspace: &Workspace) {
+    pub async fn cleanup_workspace(db: &DBService, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
             return;
         };
         let workspace_dir = PathBuf::from(container_ref);
 
-        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, workspace.id)
+        let repositories = WorkspaceRepo::find_repos_for_workspace(&db.pool, workspace.id)
             .await
             .unwrap_or_default();
 
@@ -190,7 +190,7 @@ impl LocalContainerService {
             expired_workspaces.len()
         );
         for workspace in &expired_workspaces {
-            Self::cleanup_workspace_container(db, workspace).await;
+            Self::cleanup_workspace(db, workspace).await;
         }
         Ok(())
     }
@@ -706,7 +706,7 @@ impl LocalContainerService {
         workspace_dir: &Path,
         workspace: &Workspace,
     ) -> Result<(), ContainerError> {
-        let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, workspace.id).await?;
+        let repos = WorkspaceRepo::find_repos_with_copy_files(&self.db.pool, workspace.id).await?;
 
         for repo in &repos {
             if let Some(copy_files) = &repo.copy_files
@@ -755,22 +755,21 @@ impl LocalContainerService {
             variant: queued_data.variant.clone(),
         };
 
-        // Get latest external session ID for session continuity (from coding agent turns)
-        let latest_external_session_id =
-            ExecutionProcess::find_latest_external_session_id_by_workspace(
-                &self.db.pool,
-                ctx.workspace.id,
-            )
-            .await?;
+        // Get latest agent session ID for session continuity (from coding agent turns)
+        let latest_agent_session_id = ExecutionProcess::find_latest_agent_session_id_by_workspace(
+            &self.db.pool,
+            ctx.workspace.id,
+        )
+        .await?;
 
         let project_repos =
             ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        let action_type = if let Some(external_session_id) = latest_external_session_id {
+        let action_type = if let Some(agent_session_id) = latest_agent_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
-                session_id: external_session_id,
+                session_id: agent_session_id,
                 executor_profile_id: executor_profile_id.clone(),
             })
         } else {
@@ -856,18 +855,20 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, workspace.id).await?;
-        if attempt_repos.is_empty() {
+        let workspace_repos =
+            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
+        if workspace_repos.is_empty() {
             return Err(ContainerError::Other(anyhow!(
                 "Workspace has no repositories configured"
             )));
         }
 
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
-        let target_branches: HashMap<_, _> = attempt_repos
+        let target_branches: HashMap<_, _> = workspace_repos
             .iter()
-            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
             .collect();
 
         let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
@@ -904,7 +905,7 @@ impl ContainerService for LocalContainerService {
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError> {
         self.try_stop(workspace, true).await;
-        Self::cleanup_workspace_container(&self.db, workspace).await;
+        Self::cleanup_workspace(&self.db, workspace).await;
         Ok(())
     }
 
@@ -912,7 +913,8 @@ impl ContainerService for LocalContainerService {
         &self,
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
@@ -961,7 +963,8 @@ impl ContainerService for LocalContainerService {
             return Ok(true);
         }
 
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
@@ -1167,13 +1170,15 @@ impl ContainerService for LocalContainerService {
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
     {
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, workspace.id).await?;
-        let target_branches: HashMap<_, _> = attempt_repos
+        let workspace_repos =
+            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
+        let target_branches: HashMap<_, _> = workspace_repos
             .iter()
-            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
             .collect();
 
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, workspace.id).await?;
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
         let mut streams = Vec::new();
 

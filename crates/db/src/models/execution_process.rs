@@ -11,13 +11,13 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    attempt_repo::AttemptRepo,
     execution_process_repo_state::{CreateExecutionProcessRepoState, ExecutionProcessRepoState},
     project::Project,
     repo::Repo,
     session::Session,
     task::Task,
     workspace::Workspace,
+    workspace_repo::WorkspaceRepo,
 };
 
 #[derive(Debug, Error)]
@@ -156,14 +156,14 @@ impl ExecutionProcess {
                 eprs.repo_id                  as "repo_id!: Uuid",
                 eprs.after_head_commit        as after_head_commit,
                 prev.after_head_commit        as prev_after_head_commit,
-                ar.target_branch              as "target_branch!",
+                wr.target_branch              as "target_branch!",
                 r.path                        as repo_path
             FROM execution_processes ep
             JOIN sessions s ON s.id = ep.session_id
             JOIN execution_process_repo_states eprs ON eprs.execution_process_id = ep.id
             JOIN repos r ON r.id = eprs.repo_id
             JOIN workspaces w ON w.id = s.workspace_id
-            JOIN attempt_repos ar ON ar.attempt_id = w.id AND ar.repo_id = eprs.repo_id
+            JOIN workspace_repos wr ON wr.workspace_id = w.id AND wr.repo_id = eprs.repo_id
             LEFT JOIN execution_process_repo_states prev
               ON prev.execution_process_id = (
                    SELECT id FROM execution_processes
@@ -344,7 +344,7 @@ impl ExecutionProcess {
         .await
     }
 
-    /// Find latest coding_agent_turn session_id by session (simple scalar query)
+    /// Find latest coding_agent_turn agent_session_id by session (simple scalar query)
     pub async fn find_latest_coding_agent_turn_session_id(
         pool: &SqlitePool,
         session_id: Uuid,
@@ -354,13 +354,13 @@ impl ExecutionProcess {
             session_id
         );
         let row = sqlx::query!(
-            r#"SELECT cat.session_id
+            r#"SELECT cat.agent_session_id
                FROM execution_processes ep
                JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
                WHERE ep.session_id = $1
                  AND ep.run_reason = 'codingagent'
                  AND ep.dropped = FALSE
-                 AND cat.session_id IS NOT NULL
+                 AND cat.agent_session_id IS NOT NULL
                ORDER BY ep.created_at DESC
                LIMIT 1"#,
             session_id
@@ -370,7 +370,7 @@ impl ExecutionProcess {
 
         tracing::info!("Latest coding agent turn session id: {:?}", row);
 
-        Ok(row.and_then(|r| r.session_id))
+        Ok(row.and_then(|r| r.agent_session_id))
     }
 
     /// Find latest execution process by session and run reason
@@ -617,7 +617,7 @@ impl ExecutionProcess {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let repos = AttemptRepo::find_repos_for_attempt(pool, workspace.id).await?;
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
 
         Ok(ExecutionContext {
             execution_process,
@@ -681,8 +681,8 @@ impl ExecutionProcess {
         }
     }
 
-    /// Find latest coding_agent_turn session_id by workspace (across all sessions)
-    pub async fn find_latest_external_session_id_by_workspace(
+    /// Find latest coding_agent_turn agent_session_id by workspace (across all sessions)
+    pub async fn find_latest_agent_session_id_by_workspace(
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
@@ -691,14 +691,14 @@ impl ExecutionProcess {
             workspace_id
         );
         let row = sqlx::query!(
-            r#"SELECT cat.session_id
+            r#"SELECT cat.agent_session_id
                FROM execution_processes ep
                JOIN coding_agent_turns cat ON ep.id = cat.execution_process_id
                JOIN sessions s ON ep.session_id = s.id
                WHERE s.workspace_id = $1
                  AND ep.run_reason = 'codingagent'
                  AND ep.dropped = FALSE
-                 AND cat.session_id IS NOT NULL
+                 AND cat.agent_session_id IS NOT NULL
                ORDER BY ep.created_at DESC
                LIMIT 1"#,
             workspace_id
@@ -708,6 +708,6 @@ impl ExecutionProcess {
 
         tracing::info!("Latest coding agent turn session id: {:?}", row);
 
-        Ok(row.and_then(|r| r.session_id))
+        Ok(row.and_then(|r| r.agent_session_id))
     }
 }

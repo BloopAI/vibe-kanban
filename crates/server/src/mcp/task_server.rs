@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::routes::{
     containers::ContainerQuery,
-    task_attempts::{AttemptRepoInput, CreateTaskAttemptBody},
+    task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
 };
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -208,7 +208,7 @@ pub struct DeleteTaskRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct McpAttemptRepoInput {
+pub struct McpWorkspaceRepoInput {
     #[schemars(description = "The repository ID")]
     pub repo_id: Uuid,
     #[schemars(description = "The base branch for this repository")]
@@ -226,13 +226,13 @@ pub struct StartTaskAttemptRequest {
     #[schemars(description = "Optional executor variant, if needed")]
     pub variant: Option<String>,
     #[schemars(description = "Base branch for each repository in the project")]
-    pub repos: Vec<McpAttemptRepoInput>,
+    pub repos: Vec<McpWorkspaceRepoInput>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct StartTaskAttemptResponse {
     pub task_id: String,
-    pub attempt_id: String,
+    pub workspace_id: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -274,10 +274,12 @@ pub struct McpContext {
     pub project_id: Uuid,
     pub task_id: Uuid,
     pub task_title: String,
-    pub attempt_id: Uuid,
-    pub attempt_branch: String,
-    #[schemars(description = "Repository info and target branches for each repo in this attempt")]
-    pub attempt_repos: Vec<McpRepoContext>,
+    pub workspace_id: Uuid,
+    pub workspace_branch: String,
+    #[schemars(
+        description = "Repository info and target branches for each repo in this workspace"
+    )]
+    pub workspace_repos: Vec<McpRepoContext>,
 }
 
 impl TaskServer {
@@ -335,8 +337,8 @@ impl TaskServer {
         let ctx = api_response.data?;
 
         // Map RepoWithTargetBranch to McpRepoContext
-        let attempt_repos: Vec<McpRepoContext> = ctx
-            .attempt_repos
+        let workspace_repos: Vec<McpRepoContext> = ctx
+            .workspace_repos
             .into_iter()
             .map(|rwb| McpRepoContext {
                 repo_id: rwb.repo.id,
@@ -349,9 +351,9 @@ impl TaskServer {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
             task_title: ctx.task.title,
-            attempt_id: ctx.workspace.id,
-            attempt_branch: ctx.workspace.branch,
-            attempt_repos,
+            workspace_id: ctx.workspace.id,
+            workspace_branch: ctx.workspace.branch,
+            workspace_repos,
         })
     }
 }
@@ -685,9 +687,9 @@ impl TaskServer {
             variant,
         };
 
-        let attempt_repos: Vec<AttemptRepoInput> = repos
+        let workspace_repos: Vec<WorkspaceRepoInput> = repos
             .into_iter()
-            .map(|r| AttemptRepoInput {
+            .map(|r| WorkspaceRepoInput {
                 repo_id: r.repo_id,
                 target_branch: r.base_branch,
             })
@@ -696,7 +698,7 @@ impl TaskServer {
         let payload = CreateTaskAttemptBody {
             task_id,
             executor_profile_id,
-            repos: attempt_repos,
+            repos: workspace_repos,
         };
 
         let url = self.url("/api/task-attempts");
@@ -707,7 +709,7 @@ impl TaskServer {
 
         let response = StartTaskAttemptResponse {
             task_id: attempt.task_id.to_string(),
-            attempt_id: attempt.id.to_string(),
+            workspace_id: attempt.id.to_string(),
         };
 
         TaskServer::success(&response)

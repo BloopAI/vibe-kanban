@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN attempt_repos ar ON r.id = ar.repo_id\n               WHERE ar.attempt_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\",\n                      wr.target_branch\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,11 @@
         "name": "updated_at!: DateTime<Utc>",
         "ordinal": 5,
         "type_info": "Text"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 6,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -43,8 +48,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "fa9dcb3084ec7e943d974f7725986e4ae05a3a46a6e503b5e3f0787ebd5e9a96"
+  "hash": "64b5d84eb77fbd8dd733cd92faad07842b1093ec3e8120fefac5c5f7cd7f2f8e"
 }

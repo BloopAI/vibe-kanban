@@ -13,11 +13,11 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use db::models::{
-    attempt_repo::{AttemptRepo, CreateAttemptRepo},
     image::TaskImage,
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
+    workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
@@ -33,7 +33,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_task_middleware,
-    routes::task_attempts::AttemptRepoInput,
+    routes::task_attempts::WorkspaceRepoInput,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -143,7 +143,7 @@ pub async fn create_task(
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
-    pub repos: Vec<AttemptRepoInput>,
+    pub repos: Vec<WorkspaceRepoInput>,
 }
 
 pub async fn create_task_and_start(
@@ -193,15 +193,15 @@ pub async fn create_task_and_start(
     )
     .await?;
 
-    let attempt_repos: Vec<CreateAttemptRepo> = payload
+    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
         .repos
         .iter()
-        .map(|r| CreateAttemptRepo {
+        .map(|r| CreateWorkspaceRepo {
             repo_id: r.repo_id,
             target_branch: r.target_branch.clone(),
         })
         .collect();
-    AttemptRepo::create_many(&deployment.db().pool, workspace.id, &attempt_repos).await?;
+    WorkspaceRepo::create_many(&deployment.db().pool, workspace.id, &workspace_repos).await?;
 
     let is_attempt_running = deployment
         .container()
@@ -216,7 +216,7 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "executor": &payload.executor_profile_id.executor,
                 "variant": &payload.executor_profile_id.variant,
-                "attempt_id": workspace.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
@@ -321,7 +321,7 @@ pub async fn delete_task(
             ApiError::Workspace(e)
         })?;
 
-    let repositories = AttemptRepo::find_unique_repos_for_task(pool, task.id).await?;
+    let repositories = WorkspaceRepo::find_unique_repos_for_task(pool, task.id).await?;
 
     // Collect workspace directories that need cleanup
     let workspace_dirs: Vec<PathBuf> = attempts

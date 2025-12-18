@@ -74,7 +74,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       configs: repoBranchConfigs,
       isLoading: isLoadingBranches,
       setRepoBranch,
-      getAttemptRepoInputs,
+      getWorkspaceRepoInputs,
       reset: resetBranchSelection,
     } = useRepoBranchSelection({
       repos: projectRepos,
@@ -147,7 +147,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       )
         return;
       try {
-        const repos = getAttemptRepoInputs();
+        const repos = getWorkspaceRepoInputs();
 
         await createAttempt({
           profile: effectiveProfile,

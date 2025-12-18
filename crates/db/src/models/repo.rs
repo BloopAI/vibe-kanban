@@ -120,7 +120,7 @@ impl Repo {
         let result = sqlx::query!(
             r#"DELETE FROM repos
                WHERE id NOT IN (SELECT repo_id FROM project_repos)
-                 AND id NOT IN (SELECT repo_id FROM attempt_repos)"#
+                 AND id NOT IN (SELECT repo_id FROM workspace_repos)"#
         )
         .execute(pool)
         .await?;

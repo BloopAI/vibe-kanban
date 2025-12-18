@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use db::models::{
-    attempt_repo::AttemptRepo, execution_process::ExecutionProcess,
-    execution_process_repo_state::ExecutionProcessRepoState, workspace::Workspace,
+    execution_process::ExecutionProcess, execution_process_repo_state::ExecutionProcessRepoState,
+    workspace::Workspace, workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
 use services::services::{container::ContainerService, git::WorktreeResetOptions};
@@ -22,7 +22,7 @@ pub async fn restore_worktrees_to_process(
     perform_git_reset: bool,
     force_when_dirty: bool,
 ) -> Result<(), ApiError> {
-    let repos = AttemptRepo::find_repos_for_attempt(pool, workspace.id).await?;
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
 
     // Get all repo states for the target process
     let repo_states =

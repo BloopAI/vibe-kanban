@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      attempt_id as \"attempt_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      target_branch,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attempt_repos\n               WHERE attempt_id = $1",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -9,17 +9,17 @@
         "type_info": "Blob"
       },
       {
-        "name": "attempt_id!: Uuid",
+        "name": "path",
         "ordinal": 1,
-        "type_info": "Blob"
+        "type_info": "Text"
       },
       {
-        "name": "repo_id!: Uuid",
+        "name": "name",
         "ordinal": 2,
-        "type_info": "Blob"
+        "type_info": "Text"
       },
       {
-        "name": "target_branch",
+        "name": "display_name",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "7e319778faa593b7a88ad15e68ef86bf4e3ebc46e6cd0bc23238b8fc289a1ab3"
+  "hash": "23049e8ff32ee491346afb47628d71d1748508dabc033dd2fd059bab8c422630"
 }

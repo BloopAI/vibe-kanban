@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use db::{
     DBService,
     models::{
-        attempt_repo::AttemptRepo,
         coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
@@ -25,6 +24,7 @@ use db::{
         session::{CreateSession, Session, SessionError},
         task::{Task, TaskStatus},
         workspace::{Workspace, WorkspaceError},
+        workspace_repo::WorkspaceRepo,
     },
 };
 use executors::{
@@ -833,18 +833,18 @@ pub trait ContainerService {
                                 }
                             }
                         }
-                        LogMsg::SessionId(external_session_id) => {
+                        LogMsg::SessionId(agent_session_id) => {
                             // Append this line to the database
-                            if let Err(e) = CodingAgentTurn::update_session_id(
+                            if let Err(e) = CodingAgentTurn::update_agent_session_id(
                                 &db.pool,
                                 execution_id,
-                                external_session_id,
+                                agent_session_id,
                             )
                             .await
                             {
                                 tracing::error!(
-                                    "Failed to update external session_id {} for execution process {}: {}",
-                                    external_session_id,
+                                    "Failed to update agent_session_id {} for execution process {}: {}",
+                                    agent_session_id,
                                     execution_id,
                                     e
                                 );
@@ -985,7 +985,7 @@ pub trait ContainerService {
         // Create new execution process record
         // Capture current HEAD per repository as the "before" commit for this execution
         let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db().pool, workspace.id).await?;
+            WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace.id).await?;
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
                 "Workspace has no repositories configured"

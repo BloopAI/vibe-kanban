@@ -2,13 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import type {
   ExecutorProfileId,
-  AttemptRepoInput,
+  WorkspaceRepoInput,
   Workspace,
 } from 'shared/types';
 
 type CreateAttemptArgs = {
   profile: ExecutorProfileId;
-  repos: AttemptRepoInput[];
+  repos: WorkspaceRepoInput[];
 };
 
 type UseAttemptCreationArgs = {
