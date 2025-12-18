@@ -22,7 +22,7 @@ export interface UseScratchResult {
  */
 export const useScratch = (
   scratchType: ScratchType,
-  id: string | null
+  id: string | undefined
 ): UseScratchResult => {
   const endpoint = id ? scratchApi.getStreamUrl(scratchType, id) : undefined;
 
