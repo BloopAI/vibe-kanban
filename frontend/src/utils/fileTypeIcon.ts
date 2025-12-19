@@ -34,7 +34,7 @@ import {
   PostgresqlOriginal,
   GraphqlPlain,
 } from 'devicons-react';
-import { File } from '@phosphor-icons/react';
+import { FileIcon } from '@phosphor-icons/react';
 
 type IconComponent = ComponentType<
   SVGProps<SVGElement> & { size?: number | string }
@@ -124,5 +124,5 @@ export function getFileIcon(filename: string): IconComponent {
 
   // Then check extension
   const ext = basename.split('.').pop() || '';
-  return extToIcon[ext] || File;
+  return extToIcon[ext] || FileIcon;
 }

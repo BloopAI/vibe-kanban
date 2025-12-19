@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Plus, CaretDown } from '@phosphor-icons/react';
+import { PlusIcon, CaretDownIcon } from '@phosphor-icons/react';
 
 import { cn } from '@/lib/utils';
 import { Label } from './Label';
@@ -214,9 +214,9 @@ function WorkspaceSearch({
         className="flex aspect-square items-center justify-center bg-primary rounded-md text-low hover:text-normal"
       >
         {type === 'Add' ? (
-          <Plus className="size-icon-xl" weight="bold" />
+          <PlusIcon className="size-icon-xl" weight="bold" />
         ) : (
-          <CaretDown className="size-icon-base" />
+          <CaretDownIcon className="size-icon-base" />
         )}
       </button>
     </div>

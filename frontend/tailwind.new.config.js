@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
 const sizes = {
+  '2xs': 0.5,
   xs: 0.75,
   sm: 0.875,
   base: 1,
@@ -59,11 +60,13 @@ module.exports = {
         chat: chatMaxWidth,
       },
       size: {
+        'icon-2xs': getSize('2xs', iconMultiplier),
         'icon-xs': getSize('xs', iconMultiplier),
         'icon-sm': getSize('sm', iconMultiplier),
         'icon-base': getSize('base', iconMultiplier),
         'icon-lg': getSize('lg', iconMultiplier),
         'icon-xl': getSize('xl', iconMultiplier),
+        'dot': '0.375rem', // 6px - for animated indicator dots
       },
       backgroundImage: {
         'diagonal-lines': `

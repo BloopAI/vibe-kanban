@@ -1,12 +1,12 @@
-import { PushPin } from '@phosphor-icons/react';
+import { PushPinIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 function RunningDots() {
   return (
     <div className="flex items-center gap-[2px] shrink-0">
-      <span className="size-1.5 rounded-full bg-brand animate-running-dot-1" />
-      <span className="size-1.5 rounded-full bg-brand animate-running-dot-2" />
-      <span className="size-1.5 rounded-full bg-brand animate-running-dot-3" />
+      <span className="size-dot rounded-full bg-brand animate-running-dot-1" />
+      <span className="size-dot rounded-full bg-brand animate-running-dot-2" />
+      <span className="size-dot rounded-full bg-brand animate-running-dot-3" />
     </div>
   );
 }
@@ -57,7 +57,7 @@ export function WorkspaceSummary({
         <div className="flex w-full items-center gap-base text-sm">
           {isRunning && <RunningDots />}
           {isPinned && (
-            <PushPin
+            <PushPinIcon
               className="size-icon-xs text-brand shrink-0"
               weight="fill"
             />

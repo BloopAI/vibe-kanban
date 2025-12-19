@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import {
   ActionType,
   NormalizedEntry,
-  TaskAttempt,
   type TaskWithAttemptStatus,
 } from 'shared/types';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { DiffLineType, parseInstance } from '@git-diff-view/react';
 import { useExpandable } from '@/stores/useExpandableStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
@@ -19,7 +19,7 @@ type Props = {
   entry: NormalizedEntry;
   expansionKey: string;
   executionProcessId?: string;
-  taskAttempt?: TaskAttempt;
+  taskAttempt?: WorkspaceWithSession;
   task?: TaskWithAttemptStatus;
 };
 

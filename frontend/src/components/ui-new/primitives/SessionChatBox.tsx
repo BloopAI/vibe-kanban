@@ -1,4 +1,4 @@
-import { Microphone, Paperclip } from '@phosphor-icons/react';
+import { MicrophoneIcon, PaperclipIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { VibeKanbanLogo } from './VibeKanbanLogo';
@@ -81,8 +81,8 @@ export function SessionChatBox({
         <div className="flex items-end justify-between">
           <Toolbar className="flex-1 gap-double">
             <ToolbarDropdown label="Default" />
-            <ToolbarIconButton icon={Microphone} aria-label="Voice input" />
-            <ToolbarIconButton icon={Paperclip} aria-label="Attach file" />
+            <ToolbarIconButton icon={MicrophoneIcon} aria-label="Voice input" />
+            <ToolbarIconButton icon={PaperclipIcon} aria-label="Attach file" />
           </Toolbar>
           <PrimaryButton onClick={onSend}>Send</PrimaryButton>
         </div>
