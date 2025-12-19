@@ -234,6 +234,21 @@ impl Project {
         .await
     }
 
+    pub async fn clear_default_agent_working_dir(
+        pool: &SqlitePool,
+        id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE projects
+               SET default_agent_working_dir = ''
+               WHERE id = $1"#,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn set_remote_project_id(
         pool: &SqlitePool,
         id: Uuid,

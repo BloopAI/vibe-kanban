@@ -229,17 +229,7 @@ impl ProjectService {
 
         // If project just went from 1 to 2 repos, clear default_agent_working_dir
         if repo_count_before == 1 {
-            Project::update(
-                pool,
-                project_id,
-                &UpdateProject {
-                    name: None,
-                    dev_script: None,
-                    dev_script_working_dir: None,
-                    default_agent_working_dir: Some(String::new()),
-                },
-            )
-            .await?;
+            Project::clear_default_agent_working_dir(pool, project_id).await?;
         }
 
         tracing::info!(
