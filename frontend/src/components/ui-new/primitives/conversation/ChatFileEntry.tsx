@@ -1,4 +1,4 @@
-import { CaretDown } from '@phosphor-icons/react';
+import { CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 
@@ -47,7 +47,7 @@ export function ChatFileEntry({
         )}
       </div>
       {onToggle && (
-        <CaretDown
+        <CaretDownIcon
           className={cn(
             'size-icon-xs shrink-0 text-low transition-transform',
             !expanded && '-rotate-90'

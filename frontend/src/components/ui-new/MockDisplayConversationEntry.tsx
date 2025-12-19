@@ -8,20 +8,20 @@ import {
 import FileChangeRenderer from '@/components/NormalizedConversation/FileChangeRenderer';
 import { useExpandable } from '@/stores/useExpandableStore';
 import {
-  WarningCircle,
-  Robot,
-  CheckCircle,
-  CheckSquare,
-  CaretDown,
-  PencilSimple,
-  Eye,
-  Globe,
-  Hammer,
-  Plus,
-  MagnifyingGlass,
-  Gear,
-  Terminal,
-  User,
+  WarningCircleIcon,
+  RobotIcon,
+  CheckCircleIcon,
+  CheckSquareIcon,
+  CaretDownIcon,
+  PencilSimpleIcon,
+  EyeIcon,
+  GlobeIcon,
+  HammerIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
+  GearIcon,
+  TerminalIcon,
+  UserIcon,
 } from '@phosphor-icons/react';
 import RawLogText from '@/components/common/RawLogText';
 import { cn } from '@/lib/utils';
@@ -36,16 +36,16 @@ type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
 const getEntryIcon = (entryType: NormalizedEntryType) => {
   const iconClassName = 'size-icon-xs';
   if (entryType.type === 'user_message' || entryType.type === 'user_feedback') {
-    return <User className={iconClassName} />;
+    return <UserIcon className={iconClassName} />;
   }
   if (entryType.type === 'assistant_message') {
-    return <Robot className={iconClassName} />;
+    return <RobotIcon className={iconClassName} />;
   }
   if (entryType.type === 'system_message') {
-    return <Gear className={iconClassName} />;
+    return <GearIcon className={iconClassName} />;
   }
   if (entryType.type === 'error_message') {
-    return <WarningCircle className={iconClassName} />;
+    return <WarningCircleIcon className={iconClassName} />;
   }
   if (entryType.type === 'tool_use') {
     const { action_type, tool_name } = entryType;
@@ -57,29 +57,29 @@ const getEntryIcon = (entryType: NormalizedEntryType) => {
           tool_name.toLowerCase()
         ))
     ) {
-      return <CheckSquare className={iconClassName} />;
+      return <CheckSquareIcon className={iconClassName} />;
     }
 
     if (action_type.action === 'file_read') {
-      return <Eye className={iconClassName} />;
+      return <EyeIcon className={iconClassName} />;
     } else if (action_type.action === 'file_edit') {
-      return <PencilSimple className={iconClassName} />;
+      return <PencilSimpleIcon className={iconClassName} />;
     } else if (action_type.action === 'command_run') {
-      return <Terminal className={iconClassName} />;
+      return <TerminalIcon className={iconClassName} />;
     } else if (action_type.action === 'search') {
-      return <MagnifyingGlass className={iconClassName} />;
+      return <MagnifyingGlassIcon className={iconClassName} />;
     } else if (action_type.action === 'web_fetch') {
-      return <Globe className={iconClassName} />;
+      return <GlobeIcon className={iconClassName} />;
     } else if (action_type.action === 'task_create') {
-      return <Plus className={iconClassName} />;
+      return <PlusIcon className={iconClassName} />;
     } else if (action_type.action === 'plan_presentation') {
-      return <CheckSquare className={iconClassName} />;
+      return <CheckSquareIcon className={iconClassName} />;
     } else if (action_type.action === 'tool') {
-      return <Hammer className={iconClassName} />;
+      return <HammerIcon className={iconClassName} />;
     }
-    return <Gear className={iconClassName} />;
+    return <GearIcon className={iconClassName} />;
   }
-  return <Gear className={iconClassName} />;
+  return <GearIcon className={iconClassName} />;
 };
 
 const shouldRenderMarkdown = (entryType: NormalizedEntryType) =>
@@ -149,7 +149,7 @@ const ExpandChevron: React.FC<{
       : 'text-red-700 dark:text-red-300';
 
   return (
-    <CaretDown
+    <CaretDownIcon
       onClick={onClick}
       className={`size-icon-base cursor-pointer transition-transform ${color} ${
         expanded ? '' : '-rotate-90'
@@ -364,7 +364,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
     return (
       <div className="px-4 py-2 text-base">
         <div className="flex items-start gap-2">
-          <User className="size-icon-base mt-0.5 text-muted-foreground" />
+          <UserIcon className="size-icon-base mt-0.5 text-muted-foreground" />
           <div className="flex-1">
             <WYSIWYGEditor
               value={entry.content}
@@ -427,7 +427,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
     return (
       <div className="px-4 py-2 text-base">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-          <CheckCircle className="size-icon-base" />
+          <CheckCircleIcon className="size-icon-base" />
           <span>Task completed</span>
         </div>
       </div>
@@ -438,7 +438,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
   return (
     <div className="px-4 py-2 text-base">
       <div className="flex items-start gap-2">
-        <Robot className="size-icon-base mt-0.5 text-muted-foreground" />
+        <RobotIcon className="size-icon-base mt-0.5 text-muted-foreground" />
         <div className={cn('flex-1', getContentClassName(entryType))}>
           {shouldRenderMarkdown(entryType) ? (
             <WYSIWYGEditor

@@ -351,4 +351,35 @@
   }
 }
 
+/* VS Code-style resize handles for react-resizable-panels v4 */
+@layer components {
+  .new-design [data-separator] {
+    @apply relative bg-transparent cursor-col-resize transition-all duration-150 outline-0;
+    width: 1px;
+  }
+
+  /* The visible border line */
+  .new-design [data-separator]::before {
+    content: '';
+    @apply absolute inset-y-0 left-1/2 -translate-x-1/2 transition-all duration-150;
+    width: 1px;
+    background-color: hsl(var(--border));
+  }
+
+  /* Hover/active state - thicken and change color */
+  .new-design [data-separator]:hover::before,
+  .new-design [data-separator]:active::before,
+  .new-design [data-separator][data-active]::before {
+    width: 3px;
+    background-color: hsl(var(--brand));
+  }
+
+  /* Expand hit area for easier grabbing */
+  .new-design [data-separator]::after {
+    content: '';
+    @apply absolute inset-y-0 left-1/2 -translate-x-1/2;
+    width: 9px;
+  }
+}
+
 @config '../../../tailwind.new.config.js';
