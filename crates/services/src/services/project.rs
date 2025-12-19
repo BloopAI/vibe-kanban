@@ -205,6 +205,11 @@ impl ProjectService {
         let path = repo_service.normalize_path(&payload.git_repo_path)?;
         repo_service.validate_git_repo_path(&path)?;
 
+        // Count repos before adding
+        let repo_count_before = ProjectRepo::find_by_project_id(pool, project_id)
+            .await?
+            .len();
+
         let repository = ProjectRepo::add_repo_to_project(
             pool,
             project_id,
@@ -223,10 +228,7 @@ impl ProjectService {
         })?;
 
         // If project just went from 1 to 2 repos, clear default_agent_working_dir
-        let repo_count = ProjectRepo::find_by_project_id(pool, project_id)
-            .await?
-            .len();
-        if repo_count == 2 {
+        if repo_count_before == 1 {
             Project::update(
                 pool,
                 project_id,
