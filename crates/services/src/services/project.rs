@@ -130,7 +130,7 @@ impl ProjectService {
                         name: None,
                         dev_script: None,
                         dev_script_working_dir: None,
-                        agent_working_dir: Some(repo.name),
+                        default_agent_working_dir: Some(repo.name),
                     },
                 )
                 .await?;

@@ -142,6 +142,17 @@ pub async fn create_task_attempt(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
+    let project = task
+        .parent_project(pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let agent_working_dir = project
+        .default_agent_working_dir
+        .as_ref()
+        .filter(|dir| !dir.is_empty())
+        .cloned();
+
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
@@ -152,6 +163,7 @@ pub async fn create_task_attempt(
         pool,
         &CreateWorkspace {
             branch: git_branch_name.clone(),
+            agent_working_dir,
         },
         attempt_id,
         payload.task_id,

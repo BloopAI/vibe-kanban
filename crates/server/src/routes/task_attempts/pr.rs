@@ -146,16 +146,7 @@ async fn trigger_pr_description_follow_up(
     )
     .await?;
 
-    let task = workspace
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(sqlx::Error::RowNotFound)?;
-    let project = task
-        .parent_project(&deployment.db().pool)
-        .await?
-        .ok_or(sqlx::Error::RowNotFound)?;
-
-    let working_dir = project
+    let working_dir = workspace
         .agent_working_dir
         .as_ref()
         .filter(|dir| !dir.is_empty())

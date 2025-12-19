@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
+  "query": "UPDATE projects\n               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         dev_script,\n                         dev_script_working_dir,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -24,7 +24,7 @@
         "type_info": "Text"
       },
       {
-        "name": "agent_working_dir",
+        "name": "default_agent_working_dir",
         "ordinal": 4,
         "type_info": "Text"
       },
@@ -45,7 +45,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 5
     },
     "nullable": [
       true,
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "b16d989394409fa1620a48709ec61b07c6c41eb822b798f78d54204789c2e348"
+  "hash": "697001fc14562702ea84061e74bdcc6b9fbef679b8366ab46c1f629a633e9919"
 }

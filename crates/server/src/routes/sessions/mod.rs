@@ -181,7 +181,7 @@ pub async fn follow_up(
         .container()
         .cleanup_actions_for_repos(&project_repos);
 
-    let working_dir = project
+    let working_dir = workspace
         .agent_working_dir
         .as_ref()
         .filter(|dir| !dir.is_empty())

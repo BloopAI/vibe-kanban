@@ -766,7 +766,7 @@ impl LocalContainerService {
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
         let working_dir = ctx
-            .project
+            .workspace
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())

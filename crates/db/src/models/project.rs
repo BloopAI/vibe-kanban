@@ -23,7 +23,7 @@ pub struct Project {
     pub name: String,
     pub dev_script: Option<String>,
     pub dev_script_working_dir: Option<String>,
-    pub agent_working_dir: Option<String>,
+    pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -42,7 +42,7 @@ pub struct UpdateProject {
     pub name: Option<String>,
     pub dev_script: Option<String>,
     pub dev_script_working_dir: Option<String>,
-    pub agent_working_dir: Option<String>,
+    pub default_agent_working_dir: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -73,7 +73,7 @@ impl Project {
                       name,
                       dev_script,
                       dev_script_working_dir,
-                      agent_working_dir,
+                      default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -90,7 +90,7 @@ impl Project {
             Project,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
-                   p.agent_working_dir,
+                   p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -115,7 +115,7 @@ impl Project {
                       name,
                       dev_script,
                       dev_script_working_dir,
-                      agent_working_dir,
+                      default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -134,7 +134,7 @@ impl Project {
                       name,
                       dev_script,
                       dev_script_working_dir,
-                      agent_working_dir,
+                      default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -156,7 +156,7 @@ impl Project {
                       name,
                       dev_script,
                       dev_script_working_dir,
-                      agent_working_dir,
+                      default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -186,7 +186,7 @@ impl Project {
                           name,
                           dev_script,
                           dev_script_working_dir,
-                          agent_working_dir,
+                          default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
@@ -209,18 +209,18 @@ impl Project {
         let name = payload.name.clone().unwrap_or(existing.name);
         let dev_script = payload.dev_script.clone();
         let dev_script_working_dir = payload.dev_script_working_dir.clone();
-        let agent_working_dir = payload.agent_working_dir.clone();
+        let default_agent_working_dir = payload.default_agent_working_dir.clone();
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, agent_working_dir = $5
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
                          dev_script,
                          dev_script_working_dir,
-                         agent_working_dir,
+                         default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -228,7 +228,7 @@ impl Project {
             name,
             dev_script,
             dev_script_working_dir,
-            agent_working_dir,
+            default_agent_working_dir,
         )
         .fetch_one(pool)
         .await

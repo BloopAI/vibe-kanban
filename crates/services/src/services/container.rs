@@ -390,13 +390,13 @@ pub trait ContainerService {
                             .map(|s| s.is_empty())
                             .unwrap_or(true);
 
-                    let needs_agent_working_dir = project
-                        .agent_working_dir
+                    let needs_default_agent_working_dir = project
+                        .default_agent_working_dir
                         .as_ref()
                         .map(|s| s.is_empty())
                         .unwrap_or(true);
 
-                    if needs_dev_script_working_dir || needs_agent_working_dir {
+                    if needs_dev_script_working_dir || needs_default_agent_working_dir {
                         Project::update(
                             pool,
                             pr.project_id,
@@ -408,10 +408,10 @@ pub trait ContainerService {
                                 } else {
                                     project.dev_script_working_dir.clone()
                                 },
-                                agent_working_dir: if needs_agent_working_dir {
+                                default_agent_working_dir: if needs_default_agent_working_dir {
                                     Some(name.clone())
                                 } else {
-                                    project.agent_working_dir.clone()
+                                    project.default_agent_working_dir.clone()
                                 },
                             },
                         )
@@ -927,7 +927,7 @@ pub trait ContainerService {
 
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        let working_dir = project
+        let working_dir = workspace
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())

@@ -50,6 +50,7 @@ pub struct Workspace {
     pub task_id: Uuid,
     pub container_ref: Option<String>,
     pub branch: String,
+    pub agent_working_dir: Option<String>,
     pub setup_completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -89,6 +90,7 @@ pub struct WorkspaceContext {
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateWorkspace {
     pub branch: String,
+    pub agent_working_dir: Option<String>,
 }
 
 impl Workspace {
@@ -108,6 +110,7 @@ impl Workspace {
                               task_id AS "task_id!: Uuid",
                               container_ref,
                               branch,
+                              agent_working_dir,
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
                               updated_at AS "updated_at!: DateTime<Utc>"
@@ -125,6 +128,7 @@ impl Workspace {
                               task_id AS "task_id!: Uuid",
                               container_ref,
                               branch,
+                              agent_working_dir,
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
                               updated_at AS "updated_at!: DateTime<Utc>"
@@ -152,6 +156,7 @@ impl Workspace {
                        w.task_id           AS "task_id!: Uuid",
                        w.container_ref,
                        w.branch,
+                       w.agent_working_dir,
                        w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        w.created_at        AS "created_at!: DateTime<Utc>",
                        w.updated_at        AS "updated_at!: DateTime<Utc>"
@@ -225,6 +230,7 @@ impl Workspace {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
+                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
@@ -243,6 +249,7 @@ impl Workspace {
                        task_id           AS "task_id!: Uuid",
                        container_ref,
                        branch,
+                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>"
@@ -280,6 +287,7 @@ impl Workspace {
                 w.task_id as "task_id!: Uuid",
                 w.container_ref,
                 w.branch as "branch!",
+                w.agent_working_dir,
                 w.setup_completed_at as "setup_completed_at: DateTime<Utc>",
                 w.created_at as "created_at!: DateTime<Utc>",
                 w.updated_at as "updated_at!: DateTime<Utc>"
@@ -322,13 +330,14 @@ impl Workspace {
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
-            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             task_id,
             Option::<String>::None,
             data.branch,
+            data.agent_working_dir,
             Option::<DateTime<Utc>>::None
         )
         .fetch_one(pool)
