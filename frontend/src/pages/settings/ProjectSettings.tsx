@@ -395,7 +395,8 @@ export function ProjectSettings() {
         name: draft.name.trim(),
         dev_script: draft.dev_script.trim() || null,
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
-        default_agent_working_dir: draft.default_agent_working_dir.trim() || null,
+        default_agent_working_dir:
+          draft.default_agent_working_dir.trim() || null,
       };
 
       updateProject.mutate({
