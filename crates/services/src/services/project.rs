@@ -223,7 +223,9 @@ impl ProjectService {
         })?;
 
         // If project just went from 1 to 2 repos, clear default_agent_working_dir
-        let repo_count = ProjectRepo::find_by_project_id(pool, project_id).await?.len();
+        let repo_count = ProjectRepo::find_by_project_id(pool, project_id)
+            .await?
+            .len();
         if repo_count == 2 {
             Project::update(
                 pool,
