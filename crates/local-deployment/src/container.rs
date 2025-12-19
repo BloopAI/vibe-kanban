@@ -765,7 +765,6 @@ impl LocalContainerService {
             ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        // Get agent working directory from project settings
         let working_dir = ctx
             .project
             .agent_working_dir

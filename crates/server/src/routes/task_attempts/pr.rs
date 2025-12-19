@@ -146,7 +146,6 @@ async fn trigger_pr_description_follow_up(
     )
     .await?;
 
-    // Get project for agent_working_dir setting
     let task = workspace
         .parent_task(&deployment.db().pool)
         .await?
@@ -156,7 +155,6 @@ async fn trigger_pr_description_follow_up(
         .await?
         .ok_or(sqlx::Error::RowNotFound)?;
 
-    // Get agent working directory from project settings
     let working_dir = project
         .agent_working_dir
         .as_ref()

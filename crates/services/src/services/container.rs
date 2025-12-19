@@ -927,7 +927,6 @@ pub trait ContainerService {
 
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        // Get agent working directory from project settings
         let working_dir = project
             .agent_working_dir
             .as_ref()
