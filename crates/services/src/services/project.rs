@@ -110,11 +110,31 @@ impl ProjectService {
             .await
             .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
 
-        for repo in normalized_repos {
+        let mut created_repo: Option<Repo> = None;
+        for repo in &normalized_repos {
             let repo_entity =
                 Repo::find_or_create(pool, Path::new(&repo.git_repo_path), &repo.display_name)
                     .await?;
             ProjectRepo::create(pool, project.id, repo_entity.id).await?;
+            if created_repo.is_none() {
+                created_repo = Some(repo_entity);
+            }
+        }
+
+        if normalized_repos.len() == 1 {
+            if let Some(repo) = created_repo {
+                Project::update(
+                    pool,
+                    project.id,
+                    &UpdateProject {
+                        name: None,
+                        dev_script: None,
+                        dev_script_working_dir: None,
+                        agent_working_dir: Some(repo.name),
+                    },
+                )
+                .await?;
+            }
         }
 
         Ok(project)
