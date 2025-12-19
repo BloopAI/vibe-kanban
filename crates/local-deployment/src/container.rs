@@ -765,16 +765,26 @@ impl LocalContainerService {
             ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
+        // Get agent working directory from project settings
+        let working_dir = ctx
+            .project
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+
         let action_type = if let Some(agent_session_id) = latest_agent_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
                 prompt: queued_data.message.clone(),
                 session_id: agent_session_id,
                 executor_profile_id: executor_profile_id.clone(),
+                working_dir: working_dir.clone(),
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: queued_data.message.clone(),
                 executor_profile_id: executor_profile_id.clone(),
+                working_dir,
             })
         };
 

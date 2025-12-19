@@ -351,7 +351,7 @@ pub trait ContainerService {
     }
 
     /// Backfill repo names that were migrated with a sentinel placeholder.
-    /// Also backfills dev_script_working_dir for single-repo projects.
+    /// Also backfills dev_script_working_dir and agent_working_dir for single-repo projects.
     async fn backfill_repo_names(&self) -> Result<(), ContainerError> {
         let pool = &self.db().pool;
         let repos = Repo::list_needing_name_fix(pool).await?;
@@ -372,33 +372,51 @@ pub trait ContainerService {
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
 
-            // Also update dev_script_working_dir for single-repo projects
+            // Also update dev_script_working_dir and agent_working_dir for single-repo projects
             let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
             for pr in project_repos {
                 let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
                 if all_repos.len() == 1
                     && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
-                    && project
+                {
+                    let needs_dev_script_working_dir = project
                         .dev_script
                         .as_ref()
                         .map(|s| !s.is_empty())
                         .unwrap_or(false)
-                    && project
-                        .dev_script_working_dir
+                        && project
+                            .dev_script_working_dir
+                            .as_ref()
+                            .map(|s| s.is_empty())
+                            .unwrap_or(true);
+
+                    let needs_agent_working_dir = project
+                        .agent_working_dir
                         .as_ref()
                         .map(|s| s.is_empty())
-                        .unwrap_or(true)
-                {
-                    Project::update(
-                        pool,
-                        pr.project_id,
-                        &UpdateProject {
-                            name: Some(project.name.clone()),
-                            dev_script: project.dev_script.clone(),
-                            dev_script_working_dir: Some(name.clone()),
-                        },
-                    )
-                    .await?;
+                        .unwrap_or(true);
+
+                    if needs_dev_script_working_dir || needs_agent_working_dir {
+                        Project::update(
+                            pool,
+                            pr.project_id,
+                            &UpdateProject {
+                                name: Some(project.name.clone()),
+                                dev_script: project.dev_script.clone(),
+                                dev_script_working_dir: if needs_dev_script_working_dir {
+                                    Some(name.clone())
+                                } else {
+                                    project.dev_script_working_dir.clone()
+                                },
+                                agent_working_dir: if needs_agent_working_dir {
+                                    Some(name.clone())
+                                } else {
+                                    project.agent_working_dir.clone()
+                                },
+                            },
+                        )
+                        .await?;
+                    }
                 }
             }
         }
@@ -909,10 +927,18 @@ pub trait ContainerService {
 
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
+        // Get agent working directory from project settings
+        let working_dir = project
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
+                working_dir,
             }),
             cleanup_action.map(Box::new),
         );

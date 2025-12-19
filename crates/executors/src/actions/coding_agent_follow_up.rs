@@ -20,6 +20,10 @@ pub struct CodingAgentFollowUpRequest {
     #[serde(alias = "profile_variant_label")]
     // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor_profile_id: ExecutorProfileId,
+    /// Optional relative path to execute the agent in (relative to container_ref).
+    /// If None, uses the container_ref directory directly.
+    #[serde(default)]
+    pub working_dir: Option<String>,
 }
 
 impl CodingAgentFollowUpRequest {
@@ -41,6 +45,12 @@ impl Executable for CodingAgentFollowUpRequest {
         approvals: Arc<dyn ExecutorApprovalService>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
+        // Use working_dir if specified, otherwise use current_dir
+        let effective_dir = match &self.working_dir {
+            Some(rel_path) => current_dir.join(rel_path),
+            None => current_dir.to_path_buf(),
+        };
+
         let executor_profile_id = self.get_executor_profile_id();
         let mut agent = ExecutorConfigs::get_cached()
             .get_coding_agent(&executor_profile_id)
@@ -51,7 +61,7 @@ impl Executable for CodingAgentFollowUpRequest {
         agent.use_approvals(approvals.clone());
 
         agent
-            .spawn_follow_up(current_dir, &self.prompt, &self.session_id, env)
+            .spawn_follow_up(&effective_dir, &self.prompt, &self.session_id, env)
             .await
     }
 }
