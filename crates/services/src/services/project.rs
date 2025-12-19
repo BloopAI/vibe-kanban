@@ -222,6 +222,22 @@ impl ProjectService {
             _ => ProjectServiceError::RepositoryNotFound,
         })?;
 
+        // If project just went from 1 to 2 repos, clear default_agent_working_dir
+        let repo_count = ProjectRepo::find_by_project_id(pool, project_id).await?.len();
+        if repo_count == 2 {
+            Project::update(
+                pool,
+                project_id,
+                &UpdateProject {
+                    name: None,
+                    dev_script: None,
+                    dev_script_working_dir: None,
+                    default_agent_working_dir: Some(String::new()),
+                },
+            )
+            .await?;
+        }
+
         tracing::info!(
             "Added repository {} to project {} (path: {})",
             repository.id,
