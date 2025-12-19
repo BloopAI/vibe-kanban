@@ -14,6 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
+    project::{Project, ProjectError},
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
@@ -177,16 +178,27 @@ pub async fn create_task_and_start(
         )
         .await;
 
+    let project = Project::find_by_id(pool, task.project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
         .git_branch_from_workspace(&attempt_id, &task.title)
         .await;
 
+    let agent_working_dir = project
+        .default_agent_working_dir
+        .as_ref()
+        .filter(|dir: &&String| !dir.is_empty())
+        .cloned();
+
     let workspace = Workspace::create(
         pool,
         &CreateWorkspace {
             branch: git_branch_name,
+            agent_working_dir,
         },
         attempt_id,
         task.id,
