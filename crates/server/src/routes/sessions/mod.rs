@@ -181,17 +181,26 @@ pub async fn follow_up(
         .container()
         .cleanup_actions_for_repos(&project_repos);
 
+    // Get agent working directory from project settings
+    let working_dir = project
+        .agent_working_dir
+        .as_ref()
+        .filter(|dir| !dir.is_empty())
+        .cloned();
+
     let action_type = if let Some(agent_session_id) = latest_agent_session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: agent_session_id,
             executor_profile_id: executor_profile_id.clone(),
+            working_dir: working_dir.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
+                working_dir,
             },
         )
     };
