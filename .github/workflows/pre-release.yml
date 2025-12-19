@@ -193,7 +193,7 @@ jobs:
             os: macos-15-xlarge
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
-            os: windows-latest-arm64-l
+            os: windows-latest-l
             name: windows-arm64
     steps:
       - uses: actions/checkout@v4
