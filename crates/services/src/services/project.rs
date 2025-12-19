@@ -121,20 +121,20 @@ impl ProjectService {
             }
         }
 
-        if normalized_repos.len() == 1 {
-            if let Some(repo) = created_repo {
-                Project::update(
-                    pool,
-                    project.id,
-                    &UpdateProject {
-                        name: None,
-                        dev_script: None,
-                        dev_script_working_dir: None,
-                        default_agent_working_dir: Some(repo.name),
-                    },
-                )
-                .await?;
-            }
+        if normalized_repos.len() == 1
+            && let Some(repo) = created_repo
+        {
+            Project::update(
+                pool,
+                project.id,
+                &UpdateProject {
+                    name: None,
+                    dev_script: None,
+                    dev_script_working_dir: None,
+                    default_agent_working_dir: Some(repo.name),
+                },
+            )
+            .await?;
         }
 
         Ok(project)
