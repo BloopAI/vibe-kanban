@@ -1,5 +1,20 @@
-import { CaretRight, type Icon } from '@phosphor-icons/react';
+import {
+  type Icon,
+  SortAscendingIcon,
+  SortDescendingIcon,
+  CalendarIcon,
+  UserIcon,
+  TagIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from './Dropdown';
 
 interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -36,23 +51,41 @@ function ToolbarIconButton({
   );
 }
 
-interface ToolbarDropdownProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarDropdownProps {
   label: string;
+  icon?: Icon;
+  children?: React.ReactNode;
+  className?: string;
 }
 
-function ToolbarDropdown({ label, className, ...props }: ToolbarDropdownProps) {
+function ToolbarDropdown({
+  label,
+  icon,
+  children,
+  className,
+}: ToolbarDropdownProps) {
   return (
-    <button
-      className={cn(
-        'flex items-center gap-px rounded-sm bg-panel px-half py-half',
-        className
-      )}
-      {...props}
-    >
-      <span className="text-sm text-low">{label}</span>
-      <CaretRight className="size-icon-xs text-low" weight="bold" />
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger icon={icon} label={label} className={className} />
+      <DropdownMenuContent>
+        {children ?? (
+          <>
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuItem icon={SortAscendingIcon}>
+              Ascending
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={SortDescendingIcon}>
+              Descending
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Group by</DropdownMenuLabel>
+            <DropdownMenuItem icon={CalendarIcon}>Date</DropdownMenuItem>
+            <DropdownMenuItem icon={UserIcon}>Assignee</DropdownMenuItem>
+            <DropdownMenuItem icon={TagIcon}>Label</DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

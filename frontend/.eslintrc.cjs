@@ -16,7 +16,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file'],
+  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file', 'deprecation'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -263,9 +263,10 @@ module.exports = {
       },
     },
     {
-      // ui-new components must use Phosphor icons, not Lucide
+      // ui-new components must use Phosphor icons (not Lucide) and avoid deprecated APIs
       files: ['src/components/ui-new/**/*.{ts,tsx}'],
       rules: {
+        'deprecation/deprecation': 'error',
         'no-restricted-imports': [
           'error',
           {
@@ -289,6 +290,27 @@ module.exports = {
             selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
             message:
               'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
+          },
+        ],
+      },
+    },
+    {
+      // ui-new icon components must use standard icon sizes (size-icon-*), not arbitrary values
+      files: ['src/components/ui-new/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            // Catch arbitrary pixel sizes like size-[10px], size-[7px], etc. in className
+            selector: 'Literal[value=/size-\\[\\d+px\\]/]',
+            message:
+              'Use standard icon sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of arbitrary pixel values like size-[Npx].',
+          },
+          {
+            // Catch generic tailwind sizes like size-1, size-3, size-1.5, etc. (not size-icon-* or size-dot)
+            selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
+            message:
+              'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
           },
         ],
       },
