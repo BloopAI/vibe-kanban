@@ -1,6 +1,3 @@
-CREATE INDEX IF NOT EXISTS idx_tasks_project_id_created_at
-ON tasks (project_id, created_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_sessions_workspace_id_created_at
 ON sessions (workspace_id, created_at DESC);
 
@@ -13,3 +10,5 @@ WHERE container_ref IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_eprs_process_repo
 ON execution_process_repo_states (execution_process_id, repo_id);
+
+PRAGMA optimize;
