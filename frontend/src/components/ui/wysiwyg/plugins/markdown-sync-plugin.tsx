@@ -41,6 +41,7 @@ export function MarkdownSyncPlugin({
 
     try {
       editor.update(() => {
+        if(value.startsWith(`---`))value = value.replace(`---`, '');
         if (value.trim() === '') {
           $getRoot().clear();
         } else {

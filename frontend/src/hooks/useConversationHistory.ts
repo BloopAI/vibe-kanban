@@ -410,12 +410,7 @@ export const useConversationHistory = ({
         );
       }
 
-      return allEntries.map(e => {
-        if (typeof e.content === 'object' && 'content' in e.content) {
-          if (e.content.content.startsWith(`---`)) e.content.content = e.content.content.replace(`---`, '');
-        }
-        return e;
-      });
+      return allEntries;
     },
     []
   );
