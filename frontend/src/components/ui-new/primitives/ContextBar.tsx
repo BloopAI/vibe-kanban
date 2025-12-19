@@ -87,7 +87,7 @@ export function ContextBar({
       )}
       style={style}
     >
-      <div className="bg-secondary border border-secondary rounded-sm shadow-[inset_2px_2px_20px_rgba(255,255,255,0.03),_0_0_10px_rgba(0,0,0,0.3)] px-base">
+      <div className="bg-secondary border border-secondary rounded-sm shadow-[inset_2px_2px_5px_rgba(255,255,255,0.03),_0_0_10px_rgba(0,0,0,0.3)] px-base">
         <DragHandle
           onMouseDown={dragHandlers.onMouseDown}
           isDragging={isDragging}
