@@ -349,6 +349,11 @@
           "placeholder": "ej., mi-repo",
           "helper": "El directorio desde el cual ejecutar el script del servidor de desarrollo, relativo a la raíz del workspace. Déjalo vacío para ejecutar desde la raíz del workspace."
         },
+        "agentWorkingDir": {
+          "label": "Directorio de Trabajo del Agente",
+          "placeholder": "ej., mi-repo",
+          "helper": "Directorio predeterminado para nuevos workspaces donde ejecutar el agente de codificación, relativo a la raíz del workspace. Este valor se captura cuando se crea un workspace y no afectará a los workspaces existentes. Para proyectos de un solo repositorio, esto se establece por defecto al nombre del repositorio. Déjalo vacío para ejecutar desde la raíz del workspace."
+        },
         "cleanup": {
           "label": "Script de Limpieza",
           "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
