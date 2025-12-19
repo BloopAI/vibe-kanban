@@ -736,6 +736,67 @@ impl LocalContainerService {
         Ok(())
     }
 
+    /// Create workspace-level CLAUDE.md and AGENTS.md files that import from each repo.
+    /// Uses the @import syntax to reference each repo's config files.
+    /// Skips creating files if they already exist or if no repos have the source file.
+    async fn create_workspace_config_files(
+        workspace_dir: &Path,
+        repos: &[Repo],
+    ) -> Result<(), ContainerError> {
+        const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
+
+        for config_file in CONFIG_FILES {
+            let workspace_config_path = workspace_dir.join(config_file);
+
+            // Skip if file already exists (idempotent)
+            if workspace_config_path.exists() {
+                tracing::debug!(
+                    "Workspace config file {} already exists, skipping",
+                    config_file
+                );
+                continue;
+            }
+
+            // Collect repos that have this config file
+            let mut import_lines = Vec::new();
+            for repo in repos {
+                let repo_config_path = workspace_dir.join(&repo.name).join(config_file);
+                if repo_config_path.exists() {
+                    import_lines.push(format!("@{}/{}", repo.name, config_file));
+                }
+            }
+
+            // Skip if no repos have this config file
+            if import_lines.is_empty() {
+                tracing::debug!(
+                    "No repos have {}, skipping workspace config creation",
+                    config_file
+                );
+                continue;
+            }
+
+            // Create the workspace config file with import lines
+            let content = import_lines.join("\n") + "\n";
+            if let Err(e) = tokio::fs::write(&workspace_config_path, &content).await {
+                tracing::warn!(
+                    "Failed to create workspace config file {}: {}",
+                    config_file,
+                    e
+                );
+                // Don't fail workspace creation for config file issues
+                continue;
+            }
+
+            tracing::info!(
+                "Created workspace {} with {} import(s)",
+                config_file,
+                import_lines.len()
+            );
+        }
+
+        Ok(())
+    }
+
     /// Start a follow-up execution from a queued message
     async fn start_queued_follow_up(
         &self,
@@ -890,6 +951,10 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
             .await?;
 
+        // Create workspace-level CLAUDE.md and AGENTS.md with imports from each repo
+        Self::create_workspace_config_files(&created_workspace.workspace_dir, &repositories)
+            .await?;
+
         Workspace::update_container_ref(
             &self.db.pool,
             workspace.id,
@@ -949,6 +1014,9 @@ impl ContainerService for LocalContainerService {
         // Copy project files and images (fast no-op if already exist)
         self.copy_files_and_images(&workspace_dir, workspace)
             .await?;
+
+        // Create workspace-level CLAUDE.md and AGENTS.md (no-op if already exist)
+        Self::create_workspace_config_files(&workspace_dir, &repositories).await?;
 
         Ok(workspace_dir.to_string_lossy().to_string())
     }
