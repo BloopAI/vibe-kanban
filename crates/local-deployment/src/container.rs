@@ -748,7 +748,6 @@ impl LocalContainerService {
         for config_file in CONFIG_FILES {
             let workspace_config_path = workspace_dir.join(config_file);
 
-            // Skip if file already exists (idempotent)
             if workspace_config_path.exists() {
                 tracing::debug!(
                     "Workspace config file {} already exists, skipping",
@@ -757,7 +756,6 @@ impl LocalContainerService {
                 continue;
             }
 
-            // Collect repos that have this config file
             let mut import_lines = Vec::new();
             for repo in repos {
                 let repo_config_path = workspace_dir.join(&repo.name).join(config_file);
@@ -766,7 +764,6 @@ impl LocalContainerService {
                 }
             }
 
-            // Skip if no repos have this config file
             if import_lines.is_empty() {
                 tracing::debug!(
                     "No repos have {}, skipping workspace config creation",
@@ -775,7 +772,6 @@ impl LocalContainerService {
                 continue;
             }
 
-            // Create the workspace config file with import lines
             let content = import_lines.join("\n") + "\n";
             if let Err(e) = tokio::fs::write(&workspace_config_path, &content).await {
                 tracing::warn!(
@@ -783,7 +779,6 @@ impl LocalContainerService {
                     config_file,
                     e
                 );
-                // Don't fail workspace creation for config file issues
                 continue;
             }
 
@@ -951,7 +946,6 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
             .await?;
 
-        // Create workspace-level CLAUDE.md and AGENTS.md with imports from each repo
         Self::create_workspace_config_files(&created_workspace.workspace_dir, &repositories)
             .await?;
 
@@ -1015,7 +1009,6 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&workspace_dir, workspace)
             .await?;
 
-        // Create workspace-level CLAUDE.md and AGENTS.md (no-op if already exist)
         Self::create_workspace_config_files(&workspace_dir, &repositories).await?;
 
         Ok(workspace_dir.to_string_lossy().to_string())
