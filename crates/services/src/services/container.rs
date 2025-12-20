@@ -909,7 +909,7 @@ pub trait ContainerService {
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
-                executor: Some(executor_profile_id.to_string()),
+                executor: Some(executor_profile_id.executor.to_string()),
             },
             Uuid::new_v4(),
             workspace.id,
