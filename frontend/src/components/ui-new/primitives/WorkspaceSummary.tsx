@@ -40,17 +40,12 @@ export function WorkspaceSummary({
     <button
       onClick={onClick}
       className={cn(
-        'group flex w-full cursor-pointer flex-col border-l-4 py-base text-left',
-        isActive ? 'border-normal pl-double' : 'border-none',
+        'group flex w-full cursor-pointer flex-col border-l-4 text-left',
+        isActive ? 'border-normal pl-base' : 'border-none',
         className
       )}
     >
-      <div
-        className={cn(
-          'truncate text-base font-medium group-hover:text-high',
-          isActive ? 'text-high' : 'text-normal'
-        )}
-      >
+      <div className={cn('truncate text-normal group-hover:text-high')}>
         {name}
       </div>
       {hasStats && (
@@ -62,7 +57,7 @@ export function WorkspaceSummary({
               weight="fill"
             />
           )}
-          <span className="min-w-0 flex-1 truncate text-low">
+          <span className="min-w-0 flex-1 truncate">
             {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
           </span>
           <span className="shrink-0 text-right space-x-half">

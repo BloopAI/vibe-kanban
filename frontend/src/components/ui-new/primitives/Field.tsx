@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { PlusIcon, CaretDownIcon } from '@phosphor-icons/react';
 
 import { cn } from '@/lib/utils';
 import { Label } from './Label';
@@ -182,47 +181,6 @@ function FieldSeparator({
   );
 }
 
-function WorkspaceSearch({
-  className,
-  value,
-  onValueChange,
-  onAdd,
-  type = 'Add',
-  ...props
-}: Omit<React.ComponentProps<'div'>, 'onChange'> & {
-  value?: string;
-  onValueChange?: (value: string) => void;
-  onAdd?: () => void;
-  type?: 'Add' | 'Filter';
-}) {
-  return (
-    <div
-      data-slot="workspace-search"
-      className={cn('grid grid-cols-[1fr_auto] gap-base', className)}
-      {...props}
-    >
-      <input
-        type="text"
-        placeholder="Search..."
-        value={value}
-        onChange={(e) => onValueChange?.(e.target.value)}
-        className="flex-1 min-h-0 bg-primary rounded-md p-base text-high placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
-      />
-      <button
-        type="button"
-        onClick={onAdd}
-        className="flex aspect-square items-center justify-center bg-primary rounded-md text-low hover:text-normal"
-      >
-        {type === 'Add' ? (
-          <PlusIcon className="size-icon-xl" weight="bold" />
-        ) : (
-          <CaretDownIcon className="size-icon-base" />
-        )}
-      </button>
-    </div>
-  );
-}
-
 function FieldError({
   className,
   children,
@@ -281,5 +239,4 @@ export {
   FieldSet,
   FieldContent,
   FieldTitle,
-  WorkspaceSearch,
 };
