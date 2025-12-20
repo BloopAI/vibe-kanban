@@ -44,7 +44,7 @@ export function WorkspacesMain({
   return (
     <main
       ref={containerRef}
-      className="relative flex flex-1 flex-col bg-primary h-screen"
+      className="relative flex flex-1 flex-col bg-primary h-full"
     >
       <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
         <div className="w-chat max-w-full h-full">
