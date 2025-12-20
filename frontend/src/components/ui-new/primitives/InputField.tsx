@@ -3,25 +3,35 @@ import {
   PencilSimpleLineIcon,
   CheckIcon,
   ArrowCounterClockwiseIcon,
+  type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
-interface EditableTextProps {
+interface InputFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  variant?: 'editable' | 'search';
+  actionIcon?: Icon;
+  onAction?: () => void;
+  disabled?: boolean;
 }
 
-export function EditableText({
+export function InputField({
   value,
   onChange,
   placeholder,
   className,
-}: EditableTextProps) {
+  variant = 'editable',
+  actionIcon: ActionIcon,
+  onAction,
+  disabled,
+}: InputFieldProps) {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editValue, setEditValue] = React.useState(value);
   const [justSaved, setJustSaved] = React.useState(false);
+  const [isFocused, setIsFocused] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Sync editValue when value prop changes (and not editing)
@@ -31,13 +41,13 @@ export function EditableText({
     }
   }, [value, isEditing]);
 
-  // Focus input when entering edit mode
+  // Focus input when entering edit mode (editable variant only)
   React.useEffect(() => {
-    if (isEditing && inputRef.current) {
+    if (variant === 'editable' && isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, [isEditing]);
+  }, [variant, isEditing]);
 
   // Clear justSaved after 2 seconds
   React.useEffect(() => {
@@ -63,33 +73,52 @@ export function EditableText({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
+    if (variant === 'editable') {
+      if (e.key === 'Enter') {
+        handleSave();
+      } else if (e.key === 'Escape') {
+        handleCancel();
+      }
     }
   };
+
+  // Determine border color based on state
+  const getBorderClass = () => {
+    if (variant === 'editable') {
+      if (justSaved) return 'border-success';
+      if (isEditing) return 'border-brand';
+    }
+    if (variant === 'search' && isFocused) return 'border-brand';
+    return 'border-border';
+  };
+
+  // For search variant: always show input
+  // For editable variant: show input only when editing
+  const showInput = variant === 'search' || isEditing;
 
   return (
     <div
       className={cn(
         'bg-secondary border rounded-sm px-base py-half flex items-center gap-base transition-colors',
-        justSaved
-          ? 'border-success'
-          : isEditing
-            ? 'border-brand'
-            : 'border-border',
+        getBorderClass(),
         className
       )}
     >
-      {isEditing ? (
+      {showInput ? (
         <input
           ref={inputRef}
           type="text"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          value={variant === 'editable' ? editValue : value}
+          onChange={(e) =>
+            variant === 'editable'
+              ? setEditValue(e.target.value)
+              : onChange(e.target.value)
+          }
           onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
+          disabled={disabled}
           className="flex-1 text-base text-high bg-transparent placeholder:text-low placeholder:opacity-80 focus:outline-none min-w-0"
         />
       ) : (
@@ -97,12 +126,15 @@ export function EditableText({
           {value || <span className="text-low opacity-80">{placeholder}</span>}
         </span>
       )}
-      {justSaved ? (
+
+      {/* Editable variant icons */}
+      {variant === 'editable' && justSaved && (
         <CheckIcon
           className="size-icon-sm text-success shrink-0"
           weight="bold"
         />
-      ) : isEditing ? (
+      )}
+      {variant === 'editable' && isEditing && !justSaved && (
         <>
           <ArrowCounterClockwiseIcon
             className="size-icon-sm text-low shrink-0 cursor-pointer hover:text-normal"
@@ -121,12 +153,25 @@ export function EditableText({
             }}
           />
         </>
-      ) : (
+      )}
+      {variant === 'editable' && !isEditing && !justSaved && (
         <PencilSimpleLineIcon
           className="size-icon-sm text-low shrink-0 cursor-pointer hover:text-normal"
           weight="regular"
           onClick={() => setIsEditing(true)}
         />
+      )}
+
+      {/* Search variant action button */}
+      {variant === 'search' && ActionIcon && (
+        <button
+          type="button"
+          onClick={onAction}
+          disabled={disabled}
+          className="size-icon-sm text-low shrink-0 cursor-pointer hover:text-normal flex items-center justify-center"
+        >
+          <ActionIcon className="size-icon-sm" weight="bold" />
+        </button>
       )}
     </div>
   );
