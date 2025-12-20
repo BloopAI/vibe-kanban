@@ -61,7 +61,7 @@ export function MockConversationList({
             licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
           >
             <VirtuosoMessageList<MockPatchEntry, undefined>
-              className="h-full"
+              className="h-full scrollbar-none"
               data={channelData}
               initialLocation={INITIAL_TOP_ITEM}
               computeItemKey={computeItemKey}
