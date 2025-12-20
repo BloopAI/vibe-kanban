@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from './Dropdown';
+import { CollapsibleSection } from './CollapsibleSection';
 
 interface RepoCardProps {
   name: string;
@@ -42,12 +43,11 @@ export function RepoCard({
   className,
 }: RepoCardProps) {
   return (
-    <div className={cn('flex flex-col gap-half w-full', className)}>
-      {/* Repo name */}
-      <div className="flex items-center justify-between w-full">
-        <p className="font-medium truncate text-normal">{name}</p>
-      </div>
-
+    <CollapsibleSection
+      title={name}
+      className={cn('gap-half', className)}
+      defaultExpanded
+    >
       {/* Branch row */}
       <div className="flex items-center justify-between w-full py-half">
         <div className="flex items-center gap-base">
@@ -123,6 +123,6 @@ export function RepoCard({
           </span>
         </button>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
