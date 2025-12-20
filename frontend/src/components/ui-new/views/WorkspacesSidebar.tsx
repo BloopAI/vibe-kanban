@@ -1,5 +1,6 @@
+import { PlusIcon } from '@phosphor-icons/react';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { WorkspaceSearch } from '@/components/ui-new/primitives/Field';
+import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
 
 interface WorkspacesSidebarProps {
@@ -24,29 +25,33 @@ export function WorkspacesSidebar({
   );
 
   return (
-    <aside className="w-full h-full bg-secondary shrink-0 px-double pt-base">
-      <WorkspaceSearch
+    <aside className="w-full h-full bg-secondary flex flex-col gap-double pt-double px-double text-low">
+      <h2 className="text-high">Active Workspaces</h2>
+      <InputField
+        variant="search"
         value={searchQuery}
-        onValueChange={onSearchChange}
-        onAdd={onAddWorkspace}
-        className="my-double"
+        onChange={onSearchChange}
+        actionIcon={PlusIcon}
+        onAction={onAddWorkspace}
+        placeholder="Search..."
       />
-      <nav>
-        {filteredWorkspaces.map((workspace) => (
-          <WorkspaceSummary
-            key={workspace.id}
-            name={workspace.name}
-            filesChanged={workspace.filesChanged}
-            linesAdded={workspace.linesAdded}
-            linesRemoved={workspace.linesRemoved}
-            isActive={selectedWorkspaceId === workspace.id}
-            isRunning={workspace.isRunning}
-            isPinned={workspace.isPinned}
-            onClick={() => onSelectWorkspace(workspace.id)}
-            className="my-double"
-          />
-        ))}
-      </nav>
+
+      {filteredWorkspaces.map((workspace) => (
+        <WorkspaceSummary
+          key={workspace.id}
+          name={workspace.name}
+          filesChanged={workspace.filesChanged}
+          linesAdded={workspace.linesAdded}
+          linesRemoved={workspace.linesRemoved}
+          isActive={selectedWorkspaceId === workspace.id}
+          isRunning={workspace.isRunning}
+          isPinned={workspace.isPinned}
+          onClick={() => onSelectWorkspace(workspace.id)}
+        />
+      ))}
+      <div>
+        <h2>Archived Workspaces</h2>
+      </div>
     </aside>
   );
 }

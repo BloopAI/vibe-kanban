@@ -1,7 +1,7 @@
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { RepoCard } from '@/components/ui-new/primitives/RepoCard';
-import { EditableText } from '@/components/ui-new/primitives/EditableText';
+import { InputField } from '@/components/ui-new/primitives/InputField';
 
 export interface RepoInfo {
   id: string;
@@ -33,43 +33,37 @@ export function GitPanel({
   return (
     <div
       className={cn(
-        'w-full h-full flex-1 flex flex-col justify-between p-double bg-secondary',
+        'w-full h-full bg-secondary flex flex-col gap-double pt-double px-double text-low',
         className
       )}
     >
-      {/* Main content area */}
-      <div className="flex flex-col gap-double">
-        {/* Rename Working Branch input */}
-        <div className="flex flex-col gap-base w-full">
-          <div className="flex gap-base items-center">
-            <GitBranchIcon className="size-icon-base text-base" weight="fill" />
-            <p className="text-base text-normal">Working Branch</p>
-          </div>
-          <EditableText
-            value={workingBranchName}
-            onChange={onWorkingBranchNameChange}
-            placeholder="e.g acme Corp"
-          />
+      <h2 className="text-high">Repositories</h2>
+      <div className="flex flex-col gap-base w-full">
+        <div className="flex gap-base items-center">
+          <GitBranchIcon className="size-icon-base text-base" weight="fill" />
+          <p className="text-base">Working Branch</p>
         </div>
-
-        {/* Repo cards list */}
-        <div className="flex flex-col gap-base">
-          {repos.map((repo) => (
-            <RepoCard
-              key={repo.id}
-              name={repo.name}
-              currentBranch={repo.currentBranch}
-              commitsAhead={repo.commitsAhead}
-              filesChanged={repo.filesChanged}
-              linesAdded={repo.linesAdded}
-              linesRemoved={repo.linesRemoved}
-              onActionsClick={() => onActionsClick?.(repo.id)}
-            />
-          ))}
-        </div>
+        <InputField
+          variant="editable"
+          value={workingBranchName}
+          onChange={onWorkingBranchNameChange}
+          placeholder="e.g acme Corp"
+        />
       </div>
-
-      {/* Add button at bottom */}
+      <div className="flex flex-col gap-base">
+        {repos.map((repo) => (
+          <RepoCard
+            key={repo.id}
+            name={repo.name}
+            currentBranch={repo.currentBranch}
+            commitsAhead={repo.commitsAhead}
+            filesChanged={repo.filesChanged}
+            linesAdded={repo.linesAdded}
+            linesRemoved={repo.linesRemoved}
+            onActionsClick={() => onActionsClick?.(repo.id)}
+          />
+        ))}
+      </div>
       <div className="flex gap-base">
         <button
           type="button"
