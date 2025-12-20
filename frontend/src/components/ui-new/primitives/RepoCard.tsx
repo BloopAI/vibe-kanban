@@ -45,7 +45,7 @@ export function RepoCard({
     <div className={cn('flex flex-col gap-half w-full', className)}>
       {/* Repo name */}
       <div className="flex items-center justify-between w-full">
-        <p className="text-base font-medium text-normal truncate">{name}</p>
+        <p className="font-medium truncate text-normal">{name}</p>
       </div>
 
       {/* Branch row */}
@@ -81,9 +81,9 @@ export function RepoCard({
 
         {/* Commits badge */}
         {commitsAhead > 0 && (
-          <div className="flex items-center gap-half py-half">
+          <div className="flex items-center py-half">
             <span className="text-sm font-medium text-brand-secondary">
-              {commitsAhead} {commitsAhead === 1 ? 'Commit' : 'Commits'}
+              {commitsAhead}
             </span>
             <ArrowUpIcon
               className="size-icon-xs text-brand-secondary"
