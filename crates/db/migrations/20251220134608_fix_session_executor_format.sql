@@ -4,5 +4,4 @@
 UPDATE sessions
 SET executor = substr(executor, 1, instr(executor, ':') - 1),
     updated_at = datetime('now', 'subsec')
-WHERE executor LIKE '%:%'
-  AND executor NOT IN ('dev-server', 'setup-script', 'cleanup-script', 'cursor', 'gh-cli', 'codex');
+WHERE executor LIKE '%:%';
