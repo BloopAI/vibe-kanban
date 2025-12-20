@@ -113,6 +113,7 @@ export function WorkspacesLayout() {
             onSelectWorkspace={selectWorkspace}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onAddWorkspace={() => console.log('Add workspace clicked')}
           />
         </Panel>
 
