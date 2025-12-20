@@ -2,6 +2,7 @@ import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { RepoCard } from '@/components/ui-new/primitives/RepoCard';
 import { InputField } from '@/components/ui-new/primitives/InputField';
+import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 
 export interface RepoInfo {
   id: string;
@@ -37,7 +38,11 @@ export function GitPanel({
         className
       )}
     >
-      <h2 className="text-high">Repositories</h2>
+      <SectionHeader
+        title="Repositories"
+        icon={PlusIcon}
+        onIconClick={onAddRepo}
+      />
       <div className="flex flex-col gap-base w-full">
         <div className="flex gap-base items-center">
           <GitBranchIcon className="size-icon-base text-base" weight="fill" />
@@ -63,15 +68,6 @@ export function GitPanel({
             onActionsClick={() => onActionsClick?.(repo.id)}
           />
         ))}
-      </div>
-      <div className="flex gap-base">
-        <button
-          type="button"
-          onClick={onAddRepo}
-          className="flex-1 flex items-center justify-center bg-panel rounded-sm p-base text-low hover:text-normal"
-        >
-          <PlusIcon className="size-icon-xs" weight="bold" />
-        </button>
       </div>
     </div>
   );
