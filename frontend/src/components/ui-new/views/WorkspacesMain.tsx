@@ -1,15 +1,17 @@
-import { useRef } from 'react';
-import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
+import { useRef, useMemo } from 'react';
+import type { Workspace, Session } from 'shared/types';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBox } from '@/components/ui-new/primitives/SessionChatBox';
 import { ContextBar } from '@/components/ui-new/primitives/ContextBar';
-import {
-  MockConversationList,
-  type MockPatchEntry,
-} from '../MockConversationList';
-import mockEntries from '@/mock/normalized_entries.json';
+import { ConversationList } from '../ConversationList';
+import { EntriesProvider } from '@/contexts/EntriesContext';
+import { RetryUiProvider } from '@/contexts/RetryUiContext';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
+  selectedSession: Session | undefined;
+  sessions: Session[];
+  onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   chatValue: string;
   onChatChange: (value: string) => void;
@@ -18,12 +20,21 @@ interface WorkspacesMainProps {
 
 export function WorkspacesMain({
   selectedWorkspace,
+  selectedSession,
+  sessions,
+  onSelectSession,
   isLoading,
   chatValue,
   onChatChange,
   onSend,
 }: WorkspacesMainProps) {
   const containerRef = useRef<HTMLElement>(null);
+
+  // Create WorkspaceWithSession for ConversationList
+  const workspaceWithSession: WorkspaceWithSession | undefined = useMemo(() => {
+    if (!selectedWorkspace) return undefined;
+    return { ...selectedWorkspace, session: selectedSession };
+  }, [selectedWorkspace, selectedSession]);
 
   if (isLoading) {
     return (
@@ -48,7 +59,15 @@ export function WorkspacesMain({
     >
       <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
         <div className="w-chat max-w-full h-full">
-          <MockConversationList entries={mockEntries as MockPatchEntry[]} />
+          {workspaceWithSession && (
+            <EntriesProvider
+              key={`${selectedWorkspace.id}-${selectedSession?.id}`}
+            >
+              <RetryUiProvider attemptId={selectedWorkspace.id}>
+                <ConversationList attempt={workspaceWithSession} />
+              </RetryUiProvider>
+            </EntriesProvider>
+          )}
         </div>
       </div>
       {/* Chat box centered at bottom */}
@@ -60,6 +79,9 @@ export function WorkspacesMain({
           value={chatValue}
           onChange={onChatChange}
           onSend={onSend}
+          sessions={sessions}
+          selectedSessionId={selectedSession?.id}
+          onSelectSession={onSelectSession}
         />
       </div>
       {/* Context Bar - floating toolbar */}
