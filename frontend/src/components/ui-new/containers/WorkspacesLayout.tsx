@@ -6,7 +6,8 @@ import {
   type PanelImperativeHandle,
   type PanelSize,
 } from 'react-resizable-panels';
-import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
@@ -35,8 +36,19 @@ const mockRepos: RepoInfo[] = [
 ];
 
 export function WorkspacesLayout() {
-  const { workspaces, selectedWorkspaceId, selectWorkspace, isLoading } =
-    useWorkspaces();
+  const {
+    workspace: selectedWorkspace,
+    workspaceId: selectedWorkspaceId,
+    sidebarWorkspaces,
+    isLoading,
+    isCreateMode,
+    selectWorkspace,
+    navigateToCreate,
+    selectedSession,
+    selectedSessionId,
+    sessions,
+    selectSession,
+  } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [chatValue, setChatValue] = useState('');
   const [workingBranchName, setWorkingBranchName] = useState('');
@@ -48,9 +60,6 @@ export function WorkspacesLayout() {
   // Track collapsed state for navbar button active states
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isGitPanelCollapsed, setIsGitPanelCollapsed] = useState(false);
-
-  const selectedWorkspace =
-    workspaces.find((w) => w.id === selectedWorkspaceId) ?? null;
 
   const handleSend = useCallback(() => {
     if (chatValue.trim()) {
@@ -86,14 +95,18 @@ export function WorkspacesLayout() {
     setIsGitPanelCollapsed(size.inPixels === 0);
   }, []);
 
+  const navbarTitle = isCreateMode
+    ? 'Create Workspace'
+    : selectedWorkspace?.branch;
+
   return (
     <div className="flex flex-col h-screen">
       <Navbar
-        workspaceTitle={selectedWorkspace?.name}
+        workspaceTitle={navbarTitle}
         isSidebarVisible={!isSidebarCollapsed}
-        isGitPanelVisible={!isGitPanelCollapsed}
+        isGitPanelVisible={!isCreateMode && !isGitPanelCollapsed}
         onToggleSidebar={handleToggleSidebar}
-        onToggleGitPanel={handleToggleGitPanel}
+        onToggleGitPanel={isCreateMode ? undefined : handleToggleGitPanel}
       />
       <Group orientation="horizontal" className="flex-1 min-h-0">
         <Panel
@@ -108,50 +121,73 @@ export function WorkspacesLayout() {
           onResize={handleSidebarResize}
         >
           <WorkspacesSidebar
-            workspaces={workspaces}
-            selectedWorkspaceId={selectedWorkspaceId}
+            workspaces={sidebarWorkspaces}
+            selectedWorkspaceId={selectedWorkspaceId ?? null}
             onSelectWorkspace={selectWorkspace}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            onAddWorkspace={() => console.log('Add workspace clicked')}
+            onAddWorkspace={navigateToCreate}
           />
         </Panel>
 
         <Separator id="handle-left" />
 
         <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
-          <WorkspacesMain
-            selectedWorkspace={selectedWorkspace}
-            isLoading={isLoading}
-            chatValue={chatValue}
-            onChatChange={setChatValue}
-            onSend={handleSend}
-          />
+          {isCreateMode ? (
+            <div className="flex h-full items-center justify-center bg-primary">
+              <div className="text-center">
+                <h1 className="text-xl text-high mb-4">Create New Workspace</h1>
+                <p className="text-low">
+                  Workspace creation form coming soon...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ExecutionProcessesProvider
+              attemptId={selectedWorkspace?.id}
+              sessionId={selectedSessionId}
+            >
+              <WorkspacesMain
+                selectedWorkspace={selectedWorkspace ?? null}
+                selectedSession={selectedSession}
+                sessions={sessions}
+                onSelectSession={selectSession}
+                isLoading={isLoading}
+                chatValue={chatValue}
+                onChatChange={setChatValue}
+                onSend={handleSend}
+              />
+            </ExecutionProcessesProvider>
+          )}
         </Panel>
 
-        <Separator id="handle-right" />
+        {!isCreateMode && (
+          <>
+            <Separator id="handle-right" />
 
-        <Panel
-          id="git"
-          defaultSize="300px"
-          minSize="300px"
-          maxSize="600px"
-          className="min-w-0 min-h-0 overflow-hidden"
-          collapsible={true}
-          collapsedSize="0px"
-          panelRef={gitPanelRef}
-          onResize={handleGitPanelResize}
-        >
-          <GitPanel
-            repos={mockRepos}
-            workingBranchName={workingBranchName}
-            onWorkingBranchNameChange={setWorkingBranchName}
-            onActionsClick={(repoId, action) =>
-              console.log('Actions clicked:', repoId, 'action:', action)
-            }
-            onAddRepo={() => console.log('Add repo clicked')}
-          />
-        </Panel>
+            <Panel
+              id="git"
+              defaultSize="300px"
+              minSize="300px"
+              maxSize="600px"
+              className="min-w-0 min-h-0 overflow-hidden"
+              collapsible={true}
+              collapsedSize="0px"
+              panelRef={gitPanelRef}
+              onResize={handleGitPanelResize}
+            >
+              <GitPanel
+                repos={mockRepos}
+                workingBranchName={workingBranchName}
+                onWorkingBranchNameChange={setWorkingBranchName}
+                onActionsClick={(repoId, action) =>
+                  console.log('Actions clicked:', repoId, 'action:', action)
+                }
+                onAddRepo={() => console.log('Add repo clicked')}
+              />
+            </Panel>
+          </>
+        )}
       </Group>
     </div>
   );
