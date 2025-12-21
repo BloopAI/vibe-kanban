@@ -20,7 +20,6 @@ use crate::{
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
-pub const AUTO_DENY_ASK_USER_QUESTION_CALLBACK: &str = "AUTO_DENY_ASK_USER_QUESTION_CALLBACK";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
@@ -147,15 +146,7 @@ impl ClaudeAgentClient {
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
-        if callback_id.as_str() == AUTO_DENY_ASK_USER_QUESTION_CALLBACK {
-            Ok(serde_json::json!({
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": "This client does not support rendering questions, please ask questions in free text"
-                }
-            }))
-        } else if self.auto_approve {
+        if self.auto_approve {
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",

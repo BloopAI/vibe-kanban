@@ -18,7 +18,7 @@ use workspace_utils::{
 };
 
 use self::{
-    client::{AUTO_APPROVE_CALLBACK_ID, AUTO_DENY_ASK_USER_QUESTION_CALLBACK, ClaudeAgentClient},
+    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
     protocol::ProtocolPeer,
     types::PermissionMode,
 };
@@ -131,10 +131,6 @@ impl ClaudeCode {
         if self.plan.unwrap_or(false) {
             Some(serde_json::json!({
                 "PreToolUse": [
-                    {
-                        "matcher": "^AskUserQuestion$",
-                        "hookCallbackIds": [AUTO_DENY_ASK_USER_QUESTION_CALLBACK],
-                    },
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
