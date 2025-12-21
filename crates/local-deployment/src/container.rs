@@ -46,7 +46,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, GitCli, GitService},
+    git::{GitCli, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
@@ -631,20 +631,11 @@ impl LocalContainerService {
     /// Returns a stream that owns the filesystem watcher - when dropped, watcher is cleaned up
     async fn create_live_diff_stream(
         &self,
-        worktree_path: &Path,
-        base_commit: &Commit,
-        stats_only: bool,
-        path_prefix: Option<String>,
+        args: diff_stream::DiffStreamArgs,
     ) -> Result<DiffStreamHandle, ContainerError> {
-        diff_stream::create(
-            self.git().clone(),
-            worktree_path.to_path_buf(),
-            base_commit.clone(),
-            stats_only,
-            path_prefix,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("{e}")))
+        diff_stream::create(args)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
 
     /// Extract the last assistant message from the MsgStore history
@@ -1271,12 +1262,19 @@ impl ContainerService for LocalContainerService {
             };
 
             let stream = self
-                .create_live_diff_stream(
-                    &worktree_path,
-                    &base_commit,
+                .create_live_diff_stream(diff_stream::DiffStreamArgs {
+                    git_service: self.git().clone(),
+                    db: self.db().clone(),
+                    workspace_id: workspace.id,
+                    repo_id: repo.id,
+                    repo_path: repo.path.clone(),
+                    worktree_path: worktree_path.clone(),
+                    branch: branch.to_string(),
+                    target_branch: target_branch.clone(),
+                    base_commit: base_commit.clone(),
                     stats_only,
-                    Some(repo.name.clone()),
-                )
+                    path_prefix: Some(repo.name.clone()),
+                })
                 .await?;
 
             streams.push(Box::pin(stream));
