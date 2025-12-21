@@ -422,9 +422,10 @@ pub async fn attach_existing_pr(
             .await?;
         }
 
-        // If PR is merged, mark task as done
+        // If PR is merged, mark task as done and archive workspace
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
+            Workspace::set_archived(pool, workspace.id, true).await?;
 
             // Try broadcast update to other users in organization
             if let Ok(publisher) = deployment.share_publisher() {

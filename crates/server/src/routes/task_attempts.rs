@@ -88,6 +88,16 @@ pub struct DiffStreamQuery {
     pub stats_only: bool,
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct SetArchived {
+    pub archived: bool,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct SetPinned {
+    pub pinned: bool,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -101,6 +111,32 @@ pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(workspace)))
+}
+
+pub async fn set_workspace_archived(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<SetArchived>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+    Workspace::set_archived(pool, workspace.id, request.archived).await?;
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+pub async fn set_workspace_pinned(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<SetPinned>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+    Workspace::set_pinned(pool, workspace.id, request.pinned).await?;
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+    Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -368,6 +404,7 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
+    Workspace::set_archived(pool, workspace.id, true).await?;
 
     // Stop any running dev servers for this workspace
     let dev_servers =
@@ -1501,6 +1538,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
+        .route("/archive", post(set_workspace_archived))
+        .route("/pin", post(set_workspace_pinned))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

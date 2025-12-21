@@ -54,6 +54,9 @@ pub struct Workspace {
     pub setup_completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub archived: bool,
+    pub pinned: bool,
+    pub name: Option<String>,
 }
 
 /// GitHub PR creation parameters
@@ -113,7 +116,10 @@ impl Workspace {
                               agent_working_dir,
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
-                              updated_at AS "updated_at!: DateTime<Utc>"
+                              updated_at AS "updated_at!: DateTime<Utc>",
+                              archived AS "archived!: bool",
+                              pinned AS "pinned!: bool",
+                              name
                        FROM workspaces
                        WHERE task_id = $1
                        ORDER BY created_at DESC"#,
@@ -131,7 +137,10 @@ impl Workspace {
                               agent_working_dir,
                               setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                               created_at AS "created_at!: DateTime<Utc>",
-                              updated_at AS "updated_at!: DateTime<Utc>"
+                              updated_at AS "updated_at!: DateTime<Utc>",
+                              archived AS "archived!: bool",
+                              pinned AS "pinned!: bool",
+                              name
                        FROM workspaces
                        ORDER BY created_at DESC"#
             )
@@ -159,7 +168,10 @@ impl Workspace {
                        w.agent_working_dir,
                        w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        w.created_at        AS "created_at!: DateTime<Utc>",
-                       w.updated_at        AS "updated_at!: DateTime<Utc>"
+                       w.updated_at        AS "updated_at!: DateTime<Utc>",
+                       w.archived          AS "archived!: bool",
+                       w.pinned            AS "pinned!: bool",
+                       w.name
                FROM    workspaces w
                JOIN    tasks t ON w.task_id = t.id
                JOIN    projects p ON t.project_id = p.id
@@ -233,7 +245,10 @@ impl Workspace {
                        agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
-                       updated_at        AS "updated_at!: DateTime<Utc>"
+                       updated_at        AS "updated_at!: DateTime<Utc>",
+                       archived          AS "archived!: bool",
+                       pinned            AS "pinned!: bool",
+                       name
                FROM    workspaces
                WHERE   id = $1"#,
             id
@@ -252,7 +267,10 @@ impl Workspace {
                        agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
-                       updated_at        AS "updated_at!: DateTime<Utc>"
+                       updated_at        AS "updated_at!: DateTime<Utc>",
+                       archived          AS "archived!: bool",
+                       pinned            AS "pinned!: bool",
+                       name
                FROM    workspaces
                WHERE   rowid = $1"#,
             rowid
@@ -290,7 +308,10 @@ impl Workspace {
                 w.agent_working_dir,
                 w.setup_completed_at as "setup_completed_at: DateTime<Utc>",
                 w.created_at as "created_at!: DateTime<Utc>",
-                w.updated_at as "updated_at!: DateTime<Utc>"
+                w.updated_at as "updated_at!: DateTime<Utc>",
+                w.archived as "archived!: bool",
+                w.pinned as "pinned!: bool",
+                w.name
             FROM workspaces w
             LEFT JOIN sessions s ON w.id = s.workspace_id
             LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL
@@ -332,7 +353,7 @@ impl Workspace {
             Workspace,
             r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
             id,
             task_id,
             Option::<String>::None,
@@ -382,5 +403,35 @@ impl Workspace {
             task_id: result.task_id,
             project_id: result.project_id,
         })
+    }
+
+    pub async fn set_archived(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+        archived: bool,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET archived = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
+            archived,
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn set_pinned(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+        pinned: bool,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET pinned = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
+            pinned,
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }
