@@ -1,9 +1,15 @@
-import { MicrophoneIcon, PaperclipIcon } from '@phosphor-icons/react';
+import {
+  MicrophoneIcon,
+  PaperclipIcon,
+  CheckIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import type { Session } from 'shared/types';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { VibeKanbanLogo } from './VibeKanbanLogo';
 import { PrimaryButton } from './PrimaryButton';
 import { Toolbar, ToolbarIconButton, ToolbarDropdown } from './Toolbar';
+import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 
 interface SessionChatBoxProps {
   /** Number of files changed in current session */
@@ -22,6 +28,22 @@ interface SessionChatBoxProps {
   onSend?: () => void;
   /** Additional CSS classes */
   className?: string;
+  /** Available sessions for this workspace */
+  sessions?: Session[];
+  /** Currently selected session ID */
+  selectedSessionId?: string;
+  /** Called when a session is selected */
+  onSelectSession?: (sessionId: string) => void;
+}
+
+function formatSessionDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export function SessionChatBox({
@@ -33,7 +55,15 @@ export function SessionChatBox({
   onChange,
   onSend,
   className,
+  sessions = [],
+  selectedSessionId,
+  onSelectSession,
 }: SessionChatBoxProps) {
+  // Determine the label for the session dropdown
+  const isLatestSelected =
+    sessions.length > 0 && selectedSessionId === sessions[0].id;
+  const sessionLabel = isLatestSelected ? 'Latest' : 'Previous';
+
   return (
     <div
       className={cn(
@@ -63,7 +93,28 @@ export function SessionChatBox({
         </div>
         <Toolbar className="gap-[9px]">
           <VibeKanbanLogo />
-          <ToolbarDropdown label="Latest" />
+          <ToolbarDropdown label={sessionLabel}>
+            {sessions.length > 0 ? (
+              <>
+                <DropdownMenuLabel>Sessions</DropdownMenuLabel>
+                {sessions.map((session, index) => (
+                  <DropdownMenuItem
+                    key={session.id}
+                    icon={
+                      session.id === selectedSessionId ? CheckIcon : undefined
+                    }
+                    onClick={() => onSelectSession?.(session.id)}
+                  >
+                    {index === 0
+                      ? 'Latest'
+                      : formatSessionDate(session.created_at)}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            ) : (
+              <DropdownMenuItem disabled>No sessions</DropdownMenuItem>
+            )}
+          </ToolbarDropdown>
         </Toolbar>
       </div>
 
