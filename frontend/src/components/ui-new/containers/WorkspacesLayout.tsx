@@ -146,7 +146,9 @@ export function WorkspacesLayout() {
             repos={mockRepos}
             workingBranchName={workingBranchName}
             onWorkingBranchNameChange={setWorkingBranchName}
-            onActionsClick={(repoId) => console.log('Actions clicked:', repoId)}
+            onActionsClick={(repoId, action) =>
+              console.log('Actions clicked:', repoId, 'action:', action)
+            }
             onAddRepo={() => console.log('Add repo clicked')}
           />
         </Panel>
