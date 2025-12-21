@@ -75,6 +75,13 @@ The Vibe Kanban MCP server provides the following tools for managing projects, t
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
 | `start_task_attempt` | Start working on a task with a coding agent | `task_id`<br/>`executor`<br/>`base_branch` | `variant` | Attempt ID and confirmation |
+| `create_and_start_sub_task` | Create a subtask and immediately start execution | `parent_task_attempt_id`<br/>`title`<br/>`executor` | `description`<br/>`variant`<br/>`base_branch` | Task ID, attempt ID, and parent ID |
+
+### Log Monitoring
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `tail_task_log` | Fetch or stream execution logs | `task_attempt_id` | `lines`<br/>`follow` | Log lines and optional WebSocket URL |
 
 ### Supported Executors
 
@@ -135,6 +142,40 @@ Your MCP client will use the `start_task_attempt` tool with parameters like:
 
 This creates a new task attempt, generates a feature branch, and starts the coding agent in an isolated environment.
 
+### Creating and Starting Subtasks
+
+When working on a complex task, you can create subtasks that link back to the parent task:
+
+```
+Create a subtask for implementing the user authentication API using Claude Code
+```
+
+Your MCP client will use the `create_and_start_sub_task` tool with parameters like:
+```json
+{
+  "parent_task_attempt_id": "123e4567-e89b-12d3-a456-426614174000",
+  "title": "Implement user authentication API",
+  "executor": "claude-code",
+  "description": "Create REST endpoints for user registration, login, and logout"
+}
+```
+
+### Monitoring Task Execution Logs
+
+To check the progress of a running task:
+
+```
+Show me the last 50 lines of logs from task attempt 456e7890-f12c-34d4-b567-537715289111
+```
+
+Or to follow logs in real-time:
+
+```
+Follow the logs for the currently running task attempt
+```
+
+The `tail_task_log` tool can return historical logs or provide a WebSocket URL for real-time log streaming.
+
 ### Complete Workflow Example
 
 ```
@@ -144,7 +185,7 @@ This creates a new task attempt, generates a feature branch, and starts the codi
 4. Start a task attempt for the new task using Amp on the develop branch
 ```
 
-Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_task_attempt`) to manage the complete workflow from planning to execution.
+Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_task_attempt`, `create_and_start_sub_task`, `tail_task_log`) to manage the complete workflow from planning to execution.
 
 ### Internal Coding Agents (Within Vibe Kanban)
 

@@ -671,6 +671,31 @@ pub trait ContainerService {
         }
     }
 
+    /// Fetch stored raw logs (stdout/stderr) for an execution process without streaming.
+    async fn get_raw_logs(&self, id: &Uuid) -> Option<Vec<LogMsg>> {
+        if let Some(store) = self.get_msg_store_by_id(id).await {
+            return Some(store.get_history());
+        }
+
+        let log_records =
+            match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
+                Ok(records) if !records.is_empty() => records,
+                Ok(_) => return None,
+                Err(e) => {
+                    tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
+                    return None;
+                }
+            };
+
+        match ExecutionProcessLogs::parse_logs(&log_records) {
+            Ok(msgs) => Some(msgs),
+            Err(e) => {
+                tracing::error!("Failed to parse logs for execution {}: {}", id, e);
+                None
+            }
+        }
+    }
+
     async fn stream_normalized_logs(
         &self,
         id: &Uuid,
