@@ -518,6 +518,12 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
+  /** Get all workspaces across all tasks (newest first) */
+  getAllWorkspaces: async (): Promise<Workspace[]> => {
+    const response = await makeRequest('/api/task-attempts');
+    return handleApiResponse<Workspace[]>(response);
+  },
+
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<Workspace>(response);

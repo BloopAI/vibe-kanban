@@ -1,4 +1,9 @@
-export interface Workspace {
+import { useQuery } from '@tanstack/react-query';
+import { attemptsApi } from '@/lib/api';
+import type { Workspace as ApiWorkspace } from 'shared/types';
+
+// UI-specific workspace type for sidebar display
+export interface SidebarWorkspace {
   id: string;
   name: string;
   description: string;
@@ -9,61 +14,59 @@ export interface Workspace {
   isPinned?: boolean;
 }
 
+// Keep the old export name for backwards compatibility
+export type Workspace = SidebarWorkspace;
+
 export interface UseWorkspacesResult {
-  workspaces: Workspace[];
-  selectedWorkspaceId: string | null;
-  selectWorkspace: (id: string) => void;
+  workspaces: SidebarWorkspace[];
   isLoading: boolean;
 }
 
-export function useWorkspaces(): UseWorkspacesResult {
-  // Placeholder mock data - will be replaced with actual API calls
-  const workspaces: Workspace[] = [
-    {
-      id: '1',
-      name: 'add icon to variant selection',
-      description: 'Main development workspace',
-      filesChanged: 3,
-      linesAdded: 13,
-    },
-    {
-      id: '2',
-      name: 'Inject ENV vars into shell',
-      description: 'Experimental features',
-      filesChanged: 3,
-      linesAdded: 300,
-      linesRemoved: 136,
-      isRunning: true,
-    },
-    {
-      id: '3',
-      name: 'Documentation updates',
-      description: 'Docs and guides',
-      filesChanged: 1,
-      linesAdded: 45,
-      isPinned: true,
-    },
-    {
-      id: '4',
-      name: 'Feature branch work',
-      description: 'New feature',
-      filesChanged: 5,
-      linesAdded: 200,
-      linesRemoved: 50,
-      isRunning: false,
-      isPinned: false,
-    },
-  ];
+// Simple hash function to generate consistent pseudo-random values from ID
+function simpleHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
-  // In a real implementation, this would use useState/useQuery
-  const selectedWorkspaceId = '1';
-  // Placeholder - will be implemented with actual state management
-  const selectWorkspace = () => {};
+// Transform API Workspace to SidebarWorkspace with mock display fields
+function toSidebarWorkspace(
+  apiWorkspace: ApiWorkspace,
+  index: number
+): SidebarWorkspace {
+  const hash = simpleHash(apiWorkspace.id);
+
+  return {
+    id: apiWorkspace.id,
+    name: apiWorkspace.branch, // Use branch as name for now
+    description: '',
+    // Generate varied mock stats based on workspace id hash
+    filesChanged: (hash % 12) + 1, // 1-12 files
+    linesAdded: (hash % 500) + 10, // 10-509 lines
+    linesRemoved: hash % 200, // 0-199 lines
+    isRunning: index === 0, // First workspace is "running"
+    isPinned: hash % 5 === 0, // ~20% are pinned
+  };
+}
+
+export const workspaceKeys = {
+  all: ['workspaces'] as const,
+};
+
+export function useWorkspaces(): UseWorkspacesResult {
+  const { data, isLoading } = useQuery<ApiWorkspace[]>({
+    queryKey: workspaceKeys.all,
+    queryFn: () => attemptsApi.getAllWorkspaces(),
+  });
+
+  const workspaces: SidebarWorkspace[] =
+    data?.map((w, i) => toSidebarWorkspace(w, i)) ?? [];
 
   return {
     workspaces,
-    selectedWorkspaceId,
-    selectWorkspace,
-    isLoading: false,
+    isLoading,
   };
 }
