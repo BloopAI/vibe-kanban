@@ -59,6 +59,22 @@ pub struct Workspace {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspaceWithStatus {
+    #[serde(flatten)]
+    #[ts(flatten)]
+    pub workspace: Workspace,
+    pub is_running: bool,
+    pub is_errored: bool,
+}
+
+impl std::ops::Deref for WorkspaceWithStatus {
+    type Target = Workspace;
+    fn deref(&self) -> &Self::Target {
+        &self.workspace
+    }
+}
+
 /// GitHub PR creation parameters
 pub struct CreatePrParams<'a> {
     pub workspace_id: Uuid,
@@ -433,5 +449,134 @@ impl Workspace {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn find_all_with_status(
+        pool: &SqlitePool,
+    ) -> Result<Vec<WorkspaceWithStatus>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"SELECT
+                w.id AS "id!: Uuid",
+                w.task_id AS "task_id!: Uuid",
+                w.container_ref,
+                w.branch,
+                w.agent_working_dir,
+                w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                w.created_at AS "created_at!: DateTime<Utc>",
+                w.updated_at AS "updated_at!: DateTime<Utc>",
+                w.archived AS "archived!: bool",
+                w.pinned AS "pinned!: bool",
+                w.name,
+
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.status = 'running'
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    LIMIT 1
+                ) THEN 1 ELSE 0 END AS "is_running!: i64",
+
+                CASE WHEN (
+                    SELECT ep.status
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    ORDER BY ep.created_at DESC
+                    LIMIT 1
+                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64"
+
+            FROM workspaces w
+            ORDER BY w.updated_at DESC"#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|rec| WorkspaceWithStatus {
+                workspace: Workspace {
+                    id: rec.id,
+                    task_id: rec.task_id,
+                    container_ref: rec.container_ref,
+                    branch: rec.branch,
+                    agent_working_dir: rec.agent_working_dir,
+                    setup_completed_at: rec.setup_completed_at,
+                    created_at: rec.created_at,
+                    updated_at: rec.updated_at,
+                    archived: rec.archived,
+                    pinned: rec.pinned,
+                    name: rec.name,
+                },
+                is_running: rec.is_running != 0,
+                is_errored: rec.is_errored != 0,
+            })
+            .collect())
+    }
+
+    pub async fn find_by_id_with_status(
+        pool: &SqlitePool,
+        id: Uuid,
+    ) -> Result<Option<WorkspaceWithStatus>, sqlx::Error> {
+        let rec = sqlx::query!(
+            r#"SELECT
+                w.id AS "id!: Uuid",
+                w.task_id AS "task_id!: Uuid",
+                w.container_ref,
+                w.branch,
+                w.agent_working_dir,
+                w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                w.created_at AS "created_at!: DateTime<Utc>",
+                w.updated_at AS "updated_at!: DateTime<Utc>",
+                w.archived AS "archived!: bool",
+                w.pinned AS "pinned!: bool",
+                w.name,
+
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.status = 'running'
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    LIMIT 1
+                ) THEN 1 ELSE 0 END AS "is_running!: i64",
+
+                CASE WHEN (
+                    SELECT ep.status
+                    FROM sessions s
+                    JOIN execution_processes ep ON ep.session_id = s.id
+                    WHERE s.workspace_id = w.id
+                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+                    ORDER BY ep.created_at DESC
+                    LIMIT 1
+                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64"
+
+            FROM workspaces w
+            WHERE w.id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(rec.map(|rec| WorkspaceWithStatus {
+            workspace: Workspace {
+                id: rec.id,
+                task_id: rec.task_id,
+                container_ref: rec.container_ref,
+                branch: rec.branch,
+                agent_working_dir: rec.agent_working_dir,
+                setup_completed_at: rec.setup_completed_at,
+                created_at: rec.created_at,
+                updated_at: rec.updated_at,
+                archived: rec.archived,
+                pinned: rec.pinned,
+                name: rec.name,
+            },
+            is_running: rec.is_running != 0,
+            is_errored: rec.is_errored != 0,
+        }))
     }
 }
