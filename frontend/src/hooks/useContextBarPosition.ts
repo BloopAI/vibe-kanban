@@ -230,10 +230,10 @@ export function useContextBarPosition(
   // Calculate style based on position or drag state
   const style: React.CSSProperties = dragState.isDragging
     ? {
-      // During drag, use absolute position relative to container
-      left: barRef.current.x + (dragState.currentX - dragState.startX),
-      top: barRef.current.y + (dragState.currentY - dragState.startY),
-    }
+        // During drag, use absolute position relative to container
+        left: barRef.current.x + (dragState.currentX - dragState.startX),
+        top: barRef.current.y + (dragState.currentY - dragState.startY),
+      }
     : getPositionStyle(position, barWidth, barHeight);
 
   return {

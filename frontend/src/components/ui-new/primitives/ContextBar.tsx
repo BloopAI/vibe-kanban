@@ -24,7 +24,7 @@ function ContextBarButton({
   return (
     <button
       className={cn(
-        'flex items-center justify-center text-normal hover:text-high transition-colors',
+        'flex items-center justify-center text-low hover:text-normal transition-colors',
         'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
         className
       )}
