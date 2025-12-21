@@ -1,6 +1,6 @@
 use db::models::{
     execution_process::ExecutionProcess, project::Project, scratch::Scratch,
-    task::TaskWithAttemptStatus, workspace::Workspace,
+    task::TaskWithAttemptStatus, workspace::WorkspaceWithStatus,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -143,8 +143,7 @@ pub mod workspace_patch {
         )
     }
 
-    /// Create patch for adding a new workspace
-    pub fn add(workspace: &Workspace) -> Patch {
+    pub fn add(workspace: &WorkspaceWithStatus) -> Patch {
         Patch(vec![PatchOperation::Add(AddOperation {
             path: workspace_path(workspace.id)
                 .try_into()
@@ -154,8 +153,7 @@ pub mod workspace_patch {
         })])
     }
 
-    /// Create patch for updating an existing workspace
-    pub fn replace(workspace: &Workspace) -> Patch {
+    pub fn replace(workspace: &WorkspaceWithStatus) -> Patch {
         Patch(vec![PatchOperation::Replace(ReplaceOperation {
             path: workspace_path(workspace.id)
                 .try_into()
@@ -165,7 +163,6 @@ pub mod workspace_patch {
         })])
     }
 
-    /// Create patch for removing a workspace
     pub fn remove(workspace_id: Uuid) -> Patch {
         Patch(vec![PatchOperation::Remove(RemoveOperation {
             path: workspace_path(workspace_id)

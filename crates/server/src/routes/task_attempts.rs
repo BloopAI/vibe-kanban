@@ -336,6 +336,54 @@ async fn handle_task_attempt_diff_ws(
     Ok(())
 }
 
+pub async fn stream_workspaces_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_workspaces_ws(socket, deployment).await {
+            tracing::warn!("workspaces WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_workspaces_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+
+    let mut stream = deployment
+        .events()
+        .stream_workspaces_raw()
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    let (mut sender, mut receiver) = socket.split();
+
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
+            }
+            msg = receiver.next() => {
+                if msg.is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct MergeTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -1547,6 +1595,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/stream/ws", get(stream_workspaces_ws))
         .nest("/{id}", task_attempt_id_router)
         .nest("/{id}/images", images::router(deployment));
 

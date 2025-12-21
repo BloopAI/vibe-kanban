@@ -4,6 +4,7 @@ use db::models::{
     scratch::Scratch,
     session::Session,
     task::{Task, TaskWithAttemptStatus},
+    workspace::Workspace,
 };
 use futures::StreamExt;
 use serde_json::json;
@@ -444,5 +445,43 @@ impl EventService {
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
         Ok(combined_stream)
+    }
+
+    pub async fn stream_workspaces_raw(
+        &self,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        let workspaces = Workspace::find_all_with_status(&self.db.pool).await?;
+        let workspaces_map: serde_json::Map<String, serde_json::Value> = workspaces
+            .into_iter()
+            .map(|ws| (ws.id.to_string(), serde_json::to_value(ws).unwrap()))
+            .collect();
+
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/workspaces",
+            "value": workspaces_map
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
+            |msg_result| async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        if let Some(op) = patch.0.first()
+                            && op.path().starts_with("/workspaces")
+                        {
+                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                        }
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)),
+                    Err(_) => None,
+                }
+            },
+        );
+
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        Ok(initial_stream.chain(filtered_stream).boxed())
     }
 }
