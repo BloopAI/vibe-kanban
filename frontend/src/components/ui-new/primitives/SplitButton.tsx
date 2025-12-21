@@ -1,5 +1,5 @@
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { CaretDownIcon, type Icon } from '@phosphor-icons/react';
+import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -40,7 +40,7 @@ export function SplitButton<T extends string>({
           onClick={() => onAction(selectedValue)}
           className={cn(
             'flex-1 bg-panel px-base py-half',
-            'text-sm font-medium text-low',
+            'text-sm font-medium text-normal',
             'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset',
             'rounded-l-sm'
           )}
@@ -62,9 +62,10 @@ export function SplitButton<T extends string>({
           <DropdownMenuContent align="end">
             {options.map((option) => (
               <DropdownMenuItem
+                disabled={option.value === selectedValue}
                 key={option.value}
                 onClick={() => onSelectionChange(option.value)}
-                icon={option.icon}
+                icon={option.value === selectedValue ? CheckIcon : option.icon}
               >
                 {option.label}
               </DropdownMenuItem>
