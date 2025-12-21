@@ -1,6 +1,9 @@
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { RepoCard } from '@/components/ui-new/primitives/RepoCard';
+import {
+  RepoCard,
+  type RepoAction,
+} from '@/components/ui-new/primitives/RepoCard';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 
@@ -18,7 +21,7 @@ interface GitPanelProps {
   repos: RepoInfo[];
   workingBranchName: string;
   onWorkingBranchNameChange: (name: string) => void;
-  onActionsClick?: (repoId: string) => void;
+  onActionsClick?: (repoId: string, action: RepoAction) => void;
   onAddRepo?: () => void;
   className?: string;
 }
@@ -55,7 +58,7 @@ export function GitPanel({
           placeholder="e.g acme Corp"
         />
       </div>
-      <div className="flex flex-col gap-base">
+      <div className="flex flex-col gap-double">
         {repos.map((repo) => (
           <RepoCard
             key={repo.id}
@@ -65,7 +68,7 @@ export function GitPanel({
             filesChanged={repo.filesChanged}
             linesAdded={repo.linesAdded}
             linesRemoved={repo.linesRemoved}
-            onActionsClick={() => onActionsClick?.(repo.id)}
+            onActionsClick={(action) => onActionsClick?.(repo.id, action)}
           />
         ))}
       </div>

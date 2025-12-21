@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   GitBranchIcon,
   GitMergeIcon,
@@ -9,7 +10,6 @@ import {
   CrosshairIcon,
   ArrowRightIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,6 +18,18 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { CollapsibleSection } from './CollapsibleSection';
+import { SplitButton, type SplitButtonOption } from './SplitButton';
+
+export type RepoAction = 'pull-request' | 'merge';
+
+const repoActionOptions: SplitButtonOption<RepoAction>[] = [
+  {
+    value: 'pull-request',
+    label: 'Open pull request',
+    icon: GitPullRequestIcon,
+  },
+  { value: 'merge', label: 'Merge', icon: GitMergeIcon },
+];
 
 interface RepoCardProps {
   name: string;
@@ -27,8 +39,7 @@ interface RepoCardProps {
   linesAdded?: number;
   linesRemoved?: number;
   branchDropdownContent?: React.ReactNode;
-  onActionsClick?: () => void;
-  className?: string;
+  onActionsClick?: (action: RepoAction) => void;
 }
 
 export function RepoCard({
@@ -40,16 +51,14 @@ export function RepoCard({
   linesRemoved,
   branchDropdownContent,
   onActionsClick,
-  className,
 }: RepoCardProps) {
+  const [selectedAction, setSelectedAction] =
+    useState<RepoAction>('pull-request');
+
   return (
-    <CollapsibleSection
-      title={name}
-      className={cn('gap-half', className)}
-      defaultExpanded
-    >
+    <CollapsibleSection title={name} className="gap-base" defaultExpanded>
       {/* Branch row */}
-      <div className="flex items-center justify-between w-full py-half">
+      <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-base">
           <div className="flex items-center justify-center">
             <GitBranchIcon className="size-icon-base text-base" weight="fill" />
@@ -57,8 +66,11 @@ export function RepoCard({
           <div className="flex items-center justify-center">
             <ArrowRightIcon className="size-icon-sm text-low" weight="bold" />
           </div>
+          <div className="flex items-center justify-center">
+            <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
+          </div>
           <DropdownMenu>
-            <DropdownMenuTrigger icon={CrosshairIcon} label={currentBranch} />
+            <DropdownMenuTrigger label={currentBranch} />
             <DropdownMenuContent>
               {branchDropdownContent ?? (
                 <>
@@ -111,18 +123,13 @@ export function RepoCard({
         </span>
       </div>
 
-      {/* Actions button */}
-      <div className="flex items-center justify-center w-full py-plusfifty">
-        <button
-          type="button"
-          onClick={onActionsClick}
-          className="flex-1 bg-panel rounded-sm p-base"
-        >
-          <span className="text-sm font-medium text-low opacity-80">
-            Actions
-          </span>
-        </button>
-      </div>
+      {/* Actions split button */}
+      <SplitButton
+        options={repoActionOptions}
+        selectedValue={selectedAction}
+        onSelectionChange={setSelectedAction}
+        onAction={(action) => onActionsClick?.(action)}
+      />
     </CollapsibleSection>
   );
 }

@@ -39,7 +39,7 @@ export function WorkspacesSidebar({
         onChange={onSearchChange}
         placeholder="Search..."
       />
-      <CollapsibleSection title="Active" defaultExpanded>
+      <CollapsibleSection title="Active" defaultExpanded className="gap-double">
         {filteredWorkspaces.map((workspace) => (
           <WorkspaceSummary
             key={workspace.id}

@@ -34,7 +34,7 @@ export function CollapsibleSection({
   };
 
   return (
-    <div className={cn('flex flex-col gap-double', className)}>
+    <div className={cn('flex flex-col', className)}>
       <button
         type="button"
         onClick={handleToggle}
