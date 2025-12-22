@@ -269,6 +269,10 @@
         "description": "Sign in to Vibe Kanban so you can push branches, merge changes, or open pull requests for this task.",
         "action": "Sign in"
       }
+    },
+    "mergeDialog": {
+      "title": "Merge Changes",
+      "description": "This will merge your changes into the target branch. Are you sure you want to continue?"
     }
   },
   "createAttemptDialog": {
