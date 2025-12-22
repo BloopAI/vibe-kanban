@@ -504,7 +504,10 @@ impl Workspace {
 
     pub async fn find_all_with_status(
         pool: &SqlitePool,
+        archived: Option<bool>,
+        limit: Option<i64>,
     ) -> Result<Vec<WorkspaceWithStatus>, sqlx::Error> {
+        // Fetch all workspaces with status (uses cached SQLx query)
         let records = sqlx::query!(
             r#"SELECT
                 w.id AS "id!: Uuid",
@@ -564,7 +567,14 @@ impl Workspace {
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
             })
+            // Apply archived filter if provided
+            .filter(|ws| archived.is_none_or(|a| ws.workspace.archived == a))
             .collect();
+
+        // Apply limit if provided (already sorted by updated_at DESC from query)
+        if let Some(lim) = limit {
+            workspaces.truncate(lim as usize);
+        }
 
         for ws in &mut workspaces {
             if ws.workspace.name.is_none()

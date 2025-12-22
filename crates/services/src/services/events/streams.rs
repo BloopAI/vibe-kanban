@@ -449,9 +449,11 @@ impl EventService {
 
     pub async fn stream_workspaces_raw(
         &self,
+        archived: Option<bool>,
+        limit: Option<i64>,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        let workspaces = Workspace::find_all_with_status(&self.db.pool).await?;
+        let workspaces = Workspace::find_all_with_status(&self.db.pool, archived, limit).await?;
         let workspaces_map: serde_json::Map<String, serde_json::Value> = workspaces
             .into_iter()
             .map(|ws| (ws.id.to_string(), serde_json::to_value(ws).unwrap()))
@@ -465,12 +467,61 @@ impl EventService {
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
         let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
-            |msg_result| async move {
+            move |msg_result| async move {
                 match msg_result {
                     Ok(LogMsg::JsonPatch(patch)) => {
                         if let Some(op) = patch.0.first()
                             && op.path().starts_with("/workspaces")
                         {
+                            // If archived filter is set, handle state transitions
+                            if let Some(archived_filter) = archived {
+                                // Extract workspace data from Add/Replace operations
+                                let value = match op {
+                                    json_patch::PatchOperation::Add(a) => Some(&a.value),
+                                    json_patch::PatchOperation::Replace(r) => Some(&r.value),
+                                    json_patch::PatchOperation::Remove(_) => {
+                                        // Allow remove operations through - client will handle
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                    _ => None,
+                                };
+
+                                if let Some(v) = value
+                                    && let Some(ws_archived) =
+                                        v.get("archived").and_then(|a| a.as_bool())
+                                {
+                                    if ws_archived == archived_filter {
+                                        // Workspace matches this filter
+                                        // Convert Replace to Add since workspace may be new to this filtered stream
+                                        if let json_patch::PatchOperation::Replace(r) = op {
+                                            let add_patch = json_patch::Patch(vec![
+                                                json_patch::PatchOperation::Add(
+                                                    json_patch::AddOperation {
+                                                        path: r.path.clone(),
+                                                        value: r.value.clone(),
+                                                    },
+                                                ),
+                                            ]);
+                                            return Some(Ok(LogMsg::JsonPatch(add_patch)));
+                                        }
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    } else {
+                                        // Workspace no longer matches this filter - send remove
+                                        let remove_patch = json_patch::Patch(vec![
+                                            json_patch::PatchOperation::Remove(
+                                                json_patch::RemoveOperation {
+                                                    path: op
+                                                        .path()
+                                                        .to_string()
+                                                        .try_into()
+                                                        .expect("Workspace path should be valid"),
+                                                },
+                                            ),
+                                        ]);
+                                        return Some(Ok(LogMsg::JsonPatch(remove_patch)));
+                                    }
+                                }
+                            }
                             return Some(Ok(LogMsg::JsonPatch(patch)));
                         }
                         None
