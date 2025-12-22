@@ -30,6 +30,7 @@
     "@lexical/markdown": "^0.36.2",
     "@lexical/react": "^0.36.2",
     "@lexical/rich-text": "^0.36.2",
+    "@lexical/table": "^0.36.2",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
     "@radix-ui/react-label": "^2.1.7",
