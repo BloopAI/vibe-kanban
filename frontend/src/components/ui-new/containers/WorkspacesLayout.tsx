@@ -40,6 +40,7 @@ export function WorkspacesLayout() {
     workspace: selectedWorkspace,
     workspaceId: selectedWorkspaceId,
     sidebarWorkspaces,
+    archivedSidebarWorkspaces,
     isLoading,
     isCreateMode,
     selectWorkspace,
@@ -122,6 +123,7 @@ export function WorkspacesLayout() {
         >
           <WorkspacesSidebar
             workspaces={sidebarWorkspaces}
+            archivedWorkspaces={archivedSidebarWorkspaces}
             selectedWorkspaceId={selectedWorkspaceId ?? null}
             onSelectWorkspace={selectWorkspace}
             searchQuery={searchQuery}
