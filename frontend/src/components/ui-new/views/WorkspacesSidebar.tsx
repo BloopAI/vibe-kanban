@@ -7,6 +7,7 @@ import { SectionHeader } from '../primitives/SectionHeader';
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
+  archivedWorkspaces?: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onAddWorkspace?: () => void;
@@ -16,14 +17,21 @@ interface WorkspacesSidebarProps {
 
 export function WorkspacesSidebar({
   workspaces,
+  archivedWorkspaces = [],
   selectedWorkspaceId,
   onSelectWorkspace,
   onAddWorkspace,
   searchQuery,
   onSearchChange,
 }: WorkspacesSidebarProps) {
+  const searchLower = searchQuery.toLowerCase();
+
   const filteredWorkspaces = workspaces.filter((workspace) =>
-    workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
+    workspace.name.toLowerCase().includes(searchLower)
+  );
+
+  const filteredArchivedWorkspaces = archivedWorkspaces.filter((workspace) =>
+    workspace.name.toLowerCase().includes(searchLower)
   );
 
   return (
@@ -39,24 +47,42 @@ export function WorkspacesSidebar({
         onChange={onSearchChange}
         placeholder="Search..."
       />
-      <CollapsibleSection title="Active" defaultExpanded className="gap-double">
-        {filteredWorkspaces.map((workspace) => (
-          <WorkspaceSummary
-            key={workspace.id}
-            name={workspace.name}
-            filesChanged={workspace.filesChanged}
-            linesAdded={workspace.linesAdded}
-            linesRemoved={workspace.linesRemoved}
-            isActive={selectedWorkspaceId === workspace.id}
-            isRunning={workspace.isRunning}
-            isPinned={workspace.isPinned}
-            onClick={() => onSelectWorkspace(workspace.id)}
-          />
-        ))}
-      </CollapsibleSection>
-      <CollapsibleSection title="Archived" defaultExpanded>
-        {/* Archived workspaces content */}
-      </CollapsibleSection>
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-double">
+        <CollapsibleSection
+          title="Active"
+          defaultExpanded
+          className="gap-double"
+        >
+          {filteredWorkspaces.map((workspace) => (
+            <WorkspaceSummary
+              key={workspace.id}
+              name={workspace.name}
+              filesChanged={workspace.filesChanged}
+              linesAdded={workspace.linesAdded}
+              linesRemoved={workspace.linesRemoved}
+              isActive={selectedWorkspaceId === workspace.id}
+              isRunning={workspace.isRunning}
+              isPinned={workspace.isPinned}
+              onClick={() => onSelectWorkspace(workspace.id)}
+            />
+          ))}
+        </CollapsibleSection>
+        <CollapsibleSection title="Archived" defaultExpanded={false}>
+          {filteredArchivedWorkspaces.map((workspace) => (
+            <WorkspaceSummary
+              key={workspace.id}
+              name={workspace.name}
+              filesChanged={workspace.filesChanged}
+              linesAdded={workspace.linesAdded}
+              linesRemoved={workspace.linesRemoved}
+              isActive={selectedWorkspaceId === workspace.id}
+              isRunning={workspace.isRunning}
+              isPinned={workspace.isPinned}
+              onClick={() => onSelectWorkspace(workspace.id)}
+            />
+          ))}
+        </CollapsibleSection>
+      </div>
     </aside>
   );
 }

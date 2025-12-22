@@ -14,6 +14,8 @@ interface WorkspaceContextValue {
   workspace: ApiWorkspace | undefined;
   /** Sidebar workspaces (real IDs with mock display fields) */
   sidebarWorkspaces: SidebarWorkspace[];
+  /** Archived workspaces for sidebar display */
+  archivedSidebarWorkspaces: SidebarWorkspace[];
   isLoading: boolean;
   isCreateMode: boolean;
   selectWorkspace: (id: string) => void;
@@ -42,8 +44,11 @@ export function WorkspaceProvider({
   const navigate = useNavigate();
 
   // Fetch sidebar workspaces (real IDs with mock display fields)
-  const { workspaces: sidebarWorkspaces, isLoading: isLoadingList } =
-    useWorkspaces();
+  const {
+    workspaces: sidebarWorkspaces,
+    archivedWorkspaces: archivedSidebarWorkspaces,
+    isLoading: isLoadingList,
+  } = useWorkspaces();
 
   // Fetch real workspace data for the selected workspace
   const { data: workspace, isLoading: isLoadingWorkspace } = useAttempt(
@@ -82,6 +87,7 @@ export function WorkspaceProvider({
       workspaceId,
       workspace,
       sidebarWorkspaces,
+      archivedSidebarWorkspaces,
       isLoading,
       isCreateMode,
       selectWorkspace,
@@ -97,6 +103,7 @@ export function WorkspaceProvider({
       workspaceId,
       workspace,
       sidebarWorkspaces,
+      archivedSidebarWorkspaces,
       isLoading,
       isCreateMode,
       selectWorkspace,
