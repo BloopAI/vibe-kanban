@@ -451,6 +451,56 @@ impl Workspace {
         Ok(())
     }
 
+    pub async fn set_name(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+        name: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET name = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
+            name,
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_first_user_message(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"SELECT cat.prompt
+               FROM sessions s
+               JOIN execution_processes ep ON ep.session_id = s.id
+               JOIN coding_agent_turns cat ON cat.execution_process_id = ep.id
+               WHERE s.workspace_id = $1
+                 AND s.executor IS NOT NULL
+                 AND cat.prompt IS NOT NULL
+               ORDER BY s.created_at ASC, ep.created_at ASC
+               LIMIT 1"#,
+            workspace_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(result.and_then(|r| r.prompt))
+    }
+
+    pub fn truncate_to_name(prompt: &str, max_len: usize) -> String {
+        let trimmed = prompt.trim();
+        if trimmed.chars().count() <= max_len {
+            trimmed.to_string()
+        } else {
+            let truncated: String = trimmed.chars().take(max_len).collect();
+            if let Some(last_space) = truncated.rfind(' ') {
+                format!("{}...", &truncated[..last_space])
+            } else {
+                format!("{}...", truncated)
+            }
+        }
+    }
+
     pub async fn find_all_with_status(
         pool: &SqlitePool,
     ) -> Result<Vec<WorkspaceWithStatus>, sqlx::Error> {
@@ -494,7 +544,7 @@ impl Workspace {
         .fetch_all(pool)
         .await?;
 
-        Ok(records
+        let mut workspaces: Vec<WorkspaceWithStatus> = records
             .into_iter()
             .map(|rec| WorkspaceWithStatus {
                 workspace: Workspace {
@@ -513,7 +563,19 @@ impl Workspace {
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
             })
-            .collect())
+            .collect();
+
+        for ws in &mut workspaces {
+            if ws.workspace.name.is_none() {
+                if let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await? {
+                    let name = Self::truncate_to_name(&prompt, 35);
+                    Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+                    ws.workspace.name = Some(name);
+                }
+            }
+        }
+
+        Ok(workspaces)
     }
 
     pub async fn find_by_id_with_status(
@@ -561,7 +623,11 @@ impl Workspace {
         .fetch_optional(pool)
         .await?;
 
-        Ok(rec.map(|rec| WorkspaceWithStatus {
+        let Some(rec) = rec else {
+            return Ok(None);
+        };
+
+        let mut ws = WorkspaceWithStatus {
             workspace: Workspace {
                 id: rec.id,
                 task_id: rec.task_id,
@@ -577,6 +643,16 @@ impl Workspace {
             },
             is_running: rec.is_running != 0,
             is_errored: rec.is_errored != 0,
-        }))
+        };
+
+        if ws.workspace.name.is_none() {
+            if let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await? {
+                let name = Self::truncate_to_name(&prompt, 35);
+                Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+                ws.workspace.name = Some(name);
+            }
+        }
+
+        Ok(Some(ws))
     }
 }
