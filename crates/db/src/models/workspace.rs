@@ -566,12 +566,12 @@ impl Workspace {
             .collect();
 
         for ws in &mut workspaces {
-            if ws.workspace.name.is_none() {
-                if let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await? {
-                    let name = Self::truncate_to_name(&prompt, 35);
-                    Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
-                    ws.workspace.name = Some(name);
-                }
+            if ws.workspace.name.is_none()
+                && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
+            {
+                let name = Self::truncate_to_name(&prompt, 35);
+                Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+                ws.workspace.name = Some(name);
             }
         }
 
@@ -645,12 +645,12 @@ impl Workspace {
             is_errored: rec.is_errored != 0,
         };
 
-        if ws.workspace.name.is_none() {
-            if let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await? {
-                let name = Self::truncate_to_name(&prompt, 35);
-                Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
-                ws.workspace.name = Some(name);
-            }
+        if ws.workspace.name.is_none()
+            && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
+        {
+            let name = Self::truncate_to_name(&prompt, 35);
+            Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+            ws.workspace.name = Some(name);
         }
 
         Ok(Some(ws))
