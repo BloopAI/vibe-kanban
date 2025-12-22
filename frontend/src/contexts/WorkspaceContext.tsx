@@ -5,8 +5,13 @@ import {
   type SidebarWorkspace,
 } from '@/components/ui-new/hooks/useWorkspaces';
 import { useAttempt } from '@/hooks/useAttempt';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
-import type { Workspace as ApiWorkspace, Session } from 'shared/types';
+import type {
+  Workspace as ApiWorkspace,
+  Session,
+  RepoWithTargetBranch,
+} from 'shared/types';
 
 interface WorkspaceContextValue {
   workspaceId: string | undefined;
@@ -27,6 +32,9 @@ interface WorkspaceContextValue {
   selectSession: (sessionId: string) => void;
   selectLatestSession: () => void;
   isSessionsLoading: boolean;
+  /** Repos for the current workspace */
+  repos: RepoWithTargetBranch[];
+  isReposLoading: boolean;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -64,7 +72,12 @@ export function WorkspaceProvider({
     selectSession,
     selectLatestSession,
     isLoading: isSessionsLoading,
-  } = useWorkspaceSessions(isCreateMode ? undefined : workspaceId);
+  } = useWorkspaceSessions(workspaceId, { enabled: !isCreateMode });
+
+  // Fetch repos for the current workspace
+  const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
+    enabled: !isCreateMode,
+  });
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
@@ -98,6 +111,8 @@ export function WorkspaceProvider({
       selectSession,
       selectLatestSession,
       isSessionsLoading,
+      repos,
+      isReposLoading,
     }),
     [
       workspaceId,
@@ -114,6 +129,8 @@ export function WorkspaceProvider({
       selectSession,
       selectLatestSession,
       isSessionsLoading,
+      repos,
+      isReposLoading,
     ]
   );
 

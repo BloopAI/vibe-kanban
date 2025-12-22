@@ -3,7 +3,15 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { attemptsApi } from '@/lib/api';
 import type { RepoWithTargetBranch } from 'shared/types';
 
-export function useAttemptRepo(attemptId?: string) {
+interface UseAttemptRepoOptions {
+  enabled?: boolean;
+}
+
+export function useAttemptRepo(
+  attemptId?: string,
+  options: UseAttemptRepoOptions = {}
+) {
+  const { enabled = true } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery<RepoWithTargetBranch[]>({
@@ -12,7 +20,7 @@ export function useAttemptRepo(attemptId?: string) {
       const repos = await attemptsApi.getRepos(attemptId!);
       return repos;
     },
-    enabled: !!attemptId,
+    enabled: enabled && !!attemptId,
   });
 
   const repos = useMemo(() => query.data ?? [], [query.data]);

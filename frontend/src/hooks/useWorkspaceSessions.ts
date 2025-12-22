@@ -3,6 +3,10 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { sessionsApi } from '@/lib/api';
 import type { Session } from 'shared/types';
 
+interface UseWorkspaceSessionsOptions {
+  enabled?: boolean;
+}
+
 interface UseWorkspaceSessionsResult {
   sessions: Session[];
   selectedSession: Session | undefined;
@@ -18,8 +22,10 @@ interface UseWorkspaceSessionsResult {
  * Sessions are ordered by created_at DESC (latest first).
  */
 export function useWorkspaceSessions(
-  workspaceId: string | undefined
+  workspaceId: string | undefined,
+  options: UseWorkspaceSessionsOptions = {}
 ): UseWorkspaceSessionsResult {
+  const { enabled = true } = options;
   const [selectedSessionId, setSelectedSessionId] = useState<
     string | undefined
   >(undefined);
@@ -27,7 +33,7 @@ export function useWorkspaceSessions(
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ['workspaceSessions', workspaceId],
     queryFn: () => sessionsApi.getByWorkspace(workspaceId!),
-    enabled: !!workspaceId,
+    enabled: enabled && !!workspaceId,
   });
 
   // Auto-select the latest session when sessions load or workspace changes

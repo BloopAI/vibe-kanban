@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Group,
   Panel,
@@ -12,28 +12,6 @@ import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Navbar } from '@/components/ui-new/views/Navbar';
-
-// Mock data for the git panel - replace with real data from hooks/API
-const mockRepos: RepoInfo[] = [
-  {
-    id: '1',
-    name: 'Vibe Kanban',
-    currentBranch: 'Main',
-    commitsAhead: 1,
-    filesChanged: 3,
-    linesAdded: 300,
-    linesRemoved: 136,
-  },
-  {
-    id: '2',
-    name: 'Vibe Kanban/api',
-    currentBranch: 'Main',
-    commitsAhead: 1,
-    filesChanged: 3,
-    linesAdded: 300,
-    linesRemoved: 136,
-  },
-];
 
 export function WorkspacesLayout() {
   const {
@@ -49,10 +27,33 @@ export function WorkspacesLayout() {
     selectedSessionId,
     sessions,
     selectSession,
+    repos,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [chatValue, setChatValue] = useState('');
   const [workingBranchName, setWorkingBranchName] = useState('');
+
+  // Sync workingBranchName with workspace branch when it changes
+  useEffect(() => {
+    if (selectedWorkspace?.branch) {
+      setWorkingBranchName(selectedWorkspace.branch);
+    }
+  }, [selectedWorkspace?.branch]);
+
+  // Transform repos to RepoInfo format for GitPanel
+  const repoInfos: RepoInfo[] = useMemo(
+    () =>
+      repos.map((repo) => ({
+        id: repo.id,
+        name: repo.display_name || repo.name,
+        currentBranch: selectedWorkspace?.branch ?? '',
+        commitsAhead: 0, // Mock for now
+        filesChanged: 0, // Mock for now
+        linesAdded: 0, // Mock for now
+        linesRemoved: 0, // Mock for now
+      })),
+    [repos, selectedWorkspace?.branch]
+  );
 
   // Panel refs for programmatic collapse/expand
   const sidebarRef = useRef<PanelImperativeHandle>(null);
@@ -179,7 +180,7 @@ export function WorkspacesLayout() {
               onResize={handleGitPanelResize}
             >
               <GitPanel
-                repos={mockRepos}
+                repos={repoInfos}
                 workingBranchName={workingBranchName}
                 onWorkingBranchNameChange={setWorkingBranchName}
                 onActionsClick={(repoId, action) =>
