@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   Group,
   Panel,
@@ -12,6 +12,7 @@ import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Navbar } from '@/components/ui-new/views/Navbar';
+import { useRenameBranch } from '@/hooks/useRenameBranch';
 
 export function WorkspacesLayout() {
   const {
@@ -30,14 +31,16 @@ export function WorkspacesLayout() {
     repos,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
-  const [workingBranchName, setWorkingBranchName] = useState('');
 
-  // Sync workingBranchName with workspace branch when it changes
-  useEffect(() => {
-    if (selectedWorkspace?.branch) {
-      setWorkingBranchName(selectedWorkspace.branch);
-    }
-  }, [selectedWorkspace?.branch]);
+  // Hook to rename branch via API
+  const renameBranch = useRenameBranch(selectedWorkspace?.id);
+
+  const handleBranchNameChange = useCallback(
+    (newName: string) => {
+      renameBranch.mutate(newName);
+    },
+    [renameBranch]
+  );
 
   // Transform repos to RepoInfo format for GitPanel
   const repoInfos: RepoInfo[] = useMemo(
@@ -169,8 +172,8 @@ export function WorkspacesLayout() {
             >
               <GitPanel
                 repos={repoInfos}
-                workingBranchName={workingBranchName}
-                onWorkingBranchNameChange={setWorkingBranchName}
+                workingBranchName={selectedWorkspace?.branch ?? ''}
+                onWorkingBranchNameChange={handleBranchNameChange}
                 onActionsClick={(repoId, action) =>
                   console.log('Actions clicked:', repoId, 'action:', action)
                 }
