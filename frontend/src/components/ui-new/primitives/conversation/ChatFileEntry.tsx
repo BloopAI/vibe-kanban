@@ -1,6 +1,8 @@
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
+import { useTheme } from '@/components/ThemeProvider';
+import { getActualTheme } from '@/utils/theme';
 
 interface ChatFileEntryProps {
   filename: string;
@@ -19,8 +21,10 @@ export function ChatFileEntry({
   onToggle,
   className,
 }: ChatFileEntryProps) {
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
   const hasStats = additions !== undefined || deletions !== undefined;
-  const FileIcon = getFileIcon(filename);
+  const FileIcon = getFileIcon(filename, actualTheme);
 
   return (
     <div
