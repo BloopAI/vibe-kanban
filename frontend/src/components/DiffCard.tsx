@@ -266,7 +266,7 @@ export default function DiffCard({
 
   return (
     <div className="my-4 border">
-      <div className="flex items-center px-4 py-2">
+      <div className="sticky top-0 z-[5] flex items-center px-4 py-2 bg-background border-b">
         {expandable && (
           <Button
             variant="ghost"
