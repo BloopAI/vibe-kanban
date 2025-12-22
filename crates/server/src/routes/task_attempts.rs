@@ -19,7 +19,7 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
@@ -89,17 +89,9 @@ pub struct DiffStreamQuery {
 }
 
 #[derive(Debug, Deserialize, TS)]
-pub struct SetArchived {
-    pub archived: bool,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct SetPinned {
-    pub pinned: bool,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct SetName {
+pub struct UpdateWorkspace {
+    pub archived: Option<bool>,
+    pub pinned: Option<bool>,
     pub name: Option<String>,
 }
 
@@ -118,39 +110,20 @@ pub async fn get_task_attempt(
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
-pub async fn set_workspace_archived(
+pub async fn update_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(request): Json<SetArchived>,
+    Json(request): Json<UpdateWorkspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
-    Workspace::set_archived(pool, workspace.id, request.archived).await?;
-    let updated = Workspace::find_by_id(pool, workspace.id)
-        .await?
-        .ok_or(WorkspaceError::TaskNotFound)?;
-    Ok(ResponseJson(ApiResponse::success(updated)))
-}
-
-pub async fn set_workspace_pinned(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-    Json(request): Json<SetPinned>,
-) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    let pool = &deployment.db().pool;
-    Workspace::set_pinned(pool, workspace.id, request.pinned).await?;
-    let updated = Workspace::find_by_id(pool, workspace.id)
-        .await?
-        .ok_or(WorkspaceError::TaskNotFound)?;
-    Ok(ResponseJson(ApiResponse::success(updated)))
-}
-
-pub async fn set_workspace_name(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-    Json(request): Json<SetName>,
-) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    let pool = &deployment.db().pool;
-    Workspace::set_name(pool, workspace.id, request.name.as_deref()).await?;
+    Workspace::update(
+        pool,
+        workspace.id,
+        request.archived,
+        request.pinned,
+        request.name.as_deref(),
+    )
+    .await?;
     let updated = Workspace::find_by_id(pool, workspace.id)
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;
@@ -1609,9 +1582,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
-        .route("/archive", post(set_workspace_archived))
-        .route("/pin", post(set_workspace_pinned))
-        .route("/rename", post(set_workspace_name))
+        .route("/", put(update_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

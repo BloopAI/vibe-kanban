@@ -448,29 +448,30 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn set_pinned(
+    /// Update workspace fields. Only non-None values will be updated.
+    /// For `name`, pass `Some("")` to clear the name, `Some("foo")` to set it, or `None` to leave unchanged.
+    pub async fn update(
         pool: &SqlitePool,
         workspace_id: Uuid,
-        pinned: bool,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "UPDATE workspaces SET pinned = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
-            pinned,
-            workspace_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn set_name(
-        pool: &SqlitePool,
-        workspace_id: Uuid,
+        archived: Option<bool>,
+        pinned: Option<bool>,
         name: Option<&str>,
     ) -> Result<(), sqlx::Error> {
+        // Convert empty string to None for name field (to store as NULL)
+        let name_value = name.filter(|s| !s.is_empty());
+        let name_provided = name.is_some();
+
         sqlx::query!(
-            "UPDATE workspaces SET name = $1, updated_at = datetime('now', 'subsec') WHERE id = $2",
-            name,
+            r#"UPDATE workspaces SET
+                archived = COALESCE($1, archived),
+                pinned = COALESCE($2, pinned),
+                name = CASE WHEN $3 THEN $4 ELSE name END,
+                updated_at = datetime('now', 'subsec')
+            WHERE id = $5"#,
+            archived,
+            pinned,
+            name_provided,
+            name_value,
             workspace_id
         )
         .execute(pool)
@@ -582,7 +583,7 @@ impl Workspace {
                 && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
             {
                 let name = Self::truncate_to_name(&prompt, 35);
-                Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+                Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
                 ws.workspace.name = Some(name);
             }
         }
@@ -661,7 +662,7 @@ impl Workspace {
             && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
         {
             let name = Self::truncate_to_name(&prompt, 35);
-            Self::set_name(pool, ws.workspace.id, Some(&name)).await?;
+            Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
             ws.workspace.name = Some(name);
         }
 
