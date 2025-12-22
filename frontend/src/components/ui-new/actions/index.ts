@@ -1,23 +1,18 @@
-type UserAction<Context = unknown, R = unknown> = {
+type UserAction = {
   description: string;
   keyboardShortcut: string;
-  trigger: (context: Context) => R;
 };
 
-export const UserActions = {
+const defineActions = <T extends Record<string, UserAction>>(t: T) => t;
+
+export const UserActions = defineActions({
   SomeActionHere: {
     description: 'Do the thing',
     keyboardShortcut: 'Cmd+K',
-    trigger: (ctx: { userId: string }) => {
-      return ctx.userId;
-    },
   },
 
   AnotherAction: {
     description: 'Another thing',
     keyboardShortcut: 'Cmd+Enter',
-    trigger: () => {
-      return true;
-    },
   },
-} satisfies Record<string, UserAction<unknown, unknown>>;
+});

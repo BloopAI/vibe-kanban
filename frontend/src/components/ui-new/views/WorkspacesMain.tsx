@@ -1,7 +1,7 @@
 import { useRef, useMemo } from 'react';
 import type { Workspace, Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
-import { SessionChatBox } from '@/components/ui-new/primitives/SessionChatBox';
+import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBar } from '@/components/ui-new/primitives/ContextBar';
 import { ConversationList } from '../ConversationList';
 import { EntriesProvider } from '@/contexts/EntriesContext';
@@ -13,9 +13,6 @@ interface WorkspacesMainProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
-  chatValue: string;
-  onChatChange: (value: string) => void;
-  onSend: () => void;
 }
 
 export function WorkspacesMain({
@@ -24,9 +21,6 @@ export function WorkspacesMain({
   sessions,
   onSelectSession,
   isLoading,
-  chatValue,
-  onChatChange,
-  onSend,
 }: WorkspacesMainProps) {
   const containerRef = useRef<HTMLElement>(null);
 
@@ -72,16 +66,13 @@ export function WorkspacesMain({
       </div>
       {/* Chat box centered at bottom */}
       <div className="flex justify-center @container">
-        <SessionChatBox
+        <SessionChatBoxContainer
+          session={selectedSession}
+          sessions={sessions}
+          onSelectSession={onSelectSession}
           filesChanged={19}
           linesAdded={10}
           linesRemoved={3}
-          value={chatValue}
-          onChange={onChatChange}
-          onSend={onSend}
-          sessions={sessions}
-          selectedSessionId={selectedSession?.id}
-          onSelectSession={onSelectSession}
         />
       </div>
       {/* Context Bar - floating toolbar */}

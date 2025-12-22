@@ -124,8 +124,7 @@
     --success: 117 38% 50%;
 
     /* Text on accent */
-    --text-on-brand: 0 0% 5%;
-
+    --text-on-brand: 0 0% 100%;
     /* Console (dark) */
     --_console-background: 0 0% 0%;
     --_console-foreground: 210 40% 98%;

@@ -53,6 +53,9 @@ module.exports = {
       },
     },
     extend: {
+      height: {
+        'cta': '29px',
+      },
       width: {
         chat: chatMaxWidth,
       },
@@ -83,6 +86,7 @@ module.exports = {
         base: [getSize('base'), { lineHeight: getSize('base', lineHeightMultiplier) }],  // 12px (base)
         lg: [getSize('lg'), { lineHeight: getSize('lg', lineHeightMultiplier) }],    // 14px
         xl: [getSize('xl'), { lineHeight: getSize('xl', lineHeightMultiplier) }],         // 16px
+        cta: [getSize('base'), { lineHeight: getSize('base') }],         // 16px
       },
       spacing: {
         'half': getSize('base', 0.25),
