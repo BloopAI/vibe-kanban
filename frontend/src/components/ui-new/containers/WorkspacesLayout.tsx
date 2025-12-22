@@ -7,6 +7,7 @@ import {
   type PanelImperativeHandle,
   type PanelSize,
 } from 'react-resizable-panels';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
@@ -14,6 +15,8 @@ import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { attemptsApi } from '@/lib/api';
+import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
 import { useTask } from '@/hooks/useTask';
 import { useMerge } from '@/hooks/useMerge';
@@ -130,6 +133,7 @@ function GitPanelContainer({
 }
 
 export function WorkspacesLayout() {
+  const queryClient = useQueryClient();
   const {
     workspace: selectedWorkspace,
     workspaceId: selectedWorkspaceId,
@@ -146,6 +150,28 @@ export function WorkspacesLayout() {
     repos,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Archive/unarchive mutation
+  const toggleArchiveMutation = useMutation({
+    mutationFn: ({
+      workspaceId,
+      archived,
+    }: {
+      workspaceId: string;
+      archived: boolean;
+      nextWorkspaceId: string | null;
+    }) => attemptsApi.update(workspaceId, { archived: !archived }),
+    onSuccess: (_, { workspaceId, archived, nextWorkspaceId }) => {
+      queryClient.invalidateQueries({
+        queryKey: attemptKeys.byId(workspaceId),
+      });
+
+      // When archiving, navigate to the next workspace
+      if (!archived && nextWorkspaceId) {
+        selectWorkspace(nextWorkspaceId);
+      }
+    },
+  });
 
   // Hook to rename branch via API
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
@@ -206,6 +232,30 @@ export function WorkspacesLayout() {
     setIsGitPanelCollapsed(size.inPixels === 0);
   }, []);
 
+  const handleToggleArchive = useCallback(() => {
+    if (!selectedWorkspace) return;
+
+    // When archiving, find next workspace to select
+    let nextWorkspaceId: string | null = null;
+    if (!selectedWorkspace.archived) {
+      const currentIndex = sidebarWorkspaces.findIndex(
+        (ws) => ws.id === selectedWorkspace.id
+      );
+      if (currentIndex >= 0 && sidebarWorkspaces.length > 1) {
+        const nextWorkspace =
+          sidebarWorkspaces[currentIndex + 1] ||
+          sidebarWorkspaces[currentIndex - 1];
+        nextWorkspaceId = nextWorkspace?.id ?? null;
+      }
+    }
+
+    toggleArchiveMutation.mutate({
+      workspaceId: selectedWorkspace.id,
+      archived: selectedWorkspace.archived,
+      nextWorkspaceId,
+    });
+  }, [selectedWorkspace, sidebarWorkspaces, toggleArchiveMutation]);
+
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
     : selectedWorkspace?.branch;
@@ -216,8 +266,10 @@ export function WorkspacesLayout() {
         workspaceTitle={navbarTitle}
         isSidebarVisible={!isSidebarCollapsed}
         isGitPanelVisible={!isCreateMode && !isGitPanelCollapsed}
+        isArchived={selectedWorkspace?.archived}
         onToggleSidebar={handleToggleSidebar}
         onToggleGitPanel={isCreateMode ? undefined : handleToggleGitPanel}
+        onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
       />
       <Group orientation="horizontal" className="flex-1 min-h-0">
         <Panel

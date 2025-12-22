@@ -21,6 +21,7 @@ interface WorkspaceSummaryProps {
   isPinned?: boolean;
   onClick?: () => void;
   className?: string;
+  summary?: boolean;
 }
 
 export function WorkspaceSummary({
@@ -33,6 +34,7 @@ export function WorkspaceSummary({
   isPinned = false,
   onClick,
   className,
+  summary = false,
 }: WorkspaceSummaryProps) {
   const hasStats = filesChanged !== undefined;
 
@@ -48,7 +50,7 @@ export function WorkspaceSummary({
       <div className={cn('truncate text-normal group-hover:text-high')}>
         {name}
       </div>
-      {hasStats && (
+      {hasStats && (!summary || isActive) && (
         <div className="flex w-full items-center gap-base text-sm">
           {isRunning && <RunningDots />}
           {isPinned && (
