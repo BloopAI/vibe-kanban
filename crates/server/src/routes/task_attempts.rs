@@ -98,6 +98,11 @@ pub struct SetPinned {
     pub pinned: bool,
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct SetName {
+    pub name: Option<String>,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -133,6 +138,19 @@ pub async fn set_workspace_pinned(
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let pool = &deployment.db().pool;
     Workspace::set_pinned(pool, workspace.id, request.pinned).await?;
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+pub async fn set_workspace_name(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<SetName>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+    Workspace::set_name(pool, workspace.id, request.name.as_deref()).await?;
     let updated = Workspace::find_by_id(pool, workspace.id)
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;
@@ -1593,6 +1611,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/repos", get(get_task_attempt_repos))
         .route("/archive", post(set_workspace_archived))
         .route("/pin", post(set_workspace_pinned))
+        .route("/rename", post(set_workspace_name))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

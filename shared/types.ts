@@ -306,6 +306,8 @@ export type SetArchived = { archived: boolean, };
 
 export type SetPinned = { pinned: boolean, };
 
+export type SetName = { name: string | null, };
+
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
