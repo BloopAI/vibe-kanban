@@ -1,4 +1,8 @@
-import { SidebarSimpleIcon, type Icon } from '@phosphor-icons/react';
+import {
+  SidebarSimpleIcon,
+  ArchiveIcon,
+  type Icon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 // NavbarIconButton - inlined from primitives
@@ -47,9 +51,12 @@ export interface NavbarProps {
   // Panel visibility states
   isSidebarVisible?: boolean;
   isGitPanelVisible?: boolean;
+  // Archive state
+  isArchived?: boolean;
   // Panel toggle handlers
   onToggleSidebar?: () => void;
   onToggleGitPanel?: () => void;
+  onToggleArchive?: () => void;
   className?: string;
 }
 
@@ -57,8 +64,10 @@ export function Navbar({
   workspaceTitle = 'Workspace Title',
   isSidebarVisible,
   isGitPanelVisible,
+  isArchived,
   onToggleSidebar,
   onToggleGitPanel,
+  onToggleArchive,
   className,
 }: NavbarProps) {
   return (
@@ -68,14 +77,27 @@ export function Navbar({
         className
       )}
     >
-      {/* Left - Sidebar Toggle */}
-      <div className="flex items-center">
+      {/* Left - Sidebar Toggle & Archive */}
+      <div className="flex items-center gap-base">
         <NavbarIconButton
           icon={SidebarSimpleIcon}
           isActive={isSidebarVisible}
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
         />
+        {onToggleArchive && (
+          <>
+            <div className="w-px h-4 bg-low/20" />
+            <NavbarIconButton
+              icon={ArchiveIcon}
+              isActive={isArchived}
+              onClick={onToggleArchive}
+              aria-label={
+                isArchived ? 'Unarchive workspace' : 'Archive workspace'
+              }
+            />
+          </>
+        )}
       </div>
 
       {/* Center - Workspace Title */}
