@@ -42,7 +42,7 @@ const DropdownMenuTrigger = React.forwardRef<
     {IconComponent && (
       <IconComponent className="size-icon-xs text-normal" weight="bold" />
     )}
-    {label && <span className="text-sm text-normal">{label}</span>}
+    {label && <span className="text-sm text-normal truncate">{label}</span>}
     {children}
     <CaretDownIcon className="size-icon-2xs text-normal" weight="bold" />
   </DropdownMenuPrimitive.Trigger>

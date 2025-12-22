@@ -10,7 +10,7 @@ import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 export interface RepoInfo {
   id: string;
   name: string;
-  currentBranch: string;
+  targetBranch: string;
   commitsAhead: number;
   filesChanged: number;
   linesAdded: number;
@@ -63,11 +63,13 @@ export function GitPanel({
           <RepoCard
             key={repo.id}
             name={repo.name}
-            currentBranch={repo.currentBranch}
+            targetBranch={repo.targetBranch}
             commitsAhead={repo.commitsAhead}
             filesChanged={repo.filesChanged}
             linesAdded={repo.linesAdded}
             linesRemoved={repo.linesRemoved}
+            onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
+            onRebase={() => onActionsClick?.(repo.id, 'rebase')}
             onActionsClick={(action) => onActionsClick?.(repo.id, action)}
           />
         ))}

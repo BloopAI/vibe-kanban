@@ -4,7 +4,6 @@ import {
   GitMergeIcon,
   GitPullRequestIcon,
   ArrowsClockwiseIcon,
-  TrashIcon,
   FileTextIcon,
   ArrowUpIcon,
   CrosshairIcon,
@@ -15,12 +14,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from './Dropdown';
 import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 
-export type RepoAction = 'pull-request' | 'merge';
+export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
 
 const repoActionOptions: SplitButtonOption<RepoAction>[] = [
   {
@@ -33,23 +31,27 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
 
 interface RepoCardProps {
   name: string;
-  currentBranch: string;
+  targetBranch: string;
   commitsAhead?: number;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
   branchDropdownContent?: React.ReactNode;
+  onChangeTarget?: () => void;
+  onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
 }
 
 export function RepoCard({
   name,
-  currentBranch,
+  targetBranch,
   commitsAhead = 0,
   filesChanged = 0,
   linesAdded,
   linesRemoved,
   branchDropdownContent,
+  onChangeTarget,
+  onRebase,
   onActionsClick,
 }: RepoCardProps) {
   const [selectedAction, setSelectedAction] =
@@ -58,32 +60,33 @@ export function RepoCard({
   return (
     <CollapsibleSection title={name} className="gap-base" defaultExpanded>
       {/* Branch row */}
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-base">
-          <div className="flex items-center justify-center">
-            <GitBranchIcon className="size-icon-base text-base" weight="fill" />
-          </div>
-          <div className="flex items-center justify-center">
-            <ArrowRightIcon className="size-icon-sm text-low" weight="bold" />
-          </div>
-          <div className="flex items-center justify-center">
-            <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
-          </div>
+      <div className="flex items-center gap-base">
+        <div className="flex items-center justify-center">
+          <GitBranchIcon className="size-icon-base text-base" weight="fill" />
+        </div>
+        <div className="flex items-center justify-center">
+          <ArrowRightIcon className="size-icon-sm text-low" weight="bold" />
+        </div>
+        <div className="flex items-center justify-center">
+          <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
+        </div>
+        <div className="flex-1 min-w-0">
           <DropdownMenu>
-            <DropdownMenuTrigger label={currentBranch} />
+            <DropdownMenuTrigger label={targetBranch} className="max-w-full" />
             <DropdownMenuContent>
               {branchDropdownContent ?? (
                 <>
-                  <DropdownMenuItem icon={GitMergeIcon}>Merge</DropdownMenuItem>
-                  <DropdownMenuItem icon={ArrowsClockwiseIcon}>
+                  <DropdownMenuItem
+                    icon={CrosshairIcon}
+                    onClick={onChangeTarget}
+                  >
+                    Change target
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    icon={ArrowsClockwiseIcon}
+                    onClick={onRebase}
+                  >
                     Rebase
-                  </DropdownMenuItem>
-                  <DropdownMenuItem icon={GitPullRequestIcon}>
-                    Create PR
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem icon={TrashIcon} variant="destructive">
-                    Remove
                   </DropdownMenuItem>
                 </>
               )}
