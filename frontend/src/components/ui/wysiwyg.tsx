@@ -13,6 +13,7 @@ import {
   GITHUB_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/github-comment-node';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
+import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
   TaskAttemptContext,
   TaskContext,
@@ -34,6 +35,8 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
 import { CODE_HIGHLIGHT_CLASSES } from './wysiwyg/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
+import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState } from 'lexical';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -134,6 +137,11 @@ function WYSIWYGEditor({
         },
         code: 'block font-mono bg-secondary rounded-md px-3 py-2 my-2 whitespace-pre overflow-x-auto',
         codeHighlight: CODE_HIGHLIGHT_CLASSES,
+        table: 'border-collapse my-2 w-full text-sm',
+        tableRow: '',
+        tableCell: 'border border-border px-3 py-2 text-left align-top',
+        tableCellHeader:
+          'bg-muted font-semibold border border-border px-3 py-2 text-left align-top',
       },
       nodes: [
         HeadingNode,
@@ -145,6 +153,9 @@ function WYSIWYGEditor({
         LinkNode,
         ImageNode,
         GitHubCommentNode,
+        TableNode,
+        TableRowNode,
+        TableCellNode,
       ],
     }),
     []
@@ -153,6 +164,7 @@ function WYSIWYGEditor({
   // Extended transformers with image, GitHub comment, and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
+      TABLE_TRANSFORMER,
       IMAGE_TRANSFORMER,
       GITHUB_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
       GITHUB_COMMENT_TRANSFORMER, // Import transformer for fenced code block
@@ -223,6 +235,7 @@ function WYSIWYGEditor({
               </div>
 
               <ListPlugin />
+              <TablePlugin />
               <CodeHighlightPlugin />
               {/* Only include editing plugins when not in read-only mode */}
               {!disabled && (
