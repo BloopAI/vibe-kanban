@@ -66,13 +66,13 @@ export function ChatPlan({
           </span>
           <div className="flex items-center gap-base">
             {onReject && (
-              <PrimaryButton variant="secondary" onClick={onReject}>
-                Reject
-              </PrimaryButton>
+              <PrimaryButton
+                variant="secondary"
+                onClick={onReject}
+                value="Reject"
+              />
             )}
-            {onApprove && (
-              <PrimaryButton onClick={onApprove}>Accept</PrimaryButton>
-            )}
+            {onApprove && <PrimaryButton onClick={onApprove} value="Accept" />}
           </div>
         </div>
       )}
