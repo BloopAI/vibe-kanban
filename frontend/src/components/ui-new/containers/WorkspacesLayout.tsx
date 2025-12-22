@@ -30,7 +30,6 @@ export function WorkspacesLayout() {
     repos,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatValue, setChatValue] = useState('');
   const [workingBranchName, setWorkingBranchName] = useState('');
 
   // Sync workingBranchName with workspace branch when it changes
@@ -62,14 +61,6 @@ export function WorkspacesLayout() {
   // Track collapsed state for navbar button active states
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isGitPanelCollapsed, setIsGitPanelCollapsed] = useState(false);
-
-  const handleSend = useCallback(() => {
-    if (chatValue.trim()) {
-      // TODO: Implement send functionality
-      console.log('Sending:', chatValue);
-      setChatValue('');
-    }
-  }, [chatValue]);
 
   // Panel toggle handlers
   const handleToggleSidebar = useCallback(() => {
@@ -156,9 +147,6 @@ export function WorkspacesLayout() {
                 sessions={sessions}
                 onSelectSession={selectSession}
                 isLoading={isLoading}
-                chatValue={chatValue}
-                onChatChange={setChatValue}
-                onSend={handleSend}
               />
             </ExecutionProcessesProvider>
           )}
