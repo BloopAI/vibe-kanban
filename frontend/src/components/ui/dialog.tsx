@@ -11,8 +11,9 @@ const Dialog = React.forwardRef<
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     uncloseable?: boolean;
+    zIndex?: string;
   }
->(({ className, open, onOpenChange, children, uncloseable, ...props }, ref) => {
+>(({ className, open, onOpenChange, children, uncloseable, zIndex, ...props }, ref) => {
   const { enableScope, disableScope } = useHotkeysContext();
 
   // Manage dialog scope when open/closed
@@ -107,8 +108,10 @@ const Dialog = React.forwardRef<
 
   if (!open) return null;
 
+  const effectiveZIndex = zIndex || 'z-[9999]';
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+    <div className={cn('fixed inset-0 flex items-start justify-center p-4 overflow-y-auto', effectiveZIndex)}>
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => (uncloseable ? {} : onOpenChange?.(false))}
@@ -116,7 +119,8 @@ const Dialog = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'relative z-[9999] flex flex-col w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
+          'relative flex flex-col w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
+          effectiveZIndex,
           className
         )}
         {...props}
