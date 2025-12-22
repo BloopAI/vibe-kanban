@@ -88,6 +88,12 @@ pub struct DiffStreamQuery {
     pub stats_only: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceStreamQuery {
+    pub archived: Option<bool>,
+    pub limit: Option<i64>,
+}
+
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateWorkspace {
     pub archived: Option<bool>,
@@ -329,21 +335,28 @@ async fn handle_task_attempt_diff_ws(
 
 pub async fn stream_workspaces_ws(
     ws: WebSocketUpgrade,
+    Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_workspaces_ws(socket, deployment).await {
+        if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
+        {
             tracing::warn!("workspaces WS closed: {}", e);
         }
     })
 }
 
-async fn handle_workspaces_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+async fn handle_workspaces_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    archived: Option<bool>,
+    limit: Option<i64>,
+) -> anyhow::Result<()> {
     use futures_util::{SinkExt, StreamExt, TryStreamExt};
 
     let mut stream = deployment
         .events()
-        .stream_workspaces_raw()
+        .stream_workspaces_raw(archived, limit)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
