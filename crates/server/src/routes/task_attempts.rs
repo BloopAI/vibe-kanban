@@ -443,7 +443,9 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
-    Workspace::set_archived(pool, workspace.id, true).await?;
+    if !workspace.pinned {
+        Workspace::set_archived(pool, workspace.id, true).await?;
+    }
 
     // Stop any running dev servers for this workspace
     let dev_servers =
