@@ -9,38 +9,38 @@
   /* Light defaults - New Design */
   .new-design {
     color-scheme: light;
-    --_background: 0 0% 100%;
-    --_foreground: 240 10% 3.9%;
-    --_primary: 240 5.9% 10%;
-    --_primary-foreground: 0 0% 98%;
-    --_secondary: 240 4.8% 95.9%;
-    --_secondary-foreground: 240 5.9% 10%;
-    --_muted: 240 4.8% 95.9%;
-    --_muted-foreground: 240 3.8% 46.1%;
-    --_accent: 240 4.8% 95.9%;
-    --_accent-foreground: 240 5.9% 10%;
-    --_destructive: 0 84.2% 60.2%;
-    --_destructive-foreground: 0 0% 98%;
-    --_border: 240 5.9% 90%;
-    --_input: 240 5.9% 90%;
-    --_ring: 240 5.9% 10%;
+    --_background: 0 0% 95%;
+    --_foreground: 0 0% 5%;
+    --_primary: 0 0% 5%;
+    --_primary-foreground: 0 0% 100%;
+    --_secondary: 0 0% 95%;
+    --_secondary-foreground: 0 0% 16%;
+    --_muted: 0 0% 89%;
+    --_muted-foreground: 0 0% 56%;
+    --_accent: 0 0% 92%;
+    --_accent-foreground: 0 0% 5%;
+    --_destructive: 0 59% 57%;
+    --_destructive-foreground: 0 0% 100%;
+    --_border: 0 0% 85%;
+    --_input: 0 0% 96%;
+    --_ring: 0 0% 5%;
     --_radius: 0.125rem;
 
     /* Status (light) */
-    --_success: 142.1 76.2% 36.3%;
-    --_success-foreground: 142.1 76.2% 20%;
-    --_warning: 32.2 95% 44.1%;
-    --_warning-foreground: 26 83.3% 14.1%;
-    --_info: 217.2 91.2% 59.8%;
-    --_info-foreground: 222.2 84% 4.9%;
-    --_neutral: 210 40% 96%;
-    --_neutral-foreground: 222.2 84% 4.9%;
+    --_success: 117 38% 50%;
+    --_success-foreground: 117 38% 20%;
+    --_warning: 32 95% 44%;
+    --_warning-foreground: 32 95% 14%;
+    --_info: 217 91% 60%;
+    --_info-foreground: 0 0% 5%;
+    --_neutral: 0 0% 92%;
+    --_neutral-foreground: 0 0% 5%;
 
     /* Console (light) */
     --_console-background: 0 0% 100%;
-    --_console-foreground: 240 10% 3.9%;
-    --_console-success: 138 69% 45%;
-    --_console-error: 5 100% 69%;
+    --_console-foreground: 0 0% 5%;
+    --_console-success: 117 38% 50%;
+    --_console-error: 0 59% 57%;
 
     /* Syntax highlighting (light) */
     --_syntax-keyword: #d73a49;
@@ -54,24 +54,24 @@
     --_syntax-deleted: #b31d28;
 
     /* Text (light) */
-    --text-high: 240 10% 3.9%;
-    --text-normal: 240 5% 26%;
-    --text-low: 240 4% 46%;
+    --text-high: 0 0% 5%;
+    --text-normal: 0 0% 16%;
+    --text-low: 0 0% 39%;
 
     /* Background (light) */
     --bg-primary: 0 0% 100%;
-    --bg-secondary: 240 4.8% 95.9%;
-    --bg-panel: 240 5% 92%;
+    --bg-secondary: 0 0% 95%;
+    --bg-panel: 0 0% 89%;
 
     /* Accent (light) */
     --brand: 25 82% 54%;
     --brand-hover: 25 75% 62%;
     --brand-secondary: 25 82% 37%;
-    --error: 0 84.2% 60.2%;
-    --success: 142.1 76.2% 36.3%;
+    --error: 0 59% 57%;
+    --success: 117 38% 50%;
 
     /* Text on accent */
-    --text-on-brand: 0 0% 5%;
+    --text-on-brand: 0 0% 100%;
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
