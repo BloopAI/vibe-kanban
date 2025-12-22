@@ -1,128 +1,167 @@
-import { ComponentType, SVGProps } from 'react';
+import { FunctionComponentElement, SVGProps } from 'react';
 import {
-  TypescriptOriginal,
-  JavascriptOriginal,
-  PythonOriginal,
-  RustOriginal,
-  GoOriginal,
-  JavaOriginal,
-  COriginal,
-  CplusplusOriginal,
-  CsharpOriginal,
-  SwiftOriginal,
-  KotlinOriginal,
-  DartOriginal,
-  RubyOriginal,
-  PhpOriginal,
-  LuaOriginal,
-  ROriginal,
-  ScalaOriginal,
-  ElixirOriginal,
-  Html5Original,
-  Css3Original,
-  SassOriginal,
-  JsonOriginal,
-  MarkdownOriginal,
-  YamlOriginal,
-  BashOriginal,
-  PowershellOriginal,
-  ReactOriginal,
-  VuejsOriginal,
-  SvelteOriginal,
-  AngularOriginal,
-  DockerOriginal,
-  PostgresqlOriginal,
-  GraphqlPlain,
-} from 'devicons-react';
+  TypeScript,
+  JavaScript,
+  Python,
+  RustDark,
+  RustLight,
+  Go,
+  Java,
+  C,
+  CPlusPlus,
+  CSharp,
+  Swift,
+  Kotlin,
+  Dart,
+  Ruby,
+  PHP,
+  Lua,
+  R,
+  Scala,
+  Elixir,
+  HTML5,
+  CSS3,
+  Sass,
+  JSON,
+  Markdown,
+  Bash,
+  PowerShell,
+  React,
+  VueJs,
+  SvelteJS,
+  Angular,
+  Docker,
+  PostgreSQL,
+  GraphQL,
+} from 'developer-icons';
 import { FileIcon } from '@phosphor-icons/react';
 
-type IconComponent = ComponentType<
-  SVGProps<SVGElement> & { size?: number | string }
->;
+// Match the DeveloperIconProps from developer-icons
+interface DeveloperIconProps extends Partial<SVGProps<SVGElement>> {
+  size?: number;
+}
 
-const extToIcon: Record<string, IconComponent> = {
+type DeveloperIcon = (
+  props: DeveloperIconProps
+) => FunctionComponentElement<DeveloperIconProps>;
+
+type IconMapping = {
+  light: DeveloperIcon;
+  dark: DeveloperIcon;
+};
+
+function icon(component: DeveloperIcon): IconMapping {
+  return { light: component, dark: component };
+}
+
+function iconWithVariants(
+  lightIcon: DeveloperIcon,
+  darkIcon: DeveloperIcon
+): IconMapping {
+  return { light: lightIcon, dark: darkIcon };
+}
+
+const extToIcon: Record<string, IconMapping> = {
   // TypeScript/JavaScript
-  ts: TypescriptOriginal,
-  tsx: TypescriptOriginal,
-  js: JavascriptOriginal,
-  mjs: JavascriptOriginal,
-  cjs: JavascriptOriginal,
-  jsx: ReactOriginal,
+  ts: icon(TypeScript),
+  tsx: icon(TypeScript),
+  js: icon(JavaScript),
+  mjs: icon(JavaScript),
+  cjs: icon(JavaScript),
+  jsx: icon(React),
 
   // Web
-  html: Html5Original,
-  htm: Html5Original,
-  css: Css3Original,
-  scss: SassOriginal,
-  sass: SassOriginal,
-  less: Css3Original,
+  html: icon(HTML5),
+  htm: icon(HTML5),
+  css: icon(CSS3),
+  scss: icon(Sass),
+  sass: icon(Sass),
+  less: icon(CSS3),
 
   // Frameworks
-  vue: VuejsOriginal,
-  svelte: SvelteOriginal,
+  vue: icon(VueJs),
+  svelte: icon(SvelteJS),
 
   // Languages
-  py: PythonOriginal,
-  rs: RustOriginal,
-  go: GoOriginal,
-  java: JavaOriginal,
-  c: COriginal,
-  h: COriginal,
-  cpp: CplusplusOriginal,
-  cc: CplusplusOriginal,
-  cxx: CplusplusOriginal,
-  hpp: CplusplusOriginal,
-  cs: CsharpOriginal,
-  swift: SwiftOriginal,
-  kt: KotlinOriginal,
-  dart: DartOriginal,
-  rb: RubyOriginal,
-  php: PhpOriginal,
-  lua: LuaOriginal,
-  r: ROriginal,
-  scala: ScalaOriginal,
-  ex: ElixirOriginal,
-  exs: ElixirOriginal,
+  py: icon(Python),
+  rs: iconWithVariants(RustLight, RustDark),
+  go: icon(Go),
+  java: icon(Java),
+  c: icon(C),
+  h: icon(C),
+  cpp: icon(CPlusPlus),
+  cc: icon(CPlusPlus),
+  cxx: icon(CPlusPlus),
+  hpp: icon(CPlusPlus),
+  cs: icon(CSharp),
+  swift: icon(Swift),
+  kt: icon(Kotlin),
+  dart: icon(Dart),
+  rb: icon(Ruby),
+  php: icon(PHP),
+  lua: icon(Lua),
+  r: icon(R),
+  scala: icon(Scala),
+  ex: icon(Elixir),
+  exs: icon(Elixir),
 
   // Data/Config
-  json: JsonOriginal,
-  md: MarkdownOriginal,
-  yaml: YamlOriginal,
-  yml: YamlOriginal,
+  json: icon(JSON),
+  md: icon(Markdown),
+  // No YAML icon in developer-icons, use JSON as fallback
+  yaml: icon(JSON),
+  yml: icon(JSON),
 
   // Shell
-  sh: BashOriginal,
-  bash: BashOriginal,
-  zsh: BashOriginal,
-  ps1: PowershellOriginal,
+  sh: icon(Bash),
+  bash: icon(Bash),
+  zsh: icon(Bash),
+  ps1: icon(PowerShell),
 
   // Databases
-  sql: PostgresqlOriginal,
-  psql: PostgresqlOriginal,
+  sql: icon(PostgreSQL),
+  psql: icon(PostgreSQL),
 
   // Special files
-  graphql: GraphqlPlain,
-  gql: GraphqlPlain,
+  graphql: icon(GraphQL),
+  gql: icon(GraphQL),
 };
 
 // Special filename mappings (for files without extensions)
-const filenameToIcon: Record<string, IconComponent> = {
-  dockerfile: DockerOriginal,
-  'docker-compose.yml': DockerOriginal,
-  'docker-compose.yaml': DockerOriginal,
-  '.angular.json': AngularOriginal,
+const filenameToIcon: Record<string, IconMapping> = {
+  dockerfile: icon(Docker),
+  'docker-compose.yml': icon(Docker),
+  'docker-compose.yaml': icon(Docker),
+  '.angular.json': icon(Angular),
 };
 
-export function getFileIcon(filename: string): IconComponent {
+// Wrapper component to adapt phosphor FileIcon to same interface
+const FileIconWrapper: DeveloperIcon = ({ size, ...props }) => {
+  return FileIcon({
+    size,
+    ...props,
+  } as SVGProps<SVGSVGElement>) as FunctionComponentElement<DeveloperIconProps>;
+};
+
+export function getFileIcon(
+  filename: string,
+  theme: 'light' | 'dark'
+): DeveloperIcon {
   const lowerFilename = filename.toLowerCase();
 
   // Check special filenames first
   const basename = lowerFilename.split('/').pop() || '';
-  if (filenameToIcon[basename]) {
-    return filenameToIcon[basename];
+  const filenameMapping = filenameToIcon[basename];
+  if (filenameMapping) {
+    return filenameMapping[theme];
   }
 
   // Then check extension
   const ext = basename.split('.').pop() || '';
-  return extToIcon[ext] || FileIcon;
+  const extMapping = extToIcon[ext];
+  if (extMapping) {
+    return extMapping[theme];
+  }
+
+  return FileIconWrapper;
 }
