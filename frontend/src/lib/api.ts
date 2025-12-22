@@ -529,6 +529,17 @@ export const attemptsApi = {
     return handleApiResponse<Workspace>(response);
   },
 
+  update: async (
+    attemptId: string,
+    data: { archived?: boolean; pinned?: boolean; name?: string }
+  ): Promise<Workspace> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Workspace>(response);
+  },
+
   /** Get workspace with latest session */
   getWithSession: async (attemptId: string): Promise<WorkspaceWithSession> => {
     const [workspace, sessions] = await Promise.all([

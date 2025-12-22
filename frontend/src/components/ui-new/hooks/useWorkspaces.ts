@@ -65,35 +65,50 @@ export const workspaceKeys = {
 };
 
 export function useWorkspaces(): UseWorkspacesResult {
-  const endpoint = '/api/task-attempts/stream/ws';
+  // Two separate WebSocket connections: one for active, one for archived
+  const activeEndpoint = '/api/task-attempts/stream/ws?archived=false&limit=10';
+  const archivedEndpoint =
+    '/api/task-attempts/stream/ws?archived=true&limit=10';
 
   const initialData = useCallback(
     (): WorkspacesState => ({ workspaces: {} }),
     []
   );
 
-  const { data, isConnected, error } = useJsonPatchWsStream<WorkspacesState>(
-    endpoint,
+  const {
+    data: activeData,
+    isConnected: activeIsConnected,
+    error: activeError,
+  } = useJsonPatchWsStream<WorkspacesState>(activeEndpoint, true, initialData);
+
+  const {
+    data: archivedData,
+    isConnected: archivedIsConnected,
+    error: archivedError,
+  } = useJsonPatchWsStream<WorkspacesState>(
+    archivedEndpoint,
     true,
     initialData
   );
 
   const workspaces = useMemo(() => {
-    if (!data?.workspaces) return [];
-    return Object.values(data.workspaces)
-      .filter((ws) => !ws.archived)
-      .map(toSidebarWorkspace);
-  }, [data]);
+    if (!activeData?.workspaces) return [];
+    return Object.values(activeData.workspaces).map(toSidebarWorkspace);
+  }, [activeData]);
 
   const archivedWorkspaces = useMemo(() => {
-    if (!data?.workspaces) return [];
-    return Object.values(data.workspaces)
-      .filter((ws) => ws.archived)
-      .map(toSidebarWorkspace);
-  }, [data]);
+    if (!archivedData?.workspaces) return [];
+    return Object.values(archivedData.workspaces).map(toSidebarWorkspace);
+  }, [archivedData]);
 
-  // isLoading is true when we haven't received any data yet
-  const isLoading = !data;
+  // isLoading is true when we haven't received any data from either stream
+  const isLoading = !activeData || !archivedData;
+
+  // Combined connection status
+  const isConnected = activeIsConnected && archivedIsConnected;
+
+  // Combined error (show first error if any)
+  const error = activeError || archivedError;
 
   return {
     workspaces,

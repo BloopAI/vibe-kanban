@@ -67,9 +67,14 @@ export function WorkspacesSidebar({
             />
           ))}
         </CollapsibleSection>
-        <CollapsibleSection title="Archived" defaultExpanded={false}>
+        <CollapsibleSection
+          title="Archived"
+          defaultExpanded={true}
+          className="gap-double"
+        >
           {filteredArchivedWorkspaces.map((workspace) => (
             <WorkspaceSummary
+              summary
               key={workspace.id}
               name={workspace.name}
               filesChanged={workspace.filesChanged}
