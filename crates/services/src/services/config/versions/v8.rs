@@ -3,7 +3,7 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
-    EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
+    EditorConfig, EditorType, FontSize, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
     ThemeMode, UiLanguage,
 };
 
@@ -41,6 +41,8 @@ pub struct Config {
     pub pr_auto_description_enabled: bool,
     #[serde(default)]
     pub pr_auto_description_prompt: Option<String>,
+    #[serde(default)]
+    pub font_size: FontSize,
 }
 
 impl Config {
@@ -66,6 +68,7 @@ impl Config {
             showcases: old_config.showcases,
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            font_size: FontSize::default(),
         }
     }
 
@@ -116,6 +119,7 @@ impl Default for Config {
             showcases: ShowcaseState::default(),
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            font_size: FontSize::default(),
         }
     }
 }
