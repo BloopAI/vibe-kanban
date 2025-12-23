@@ -413,6 +413,7 @@ pub trait ContainerService {
                                 } else {
                                     project.default_agent_working_dir.clone()
                                 },
+                                prefer_remote_branch: None,
                             },
                         )
                         .await?;

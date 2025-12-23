@@ -36,6 +36,7 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useProject,
 } from '@/hooks';
 import {
   useKeySubmitTask,
@@ -66,11 +67,11 @@ export type TaskFormDialogProps =
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
-      mode: 'subtask';
-      projectId: string;
-      parentTaskAttemptId: string;
-      initialBaseBranch: string;
-    };
+    mode: 'subtask';
+    projectId: string;
+    parentTaskAttemptId: string;
+    initialBaseBranch: string;
+  };
 
 type RepoBranch = { repoId: string; branch: string };
 
@@ -108,6 +109,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
+  const { data: project } = useProject(projectId, {
+    enabled: modal.visible,
+  });
   const initialBranch =
     mode === 'subtask' ? props.initialBaseBranch : undefined;
   const { configs: repoBranchConfigs, isLoading: branchesLoading } =
@@ -115,6 +119,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       repos: projectRepos,
       initialBranch,
       enabled: modal.visible && projectRepos.length > 0,
+      preferRemoteBranch: project?.prefer_remote_branch ?? false,
     });
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {
@@ -549,7 +554,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                                 className={cn(
                                   'flex-1 min-w-0',
                                   isSubmitting &&
-                                    'opacity-50 pointer-events-none'
+                                  'opacity-50 pointer-events-none'
                                 )}
                               >
                                 <BranchSelector

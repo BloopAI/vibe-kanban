@@ -15,6 +15,7 @@ type UseRepoBranchSelectionOptions = {
   repos: Repo[];
   initialBranch?: string | null;
   enabled?: boolean;
+  preferRemoteBranch?: boolean;
 };
 
 type UseRepoBranchSelectionReturn = {
@@ -32,6 +33,7 @@ export function useRepoBranchSelection({
   repos,
   initialBranch,
   enabled = true,
+  preferRemoteBranch = false,
 }: UseRepoBranchSelectionOptions): UseRepoBranchSelectionReturn {
   const [userOverrides, setUserOverrides] = useState<
     Record<string, string | null>
@@ -58,8 +60,36 @@ export function useRepoBranchSelection({
         if (initialBranch && branches.some((b) => b.name === initialBranch)) {
           targetBranch = initialBranch;
         } else {
-          const currentBranch = branches.find((b) => b.is_current);
-          targetBranch = currentBranch?.name ?? branches[0]?.name ?? null;
+          // If remote branch preference is enabled, try to find a remote branch
+          if (preferRemoteBranch) {
+            // First try to find the remote version of the current branch
+            // (e.g., if current is "main", look for "origin/main")
+            const currentBranch = branches.find((b) => b.is_current);
+            if (currentBranch) {
+              // Look for matching remote branch (e.g., origin/main for main)
+              const remoteBranch = branches.find((b) =>
+                b.is_remote &&
+                (b.name.includes('/') && b.name.split('/').pop() === currentBranch.name)
+              );
+              if (remoteBranch) {
+                targetBranch = remoteBranch.name;
+              } else {
+                // If no direct remote equivalent, just pick the first remote branch
+                const anyRemoteBranch = branches.find((b) => b.is_remote);
+                targetBranch = anyRemoteBranch?.name ?? null;
+              }
+            } else {
+              // If no current branch, just pick the first remote branch
+              const anyRemoteBranch = branches.find((b) => b.is_remote);
+              targetBranch = anyRemoteBranch?.name ?? null;
+            }
+          }
+
+          // If no remote branch found or preference not enabled, fall back to current local branch
+          if (targetBranch === null) {
+            const currentBranch = branches.find((b) => b.is_current);
+            targetBranch = currentBranch?.name ?? branches[0]?.name ?? null;
+          }
         }
       }
 
@@ -70,7 +100,7 @@ export function useRepoBranchSelection({
         branches,
       };
     });
-  }, [repos, queries, userOverrides, initialBranch]);
+  }, [repos, queries, userOverrides, initialBranch, preferRemoteBranch]);
 
   const setRepoBranch = useCallback((repoId: string, branch: string) => {
     setUserOverrides((prev) => ({

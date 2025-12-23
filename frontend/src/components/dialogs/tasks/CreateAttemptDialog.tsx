@@ -70,6 +70,8 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const { data: projectRepos = [], isLoading: isLoadingRepos } =
       useProjectRepos(projectId, { enabled: modal.visible });
 
+    const { project } = useProject();
+
     const {
       configs: repoBranchConfigs,
       isLoading: isLoadingBranches,
@@ -80,6 +82,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       repos: projectRepos,
       initialBranch: parentAttempt?.branch,
       enabled: modal.visible && projectRepos.length > 0,
+      preferRemoteBranch: project?.prefer_remote_branch ?? false,
     });
 
     const latestAttempt = useMemo(() => {
@@ -133,10 +136,10 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const canCreate = Boolean(
       effectiveProfile &&
-        allBranchesSelected &&
-        projectRepos.length > 0 &&
-        !isCreating &&
-        !isLoadingInitial
+      allBranchesSelected &&
+      projectRepos.length > 0 &&
+      !isCreating &&
+      !isLoadingInitial
     );
 
     const handleCreate = async () => {

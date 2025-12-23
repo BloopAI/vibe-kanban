@@ -38,6 +38,7 @@ interface ProjectFormState {
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  prefer_remote_branch: boolean;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +54,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    prefer_remote_branch: project.prefer_remote_branch,
   };
 }
 
@@ -397,6 +399,7 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        prefer_remote_branch: draft.prefer_remote_branch,
       };
 
       updateProject.mutate({
@@ -627,6 +630,27 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.agentWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="prefer-remote-branch"
+                    checked={draft.prefer_remote_branch}
+                    onCheckedChange={(checked) =>
+                      updateDraft({ prefer_remote_branch: checked === true })
+                    }
+                  />
+                  <Label
+                    htmlFor="prefer-remote-branch"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    Prefer Remote Branch for New Tasks
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground pl-6">
+                  When creating new tasks, automatically select the remote branch instead of the current local branch
                 </p>
               </div>
 
