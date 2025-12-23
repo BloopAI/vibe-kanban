@@ -312,7 +312,9 @@
       "copyUrl": "URLをコピー",
       "openInTab": "新しいタブで開く",
       "refresh": "プレビューを更新",
-      "stopDevServer": "開発サーバーを停止"
+      "stopDevServer": "開発サーバーを停止",
+      "clickToEdit": "クリックしてURLを編集",
+      "resetUrl": "検出されたURLにリセット"
     },
     "troubleAlert": {
       "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",

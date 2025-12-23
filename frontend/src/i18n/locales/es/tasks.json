@@ -312,7 +312,9 @@
       "copyUrl": "Copiar URL",
       "openInTab": "Abrir en nueva pestaña",
       "refresh": "Actualizar vista previa",
-      "stopDevServer": "Detener servidor de desarrollo"
+      "stopDevServer": "Detener servidor de desarrollo",
+      "clickToEdit": "Clic para editar URL",
+      "resetUrl": "Restablecer a URL detectada"
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
