@@ -37,6 +37,18 @@
           "label": "Language",
           "placeholder": "Select language",
           "helper": "Choose your preferred language. Browser Default follows your system language."
+        },
+        "fontFamily": {
+          "label": "Font Family",
+          "placeholder": "Select font",
+          "helper": "Choose your preferred font for the application.",
+          "loading": "Loading fonts...",
+          "resetToDefault": "Reset to Default"
+        },
+        "fontSize": {
+          "label": "Font Size (px)",
+          "placeholder": "14",
+          "helper": "Set custom font size in pixels (10-24). Leave empty for default."
         }
       },
       "taskExecution": {
