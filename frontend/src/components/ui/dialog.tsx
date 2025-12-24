@@ -13,130 +13,148 @@ const Dialog = React.forwardRef<
     uncloseable?: boolean;
     zIndex?: string;
   }
->(({ className, open, onOpenChange, children, uncloseable, zIndex = 'z-[9999]', ...props }, ref) => {
-  const { enableScope, disableScope } = useHotkeysContext();
-
-  // Manage dialog scope when open/closed
-  React.useEffect(() => {
-    if (open) {
-      enableScope(Scope.DIALOG);
-      disableScope(Scope.KANBAN);
-      disableScope(Scope.PROJECTS);
-    } else {
-      disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
-    }
-    return () => {
-      disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
-    };
-  }, [open, enableScope, disableScope]);
-
-  // Dialog keyboard shortcuts using semantic hooks
-  useKeyExit(
-    (e) => {
-      if (uncloseable) return;
-
-      // Two-step Esc behavior:
-      // 1. If input/textarea is focused, blur it first
-      const activeElement = document.activeElement as HTMLElement;
-      if (
-        activeElement &&
-        (activeElement.tagName === 'INPUT' ||
-          activeElement.tagName === 'TEXTAREA' ||
-          activeElement.isContentEditable)
-      ) {
-        activeElement.blur();
-        e?.preventDefault();
-        return;
-      }
-
-      // 2. Otherwise close the dialog
-      onOpenChange?.(false);
-    },
+>(
+  (
     {
-      scope: Scope.DIALOG,
-      when: () => !!open,
-    }
-  );
+      className,
+      open,
+      onOpenChange,
+      children,
+      uncloseable,
+      zIndex = 'z-[9999]',
+      ...props
+    },
+    ref
+  ) => {
+    const { enableScope, disableScope } = useHotkeysContext();
 
-  useKeySubmit(
-    (e) => {
-      // Don't interfere if user is typing in textarea (allow new lines)
-      const activeElement = document.activeElement as HTMLElement;
-      if (activeElement?.tagName === 'TEXTAREA') {
-        return;
+    // Manage dialog scope when open/closed
+    React.useEffect(() => {
+      if (open) {
+        enableScope(Scope.DIALOG);
+        disableScope(Scope.KANBAN);
+        disableScope(Scope.PROJECTS);
+      } else {
+        disableScope(Scope.DIALOG);
+        enableScope(Scope.KANBAN);
+        enableScope(Scope.PROJECTS);
       }
+      return () => {
+        disableScope(Scope.DIALOG);
+        enableScope(Scope.KANBAN);
+        enableScope(Scope.PROJECTS);
+      };
+    }, [open, enableScope, disableScope]);
 
-      // Look for submit button or primary action button within this dialog
-      if (ref && typeof ref === 'object' && ref.current) {
-        // First try to find a submit button
-        const submitButton = ref.current.querySelector(
-          'button[type="submit"]'
-        ) as HTMLButtonElement;
-        if (submitButton && !submitButton.disabled) {
+    // Dialog keyboard shortcuts using semantic hooks
+    useKeyExit(
+      (e) => {
+        if (uncloseable) return;
+
+        // Two-step Esc behavior:
+        // 1. If input/textarea is focused, blur it first
+        const activeElement = document.activeElement as HTMLElement;
+        if (
+          activeElement &&
+          (activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            activeElement.isContentEditable)
+        ) {
+          activeElement.blur();
           e?.preventDefault();
-          submitButton.click();
           return;
         }
 
-        // If no submit button, look for primary action button
-        const buttons = Array.from(
-          ref.current.querySelectorAll('button')
-        ) as HTMLButtonElement[];
-        const primaryButton = buttons.find(
-          (btn) =>
-            !btn.disabled &&
-            !btn.textContent?.toLowerCase().includes('cancel') &&
-            !btn.textContent?.toLowerCase().includes('close') &&
-            btn.type !== 'button'
-        );
-
-        if (primaryButton) {
-          e?.preventDefault();
-          primaryButton.click();
-        }
+        // 2. Otherwise close the dialog
+        onOpenChange?.(false);
+      },
+      {
+        scope: Scope.DIALOG,
+        when: () => !!open,
       }
-    },
-    {
-      scope: Scope.DIALOG,
-      when: () => !!open,
-    }
-  );
+    );
 
-  if (!open) return null;
+    useKeySubmit(
+      (e) => {
+        // Don't interfere if user is typing in textarea (allow new lines)
+        const activeElement = document.activeElement as HTMLElement;
+        if (activeElement?.tagName === 'TEXTAREA') {
+          return;
+        }
 
-  return (
-    <div className={cn('fixed inset-0 flex items-start justify-center p-4 overflow-y-auto', zIndex)}>
+        // Look for submit button or primary action button within this dialog
+        if (ref && typeof ref === 'object' && ref.current) {
+          // First try to find a submit button
+          const submitButton = ref.current.querySelector(
+            'button[type="submit"]'
+          ) as HTMLButtonElement;
+          if (submitButton && !submitButton.disabled) {
+            e?.preventDefault();
+            submitButton.click();
+            return;
+          }
+
+          // If no submit button, look for primary action button
+          const buttons = Array.from(
+            ref.current.querySelectorAll('button')
+          ) as HTMLButtonElement[];
+          const primaryButton = buttons.find(
+            (btn) =>
+              !btn.disabled &&
+              !btn.textContent?.toLowerCase().includes('cancel') &&
+              !btn.textContent?.toLowerCase().includes('close') &&
+              btn.type !== 'button'
+          );
+
+          if (primaryButton) {
+            e?.preventDefault();
+            primaryButton.click();
+          }
+        }
+      },
+      {
+        scope: Scope.DIALOG,
+        when: () => !!open,
+      }
+    );
+
+    if (!open) return null;
+
+    return (
       <div
-        className="fixed inset-0 bg-black/50"
-        onClick={() => (uncloseable ? {} : onOpenChange?.(false))}
-      />
-      <div
-        ref={ref}
         className={cn(
-          'relative flex flex-col w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
-          zIndex,
-          className
+          'fixed inset-0 flex items-start justify-center p-4 overflow-y-auto',
+          zIndex
         )}
-        {...props}
       >
-        {!uncloseable && (
-          <button
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-            onClick={() => onOpenChange?.(false)}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </button>
-        )}
-        {children}
+        <div
+          className="fixed inset-0 bg-black/50"
+          onClick={() => (uncloseable ? {} : onOpenChange?.(false))}
+        />
+        <div
+          ref={ref}
+          className={cn(
+            'relative flex flex-col w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
+            zIndex,
+            className
+          )}
+          {...props}
+        >
+          {!uncloseable && (
+            <button
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
+              onClick={() => onOpenChange?.(false)}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          )}
+          {children}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 Dialog.displayName = 'Dialog';
 
 const DialogHeader = ({
