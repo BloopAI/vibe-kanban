@@ -89,6 +89,7 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  VersionInfo,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1288,5 +1289,13 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Version API
+export const versionApi = {
+  checkForUpdates: async (): Promise<VersionInfo> => {
+    const response = await makeRequest('/api/version/check');
+    return handleApiResponse<VersionInfo>(response);
   },
 };

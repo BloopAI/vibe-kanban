@@ -95,6 +95,7 @@ fn generate_types_content() -> String {
         server::routes::repo::InitRepoRequest::decl(),
         server::routes::tags::TagSearchParams::decl(),
         server::routes::oauth::TokenResponse::decl(),
+        server::routes::version::VersionInfo::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),
         server::routes::config::McpServerQuery::decl(),
