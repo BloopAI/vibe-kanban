@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Loader2, Volume2, Shuffle } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
@@ -36,6 +36,15 @@ import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndi
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
+
+const ADJECTIVES = [
+  "happy", "sunny", "clever", "brave", "calm", "eager", "gentle", "lucky", "proud", "swift",
+  "bright", "cool", "fair", "good", "kind", "neat", "nice", "pure", "wise", "warm",
+];
+const NOUNS = [
+  "panda", "tiger", "eagle", "dolphin", "falcon", "koala", "lion", "owl", "wolf", "zebra",
+  "bear", "cat", "dog", "fox", "hawk", "kite", "lynx", "moth", "seal", "swan",
+];
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -90,6 +99,13 @@ export function GeneralSettings() {
     },
     [t]
   );
+
+  const generateRandomTopic = useCallback(() => {
+    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+    const suffix = Math.floor(Math.random() * 100);
+    return `vibe_kanban_${adj}_${noun}_${suffix}`;
+  }, []);
 
   // When config loads or changes externally, update draft only if not dirty
   useEffect(() => {
@@ -676,18 +692,35 @@ export function GeneralSettings() {
                 <Label htmlFor="ntfy-topic">
                   {t('settings.general.notifications.ntfy.topicLabel')}
                 </Label>
-                <Input
-                  id="ntfy-topic"
-                  value={draft.notifications.ntfy_topic || ''}
-                  onChange={(e) =>
-                    updateDraft({
-                      notifications: {
-                        ...draft!.notifications,
-                        ntfy_topic: e.target.value,
-                      },
-                    })
-                  }
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="ntfy-topic"
+                    value={draft.notifications.ntfy_topic || ''}
+                    onChange={(e) =>
+                      updateDraft({
+                        notifications: {
+                          ...draft!.notifications,
+                          ntfy_topic: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      updateDraft({
+                        notifications: {
+                          ...draft!.notifications,
+                          ntfy_topic: generateRandomTopic(),
+                        },
+                      })
+                    }
+                    title={t('settings.general.notifications.ntfy.shuffle')}
+                  >
+                    <Shuffle className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}

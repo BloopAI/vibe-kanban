@@ -165,7 +165,8 @@
           "label": "Send notifications via ntfy",
           "helper": "Send notifications to a ntfy server.",
           "urlLabel": "Server URL",
-          "topicLabel": "Topic"
+          "topicLabel": "Topic",
+          "shuffle": "Shuffle"
         }
       },
       "privacy": {
