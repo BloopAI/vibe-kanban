@@ -23,7 +23,26 @@ fn default_ntfy_url() -> Option<String> {
 }
 
 fn default_ntfy_topic() -> Option<String> {
-    Some(format!("vibe_kanban_{}", Uuid::new_v4()))
+    let adjectives = [
+        "happy", "sunny", "clever", "brave", "calm", "eager", "gentle", "lucky", "proud", "swift",
+        "bright", "cool", "fair", "good", "kind", "neat", "nice", "pure", "wise", "warm",
+    ];
+    let nouns = [
+        "panda", "tiger", "eagle", "dolphin", "falcon", "koala", "lion", "owl", "wolf", "zebra",
+        "bear", "cat", "dog", "fox", "hawk", "kite", "lynx", "moth", "seal", "swan",
+    ];
+
+    let uuid = Uuid::new_v4();
+    let bytes = uuid.as_bytes();
+    
+    // Use first two bytes for indices
+    let adj_idx = bytes[0] as usize % adjectives.len();
+    let noun_idx = bytes[1] as usize % nouns.len();
+    
+    // Use third byte for a small random number suffix to ensure higher uniqueness
+    let suffix = bytes[2] as u16 % 100;
+
+    Some(format!("vibe_kanban_{}_{}_{}", adjectives[adj_idx], nouns[noun_idx], suffix))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
