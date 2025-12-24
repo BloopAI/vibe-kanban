@@ -631,6 +631,66 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ntfy-enabled"
+              checked={draft?.notifications.ntfy_enabled}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({
+                  notifications: {
+                    ...draft!.notifications,
+                    ntfy_enabled: checked,
+                  },
+                })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="ntfy-enabled" className="cursor-pointer">
+                {t('settings.general.notifications.ntfy.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.notifications.ntfy.helper')}
+              </p>
+            </div>
+          </div>
+          {draft?.notifications.ntfy_enabled && (
+            <div className="ml-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ntfy-url">
+                  {t('settings.general.notifications.ntfy.urlLabel')}
+                </Label>
+                <Input
+                  id="ntfy-url"
+                  value={draft.notifications.ntfy_url || ''}
+                  onChange={(e) =>
+                    updateDraft({
+                      notifications: {
+                        ...draft!.notifications,
+                        ntfy_url: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ntfy-topic">
+                  {t('settings.general.notifications.ntfy.topicLabel')}
+                </Label>
+                <Input
+                  id="ntfy-topic"
+                  value={draft.notifications.ntfy_topic || ''}
+                  onChange={(e) =>
+                    updateDraft({
+                      notifications: {
+                        ...draft!.notifications,
+                        ntfy_topic: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

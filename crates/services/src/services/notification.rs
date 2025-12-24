@@ -34,6 +34,34 @@ impl NotificationService {
         if config.push_enabled {
             Self::send_push_notification(title, message).await;
         }
+
+        if config.ntfy_enabled {
+            Self::send_ntfy_notification(config, title, message).await;
+        }
+    }
+
+    /// Send ntfy notification
+    async fn send_ntfy_notification(config: &NotificationConfig, title: &str, message: &str) {
+        let Some(url) = &config.ntfy_url else { return };
+        let Some(topic) = &config.ntfy_topic else { return };
+
+        let url = if url.ends_with('/') {
+            format!("{}{}", url, topic)
+        } else {
+            format!("{}/{}", url, topic)
+        };
+
+        let client = reqwest::Client::new();
+        let res = client
+            .post(&url)
+            .body(message.to_string())
+            .header("Title", title)
+            .send()
+            .await;
+
+        if let Err(e) = res {
+            tracing::error!("Failed to send ntfy notification: {}", e);
+        }
     }
 
     /// Play a system sound notification across platforms

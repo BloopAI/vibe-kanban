@@ -160,6 +160,12 @@
         "push": {
           "label": "Push Notifications",
           "helper": "Show system notifications when task attempts finish running."
+        },
+        "ntfy": {
+          "label": "Send notifications via ntfy",
+          "helper": "Send notifications to a ntfy server.",
+          "urlLabel": "Server URL",
+          "topicLabel": "Topic"
         }
       },
       "privacy": {
