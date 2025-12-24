@@ -12,8 +12,17 @@ export type DevserverUrlInfo = {
   scheme: 'http' | 'https';
 };
 
+// Get the hostname from the current browser location, falling back to 'localhost'
+const getBrowserHostname = (): string => {
+  if (typeof window !== 'undefined') {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
 export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
   const cleaned = stripAnsi(line);
+  const browserHostname = getBrowserHostname();
 
   const fullUrlMatch = urlPatterns[0].exec(cleaned);
   if (fullUrlMatch) {
@@ -24,7 +33,7 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
         parsed.hostname === '::' ||
         parsed.hostname === '[::]'
       ) {
-        parsed.hostname = 'localhost';
+        parsed.hostname = browserHostname;
       }
       return {
         url: parsed.toString(),
@@ -41,7 +50,7 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
     const port = Number(hostPortMatch[1]);
     const scheme = /https/i.test(cleaned) ? 'https' : 'http';
     return {
-      url: `${scheme}://localhost:${port}`,
+      url: `${scheme}://${browserHostname}:${port}`,
       port,
       scheme: scheme as 'http' | 'https',
     };
