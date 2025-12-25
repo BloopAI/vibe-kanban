@@ -61,28 +61,22 @@ const UpdateAvailableDialogImpl = NiceModal.create<UpdateAvailableDialogProps>(
 
           {/* Content */}
           <p className="text-xs text-muted-foreground mb-3">
-            A new version is available. Restart the app to get the latest
-            features and bug fixes.
+            A new version of vibe-kanban is available
           </p>
 
           {/* Version info */}
-          <div className="bg-muted/50 rounded p-2 space-y-1 text-xs mb-3">
+          <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Current:</span>
               <span className="font-mono">{currentVersion}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Latest:</span>
-              <span className="font-mono font-medium text-primary">
+              <span className="font-mono font-medium text-foreground">
                 {latestVersion}
               </span>
             </div>
           </div>
-
-          {/* Footer note */}
-          <p className="text-[10px] text-muted-foreground">
-            Save your work before restarting
-          </p>
         </div>
       </div>
     );
