@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { versionApi } from '@/lib/api';
 import { UpdateAvailableDialog } from '@/components/dialogs/global/UpdateAvailableDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -9,7 +9,7 @@ export function useUpdateCheck() {
   const { config, updateAndSaveConfig } = useUserSystem();
   const checkIntervalRef = useRef<number | null>(null);
 
-  const checkForUpdates = async () => {
+  const checkForUpdates = useCallback(async () => {
     if (!config) return;
 
     try {
@@ -37,7 +37,7 @@ export function useUpdateCheck() {
       // Silently fail - don't bother the user if update check fails
       console.warn('Failed to check for updates:', error);
     }
-  };
+  }, [config, updateAndSaveConfig]);
 
   useEffect(() => {
     if (!config) return;
@@ -56,7 +56,7 @@ export function useUpdateCheck() {
         clearInterval(checkIntervalRef.current);
       }
     };
-  }, [config]);
+  }, [config, checkForUpdates]);
 
   return null;
 }
