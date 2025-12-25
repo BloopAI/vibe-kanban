@@ -1152,14 +1152,19 @@ impl TaskServer {
 
             let filtered_lines = Self::filter_noisy_logs(logs.lines);
 
-            let response = TailTaskLogResponse {
-                task_attempt_id: task_attempt_id.to_string(),
-                lines: filtered_lines,
-                has_more: logs.has_more,
-                ws_url: None,
-            };
+            let log_text = filtered_lines.join("\n");
+            let mut output = format!(
+                "Logs for task attempt {} (showing {} lines):\n\n{}",
+                task_attempt_id,
+                filtered_lines.len(),
+                log_text
+            );
 
-            TaskServer::success(&response)
+            if logs.has_more {
+                output.push_str("\n\n... (more logs available, increase 'lines' parameter or use 'follow=true')");
+            }
+
+            Ok(CallToolResult::success(vec![Content::text(output)]))
         }
     }
 
