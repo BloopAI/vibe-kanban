@@ -93,5 +93,11 @@
     "errorTitle": "身份验证失败",
     "errorDescription": "验证您的账户时出现问题",
     "tryAgain": "重试"
+  },
+  "updateNotification": {
+    "title": "有可用更新",
+    "message": "vibe-kanban 有新版本可用",
+    "current": "当前：",
+    "latest": "最新："
   }
 }

@@ -93,5 +93,11 @@
     "errorTitle": "인증 실패",
     "errorDescription": "계정 인증 중 문제가 발생했습니다",
     "tryAgain": "다시 시도"
+  },
+  "updateNotification": {
+    "title": "업데이트 사용 가능",
+    "message": "vibe-kanban의 새 버전을 사용할 수 있습니다",
+    "current": "현재:",
+    "latest": "최신:"
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -12,6 +13,7 @@ type UpdateAvailableDialogProps = {
 const UpdateAvailableDialogImpl = NiceModal.create<UpdateAvailableDialogProps>(
   ({ currentVersion, latestVersion }) => {
     const modal = useModal();
+    const { t } = useTranslation();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -47,7 +49,9 @@ const UpdateAvailableDialogImpl = NiceModal.create<UpdateAvailableDialogProps>(
               <div className="p-1.5 bg-primary/10 rounded">
                 <Download className="h-4 w-4 text-primary" />
               </div>
-              <h3 className="font-semibold text-sm">Update Available</h3>
+              <h3 className="font-semibold text-sm">
+                {t('common:updateNotification.title')}
+              </h3>
             </div>
             <Button
               variant="ghost"
@@ -61,17 +65,21 @@ const UpdateAvailableDialogImpl = NiceModal.create<UpdateAvailableDialogProps>(
 
           {/* Content */}
           <p className="text-xs text-muted-foreground mb-3">
-            A new version of vibe-kanban is available
+            {t('common:updateNotification.message')}
           </p>
 
           {/* Version info */}
           <div className="bg-muted/50 rounded p-2 space-y-1 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Current:</span>
+              <span className="text-muted-foreground">
+                {t('common:updateNotification.current')}
+              </span>
               <span className="font-mono">{currentVersion}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Latest:</span>
+              <span className="text-muted-foreground">
+                {t('common:updateNotification.latest')}
+              </span>
               <span className="font-mono">{latestVersion}</span>
             </div>
           </div>

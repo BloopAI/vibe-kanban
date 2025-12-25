@@ -93,5 +93,11 @@
     "errorTitle": "認証失敗",
     "errorDescription": "アカウントの認証中に問題が発生しました",
     "tryAgain": "再試行"
+  },
+  "updateNotification": {
+    "title": "アップデート利用可能",
+    "message": "vibe-kanbanの新しいバージョンが利用可能です",
+    "current": "現在:",
+    "latest": "最新:"
   }
 }
