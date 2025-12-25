@@ -72,9 +72,7 @@ const UpdateAvailableDialogImpl = NiceModal.create<UpdateAvailableDialogProps>(
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Latest:</span>
-              <span className="font-mono font-medium text-foreground">
-                {latestVersion}
-              </span>
+              <span className="font-mono">{latestVersion}</span>
             </div>
           </div>
         </div>
