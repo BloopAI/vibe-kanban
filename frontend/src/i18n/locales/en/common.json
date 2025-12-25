@@ -93,5 +93,11 @@
     "errorTitle": "Authentication Failed",
     "errorDescription": "There was a problem authenticating your account",
     "tryAgain": "Try Again"
+  },
+  "updateNotification": {
+    "title": "Update Available",
+    "message": "A new version of vibe-kanban is available",
+    "current": "Current:",
+    "latest": "Latest:"
   }
 }
