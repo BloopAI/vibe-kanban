@@ -1,11 +1,13 @@
 use std::{future::Future, str::FromStr};
 
 use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessStatus},
     project::Project,
     repo::Repo,
     tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{Workspace, WorkspaceContext},
+    workspace_repo::RepoWithTargetBranch,
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use regex::Regex;
@@ -235,6 +237,26 @@ pub struct StartWorkspaceSessionResponse {
     pub workspace_id: String,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct StartTaskAttemptRequest {
+    #[schemars(description = "The ID of the task to start")]
+    pub task_id: Uuid,
+    #[schemars(
+        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
+    )]
+    pub executor: String,
+    #[schemars(description = "Optional executor variant, if needed")]
+    pub variant: Option<String>,
+    #[schemars(description = "The base branch to use for the attempt")]
+    pub base_branch: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct StartTaskAttemptResponse {
+    pub task_id: String,
+    pub attempt_id: String,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct DeleteTaskResponse {
     pub deleted_task_id: Option<String>,
@@ -244,6 +266,85 @@ pub struct DeleteTaskResponse {
 pub struct GetTaskRequest {
     #[schemars(description = "The ID of the task to retrieve")]
     pub task_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct CreateAndStartSubTaskRequest {
+    #[schemars(description = "The ID of the parent task attempt")]
+    pub parent_task_attempt_id: Uuid,
+    #[schemars(description = "The title of the subtask")]
+    pub title: String,
+    #[schemars(description = "Optional description of the subtask")]
+    pub description: Option<String>,
+    #[schemars(description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')")]
+    pub executor: String,
+    #[schemars(description = "Optional executor variant, if needed")]
+    pub variant: Option<String>,
+    #[schemars(description = "The base branch to use for the attempt (defaults to parent's target branch)")]
+    pub base_branch: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct CreateAndStartSubTaskResponse {
+    pub task_id: String,
+    pub attempt_id: String,
+    pub parent_task_attempt_id: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct TailTaskLogRequest {
+    #[schemars(description = "The ID of the task attempt to tail logs from")]
+    pub task_attempt_id: Uuid,
+    #[schemars(description = "Number of recent lines to fetch (default: 100, max: 1000)")]
+    pub lines: Option<i32>,
+    #[schemars(description = "Whether to stream new lines as they're generated")]
+    pub follow: Option<bool>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct TailTaskLogResponse {
+    pub task_attempt_id: String,
+    pub lines: Vec<String>,
+    pub has_more: bool,
+    pub ws_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ExecutionLogsResult {
+    lines: Vec<String>,
+    has_more: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ListTaskAttemptsRequest {
+    #[schemars(description = "Optional task ID to filter attempts by")]
+    pub task_id: Option<Uuid>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct WaitForAttemptStatusRequest {
+    #[schemars(description = "The task_attempt_id to wait on")]
+    pub task_attempt_id: Uuid,
+    #[schemars(description = "Polling interval in seconds (default 5)")]
+    pub interval_seconds: Option<u64>,
+    #[schemars(description = "Timeout in seconds (default 300)")]
+    pub timeout_seconds: Option<u64>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct WaitForAttemptStatusResponse {
+    pub attempt_id: String,
+    pub status: String,
+    pub process_statuses: Vec<String>,
+    pub polled: u32,
+    pub has_running: bool,
+    pub has_failures: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct MergeTaskAttemptRequest {
+    #[schemars(description = "The task attempt ID to merge into its target branch")]
+    pub task_attempt_id: Uuid,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -283,6 +384,24 @@ pub struct McpContext {
 }
 
 impl TaskServer {
+    /// Remove noisy protocol envelopes (e.g. codex/agent_message_* deltas) from log lines.
+    fn filter_noisy_logs(lines: Vec<String>) -> Vec<String> {
+        lines
+            .into_iter()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                if trimmed.starts_with('{') {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                        if val.get("method").is_some() {
+                            return None;
+                        }
+                    }
+                }
+                Some(line)
+            })
+            .collect()
+    }
+
     pub fn new(base_url: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -718,6 +837,449 @@ impl TaskServer {
         TaskServer::success(&response)
     }
 
+    #[tool(description = "Start working on a task by creating and launching a new task attempt.")]
+    async fn start_task_attempt(
+        &self,
+        Parameters(StartTaskAttemptRequest {
+            task_id,
+            executor,
+            variant,
+            base_branch,
+        }): Parameters<StartTaskAttemptRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let base_branch = base_branch.trim().to_string();
+        if base_branch.is_empty() {
+            return Self::err("Base branch must not be empty.".to_string(), None::<String>);
+        }
+
+        let executor_trimmed = executor.trim();
+        if executor_trimmed.is_empty() {
+            return Self::err("Executor must not be empty.".to_string(), None::<String>);
+        }
+
+        let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
+        let base_executor = match BaseCodingAgent::from_str(&normalized_executor) {
+            Ok(exec) => exec,
+            Err(_) => {
+                return Self::err(
+                    format!("Unknown executor '{executor_trimmed}'."),
+                    None::<String>,
+                );
+            }
+        };
+
+        let variant = variant.and_then(|v| {
+            let trimmed = v.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
+
+        let executor_profile_id = ExecutorProfileId {
+            executor: base_executor,
+            variant,
+        };
+
+        // Fetch task to get project_id
+        let task_url = self.url(&format!("/api/tasks/{}", task_id));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        // List repositories for the project and apply the base branch
+        let repos_url = self.url(&format!("/api/projects/{}/repositories", task.project_id));
+        let repos: Vec<Repo> = match self.send_json(self.client.get(&repos_url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+
+        if repos.is_empty() {
+            return Self::err(
+                "Project has no repositories configured.".to_string(),
+                None::<String>,
+            );
+        }
+
+        let workspace_repos: Vec<WorkspaceRepoInput> = repos
+            .into_iter()
+            .map(|r| WorkspaceRepoInput {
+                repo_id: r.id,
+                target_branch: base_branch.clone(),
+            })
+            .collect();
+
+        let payload = CreateTaskAttemptBody {
+            task_id,
+            executor_profile_id,
+            repos: workspace_repos,
+        };
+
+        let url = self.url("/api/task-attempts");
+        let workspace: Workspace = match self.send_json(self.client.post(&url).json(&payload)).await
+        {
+            Ok(workspace) => workspace,
+            Err(e) => return Ok(e),
+        };
+
+        let response = StartTaskAttemptResponse {
+            task_id: workspace.task_id.to_string(),
+            attempt_id: workspace.id.to_string(),
+        };
+
+        TaskServer::success(&response)
+    }
+
+    #[tool(description = "Create a subtask and immediately start execution")]
+    async fn create_and_start_sub_task(
+        &self,
+        Parameters(CreateAndStartSubTaskRequest {
+            parent_task_attempt_id,
+            title,
+            description,
+            executor,
+            variant,
+            base_branch,
+        }): Parameters<CreateAndStartSubTaskRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let executor_trimmed = executor.trim();
+        if executor_trimmed.is_empty() {
+            return Self::err("Executor must not be empty.".to_string(), None::<String>);
+        }
+
+        // Load parent workspace + task to get project_id
+        let parent_workspace_url =
+            self.url(&format!("/api/task-attempts/{}", parent_task_attempt_id));
+        let parent_workspace: Workspace =
+            match self.send_json(self.client.get(&parent_workspace_url)).await {
+                Ok(w) => w,
+                Err(e) => return Ok(e),
+            };
+
+        let parent_task_url = self.url(&format!("/api/tasks/{}", parent_workspace.task_id));
+        let parent_task: Task = match self.send_json(self.client.get(&parent_task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        let expanded_description = match description {
+            Some(desc) => Some(self.expand_tags(&desc).await),
+            None => None,
+        };
+
+        // Create subtask with parent_workspace_id
+        let create_payload = CreateTask {
+            project_id: parent_task.project_id,
+            title,
+            description: expanded_description,
+            status: Some(TaskStatus::Todo),
+            parent_workspace_id: Some(parent_task_attempt_id),
+            image_ids: None,
+            shared_task_id: None,
+        };
+
+        let task_url = self.url("/api/tasks");
+        let created_task: Task = match self
+            .send_json(self.client.post(&task_url).json(&create_payload))
+            .await
+        {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        // Determine base branch for the new attempt
+        let base_branch_to_use = if let Some(branch) = base_branch {
+            let trimmed = branch.trim().to_string();
+            if trimmed.is_empty() {
+                return Self::err("Base branch must not be empty.".to_string(), None::<String>);
+            }
+            trimmed
+        } else {
+            let repos_url = self.url(&format!(
+                "/api/task-attempts/{}/repos",
+                parent_task_attempt_id
+            ));
+            let repos: Vec<RepoWithTargetBranch> =
+                match self.send_json(self.client.get(&repos_url)).await {
+                    Ok(r) => r,
+                    Err(e) => return Ok(e),
+                };
+
+            match repos.first() {
+                Some(repo) => repo.target_branch.clone(),
+                None => {
+                    return Self::err(
+                        "Unable to determine base branch from parent attempt.".to_string(),
+                        None::<String>,
+                    );
+                }
+            }
+        };
+
+        // Start attempt for the new task
+        // Start attempt for the new task (inline, to avoid parsing tool output)
+        let start_payload = StartTaskAttemptRequest {
+            task_id: created_task.id,
+            executor,
+            variant,
+            base_branch: base_branch_to_use,
+        };
+
+        let executor_trimmed = start_payload.executor.trim();
+        if executor_trimmed.is_empty() {
+            return Self::err("Executor must not be empty.".to_string(), None::<String>);
+        }
+
+        let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
+        let base_executor = match BaseCodingAgent::from_str(&normalized_executor) {
+            Ok(exec) => exec,
+            Err(_) => {
+                return Self::err(
+                    format!("Unknown executor '{executor_trimmed}'."),
+                    None::<String>,
+                );
+            }
+        };
+
+        let variant = start_payload.variant.and_then(|v| {
+            let trimmed = v.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
+
+        let executor_profile_id = ExecutorProfileId {
+            executor: base_executor,
+            variant,
+        };
+
+        let repos_url = self.url(&format!(
+            "/api/projects/{}/repositories",
+            parent_task.project_id
+        ));
+        let repos: Vec<Repo> = match self.send_json(self.client.get(&repos_url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+
+        if repos.is_empty() {
+            return Self::err(
+                "Project has no repositories configured.".to_string(),
+                None::<String>,
+            );
+        }
+
+        let workspace_repos: Vec<WorkspaceRepoInput> = repos
+            .into_iter()
+            .map(|r| WorkspaceRepoInput {
+                repo_id: r.id,
+                target_branch: start_payload.base_branch.clone(),
+            })
+            .collect();
+
+        let attempt_payload = CreateTaskAttemptBody {
+            task_id: start_payload.task_id,
+            executor_profile_id,
+            repos: workspace_repos,
+        };
+
+        let url = self.url("/api/task-attempts");
+        let workspace: Workspace = match self.send_json(self.client.post(&url).json(&attempt_payload)).await
+        {
+            Ok(workspace) => workspace,
+            Err(e) => return Ok(e),
+        };
+
+        let attempt_id = workspace.id.to_string();
+
+        let response = CreateAndStartSubTaskResponse {
+            task_id: created_task.id.to_string(),
+            attempt_id,
+            parent_task_attempt_id: parent_task_attempt_id.to_string(),
+        };
+
+        TaskServer::success(&response)
+    }
+
+    #[tool(description = "Fetch or stream logs from a task attempt execution")]
+    async fn tail_task_log(
+        &self,
+        Parameters(TailTaskLogRequest {
+            task_attempt_id,
+            lines,
+            follow,
+        }): Parameters<TailTaskLogRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let follow_requested = follow.unwrap_or(false);
+
+        if follow_requested {
+            let ws_url = format!(
+                "{}/api/execution-processes/stream/ws?workspace_id={}",
+                self.base_url.trim_end_matches('/'),
+                task_attempt_id
+            );
+
+            let response = TailTaskLogResponse {
+                task_attempt_id: task_attempt_id.to_string(),
+                lines: vec!["Real-time log streaming is available via the WebSocket URL".to_string()],
+                has_more: true,
+                ws_url: Some(ws_url),
+            };
+
+            TaskServer::success(&response)
+        } else {
+            let max_lines = lines.unwrap_or(100).clamp(1, 1000);
+            let url = self.url("/api/execution-processes/logs");
+
+            let logs: ExecutionLogsResult = match self
+                .send_json(
+                    self.client
+                        .get(&url)
+                        .query(&[
+                            ("workspace_id", task_attempt_id.to_string()),
+                            ("lines", max_lines.to_string()),
+                        ]),
+                )
+                .await
+            {
+                Ok(resp) => resp,
+                Err(e) => return Ok(e),
+            };
+
+            let filtered_lines = Self::filter_noisy_logs(logs.lines);
+
+            let log_text = filtered_lines.join("\n");
+            let mut output = format!(
+                "Logs for task attempt {} (showing {} lines):\n\n{}",
+                task_attempt_id,
+                filtered_lines.len(),
+                log_text
+            );
+
+            if logs.has_more {
+                output.push_str("\n\n... (more logs available, increase 'lines' parameter or use 'follow=true')");
+            }
+
+            Ok(CallToolResult::success(vec![Content::text(output)]))
+        }
+    }
+
+    #[tool(description = "List task attempts, optionally filtered by task_id")]
+    async fn list_task_attempts(
+        &self,
+        Parameters(ListTaskAttemptsRequest { task_id }): Parameters<ListTaskAttemptsRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let mut url = self.url("/api/task-attempts");
+        if let Some(id) = task_id {
+            url = format!("{url}?task_id={id}");
+        }
+
+        let attempts: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
+            Ok(list) => list,
+            Err(e) => return Ok(e),
+        };
+
+        TaskServer::success(&attempts)
+    }
+
+    #[tool(description = "Wait for a task attempt to reach a terminal status (completed/failed) with optional timeout and polling interval")]
+    async fn wait_for_attempt_status(
+        &self,
+        Parameters(WaitForAttemptStatusRequest {
+            task_attempt_id,
+            interval_seconds,
+            timeout_seconds,
+        }): Parameters<WaitForAttemptStatusRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let interval = std::time::Duration::from_secs(interval_seconds.unwrap_or(5).max(1));
+        let timeout = std::time::Duration::from_secs(timeout_seconds.unwrap_or(300).max(1));
+        let start = std::time::Instant::now();
+        let mut polls = 0u32;
+
+        loop {
+            let url = self.url("/api/execution-processes");
+            let processes: Vec<ExecutionProcess> = match self
+                .send_json(self.client.get(&url).query(&[(
+                    "workspace_id",
+                    task_attempt_id.to_string(),
+                )]))
+                .await
+            {
+                Ok(p) => p,
+                Err(e) => return Ok(e),
+            };
+
+            polls += 1;
+
+            let statuses: Vec<ExecutionProcessStatus> =
+                processes.iter().map(|p| p.status.clone()).collect();
+
+            let has_running = statuses
+                .iter()
+                .any(|s| *s == ExecutionProcessStatus::Running);
+            let has_failures =
+                statuses.iter().any(|s| matches!(s, ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed));
+
+            let overall_status = if has_failures {
+                "failed"
+            } else if !has_running && !statuses.is_empty() {
+                "completed"
+            } else {
+                "running"
+            };
+
+            if overall_status != "running" {
+                let resp = WaitForAttemptStatusResponse {
+                    attempt_id: task_attempt_id.to_string(),
+                    status: overall_status.to_string(),
+                    process_statuses: statuses
+                        .iter()
+                        .map(|s| format!("{s:?}").to_lowercase())
+                        .collect(),
+                    polled: polls,
+                    has_running,
+                    has_failures,
+                };
+                return TaskServer::success(&resp);
+            }
+
+            if start.elapsed() >= timeout {
+                return Self::err(
+                    "Timed out waiting for attempt to finish".to_string(),
+                    Some(format!(
+                        "Waited {}s for attempt {}",
+                        timeout.as_secs(),
+                        task_attempt_id
+                    )),
+                );
+            }
+
+            tokio::time::sleep(interval).await;
+        }
+    }
+
+    #[tool(description = "Merge a task attempt's branch into its target branch")]
+    async fn merge_task_attempt(
+        &self,
+        Parameters(MergeTaskAttemptRequest { task_attempt_id }): Parameters<MergeTaskAttemptRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let merge_url = self.url(&format!("/api/task-attempts/{}/merge", task_attempt_id));
+        match self
+            .send_json::<serde_json::Value>(self.client.post(&merge_url))
+            .await
+        {
+            Ok(_) => TaskServer::success(&serde_json::json!({
+                "task_attempt_id": task_attempt_id,
+                "merged": true
+            })),
+            Err(e) => Ok(e),
+        }
+    }
+
     #[tool(
         description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
     )]
@@ -813,7 +1375,7 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'start_task_attempt', 'create_and_start_sub_task', 'list_task_attempts', 'wait_for_attempt_status', 'merge_task_attempt', 'tail_task_log', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

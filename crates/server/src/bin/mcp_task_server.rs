@@ -13,14 +13,19 @@ fn main() -> anyhow::Result<()> {
         .build()
         .unwrap()
         .block_on(async {
-            tracing_subscriber::registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .with_writer(std::io::stderr)
-                        .with_filter(EnvFilter::new("debug")),
-                )
-                .with(sentry_layer())
-                .init();
+        // Default to INFO to avoid noisy stderr output that some MCP clients treat as errors.
+        // Allow overriding with RUST_LOG if needed.
+        let log_filter =
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(std::io::stderr)
+                    .with_filter(log_filter),
+            )
+            .with(sentry_layer())
+            .init();
 
             let version = env!("CARGO_PKG_VERSION");
             tracing::debug!("[MCP] Starting MCP task server version {version}...");

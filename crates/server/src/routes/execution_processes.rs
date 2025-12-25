@@ -12,10 +12,11 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus},
     execution_process_repo_state::ExecutionProcessRepoState,
+    session::Session,
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
 use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
@@ -28,6 +29,36 @@ pub struct ExecutionProcessQuery {
     /// If true, include soft-deleted (dropped) processes in results/stream
     #[serde(default)]
     pub show_soft_deleted: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExecutionLogsQuery {
+    pub workspace_id: Uuid,
+    #[serde(default)]
+    pub lines: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ExecutionLogsResponse {
+    pub lines: Vec<String>,
+    pub has_more: bool,
+}
+
+pub async fn get_execution_processes(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ExecutionProcessQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcess>>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let sessions = Session::find_by_workspace_id(pool, query.workspace_id).await?;
+    let mut processes = Vec::new();
+
+    for session in sessions {
+        let mut session_processes =
+            ExecutionProcess::find_by_session_id(pool, session.id, query.show_soft_deleted.unwrap_or(false)).await?;
+        processes.append(&mut session_processes);
+    }
+
+    Ok(ResponseJson(ApiResponse::success(processes)))
 }
 
 pub async fn get_execution_process_by_id(
@@ -233,6 +264,42 @@ async fn handle_execution_processes_ws(
     Ok(())
 }
 
+pub async fn get_execution_logs(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ExecutionLogsQuery>,
+) -> Result<ResponseJson<ApiResponse<ExecutionLogsResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let max_lines = query.lines.unwrap_or(100).clamp(1, 1000);
+
+    let sessions = Session::find_by_workspace_id(pool, query.workspace_id).await?;
+    let mut collected: Vec<String> = Vec::new();
+
+    for session in sessions {
+        let processes = ExecutionProcess::find_by_session_id(pool, session.id, false).await?;
+        for process in processes {
+            if let Some(msgs) = deployment.container().get_raw_logs(&process.id).await {
+                for msg in msgs {
+                    match msg {
+                        LogMsg::Stdout(s) | LogMsg::Stderr(s) => collected.push(s),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    let has_more = collected.len() > max_lines;
+    if has_more {
+        let start = collected.len().saturating_sub(max_lines);
+        collected = collected.split_off(start);
+    }
+
+    Ok(ResponseJson(ApiResponse::success(ExecutionLogsResponse {
+        lines: collected,
+        has_more,
+    })))
+}
+
 pub async fn get_execution_process_repo_states(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
@@ -257,7 +324,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let workspaces_router = Router::new()
         .route("/stream/ws", get(stream_execution_processes_ws))
+        .route("/logs", get(get_execution_logs))
         .nest("/{id}", workspace_id_router);
 
-    Router::new().nest("/execution-processes", workspaces_router)
+    Router::new()
+        .route("/execution-processes", get(get_execution_processes))
+        .nest("/execution-processes", workspaces_router)
 }
