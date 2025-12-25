@@ -1,5 +1,4 @@
-use axum::{Router, routing::get};
-use axum::response::Json;
+use axum::{Router, response::Json, routing::get};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -30,12 +29,12 @@ pub async fn check_version() -> Json<ApiResponse<VersionInfo>> {
     let current_version = CURRENT_VERSION.to_string();
 
     // TESTING: Uncomment the lines below to simulate an update available
-    // let fake_latest = "0.0.999".to_string();
-    // return Json(ApiResponse::success(VersionInfo {
-    //     current_version,
-    //     latest_version: Some(fake_latest.clone()),
-    //     update_available: is_newer_version(&current_version, &fake_latest),
-    // }));
+    let fake_latest = "0.0.999".to_string();
+    return Json(ApiResponse::success(VersionInfo {
+        current_version,
+        latest_version: Some(fake_latest.clone()),
+        update_available: is_newer_version(&current_version, &fake_latest),
+    }));
 
     match fetch_latest_version().await {
         Ok(latest_version) => {
@@ -78,15 +77,9 @@ async fn fetch_latest_version() -> Result<String, reqwest::Error> {
 
 fn is_newer_version(current: &str, latest: &str) -> bool {
     // Simple version comparison - split by dots and compare each part
-    let current_parts: Vec<u32> = current
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let current_parts: Vec<u32> = current.split('.').filter_map(|s| s.parse().ok()).collect();
 
-    let latest_parts: Vec<u32> = latest
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
+    let latest_parts: Vec<u32> = latest.split('.').filter_map(|s| s.parse().ok()).collect();
 
     for i in 0..std::cmp::max(current_parts.len(), latest_parts.len()) {
         let current_part = current_parts.get(i).copied().unwrap_or(0);

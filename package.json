@@ -34,7 +34,8 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "yargs": "^18.0.0"
   },
   "engines": {
     "node": ">=18",
