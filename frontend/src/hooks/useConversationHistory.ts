@@ -679,6 +679,38 @@ export const useConversationHistory = ({
     }
   }, [attempt.id, idListKey, executionProcessesRaw]);
 
+  // Handle newly completed execution processes that were never running when we saw them
+  // (e.g., fast-completing user commands)
+  useEffect(() => {
+    if (!loadedInitialEntries.current) return;
+
+    const newCompletedProcesses = executionProcesses.current.filter(
+      (p) =>
+        p.status !== ExecutionProcessStatus.running &&
+        !displayedExecutionProcesses.current[p.id] &&
+        !streamingProcessIdsRef.current.has(p.id)
+    );
+
+    if (newCompletedProcesses.length === 0) return;
+
+    (async () => {
+      for (const process of newCompletedProcesses) {
+        const entries = await loadEntriesForHistoricExecutionProcess(process);
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, process.id, idx)
+        );
+
+        mergeIntoDisplayed((state) => {
+          state[process.id] = {
+            executionProcess: process,
+            entries: entriesWithKey,
+          };
+        });
+      }
+      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+    })();
+  }, [idStatusKey, emitEntries]);
+
   // Reset state when attempt changes
   useEffect(() => {
     displayedExecutionProcesses.current = {};
