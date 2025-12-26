@@ -34,10 +34,12 @@ type LogState = {
 
 const CommandOutputView = ({
   executionProcessId,
+  attemptId,
   command,
   onCompleted,
 }: {
   executionProcessId: string;
+  attemptId: string;
   command: string;
   onCompleted: (exitCode: number | null) => void;
 }) => {
@@ -50,7 +52,7 @@ const CommandOutputView = ({
     initialData
   );
 
-  const { executionProcessesById } = useExecutionProcesses(undefined);
+  const { executionProcessesById } = useExecutionProcesses(attemptId);
   const process = executionProcessesById[executionProcessId];
   const hasCompletedRef = useRef(false);
 
@@ -83,23 +85,23 @@ const CommandOutputView = ({
     <div className="border rounded-md bg-muted/30 overflow-hidden">
       <div className="px-3 py-2 border-b bg-muted/50 flex items-center gap-2">
         <Terminal className="h-4 w-4 text-muted-foreground" />
-        <code className="text-sm font-mono text-foreground">{command}</code>
+        <code className="text-sm font-mono text-foreground flex-1 truncate">{command}</code>
         {process?.status === 'running' && (
-          <Loader2 className="h-3 w-3 animate-spin ml-auto text-muted-foreground" />
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         )}
         {process?.status === 'completed' && exitCode === 0 && (
-          <span className="ml-auto text-xs text-green-600">exit 0</span>
+          <span className="text-xs text-green-600">exit 0</span>
         )}
         {process?.status === 'completed' && exitCode !== null && exitCode !== 0 && (
-          <span className="ml-auto text-xs text-red-600">
+          <span className="text-xs text-red-600">
             exit {exitCode}
           </span>
         )}
         {process?.status === 'failed' && (
-          <span className="ml-auto text-xs text-red-600">failed</span>
+          <span className="text-xs text-red-600">failed</span>
         )}
         {process?.status === 'killed' && (
-          <span className="ml-auto text-xs text-yellow-600">killed</span>
+          <span className="text-xs text-yellow-600">killed</span>
         )}
       </div>
       <div
@@ -234,6 +236,7 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
                     <CommandOutputView
                       key={cmd.id}
                       executionProcessId={cmd.id}
+                      attemptId={attemptId}
                       command={cmd.command}
                       onCompleted={(exitCode) =>
                         handleCommandCompleted(cmd.id, exitCode)
