@@ -25,7 +25,7 @@ pub enum ScriptContext {
     CleanupScript,
     DevServer,
     ToolInstallScript,
-    ArbitraryCommand,
+    UserCommand,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]

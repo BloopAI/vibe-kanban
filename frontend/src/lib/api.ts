@@ -52,8 +52,8 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   RunScriptError,
-  RunArbitraryCommandRequest,
-  RunArbitraryCommandError,
+  RunUserCommandRequest,
+  RunUserCommandError,
   StatusResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
@@ -749,8 +749,8 @@ export const attemptsApi = {
   runCommand: async (
     attemptId: string,
     command: string
-  ): Promise<Result<ExecutionProcess, RunArbitraryCommandError>> => {
-    const body: RunArbitraryCommandRequest = { command };
+  ): Promise<Result<ExecutionProcess, RunUserCommandError>> => {
+    const body: RunUserCommandRequest = { command };
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/run-command`,
       {
@@ -759,7 +759,7 @@ export const attemptsApi = {
         body: JSON.stringify(body),
       }
     );
-    return handleApiResponseAsResult<ExecutionProcess, RunArbitraryCommandError>(
+    return handleApiResponseAsResult<ExecutionProcess, RunUserCommandError>(
       response
     );
   },

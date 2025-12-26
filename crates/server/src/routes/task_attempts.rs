@@ -1429,30 +1429,30 @@ pub async fn run_cleanup_script(
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct RunArbitraryCommandRequest {
+pub struct RunUserCommandRequest {
     pub command: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
-pub enum RunArbitraryCommandError {
+pub enum RunUserCommandError {
     ProcessAlreadyRunning,
     EmptyCommand,
 }
 
 #[axum::debug_handler]
-pub async fn run_arbitrary_command(
+pub async fn run_user_command(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(request): Json<RunArbitraryCommandRequest>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunArbitraryCommandError>>, ApiError> {
+    Json(request): Json<RunUserCommandRequest>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunUserCommandError>>, ApiError> {
     let pool = &deployment.db().pool;
 
     // Validate command is not empty
     if request.command.trim().is_empty() {
         return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunArbitraryCommandError::EmptyCommand,
+            RunUserCommandError::EmptyCommand,
         )));
     }
 
@@ -1461,7 +1461,7 @@ pub async fn run_arbitrary_command(
         .await?
     {
         return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunArbitraryCommandError::ProcessAlreadyRunning,
+            RunUserCommandError::ProcessAlreadyRunning,
         )));
     }
 
@@ -1481,25 +1481,25 @@ pub async fn run_arbitrary_command(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    // Create the executor action for the arbitrary command
+    // Create the executor action for the user command
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
             script: request.command.clone(),
             language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::ArbitraryCommand,
+            context: ScriptContext::UserCommand,
             working_dir: None,
         }),
         None,
     );
 
-    // Get or create a session for the arbitrary command
+    // Get or create a session for the user command
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
         Some(s) => s,
         None => {
             Session::create(
                 pool,
                 &CreateSession {
-                    executor: Some("arbitrary-command".to_string()),
+                    executor: Some("user-command".to_string()),
                 },
                 Uuid::new_v4(),
                 workspace.id,
@@ -1514,13 +1514,13 @@ pub async fn run_arbitrary_command(
             &workspace,
             &session,
             &executor_action,
-            &ExecutionProcessRunReason::ArbitraryCommand,
+            &ExecutionProcessRunReason::UserCommand,
         )
         .await?;
 
     deployment
         .track_if_analytics_allowed(
-            "arbitrary_command_executed",
+            "user_command_executed",
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "project_id": project.id.to_string(),
@@ -1589,7 +1589,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/start-dev-server", post(start_dev_server))
         .route("/run-setup-script", post(run_setup_script))
         .route("/run-cleanup-script", post(run_cleanup_script))
-        .route("/run-command", post(run_arbitrary_command))
+        .route("/run-command", post(run_user_command))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))

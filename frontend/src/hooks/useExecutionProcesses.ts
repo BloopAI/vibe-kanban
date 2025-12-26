@@ -58,7 +58,7 @@ export const useExecutionProcesses = (
       (process.run_reason === 'codingagent' ||
         process.run_reason === 'setupscript' ||
         process.run_reason === 'cleanupscript' ||
-        process.run_reason === 'arbitrarycommand') &&
+        process.run_reason === 'usercommand') &&
       process.status === 'running'
   );
   const isLoading = !!taskAttemptId && !data && !error; // until first snapshot
