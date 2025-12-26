@@ -218,7 +218,17 @@
     "runCleanupScript": "クリーンアップスクリプトを実行",
     "noSetupScript": "このプロジェクトにセットアップスクリプトが設定されていません",
     "noCleanupScript": "このプロジェクトにクリーンアップスクリプトが設定されていません",
-    "scriptsDisabledWhileRunning": "プロセス実行中はスクリプトを実行できません"
+    "scriptsDisabledWhileRunning": "プロセス実行中はスクリプトを実行できません",
+    "runCommand": {
+      "menuItem": "コマンドを実行",
+      "title": "コマンドを実行",
+      "placeholder": "実行するコマンドを入力...",
+      "noCommands": "コマンドを実行すると出力がここに表示されます",
+      "waitForProcess": "別のコマンドを実行する前に、現在のプロセスが完了するのをお待ちください",
+      "errorProcessRunning": "プロセスが既に実行中です。完了するまでお待ちください。",
+      "errorEmptyCommand": "コマンドは空にできません",
+      "errorGeneric": "コマンドの実行に失敗しました。もう一度お試しください。"
+    }
   },
   "git": {
     "branch": {

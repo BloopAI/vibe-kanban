@@ -218,7 +218,17 @@
     "runCleanupScript": "Ejecutar script de limpieza",
     "noSetupScript": "No hay script de configuración configurado para este proyecto",
     "noCleanupScript": "No hay script de limpieza configurado para este proyecto",
-    "scriptsDisabledWhileRunning": "No se pueden ejecutar scripts mientras un proceso está en ejecución"
+    "scriptsDisabledWhileRunning": "No se pueden ejecutar scripts mientras un proceso está en ejecución",
+    "runCommand": {
+      "menuItem": "Ejecutar comando",
+      "title": "Ejecutar Comando",
+      "placeholder": "Ingresa un comando para ejecutar...",
+      "noCommands": "Ejecuta un comando para ver la salida aquí",
+      "waitForProcess": "Espera a que el proceso actual termine antes de ejecutar otro comando",
+      "errorProcessRunning": "Ya hay un proceso en ejecución. Por favor espera a que termine.",
+      "errorEmptyCommand": "El comando no puede estar vacío",
+      "errorGeneric": "Error al ejecutar el comando. Por favor intenta de nuevo."
+    }
   },
   "git": {
     "branch": {

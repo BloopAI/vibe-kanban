@@ -118,7 +118,8 @@ export const useConversationHistory = ({
       (ep) =>
         ep.run_reason === 'setupscript' ||
         ep.run_reason === 'cleanupscript' ||
-        ep.run_reason === 'codingagent'
+        ep.run_reason === 'codingagent' ||
+        ep.run_reason === 'arbitrarycommand'
     );
   }, [executionProcessesRaw]);
 

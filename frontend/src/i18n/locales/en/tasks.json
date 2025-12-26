@@ -173,7 +173,17 @@
     "runCleanupScript": "Run cleanup script",
     "noSetupScript": "No setup script configured for this project",
     "noCleanupScript": "No cleanup script configured for this project",
-    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
+    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running",
+    "runCommand": {
+      "menuItem": "Run command",
+      "title": "Run Command",
+      "placeholder": "Enter a command to run...",
+      "noCommands": "Run a command to see output here",
+      "waitForProcess": "Wait for the current process to finish before running another command",
+      "errorProcessRunning": "A process is already running. Please wait for it to finish.",
+      "errorEmptyCommand": "Command cannot be empty",
+      "errorGeneric": "Failed to run command. Please try again."
+    }
   },
   "todos": {
     "title_one": "Todos ({{count}})",

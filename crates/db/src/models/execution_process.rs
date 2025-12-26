@@ -55,6 +55,7 @@ pub enum ExecutionProcessRunReason {
     CleanupScript,
     CodingAgent,
     DevServer,
+    ArbitraryCommand,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
