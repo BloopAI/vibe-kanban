@@ -177,8 +177,9 @@
     "runCommand": {
       "menuItem": "Run command",
       "title": "Run Command",
+      "description": "Run a shell command in the workspace. Output will appear in the chat history.",
       "placeholder": "Enter a command to run...",
-      "noCommands": "Run a command to see output here",
+      "run": "Run",
       "waitForProcess": "Wait for the current process to finish before running another command",
       "errorProcessRunning": "A process is already running. Please wait for it to finish.",
       "errorEmptyCommand": "Command cannot be empty",

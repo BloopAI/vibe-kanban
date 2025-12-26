@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,104 +14,10 @@ import { defineModal } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import { Loader2, Play, Terminal } from 'lucide-react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import { useLogStream } from '@/hooks/useLogStream';
 
 export interface RunCommandDialogProps {
   attemptId: string;
 }
-
-interface CommandOutput {
-  id: string;
-  command: string;
-  output: string[];
-  status: 'running' | 'completed' | 'failed';
-  exitCode?: number;
-}
-
-const CommandOutputView = ({
-  executionProcessId,
-  attemptId,
-  command,
-  onCompleted,
-}: {
-  executionProcessId: string;
-  attemptId: string;
-  command: string;
-  onCompleted: (exitCode: number | null) => void;
-}) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const { logs } = useLogStream(executionProcessId);
-
-  const { executionProcessesById } = useExecutionProcesses(attemptId);
-  const process = executionProcessesById[executionProcessId];
-  const hasCompletedRef = useRef(false);
-
-  useEffect(() => {
-    if (process && process.status !== 'running' && !hasCompletedRef.current) {
-      hasCompletedRef.current = true;
-      // Convert bigint to number for the callback
-      const exitCodeNum = process.exit_code !== null && process.exit_code !== undefined
-        ? Number(process.exit_code)
-        : null;
-      onCompleted(exitCodeNum);
-    }
-  }, [process, onCompleted]);
-
-  // Auto-scroll to bottom when new output arrives
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  const allOutput = logs.map((log) => log.content);
-
-  // Convert bigint exit_code to number for display
-  const exitCode = process?.exit_code !== null && process?.exit_code !== undefined
-    ? Number(process.exit_code)
-    : null;
-
-  return (
-    <div className="border rounded-md bg-muted/30 overflow-hidden">
-      <div className="px-3 py-2 border-b bg-muted/50 flex items-center gap-2">
-        <Terminal className="h-4 w-4 text-muted-foreground" />
-        <code className="text-sm font-mono text-foreground flex-1 truncate">{command}</code>
-        {process?.status === 'running' && (
-          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-        )}
-        {process?.status === 'completed' && exitCode === 0 && (
-          <span className="text-xs text-green-600">exit 0</span>
-        )}
-        {process?.status === 'completed' && exitCode !== null && exitCode !== 0 && (
-          <span className="text-xs text-red-600">
-            exit {exitCode}
-          </span>
-        )}
-        {process?.status === 'failed' && (
-          <span className="text-xs text-red-600">failed</span>
-        )}
-        {process?.status === 'killed' && (
-          <span className="text-xs text-yellow-600">killed</span>
-        )}
-      </div>
-      <div
-        ref={scrollRef}
-        className="h-48 overflow-y-auto p-3 font-mono text-sm whitespace-pre-wrap"
-      >
-        {allOutput.length === 0 ? (
-          <span className="text-muted-foreground italic">Waiting for output...</span>
-        ) : (
-          allOutput.map((line, i) => (
-            <div key={i} className="leading-relaxed">
-              {line}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
 
 const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
   ({ attemptId }) => {
@@ -119,8 +26,6 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const [command, setCommand] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [commandHistory, setCommandHistory] = useState<CommandOutput[]>([]);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { isAttemptRunning } = useExecutionProcesses(attemptId);
@@ -142,14 +47,9 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
         const result = await attemptsApi.runCommand(attemptId, trimmedCommand);
 
         if (result.success) {
-          const newEntry: CommandOutput = {
-            id: result.data.id,
-            command: trimmedCommand,
-            output: [],
-            status: 'running',
-          };
-          setCommandHistory((prev) => [...prev, newEntry]);
-          setCommand('');
+          // Command submitted successfully - close dialog
+          // Output will appear in the chat history
+          modal.hide();
         } else {
           const errorData = result.error;
           if (errorData?.type === 'process_already_running') {
@@ -165,7 +65,6 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
         setError(t('followUp.runCommand.errorGeneric'));
       } finally {
         setIsSubmitting(false);
-        inputRef.current?.focus();
       }
     };
 
@@ -176,106 +75,60 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
       }
     };
 
-    const handleCommandCompleted = useCallback(
-      (commandId: string, exitCode: number | null) => {
-        setCommandHistory((prev) =>
-          prev.map((cmd) =>
-            cmd.id === commandId
-              ? {
-                  ...cmd,
-                  status: exitCode === 0 ? 'completed' : 'failed',
-                  exitCode: exitCode ?? undefined,
-                }
-              : cmd
-          )
-        );
-      },
-      []
-    );
-
-    // Auto-scroll to bottom when new commands are added
-    useEffect(() => {
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-      }
-    }, [commandHistory.length]);
-
     const isInputDisabled = isSubmitting || isAttemptRunning;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5" />
               {t('followUp.runCommand.title')}
             </DialogTitle>
+            <DialogDescription>
+              {t('followUp.runCommand.description')}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
-            {/* Command history and output */}
-            <div ref={scrollAreaRef} className="flex-1 min-h-[200px] max-h-[50vh] overflow-y-auto">
-              <div className="space-y-3 pr-2">
-                {commandHistory.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Terminal className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>{t('followUp.runCommand.noCommands')}</p>
-                  </div>
+          <div className="space-y-4">
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+            {isAttemptRunning && (
+              <p className="text-sm text-muted-foreground">
+                {t('followUp.runCommand.waitForProcess')}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
+                  $
+                </span>
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('followUp.runCommand.placeholder')}
+                  disabled={isInputDisabled}
+                  className="pl-7 font-mono"
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={handleSubmit}
+                disabled={isInputDisabled || !command.trim()}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  commandHistory.map((cmd) => (
-                    <CommandOutputView
-                      key={cmd.id}
-                      executionProcessId={cmd.id}
-                      attemptId={attemptId}
-                      command={cmd.command}
-                      onCompleted={(exitCode) =>
-                        handleCommandCompleted(cmd.id, exitCode)
-                      }
-                    />
-                  ))
+                  <>
+                    <Play className="h-4 w-4 mr-2" />
+                    {t('followUp.runCommand.run')}
+                  </>
                 )}
-              </div>
-            </div>
-
-            {/* Command input */}
-            <div className="space-y-2">
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-              {isAttemptRunning && (
-                <p className="text-sm text-muted-foreground">
-                  {t('followUp.runCommand.waitForProcess')}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
-                    $
-                  </span>
-                  <Input
-                    ref={inputRef}
-                    type="text"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={t('followUp.runCommand.placeholder')}
-                    disabled={isInputDisabled}
-                    className="pl-7 font-mono"
-                    autoFocus
-                  />
-                </div>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isInputDisabled || !command.trim()}
-                  size="icon"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              </Button>
             </div>
           </div>
         </DialogContent>

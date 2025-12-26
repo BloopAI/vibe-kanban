@@ -316,7 +316,7 @@ export const useConversationHistory = ({
           } else if (
             p.executionProcess.executor_action.typ.type === 'ScriptRequest'
           ) {
-            // Add setup and cleanup script as a tool call
+            // Add setup, cleanup, and user command scripts as tool calls
             let toolName = '';
             switch (p.executionProcess.executor_action.typ.context) {
               case 'SetupScript':
@@ -327,6 +327,9 @@ export const useConversationHistory = ({
                 break;
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
+                break;
+              case 'UserCommand':
+                toolName = 'User Command';
                 break;
               default:
                 return [];

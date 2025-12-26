@@ -190,8 +190,9 @@
     "runCommand": {
       "menuItem": "运行命令",
       "title": "运行命令",
+      "description": "在工作区中运行 shell 命令。输出将显示在聊天历史记录中。",
       "placeholder": "输入要运行的命令...",
-      "noCommands": "运行命令后将在此处显示输出",
+      "run": "运行",
       "waitForProcess": "请等待当前进程完成后再运行其他命令",
       "errorProcessRunning": "进程正在运行中。请等待其完成。",
       "errorEmptyCommand": "命令不能为空",

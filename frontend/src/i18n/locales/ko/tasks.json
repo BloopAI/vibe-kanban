@@ -222,8 +222,9 @@
     "runCommand": {
       "menuItem": "명령 실행",
       "title": "명령 실행",
+      "description": "워크스페이스에서 쉘 명령을 실행합니다. 출력은 채팅 기록에 표시됩니다.",
       "placeholder": "실행할 명령을 입력하세요...",
-      "noCommands": "명령을 실행하면 출력이 여기에 표시됩니다",
+      "run": "실행",
       "waitForProcess": "다른 명령을 실행하기 전에 현재 프로세스가 완료될 때까지 기다리세요",
       "errorProcessRunning": "프로세스가 이미 실행 중입니다. 완료될 때까지 기다리세요.",
       "errorEmptyCommand": "명령은 비어 있을 수 없습니다",
