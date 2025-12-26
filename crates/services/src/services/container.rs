@@ -639,15 +639,45 @@ pub trait ContainerService {
             );
         } else {
             // Fallback: load from DB and create direct stream
-            let log_records =
+            // Retry a few times in case logs are still being written
+            let mut retries = 0;
+            const MAX_RETRIES: u8 = 5;
+            const RETRY_DELAY_MS: u64 = 100;
+
+            let log_records = loop {
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
+                    Ok(records) => {
+                        if !records.is_empty() || retries >= MAX_RETRIES {
+                            break records;
+                        }
+                    }
                     Err(e) => {
                         tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
                         return None;
                     }
-                };
+                }
+
+                // Check if execution process exists before retrying
+                match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
+                    Ok(Some(process)) => {
+                        // If process is still running, stop retrying - logs will come via MsgStore
+                        if process.status == ExecutionProcessStatus::Running {
+                            return None;
+                        }
+                        // Process completed but no logs yet - wait and retry
+                        retries += 1;
+                        tokio::time::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+                    }
+                    _ => return None, // Process doesn't exist
+                }
+            };
+
+            // If still no logs after retries, return empty stream with Finished
+            if log_records.is_empty() {
+                let stream = futures::stream::iter(std::iter::once(Ok(LogMsg::Finished)))
+                    .boxed();
+                return Some(stream);
+            }
 
             let messages = match ExecutionProcessLogs::parse_logs(&log_records) {
                 Ok(msgs) => msgs,
