@@ -14,6 +14,7 @@ import { defineModal } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import { Loader2, Play, Terminal } from 'lucide-react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useExpandableStore } from '@/stores/useExpandableStore';
 
 export interface RunCommandDialogProps {
   attemptId: string;
@@ -29,6 +30,7 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { isAttemptRunning } = useExecutionProcesses(attemptId);
+    const setExpandedKey = useExpandableStore((s) => s.setKey);
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
@@ -47,6 +49,10 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
         const result = await attemptsApi.runCommand(attemptId, trimmedCommand);
 
         if (result.success) {
+          // Expand the user command entry in the chat history
+          const executionProcessId = result.data.id;
+          setExpandedKey(`tool-entry:${executionProcessId}:0`, true);
+
           // Command submitted successfully - close dialog
           // Output will appear in the chat history
           modal.hide();

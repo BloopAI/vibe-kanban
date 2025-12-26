@@ -449,8 +449,7 @@ const ToolCallCard: React.FC<{
 
   // Compute defaults from entry
   const linkifyUrls = entryType?.tool_name === 'Tool Install Script';
-  const isUserCommand = entryType?.tool_name === 'User Command';
-  const defaultExpanded = linkifyUrls || isUserCommand;
+  const defaultExpanded = linkifyUrls;
 
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
