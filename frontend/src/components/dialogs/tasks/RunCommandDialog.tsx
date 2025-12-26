@@ -13,7 +13,7 @@ import { defineModal } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import { Loader2, Play, Terminal } from 'lucide-react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { useLogStream } from '@/hooks/useLogStream';
 
 export interface RunCommandDialogProps {
   attemptId: string;
@@ -27,11 +27,6 @@ interface CommandOutput {
   exitCode?: number;
 }
 
-type LogState = {
-  stdout: string[];
-  stderr: string[];
-};
-
 const CommandOutputView = ({
   executionProcessId,
   attemptId,
@@ -44,13 +39,8 @@ const CommandOutputView = ({
   onCompleted: (exitCode: number | null) => void;
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const initialData = useCallback((): LogState => ({ stdout: [], stderr: [] }), []);
 
-  const { data } = useJsonPatchWsStream<LogState>(
-    `/api/execution-processes/${executionProcessId}/raw-logs/ws`,
-    true,
-    initialData
-  );
+  const { logs } = useLogStream(executionProcessId);
 
   const { executionProcessesById } = useExecutionProcesses(attemptId);
   const process = executionProcessesById[executionProcessId];
@@ -72,9 +62,9 @@ const CommandOutputView = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [data]);
+  }, [logs]);
 
-  const allOutput = [...(data?.stdout ?? []), ...(data?.stderr ?? [])];
+  const allOutput = logs.map((log) => log.content);
 
   // Convert bigint exit_code to number for display
   const exitCode = process?.exit_code !== null && process?.exit_code !== undefined
