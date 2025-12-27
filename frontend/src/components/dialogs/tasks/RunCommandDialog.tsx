@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -27,21 +27,16 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const [command, setCommand] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
     const { isAttemptRunning } = useExecutionProcesses(attemptId);
     const setExpandedKey = useExpandableStore((s) => s.setKey);
 
-    // Focus input when dialog opens
-    useEffect(() => {
-      if (modal.visible) {
-        // Delay to ensure focus happens after dialog's focus trap initializes
-        const timer = setTimeout(() => {
-          inputRef.current?.focus();
-        }, 150);
-        return () => clearTimeout(timer);
+    // Use callback ref to focus input when it mounts
+    const inputRef = useCallback((node: HTMLInputElement | null) => {
+      if (node) {
+        node.focus();
       }
-    }, [modal.visible]);
+    }, []);
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
