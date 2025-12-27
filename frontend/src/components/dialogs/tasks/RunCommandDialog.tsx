@@ -25,7 +25,7 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
     const [command, setCommand] = useState('');
-    const [timeoutSeconds, setTimeoutSeconds] = useState<string>('');
+    const [timeoutSeconds, setTimeoutSeconds] = useState<string>('10');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
