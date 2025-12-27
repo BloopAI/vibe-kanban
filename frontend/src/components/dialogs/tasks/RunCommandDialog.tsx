@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -30,13 +30,22 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
 
     const { isAttemptRunning } = useExecutionProcesses(attemptId);
     const setExpandedKey = useExpandableStore((s) => s.setKey);
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    // Use callback ref to focus input when it mounts
-    const inputRef = useCallback((node: HTMLInputElement | null) => {
-      if (node) {
-        node.focus();
+    // Focus and select input text when dialog becomes visible
+    useEffect(() => {
+      if (modal.visible && inputRef.current) {
+        // Use double rAF to ensure we're after all layout/paint cycles
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+              inputRef.current.select();
+            }
+          });
+        });
       }
-    }, []);
+    }, [modal.visible]);
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
@@ -125,7 +134,6 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
                   placeholder={t('followUp.runCommand.placeholder')}
                   disabled={isInputDisabled}
                   className="pl-7 font-mono"
-                  autoFocus
                 />
               </div>
               <Button
