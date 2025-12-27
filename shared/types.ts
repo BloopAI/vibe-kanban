@@ -274,7 +274,11 @@ conflicted_files: Array<string>, };
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
-export type RunUserCommandRequest = { command: string, };
+export type RunUserCommandRequest = { command: string, 
+/**
+ * Optional timeout in seconds. If specified, the command will be killed after this duration.
+ */
+timeout_seconds: number | null, };
 
 export type RunUserCommandError = { "type": "process_already_running" } | { "type": "empty_command" };
 

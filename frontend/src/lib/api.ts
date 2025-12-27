@@ -748,9 +748,13 @@ export const attemptsApi = {
 
   runCommand: async (
     attemptId: string,
-    command: string
+    command: string,
+    timeoutSeconds?: number
   ): Promise<Result<ExecutionProcess, RunUserCommandError>> => {
-    const body: RunUserCommandRequest = { command };
+    const body: RunUserCommandRequest = {
+      command,
+      timeout_seconds: timeoutSeconds,
+    };
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/run-command`,
       {

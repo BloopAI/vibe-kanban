@@ -225,6 +225,8 @@
       "description": "ワークスペースでシェルコマンドを実行します。出力はチャット履歴に表示されます。",
       "placeholder": "実行するコマンドを入力...",
       "run": "実行",
+      "timeoutPlaceholder": "タイムアウト",
+      "timeoutUnit": "秒",
       "waitForProcess": "別のコマンドを実行する前に、現在のプロセスが完了するのをお待ちください",
       "errorProcessRunning": "プロセスが既に実行中です。完了するまでお待ちください。",
       "errorEmptyCommand": "コマンドは空にできません",

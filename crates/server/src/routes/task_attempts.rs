@@ -1431,6 +1431,9 @@ pub async fn run_cleanup_script(
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RunUserCommandRequest {
     pub command: String,
+    /// Optional timeout in seconds. If specified, the command will be killed after this duration.
+    #[serde(default)]
+    pub timeout_seconds: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -1482,9 +1485,15 @@ pub async fn run_user_command(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Create the executor action for the user command
+    // If timeout is specified, wrap the command with the timeout utility
+    let script = match request.timeout_seconds {
+        Some(seconds) if seconds > 0 => format!("timeout {}s {}", seconds, request.command),
+        _ => request.command.clone(),
+    };
+
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: request.command.clone(),
+            script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::UserCommand,
             working_dir: None,

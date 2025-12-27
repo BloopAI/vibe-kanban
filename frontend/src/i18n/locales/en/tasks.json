@@ -180,6 +180,8 @@
       "description": "Run a shell command in the workspace. Output will appear in the chat history.",
       "placeholder": "Enter a command to run...",
       "run": "Run",
+      "timeoutPlaceholder": "Timeout",
+      "timeoutUnit": "s",
       "waitForProcess": "Wait for the current process to finish before running another command",
       "errorProcessRunning": "A process is already running. Please wait for it to finish.",
       "errorEmptyCommand": "Command cannot be empty",

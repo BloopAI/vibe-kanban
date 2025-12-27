@@ -25,6 +25,7 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
     const [command, setCommand] = useState('');
+    const [timeoutSeconds, setTimeoutSeconds] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +70,12 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
       setError(null);
 
       try {
-        const result = await attemptsApi.runCommand(attemptId, trimmedCommand);
+        const timeout = timeoutSeconds ? parseInt(timeoutSeconds, 10) : undefined;
+        const result = await attemptsApi.runCommand(
+          attemptId,
+          trimmedCommand,
+          timeout && timeout > 0 ? timeout : undefined
+        );
 
         if (result.success) {
           // Expand the user command entry in the chat history
@@ -143,6 +149,21 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
                   disabled={isInputDisabled}
                   className="pl-7 font-mono"
                 />
+              </div>
+              <div className="w-24 relative">
+                <Input
+                  type="number"
+                  min="0"
+                  value={timeoutSeconds}
+                  onChange={(e) => setTimeoutSeconds(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('followUp.runCommand.timeoutPlaceholder')}
+                  disabled={isInputDisabled}
+                  className="pr-7"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                  {t('followUp.runCommand.timeoutUnit')}
+                </span>
               </div>
               <Button
                 onClick={handleSubmit}

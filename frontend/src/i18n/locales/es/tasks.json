@@ -225,6 +225,8 @@
       "description": "Ejecutar un comando en el espacio de trabajo. La salida aparecerá en el historial de chat.",
       "placeholder": "Ingresa un comando para ejecutar...",
       "run": "Ejecutar",
+      "timeoutPlaceholder": "Tiempo",
+      "timeoutUnit": "s",
       "waitForProcess": "Espera a que el proceso actual termine antes de ejecutar otro comando",
       "errorProcessRunning": "Ya hay un proceso en ejecución. Por favor espera a que termine.",
       "errorEmptyCommand": "El comando no puede estar vacío",
