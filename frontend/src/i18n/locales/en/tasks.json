@@ -177,7 +177,7 @@
     "runCommand": {
       "menuItem": "Run command",
       "title": "Run Command",
-      "description": "Run a shell command in the workspace. Output will appear in the chat history.",
+      "description": "Run a shell command in the workspace. Output will appear in the chat history. Commands timeout after the specified duration.",
       "placeholder": "Enter a command to run...",
       "run": "Run",
       "timeoutPlaceholder": "Timeout",
