@@ -35,10 +35,10 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     // Focus input when dialog opens
     useEffect(() => {
       if (modal.visible) {
-        // Small delay to ensure dialog is fully rendered
+        // Delay to ensure focus happens after dialog's focus trap initializes
         const timer = setTimeout(() => {
           inputRef.current?.focus();
-        }, 50);
+        }, 150);
         return () => clearTimeout(timer);
       }
     }, [modal.visible]);
