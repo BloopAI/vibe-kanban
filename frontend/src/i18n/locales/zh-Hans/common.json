@@ -37,7 +37,8 @@
     "args": "参数",
     "output": "输出",
     "result": "结果",
-    "deniedByUser": "用户拒绝了 {{toolName}}"
+    "deniedByUser": "用户拒绝了 {{toolName}}",
+    "rerunCommand": "编辑并重新运行命令"
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",

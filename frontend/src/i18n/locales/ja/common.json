@@ -39,6 +39,7 @@
   "conversation": {
     "args": "引数",
     "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
+    "rerunCommand": "コマンドを編集して再実行",
     "output": "出力",
     "plan": "計画",
     "planToggle": {

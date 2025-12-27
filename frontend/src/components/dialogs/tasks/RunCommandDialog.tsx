@@ -18,14 +18,18 @@ import { useExpandableStore } from '@/stores/useExpandableStore';
 
 export interface RunCommandDialogProps {
   attemptId: string;
+  initialCommand?: string;
+  initialTimeout?: number;
 }
 
 const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
-  ({ attemptId }) => {
+  ({ attemptId, initialCommand, initialTimeout }) => {
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
-    const [command, setCommand] = useState('');
-    const [timeoutSeconds, setTimeoutSeconds] = useState<string>('10');
+    const [command, setCommand] = useState(initialCommand ?? '');
+    const [timeoutSeconds, setTimeoutSeconds] = useState<string>(
+      initialTimeout !== undefined ? String(initialTimeout) : '10'
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 

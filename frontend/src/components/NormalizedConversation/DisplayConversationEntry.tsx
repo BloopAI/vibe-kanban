@@ -23,11 +23,13 @@ import {
   Eye,
   Globe,
   Plus,
+  RotateCw,
   Search,
   Settings,
   Terminal,
   User,
 } from 'lucide-react';
+import { RunCommandDialog } from '@/components/dialogs/tasks/RunCommandDialog';
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
@@ -464,6 +466,7 @@ const ToolCallCard: React.FC<{
 
   // Label and content
   const label = isCommand ? 'Ran' : entryType?.tool_name || 'Tool';
+  const isUserCommand = entryType?.tool_name === 'User Command';
 
   const inlineText = isNormalizedEntry ? entry.content.trim() : '';
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
@@ -507,21 +510,43 @@ const ToolCallCard: React.FC<{
     'w-full flex items-center gap-1.5 text-left text-secondary-foreground'
   );
 
+  const handleRerunCommand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (taskAttemptId && argsText) {
+      RunCommandDialog.show({
+        attemptId: taskAttemptId,
+        initialCommand: argsText,
+        initialTimeout: 10, // Default timeout
+      });
+    }
+  };
+
   return (
     <div className="inline-block w-full flex flex-col gap-4">
-      <HeaderWrapper {...headerProps} className={headerClassName}>
-        <span className=" min-w-0 flex items-center gap-1.5">
-          <span>
-            {entryType && getStatusIndicator(entryType)}
-            {entryType && getEntryIcon(entryType)}
+      <div className="flex items-center gap-2">
+        <HeaderWrapper {...headerProps} className={headerClassName}>
+          <span className=" min-w-0 flex items-center gap-1.5">
+            <span>
+              {entryType && getStatusIndicator(entryType)}
+              {entryType && getEntryIcon(entryType)}
+            </span>
+            {showInlineSummary ? (
+              <span className="text-sm font-mono">{inlineText}</span>
+            ) : (
+              <span className="text-sm font-mono">{label}</span>
+            )}
           </span>
-          {showInlineSummary ? (
-            <span className="text-sm font-mono">{inlineText}</span>
-          ) : (
-            <span className="text-sm font-mono">{label}</span>
-          )}
-        </span>
-      </HeaderWrapper>
+        </HeaderWrapper>
+        {isUserCommand && taskAttemptId && argsText && (
+          <button
+            onClick={handleRerunCommand}
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+            title={t('conversation.rerunCommand')}
+          >
+            <RotateCw className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       {effectiveExpanded && (
         <div className="max-h-[200px] overflow-y-auto border">
