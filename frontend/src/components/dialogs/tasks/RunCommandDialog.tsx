@@ -33,26 +33,26 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Focus and select input text when dialog becomes visible
-    // Uses interval to retry until focus is achieved (handles focus stealing)
     useEffect(() => {
       if (!modal.visible) return;
 
-      const interval = setInterval(() => {
+      const focusInput = () => {
         if (inputRef.current && document.activeElement !== inputRef.current) {
           inputRef.current.focus();
           inputRef.current.select();
-        } else if (document.activeElement === inputRef.current) {
-          clearInterval(interval);
         }
-      }, 50);
-
-      // Clean up after 500ms max
-      const timeout = setTimeout(() => clearInterval(interval), 500);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
       };
+
+      // Try focusing multiple times to overcome any focus stealing
+      focusInput();
+      const timers = [
+        setTimeout(focusInput, 0),
+        setTimeout(focusInput, 50),
+        setTimeout(focusInput, 100),
+        setTimeout(focusInput, 200),
+      ];
+
+      return () => timers.forEach(clearTimeout);
     }, [modal.visible]);
 
     const handleOpenChange = (open: boolean) => {
