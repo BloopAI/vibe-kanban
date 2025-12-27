@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -31,6 +31,17 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
 
     const { isAttemptRunning } = useExecutionProcesses(attemptId);
     const setExpandedKey = useExpandableStore((s) => s.setKey);
+
+    // Focus input when dialog opens
+    useEffect(() => {
+      if (modal.visible) {
+        // Small delay to ensure dialog is fully rendered
+        const timer = setTimeout(() => {
+          inputRef.current?.focus();
+        }, 50);
+        return () => clearTimeout(timer);
+      }
+    }, [modal.visible]);
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
