@@ -444,7 +444,11 @@ pub async fn delete_task(
                         e
                     );
                 } else {
-                    tracing::info!("Deleted branch '{}' in repo '{}'", branch_name, repo.path.display());
+                    tracing::info!(
+                        "Deleted branch '{}' in repo '{}'",
+                        branch_name,
+                        repo.path.display()
+                    );
                 }
             }
         }

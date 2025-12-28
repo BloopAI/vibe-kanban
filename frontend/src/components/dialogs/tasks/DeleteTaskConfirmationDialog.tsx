@@ -74,10 +74,7 @@ const DeleteTaskConfirmationDialogImpl =
               checked={deleteBranches}
               onCheckedChange={setDeleteBranches}
             />
-            <label
-              htmlFor="delete-branches"
-              className="text-sm cursor-pointer"
-            >
+            <label htmlFor="delete-branches" className="text-sm cursor-pointer">
               Also delete associated git branches
             </label>
           </div>
