@@ -25,7 +25,8 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
+    container::ContainerService, git::GitService, share::ShareError,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -308,9 +309,16 @@ async fn ensure_shared_task_auth(
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DeleteTaskQuery {
+    #[serde(default)]
+    pub delete_branches: bool,
+}
+
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<DeleteTaskQuery>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     ensure_shared_task_auth(&task, &deployment).await?;
 
@@ -389,14 +397,27 @@ pub async fn delete_task(
         )
         .await;
 
+    // Collect branch names if deletion is requested
+    let branch_names: Vec<String> = if query.delete_branches {
+        attempts.iter().map(|a| a.branch.clone()).collect()
+    } else {
+        Vec::new()
+    };
+
     let task_id = task.id;
     let pool = pool.clone();
+    let delete_branches = query.delete_branches;
     tokio::spawn(async move {
         tracing::info!(
-            "Starting background cleanup for task {} ({} workspaces, {} repos)",
+            "Starting background cleanup for task {} ({} workspaces, {} repos{})",
             task_id,
             workspace_dirs.len(),
-            repositories.len()
+            repositories.len(),
+            if delete_branches {
+                format!(", {} branches to delete", branch_names.len())
+            } else {
+                String::new()
+            }
         );
 
         for workspace_dir in &workspace_dirs {
@@ -408,6 +429,23 @@ pub async fn delete_task(
                     workspace_dir.display(),
                     e
                 );
+            }
+        }
+
+        // Delete branches after worktrees are removed (branches can't be deleted while in use)
+        if delete_branches {
+            let git = GitService::new();
+            for (branch_name, repo) in branch_names.iter().zip(repositories.iter().cycle()) {
+                if let Err(e) = git.delete_branch(&repo.path, branch_name) {
+                    tracing::warn!(
+                        "Failed to delete branch '{}' in repo '{}': {}",
+                        branch_name,
+                        repo.path.display(),
+                        e
+                    );
+                } else {
+                    tracing::info!("Deleted branch '{}' in repo '{}'", branch_name, repo.path.display());
+                }
             }
         }
 

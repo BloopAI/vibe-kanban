@@ -640,6 +640,12 @@ impl GitCli {
         }
         Ok(files)
     }
+
+    /// Delete a local branch. Uses `-D` to force delete even if not fully merged.
+    pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<(), GitCliError> {
+        self.git(repo_path, ["branch", "-D", branch_name])
+            .map(|_| ())
+    }
 }
 
 // Private methods

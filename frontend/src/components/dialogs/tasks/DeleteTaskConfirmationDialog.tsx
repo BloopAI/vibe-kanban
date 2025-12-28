@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { tasksApi } from '@/lib/api';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -24,13 +25,14 @@ const DeleteTaskConfirmationDialogImpl =
     const modal = useModal();
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteBranches, setDeleteBranches] = useState(false);
 
     const handleConfirmDelete = async () => {
       setIsDeleting(true);
       setError(null);
 
       try {
-        await tasksApi.delete(task.id);
+        await tasksApi.delete(task.id, deleteBranches);
         modal.resolve();
         modal.hide();
       } catch (err: unknown) {
@@ -65,6 +67,20 @@ const DeleteTaskConfirmationDialogImpl =
             <strong>Warning:</strong> This action will permanently delete the
             task and cannot be undone.
           </Alert>
+
+          <div className="flex items-center space-x-2 mb-4">
+            <Checkbox
+              id="delete-branches"
+              checked={deleteBranches}
+              onCheckedChange={setDeleteBranches}
+            />
+            <label
+              htmlFor="delete-branches"
+              className="text-sm cursor-pointer"
+            >
+              Also delete associated git branches
+            </label>
+          </div>
 
           {error && (
             <Alert variant="destructive" className="mb-4">

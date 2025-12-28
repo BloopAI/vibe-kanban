@@ -418,8 +418,9 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  delete: async (taskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/tasks/${taskId}`, {
+  delete: async (taskId: string, deleteBranches?: boolean): Promise<void> => {
+    const params = deleteBranches ? '?delete_branches=true' : '';
+    const response = await makeRequest(`/api/tasks/${taskId}${params}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
