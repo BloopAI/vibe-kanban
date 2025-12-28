@@ -180,6 +180,7 @@ impl FilesystemService {
             None => return Ok(vec![]),
         };
         let skip_dirs = Self::get_directories_to_skip();
+        let vibe_kanban_temp_dir = utils::path::get_vibe_kanban_temp_dir();
         let mut walker_builder = WalkBuilder::new(base_dir);
         walker_builder
             .follow_links(false)
@@ -197,6 +198,14 @@ impl FilesystemService {
 
                     let path = entry.path();
                     if !path.is_dir() {
+                        return false;
+                    }
+
+                    // Skip vibe-kanban temp directory and all subdirectories
+                    // Normalize to handle macOS /private/var vs /var aliasing
+                    if utils::path::normalize_macos_private_alias(path)
+                        .starts_with(&vibe_kanban_temp_dir)
+                    {
                         return false;
                     }
 
