@@ -6,8 +6,10 @@ use thiserror::Error;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use super::git::GitService;
-use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
+use super::{
+    git::GitService,
+    worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager},
+};
 
 #[derive(Debug, Clone)]
 pub struct RepoWorkspaceInput {
