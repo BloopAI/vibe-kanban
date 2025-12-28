@@ -472,6 +472,16 @@
       "discardChanges": "変更を破棄"
     }
   },
+  "deleteTaskDialog": {
+    "title": "タスクを削除",
+    "description": "本当に削除しますか",
+    "warningLabel": "警告",
+    "warning": "この操作はタスクを完全に削除し、元に戻すことはできません。",
+    "deleteBranchesLabel": "関連するgitブランチも削除する",
+    "deleting": "削除中...",
+    "deleteButton": "タスクを削除",
+    "error": "タスクの削除に失敗しました"
+  },
   "restoreLogsDialog": {
     "title": "リトライを確認",
     "historyChange": {

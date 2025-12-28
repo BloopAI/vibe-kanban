@@ -472,6 +472,16 @@
       "discardChanges": "Discard Changes"
     }
   },
+  "deleteTaskDialog": {
+    "title": "Delete Task",
+    "description": "Are you sure you want to delete",
+    "warningLabel": "Warning",
+    "warning": "This action will permanently delete the task and cannot be undone.",
+    "deleteBranchesLabel": "Also delete associated git branches",
+    "deleting": "Deleting...",
+    "deleteButton": "Delete Task",
+    "error": "Failed to delete task"
+  },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
     "historyChange": {

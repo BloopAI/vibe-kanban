@@ -472,6 +472,16 @@
       "discardChanges": "Descartar Cambios"
     }
   },
+  "deleteTaskDialog": {
+    "title": "Eliminar Tarea",
+    "description": "¿Estás seguro de que quieres eliminar",
+    "warningLabel": "Advertencia",
+    "warning": "Esta acción eliminará permanentemente la tarea y no se puede deshacer.",
+    "deleteBranchesLabel": "También eliminar las ramas de git asociadas",
+    "deleting": "Eliminando...",
+    "deleteButton": "Eliminar Tarea",
+    "error": "Error al eliminar la tarea"
+  },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
     "historyChange": {
