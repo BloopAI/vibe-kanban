@@ -25,8 +25,7 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, git::GitService, share::ShareError,
-    workspace_manager::WorkspaceManager,
+    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -434,23 +433,7 @@ pub async fn delete_task(
 
         // Delete branches after worktrees are removed (branches can't be deleted while in use)
         if delete_branches {
-            let git = GitService::new();
-            for (branch_name, repo) in branch_names.iter().zip(repositories.iter().cycle()) {
-                if let Err(e) = git.delete_branch(&repo.path, branch_name) {
-                    tracing::warn!(
-                        "Failed to delete branch '{}' in repo '{}': {}",
-                        branch_name,
-                        repo.path.display(),
-                        e
-                    );
-                } else {
-                    tracing::info!(
-                        "Deleted branch '{}' in repo '{}'",
-                        branch_name,
-                        repo.path.display()
-                    );
-                }
-            }
+            WorkspaceManager::delete_branches(&branch_names, &repositories).await;
         }
 
         match Repo::delete_orphaned(&pool).await {

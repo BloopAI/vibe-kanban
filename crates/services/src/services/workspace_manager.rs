@@ -6,6 +6,7 @@ use thiserror::Error;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
+use super::git::GitService;
 use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 
 #[derive(Debug, Clone)]
@@ -385,5 +386,29 @@ impl WorkspaceManager {
         }
 
         Ok(())
+    }
+
+    /// Delete branches from all repos. This should be called after worktree cleanup
+    /// since branches cannot be deleted while they have active worktrees.
+    pub async fn delete_branches(branch_names: &[String], repos: &[Repo]) {
+        let git = GitService::new();
+        for branch_name in branch_names {
+            for repo in repos {
+                if let Err(e) = git.delete_branch(&repo.path, branch_name) {
+                    warn!(
+                        "Failed to delete branch '{}' in '{}': {}",
+                        branch_name,
+                        repo.path.display(),
+                        e
+                    );
+                } else {
+                    info!(
+                        "Deleted branch '{}' in '{}'",
+                        branch_name,
+                        repo.path.display()
+                    );
+                }
+            }
+        }
     }
 }
