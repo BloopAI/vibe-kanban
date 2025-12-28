@@ -1486,8 +1486,14 @@ pub async fn run_user_command(
 
     // Create the executor action for the user command
     // If timeout is specified, wrap the command with the timeout utility
+    // We use sh -c with escaped single quotes to prevent command injection
+    // (e.g., user input like "sleep 5; rm -rf /" would otherwise bypass the timeout)
     let script = match request.timeout_seconds {
-        Some(seconds) if seconds > 0 => format!("timeout {}s {}", seconds, request.command),
+        Some(seconds) if seconds > 0 => {
+            // Escape single quotes in the command to prevent injection
+            let escaped_command = request.command.replace('\'', "'\\''");
+            format!("timeout {}s sh -c '{}'", seconds, escaped_command)
+        }
         _ => request.command.clone(),
     };
 
