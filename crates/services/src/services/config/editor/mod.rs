@@ -159,6 +159,7 @@ impl EditorConfig {
                     EditorType::GoogleAntigravity => "antigravity",
                     _ => unreachable!(),
                 };
+                // files must contain a line and column number
                 let line_col = if path.is_file() { ":1:1" } else { "" };
                 Some(format!(
                     "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}"
