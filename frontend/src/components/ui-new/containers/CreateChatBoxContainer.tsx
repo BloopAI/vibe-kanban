@@ -143,6 +143,7 @@ export function CreateChatBoxContainer() {
   // Common props for SessionChatBox
   const chatBoxProps = {
     status,
+    projectId,
     editor: {
       value: message,
       onChange: setMessage,

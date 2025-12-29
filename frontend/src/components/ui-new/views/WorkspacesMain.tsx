@@ -6,6 +6,7 @@ import { ContextBar } from '@/components/ui-new/primitives/ContextBar';
 import { ConversationList } from '../ConversationList';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
+import { useTask } from '@/hooks/useTask';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
@@ -23,6 +24,11 @@ export function WorkspacesMain({
   isLoading,
 }: WorkspacesMainProps) {
   const containerRef = useRef<HTMLElement>(null);
+
+  // Fetch task to get project_id for file search
+  const { data: task } = useTask(selectedWorkspace?.task_id, {
+    enabled: !!selectedWorkspace?.task_id,
+  });
 
   // Create WorkspaceWithSession for ConversationList
   const workspaceWithSession: WorkspaceWithSession | undefined = useMemo(() => {
@@ -73,6 +79,7 @@ export function WorkspacesMain({
           filesChanged={19}
           linesAdded={10}
           linesRemoved={3}
+          projectId={task?.project_id}
         />
       </div>
       {/* Context Bar - floating toolbar */}

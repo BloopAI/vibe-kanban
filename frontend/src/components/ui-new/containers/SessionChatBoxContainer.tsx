@@ -36,6 +36,8 @@ interface SessionChatBoxContainerProps {
   sessions?: Session[];
   /** Called when a session is selected */
   onSelectSession?: (sessionId: string) => void;
+  /** Project ID for file search in typeahead */
+  projectId?: string;
 }
 
 export function SessionChatBoxContainer({
@@ -46,6 +48,7 @@ export function SessionChatBoxContainer({
   linesRemoved,
   sessions = [],
   onSelectSession,
+  projectId,
 }: SessionChatBoxContainerProps) {
   const workspaceId = session?.workspace_id;
   const sessionId = session?.id;
@@ -332,6 +335,7 @@ export function SessionChatBoxContainer({
   return (
     <SessionChatBox
       status={getExecutionStatus()}
+      projectId={projectId}
       editor={{
         value: displayMessage,
         onChange: handleEditorChange,
