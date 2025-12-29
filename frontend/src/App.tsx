@@ -33,6 +33,7 @@ import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import { SidebarProvider } from './contexts/SidebarContext';
 import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -173,11 +174,13 @@ function App() {
       <UserSystemProvider>
         <ClickedElementsProvider>
           <ProjectProvider>
-            <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <NiceModal.Provider>
-                <AppContent />
-              </NiceModal.Provider>
-            </HotkeysProvider>
+            <SidebarProvider>
+              <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+                <NiceModal.Provider>
+                  <AppContent />
+                </NiceModal.Provider>
+              </HotkeysProvider>
+            </SidebarProvider>
           </ProjectProvider>
         </ClickedElementsProvider>
       </UserSystemProvider>
