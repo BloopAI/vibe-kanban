@@ -42,6 +42,16 @@ export type CreateTag = { tag_name: string, content: string, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
+export type Team = { id: string, name: string, icon: string | null, color: string | null, created_at: Date, updated_at: Date, };
+
+export type TeamProject = { team_id: string, project_id: string, created_at: Date, };
+
+export type CreateTeam = { name: string, icon: string | null, color: string | null, };
+
+export type UpdateTeam = { name: string | null, icon: string | null, color: string | null, };
+
+export type TeamProjectAssignment = { project_id: string, };
+
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };

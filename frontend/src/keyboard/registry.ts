@@ -9,6 +9,7 @@ export enum Scope {
   APPROVALS = 'approvals',
   FOLLOW_UP = 'follow-up',
   FOLLOW_UP_READY = 'follow-up-ready',
+  SIDEBAR = 'sidebar',
 }
 
 export enum Action {
@@ -30,6 +31,12 @@ export enum Action {
   SUBMIT_TASK_ALT = 'submit_task_alt',
   SUBMIT_COMMENT = 'submit_comment',
   CYCLE_VIEW_BACKWARD = 'cycle_view_backward',
+  // Sidebar actions
+  TOGGLE_SIDEBAR = 'toggle_sidebar',
+  GO_INBOX = 'go_inbox',
+  GO_MY_ISSUES = 'go_my_issues',
+  GO_PROJECTS = 'go_projects',
+  COMMAND_PALETTE = 'command_palette',
 }
 
 export interface KeyBinding {
@@ -217,6 +224,43 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.EDIT_COMMENT],
     description: 'Submit review comment',
     group: 'Comments',
+  },
+
+  // Sidebar navigation actions
+  {
+    action: Action.TOGGLE_SIDEBAR,
+    keys: ['meta+backslash', 'ctrl+backslash'],
+    scopes: [Scope.GLOBAL],
+    description: 'Toggle sidebar',
+    group: 'Sidebar',
+  },
+  {
+    action: Action.GO_INBOX,
+    keys: 'g i',
+    scopes: [Scope.GLOBAL],
+    description: 'Go to Inbox',
+    group: 'Sidebar',
+  },
+  {
+    action: Action.GO_MY_ISSUES,
+    keys: 'g m',
+    scopes: [Scope.GLOBAL],
+    description: 'Go to My Issues',
+    group: 'Sidebar',
+  },
+  {
+    action: Action.GO_PROJECTS,
+    keys: 'g p',
+    scopes: [Scope.GLOBAL],
+    description: 'Go to Projects',
+    group: 'Sidebar',
+  },
+  {
+    action: Action.COMMAND_PALETTE,
+    keys: ['meta+k', 'ctrl+k'],
+    scopes: [Scope.GLOBAL],
+    description: 'Open command palette / search',
+    group: 'Global',
   },
 ];
 

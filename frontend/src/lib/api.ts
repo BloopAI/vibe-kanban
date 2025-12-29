@@ -89,6 +89,11 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  Team,
+  TeamProject,
+  CreateTeam,
+  UpdateTeam,
+  TeamProjectAssignment,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1288,5 +1293,67 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Teams API
+export const teamsApi = {
+  list: async (): Promise<Team[]> => {
+    const response = await makeRequest('/api/teams');
+    return handleApiResponse<Team[]>(response);
+  },
+
+  get: async (teamId: string): Promise<Team> => {
+    const response = await makeRequest(`/api/teams/${teamId}`);
+    return handleApiResponse<Team>(response);
+  },
+
+  create: async (data: CreateTeam): Promise<Team> => {
+    const response = await makeRequest('/api/teams', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Team>(response);
+  },
+
+  update: async (teamId: string, data: UpdateTeam): Promise<Team> => {
+    const response = await makeRequest(`/api/teams/${teamId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Team>(response);
+  },
+
+  delete: async (teamId: string): Promise<void> => {
+    const response = await makeRequest(`/api/teams/${teamId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getProjects: async (teamId: string): Promise<string[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/projects`);
+    return handleApiResponse<string[]>(response);
+  },
+
+  assignProject: async (
+    teamId: string,
+    data: TeamProjectAssignment
+  ): Promise<TeamProject> => {
+    const response = await makeRequest(`/api/teams/${teamId}/projects`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TeamProject>(response);
+  },
+
+  removeProject: async (teamId: string, projectId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/projects/${projectId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 };

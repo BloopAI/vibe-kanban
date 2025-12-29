@@ -145,3 +145,47 @@ export const useKeySubmitComment = createSemanticHook(Action.SUBMIT_COMMENT);
 export const useKeyCycleViewBackward = createSemanticHook(
   Action.CYCLE_VIEW_BACKWARD
 );
+
+/**
+ * Sidebar navigation actions
+ */
+
+/**
+ * Toggle sidebar action - typically Cmd/Ctrl + \
+ *
+ * @example
+ * useKeyToggleSidebar(() => toggleSidebar(), { scope: Scope.GLOBAL });
+ */
+export const useKeyToggleSidebar = createSemanticHook(Action.TOGGLE_SIDEBAR);
+
+/**
+ * Go to Inbox action - typically G then I sequence
+ *
+ * @example
+ * useKeyGoInbox(() => navigate('/inbox'), { scope: Scope.GLOBAL });
+ */
+export const useKeyGoInbox = createSemanticHook(Action.GO_INBOX);
+
+/**
+ * Go to My Issues action - typically G then M sequence
+ *
+ * @example
+ * useKeyGoMyIssues(() => navigate('/my-issues'), { scope: Scope.GLOBAL });
+ */
+export const useKeyGoMyIssues = createSemanticHook(Action.GO_MY_ISSUES);
+
+/**
+ * Go to Projects action - typically G then P sequence
+ *
+ * @example
+ * useKeyGoProjects(() => navigate('/projects'), { scope: Scope.GLOBAL });
+ */
+export const useKeyGoProjects = createSemanticHook(Action.GO_PROJECTS);
+
+/**
+ * Command palette action - typically Cmd/Ctrl + K
+ *
+ * @example
+ * useKeyCommandPalette(() => openCommandPalette(), { scope: Scope.GLOBAL });
+ */
+export const useKeyCommandPalette = createSemanticHook(Action.COMMAND_PALETTE);

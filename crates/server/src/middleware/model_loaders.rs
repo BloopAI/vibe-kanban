@@ -6,7 +6,7 @@ use axum::{
 };
 use db::models::{
     execution_process::ExecutionProcess, project::Project, session::Session, tag::Tag, task::Task,
-    workspace::Workspace,
+    team::Team, workspace::Workspace,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -167,5 +167,33 @@ pub async fn load_session_middleware(
     };
 
     request.extensions_mut().insert(session);
+    Ok(next.run(request).await)
+}
+
+// Middleware that loads and injects Team based on the team_id path parameter
+pub async fn load_team_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(team_id): Path<Uuid>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the team from the database
+    let team = match Team::find_by_id(&deployment.db().pool, team_id).await {
+        Ok(Some(team)) => team,
+        Ok(None) => {
+            tracing::warn!("Team {} not found", team_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch team {}: {}", team_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Insert the team as an extension
+    let mut request = request;
+    request.extensions_mut().insert(team);
+
+    // Continue with the next middleware/handler
     Ok(next.run(request).await)
 }

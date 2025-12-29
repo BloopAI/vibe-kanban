@@ -2,6 +2,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useProjects } from '@/hooks/useProjects';
+import { useTeams } from '@/hooks/useTeams';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -26,9 +27,10 @@ import {
   Github,
   Hash,
   Plus,
+  UsersRound,
 } from 'lucide-react';
-import { Logo } from '@/components/Logo';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 interface SidebarSectionProps {
   title: string;
@@ -156,6 +158,7 @@ export function Sidebar() {
   const { projectId } = useParams();
   const { isCollapsed, toggleCollapsed, sections, toggleSection } = useSidebar();
   const { projects } = useProjects();
+  const { teams } = useTeams();
 
   const handleCreateProject = async () => {
     try {
@@ -177,24 +180,28 @@ export function Sidebar() {
       )}
     >
       {/* Header */}
-      <div className="flex items-center h-12 px-3 border-b">
+      <div className="flex items-center h-12 px-2 border-b gap-1">
+        <WorkspaceSwitcher isCollapsed={isCollapsed} />
         {!isCollapsed && (
-          <Link to="/projects" className="flex items-center gap-2">
-            <Logo />
-          </Link>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn('h-8 w-8 shrink-0', isCollapsed ? 'mx-auto' : 'ml-auto')}
-          onClick={toggleCollapsed}
-        >
-          {isCollapsed ? (
-            <ChevronsRight className="h-4 w-4" />
-          ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={toggleCollapsed}
+          >
             <ChevronsLeft className="h-4 w-4" />
-          )}
-        </Button>
+          </Button>
+        )}
+        {isCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 mx-auto"
+            onClick={toggleCollapsed}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -251,7 +258,7 @@ export function Sidebar() {
           </SidebarSection>
         </div>
 
-        {/* Teams/Projects Section */}
+        {/* Your Projects Section */}
         <div className="mt-2 px-2">
           <SidebarSection
             title="Your projects"
@@ -278,6 +285,34 @@ export function Sidebar() {
                   <Plus className="h-4 w-4" />
                   <span>New project</span>
                 </button>
+              )}
+            </div>
+          </SidebarSection>
+        </div>
+
+        {/* Your Teams Section */}
+        <div className="mt-2 px-2">
+          <SidebarSection
+            title="Your teams"
+            isExpanded={sections.yourTeams}
+            onToggle={() => toggleSection('yourTeams')}
+            isCollapsed={isCollapsed}
+          >
+            <div className="space-y-0.5">
+              {teams.map((team) => (
+                <SidebarItem
+                  key={team.id}
+                  icon={UsersRound}
+                  label={team.name}
+                  to={`/teams/${team.id}`}
+                  isActive={location.pathname === `/teams/${team.id}`}
+                  isCollapsed={isCollapsed}
+                />
+              ))}
+              {!isCollapsed && teams.length === 0 && (
+                <div className="px-3 py-1.5 text-sm text-muted-foreground">
+                  No teams yet
+                </div>
               )}
             </div>
           </SidebarSection>
