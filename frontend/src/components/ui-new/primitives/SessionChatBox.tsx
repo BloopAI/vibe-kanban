@@ -237,7 +237,7 @@ export function SessionChatBox({
     >
       {/* Error alert */}
       {error && (
-        <div className="bg-error/10 border-b border-error px-double py-base">
+        <div className="bg-error/10 border-b px-double py-base">
           <p className="text-error text-sm">{error}</p>
         </div>
       )}
