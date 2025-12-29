@@ -3,8 +3,9 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::{delete, get, post},
+    routing::{delete, get},
 };
+use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
 use deployment::Deployment;
 use utils::response::ApiResponse;
@@ -143,9 +144,19 @@ pub async fn remove_project_from_team(
     }
 }
 
+/// Get all issues/tasks for a team
+pub async fn get_team_issues(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, ApiError> {
+    let tasks = Task::find_by_team_id_with_attempt_status(&deployment.db().pool, team.id).await?;
+    Ok(ResponseJson(ApiResponse::success(tasks)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
+        .route("/issues", get(get_team_issues))
         .route("/projects", get(get_team_projects).post(assign_project_to_team))
         .route("/projects/{project_id}", delete(remove_project_from_team))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));

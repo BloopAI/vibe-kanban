@@ -134,6 +134,7 @@ export function NoServerContent({
         parent_workspace_id: null,
         image_ids: null,
         shared_task_id: null,
+        team_id: null,
       },
       executor_profile_id: config.executor_profile,
       repos,

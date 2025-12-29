@@ -1359,6 +1359,11 @@ export const teamsApi = {
     );
     return handleApiResponse<void>(response);
   },
+
+  getIssues: async (teamId: string): Promise<TaskWithAttemptStatus[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/issues`);
+    return handleApiResponse<TaskWithAttemptStatus[]>(response);
+  },
 };
 
 // Inbox API
