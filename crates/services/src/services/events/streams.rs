@@ -141,8 +141,8 @@ impl EventService {
                 }
             });
 
-        // Start with initial snapshot, then live updates
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        // Start with initial snapshot, Ready signal, then live updates
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
         Ok(combined_stream)
@@ -220,8 +220,8 @@ impl EventService {
                 }
             });
 
-        // Start with initial snapshot, then live updates
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        // Start with initial snapshot, Ready signal, then live updates
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
         Ok(combined_stream)
@@ -362,8 +362,8 @@ impl EventService {
                 }
             });
 
-        // Start with initial snapshot, then live updates
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        // Start with initial snapshot, Ready signal, then live updates
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
         Ok(combined_stream)
@@ -442,7 +442,7 @@ impl EventService {
                 }
             });
 
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
         Ok(combined_stream)
     }
@@ -532,7 +532,7 @@ impl EventService {
             },
         );
 
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         Ok(initial_stream.chain(filtered_stream).boxed())
     }
 }

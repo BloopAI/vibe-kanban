@@ -28,11 +28,8 @@ export const useScratch = (
 
   const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
-  const { data, isConnected, error } = useJsonPatchWsStream<ScratchState>(
-    endpoint,
-    true,
-    initialData
-  );
+  const { data, isConnected, isInitialized, error } =
+    useJsonPatchWsStream<ScratchState>(endpoint, true, initialData);
 
   // Treat deleted scratches as null
   const rawScratch = data?.scratch as (Scratch & { deleted?: boolean }) | null;
@@ -49,7 +46,7 @@ export const useScratch = (
     await scratchApi.delete(scratchType, id);
   }, [scratchType, id]);
 
-  const isLoading = !data && !error && !isConnected;
+  const isLoading = !isInitialized && !error;
 
   return {
     scratch,

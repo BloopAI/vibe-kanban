@@ -873,7 +873,7 @@ pub trait ContainerService {
                         LogMsg::Finished => {
                             break;
                         }
-                        LogMsg::JsonPatch(_) => continue,
+                        LogMsg::JsonPatch(_) | LogMsg::Ready => continue,
                     }
                 }
             }
