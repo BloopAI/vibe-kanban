@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { Plus, Loader2, AlertCircle, Circle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,19 +20,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { useTeamProjects } from '@/hooks/useTeamProjects';
+import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
 import { useKeyCreate, Scope } from '@/keyboard';
 import type { Project } from 'shared/types';
 import { format } from 'date-fns';
-
-const STATUS_OPTIONS = [
-  { value: 'backlog', label: 'Backlog', color: 'bg-gray-400' },
-  { value: 'planned', label: 'Planned', color: 'bg-blue-400' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-yellow-400' },
-  { value: 'paused', label: 'Paused', color: 'bg-orange-400' },
-  { value: 'completed', label: 'Completed', color: 'bg-green-400' },
-  { value: 'canceled', label: 'Canceled', color: 'bg-red-400' },
-];
+import { cn } from '@/lib/utils';
 
 const PRIORITY_OPTIONS = [
   { value: 0, label: 'No priority', icon: '—' },
@@ -47,11 +41,6 @@ const HEALTH_OPTIONS = [
   { value: 2, label: 'At risk', color: 'text-yellow-500' },
   { value: 3, label: 'Off track', color: 'text-red-500' },
 ];
-
-function getStatusDisplay(status: string | null | undefined) {
-  const option = STATUS_OPTIONS.find(o => o.value === status) || STATUS_OPTIONS[0];
-  return option;
-}
 
 function getPriorityDisplay(priority: number | null | undefined) {
   const option = PRIORITY_OPTIONS.find(o => o.value === (priority ?? 0)) || PRIORITY_OPTIONS[0];
@@ -72,13 +61,85 @@ function formatDate(dateStr: string | null | undefined) {
   }
 }
 
+// Progress circle component for status percentage
+function ProgressCircle({ percentage }: { percentage: number }) {
+  const radius = 8;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  // Color based on completion
+  const getColor = (pct: number) => {
+    if (pct === 100) return 'stroke-green-500';
+    if (pct >= 75) return 'stroke-green-400';
+    if (pct >= 50) return 'stroke-yellow-500';
+    if (pct >= 25) return 'stroke-orange-400';
+    return 'stroke-orange-300';
+  };
+
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
+      {/* Background circle */}
+      <circle
+        cx="10"
+        cy="10"
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="text-muted-foreground/20"
+      />
+      {/* Progress circle */}
+      <circle
+        cx="10"
+        cy="10"
+        r={radius}
+        fill="none"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        className={getColor(percentage)}
+      />
+    </svg>
+  );
+}
+
 export function TeamProjects() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const { projects, isLoading, error } = useTeamProjects(teamId);
+  const { issues } = useTeamIssues(teamId);
   const { teams } = useTeams();
 
   const team = teams.find(t => t.id === teamId);
+
+  // Calculate issue stats per project
+  const projectStats = useMemo(() => {
+    const stats: Record<string, { total: number; done: number; percentage: number }> = {};
+
+    // Initialize all projects with zero counts
+    projects.forEach((project) => {
+      stats[project.id] = { total: 0, done: 0, percentage: 0 };
+    });
+
+    // Count issues per project
+    issues.forEach((issue) => {
+      if (issue.project_id && stats[issue.project_id]) {
+        stats[issue.project_id].total++;
+        if (issue.status === 'done') {
+          stats[issue.project_id].done++;
+        }
+      }
+    });
+
+    // Calculate percentages
+    Object.keys(stats).forEach((projectId) => {
+      const { total, done } = stats[projectId];
+      stats[projectId].percentage = total > 0 ? Math.round((done / total) * 100) : 0;
+    });
+
+    return stats;
+  }, [projects, issues]);
 
   const handleCreateProject = async () => {
     try {
@@ -98,7 +159,7 @@ export function TeamProjects() {
   };
 
   const handleProjectClick = (project: Project) => {
-    navigate(`/projects/${project.id}`);
+    navigate(`/teams/${teamId}/projects/${project.id}`);
   };
 
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
@@ -166,7 +227,6 @@ export function TeamProjects() {
             </TableHead>
             <TableBody>
               {projects.map((project) => {
-                const status = getStatusDisplay(project.status);
                 const priority = getPriorityDisplay(project.priority);
                 const health = getHealthDisplay(project.health);
 
@@ -250,32 +310,19 @@ export function TeamProjects() {
                       {formatDate(project.target_date)}
                     </TableCell>
 
-                    {/* Status */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs"
-                          >
-                            <Circle className={`h-2 w-2 fill-current ${status.color}`} />
-                            <span>{status.label}</span>
-                            <ChevronDown className="h-3 w-3 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          {STATUS_OPTIONS.map((option) => (
-                            <DropdownMenuItem
-                              key={option.value}
-                              onClick={() => handleEditProject({ ...project, status: option.value })}
-                            >
-                              <Circle className={`h-2 w-2 mr-2 fill-current ${option.color}`} />
-                              {option.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    {/* Status - Completion Percentage */}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <ProgressCircle percentage={projectStats[project.id]?.percentage || 0} />
+                        <span className={cn(
+                          'text-sm font-medium',
+                          projectStats[project.id]?.percentage === 100
+                            ? 'text-green-500'
+                            : 'text-muted-foreground'
+                        )}>
+                          {projectStats[project.id]?.percentage || 0}%
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

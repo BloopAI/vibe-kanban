@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", priority as \"priority: i32\", due_date as \"due_date: String\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_workspace_id = $1\n               ORDER BY created_at DESC",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", issue_number as \"issue_number: i32\", priority as \"priority: i32\", due_date as \"due_date: String\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE project_id = $1 AND team_id IS NULL\n               ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -44,28 +44,33 @@
         "type_info": "Blob"
       },
       {
-        "name": "priority: i32",
+        "name": "issue_number: i32",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "due_date: String",
+        "name": "priority: i32",
         "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "due_date: String",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "assignee_id: Uuid",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -84,9 +89,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "4676996e8fc8bc63c3b0c23909b9356c4610069a4a99adfdd1918652cf1d1bce"
+  "hash": "2b2c548fc2f2f6713336a9c88016ca6f1c6f382f26b458fdc61ce71aaed3f181"
 }

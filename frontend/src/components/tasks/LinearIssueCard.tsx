@@ -2,10 +2,10 @@ import { memo, useCallback, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Users } from 'lucide-react';
+import { User } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
-import { PriorityBadge } from '@/utils/priorityUtils';
+import { PriorityIcon } from '@/utils/priorityUtils';
 
 interface LinearIssueCardProps {
   task: TaskWithAttemptStatus;
@@ -15,6 +15,7 @@ interface LinearIssueCardProps {
   projectName?: string;
   onViewDetails: (task: TaskWithAttemptStatus) => void;
   isSelected?: boolean;
+  onAssigneeClick?: (task: TaskWithAttemptStatus, e: React.MouseEvent) => void;
 }
 
 function LinearIssueCardComponent({
@@ -25,6 +26,7 @@ function LinearIssueCardComponent({
   projectName,
   onViewDetails,
   isSelected,
+  onAssigneeClick,
 }: LinearIssueCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,11 @@ function LinearIssueCardComponent({
     onViewDetails(task);
   }, [task, onViewDetails]);
 
+  const handleAssigneeClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAssigneeClick?.(task, e);
+  }, [task, onAssigneeClick]);
+
   return (
     <Card
       ref={combinedRef}
@@ -78,33 +85,41 @@ function LinearIssueCardComponent({
       <div className="flex flex-col gap-2">
         {/* Top row: Issue ID and Assignee */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground font-mono">
+          <span className="text-xs text-muted-foreground font-mono font-medium">
             {issueKey || task.id.slice(0, 8).toUpperCase()}
           </span>
           <button
-            className="p-1 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              // TODO: Open assignee dropdown
-            }}
+            className={cn(
+              'h-6 w-6 rounded-full flex items-center justify-center',
+              'border border-dashed border-muted-foreground/40',
+              'text-muted-foreground hover:border-primary hover:text-primary',
+              'transition-colors'
+            )}
+            onClick={handleAssigneeClick}
+            title="Assign"
           >
-            <Users className="h-4 w-4" />
+            {task.assignee_id ? (
+              // Show first letter of assignee (placeholder for avatar)
+              <span className="text-xs font-medium">A</span>
+            ) : (
+              <User className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
 
-        {/* Title row with status icon */}
+        {/* Title row with priority and status icons */}
         <div className="flex items-start gap-2">
+          <PriorityIcon priority={task.priority} className="mt-0.5 shrink-0" />
           <StatusIcon status={status} className="mt-0.5 shrink-0" />
           <h4 className="text-sm font-medium leading-snug line-clamp-2">
             {task.title}
           </h4>
         </div>
 
-        {/* Bottom row: Priority and Project tag */}
-        <div className="flex items-center gap-2 mt-1">
-          <PriorityBadge priority={task.priority} />
-          {projectName && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs text-muted-foreground bg-muted/30">
+        {/* Bottom row: Project tag and labels */}
+        {projectName && (
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-muted-foreground bg-muted/50 border border-border/50">
               <svg
                 className="h-3 w-3"
                 viewBox="0 0 16 16"
@@ -115,8 +130,14 @@ function LinearIssueCardComponent({
               </svg>
               {projectName}
             </span>
-          )}
-        </div>
+            {/* Due date indicator */}
+            {task.due_date && (
+              <span className="text-xs text-muted-foreground">
+                Due: {new Date(task.due_date).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct Team {
     pub id: Uuid,
     pub name: String,
+    pub identifier: Option<String>, // Team prefix for issue IDs (e.g., "VIB")
     pub icon: Option<String>,
     pub color: Option<String>,
     #[ts(type = "Date")]
@@ -27,6 +28,7 @@ pub struct TeamProject {
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateTeam {
     pub name: String,
+    pub identifier: Option<String>, // If not provided, auto-generated from name
     pub icon: Option<String>,
     pub color: Option<String>,
 }
@@ -34,6 +36,7 @@ pub struct CreateTeam {
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateTeam {
     pub name: Option<String>,
+    pub identifier: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
 }
@@ -43,12 +46,32 @@ pub struct TeamProjectAssignment {
     pub project_id: Uuid,
 }
 
+/// Generate a team identifier from the team name
+/// Takes first 3-4 uppercase letters (preference for consonants)
+fn generate_identifier(name: &str) -> String {
+    let name_upper = name.to_uppercase();
+    let chars: Vec<char> = name_upper.chars().filter(|c| c.is_alphabetic()).collect();
+
+    if chars.is_empty() {
+        return "TEAM".to_string();
+    }
+
+    // Take first 3-4 characters, preferring to stop at a natural boundary
+    let len = chars.len().min(4);
+    if len <= 3 {
+        chars.into_iter().collect()
+    } else {
+        chars.into_iter().take(3).collect()
+    }
+}
+
 impl Team {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Team,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      identifier,
                       icon,
                       color,
                       created_at as "created_at!: DateTime<Utc>",
@@ -65,6 +88,7 @@ impl Team {
             Team,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      identifier,
                       icon,
                       color,
                       created_at as "created_at!: DateTime<Utc>",
@@ -79,18 +103,26 @@ impl Team {
 
     pub async fn create(pool: &SqlitePool, data: &CreateTeam) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
+        // Use provided identifier or auto-generate from name
+        let identifier = data
+            .identifier
+            .clone()
+            .unwrap_or_else(|| generate_identifier(&data.name));
+
         sqlx::query_as!(
             Team,
-            r#"INSERT INTO teams (id, name, icon, color)
-               VALUES ($1, $2, $3, $4)
+            r#"INSERT INTO teams (id, name, identifier, icon, color)
+               VALUES ($1, $2, $3, $4, $5)
                RETURNING id as "id!: Uuid",
                          name,
+                         identifier,
                          icon,
                          color,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             data.name,
+            identifier,
             data.icon,
             data.color
         )
@@ -108,22 +140,25 @@ impl Team {
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let name = data.name.as_ref().unwrap_or(&existing.name);
+        let identifier = data.identifier.clone().or(existing.identifier);
         let icon = data.icon.clone().or(existing.icon);
         let color = data.color.clone().or(existing.color);
 
         sqlx::query_as!(
             Team,
             r#"UPDATE teams
-               SET name = $2, icon = $3, color = $4, updated_at = datetime('now', 'subsec')
+               SET name = $2, identifier = $3, icon = $4, color = $5, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
+                         identifier,
                          icon,
                          color,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+            identifier,
             icon,
             color
         )
@@ -197,6 +232,7 @@ impl Team {
             Team,
             r#"SELECT t.id as "id!: Uuid",
                       t.name,
+                      t.identifier,
                       t.icon,
                       t.color,
                       t.created_at as "created_at!: DateTime<Utc>",
@@ -209,5 +245,18 @@ impl Team {
         )
         .fetch_all(pool)
         .await
+    }
+
+    /// Get the next issue number for a team
+    pub async fn get_next_issue_number(pool: &SqlitePool, team_id: Uuid) -> Result<i32, sqlx::Error> {
+        let result = sqlx::query_scalar!(
+            r#"SELECT COALESCE(MAX(issue_number), 0) + 1 as "next_number!: i32"
+               FROM tasks
+               WHERE team_id = $1"#,
+            team_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(result)
     }
 }

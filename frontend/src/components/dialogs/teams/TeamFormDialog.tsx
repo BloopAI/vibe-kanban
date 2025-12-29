@@ -109,12 +109,14 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
       if (isEditing && editTeam) {
         await updateTeam(editTeam.id, {
           name: name.trim(),
+          identifier: null, // Keep existing identifier (auto-generated if null)
           icon: icon,
           color: editTeam.color
         });
       } else {
         await createTeam({
           name: name.trim(),
+          identifier: null, // Auto-generated from name on backend
           icon: icon,
           color: null
         });

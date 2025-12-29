@@ -3,15 +3,33 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::{delete, get},
+    routing::{delete, get, post},
 };
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
+use serde::Deserialize;
+use ts_rs::TS;
 use deployment::Deployment;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_team_middleware};
+
+/// Request to migrate tasks from a project to a team
+#[derive(Debug, Deserialize, TS)]
+pub struct MigrateTasksRequest {
+    /// The project ID to migrate tasks from
+    pub project_id: Uuid,
+}
+
+/// Response for task migration
+#[derive(Debug, serde::Serialize, TS)]
+pub struct MigrateTasksResponse {
+    /// Number of tasks migrated
+    pub migrated_count: usize,
+    /// List of migrated task IDs
+    pub task_ids: Vec<Uuid>,
+}
 
 /// Get all teams
 pub async fn get_teams(
@@ -153,10 +171,45 @@ pub async fn get_team_issues(
     Ok(ResponseJson(ApiResponse::success(tasks)))
 }
 
+/// Migrate tasks from a project to a team
+/// This converts project tasks into team issues with auto-assigned issue numbers
+pub async fn migrate_tasks_to_team(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<MigrateTasksRequest>,
+) -> Result<ResponseJson<ApiResponse<MigrateTasksResponse>>, ApiError> {
+    let migrated_tasks = Task::migrate_project_tasks_to_team(
+        &deployment.db().pool,
+        payload.project_id,
+        team.id,
+    )
+    .await?;
+
+    let task_ids: Vec<Uuid> = migrated_tasks.iter().map(|t| t.id).collect();
+    let migrated_count = task_ids.len();
+
+    deployment
+        .track_if_analytics_allowed(
+            "tasks_migrated_to_team",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "project_id": payload.project_id.to_string(),
+                "migrated_count": migrated_count,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(MigrateTasksResponse {
+        migrated_count,
+        task_ids,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
         .route("/issues", get(get_team_issues))
+        .route("/migrate-tasks", post(migrate_tasks_to_team))
         .route("/projects", get(get_team_projects).post(assign_project_to_team))
         .route("/projects/{project_id}", delete(remove_project_from_team))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));

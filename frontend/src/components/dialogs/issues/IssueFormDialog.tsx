@@ -19,18 +19,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Circle,
-  SignalHigh,
-  SignalMedium,
-  SignalLow,
-  AlertCircle,
-  User,
   Folder,
   Tag,
   MoreHorizontal,
   CalendarDays,
   ChevronRight,
-  Plus,
   Link,
 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -40,6 +33,8 @@ import { useProjects } from '@/hooks/useProjects';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { cn } from '@/lib/utils';
 import type { TaskStatus } from 'shared/types';
+import { PrioritySelector, type PriorityValue } from '@/components/selectors/PrioritySelector';
+import { AssigneeSelector, type TeamMember } from '@/components/selectors/AssigneeSelector';
 
 export interface IssueFormDialogProps {
   teamId?: string;
@@ -48,15 +43,6 @@ export interface IssueFormDialogProps {
 
 export type IssueFormDialogResult = 'created' | 'canceled';
 
-// Priority options matching Linear's design
-const PRIORITIES = [
-  { value: 0, label: 'No priority', icon: Circle, shortcut: '0', color: 'text-muted-foreground' },
-  { value: 1, label: 'Urgent', icon: AlertCircle, shortcut: '1', color: 'text-red-500' },
-  { value: 2, label: 'High', icon: SignalHigh, shortcut: '2', color: 'text-orange-500' },
-  { value: 3, label: 'Medium', icon: SignalMedium, shortcut: '3', color: 'text-yellow-500' },
-  { value: 4, label: 'Low', icon: SignalLow, shortcut: '4', color: 'text-blue-500' },
-];
-
 // Status options with colors matching Linear
 const STATUSES: { value: TaskStatus; label: string; color: string; bgColor: string }[] = [
   { value: 'todo', label: 'Backlog', color: 'text-muted-foreground', bgColor: 'bg-muted-foreground' },
@@ -64,6 +50,13 @@ const STATUSES: { value: TaskStatus; label: string; color: string; bgColor: stri
   { value: 'inreview', label: 'In Review', color: 'text-blue-500', bgColor: 'bg-blue-500' },
   { value: 'done', label: 'Done', color: 'text-green-500', bgColor: 'bg-green-500' },
   { value: 'cancelled', label: 'Cancelled', color: 'text-red-500', bgColor: 'bg-red-500' },
+];
+
+// Mock team members - in real app, fetch from API
+const MOCK_TEAM_MEMBERS: TeamMember[] = [
+  { id: '1', name: 'John Doe', email: 'john@example.com' },
+  { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
+  { id: '3', name: 'Bob Johnson', email: 'bob@example.com' },
 ];
 
 // Due date presets
@@ -101,12 +94,12 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
   const [priority, setPriority] = useState<number>(0);
   const [projectId, setProjectId] = useState<string | null>(initialProjectId || null);
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [createMore, setCreateMore] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { createTask } = useTaskMutations(projectId || undefined);
 
-  const selectedPriority = PRIORITIES.find((p) => p.value === priority) || PRIORITIES[0];
   const selectedStatus = STATUSES.find((s) => s.value === status) || STATUSES[0];
   const selectedProject = projectId ? projects.find((p) => p.id === projectId) : null;
 
@@ -130,7 +123,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
         team_id: teamId || null,
         priority: priority || null,
         due_date: dueDate,
-        assignee_id: null,
+        assignee_id: assigneeId,
       });
 
       if (createMore) {
@@ -139,6 +132,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
         setDescription('');
         setPriority(0);
         setDueDate(null);
+        setAssigneeId(null);
       } else {
         modal.resolve('created' as IssueFormDialogResult);
         modal.hide();
@@ -148,7 +142,7 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, priority, projectId, teamId, dueDate, createMore, createTask, modal]);
+  }, [title, description, status, priority, projectId, teamId, dueDate, assigneeId, createMore, createTask, modal]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -189,8 +183,6 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
     };
   }, [modal.visible, title, projectId, handleSubmit]);
 
-  const PriorityIcon = selectedPriority.icon;
-
   return (
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[540px] p-0 gap-0">
@@ -230,176 +222,174 @@ const IssueFormDialogImpl = NiceModal.create<IssueFormDialogProps>(({ teamId, pr
         </div>
 
         {/* Bottom toolbar */}
-        <div className="flex items-center gap-1 px-3 py-2 border-t bg-muted/30">
-          {/* Status */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs">
-                <div className={cn('h-3 w-3 rounded-full border-2', selectedStatus.color.replace('text-', 'border-'))} />
-                {selectedStatus.label}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-40">
-              {STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s.value}
-                  onClick={() => setStatus(s.value)}
-                  className={cn('gap-2', status === s.value && 'bg-accent')}
-                >
-                  <div className={cn('h-3 w-3 rounded-full border-2', s.color.replace('text-', 'border-'))} />
-                  {s.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Priority */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs">
-                <PriorityIcon className={cn('h-3.5 w-3.5', selectedPriority.color)} />
-                {selectedPriority.label !== 'No priority' && selectedPriority.label}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              {PRIORITIES.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <DropdownMenuItem
-                    key={p.value}
-                    onClick={() => setPriority(p.value)}
-                    className={cn('justify-between', priority === p.value && 'bg-accent')}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Icon className={cn('h-4 w-4', p.color)} />
-                      {p.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{p.shortcut}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Assignee */}
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" disabled>
-            <User className="h-3.5 w-3.5" />
-          </Button>
-
-          {/* Project */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs">
-                <Folder className="h-3.5 w-3.5" />
-                {selectedProject?.name || 'Project'}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem onClick={() => setProjectId(null)}>
-                No project
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {projects.map((p) => (
-                <DropdownMenuItem
-                  key={p.id}
-                  onClick={() => setProjectId(p.id)}
-                  className={cn(projectId === p.id && 'bg-accent')}
-                >
-                  {p.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Labels */}
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" disabled>
-            <Tag className="h-3.5 w-3.5" />
-          </Button>
-
-          {/* More menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <CalendarDays className="h-4 w-4 mr-2" />
-                  Set due date
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-48">
-                  <DropdownMenuItem onClick={() => {
-                    // Custom date input would go here
-                  }}>
-                    Custom
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {DUE_DATE_PRESETS.map((preset) => (
-                    <DropdownMenuItem
-                      key={preset.label}
-                      onClick={() => setDueDate(getDueDate(preset))}
-                    >
-                      {preset.label}
-                    </DropdownMenuItem>
-                  ))}
-                  {dueDate && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setDueDate(null)}>
-                        Clear due date
-                      </DropdownMenuItem>
-                    </>
+        <div className="px-4 py-3 border-t bg-muted/20">
+          {/* Toolbar buttons row */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Status */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-8 gap-2 px-3 text-xs font-medium rounded-md",
+                    "border-border/60 hover:bg-accent/50"
                   )}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem disabled>
-                <Link className="h-4 w-4 mr-2" />
-                Add link
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled>
-                <Plus className="h-4 w-4 mr-2" />
-                Add sub-issue
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                >
+                  <div className={cn('h-2.5 w-2.5 rounded-full', selectedStatus.bgColor)} />
+                  {selectedStatus.label}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44">
+                {STATUSES.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    onClick={() => setStatus(s.value)}
+                    className={cn('gap-2 cursor-pointer', status === s.value && 'bg-accent')}
+                  >
+                    <div className={cn('h-2.5 w-2.5 rounded-full', s.bgColor)} />
+                    {s.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          {/* Due date indicator */}
-          {dueDate && (
-            <span className="text-xs text-muted-foreground ml-1">
-              Due: {new Date(dueDate).toLocaleDateString()}
-            </span>
-          )}
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Create more toggle */}
-          <div className="flex items-center gap-2">
-            <Switch
-              id="create-more"
-              checked={createMore}
-              onCheckedChange={setCreateMore}
-              className="h-4 w-7"
+            {/* Priority */}
+            <PrioritySelector
+              value={priority as PriorityValue}
+              onChange={(value) => setPriority(value)}
+              disabled={isSubmitting}
             />
-            <Label htmlFor="create-more" className="text-xs text-muted-foreground cursor-pointer">
-              Create more
-            </Label>
+
+            {/* Assignee */}
+            <AssigneeSelector
+              value={assigneeId}
+              onChange={setAssigneeId}
+              teamMembers={MOCK_TEAM_MEMBERS}
+              disabled={isSubmitting}
+            />
+
+            {/* Project */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-8 gap-2 px-3 text-xs font-medium rounded-md",
+                    "border-border/60 hover:bg-accent/50",
+                    selectedProject && "text-indigo-600 dark:text-indigo-400"
+                  )}
+                >
+                  <Folder className="h-3.5 w-3.5" />
+                  {selectedProject?.name || 'Project'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem onClick={() => setProjectId(null)} className="cursor-pointer">
+                  No project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {projects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() => setProjectId(p.id)}
+                    className={cn('cursor-pointer', projectId === p.id && 'bg-accent')}
+                  >
+                    {p.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* More menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <CalendarDays className="h-4 w-4 mr-2" />
+                    Set due date
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-48">
+                    {DUE_DATE_PRESETS.map((preset) => (
+                      <DropdownMenuItem
+                        key={preset.label}
+                        onClick={() => setDueDate(getDueDate(preset))}
+                        className="cursor-pointer"
+                      >
+                        {preset.label}
+                      </DropdownMenuItem>
+                    ))}
+                    {dueDate && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setDueDate(null)} className="cursor-pointer text-red-500">
+                          Clear due date
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuItem disabled>
+                  <Tag className="h-4 w-4 mr-2" />
+                  Add labels
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                  <Link className="h-4 w-4 mr-2" />
+                  Add link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Due date indicator */}
+            {dueDate && (
+              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded-md">
+                Due {new Date(dueDate).toLocaleDateString()}
+              </span>
+            )}
           </div>
 
-          {/* Create button */}
-          <Button
-            size="sm"
-            className="h-7 px-3 text-xs gap-1"
-            onClick={handleSubmit}
-            disabled={isSubmitting || !title.trim() || !projectId}
-          >
-            {isSubmitting ? 'Creating...' : 'Create issue'}
-            <kbd className="hidden sm:inline-flex h-4 items-center gap-0.5 rounded bg-primary-foreground/20 px-1 text-[10px] font-medium">
-              <span className="text-[10px]">⌘</span>↵
-            </kbd>
-          </Button>
+          {/* Action row */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            {/* Create more toggle */}
+            <div className="flex items-center gap-2">
+              <Switch
+                id="create-more"
+                checked={createMore}
+                onCheckedChange={setCreateMore}
+                className="h-4 w-8 data-[state=checked]:bg-indigo-500"
+              />
+              <Label htmlFor="create-more" className="text-xs text-muted-foreground cursor-pointer select-none">
+                Create more
+              </Label>
+            </div>
+
+            {/* Create button */}
+            <Button
+              size="sm"
+              className={cn(
+                "h-8 px-4 text-xs font-medium gap-1.5",
+                "bg-indigo-600 hover:bg-indigo-700 text-white",
+                "shadow-sm"
+              )}
+              onClick={handleSubmit}
+              disabled={isSubmitting || !title.trim() || !projectId}
+            >
+              {isSubmitting ? 'Creating...' : 'Create issue'}
+              <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded bg-indigo-500/50 px-1.5 text-[10px] font-medium">
+                <span>⌘</span>↵
+              </kbd>
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

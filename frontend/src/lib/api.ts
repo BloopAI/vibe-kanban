@@ -94,6 +94,8 @@ import {
   CreateTeam,
   UpdateTeam,
   TeamProjectAssignment,
+  MigrateTasksRequest,
+  MigrateTasksResponse,
   InboxItem,
   CreateInboxItem,
   InboxSummary,
@@ -1363,6 +1365,17 @@ export const teamsApi = {
   getIssues: async (teamId: string): Promise<TaskWithAttemptStatus[]> => {
     const response = await makeRequest(`/api/teams/${teamId}/issues`);
     return handleApiResponse<TaskWithAttemptStatus[]>(response);
+  },
+
+  migrateTasks: async (
+    teamId: string,
+    data: MigrateTasksRequest
+  ): Promise<MigrateTasksResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/migrate-tasks`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<MigrateTasksResponse>(response);
   },
 };
 

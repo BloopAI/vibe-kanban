@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu.tsx';
 import { Button } from '@/components/ui/button.tsx';
 import {
+  ArrowRightLeft,
   Calendar,
   Edit,
   ExternalLink,
@@ -27,6 +28,7 @@ import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
+import { MigrateTasksDialog } from '@/components/dialogs/teams/MigrateTasksDialog';
 import { useTranslation } from 'react-i18next';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 
@@ -104,6 +106,14 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
     }
   };
 
+  const handleMigrateTasks = async () => {
+    try {
+      await MigrateTasksDialog.show({ projectId: project.id });
+    } catch {
+      // User cancelled
+    }
+  };
+
   return (
     <Card
       className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border`}
@@ -163,6 +173,15 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
                     {t('linkToOrganization')}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMigrateTasks();
+                  }}
+                >
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  Migrate to Team
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

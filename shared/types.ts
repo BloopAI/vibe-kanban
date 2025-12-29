@@ -52,15 +52,31 @@ export type CreateTag = { tag_name: string, content: string, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
-export type Team = { id: string, name: string, icon: string | null, color: string | null, created_at: Date, updated_at: Date, };
+export type Team = { id: string, name: string, identifier: string | null, icon: string | null, color: string | null, created_at: Date, updated_at: Date, };
 
 export type TeamProject = { team_id: string, project_id: string, created_at: Date, };
 
-export type CreateTeam = { name: string, icon: string | null, color: string | null, };
+export type CreateTeam = { name: string, identifier: string | null, icon: string | null, color: string | null, };
 
-export type UpdateTeam = { name: string | null, icon: string | null, color: string | null, };
+export type UpdateTeam = { name: string | null, identifier: string | null, icon: string | null, color: string | null, };
 
 export type TeamProjectAssignment = { project_id: string, };
+
+export type MigrateTasksRequest = { 
+/**
+ * The project ID to migrate tasks from
+ */
+project_id: string, };
+
+export type MigrateTasksResponse = { 
+/**
+ * Number of tasks migrated
+ */
+migrated_count: number, 
+/**
+ * List of migrated task IDs
+ */
+task_ids: Array<string>, };
 
 export type InboxNotificationType = "task_assigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "workspace_created" | "system_notification";
 
@@ -74,9 +90,9 @@ export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelle
 
 export type TaskPriority = "None" | "Urgent" | "High" | "Medium" | "Low";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, issue_number: number | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, issue_number: number | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 

@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useCallback } from 'react';
 import {
   DndContext,
   type DragEndEvent,
@@ -10,15 +10,21 @@ import {
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreHorizontal, ChevronRight, ChevronDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Plus, MoreHorizontal, ChevronRight, ChevronDown, EyeOff } from 'lucide-react';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
 import { LinearIssueCard } from './LinearIssueCard';
 import { statusLabels } from '@/utils/statusLabels';
 
-// Column configuration - which columns are shown by default
-const VISIBLE_COLUMNS: TaskStatus[] = ['inprogress', 'done'];
-const HIDDEN_COLUMNS: TaskStatus[] = ['todo', 'inreview', 'cancelled'];
+// Default column configuration
+const DEFAULT_VISIBLE: TaskStatus[] = ['todo', 'inprogress', 'done'];
+const ALL_STATUSES: TaskStatus[] = ['todo', 'inprogress', 'inreview', 'done', 'cancelled'];
 
 interface ColumnItem {
   task: TaskWithAttemptStatus;
@@ -39,6 +45,7 @@ interface KanbanColumnProps {
   items: ColumnItem[];
   onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
   onCreateTask?: () => void;
+  onHideColumn?: (status: TaskStatus) => void;
   selectedTaskId?: string;
 }
 
@@ -47,6 +54,7 @@ function KanbanColumn({
   items,
   onViewTaskDetails,
   onCreateTask,
+  onHideColumn,
   selectedTaskId,
 }: KanbanColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id: status });
@@ -65,13 +73,26 @@ function KanbanColumn({
         <span className="font-medium text-sm">{statusLabels[status]}</span>
         <span className="text-sm text-muted-foreground">{items.length}</span>
         <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => onHideColumn?.(status)}
+              className="cursor-pointer"
+            >
+              <EyeOff className="h-4 w-4 mr-2" />
+              Hide column
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="ghost"
           size="icon"
@@ -114,10 +135,15 @@ function KanbanColumn({
 interface HiddenColumnsSectionProps {
   columns: Record<TaskStatus, ColumnItem[]>;
   hiddenStatuses: TaskStatus[];
+  onShowColumn: (status: TaskStatus) => void;
 }
 
-function HiddenColumnsSection({ columns, hiddenStatuses }: HiddenColumnsSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function HiddenColumnsSection({ columns, hiddenStatuses, onShowColumn }: HiddenColumnsSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  if (hiddenStatuses.length === 0) {
+    return null;
+  }
 
   return (
     <div className="min-w-[200px] border-l pl-4">
@@ -136,18 +162,21 @@ function HiddenColumnsSection({ columns, hiddenStatuses }: HiddenColumnsSectionP
       {isExpanded && (
         <div className="flex flex-col gap-1 mt-2">
           {hiddenStatuses.map((status) => (
-            <div
+            <button
               key={status}
-              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/50 cursor-pointer"
+              onClick={() => onShowColumn(status)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/50 cursor-pointer text-left transition-colors"
+              title={`Click to show ${statusLabels[status]} column`}
             >
               <StatusIcon status={status} />
               <span className="text-sm">{statusLabels[status]}</span>
               {columns[status]?.length > 0 && (
-                <span className="text-xs text-muted-foreground ml-auto">
+                <span className="text-xs text-muted-foreground ml-auto bg-muted px-1.5 py-0.5 rounded">
                   {columns[status].length}
                 </span>
               )}
-            </div>
+              <Plus className="h-3 w-3 text-muted-foreground ml-1" />
+            </button>
           ))}
         </div>
       )}
@@ -162,11 +191,32 @@ function TeamKanbanBoardComponent({
   onCreateTask,
   selectedTaskId,
 }: TeamKanbanBoardProps) {
+  const [visibleStatuses, setVisibleStatuses] = useState<TaskStatus[]>(DEFAULT_VISIBLE);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     })
   );
+
+  const hiddenStatuses = ALL_STATUSES.filter((s) => !visibleStatuses.includes(s));
+
+  const handleShowColumn = useCallback((status: TaskStatus) => {
+    setVisibleStatuses((prev) => {
+      if (prev.includes(status)) return prev;
+      // Insert in the correct order based on ALL_STATUSES
+      const newVisible = [...prev, status];
+      return ALL_STATUSES.filter((s) => newVisible.includes(s));
+    });
+  }, []);
+
+  const handleHideColumn = useCallback((status: TaskStatus) => {
+    setVisibleStatuses((prev) => {
+      // Don't allow hiding if only one column is visible
+      if (prev.length <= 1) return prev;
+      return prev.filter((s) => s !== status);
+    });
+  }, []);
 
   return (
     <DndContext
@@ -177,20 +227,25 @@ function TeamKanbanBoardComponent({
       <div className="flex h-full gap-0">
         {/* Visible Columns */}
         <div className="flex divide-x border-x">
-          {VISIBLE_COLUMNS.map((status) => (
+          {visibleStatuses.map((status) => (
             <KanbanColumn
               key={status}
               status={status}
               items={columns[status] || []}
               onViewTaskDetails={onViewTaskDetails}
               onCreateTask={onCreateTask}
+              onHideColumn={handleHideColumn}
               selectedTaskId={selectedTaskId}
             />
           ))}
         </div>
 
         {/* Hidden Columns Section */}
-        <HiddenColumnsSection columns={columns} hiddenStatuses={HIDDEN_COLUMNS} />
+        <HiddenColumnsSection
+          columns={columns}
+          hiddenStatuses={hiddenStatuses}
+          onShowColumn={handleShowColumn}
+        />
       </div>
     </DndContext>
   );

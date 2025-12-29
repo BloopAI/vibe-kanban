@@ -6,6 +6,7 @@ import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { TeamIssues } from '@/pages/TeamIssues';
 import { TeamProjects } from '@/pages/TeamProjects';
+import { TeamProjectDetail } from '@/pages/TeamProjectDetail';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
@@ -167,6 +168,7 @@ function AppContent() {
                 <Route path="/teams/:teamId" element={<Navigate to="issues" replace />} />
                 <Route path="/teams/:teamId/issues" element={<TeamIssues />} />
                 <Route path="/teams/:teamId/projects" element={<TeamProjects />} />
+                <Route path="/teams/:teamId/projects/:projectId" element={<TeamProjectDetail />} />
                 <Route path="/teams/:teamId/views" element={<div className="p-4">Team Views - Coming Soon</div>} />
               </Route>
             </SentryRoutes>

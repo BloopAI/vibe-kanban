@@ -85,10 +85,14 @@ export function TeamIssues() {
       cancelled: [],
     };
 
-    issues.forEach((issue, idx) => {
+    issues.forEach((issue) => {
       const statusKey = normalizeStatus(issue.status);
-      // Generate issue key based on index (temporary until we implement proper issue numbering)
-      const issueKey = team ? `${team.name.slice(0, 3).toUpperCase()}-${idx + 1}` : undefined;
+      // Generate issue key from team identifier and issue_number
+      let issueKey: string | undefined;
+      if (team && issue.issue_number != null) {
+        const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
+        issueKey = `${prefix}-${issue.issue_number}`;
+      }
       columns[statusKey].push({
         task: issue,
         issueKey,
@@ -96,12 +100,12 @@ export function TeamIssues() {
       });
     });
 
-    // Sort each column by created_at descending
+    // Sort each column by issue_number ascending (lowest first)
     TASK_STATUSES.forEach((status) => {
       columns[status].sort((a, b) => {
-        const aTime = new Date(a.task.created_at).getTime();
-        const bTime = new Date(b.task.created_at).getTime();
-        return bTime - aTime;
+        const aNum = a.task.issue_number ?? 0;
+        const bNum = b.task.issue_number ?? 0;
+        return aNum - bNum;
       });
     });
 

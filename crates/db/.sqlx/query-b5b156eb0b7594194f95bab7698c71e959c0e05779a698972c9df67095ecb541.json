@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", priority as \"priority: i32\", due_date as \"due_date: String\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE id = $1",
+  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, team_id, issue_number, priority, due_date, assignee_id)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", issue_number as \"issue_number: i32\", priority as \"priority: i32\", due_date as \"due_date: String\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -44,33 +44,38 @@
         "type_info": "Blob"
       },
       {
-        "name": "priority: i32",
+        "name": "issue_number: i32",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "due_date: String",
+        "name": "priority: i32",
         "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "due_date: String",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "assignee_id: Uuid",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 12
     },
     "nullable": [
       true,
@@ -84,9 +89,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "1b30eabc605f4f81e7dc980342f66a3f3f55eb84a29475de6a67ab48388188b3"
+  "hash": "b5b156eb0b7594194f95bab7698c71e959c0e05779a698972c9df67095ecb541"
 }

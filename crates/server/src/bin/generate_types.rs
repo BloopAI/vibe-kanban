@@ -36,6 +36,8 @@ fn generate_types_content() -> String {
         db::models::team::CreateTeam::decl(),
         db::models::team::UpdateTeam::decl(),
         db::models::team::TeamProjectAssignment::decl(),
+        server::routes::teams::MigrateTasksRequest::decl(),
+        server::routes::teams::MigrateTasksResponse::decl(),
         db::models::inbox::InboxNotificationType::decl(),
         db::models::inbox::InboxItem::decl(),
         db::models::inbox::CreateInboxItem::decl(),
