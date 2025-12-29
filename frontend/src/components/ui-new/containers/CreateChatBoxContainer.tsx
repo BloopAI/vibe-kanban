@@ -91,8 +91,9 @@ export function CreateChatBoxContainer() {
     await createWorkspace.mutateAsync({
       task: {
         project_id: projectId,
-        title: message.trim().substring(0, 100),
-        description: message.length > 100 ? message : null,
+        title: message.trim().split('\n')[0].substring(0, 100),
+        description:
+          message.trim().split('\n').slice(1).join('\n').trim() || null,
         status: null,
         parent_workspace_id: null,
         image_ids: null,
