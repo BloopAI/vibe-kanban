@@ -7,7 +7,7 @@ import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { openTaskForm } from '@/lib/openTaskForm';
+import { openIssueForm } from '@/lib/openIssueForm';
 
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
@@ -61,14 +61,12 @@ export function TeamIssues() {
   } = useTeamIssues(teamId);
 
   const handleCreateIssue = useCallback(() => {
-    if (teamProjects.length === 0) {
-      // No projects assigned to team - redirect to team projects page
-      alert('Please assign a project to this team first.');
-      return;
-    }
-    // Use the first team project for now
-    const projectId = teamProjects[0].id;
-    openTaskForm({ mode: 'create', projectId, teamId });
+    // Open Linear-style issue form dialog
+    // If no team projects, user can select any project from the dialog
+    openIssueForm({
+      teamId,
+      projectId: teamProjects.length > 0 ? teamProjects[0].id : undefined,
+    });
   }, [teamId, teamProjects]);
 
   const kanbanColumns = useMemo(() => {
@@ -118,6 +116,9 @@ export function TeamIssues() {
           status: newStatus,
           parent_workspace_id: issue.parent_workspace_id,
           image_ids: null,
+          priority: null,
+          due_date: null,
+          assignee_id: null,
         });
         // Refresh to get updated data
         await refresh();

@@ -1,0 +1,116 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      priority as \"priority: i32\",\n                      lead_id as \"lead_id: Uuid\",\n                      start_date,\n                      target_date,\n                      status,\n                      health as \"health: i32\",\n                      description,\n                      summary,\n                      icon,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE rowid = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script_working_dir",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_agent_working_dir",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "priority: i32",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "lead_id: Uuid",
+        "ordinal": 7,
+        "type_info": "Blob"
+      },
+      {
+        "name": "start_date",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_date",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "health: i32",
+        "ordinal": 11,
+        "type_info": "Integer"
+      },
+      {
+        "name": "description",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "icon",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 15,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 16,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "341d78607c9347df27245a3b258db14e5efd50672af2ec233ecc8eec0f7bb6b5"
+}

@@ -413,6 +413,15 @@ pub trait ContainerService {
                                 } else {
                                     project.default_agent_working_dir.clone()
                                 },
+                                priority: None,
+                                lead_id: None,
+                                start_date: None,
+                                target_date: None,
+                                status: None,
+                                health: None,
+                                description: None,
+                                summary: None,
+                                icon: None,
                             },
                         )
                         .await?;

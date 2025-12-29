@@ -24,10 +24,13 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
 import { EmojiPicker } from '@/components/ui/emoji-picker';
+import type { Team } from 'shared/types';
 
-export interface TeamFormDialogProps {}
+export interface TeamFormDialogProps {
+  editTeam?: Team;
+}
 
-export type TeamFormDialogResult = 'saved' | 'canceled';
+export type TeamFormDialogResult = 'saved' | 'canceled' | 'deleted';
 
 // Common timezones
 const TIMEZONES = [
@@ -62,25 +65,29 @@ function generateIdentifier(name: string): string {
     .toUpperCase();
 }
 
-const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(() => {
+const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) => {
   const modal = useModal();
-  const { createTeam, teams } = useTeams();
-  const [name, setName] = useState('');
-  const [icon, setIcon] = useState<string | null>(null);
+  const { createTeam, updateTeam, deleteTeam, teams } = useTeams();
+  const isEditing = !!editTeam;
+
+  const [name, setName] = useState(editTeam?.name || '');
+  const [icon, setIcon] = useState<string | null>(editTeam?.icon || null);
   const [identifier, setIdentifier] = useState('');
   const [identifierManuallySet, setIdentifierManuallySet] = useState(false);
   const [parentTeamId, setParentTeamId] = useState<string>('none');
   const [timezone, setTimezone] = useState<string>('UTC');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-generate identifier from name
+  // Auto-generate identifier from name (only for new teams)
   useEffect(() => {
-    if (!identifierManuallySet) {
+    if (!identifierManuallySet && !isEditing) {
       setIdentifier(generateIdentifier(name));
     }
-  }, [name, identifierManuallySet]);
+  }, [name, identifierManuallySet, isEditing]);
 
   const handleIdentifierChange = (value: string) => {
     setIdentifier(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
@@ -98,19 +105,43 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(() => {
     try {
       setIsSubmitting(true);
       setError(null);
-      // Note: identifier, parentTeamId, timezone, isPrivate would need backend support
-      // For now, we store what the backend supports
-      await createTeam({
-        name: name.trim(),
-        icon: icon,
-        color: null
-      });
+
+      if (isEditing && editTeam) {
+        await updateTeam(editTeam.id, {
+          name: name.trim(),
+          icon: icon,
+          color: editTeam.color
+        });
+      } else {
+        await createTeam({
+          name: name.trim(),
+          icon: icon,
+          color: null
+        });
+      }
       modal.resolve('saved' as TeamFormDialogResult);
       modal.hide();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create team');
+      setError(err instanceof Error ? err.message : isEditing ? 'Failed to update team' : 'Failed to create team');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editTeam) return;
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+      await deleteTeam(editTeam.id);
+      modal.resolve('deleted' as TeamFormDialogResult);
+      modal.hide();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete team');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -126,9 +157,11 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(() => {
       <DialogContent className="sm:max-w-[480px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create team</DialogTitle>
+            <DialogTitle>{isEditing ? 'Edit team' : 'Create team'}</DialogTitle>
             <DialogDescription>
-              Create a new team to organize your projects and collaborate with members.
+              {isEditing
+                ? 'Update your team settings and information.'
+                : 'Create a new team to organize your projects and collaborate with members.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -237,18 +270,52 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(() => {
             )}
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim()}>
-              {isSubmitting ? 'Creating...' : 'Create team'}
-            </Button>
+          <DialogFooter className="flex justify-between">
+            <div>
+              {isEditing && !showDeleteConfirm && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isSubmitting || isDeleting}
+                >
+                  Delete team
+                </Button>
+              )}
+              {showDeleteConfirm && (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Confirm delete'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isSubmitting || isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting || isDeleting || !name.trim()}>
+                {isSubmitting ? (isEditing ? 'Saving...' : 'Creating...') : (isEditing ? 'Save changes' : 'Create team')}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

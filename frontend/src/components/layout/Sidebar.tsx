@@ -28,7 +28,17 @@ import {
   Hash,
   Plus,
   CircleDot,
+  MoreHorizontal,
+  Settings,
+  Trash2,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { Team } from 'shared/types';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
@@ -177,6 +187,7 @@ interface SidebarTeamItemProps {
   onToggle: () => void;
   isCollapsed?: boolean;
   pathname: string;
+  onEdit: (team: Team) => void;
 }
 
 function SidebarTeamItem({
@@ -185,6 +196,7 @@ function SidebarTeamItem({
   onToggle,
   isCollapsed,
   pathname,
+  onEdit,
 }: SidebarTeamItemProps) {
   const teamBasePath = `/teams/${team.id}`;
   const isTeamActive = pathname.startsWith(teamBasePath);
@@ -216,27 +228,55 @@ function SidebarTeamItem({
   }
 
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0.5 group/team">
       {/* Team header with expand/collapse */}
-      <button
-        onClick={onToggle}
+      <div
         className={cn(
-          'flex items-center gap-2 w-full px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer',
+          'flex items-center gap-2 w-full px-3 py-1.5 text-sm rounded-md transition-colors',
           isTeamActive
             ? 'text-foreground font-medium'
             : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
         )}
       >
-        <span className="h-4 w-4 shrink-0 text-base flex items-center justify-center">
-          {team.icon || '👥'}
-        </span>
-        <span className="flex-1 truncate text-left">{team.name}</span>
-        {isExpanded ? (
-          <ChevronDown className="h-3 w-3 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        )}
-      </button>
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <span className="h-4 w-4 shrink-0 text-base flex items-center justify-center">
+            {team.icon || '👥'}
+          </span>
+          <span className="flex-1 truncate text-left">{team.name}</span>
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          )}
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="opacity-0 group-hover/team:opacity-100 h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-opacity shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => onEdit(team)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Team settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onEdit(team)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete team
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Sub-items */}
       {isExpanded && (
@@ -286,6 +326,14 @@ export function Sidebar() {
   const handleCreateTeam = async () => {
     try {
       await TeamFormDialog.show({});
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleEditTeam = async (team: Team) => {
+    try {
+      await TeamFormDialog.show({ editTeam: team });
     } catch {
       // User cancelled
     }
@@ -428,6 +476,7 @@ export function Sidebar() {
                   onToggle={() => toggleTeamExpanded(team.id)}
                   isCollapsed={isCollapsed}
                   pathname={location.pathname}
+                  onEdit={handleEditTeam}
                 />
               ))}
               {!isCollapsed && teams.length === 0 && (

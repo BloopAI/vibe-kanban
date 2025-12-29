@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_workspace_id = $1\n               ORDER BY created_at DESC",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", priority as \"priority: i32\", due_date as \"due_date: String\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id IS NOT NULL",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,33 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "priority: i32",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "due_date: String",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "assignee_id: Uuid",
+        "ordinal": 10,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -66,9 +81,12 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "614491a121f8b320cdc23cf6c0b5b6076b68e9eef480017201499e9f94234af0"
+  "hash": "7d212e410d689565b733ecf19ccd112ca08c8db80b41bf97f67ffca241340a44"
 }

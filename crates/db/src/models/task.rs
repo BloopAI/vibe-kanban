@@ -22,6 +22,39 @@ pub enum TaskStatus {
     Cancelled,
 }
 
+/// Task priority levels (Linear-style)
+/// 0 = No priority, 1 = Urgent, 2 = High, 3 = Medium, 4 = Low
+#[derive(
+    Debug, Clone, Copy, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
+)]
+#[repr(i32)]
+pub enum TaskPriority {
+    #[default]
+    None = 0,
+    Urgent = 1,
+    High = 2,
+    Medium = 3,
+    Low = 4,
+}
+
+impl From<i64> for TaskPriority {
+    fn from(value: i64) -> Self {
+        match value {
+            1 => TaskPriority::Urgent,
+            2 => TaskPriority::High,
+            3 => TaskPriority::Medium,
+            4 => TaskPriority::Low,
+            _ => TaskPriority::None,
+        }
+    }
+}
+
+impl From<TaskPriority> for i64 {
+    fn from(value: TaskPriority) -> Self {
+        value as i64
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Task {
     pub id: Uuid,
@@ -32,6 +65,9 @@ pub struct Task {
     pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
     pub shared_task_id: Option<Uuid>,
     pub team_id: Option<Uuid>, // Foreign key to Team (Linear-style issue ownership)
+    pub priority: Option<i32>, // 0=none, 1=urgent, 2=high, 3=medium, 4=low
+    pub due_date: Option<String>, // ISO date string for deadline
+    pub assignee_id: Option<Uuid>, // Foreign key to user/member
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -76,6 +112,9 @@ pub struct CreateTask {
     pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
     pub team_id: Option<Uuid>,
+    pub priority: Option<i32>, // 0=none, 1=urgent, 2=high, 3=medium, 4=low
+    pub due_date: Option<String>, // ISO date string
+    pub assignee_id: Option<Uuid>,
 }
 
 impl CreateTask {
@@ -93,6 +132,9 @@ impl CreateTask {
             image_ids: None,
             shared_task_id: None,
             team_id: None,
+            priority: None,
+            due_date: None,
+            assignee_id: None,
         }
     }
 
@@ -112,11 +154,29 @@ impl CreateTask {
             image_ids: None,
             shared_task_id: Some(shared_task_id),
             team_id: None,
+            priority: None,
+            due_date: None,
+            assignee_id: None,
         }
     }
 
     pub fn with_team(mut self, team_id: Uuid) -> Self {
         self.team_id = Some(team_id);
+        self
+    }
+
+    pub fn with_priority(mut self, priority: i32) -> Self {
+        self.priority = Some(priority);
+        self
+    }
+
+    pub fn with_due_date(mut self, due_date: String) -> Self {
+        self.due_date = Some(due_date);
+        self
+    }
+
+    pub fn with_assignee(mut self, assignee_id: Uuid) -> Self {
+        self.assignee_id = Some(assignee_id);
         self
     }
 }
@@ -128,6 +188,9 @@ pub struct UpdateTask {
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub priority: Option<i32>,
+    pub due_date: Option<String>,
+    pub assignee_id: Option<Uuid>,
 }
 
 impl Task {
@@ -157,6 +220,9 @@ impl Task {
   t.parent_workspace_id           AS "parent_workspace_id: Uuid",
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.team_id                       AS "team_id: Uuid",
+  t.priority                      AS "priority: i32",
+  t.due_date                      AS "due_date: String",
+  t.assignee_id                   AS "assignee_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -211,6 +277,9 @@ ORDER BY t.created_at DESC"#,
                     parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
                     team_id: rec.team_id,
+                    priority: rec.priority,
+                    due_date: rec.due_date,
+                    assignee_id: rec.assignee_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -237,6 +306,9 @@ ORDER BY t.created_at DESC"#,
   t.parent_workspace_id           AS "parent_workspace_id: Uuid",
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.team_id                       AS "team_id: Uuid",
+  t.priority                      AS "priority: i32",
+  t.due_date                      AS "due_date: String",
+  t.assignee_id                   AS "assignee_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -291,6 +363,9 @@ ORDER BY t.created_at DESC"#,
                     parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
                     team_id: rec.team_id,
+                    priority: rec.priority,
+                    due_date: rec.due_date,
+                    assignee_id: rec.assignee_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -306,7 +381,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
@@ -318,7 +393,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
@@ -336,7 +411,7 @@ ORDER BY t.created_at DESC"#,
     {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
@@ -349,7 +424,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id IS NOT NULL"#
         )
@@ -365,9 +440,9 @@ ORDER BY t.created_at DESC"#,
         let status = data.status.clone().unwrap_or_default();
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, team_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, team_id, priority, due_date, assignee_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
@@ -375,7 +450,10 @@ ORDER BY t.created_at DESC"#,
             status,
             data.parent_workspace_id,
             data.shared_task_id,
-            data.team_id
+            data.team_id,
+            data.priority,
+            data.due_date,
+            data.assignee_id
         )
         .fetch_one(pool)
         .await
@@ -395,7 +473,7 @@ ORDER BY t.created_at DESC"#,
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -538,7 +616,7 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,

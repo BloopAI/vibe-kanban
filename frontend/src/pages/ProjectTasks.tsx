@@ -763,6 +763,9 @@ export function ProjectTasks() {
           status: newStatus,
           parent_workspace_id: task.parent_workspace_id,
           image_ids: null,
+          priority: null,
+          due_date: null,
+          assignee_id: null,
         });
       } catch (err) {
         console.error('Failed to update task status:', err);

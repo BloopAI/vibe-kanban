@@ -17,6 +17,51 @@ pub enum ProjectError {
     CreateFailed(String),
 }
 
+/// Project status options
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProjectStatus {
+    Backlog,
+    Planned,
+    InProgress,
+    Paused,
+    Completed,
+    Cancelled,
+}
+
+impl Default for ProjectStatus {
+    fn default() -> Self {
+        Self::Backlog
+    }
+}
+
+impl std::fmt::Display for ProjectStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Backlog => write!(f, "backlog"),
+            Self::Planned => write!(f, "planned"),
+            Self::InProgress => write!(f, "in_progress"),
+            Self::Paused => write!(f, "paused"),
+            Self::Completed => write!(f, "completed"),
+            Self::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+impl From<Option<String>> for ProjectStatus {
+    fn from(s: Option<String>) -> Self {
+        match s.as_deref() {
+            Some("backlog") => Self::Backlog,
+            Some("planned") => Self::Planned,
+            Some("in_progress") => Self::InProgress,
+            Some("paused") => Self::Paused,
+            Some("completed") => Self::Completed,
+            Some("cancelled") => Self::Cancelled,
+            _ => Self::Backlog,
+        }
+    }
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Project {
     pub id: Uuid,
@@ -25,6 +70,17 @@ pub struct Project {
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low
+    pub priority: Option<i32>,
+    pub lead_id: Option<Uuid>,
+    pub start_date: Option<String>,
+    pub target_date: Option<String>,
+    pub status: Option<String>,
+    /// Health percentage 0-100
+    pub health: Option<i32>,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub icon: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -35,6 +91,22 @@ pub struct Project {
 pub struct CreateProject {
     pub name: String,
     pub repositories: Vec<CreateProjectRepo>,
+    #[serde(default)]
+    pub priority: Option<i32>,
+    #[serde(default)]
+    pub lead_id: Option<Uuid>,
+    #[serde(default)]
+    pub start_date: Option<String>,
+    #[serde(default)]
+    pub target_date: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -43,6 +115,15 @@ pub struct UpdateProject {
     pub dev_script: Option<String>,
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
+    pub priority: Option<i32>,
+    pub lead_id: Option<Uuid>,
+    pub start_date: Option<String>,
+    pub target_date: Option<String>,
+    pub status: Option<String>,
+    pub health: Option<i32>,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub icon: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -75,6 +156,15 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      priority as "priority: i32",
+                      lead_id as "lead_id: Uuid",
+                      start_date,
+                      target_date,
+                      status,
+                      health as "health: i32",
+                      description,
+                      summary,
+                      icon,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -92,6 +182,15 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.priority as "priority: i32",
+                   p.lead_id as "lead_id: Uuid",
+                   p.start_date,
+                   p.target_date,
+                   p.status,
+                   p.health as "health: i32",
+                   p.description,
+                   p.summary,
+                   p.icon,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -117,6 +216,15 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      priority as "priority: i32",
+                      lead_id as "lead_id: Uuid",
+                      start_date,
+                      target_date,
+                      status,
+                      health as "health: i32",
+                      description,
+                      summary,
+                      icon,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -136,6 +244,15 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      priority as "priority: i32",
+                      lead_id as "lead_id: Uuid",
+                      start_date,
+                      target_date,
+                      status,
+                      health as "health: i32",
+                      description,
+                      summary,
+                      icon,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -158,6 +275,15 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      priority as "priority: i32",
+                      lead_id as "lead_id: Uuid",
+                      start_date,
+                      target_date,
+                      status,
+                      health as "health: i32",
+                      description,
+                      summary,
+                      icon,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -178,9 +304,17 @@ impl Project {
             Project,
             r#"INSERT INTO projects (
                     id,
-                    name
+                    name,
+                    priority,
+                    lead_id,
+                    start_date,
+                    target_date,
+                    status,
+                    description,
+                    summary,
+                    icon
                 ) VALUES (
-                    $1, $2
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -188,10 +322,27 @@ impl Project {
                           dev_script_working_dir,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          priority as "priority: i32",
+                          lead_id as "lead_id: Uuid",
+                          start_date,
+                          target_date,
+                          status,
+                          health as "health: i32",
+                          description,
+                          summary,
+                          icon,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
+            data.priority,
+            data.lead_id,
+            data.start_date,
+            data.target_date,
+            data.status,
+            data.description,
+            data.summary,
+            data.icon,
         )
         .fetch_one(executor)
         .await
@@ -210,11 +361,23 @@ impl Project {
         let dev_script = payload.dev_script.clone();
         let dev_script_working_dir = payload.dev_script_working_dir.clone();
         let default_agent_working_dir = payload.default_agent_working_dir.clone();
+        let priority = payload.priority.or(existing.priority);
+        let lead_id = payload.lead_id.or(existing.lead_id);
+        let start_date = payload.start_date.clone().or(existing.start_date);
+        let target_date = payload.target_date.clone().or(existing.target_date);
+        let status = payload.status.clone().or(existing.status);
+        let health = payload.health.or(existing.health);
+        let description = payload.description.clone().or(existing.description);
+        let summary = payload.summary.clone().or(existing.summary);
+        let icon = payload.icon.clone().or(existing.icon);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5,
+                   priority = $6, lead_id = $7, start_date = $8, target_date = $9, status = $10,
+                   health = $11, description = $12, summary = $13, icon = $14,
+                   updated_at = CURRENT_TIMESTAMP
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -222,6 +385,15 @@ impl Project {
                          dev_script_working_dir,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         priority as "priority: i32",
+                         lead_id as "lead_id: Uuid",
+                         start_date,
+                         target_date,
+                         status,
+                         health as "health: i32",
+                         description,
+                         summary,
+                         icon,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -229,6 +401,15 @@ impl Project {
             dev_script,
             dev_script_working_dir,
             default_agent_working_dir,
+            priority,
+            lead_id,
+            start_date,
+            target_date,
+            status,
+            health,
+            description,
+            summary,
+            icon,
         )
         .fetch_one(pool)
         .await

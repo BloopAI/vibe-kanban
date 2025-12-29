@@ -63,12 +63,14 @@ We would prefer that ideas and changes are first raised with the core team via [
 - [pnpm](https://pnpm.io/) (>=8)
 
 Additional development tools:
+
 ```bash
 cargo install cargo-watch
 cargo install sqlx-cli
 ```
 
 Install dependencies:
+
 ```bash
 pnpm i
 ```
@@ -96,20 +98,19 @@ pnpm build
 2. In the `npx-cli` folder run `npm pack`
 3. You can run your build with `npx [GENERATED FILE].tgz`
 
-
 ### Environment Variables
 
 The following environment variables can be configured at build time or runtime:
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
-| `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
-| `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
-| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
-| `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
-| `HOST` | Runtime | `127.0.0.1` | Backend server host |
-| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
+| Variable                            | Type       | Default             | Description                                                                           |
+| ----------------------------------- | ---------- | ------------------- | ------------------------------------------------------------------------------------- |
+| `POSTHOG_API_KEY`                 | Build-time | Empty               | PostHog analytics API key (disables analytics if empty)                               |
+| `POSTHOG_API_ENDPOINT`            | Build-time | Empty               | PostHog analytics endpoint (disables analytics if empty)                              |
+| `PORT`                            | Runtime    | Auto-assign         | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
+| `BACKEND_PORT`                    | Runtime    | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1)                                 |
+| `FRONTEND_PORT`                   | Runtime    | `3000`            | Frontend dev server port (dev mode only, overrides PORT)                              |
+| `HOST`                            | Runtime    | `127.0.0.1`       | Backend server host                                                                   |
+| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime    | Not set             | Disable git worktree cleanup (for debugging)                                          |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
@@ -129,3 +130,47 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
 See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+
+
+
+
+our Handy Solution is Ready
+
+  Reload your shell first:
+  source ~/.zshrc
+
+  Global vk Command (works from anywhere)
+
+| Command    | What it does                    |
+| ---------- | ------------------------------- |
+| vk start   | Start server (with auto-backup) |
+| vk stop    | Stop the server                 |
+| vk restart | Restart the server              |
+| vk status  | Check if running                |
+| vk logs    | View live logs                  |
+| vk open    | Open in browser                 |
+
+  Usage Example
+
+# From ANY project directory:
+
+  vk start      # Start vibe-kanban in background
+  vk open       # Open http://localhost:3000
+
+# Work on your tasks...
+
+  vk stop       # When done
+
+  Key Benefits
+
+- Auto-backup before each start (keeps last 10 backups)
+- Runs in background - doesn't block your terminal
+- Works from any directory - not tied to vibe-kanban folder
+- Persistent data - stored in dev_assets/db.sqlite
+- Single command - no need for npx or pnpm
+
+  Current Status
+
+  ✅ Vibe Kanban is running
+     Frontend: http://localhost:3000
+     Backend:  http://127.0.0.1:3001

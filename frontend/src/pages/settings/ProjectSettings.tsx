@@ -397,6 +397,15 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        priority: null,
+        lead_id: null,
+        start_date: null,
+        target_date: null,
+        status: null,
+        health: null,
+        description: null,
+        summary: null,
+        icon: null,
       };
 
       updateProject.mutate({

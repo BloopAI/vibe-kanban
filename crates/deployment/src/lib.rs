@@ -172,6 +172,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                             display_name: repo.name,
                             git_repo_path: repo_path.clone(),
                         }],
+                        priority: None,
+                        lead_id: None,
+                        start_date: None,
+                        target_date: None,
+                        status: None,
+                        description: None,
+                        summary: None,
+                        icon: None,
                     };
 
                     match self

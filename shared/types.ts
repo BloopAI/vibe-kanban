@@ -12,11 +12,21 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, 
+/**
+ * Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low
+ */
+priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, 
+/**
+ * Health percentage 0-100
+ */
+health: number | null, description: string | null, summary: string | null, icon: string | null, created_at: Date, updated_at: Date, };
 
-export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
+export type ProjectStatus = "backlog" | "planned" | "inprogress" | "paused" | "completed" | "cancelled";
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, };
+export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, description: string | null, summary: string | null, icon: string | null, };
+
+export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, priority: number | null, lead_id: string | null, start_date: string | null, target_date: string | null, status: string | null, health: number | null, description: string | null, summary: string | null, icon: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
@@ -62,15 +72,17 @@ export type InboxSummary = { total_count: bigint, unread_count: bigint, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, created_at: string, updated_at: string, };
+export type TaskPriority = "None" | "Urgent" | "High" | "Medium" | "Low";
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
+
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, team_id: string | null, priority: number | null, due_date: string | null, assignee_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, team_id: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, team_id: string | null, priority: number | null, due_date: string | null, assignee_id: string | null, };
 
-export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, priority: number | null, due_date: string | null, assignee_id: string | null, };
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 

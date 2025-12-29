@@ -132,6 +132,15 @@ impl ProjectService {
                     dev_script: None,
                     dev_script_working_dir: None,
                     default_agent_working_dir: Some(repo.name),
+                    priority: None,
+                    lead_id: None,
+                    start_date: None,
+                    target_date: None,
+                    status: None,
+                    health: None,
+                    description: None,
+                    summary: None,
+                    icon: None,
                 },
             )
             .await?;
