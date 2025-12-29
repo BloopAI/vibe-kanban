@@ -95,12 +95,22 @@ export function useWorkspaces(): UseWorkspacesResult {
 
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];
-    return Object.values(activeData.workspaces).map(toSidebarWorkspace);
+    return Object.values(activeData.workspaces)
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )
+      .map(toSidebarWorkspace);
   }, [activeData]);
 
   const archivedWorkspaces = useMemo(() => {
     if (!archivedData?.workspaces) return [];
-    return Object.values(archivedData.workspaces).map(toSidebarWorkspace);
+    return Object.values(archivedData.workspaces)
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      )
+      .map(toSidebarWorkspace);
   }, [archivedData]);
 
   // isLoading is true when we haven't received any data from either stream
