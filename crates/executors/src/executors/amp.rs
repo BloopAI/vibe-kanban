@@ -12,14 +12,16 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        claude::{ClaudeLogProcessor, HistoryStrategy},
+        CombineFullPrompt, AppendPrompt, PrependPrompt, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor, claude::{ClaudeLogProcessor, HistoryStrategy},
     },
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Amp {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -54,7 +56,7 @@ impl StandardCodingAgentExecutor for Amp {
         let command_parts = self.build_command_builder().build_initial()?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(executable_path);
         command
@@ -127,7 +129,7 @@ impl StandardCodingAgentExecutor for Amp {
         ])?;
         let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(continue_program);
         command

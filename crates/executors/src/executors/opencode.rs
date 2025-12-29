@@ -12,14 +12,16 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        acp::AcpAgentHarness,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor, acp::AcpAgentHarness,
     },
 };
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Opencode {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -60,7 +62,7 @@ impl StandardCodingAgentExecutor for Opencode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut harness = Self::harness();
         if let Some(model) = &self.model {
@@ -95,7 +97,7 @@ impl StandardCodingAgentExecutor for Opencode {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let mut harness = Self::harness();
         if let Some(model) = &self.model {
             harness = harness.with_model(model);
