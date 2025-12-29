@@ -13,6 +13,7 @@ import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
+import { GitPanelCreate } from '@/components/ui-new/views/GitPanelCreate';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { attemptsApi } from '@/lib/api';
@@ -265,10 +266,10 @@ export function WorkspacesLayout() {
       <Navbar
         workspaceTitle={navbarTitle}
         isSidebarVisible={!isSidebarCollapsed}
-        isGitPanelVisible={!isCreateMode && !isGitPanelCollapsed}
+        isGitPanelVisible={!isGitPanelCollapsed}
         isArchived={selectedWorkspace?.archived}
         onToggleSidebar={handleToggleSidebar}
-        onToggleGitPanel={isCreateMode ? undefined : handleToggleGitPanel}
+        onToggleGitPanel={handleToggleGitPanel}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
       />
       <Group orientation="horizontal" className="flex-1 min-h-0">
@@ -322,30 +323,30 @@ export function WorkspacesLayout() {
           )}
         </Panel>
 
-        {!isCreateMode && (
-          <>
-            <Separator id="handle-right" />
+        <Separator id="handle-right" />
 
-            <Panel
-              id="git"
-              defaultSize="300px"
-              minSize="300px"
-              maxSize="600px"
-              className="min-w-0 min-h-0 overflow-hidden"
-              collapsible={true}
-              collapsedSize="0px"
-              panelRef={gitPanelRef}
-              onResize={handleGitPanelResize}
-            >
-              <GitPanelContainer
-                selectedWorkspace={selectedWorkspace}
-                repos={repos}
-                repoInfos={repoInfos}
-                onBranchNameChange={handleBranchNameChange}
-              />
-            </Panel>
-          </>
-        )}
+        <Panel
+          id="git"
+          defaultSize="300px"
+          minSize="300px"
+          maxSize="600px"
+          className="min-w-0 min-h-0 overflow-hidden"
+          collapsible={true}
+          collapsedSize="0px"
+          panelRef={gitPanelRef}
+          onResize={handleGitPanelResize}
+        >
+          {isCreateMode ? (
+            <GitPanelCreate />
+          ) : (
+            <GitPanelContainer
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+              repoInfos={repoInfos}
+              onBranchNameChange={handleBranchNameChange}
+            />
+          )}
+        </Panel>
       </Group>
     </div>
   );
