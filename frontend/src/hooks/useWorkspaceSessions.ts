@@ -36,18 +36,19 @@ export function useWorkspaceSessions(
     enabled: enabled && !!workspaceId,
   });
 
-  // Auto-select the latest session when sessions load or workspace changes
+  // Combined effect: handle workspace changes and auto-select sessions
+  // This replaces two separate effects that had a race condition where the reset
+  // effect would fire after auto-select when sessions were cached, undoing the selection.
   useEffect(() => {
-    if (sessions.length > 0 && !selectedSessionId) {
+    if (sessions.length > 0) {
       // Sessions are ordered by created_at DESC, so first is latest
+      // Always select first session when sessions are available for this workspace
       setSelectedSessionId(sessions[0].id);
+    } else {
+      // No sessions - reset selection (handles workspace change before fetch completes)
+      setSelectedSessionId(undefined);
     }
-  }, [sessions, selectedSessionId]);
-
-  // Reset selection when workspace changes
-  useEffect(() => {
-    setSelectedSessionId(undefined);
-  }, [workspaceId]);
+  }, [workspaceId, sessions]);
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
