@@ -11,7 +11,7 @@ import {
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
@@ -72,7 +72,10 @@ export function RepoCard({
         </div>
         <div className="flex-1 min-w-0">
           <DropdownMenu>
-            <DropdownMenuTrigger label={targetBranch} className="max-w-full" />
+            <DropdownMenuTriggerButton
+              label={targetBranch}
+              className="max-w-full"
+            />
             <DropdownMenuContent>
               {branchDropdownContent ?? (
                 <>

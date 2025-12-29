@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -66,7 +66,11 @@ function ToolbarDropdown({
 }: ToolbarDropdownProps) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger icon={icon} label={label} className={className} />
+      <DropdownMenuTriggerButton
+        icon={icon}
+        label={label}
+        className={className}
+      />
       <DropdownMenuContent>
         {children ?? (
           <>
