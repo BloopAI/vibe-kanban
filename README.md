@@ -90,11 +90,10 @@ cd frontend
 pnpm build
 ```
 
-### Build from source
+### Build from source (macOS)
 
-1. Run `build-npm-package.sh`
-2. In the `npx-cli` folder run `npm pack`
-3. You can run your build with `npx [GENERATED FILE].tgz`
+1. Run `./local-build.sh`
+2. Test with `cd npx-cli && node bin/cli.js`
 
 
 ### Environment Variables
