@@ -472,6 +472,16 @@
       "discardChanges": "변경사항 버리기"
     }
   },
+  "deleteTaskDialog": {
+    "title": "작업 삭제",
+    "description": "정말 삭제하시겠습니까",
+    "warningLabel": "경고",
+    "warning": "이 작업은 작업을 영구적으로 삭제하며 되돌릴 수 없습니다.",
+    "deleteBranchesLabel": "관련된 git 브랜치도 삭제",
+    "deleting": "삭제 중...",
+    "deleteButton": "작업 삭제",
+    "error": "작업 삭제에 실패했습니다"
+  },
   "restoreLogsDialog": {
     "title": "재시도 확인",
     "historyChange": {

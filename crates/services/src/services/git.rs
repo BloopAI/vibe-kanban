@@ -1188,6 +1188,18 @@ impl GitService {
         Ok(())
     }
 
+    /// Delete a local branch
+    pub fn delete_branch(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.delete_branch(repo_path, branch_name)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        Ok(())
+    }
+
     /// Move a worktree to a new location
     pub fn move_worktree(
         &self,
