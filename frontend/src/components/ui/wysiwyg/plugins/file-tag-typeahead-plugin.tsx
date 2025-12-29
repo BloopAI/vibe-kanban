@@ -7,6 +7,7 @@ import {
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode } from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -69,6 +70,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const lastSelectedIndexRef = useRef<number>(-1);
+  const portalContainer = usePortalContainer();
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -251,7 +253,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
               </div>
             )}
           </div>,
-          document.body
+          portalContainer ?? document.body
         );
       }}
     />
