@@ -84,6 +84,9 @@ interface SessionChatBoxProps {
 
   // Other
   error?: string | null;
+
+  // Project ID for file search in typeahead
+  projectId?: string;
 }
 
 function formatSessionDate(dateString: string): string {
@@ -106,6 +109,7 @@ export function SessionChatBox({
   stats,
   hideStats,
   error,
+  projectId,
 }: SessionChatBoxProps) {
   // File input ref for attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -320,6 +324,7 @@ export function SessionChatBox({
           onCmdEnter={handleCmdEnter}
           disabled={isDisabled}
           className="min-h-0"
+          projectId={projectId}
         />
 
         {/* Footer - Controls */}

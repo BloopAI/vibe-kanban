@@ -191,8 +191,8 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                           }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
+                              ? 'bg-muted text-foreground text-high'
+                              : 'hover:bg-muted text-muted-foreground'
                           }`}
                           onMouseEnter={() => setHighlightedIndex(index)}
                           onClick={() => selectOptionAndCleanUp(option)}
@@ -202,7 +202,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                             <span>@{tag.tag_name}</span>
                           </div>
                           {tag.content && (
-                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            <div className="text-xs mt-0.5 truncate">
                               {tag.content.slice(0, 60)}
                               {tag.content.length > 60 ? '...' : ''}
                             </div>
@@ -232,19 +232,17 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                           }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
+                              ? 'bg-muted text-foreground text-high'
+                              : 'hover:bg-muted text-muted-foreground'
                           }`}
                           onMouseEnter={() => setHighlightedIndex(index)}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
                           <div className="flex items-center gap-2 font-medium truncate">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <FileText className="h-3.5 w-3.5 flex-shrink-0" />
                             <span>{file.name}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {file.path}
-                          </div>
+                          <div className="text-xs truncate">{file.path}</div>
                         </div>
                       );
                     })}
