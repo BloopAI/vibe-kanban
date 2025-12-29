@@ -30,6 +30,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 interface SidebarSectionProps {
@@ -38,6 +39,7 @@ interface SidebarSectionProps {
   onToggle: () => void;
   children: React.ReactNode;
   isCollapsed?: boolean;
+  onAdd?: () => void;
 }
 
 function SidebarSection({
@@ -46,24 +48,39 @@ function SidebarSection({
   onToggle,
   children,
   isCollapsed,
+  onAdd,
 }: SidebarSectionProps) {
   if (isCollapsed) {
     return <div className="py-2">{children}</div>;
   }
 
   return (
-    <div className="py-1">
-      <button
-        onClick={onToggle}
-        className="flex items-center w-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {isExpanded ? (
-          <ChevronDown className="h-3 w-3 mr-1" />
-        ) : (
-          <ChevronRight className="h-3 w-3 mr-1" />
+    <div className="py-1 group/section">
+      <div className="flex items-center w-full px-3 py-1.5">
+        <button
+          onClick={onToggle}
+          className="flex items-center flex-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3 w-3 mr-1" />
+          ) : (
+            <ChevronRight className="h-3 w-3 mr-1" />
+          )}
+          {title}
+        </button>
+        {onAdd && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd();
+            }}
+            className="opacity-0 group-hover/section:opacity-100 p-0.5 text-muted-foreground hover:text-foreground transition-all"
+            title={`Add new ${title.toLowerCase().replace('your ', '')}`}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
         )}
-        {title}
-      </button>
+      </div>
       {isExpanded && <div className="mt-1">{children}</div>}
     </div>
   );
@@ -168,6 +185,14 @@ export function Sidebar() {
     }
   };
 
+  const handleCreateTeam = async () => {
+    try {
+      await TeamFormDialog.show({});
+    } catch {
+      // User cancelled
+    }
+  };
+
   const isProjectActive = (id: string) => {
     return projectId === id;
   };
@@ -265,6 +290,7 @@ export function Sidebar() {
             isExpanded={sections.teams}
             onToggle={() => toggleSection('teams')}
             isCollapsed={isCollapsed}
+            onAdd={handleCreateProject}
           >
             <div className="space-y-0.5">
               {projects.map((project) => (
@@ -277,14 +303,10 @@ export function Sidebar() {
                   isCollapsed={isCollapsed}
                 />
               ))}
-              {!isCollapsed && (
-                <button
-                  onClick={handleCreateProject}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>New project</span>
-                </button>
+              {!isCollapsed && projects.length === 0 && (
+                <div className="px-3 py-1.5 text-sm text-muted-foreground">
+                  No projects yet
+                </div>
               )}
             </div>
           </SidebarSection>
@@ -297,6 +319,7 @@ export function Sidebar() {
             isExpanded={sections.yourTeams}
             onToggle={() => toggleSection('yourTeams')}
             isCollapsed={isCollapsed}
+            onAdd={handleCreateTeam}
           >
             <div className="space-y-0.5">
               {teams.map((team) => (
