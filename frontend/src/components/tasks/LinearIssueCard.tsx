@@ -2,10 +2,16 @@ import { memo, useCallback, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { User } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
-import { PriorityIcon } from '@/utils/priorityUtils';
+import {
+  AssigneeSelector,
+  PrioritySelector,
+  ComponentSelector,
+  type TeamMember,
+  type PriorityValue,
+  type ComponentValue,
+} from '@/components/selectors';
 
 interface LinearIssueCardProps {
   task: TaskWithAttemptStatus;
@@ -13,9 +19,13 @@ interface LinearIssueCardProps {
   status: TaskStatus;
   issueKey?: string; // e.g., "VIB-1"
   projectName?: string;
+  component?: string | null; // e.g., "frontend", "backend"
   onViewDetails: (task: TaskWithAttemptStatus) => void;
   isSelected?: boolean;
-  onAssigneeClick?: (task: TaskWithAttemptStatus, e: React.MouseEvent) => void;
+  teamMembers?: TeamMember[];
+  onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
+  onPriorityChange?: (taskId: string, priority: number) => void;
+  onComponentChange?: (taskId: string, component: string | null) => void;
 }
 
 function LinearIssueCardComponent({
@@ -24,9 +34,13 @@ function LinearIssueCardComponent({
   status,
   issueKey,
   projectName,
+  component,
   onViewDetails,
   isSelected,
-  onAssigneeClick,
+  teamMembers = [],
+  onAssigneeChange,
+  onPriorityChange,
+  onComponentChange,
 }: LinearIssueCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -57,10 +71,17 @@ function LinearIssueCardComponent({
     onViewDetails(task);
   }, [task, onViewDetails]);
 
-  const handleAssigneeClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onAssigneeClick?.(task, e);
-  }, [task, onAssigneeClick]);
+  const handleAssigneeChange = useCallback((assigneeId: string | null) => {
+    onAssigneeChange?.(task.id, assigneeId);
+  }, [task.id, onAssigneeChange]);
+
+  const handlePriorityChange = useCallback((priority: PriorityValue) => {
+    onPriorityChange?.(task.id, priority);
+  }, [task.id, onPriorityChange]);
+
+  const handleComponentChange = useCallback((newComponent: ComponentValue) => {
+    onComponentChange?.(task.id, newComponent);
+  }, [task.id, onComponentChange]);
 
   return (
     <Card
@@ -88,37 +109,50 @@ function LinearIssueCardComponent({
           <span className="text-xs text-muted-foreground font-mono font-medium">
             {issueKey || task.id.slice(0, 8).toUpperCase()}
           </span>
-          <button
-            className={cn(
-              'h-6 w-6 rounded-full flex items-center justify-center',
-              'border border-dashed border-muted-foreground/40',
-              'text-muted-foreground hover:border-primary hover:text-primary',
-              'transition-colors'
-            )}
-            onClick={handleAssigneeClick}
-            title="Assign"
-          >
-            {task.assignee_id ? (
-              // Show first letter of assignee (placeholder for avatar)
-              <span className="text-xs font-medium">A</span>
-            ) : (
-              <User className="h-3.5 w-3.5" />
-            )}
-          </button>
+
+          {/* Assignee Selector */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <AssigneeSelector
+              value={task.assignee_id}
+              onChange={handleAssigneeChange}
+              teamMembers={teamMembers}
+              variant="avatar"
+              disabled={!onAssigneeChange}
+            />
+          </div>
         </div>
 
         {/* Title row with priority and status icons */}
         <div className="flex items-start gap-2">
-          <PriorityIcon priority={task.priority} className="mt-0.5 shrink-0" />
+          {/* Priority Selector - clickable */}
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0 mt-0.5">
+            <PrioritySelector
+              value={(task.priority ?? 0) as PriorityValue}
+              onChange={handlePriorityChange}
+              variant="icon-only"
+              disabled={!onPriorityChange}
+            />
+          </div>
           <StatusIcon status={status} className="mt-0.5 shrink-0" />
           <h4 className="text-sm font-medium leading-snug line-clamp-2">
             {task.title}
           </h4>
         </div>
 
-        {/* Bottom row: Project tag and labels */}
-        {projectName && (
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+        {/* Bottom row: Component tag and project */}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {/* Component Selector - clickable label */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <ComponentSelector
+              value={component || null}
+              onChange={handleComponentChange}
+              variant="tag"
+              disabled={!onComponentChange}
+            />
+          </div>
+
+          {/* Project tag (if different from component) */}
+          {projectName && projectName !== component && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-muted-foreground bg-muted/50 border border-border/50">
               <svg
                 className="h-3 w-3"
@@ -130,14 +164,15 @@ function LinearIssueCardComponent({
               </svg>
               {projectName}
             </span>
-            {/* Due date indicator */}
-            {task.due_date && (
-              <span className="text-xs text-muted-foreground">
-                Due: {new Date(task.due_date).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-        )}
+          )}
+
+          {/* Due date indicator */}
+          {task.due_date && (
+            <span className="text-xs text-muted-foreground">
+              Due: {new Date(task.due_date).toLocaleDateString()}
+            </span>
+          )}
+        </div>
       </div>
     </Card>
   );

@@ -17,6 +17,7 @@ import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
+import type { TeamMember } from '@/components/selectors';
 
 const TASK_STATUSES = [
   'todo',
@@ -38,6 +39,17 @@ export function TeamIssues() {
   const team = teamId ? teamsById[teamId] : null;
   const { projects } = useProjects();
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
+
+  // Local state for component labels (frontend-only for now until backend supports it)
+  const [componentsByTaskId, setComponentsByTaskId] = useState<Record<string, string | null>>({});
+
+  // Mock team members - in real app, this would come from API
+  const teamMembers: TeamMember[] = useMemo(() => [
+    { id: 'member-1', name: 'Alice Johnson', email: 'alice@example.com' },
+    { id: 'member-2', name: 'Bob Smith', email: 'bob@example.com' },
+    { id: 'member-3', name: 'Carol Williams', email: 'carol@example.com' },
+    { id: 'member-4', name: 'David Brown', email: 'david@example.com' },
+  ], []);
 
   // Fetch team projects when teamId changes
   useEffect(() => {
@@ -77,7 +89,7 @@ export function TeamIssues() {
   }, [projects]);
 
   const kanbanColumns = useMemo(() => {
-    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]> = {
+    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string; component?: string | null }[]> = {
       todo: [],
       inprogress: [],
       inreview: [],
@@ -97,6 +109,7 @@ export function TeamIssues() {
         task: issue,
         issueKey,
         projectName: projectNamesById[issue.project_id],
+        component: componentsByTaskId[issue.id] || null,
       });
     });
 
@@ -110,7 +123,7 @@ export function TeamIssues() {
     });
 
     return columns;
-  }, [issues, team, projectNamesById]);
+  }, [issues, team, projectNamesById, componentsByTaskId]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -149,6 +162,68 @@ export function TeamIssues() {
       navigate(`/projects/${issue.project_id}/tasks/${issue.id}/attempts/latest`);
     },
     [navigate]
+  );
+
+  // Handler for assignee changes
+  const handleAssigneeChange = useCallback(
+    async (taskId: string, assigneeId: string | null) => {
+      const issue = issuesById[taskId];
+      if (!issue) return;
+
+      try {
+        await tasksApi.update(taskId, {
+          title: issue.title,
+          description: issue.description,
+          status: issue.status,
+          parent_workspace_id: issue.parent_workspace_id,
+          image_ids: null,
+          priority: issue.priority,
+          due_date: issue.due_date,
+          assignee_id: assigneeId,
+        });
+        await refresh();
+      } catch (err) {
+        console.error('Failed to update assignee:', err);
+      }
+    },
+    [issuesById, refresh]
+  );
+
+  // Handler for priority changes
+  const handlePriorityChange = useCallback(
+    async (taskId: string, priority: number) => {
+      const issue = issuesById[taskId];
+      if (!issue) return;
+
+      try {
+        await tasksApi.update(taskId, {
+          title: issue.title,
+          description: issue.description,
+          status: issue.status,
+          parent_workspace_id: issue.parent_workspace_id,
+          image_ids: null,
+          priority,
+          due_date: issue.due_date,
+          assignee_id: issue.assignee_id,
+        });
+        await refresh();
+      } catch (err) {
+        console.error('Failed to update priority:', err);
+      }
+    },
+    [issuesById, refresh]
+  );
+
+  // Handler for component label changes (frontend-only for now)
+  const handleComponentChange = useCallback(
+    (taskId: string, component: string | null) => {
+      setComponentsByTaskId((prev) => ({
+        ...prev,
+        [taskId]: component,
+      }));
+      // TODO: When backend supports component field, call API here
+    },
+    []
   );
 
   if (error) {
@@ -228,6 +303,10 @@ export function TeamIssues() {
               onViewTaskDetails={handleViewIssueDetails}
               onCreateTask={handleCreateIssue}
               selectedTaskId={undefined}
+              teamMembers={teamMembers}
+              onAssigneeChange={handleAssigneeChange}
+              onPriorityChange={handlePriorityChange}
+              onComponentChange={handleComponentChange}
             />
           </div>
         )}
