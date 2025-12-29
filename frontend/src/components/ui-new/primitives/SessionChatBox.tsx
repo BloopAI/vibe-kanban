@@ -9,7 +9,8 @@ import {
   ArrowClockwiseIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { Session } from 'shared/types';
+import { toPrettyCase } from '@/utils/string';
+import type { Session, BaseCodingAgent } from 'shared/types';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { VibeKanbanLogo } from './VibeKanbanLogo';
 import { PrimaryButton } from './PrimaryButton';
@@ -56,6 +57,12 @@ interface VariantProps {
   onChange: (variant: string | null) => void;
 }
 
+interface ExecutorProps {
+  selected: BaseCodingAgent | null;
+  options: BaseCodingAgent[];
+  onChange: (executor: BaseCodingAgent) => void;
+}
+
 interface SessionChatBoxProps {
   // Core state
   status: ExecutionStatus;
@@ -65,9 +72,15 @@ interface SessionChatBoxProps {
   // Variant selection (optional)
   variant?: VariantProps;
 
+  // Executor selection (for create mode - replaces session dropdown)
+  executor?: ExecutorProps;
+
   // Optional groups
   session?: SessionProps;
   stats?: StatsProps;
+
+  // Hide stats in create mode
+  hideStats?: boolean;
 
   // Other
   error?: string | null;
@@ -83,23 +96,15 @@ function formatSessionDate(dateString: string): string {
   });
 }
 
-// Convert SCREAMING_SNAKE_CASE to Capitalised English
-// "DEFAULT" → "Default", "CUSTOM_VARIANT" → "Custom Variant"
-function formatVariantName(name: string): string {
-  return name
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
 export function SessionChatBox({
   status,
   editor,
   actions,
   variant,
+  executor,
   session,
   stats,
+  hideStats,
   error,
 }: SessionChatBoxProps) {
   // File input ref for attachments
@@ -117,8 +122,13 @@ export function SessionChatBox({
   const placeholder = 'Continue working on this task...';
 
   // Variant display - format for readability
-  const variantLabel = formatVariantName(variant?.selected || 'DEFAULT');
+  const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
+
+  // Executor display
+  const executorLabel = executor?.selected
+    ? toPrettyCase(executor.selected)
+    : 'Select Executor';
 
   // Cmd+Enter maps to correct action based on status
   const handleCmdEnter = () => {
@@ -242,43 +252,62 @@ export function SessionChatBox({
         </div>
       )}
 
-      {/* Header - File stats and version selector */}
+      {/* Header - File stats and version/executor selector */}
       <div className="flex items-center gap-base bg-secondary px-double py-[9px] @chat:rounded-t-md border-b">
         <div className="flex flex-1 items-center gap-base text-sm">
-          <span className="text-low">
-            {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
-          </span>
-          {(linesAdded !== undefined || linesRemoved !== undefined) && (
-            <span className="space-x-half">
-              {linesAdded !== undefined && (
-                <span className="text-success">+{linesAdded}</span>
+          {!hideStats && (
+            <>
+              <span className="text-low">
+                {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
+              </span>
+              {(linesAdded !== undefined || linesRemoved !== undefined) && (
+                <span className="space-x-half">
+                  {linesAdded !== undefined && (
+                    <span className="text-success">+{linesAdded}</span>
+                  )}
+                  {linesRemoved !== undefined && (
+                    <span className="text-error">-{linesRemoved}</span>
+                  )}
+                </span>
               )}
-              {linesRemoved !== undefined && (
-                <span className="text-error">-{linesRemoved}</span>
-              )}
-            </span>
+            </>
           )}
         </div>
         <Toolbar className="gap-[9px]">
           <VibeKanbanLogo />
-          <ToolbarDropdown label={sessionLabel}>
-            {sessions.length > 0 ? (
-              <>
-                <DropdownMenuLabel>Sessions</DropdownMenuLabel>
-                {sessions.map((s, index) => (
-                  <DropdownMenuItem
-                    key={s.id}
-                    icon={s.id === selectedSessionId ? CheckIcon : undefined}
-                    onClick={() => session?.onSelectSession?.(s.id)}
-                  >
-                    {index === 0 ? 'Latest' : formatSessionDate(s.created_at)}
-                  </DropdownMenuItem>
-                ))}
-              </>
-            ) : (
-              <DropdownMenuItem disabled>No sessions</DropdownMenuItem>
-            )}
-          </ToolbarDropdown>
+          {executor ? (
+            <ToolbarDropdown label={executorLabel}>
+              <DropdownMenuLabel>Executors</DropdownMenuLabel>
+              {executor.options.map((exec) => (
+                <DropdownMenuItem
+                  key={exec}
+                  icon={executor.selected === exec ? CheckIcon : undefined}
+                  onClick={() => executor.onChange(exec)}
+                >
+                  {toPrettyCase(exec)}
+                </DropdownMenuItem>
+              ))}
+            </ToolbarDropdown>
+          ) : (
+            <ToolbarDropdown label={sessionLabel}>
+              {sessions.length > 0 ? (
+                <>
+                  <DropdownMenuLabel>Sessions</DropdownMenuLabel>
+                  {sessions.map((s, index) => (
+                    <DropdownMenuItem
+                      key={s.id}
+                      icon={s.id === selectedSessionId ? CheckIcon : undefined}
+                      onClick={() => session?.onSelectSession?.(s.id)}
+                    >
+                      {index === 0 ? 'Latest' : formatSessionDate(s.created_at)}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              ) : (
+                <DropdownMenuItem disabled>No sessions</DropdownMenuItem>
+              )}
+            </ToolbarDropdown>
+          )}
         </Toolbar>
       </div>
 
@@ -306,7 +335,7 @@ export function SessionChatBox({
                   }
                   onClick={() => variant?.onChange(variantName)}
                 >
-                  {formatVariantName(variantName)}
+                  {toPrettyCase(variantName)}
                 </DropdownMenuItem>
               ))}
             </ToolbarDropdown>

@@ -5,6 +5,7 @@ import type { WorkspaceWithStatus } from 'shared/types';
 // UI-specific workspace type for sidebar display
 export interface SidebarWorkspace {
   id: string;
+  taskId: string;
   name: string;
   description: string;
   filesChanged?: number;
@@ -47,6 +48,7 @@ function toSidebarWorkspace(ws: WorkspaceWithStatus): SidebarWorkspace {
 
   return {
     id: ws.id,
+    taskId: ws.task_id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
     description: '',
     // Generate varied mock stats based on workspace id hash (not available from stream)
