@@ -6,7 +6,8 @@ import {
 import { cn } from '@/lib/utils';
 
 // NavbarIconButton - inlined from primitives
-interface NavbarIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NavbarIconButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
   rotation?: 0 | 90 | 180 | 270;
