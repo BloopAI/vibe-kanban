@@ -9,7 +9,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
 
-interface ContextBarButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ContextBarButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   label: string;
 }
