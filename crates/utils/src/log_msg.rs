@@ -6,6 +6,7 @@ pub const EV_STDOUT: &str = "stdout";
 pub const EV_STDERR: &str = "stderr";
 pub const EV_JSON_PATCH: &str = "json_patch";
 pub const EV_SESSION_ID: &str = "session_id";
+pub const EV_READY: &str = "ready";
 pub const EV_FINISHED: &str = "finished";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -14,6 +15,7 @@ pub enum LogMsg {
     Stderr(String),
     JsonPatch(Patch),
     SessionId(String),
+    Ready,
     Finished,
 }
 
@@ -24,6 +26,7 @@ impl LogMsg {
             LogMsg::Stderr(_) => EV_STDERR,
             LogMsg::JsonPatch(_) => EV_JSON_PATCH,
             LogMsg::SessionId(_) => EV_SESSION_ID,
+            LogMsg::Ready => EV_READY,
             LogMsg::Finished => EV_FINISHED,
         }
     }
@@ -37,6 +40,7 @@ impl LogMsg {
                 Event::default().event(EV_JSON_PATCH).data(data)
             }
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
+            LogMsg::Ready => Event::default().event(EV_READY).data(""),
             LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
         }
     }
@@ -52,8 +56,9 @@ impl LogMsg {
     /// This method mirrors the behavior of the original logmsg_to_ws function
     /// but with better error handling than unwrap().
     pub fn to_ws_message_unchecked(&self) -> Message {
-        // Finished becomes JSON {finished: true}
+        // Finished and Ready use special JSON formats for frontend compatibility
         let json = match self {
+            LogMsg::Ready => r#"{"Ready":true}"#.to_string(),
             LogMsg::Finished => r#"{"finished":true}"#.to_string(),
             _ => serde_json::to_string(self)
                 .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
@@ -73,6 +78,7 @@ impl LogMsg {
                 EV_JSON_PATCH.len() + json_len + OVERHEAD
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
+            LogMsg::Ready => EV_READY.len() + OVERHEAD,
             LogMsg::Finished => EV_FINISHED.len() + OVERHEAD,
         }
     }

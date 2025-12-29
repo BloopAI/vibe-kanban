@@ -22,6 +22,7 @@ import { attemptsApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
 import { useTask } from '@/hooks/useTask';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useMerge } from '@/hooks/useMerge';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
@@ -263,15 +264,27 @@ export function WorkspacesLayout() {
     ? 'Create Workspace'
     : selectedWorkspace?.branch;
 
-  // Get the most recent workspace's task to auto-select its project in create mode
+  // Get the most recent workspace to auto-select its project and repos in create mode
   const mostRecentWorkspace = sidebarWorkspaces[0];
+
   const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
     enabled: isCreateMode && !!mostRecentWorkspace?.taskId,
   });
 
+  // Fetch repos from the most recent workspace to auto-select in create mode
+  const { repos: lastWorkspaceRepos } = useAttemptRepo(
+    mostRecentWorkspace?.id,
+    {
+      enabled: isCreateMode && !!mostRecentWorkspace?.id,
+    }
+  );
+
   // Render create mode content (wrapped in CreateModeProvider)
   const renderCreateModeContent = () => (
-    <CreateModeProvider initialProjectId={lastWorkspaceTask?.project_id}>
+    <CreateModeProvider
+      initialProjectId={lastWorkspaceTask?.project_id}
+      initialRepos={lastWorkspaceRepos}
+    >
       <Group orientation="horizontal" className="flex-1 min-h-0">
         <Panel
           id="sidebar"

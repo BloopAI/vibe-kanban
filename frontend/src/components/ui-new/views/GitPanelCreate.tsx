@@ -32,17 +32,6 @@ export function GitPanelCreate({ className }: GitPanelCreateProps) {
   const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
   const { branchesByRepo } = useMultiRepoBranches(repoIds);
 
-  // Auto-select project: use initial selection if valid, otherwise fall back to first project
-  useEffect(() => {
-    if (projects.length > 0) {
-      const currentProjectExists =
-        selectedProjectId && projects.some((p) => p.id === selectedProjectId);
-      if (!currentProjectExists) {
-        setSelectedProjectId(projects[0].id);
-      }
-    }
-  }, [projects, selectedProjectId, setSelectedProjectId]);
-
   // Auto-select current branch when branches load
   useEffect(() => {
     repos.forEach((repo) => {

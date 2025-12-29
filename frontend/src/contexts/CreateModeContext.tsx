@@ -5,8 +5,13 @@ import {
   useCallback,
   useMemo,
   type ReactNode,
+  useEffect,
 } from 'react';
-import type { Repo, ExecutorProfileId } from 'shared/types';
+import type {
+  Repo,
+  ExecutorProfileId,
+  RepoWithTargetBranch,
+} from 'shared/types';
 
 interface CreateModeContextValue {
   // Project selection
@@ -36,18 +41,50 @@ const CreateModeContext = createContext<CreateModeContextValue | null>(null);
 interface CreateModeProviderProps {
   children: ReactNode;
   initialProjectId?: string;
+  initialRepos?: RepoWithTargetBranch[];
 }
 
 export function CreateModeProvider({
   children,
   initialProjectId,
+  initialRepos,
 }: CreateModeProviderProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     initialProjectId ?? null
   );
-  const [repos, setRepos] = useState<Repo[]>([]);
+  // Extract Repo objects from RepoWithTargetBranch (omitting target_branch)
+  const [repos, setRepos] = useState<Repo[]>(() =>
+    (initialRepos ?? []).map((r) => ({
+      id: r.id,
+      path: r.path,
+      name: r.name,
+      display_name: r.display_name,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }))
+  );
+  // Initial repos updates from empty
+  useEffect(() => {
+    if (repos.length === 0) {
+      setRepos(initialRepos ?? []);
+    }
+  }, [initialRepos, repos]);
+  // Initial project updates from empty
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setSelectedProjectId(initialProjectId ?? null);
+    }
+  }, [initialProjectId, selectedProjectId]);
+  // Build target branches map from initial repos
   const [targetBranches, setTargetBranches] = useState<Record<string, string>>(
-    {}
+    () =>
+      (initialRepos ?? []).reduce(
+        (acc, repo) => {
+          acc[repo.id] = repo.target_branch;
+          return acc;
+        },
+        {} as Record<string, string>
+      )
   );
   const [selectedProfile, setSelectedProfile] =
     useState<ExecutorProfileId | null>(null);

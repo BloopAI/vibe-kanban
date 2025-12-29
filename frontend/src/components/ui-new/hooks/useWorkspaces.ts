@@ -80,12 +80,14 @@ export function useWorkspaces(): UseWorkspacesResult {
   const {
     data: activeData,
     isConnected: activeIsConnected,
+    isInitialized: activeIsInitialized,
     error: activeError,
   } = useJsonPatchWsStream<WorkspacesState>(activeEndpoint, true, initialData);
 
   const {
     data: archivedData,
     isConnected: archivedIsConnected,
+    isInitialized: archivedIsInitialized,
     error: archivedError,
   } = useJsonPatchWsStream<WorkspacesState>(
     archivedEndpoint,
@@ -113,8 +115,8 @@ export function useWorkspaces(): UseWorkspacesResult {
       .map(toSidebarWorkspace);
   }, [archivedData]);
 
-  // isLoading is true when we haven't received any data from either stream
-  const isLoading = !activeData || !archivedData;
+  // isLoading is true when we haven't received initial data from either stream
+  const isLoading = !activeIsInitialized || !archivedIsInitialized;
 
   // Combined connection status
   const isConnected = activeIsConnected && archivedIsConnected;
