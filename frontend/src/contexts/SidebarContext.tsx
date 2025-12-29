@@ -9,6 +9,7 @@ import {
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
 const SIDEBAR_SECTIONS_KEY = 'sidebar-sections';
+const SIDEBAR_EXPANDED_TEAMS_KEY = 'sidebar-expanded-teams';
 
 interface SidebarSections {
   workspace: boolean;
@@ -23,6 +24,8 @@ interface SidebarContextType {
   setCollapsed: (collapsed: boolean) => void;
   sections: SidebarSections;
   toggleSection: (section: keyof SidebarSections) => void;
+  expandedTeams: Record<string, boolean>;
+  toggleTeamExpanded: (teamId: string) => void;
 }
 
 const defaultSections: SidebarSections = {
@@ -45,6 +48,11 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     return stored ? JSON.parse(stored) : defaultSections;
   });
 
+  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>(() => {
+    const stored = localStorage.getItem(SIDEBAR_EXPANDED_TEAMS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  });
+
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(isCollapsed));
   }, [isCollapsed]);
@@ -52,6 +60,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_SECTIONS_KEY, JSON.stringify(sections));
   }, [sections]);
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_EXPANDED_TEAMS_KEY, JSON.stringify(expandedTeams));
+  }, [expandedTeams]);
 
   const toggleCollapsed = useCallback(() => {
     setIsCollapsed((prev: boolean) => !prev);
@@ -68,6 +80,13 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const toggleTeamExpanded = useCallback((teamId: string) => {
+    setExpandedTeams((prev: Record<string, boolean>) => ({
+      ...prev,
+      [teamId]: !prev[teamId],
+    }));
+  }, []);
+
   return (
     <SidebarContext.Provider
       value={{
@@ -76,6 +95,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
         setCollapsed,
         sections,
         toggleSection,
+        expandedTeams,
+        toggleTeamExpanded,
       }}
     >
       {children}

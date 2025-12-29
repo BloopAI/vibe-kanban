@@ -27,8 +27,9 @@ import {
   Github,
   Hash,
   Plus,
-  UsersRound,
+  CircleDot,
 } from 'lucide-react';
+import type { Team } from 'shared/types';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -170,10 +171,107 @@ function SidebarItem({
   );
 }
 
+interface SidebarTeamItemProps {
+  team: Team;
+  isExpanded: boolean;
+  onToggle: () => void;
+  isCollapsed?: boolean;
+  pathname: string;
+}
+
+function SidebarTeamItem({
+  team,
+  isExpanded,
+  onToggle,
+  isCollapsed,
+  pathname,
+}: SidebarTeamItemProps) {
+  const teamBasePath = `/teams/${team.id}`;
+  const isTeamActive = pathname.startsWith(teamBasePath);
+
+  if (isCollapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link to={`${teamBasePath}/issues`} className="block">
+              <div
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer',
+                  isTeamActive
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                )}
+              >
+                <span className="h-4 w-4 shrink-0 mx-auto text-base flex items-center justify-center">
+                  {team.icon || '👥'}
+                </span>
+              </div>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right">{team.name}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {/* Team header with expand/collapse */}
+      <button
+        onClick={onToggle}
+        className={cn(
+          'flex items-center gap-2 w-full px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer',
+          isTeamActive
+            ? 'text-foreground font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+        )}
+      >
+        <span className="h-4 w-4 shrink-0 text-base flex items-center justify-center">
+          {team.icon || '👥'}
+        </span>
+        <span className="flex-1 truncate text-left">{team.name}</span>
+        {isExpanded ? (
+          <ChevronDown className="h-3 w-3 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+        )}
+      </button>
+
+      {/* Sub-items */}
+      {isExpanded && (
+        <div className="space-y-0.5">
+          <SidebarItem
+            icon={CircleDot}
+            label="Issues"
+            to={`${teamBasePath}/issues`}
+            isActive={pathname === `${teamBasePath}/issues` || pathname === teamBasePath}
+            indent
+          />
+          <SidebarItem
+            icon={FolderKanban}
+            label="Projects"
+            to={`${teamBasePath}/projects`}
+            isActive={pathname === `${teamBasePath}/projects`}
+            indent
+          />
+          <SidebarItem
+            icon={Layers}
+            label="Views"
+            to={`${teamBasePath}/views`}
+            isActive={pathname === `${teamBasePath}/views`}
+            indent
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar() {
   const location = useLocation();
   const { projectId } = useParams();
-  const { isCollapsed, toggleCollapsed, sections, toggleSection } = useSidebar();
+  const { isCollapsed, toggleCollapsed, sections, toggleSection, expandedTeams, toggleTeamExpanded } = useSidebar();
   const { projects } = useProjects();
   const { teams } = useTeams();
 
@@ -323,13 +421,13 @@ export function Sidebar() {
           >
             <div className="space-y-0.5">
               {teams.map((team) => (
-                <SidebarItem
+                <SidebarTeamItem
                   key={team.id}
-                  icon={UsersRound}
-                  label={team.name}
-                  to={`/teams/${team.id}`}
-                  isActive={location.pathname === `/teams/${team.id}`}
+                  team={team}
+                  isExpanded={expandedTeams[team.id] ?? false}
+                  onToggle={() => toggleTeamExpanded(team.id)}
                   isCollapsed={isCollapsed}
+                  pathname={location.pathname}
                 />
               ))}
               {!isCollapsed && teams.length === 0 && (
