@@ -13,10 +13,8 @@ import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 
-import TaskKanbanBoard, {
-  type KanbanColumnItem,
-} from '@/components/tasks/TaskKanbanBoard';
-import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
+import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
+import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -69,8 +67,17 @@ export function TeamIssues() {
     });
   }, [teamId, teamProjects]);
 
+  // Map project IDs to names for display
+  const projectNamesById = useMemo(() => {
+    const map: Record<string, string> = {};
+    projects.forEach((p) => {
+      map[p.id] = p.name;
+    });
+    return map;
+  }, [projects]);
+
   const kanbanColumns = useMemo(() => {
-    const columns: Record<TaskStatus, KanbanColumnItem[]> = {
+    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]> = {
       todo: [],
       inprogress: [],
       inreview: [],
@@ -78,12 +85,14 @@ export function TeamIssues() {
       cancelled: [],
     };
 
-    issues.forEach((issue) => {
+    issues.forEach((issue, idx) => {
       const statusKey = normalizeStatus(issue.status);
+      // Generate issue key based on index (temporary until we implement proper issue numbering)
+      const issueKey = team ? `${team.name.slice(0, 3).toUpperCase()}-${idx + 1}` : undefined;
       columns[statusKey].push({
-        type: 'task',
         task: issue,
-        sharedTask: undefined,
+        issueKey,
+        projectName: projectNamesById[issue.project_id],
       });
     });
 
@@ -97,7 +106,7 @@ export function TeamIssues() {
     });
 
     return columns;
-  }, [issues]);
+  }, [issues, team, projectNamesById]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -209,15 +218,12 @@ export function TeamIssues() {
           </div>
         ) : (
           <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
-            <TaskKanbanBoard
+            <TeamKanbanBoard
               columns={kanbanColumns}
               onDragEnd={handleDragEnd}
               onViewTaskDetails={handleViewIssueDetails}
-              onViewSharedTask={() => {}}
-              selectedTaskId={undefined}
-              selectedSharedTaskId={null}
               onCreateTask={handleCreateIssue}
-              projectId={teamId!}
+              selectedTaskId={undefined}
             />
           </div>
         )}
