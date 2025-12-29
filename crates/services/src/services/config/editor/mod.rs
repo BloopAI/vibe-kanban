@@ -138,23 +138,30 @@ impl EditorConfig {
 
     fn remote_url(&self, path: &Path) -> Option<String> {
         let remote_host = self.remote_ssh_host.as_ref()?;
-        let scheme = match self.editor_type {
-            EditorType::VsCode => "vscode",
-            EditorType::Cursor => "cursor",
-            EditorType::Windsurf => "windsurf",
-            _ => return None,
-        };
         let user_part = self
             .remote_ssh_user
             .as_ref()
             .map(|u| format!("{u}@"))
             .unwrap_or_default();
-        // files must contain a line and column number
-        let line_col = if path.is_file() { ":1:1" } else { "" };
-        let path = path.to_string_lossy();
-        Some(format!(
-            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}{line_col}"
-        ))
+        let path_str = path.to_string_lossy();
+
+        match self.editor_type {
+            EditorType::VsCode | EditorType::Cursor | EditorType::Windsurf => {
+                let scheme = match self.editor_type {
+                    EditorType::VsCode => "vscode",
+                    EditorType::Cursor => "cursor",
+                    EditorType::Windsurf => "windsurf",
+                    _ => unreachable!(),
+                };
+                // files must contain a line and column number
+                let line_col = if path.is_file() { ":1:1" } else { "" };
+                Some(format!(
+                    "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}"
+                ))
+            }
+            EditorType::Zed => Some(format!("zed://ssh/{user_part}{remote_host}{path_str}")),
+            _ => None,
+        }
     }
 
     pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
