@@ -10,10 +10,12 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { GitPanelCreate } from '@/components/ui-new/views/GitPanelCreate';
+import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { attemptsApi } from '@/lib/api';
@@ -261,17 +263,15 @@ export function WorkspacesLayout() {
     ? 'Create Workspace'
     : selectedWorkspace?.branch;
 
-  return (
-    <div className="flex flex-col h-screen">
-      <Navbar
-        workspaceTitle={navbarTitle}
-        isSidebarVisible={!isSidebarCollapsed}
-        isGitPanelVisible={!isGitPanelCollapsed}
-        isArchived={selectedWorkspace?.archived}
-        onToggleSidebar={handleToggleSidebar}
-        onToggleGitPanel={handleToggleGitPanel}
-        onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
-      />
+  // Get the most recent workspace's task to auto-select its project in create mode
+  const mostRecentWorkspace = sidebarWorkspaces[0];
+  const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
+    enabled: isCreateMode && !!mostRecentWorkspace?.taskId,
+  });
+
+  // Render create mode content (wrapped in CreateModeProvider)
+  const renderCreateModeContent = () => (
+    <CreateModeProvider initialProjectId={lastWorkspaceTask?.project_id}>
       <Group orientation="horizontal" className="flex-1 min-h-0">
         <Panel
           id="sidebar"
@@ -297,30 +297,8 @@ export function WorkspacesLayout() {
 
         <Separator id="handle-left" />
 
-        <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
-          {isCreateMode ? (
-            <div className="flex h-full items-center justify-center bg-primary">
-              <div className="text-center">
-                <h1 className="text-xl text-high mb-4">Create New Workspace</h1>
-                <p className="text-low">
-                  Workspace creation form coming soon...
-                </p>
-              </div>
-            </div>
-          ) : (
-            <ExecutionProcessesProvider
-              attemptId={selectedWorkspace?.id}
-              sessionId={selectedSessionId}
-            >
-              <WorkspacesMain
-                selectedWorkspace={selectedWorkspace ?? null}
-                selectedSession={selectedSession}
-                sessions={sessions}
-                onSelectSession={selectSession}
-                isLoading={isLoading}
-              />
-            </ExecutionProcessesProvider>
-          )}
+        <Panel id="main" className="min-w-0 min-h-0 overflow-hidden bg-primary">
+          <CreateChatBoxContainer />
         </Panel>
 
         <Separator id="handle-right" />
@@ -336,18 +314,89 @@ export function WorkspacesLayout() {
           panelRef={gitPanelRef}
           onResize={handleGitPanelResize}
         >
-          {isCreateMode ? (
-            <GitPanelCreate />
-          ) : (
-            <GitPanelContainer
-              selectedWorkspace={selectedWorkspace}
-              repos={repos}
-              repoInfos={repoInfos}
-              onBranchNameChange={handleBranchNameChange}
-            />
-          )}
+          <GitPanelCreate />
         </Panel>
       </Group>
+    </CreateModeProvider>
+  );
+
+  // Render normal workspace content
+  const renderWorkspaceContent = () => (
+    <Group orientation="horizontal" className="flex-1 min-h-0">
+      <Panel
+        id="sidebar"
+        defaultSize="300px"
+        minSize="300px"
+        maxSize="600px"
+        className="min-w-0 min-h-0 overflow-hidden"
+        collapsible={true}
+        collapsedSize="0px"
+        panelRef={sidebarRef}
+        onResize={handleSidebarResize}
+      >
+        <WorkspacesSidebar
+          workspaces={sidebarWorkspaces}
+          archivedWorkspaces={archivedSidebarWorkspaces}
+          selectedWorkspaceId={selectedWorkspaceId ?? null}
+          onSelectWorkspace={selectWorkspace}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAddWorkspace={navigateToCreate}
+        />
+      </Panel>
+
+      <Separator id="handle-left" />
+
+      <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
+        <ExecutionProcessesProvider
+          attemptId={selectedWorkspace?.id}
+          sessionId={selectedSessionId}
+        >
+          <WorkspacesMain
+            selectedWorkspace={selectedWorkspace ?? null}
+            selectedSession={selectedSession}
+            sessions={sessions}
+            onSelectSession={selectSession}
+            isLoading={isLoading}
+          />
+        </ExecutionProcessesProvider>
+      </Panel>
+
+      <Separator id="handle-right" />
+
+      <Panel
+        id="git"
+        defaultSize="300px"
+        minSize="300px"
+        maxSize="600px"
+        className="min-w-0 min-h-0 overflow-hidden"
+        collapsible={true}
+        collapsedSize="0px"
+        panelRef={gitPanelRef}
+        onResize={handleGitPanelResize}
+      >
+        <GitPanelContainer
+          selectedWorkspace={selectedWorkspace}
+          repos={repos}
+          repoInfos={repoInfos}
+          onBranchNameChange={handleBranchNameChange}
+        />
+      </Panel>
+    </Group>
+  );
+
+  return (
+    <div className="flex flex-col h-screen">
+      <Navbar
+        workspaceTitle={navbarTitle}
+        isSidebarVisible={!isSidebarCollapsed}
+        isGitPanelVisible={!isGitPanelCollapsed}
+        isArchived={selectedWorkspace?.archived}
+        onToggleSidebar={handleToggleSidebar}
+        onToggleGitPanel={handleToggleGitPanel}
+        onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
+      />
+      {isCreateMode ? renderCreateModeContent() : renderWorkspaceContent()}
     </div>
   );
 }

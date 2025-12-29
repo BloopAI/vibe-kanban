@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 interface IconListItemProps {
   icon: Icon;
   label: string;
-  subLabel?: string;
   onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -14,29 +13,23 @@ interface IconListItemProps {
 export function IconListItem({
   icon: IconComponent,
   label,
-  subLabel,
   onClick,
   disabled,
   loading,
   className,
 }: IconListItemProps) {
   const content = (
-    <>
+    <div className="text-normal hover:text-high flex items-center gap-base">
       {loading ? (
-        <SpinnerIcon className="size-icon-sm text-low flex-shrink-0 animate-spin" />
+        <SpinnerIcon className="size-icon-sm flex-shrink-0 animate-spin" />
       ) : (
         <IconComponent
-          className="size-icon-base text-low flex-shrink-0"
+          className="size-icon-base flex-shrink-0"
           weight="regular"
         />
       )}
-      <div className={cn('flex-1 min-w-0', !subLabel && 'flex items-center')}>
-        <span className="text-sm text-normal truncate block">{label}</span>
-        {subLabel && (
-          <span className="text-xs text-low truncate block">{subLabel}</span>
-        )}
-      </div>
-    </>
+      <span className="text-sm truncate block">{label}</span>
+    </div>
   );
 
   const baseClasses = cn(

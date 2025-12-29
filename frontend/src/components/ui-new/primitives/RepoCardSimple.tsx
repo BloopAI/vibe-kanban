@@ -1,11 +1,7 @@
-import {
-  FolderSimpleIcon,
-  XIcon,
-  GitBranchIcon,
-  CaretDownIcon,
-} from '@phosphor-icons/react';
+import { FolderSimpleIcon, XIcon, GitBranchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { SearchableDropdown } from './SearchableDropdown';
+import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdown';
 import type { GitBranch } from 'shared/types';
 
 interface RepoCardSimpleProps {
@@ -60,22 +56,10 @@ export function RepoCardSimple({
           emptyMessage="No branches found"
           contentClassName="w-[280px]"
           trigger={
-            <button
-              type="button"
-              className="flex items-center gap-half bg-panel rounded-sm px-base py-half w-full focus:outline-none focus-visible:ring-1 focus-visible:ring-brand"
-            >
-              <GitBranchIcon
-                className="size-icon-xs text-low flex-shrink-0"
-                weight="bold"
-              />
-              <span className="text-sm text-normal truncate flex-1 text-left">
-                {selectedBranch || 'Select branch'}
-              </span>
-              <CaretDownIcon
-                className="size-icon-2xs text-low flex-shrink-0"
-                weight="bold"
-              />
-            </button>
+            <DropdownMenuTriggerButton
+              icon={GitBranchIcon}
+              label={selectedBranch || 'Select branch'}
+            />
           }
         />
       )}
