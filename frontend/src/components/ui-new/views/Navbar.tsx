@@ -6,8 +6,7 @@ import {
 import { cn } from '@/lib/utils';
 
 // NavbarIconButton - inlined from primitives
-interface NavbarIconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NavbarIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
   rotation?: 0 | 90 | 180 | 270;
@@ -78,7 +77,7 @@ export function Navbar({
       )}
     >
       {/* Left - Sidebar Toggle & Archive */}
-      <div className="flex items-center gap-base">
+      <div className="flex-1 flex items-center gap-base">
         <NavbarIconButton
           icon={SidebarSimpleIcon}
           isActive={isSidebarVisible}
@@ -101,12 +100,12 @@ export function Navbar({
       </div>
 
       {/* Center - Workspace Title */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
+      <div className="flex-1 flex items-center justify-center">
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
       {/* Right - Git Panel Toggle */}
-      <div className="flex items-center">
+      <div className="flex-1 flex items-center justify-end">
         <NavbarIconButton
           icon={SidebarSimpleIcon}
           rotation={180}

@@ -168,15 +168,18 @@ export function CreateChatBoxContainer() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-end pb-double">
-      <SessionChatBox
-        {...chatBoxProps}
-        error={
-          repos.length === 0
-            ? 'Add at least one repository to create a workspace'
-            : error
-        }
-      />
+    <div className="relative flex flex-1 flex-col bg-primary h-full">
+      <div className="flex-1" />
+      <div className="flex justify-center @container">
+        <SessionChatBox
+          {...chatBoxProps}
+          error={
+            repos.length === 0
+              ? 'Add at least one repository to create a workspace'
+              : error
+          }
+        />
+      </div>
     </div>
   );
 }

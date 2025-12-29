@@ -359,9 +359,9 @@ export function TaskFollowUpSection({
     // Allow sending if conflict instructions, review comments, clicked elements, or message is present
     return Boolean(
       conflictResolutionInstructions ||
-        reviewMarkdown ||
-        clickedMarkdown ||
-        localMessage.trim()
+      reviewMarkdown ||
+      clickedMarkdown ||
+      localMessage.trim()
     );
   }, [
     canTypeFollowUp,

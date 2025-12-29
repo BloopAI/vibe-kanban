@@ -297,7 +297,7 @@ export function WorkspacesLayout() {
 
         <Separator id="handle-left" />
 
-        <Panel id="main" className="min-w-0 min-h-0 overflow-hidden bg-primary">
+        <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
           <CreateChatBoxContainer />
         </Panel>
 

@@ -24,8 +24,9 @@ const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 // Styled trigger button with icon/label/caret - use for default styled triggers
-interface DropdownMenuTriggerButtonProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> {
+interface DropdownMenuTriggerButtonProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Trigger
+> {
   icon?: Icon;
   label?: string;
 }
@@ -136,8 +137,9 @@ const DropdownMenuContent = React.forwardRef<
 });
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-interface DropdownMenuItemProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> {
+interface DropdownMenuItemProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Item
+> {
   icon?: Icon;
   badge?: string;
   variant?: 'default' | 'destructive';
@@ -283,8 +285,10 @@ const DropdownMenuShortcut = ({
 };
 DropdownMenuShortcut.displayName = 'DropdownMenuShortcut';
 
-interface DropdownMenuSearchInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface DropdownMenuSearchInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  'type'
+> {
   onValueChange?: (value: string) => void;
 }
 
