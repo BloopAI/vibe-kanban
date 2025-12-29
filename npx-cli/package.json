@@ -14,6 +14,7 @@
     "adm-zip": "^0.5.16"
   },
   "files": [
-    "bin"
+    "bin",
+    "dist"
   ]
 }
