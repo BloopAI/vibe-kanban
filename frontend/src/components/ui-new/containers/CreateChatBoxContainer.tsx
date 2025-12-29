@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
@@ -21,6 +21,7 @@ export function CreateChatBoxContainer() {
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   // Default to user's config profile or first available executor
   const effectiveProfile = useMemo<ExecutorProfileId | null>(() => {
@@ -84,6 +85,7 @@ export function CreateChatBoxContainer() {
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
+    setHasAttemptedSubmit(true);
     if (!canSubmit || !effectiveProfile || !projectId) return;
 
     await createWorkspace.mutateAsync({
@@ -174,7 +176,7 @@ export function CreateChatBoxContainer() {
         <SessionChatBox
           {...chatBoxProps}
           error={
-            repos.length === 0
+            hasAttemptedSubmit && repos.length === 0
               ? 'Add at least one repository to create a workspace'
               : error
           }
