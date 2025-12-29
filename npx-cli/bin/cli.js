@@ -4,7 +4,7 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, BINARY_TAG, CACHE_DIR, getLatestVersion } = require("./download");
+const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, getLatestVersion } = require("./download");
 
 const CLI_VERSION = require("../package.json").version;
 
@@ -71,7 +71,10 @@ function getBinaryName(base) {
 }
 
 const platformDir = getPlatformDir();
-const versionCacheDir = path.join(CACHE_DIR, BINARY_TAG, platformDir);
+// In local dev mode, extract directly to dist directory; otherwise use global cache
+const versionCacheDir = LOCAL_DEV_MODE
+  ? path.join(LOCAL_DIST_DIR, platformDir)
+  : path.join(CACHE_DIR, BINARY_TAG, platformDir);
 
 function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
@@ -145,8 +148,8 @@ async function main() {
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
 
-  // Non-blocking update check (skip in MCP mode to avoid stdout pollution)
-  if (!isMcpMode) {
+  // Non-blocking update check (skip in MCP mode and local dev mode)
+  if (!isMcpMode && !LOCAL_DEV_MODE) {
     getLatestVersion()
       .then((latest) => {
         if (latest && latest !== CLI_VERSION) {
@@ -183,7 +186,8 @@ async function main() {
       });
     });
   } else {
-    console.log(`Starting vibe-kanban v${CLI_VERSION}...`);
+    const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
+    console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
     await extractAndRun("vibe-kanban", (bin) => {
       if (platform === "win32") {
         execSync(`"${bin}"`, { stdio: "inherit" });

@@ -8,6 +8,10 @@ const R2_BASE_URL = "__R2_PUBLIC_URL__";
 const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135-20251215122030
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 
+// Local development mode: use binaries from npx-cli/dist/ instead of R2
+const LOCAL_DEV_MODE = R2_BASE_URL === "__R2_PUBLIC_URL__" || process.env.VIBE_KANBAN_LOCAL === "1";
+const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
+
 async function fetchJson(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
@@ -92,6 +96,18 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
 }
 
 async function ensureBinary(platform, binaryName, onProgress) {
+  // In local dev mode, use binaries directly from npx-cli/dist/
+  if (LOCAL_DEV_MODE) {
+    const localZipPath = path.join(LOCAL_DIST_DIR, platform, `${binaryName}.zip`);
+    if (fs.existsSync(localZipPath)) {
+      return localZipPath;
+    }
+    throw new Error(
+      `Local binary not found: ${localZipPath}\n` +
+      `Run ./local-build.sh first to build the binaries.`
+    );
+  }
+
   const cacheDir = path.join(CACHE_DIR, BINARY_TAG, platform);
   const zipPath = path.join(cacheDir, `${binaryName}.zip`);
 
@@ -117,4 +133,4 @@ async function getLatestVersion() {
   return manifest.latest;
 }
 
-module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, ensureBinary, getLatestVersion };
+module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, ensureBinary, getLatestVersion };
