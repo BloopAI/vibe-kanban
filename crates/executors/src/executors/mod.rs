@@ -281,13 +281,43 @@ impl AppendPrompt {
     pub fn get(&self) -> Option<String> {
         self.0.clone()
     }
+}
 
-    pub fn combine_prompt(&self, prompt: &str) -> String {
-        match self {
-            AppendPrompt(Some(value)) => format!("{prompt}{value}"),
-            AppendPrompt(None) => prompt.to_string(),
-        }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[serde(transparent)]
+#[schemars(
+    title = "Prepend Prompt",
+    description = "Extra text prepended to the prompt",
+    extend("format" = "textarea")
+)]
+#[derive(Default)]
+pub struct PrependPrompt(pub Option<String>);
+
+impl PrependPrompt {
+    pub fn get(&self) -> Option<String> {
+        self.0.clone()
     }
+}
+
+/// Combines prepend_prompt + prompt + append_prompt with spaces between each part
+pub fn CombineFullPrompt(
+    prepend: &PrependPrompt,
+    prompt: &str,
+    append: &AppendPrompt,
+) -> String {
+    let mut parts = Vec::new();
+
+    if let PrependPrompt(Some(value)) = prepend {
+        parts.push(value.as_str());
+    }
+
+    parts.push(prompt);
+
+    if let AppendPrompt(Some(value)) = append {
+        parts.push(value.as_str());
+    }
+
+    parts.join(" ")
 }
 
 #[cfg(test)]
@@ -320,5 +350,37 @@ mod tests {
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
         assert!(result.is_ok(), "CURSOR should deserialize via serde");
         assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+    }
+
+    #[test]
+    fn test_combine_full_prompt() {
+        // Test: prepend is None, append is "abc", prompt is "123"
+        // Expected: "123 abc" (no space before prompt)
+        let prepend = PrependPrompt(None);
+        let append = AppendPrompt(Some("abc".to_string()));
+        let prompt = "123";
+        let result = CombineFullPrompt(&prepend, prompt, &append);
+        assert_eq!(result, "123 abc");
+
+        // Test: prepend is "xyz", append is None, prompt is "123"
+        // Expected: "xyz 123" (space between prepend and prompt)
+        let prepend = PrependPrompt(Some("xyz".to_string()));
+        let append = AppendPrompt(None);
+        let result = CombineFullPrompt(&prepend, prompt, &append);
+        assert_eq!(result, "xyz 123");
+
+        // Test: prepend is "xyz", append is "abc", prompt is "123"
+        // Expected: "xyz 123 abc" (spaces between all parts)
+        let prepend = PrependPrompt(Some("xyz".to_string()));
+        let append = AppendPrompt(Some("abc".to_string()));
+        let result = CombineFullPrompt(&prepend, prompt, &append);
+        assert_eq!(result, "xyz 123 abc");
+
+        // Test: both prepend and append are None
+        // Expected: "123" (just the prompt, no extra spaces)
+        let prepend = PrependPrompt(None);
+        let append = AppendPrompt(None);
+        let result = CombineFullPrompt(&prepend, prompt, &append);
+        assert_eq!(result, "123");
     }
 }

@@ -25,7 +25,8 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor,
     },
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
@@ -36,6 +37,8 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Copilot {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -110,7 +113,7 @@ impl StandardCodingAgentExecutor for Copilot {
             .build_initial()?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(program_path);
         command
@@ -153,7 +156,7 @@ impl StandardCodingAgentExecutor for Copilot {
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(program_path);
 

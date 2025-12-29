@@ -13,13 +13,16 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor,
     },
 };
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Gemini {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -66,7 +69,7 @@ impl StandardCodingAgentExecutor for Gemini {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let gemini_command = self.build_command_builder().build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
             None
@@ -93,7 +96,7 @@ impl StandardCodingAgentExecutor for Gemini {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let gemini_command = self.build_command_builder().build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {
             None

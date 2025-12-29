@@ -12,14 +12,16 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        gemini::AcpAgentHarness,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor, gemini::AcpAgentHarness,
     },
 };
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct QwenCode {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,7 +59,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_initial()?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         let approvals = if self.yolo.unwrap_or(false) {
             None
@@ -84,7 +86,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_follow_up(&[])?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         let approvals = if self.yolo.unwrap_or(false) {
             None
