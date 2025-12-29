@@ -9,6 +9,7 @@ import {
   COMMAND_PRIORITY_CRITICAL,
 } from 'lexical';
 import { Bold, Italic, Underline, Strikethrough, Code } from 'lucide-react';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
 
 const TOOLBAR_HEIGHT = 36;
@@ -48,6 +49,7 @@ function ToolbarButton({
 
 export function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
+  const portalContainer = usePortalContainer();
 
   // Visibility and position state
   const [isVisible, setIsVisible] = useState(false);
@@ -245,6 +247,6 @@ export function ToolbarPlugin() {
         <Code size={iconSize} />
       </ToolbarButton>
     </div>,
-    document.body
+    portalContainer ?? document.body
   );
 }

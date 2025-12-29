@@ -11,11 +11,9 @@ export function LegacyDesignScope({ children }: LegacyDesignScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   return (
     <div ref={ref} className="legacy-design min-h-screen">
-      <NiceModal.Provider>
-        <PortalContainerContext.Provider value={ref}>
-          {children}
-        </PortalContainerContext.Provider>
-      </NiceModal.Provider>
+      <PortalContainerContext.Provider value={ref}>
+        <NiceModal.Provider>{children}</NiceModal.Provider>
+      </PortalContainerContext.Provider>
     </div>
   );
 }

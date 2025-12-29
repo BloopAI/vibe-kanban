@@ -11,11 +11,9 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   return (
     <div ref={ref} className="new-design h-full">
-      <NiceModal.Provider>
-        <PortalContainerContext.Provider value={ref}>
-          {children}
-        </PortalContainerContext.Provider>
-      </NiceModal.Provider>
+      <PortalContainerContext.Provider value={ref}>
+        <NiceModal.Provider>{children}</NiceModal.Provider>
+      </PortalContainerContext.Provider>
     </div>
   );
 }
