@@ -20,15 +20,19 @@ const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
-interface DropdownMenuTriggerProps
+// Direct passthrough - inherits asChild support from Radix automatically
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+
+// Styled trigger button with icon/label/caret - use for default styled triggers
+interface DropdownMenuTriggerButtonProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> {
   icon?: Icon;
   label?: string;
 }
 
-const DropdownMenuTrigger = React.forwardRef<
+const DropdownMenuTriggerButton = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
-  DropdownMenuTriggerProps
+  DropdownMenuTriggerButtonProps
 >(({ className, icon: IconComponent, label, children, ...props }, ref) => (
   <DropdownMenuPrimitive.Trigger
     ref={ref}
@@ -47,7 +51,7 @@ const DropdownMenuTrigger = React.forwardRef<
     <CaretDownIcon className="size-icon-2xs text-normal" weight="bold" />
   </DropdownMenuPrimitive.Trigger>
 ));
-DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
+DropdownMenuTriggerButton.displayName = 'DropdownMenuTriggerButton';
 
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
@@ -301,6 +305,7 @@ const DropdownMenuSearchInput = React.forwardRef<
           className
         )}
         onChange={handleChange}
+        autoFocus
         {...props}
       />
     </div>
@@ -311,6 +316,7 @@ DropdownMenuSearchInput.displayName = 'DropdownMenuSearchInput';
 export {
   DropdownMenu,
   DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
