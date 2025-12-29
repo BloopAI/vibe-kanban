@@ -86,13 +86,16 @@ export function PrioritySelector({
             variant="ghost"
             size="sm"
             className={cn(
-              'h-6 gap-1 px-2 text-xs rounded-full',
+              'h-auto py-0.5 px-2 gap-1 text-xs rounded-md',
+              'bg-muted/50 border border-border/50 hover:bg-muted',
               disabled && 'opacity-50 cursor-not-allowed'
             )}
             disabled={disabled}
           >
-            <PriorityIcon className={cn('h-3.5 w-3.5', selectedPriority.color)} />
-            {value !== 0 && <span className={selectedPriority.color}>{selectedPriority.label}</span>}
+            <PriorityIcon className={cn('h-3 w-3', selectedPriority.color)} />
+            <span className={value !== 0 ? selectedPriority.color : 'text-muted-foreground'}>
+              {value !== 0 ? selectedPriority.label : 'Priority'}
+            </span>
           </Button>
         );
       default:
