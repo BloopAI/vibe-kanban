@@ -94,6 +94,9 @@ import {
   CreateTeam,
   UpdateTeam,
   TeamProjectAssignment,
+  InboxItem,
+  CreateInboxItem,
+  InboxSummary,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1354,6 +1357,60 @@ export const teamsApi = {
         method: 'DELETE',
       }
     );
+    return handleApiResponse<void>(response);
+  },
+};
+
+// Inbox API
+export const inboxApi = {
+  list: async (limit?: number): Promise<InboxItem[]> => {
+    const queryParam = limit ? `?limit=${limit}` : '';
+    const response = await makeRequest(`/api/inbox${queryParam}`);
+    return handleApiResponse<InboxItem[]>(response);
+  },
+
+  listUnread: async (limit?: number): Promise<InboxItem[]> => {
+    const queryParam = limit ? `?limit=${limit}` : '';
+    const response = await makeRequest(`/api/inbox/unread${queryParam}`);
+    return handleApiResponse<InboxItem[]>(response);
+  },
+
+  getSummary: async (): Promise<InboxSummary> => {
+    const response = await makeRequest('/api/inbox/summary');
+    return handleApiResponse<InboxSummary>(response);
+  },
+
+  get: async (itemId: string): Promise<InboxItem> => {
+    const response = await makeRequest(`/api/inbox/${itemId}`);
+    return handleApiResponse<InboxItem>(response);
+  },
+
+  create: async (data: CreateInboxItem): Promise<InboxItem> => {
+    const response = await makeRequest('/api/inbox', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<InboxItem>(response);
+  },
+
+  markAsRead: async (itemId: string): Promise<InboxItem> => {
+    const response = await makeRequest(`/api/inbox/${itemId}/read`, {
+      method: 'POST',
+    });
+    return handleApiResponse<InboxItem>(response);
+  },
+
+  markAllAsRead: async (): Promise<number> => {
+    const response = await makeRequest('/api/inbox/read-all', {
+      method: 'POST',
+    });
+    return handleApiResponse<number>(response);
+  },
+
+  delete: async (itemId: string): Promise<void> => {
+    const response = await makeRequest(`/api/inbox/${itemId}`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 };

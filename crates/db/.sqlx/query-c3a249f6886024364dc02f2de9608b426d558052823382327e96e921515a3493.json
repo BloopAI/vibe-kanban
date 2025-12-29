@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                COUNT(*) as \"total_count!: i64\",\n                SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as \"unread_count!: i64\"\n            FROM inbox_items",
+  "describe": {
+    "columns": [
+      {
+        "name": "total_count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "unread_count!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "c3a249f6886024364dc02f2de9608b426d558052823382327e96e921515a3493"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE inbox_items SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP WHERE is_read = FALSE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "ddc2c484c4736ae9f57884efca1d66c76d9b8f6afcd47303d46a9904ca06b9bf"
+}

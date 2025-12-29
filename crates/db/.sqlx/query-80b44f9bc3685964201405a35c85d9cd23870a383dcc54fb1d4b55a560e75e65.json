@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                notification_type as \"notification_type!: InboxNotificationType\",\n                title,\n                message,\n                task_id as \"task_id: Uuid\",\n                project_id as \"project_id: Uuid\",\n                workspace_id as \"workspace_id: Uuid\",\n                is_read as \"is_read!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM inbox_items\n            ORDER BY created_at DESC\n            LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "notification_type!: InboxNotificationType",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "message",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id: Uuid",
+        "ordinal": 4,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "is_read!: bool",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "80b44f9bc3685964201405a35c85d9cd23870a383dcc54fb1d4b55a560e75e65"
+}

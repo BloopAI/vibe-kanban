@@ -52,6 +52,14 @@ export type UpdateTeam = { name: string | null, icon: string | null, color: stri
 
 export type TeamProjectAssignment = { project_id: string, };
 
+export type InboxNotificationType = "task_assigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "workspace_created" | "system_notification";
+
+export type InboxItem = { id: string, notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, is_read: boolean, created_at: string, updated_at: string, };
+
+export type CreateInboxItem = { notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, };
+
+export type InboxSummary = { total_count: bigint, unread_count: bigint, };
+
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };

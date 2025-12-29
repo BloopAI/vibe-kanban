@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM inbox_items WHERE project_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "7b762404aa791af19007b9d02fe486a8f7d543e15a6cf8cd845b2b979511cd18"
+}

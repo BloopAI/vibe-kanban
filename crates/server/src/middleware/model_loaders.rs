@@ -5,8 +5,8 @@ use axum::{
     response::Response,
 };
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, session::Session, tag::Tag, task::Task,
-    team::Team, workspace::Workspace,
+    execution_process::ExecutionProcess, inbox::InboxItem, project::Project, session::Session,
+    tag::Tag, task::Task, team::Team, workspace::Workspace,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -193,6 +193,34 @@ pub async fn load_team_middleware(
     // Insert the team as an extension
     let mut request = request;
     request.extensions_mut().insert(team);
+
+    // Continue with the next middleware/handler
+    Ok(next.run(request).await)
+}
+
+// Middleware that loads and injects InboxItem based on the inbox_item_id path parameter
+pub async fn load_inbox_item_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(inbox_item_id): Path<Uuid>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the inbox item from the database
+    let inbox_item = match InboxItem::find_by_id(&deployment.db().pool, inbox_item_id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => {
+            tracing::warn!("InboxItem {} not found", inbox_item_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch inbox item {}: {}", inbox_item_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Insert the inbox item as an extension
+    let mut request = request;
+    request.extensions_mut().insert(inbox_item);
 
     // Continue with the next middleware/handler
     Ok(next.run(request).await)
