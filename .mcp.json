@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "vibe_kanban": {
+      "type": "stdio",
+      "command": "/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/scripts/vibe-kanban-mcp-wrapper.sh",
+      "args": [],
+      "env": {}
+    }
+  }
+}

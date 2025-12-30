@@ -44,11 +44,12 @@ export function TeamIssues() {
   const [componentsByTaskId, setComponentsByTaskId] = useState<Record<string, string | null>>({});
 
   // Mock team members - in real app, this would come from API
+  // Note: IDs must be valid UUIDs as the backend expects UUID for assignee_id
   const teamMembers: TeamMember[] = useMemo(() => [
-    { id: 'member-1', name: 'Alice Johnson', email: 'alice@example.com' },
-    { id: 'member-2', name: 'Bob Smith', email: 'bob@example.com' },
-    { id: 'member-3', name: 'Carol Williams', email: 'carol@example.com' },
-    { id: 'member-4', name: 'David Brown', email: 'david@example.com' },
+    { id: '00000000-0000-0000-0000-000000000001', name: 'Alice Johnson', email: 'alice@example.com' },
+    { id: '00000000-0000-0000-0000-000000000002', name: 'Bob Smith', email: 'bob@example.com' },
+    { id: '00000000-0000-0000-0000-000000000003', name: 'Carol Williams', email: 'carol@example.com' },
+    { id: '00000000-0000-0000-0000-000000000004', name: 'David Brown', email: 'david@example.com' },
   ], []);
 
   // Fetch team projects when teamId changes

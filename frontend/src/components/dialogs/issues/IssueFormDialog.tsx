@@ -53,10 +53,11 @@ const STATUSES: { value: TaskStatus; label: string; color: string; bgColor: stri
 ];
 
 // Mock team members - in real app, fetch from API
+// Note: IDs must be valid UUIDs as the backend expects UUID for assignee_id
 const MOCK_TEAM_MEMBERS: TeamMember[] = [
-  { id: '1', name: 'John Doe', email: 'john@example.com' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-  { id: '3', name: 'Bob Johnson', email: 'bob@example.com' },
+  { id: '00000000-0000-0000-0000-000000000001', name: 'John Doe', email: 'john@example.com' },
+  { id: '00000000-0000-0000-0000-000000000002', name: 'Jane Smith', email: 'jane@example.com' },
+  { id: '00000000-0000-0000-0000-000000000003', name: 'Bob Johnson', email: 'bob@example.com' },
 ];
 
 // Due date presets
