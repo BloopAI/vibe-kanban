@@ -215,30 +215,30 @@
   }
 
   /* Prevent iOS zooming on small text inputs */
-  input[type="text"]:not([size]),
-  input[type="search"]:not([size]),
-  input[type="password"]:not([size]),
-  input[type="number"]:not([size]),
-  input[type="email"]:not([size]),
-  input[type="tel"]:not([size]),
-  input[type="url"]:not([size]),
+  input[type='text']:not([size]),
+  input[type='search']:not([size]),
+  input[type='password']:not([size]),
+  input[type='number']:not([size]),
+  input[type='email']:not([size]),
+  input[type='tel']:not([size]),
+  input[type='url']:not([size]),
   textarea,
-  [contenteditable="true"],
-  [contenteditable="plaintext-only"] {
+  [contenteditable='true'],
+  [contenteditable='plaintext-only'] {
     font-size: 16px;
   }
 
   /* Ensure focus doesn't trigger zoom by maintaining minimum font size */
-  input[type="text"]:not([size]):focus,
-  input[type="search"]:not([size]):focus,
-  input[type="password"]:not([size]):focus,
-  input[type="number"]:not([size]):focus,
-  input[type="email"]:not([size]):focus,
-  input[type="tel"]:not([size]):focus,
-  input[type="url"]:not([size]):focus,
+  input[type='text']:not([size]):focus,
+  input[type='search']:not([size]):focus,
+  input[type='password']:not([size]):focus,
+  input[type='number']:not([size]):focus,
+  input[type='email']:not([size]):focus,
+  input[type='tel']:not([size]):focus,
+  input[type='url']:not([size]):focus,
   textarea:focus,
-  [contenteditable="true"]:focus,
-  [contenteditable="plaintext-only"]:focus {
+  [contenteditable='true']:focus,
+  [contenteditable='plaintext-only']:focus {
     font-size: 16px !important;
   }
 
