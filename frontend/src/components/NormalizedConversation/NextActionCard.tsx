@@ -10,7 +10,7 @@ import {
   GitBranch,
   Settings,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
@@ -57,6 +57,7 @@ export function NextActionCard({
   const { config } = useUserSystem();
   const { project } = useProject();
   const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
 
   const { data: attempt } = useQuery({
@@ -303,7 +304,10 @@ export function NextActionCard({
                                         onClick={
                                           runningDevServer ? () => stop() : () => {
                                             start();
-                                            navigate({ search: '?view=preview' });
+                                            setSearchParams(prev => {
+                                              prev.set('view', 'preview');
+                                              return prev;
+                                            });
                                           }
                                         }
                                         disabled={
