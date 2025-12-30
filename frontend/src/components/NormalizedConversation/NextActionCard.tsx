@@ -10,7 +10,7 @@ import {
   GitBranch,
   Settings,
 } from 'lucide-react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
