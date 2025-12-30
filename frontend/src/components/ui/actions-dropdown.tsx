@@ -244,7 +244,10 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
-              <DropdownMenuItem disabled={!projectId || !task} onClick={handlePreview}>
+              <DropdownMenuItem
+                disabled={!projectId || !task}
+                onClick={handlePreview}
+              >
                 {t('actionsMenu.preview')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
