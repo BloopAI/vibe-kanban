@@ -8,6 +8,7 @@ use crate::DeploymentImpl;
 pub mod approvals;
 pub mod config;
 pub mod containers;
+pub mod documents;
 pub mod filesystem;
 // pub mod github;
 pub mod events;
@@ -41,6 +42,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(teams::router(&deployment))
+        .merge(documents::router(&deployment))
         .merge(inbox::router(&deployment))
         .merge(oauth::router())
         .merge(organizations::router())

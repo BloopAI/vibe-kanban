@@ -31,6 +31,7 @@ import {
   MoreHorizontal,
   Settings,
   Trash2,
+  FileText,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -300,6 +301,13 @@ function SidebarTeamItem({
             label="Views"
             to={`${teamBasePath}/views`}
             isActive={pathname === `${teamBasePath}/views`}
+            indent
+          />
+          <SidebarItem
+            icon={FileText}
+            label="Documents"
+            to={`${teamBasePath}/documents`}
+            isActive={pathname === `${teamBasePath}/documents`}
             indent
           />
         </div>

@@ -1,4 +1,5 @@
 pub mod coding_agent_turn;
+pub mod document;
 pub mod execution_process;
 pub mod execution_process_logs;
 pub mod execution_process_repo_state;

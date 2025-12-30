@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COALESCE(MAX(position), -1) + 1 as \"pos!: i32\"\n                   FROM documents\n                   WHERE folder_id = $1 AND team_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "pos!: i32",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "79623459fc20b86610de549db8b12bd75a90a5badc2be46bc0f6e97f206d1f2b"
+}

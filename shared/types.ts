@@ -78,6 +78,34 @@ migrated_count: number,
  */
 task_ids: Array<string>, };
 
+export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
+
+export type DocumentFolder = { id: string, team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, position: number, created_at: Date, updated_at: Date, };
+
+export type Document = { id: string, team_id: string, folder_id: string | null, title: string, content: string | null, file_path: string | null, file_type: string, file_size: bigint | null, mime_type: string | null, icon: string | null, is_pinned: boolean, is_archived: boolean, position: number, created_by: string | null, created_at: Date, updated_at: Date, };
+
+export type CreateDocumentFolder = { team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, };
+
+export type UpdateDocumentFolder = { parent_id: string | null, name: string | null, icon: string | null, color: string | null, position: number | null, };
+
+export type CreateDocument = { team_id: string, folder_id: string | null, title: string, content: string | null, file_type: string | null, icon: string | null, };
+
+export type UpdateDocument = { folder_id: string | null, title: string | null, content: string | null, icon: string | null, is_pinned: boolean | null, is_archived: boolean | null, position: number | null, };
+
+export type ListDocumentsQuery = { 
+/**
+ * Filter by folder ID (null for root level documents)
+ */
+folder_id: string | null, 
+/**
+ * Include archived documents
+ */
+include_archived: boolean | null, 
+/**
+ * Search query
+ */
+search: string | null, };
+
 export type InboxNotificationType = "task_assigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "workspace_created" | "system_notification";
 
 export type InboxItem = { id: string, notification_type: InboxNotificationType, title: string, message: string | null, task_id: string | null, project_id: string | null, workspace_id: string | null, is_read: boolean, created_at: string, updated_at: string, };

@@ -99,6 +99,12 @@ import {
   InboxItem,
   CreateInboxItem,
   InboxSummary,
+  Document,
+  DocumentFolder,
+  CreateDocument,
+  UpdateDocument,
+  CreateDocumentFolder,
+  UpdateDocumentFolder,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1435,6 +1441,94 @@ export const inboxApi = {
 
   delete: async (itemId: string): Promise<void> => {
     const response = await makeRequest(`/api/inbox/${itemId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+};
+
+// Documents API
+export const documentsApi = {
+  // Document folders
+  listFolders: async (teamId: string): Promise<DocumentFolder[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders`);
+    return handleApiResponse<DocumentFolder[]>(response);
+  },
+
+  getFolder: async (teamId: string, folderId: string): Promise<DocumentFolder> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`);
+    return handleApiResponse<DocumentFolder>(response);
+  },
+
+  createFolder: async (teamId: string, data: CreateDocumentFolder): Promise<DocumentFolder> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<DocumentFolder>(response);
+  },
+
+  updateFolder: async (
+    teamId: string,
+    folderId: string,
+    data: UpdateDocumentFolder
+  ): Promise<DocumentFolder> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<DocumentFolder>(response);
+  },
+
+  deleteFolder: async (teamId: string, folderId: string): Promise<void> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Documents
+  list: async (
+    teamId: string,
+    options?: { folderId?: string; includeArchived?: boolean; search?: string }
+  ): Promise<Document[]> => {
+    const params = new URLSearchParams();
+    if (options?.folderId) params.append('folder_id', options.folderId);
+    if (options?.includeArchived) params.append('include_archived', 'true');
+    if (options?.search) params.append('search', options.search);
+    const queryString = params.toString();
+    const url = `/api/teams/${teamId}/documents${queryString ? `?${queryString}` : ''}`;
+    const response = await makeRequest(url);
+    return handleApiResponse<Document[]>(response);
+  },
+
+  get: async (teamId: string, documentId: string): Promise<Document> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`);
+    return handleApiResponse<Document>(response);
+  },
+
+  create: async (teamId: string, data: CreateDocument): Promise<Document> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Document>(response);
+  },
+
+  update: async (
+    teamId: string,
+    documentId: string,
+    data: UpdateDocument
+  ): Promise<Document> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Document>(response);
+  },
+
+  delete: async (teamId: string, documentId: string): Promise<void> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
