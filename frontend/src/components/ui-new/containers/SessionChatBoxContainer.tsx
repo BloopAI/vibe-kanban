@@ -363,6 +363,7 @@ export function SessionChatBoxContainer({
         linesRemoved,
       }}
       error={followUpError}
+      agent={latestProfileId?.executor}
     />
   );
 }
