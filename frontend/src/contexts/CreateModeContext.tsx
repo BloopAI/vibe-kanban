@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
   useEffect,
 } from 'react';
@@ -49,43 +50,56 @@ export function CreateModeProvider({
   initialProjectId,
   initialRepos,
 }: CreateModeProviderProps) {
+  // Track whether we've initialized from async data to avoid re-selecting after user removal
+  const hasInitializedRepos = useRef(false);
+  const hasInitializedProject = useRef(false);
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-    initialProjectId ?? null
+    null
   );
-  // Extract Repo objects from RepoWithTargetBranch (omitting target_branch)
-  const [repos, setRepos] = useState<Repo[]>(() =>
-    (initialRepos ?? []).map((r) => ({
-      id: r.id,
-      path: r.path,
-      name: r.name,
-      display_name: r.display_name,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    }))
-  );
-  // Initial repos updates from empty
-  useEffect(() => {
-    if (repos.length === 0) {
-      setRepos(initialRepos ?? []);
-    }
-  }, [initialRepos, repos]);
-  // Initial project updates from empty
-  useEffect(() => {
-    if (!selectedProjectId) {
-      setSelectedProjectId(initialProjectId ?? null);
-    }
-  }, [initialProjectId, selectedProjectId]);
-  // Build target branches map from initial repos
+  const [repos, setRepos] = useState<Repo[]>([]);
   const [targetBranches, setTargetBranches] = useState<Record<string, string>>(
-    () =>
-      (initialRepos ?? []).reduce(
-        (acc, repo) => {
-          acc[repo.id] = repo.target_branch;
-          return acc;
-        },
-        {} as Record<string, string>
-      )
+    {}
   );
+
+  // Initialize repos when initialRepos first becomes available (async load)
+  // Uses ref guard to prevent re-initialization after user removes repos
+  useEffect(() => {
+    if (
+      !hasInitializedRepos.current &&
+      initialRepos &&
+      initialRepos.length > 0
+    ) {
+      hasInitializedRepos.current = true;
+      setRepos(
+        initialRepos.map((r) => ({
+          id: r.id,
+          path: r.path,
+          name: r.name,
+          display_name: r.display_name,
+          created_at: r.created_at,
+          updated_at: r.updated_at,
+        }))
+      );
+      setTargetBranches(
+        initialRepos.reduce(
+          (acc, repo) => {
+            acc[repo.id] = repo.target_branch;
+            return acc;
+          },
+          {} as Record<string, string>
+        )
+      );
+    }
+  }, [initialRepos]);
+
+  // Initialize project when initialProjectId first becomes available
+  useEffect(() => {
+    if (!hasInitializedProject.current && initialProjectId) {
+      hasInitializedProject.current = true;
+      setSelectedProjectId(initialProjectId);
+    }
+  }, [initialProjectId]);
   const [selectedProfile, setSelectedProfile] =
     useState<ExecutorProfileId | null>(null);
   const [message, setMessage] = useState('');
