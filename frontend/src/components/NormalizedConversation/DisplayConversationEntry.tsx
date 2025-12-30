@@ -609,11 +609,7 @@ const getToolStatusAppearance = (status: ToolStatus): ToolStatusAppearance => {
  *******************/
 
 export const DisplayConversationEntryMaxWidth = (props: Props) => {
-  return (
-    <div className="mx-auto w-full max-w-[50rem]">
-      <DisplayConversationEntry {...props} />
-    </div>
-  );
+  return <DisplayConversationEntry {...props} />;
 };
 
 function DisplayConversationEntry({

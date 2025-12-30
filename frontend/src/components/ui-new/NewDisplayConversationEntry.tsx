@@ -98,7 +98,7 @@ function NewDisplayConversationEntry({
     if (action_type.action === 'file_edit') {
       const fileEditAction = action_type as FileEditAction;
       return (
-        <div className="px-double py-base space-y-base">
+        <>
           {fileEditAction.changes.map((change, idx) => (
             <FileEditEntry
               key={idx}
@@ -107,7 +107,7 @@ function NewDisplayConversationEntry({
               expansionKey={`edit:${expansionKey}:${idx}`}
             />
           ))}
-        </div>
+        </>
       );
     }
 
@@ -115,31 +115,23 @@ function NewDisplayConversationEntry({
     if (action_type.action === 'plan_presentation') {
       const isPendingApproval = status.status === 'pending_approval';
       return (
-        <div className="px-double py-base">
-          <PlanEntry
-            plan={action_type.plan}
-            expansionKey={expansionKey}
-            showActions={isPendingApproval}
-            taskAttemptId={taskAttempt?.id}
-          />
-        </div>
+        <PlanEntry
+          plan={action_type.plan}
+          expansionKey={expansionKey}
+          showActions={isPendingApproval}
+          taskAttemptId={taskAttempt?.id}
+        />
       );
     }
 
     // Other tool uses - use ChatToolSummary
-    return (
-      <div className="px-double py-base">
-        <ChatToolSummary summary={getToolSummary(entryType)} />
-      </div>
-    );
+    return <ChatToolSummary summary={getToolSummary(entryType)} />;
   }
 
   // Assistant message - use ChatMarkdown
   if (entryType.type === 'assistant_message') {
     return (
-      <div className="px-double py-base">
-        <ChatMarkdown content={entry.content} taskAttemptId={taskAttempt?.id} />
-      </div>
+      <ChatMarkdown content={entry.content} taskAttemptId={taskAttempt?.id} />
     );
   }
 
@@ -228,4 +220,12 @@ function PlanEntry({
   );
 }
 
-export default NewDisplayConversationEntry;
+const NewDisplayConversationEntrySpaced = (props: Props) => {
+  return (
+    <div className="my-base">
+      <NewDisplayConversationEntry {...props} />
+    </div>
+  );
+};
+
+export default NewDisplayConversationEntrySpaced;
