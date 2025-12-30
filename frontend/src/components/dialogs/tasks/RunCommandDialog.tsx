@@ -74,7 +74,9 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
       setError(null);
 
       try {
-        const timeout = timeoutSeconds ? parseInt(timeoutSeconds, 10) : undefined;
+        const timeout = timeoutSeconds
+          ? parseInt(timeoutSeconds, 10)
+          : undefined;
         const result = await attemptsApi.runCommand(
           attemptId,
           trimmedCommand,
@@ -130,9 +132,7 @@ const RunCommandDialogImpl = NiceModal.create<RunCommandDialogProps>(
           </DialogHeader>
 
           <div className="space-y-4">
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             {isAttemptRunning && (
               <p className="text-sm text-muted-foreground">
                 {t('followUp.runCommand.waitForProcess')}
