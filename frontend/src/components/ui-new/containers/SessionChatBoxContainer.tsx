@@ -13,9 +13,7 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useVariant } from '@/hooks/useVariant';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/components/ConfigProvider';
-// Note: useRetryUi and useEntries could be used to block editing during retry/approval
-// import { useRetryUi } from '@/contexts/RetryUiContext';
-// import { useEntries } from '@/contexts/EntriesContext';
+import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -56,6 +54,10 @@ export function SessionChatBoxContainer({
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, taskId);
+
+  // Approval feedback context
+  const feedbackContext = useApprovalFeedbackOptional();
+  const isInFeedbackMode = !!feedbackContext?.activeApproval;
 
   // Scratch for draft persistence
   const {
@@ -312,8 +314,27 @@ export function SessionChatBoxContainer({
     [setFollowUpError]
   );
 
+  // Handle feedback submission
+  const handleSubmitFeedback = useCallback(async () => {
+    if (!feedbackContext || !localMessage.trim()) return;
+
+    try {
+      await feedbackContext.submitFeedback(localMessage);
+      cancelDebouncedSave();
+      setLocalMessage('');
+    } catch {
+      // Error is handled in context
+    }
+  }, [feedbackContext, localMessage, cancelDebouncedSave]);
+
+  // Handle cancel feedback mode
+  const handleCancelFeedback = useCallback(() => {
+    feedbackContext?.exitFeedbackMode();
+  }, [feedbackContext]);
+
   // Derive execution status from booleans
   const getExecutionStatus = (): ExecutionStatus => {
+    if (isInFeedbackMode) return 'feedback';
     if (isStopping) return 'stopping';
     if (isQueueLoading) return 'queue-loading';
     if (isSendingFollowUp) return 'sending';
@@ -364,6 +385,18 @@ export function SessionChatBoxContainer({
       }}
       error={followUpError}
       agent={latestProfileId?.executor}
+      feedbackMode={
+        feedbackContext
+          ? {
+              isActive: isInFeedbackMode,
+              onSubmitFeedback: handleSubmitFeedback,
+              onCancel: handleCancelFeedback,
+              isSubmitting: feedbackContext.isSubmitting,
+              error: feedbackContext.error,
+              isTimedOut: feedbackContext.isTimedOut,
+            }
+          : undefined
+      }
     />
   );
 }

@@ -8,8 +8,9 @@ interface ChatPlanProps {
   expanded?: boolean;
   onToggle?: () => void;
   onApprove?: () => void;
-  onReject?: () => void;
+  onEdit?: () => void;
   showActions?: boolean;
+  isTimedOut?: boolean;
   className?: string;
   taskAttemptId?: string;
 }
@@ -20,26 +21,31 @@ export function ChatPlan({
   expanded = false,
   onToggle,
   onApprove,
-  onReject,
+  onEdit,
   showActions = false,
+  isTimedOut = false,
   className,
   taskAttemptId,
 }: ChatPlanProps) {
   const actions = showActions ? (
     <>
       <span className="flex-1 text-sm text-low">
-        Would you like to approve this plan?
+        {isTimedOut
+          ? 'Approval has timed out'
+          : 'Would you like to approve this plan?'}
       </span>
-      <div className="flex items-center gap-base">
-        {onReject && (
-          <PrimaryButton
-            variant="secondary"
-            onClick={onReject}
-            value="Reject"
-          />
-        )}
-        {onApprove && <PrimaryButton onClick={onApprove} value="Accept" />}
-      </div>
+      {!isTimedOut && (
+        <div className="flex items-center gap-base">
+          {onEdit && (
+            <PrimaryButton
+              variant="secondary"
+              onClick={onEdit}
+              value="Request Changes"
+            />
+          )}
+          {onApprove && <PrimaryButton onClick={onApprove} value="Approve" />}
+        </div>
+      )}
     </>
   ) : undefined;
 

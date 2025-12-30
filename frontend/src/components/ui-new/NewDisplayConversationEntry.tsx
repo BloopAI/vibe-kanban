@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   ActionType,
   NormalizedEntry,
+  ToolStatus,
   type TaskWithAttemptStatus,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { DiffLineType, parseInstance } from '@git-diff-view/react';
 import { useExpandable } from '@/stores/useExpandableStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
+import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
+import { approvalsApi } from '@/lib/api';
 import {
   ChatToolSummary,
   ChatFileEntry,
@@ -115,12 +118,18 @@ function NewDisplayConversationEntry({
     // Plan presentation - use ChatPlan
     if (action_type.action === 'plan_presentation') {
       const isPendingApproval = status.status === 'pending_approval';
+      const pendingStatus = isPendingApproval
+        ? (status as Extract<ToolStatus, { status: 'pending_approval' }>)
+        : undefined;
+
       return (
         <PlanEntry
           plan={action_type.plan}
           expansionKey={expansionKey}
           showActions={isPendingApproval}
           taskAttemptId={taskAttempt?.id}
+          approvalStatus={pendingStatus}
+          executionProcessId={executionProcessId}
         />
       );
     }
@@ -212,13 +221,24 @@ function PlanEntry({
   expansionKey,
   showActions,
   taskAttemptId,
+  approvalStatus,
+  executionProcessId,
 }: {
   plan: string;
   expansionKey: string;
   showActions: boolean;
   taskAttemptId?: string;
+  approvalStatus?: Extract<ToolStatus, { status: 'pending_approval' }>;
+  executionProcessId?: string;
 }) {
   const [expanded, toggle] = useExpandable(`plan:${expansionKey}`, true);
+  const [isApproving, setIsApproving] = useState(false);
+  const feedbackContext = useApprovalFeedbackOptional();
+
+  // Check if approval timed out
+  const isTimedOut = approvalStatus
+    ? new Date() > new Date(approvalStatus.timeout_at)
+    : false;
 
   // Extract title from plan content (first line or default)
   const title = useMemo(() => {
@@ -228,6 +248,38 @@ function PlanEntry({
     return cleanTitle || 'Plan';
   }, [plan]);
 
+  // Handle approve action
+  const handleApprove = useCallback(async () => {
+    if (!approvalStatus || !executionProcessId || isApproving) return;
+
+    // Exit feedback mode if active
+    feedbackContext?.exitFeedbackMode();
+
+    setIsApproving(true);
+    try {
+      await approvalsApi.respond(approvalStatus.approval_id, {
+        execution_process_id: executionProcessId,
+        status: { status: 'approved' },
+      });
+    } catch (error) {
+      console.error('Failed to approve:', error);
+    } finally {
+      setIsApproving(false);
+    }
+  }, [approvalStatus, executionProcessId, isApproving, feedbackContext]);
+
+  // Handle edit action - enter feedback mode
+  const handleEdit = useCallback(() => {
+    if (!approvalStatus || !executionProcessId || !feedbackContext) return;
+
+    feedbackContext.enterFeedbackMode({
+      approvalId: approvalStatus.approval_id,
+      executionProcessId,
+      timeoutAt: approvalStatus.timeout_at,
+      requestedAt: approvalStatus.requested_at,
+    });
+  }, [approvalStatus, executionProcessId, feedbackContext]);
+
   return (
     <ChatPlan
       title={`Plan - ${title}`}
@@ -235,6 +287,11 @@ function PlanEntry({
       expanded={expanded}
       onToggle={toggle}
       showActions={showActions}
+      isTimedOut={isTimedOut}
+      onApprove={showActions && !isTimedOut ? handleApprove : undefined}
+      onEdit={
+        showActions && !isTimedOut && feedbackContext ? handleEdit : undefined
+      }
       taskAttemptId={taskAttemptId}
     />
   );

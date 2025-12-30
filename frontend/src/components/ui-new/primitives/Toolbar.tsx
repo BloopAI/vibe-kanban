@@ -56,6 +56,7 @@ interface ToolbarDropdownProps {
   icon?: Icon;
   children?: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
 function ToolbarDropdown({
@@ -63,6 +64,7 @@ function ToolbarDropdown({
   icon,
   children,
   className,
+  disabled,
 }: ToolbarDropdownProps) {
   return (
     <DropdownMenu>
@@ -70,6 +72,7 @@ function ToolbarDropdown({
         icon={icon}
         label={label}
         className={className}
+        disabled={disabled}
       />
       <DropdownMenuContent>
         {children ?? (
