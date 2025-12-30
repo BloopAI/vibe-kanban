@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import type { Session, BaseCodingAgent } from 'shared/types';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { VibeKanbanLogo } from './VibeKanbanLogo';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 import { PrimaryButton } from './PrimaryButton';
 import { Toolbar, ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
@@ -87,6 +87,9 @@ interface SessionChatBoxProps {
 
   // Project ID for file search in typeahead
   projectId?: string;
+
+  // Agent for icon display
+  agent?: BaseCodingAgent | null;
 }
 
 function formatSessionDate(dateString: string): string {
@@ -110,6 +113,7 @@ export function SessionChatBox({
   hideStats,
   error,
   projectId,
+  agent,
 }: SessionChatBoxProps) {
   // File input ref for attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -278,7 +282,7 @@ export function SessionChatBox({
           )}
         </div>
         <Toolbar className="gap-[9px]">
-          <VibeKanbanLogo />
+          <AgentIcon agent={agent} className="size-icon-xl" />
           {executor ? (
             <ToolbarDropdown label={executorLabel}>
               <DropdownMenuLabel>Executors</DropdownMenuLabel>
