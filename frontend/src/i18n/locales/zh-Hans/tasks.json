@@ -115,7 +115,9 @@
       "refresh": "刷新预览",
       "copyUrl": "复制 URL",
       "openInTab": "在新标签页中打开",
-      "stopDevServer": "停止开发服务器"
+      "stopDevServer": "停止开发服务器",
+      "clickToEdit": "点击编辑 URL",
+      "resetUrl": "重置为检测到的 URL"
     }
   },
   "diff": {
