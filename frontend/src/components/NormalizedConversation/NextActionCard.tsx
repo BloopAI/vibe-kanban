@@ -296,23 +296,27 @@ export function NextActionCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-block">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={runningDevServer ? () => stop() : () => start()}
-                      disabled={
-                        (runningDevServer ? isStopping : isStarting) ||
-                        !attemptId ||
-                        !projectHasDevScript
-                      }
-                      aria-label={
-                        runningDevServer
-                          ? t('attempt.pauseDev')
-                          : t('attempt.startDev')
-                      }
-                    >
-                      {runningDevServer ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        onClick={
+                                          runningDevServer ? () => stop() : () => {
+                                            start();
+                                            navigate({ search: '?view=preview' });
+                                          }
+                                        }
+                                        disabled={
+                                          (runningDevServer ? isStopping : isStarting) ||
+                                          !attemptId ||
+                                          !projectHasDevScript
+                                        }
+                                        aria-label={
+                                          runningDevServer
+                                            ? t('attempt.pauseDev')
+                                            : t('attempt.startDev')
+                                        }
+                                      >                      {runningDevServer ? (
                         <Pause className="h-3.5 w-3.5 text-destructive" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
