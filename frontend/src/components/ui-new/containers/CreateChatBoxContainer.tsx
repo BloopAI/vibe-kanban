@@ -145,6 +145,7 @@ export function CreateChatBoxContainer() {
   const chatBoxProps = {
     status,
     projectId,
+    agent: effectiveProfile?.executor ?? null,
     editor: {
       value: message,
       onChange: setMessage,
