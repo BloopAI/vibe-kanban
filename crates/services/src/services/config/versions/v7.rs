@@ -27,6 +27,18 @@ pub enum ThemeMode {
     System,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, Default)]
+#[ts(use_ts_enum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum FontSize {
+    Small,
+    #[default]
+    Medium,
+    Large,
+    ExtraLarge,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,

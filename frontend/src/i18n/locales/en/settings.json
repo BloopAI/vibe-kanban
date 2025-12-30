@@ -37,6 +37,11 @@
           "label": "Language",
           "placeholder": "Select language",
           "helper": "Choose your preferred language. Browser Default follows your system language."
+        },
+        "fontSize": {
+          "label": "Font Size",
+          "placeholder": "Select font size",
+          "helper": "Adjust the text size throughout the application."
         }
       },
       "taskExecution": {
