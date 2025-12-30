@@ -323,6 +323,7 @@
     "gitActions": "Git 操作",
     "editBranchName": "编辑分支名称",
     "task": "任务",
+    "preview": "预览",
     "share": "共享",
     "reassign": "重新分配",
     "stopShare": "停止共享",

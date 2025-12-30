@@ -24,9 +24,10 @@ import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDia
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
+import { paths } from '@/lib/paths';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -43,6 +44,7 @@ export function ActionsDropdown({
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { userId, isSignedIn } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
@@ -140,6 +142,19 @@ export function ActionsDropdown({
       currentBranchName: attempt.branch,
     });
   };
+
+  const handlePreview = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!projectId || !task?.id) return;
+
+    const params = new URLSearchParams(searchParams);
+    params.set('view', 'preview');
+
+    navigate({
+      pathname: paths.attempt(projectId, task.id, 'latest'),
+      search: `?${params.toString()}`,
+    });
+  };
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task || isShared) return;
@@ -229,6 +244,10 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
+              <DropdownMenuItem disabled={!projectId || !task} onClick={handlePreview}>
+                {t('actionsMenu.preview')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={!task || isShared}
                 onClick={handleShare}
