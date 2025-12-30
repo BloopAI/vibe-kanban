@@ -428,6 +428,41 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct MoveTaskRequest {
+    pub project_id: Uuid,
+}
+
+pub async fn move_task(
+    Extension(existing_task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<MoveTaskRequest>,
+) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
+    ensure_shared_task_auth(&existing_task, &deployment).await?;
+
+    // Validate that the new project exists
+    let pool = &deployment.db().pool;
+    let new_project = Project::find_by_id(pool, payload.project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    // Move the task to the new project
+    let task = Task::move_to_project(pool, existing_task.id, new_project.id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_moved",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "from_project_id": existing_task.project_id.to_string(),
+                "to_project_id": new_project.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(task)))
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct ShareTaskResponse {
     pub shared_task_id: Uuid,
@@ -464,7 +499,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
-        .route("/share", post(share_task));
+        .route("/share", post(share_task))
+        .route("/move", post(move_task));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

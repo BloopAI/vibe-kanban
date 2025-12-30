@@ -523,6 +523,25 @@ ORDER BY t.issue_number ASC"#,
         Ok(())
     }
 
+    /// Move a task to a different project
+    pub async fn move_to_project(
+        pool: &SqlitePool,
+        id: Uuid,
+        new_project_id: Uuid,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"UPDATE tasks
+               SET project_id = $2, updated_at = CURRENT_TIMESTAMP
+               WHERE id = $1
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", issue_number as "issue_number: i32", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            new_project_id
+        )
+        .fetch_one(pool)
+        .await
+    }
+
     /// Update the parent_workspace_id field for a task
     pub async fn update_parent_workspace_id(
         pool: &SqlitePool,

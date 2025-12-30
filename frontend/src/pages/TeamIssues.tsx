@@ -227,6 +227,31 @@ export function TeamIssues() {
     []
   );
 
+  // Handler for project changes - moves issue to a different project
+  const handleProjectChange = useCallback(
+    async (taskId: string, newProjectId: string) => {
+      const issue = issuesById[taskId];
+      if (!issue || issue.project_id === newProjectId) return;
+
+      try {
+        // Use the tasksApi to move the task to the new project
+        await tasksApi.move(taskId, newProjectId);
+        await refresh();
+      } catch (err) {
+        console.error('Failed to move issue to new project:', err);
+      }
+    },
+    [issuesById, refresh]
+  );
+
+  // Convert team projects to format expected by dropdown
+  const teamProjectsForDropdown = useMemo(() => {
+    return teamProjects.map((p) => ({
+      id: p.id,
+      name: p.name,
+    }));
+  }, [teamProjects]);
+
   if (error) {
     return (
       <div className="p-4">
@@ -305,9 +330,11 @@ export function TeamIssues() {
               onCreateTask={handleCreateIssue}
               selectedTaskId={undefined}
               teamMembers={teamMembers}
+              teamProjects={teamProjectsForDropdown}
               onAssigneeChange={handleAssigneeChange}
               onPriorityChange={handlePriorityChange}
               onComponentChange={handleComponentChange}
+              onProjectChange={handleProjectChange}
             />
           </div>
         )}

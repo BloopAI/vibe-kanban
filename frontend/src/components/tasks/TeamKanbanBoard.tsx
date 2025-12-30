@@ -19,7 +19,7 @@ import {
 import { Plus, MoreHorizontal, ChevronRight, ChevronDown, EyeOff } from 'lucide-react';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
-import { LinearIssueCard } from './LinearIssueCard';
+import { LinearIssueCard, type TeamProject } from './LinearIssueCard';
 import { statusLabels } from '@/utils/statusLabels';
 import type { TeamMember } from '@/components/selectors';
 
@@ -31,6 +31,7 @@ interface ColumnItem {
   task: TaskWithAttemptStatus;
   issueKey?: string;
   projectName?: string;
+  projectId?: string;
   component?: string | null;
 }
 
@@ -41,9 +42,11 @@ interface TeamKanbanBoardProps {
   onCreateTask?: () => void;
   selectedTaskId?: string;
   teamMembers?: TeamMember[];
+  teamProjects?: TeamProject[];
   onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
   onComponentChange?: (taskId: string, component: string | null) => void;
+  onProjectChange?: (taskId: string, projectId: string) => void;
 }
 
 interface KanbanColumnProps {
@@ -54,9 +57,11 @@ interface KanbanColumnProps {
   onHideColumn?: (status: TaskStatus) => void;
   selectedTaskId?: string;
   teamMembers?: TeamMember[];
+  teamProjects?: TeamProject[];
   onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
   onComponentChange?: (taskId: string, component: string | null) => void;
+  onProjectChange?: (taskId: string, projectId: string) => void;
 }
 
 function KanbanColumn({
@@ -67,9 +72,11 @@ function KanbanColumn({
   onHideColumn,
   selectedTaskId,
   teamMembers,
+  teamProjects,
   onAssigneeChange,
   onPriorityChange,
   onComponentChange,
+  onProjectChange,
 }: KanbanColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id: status });
 
@@ -128,13 +135,16 @@ function KanbanColumn({
               status={status}
               issueKey={item.issueKey}
               projectName={item.projectName}
+              projectId={item.projectId || item.task.project_id}
               component={item.component}
               onViewDetails={onViewTaskDetails}
               isSelected={selectedTaskId === item.task.id}
               teamMembers={teamMembers}
+              teamProjects={teamProjects}
               onAssigneeChange={onAssigneeChange}
               onPriorityChange={onPriorityChange}
               onComponentChange={onComponentChange}
+              onProjectChange={onProjectChange}
             />
           ))}
         </div>
@@ -210,9 +220,11 @@ function TeamKanbanBoardComponent({
   onCreateTask,
   selectedTaskId,
   teamMembers,
+  teamProjects,
   onAssigneeChange,
   onPriorityChange,
   onComponentChange,
+  onProjectChange,
 }: TeamKanbanBoardProps) {
   const [visibleStatuses, setVisibleStatuses] = useState<TaskStatus[]>(DEFAULT_VISIBLE);
 
@@ -260,9 +272,11 @@ function TeamKanbanBoardComponent({
               onHideColumn={handleHideColumn}
               selectedTaskId={selectedTaskId}
               teamMembers={teamMembers}
+              teamProjects={teamProjects}
               onAssigneeChange={onAssigneeChange}
               onPriorityChange={onPriorityChange}
               onComponentChange={onComponentChange}
+              onProjectChange={onProjectChange}
             />
           ))}
         </div>

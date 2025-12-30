@@ -475,6 +475,14 @@ export const tasksApi = {
     });
     return handleApiResponse<Task | null>(response);
   },
+
+  move: async (taskId: string, newProjectId: string): Promise<Task> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: newProjectId }),
+    });
+    return handleApiResponse<Task>(response);
+  },
 };
 
 // Sessions API
