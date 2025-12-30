@@ -674,8 +674,7 @@ pub trait ContainerService {
 
             // If still no logs after retries, return empty stream with Finished
             if log_records.is_empty() {
-                let stream = futures::stream::iter(std::iter::once(Ok(LogMsg::Finished)))
-                    .boxed();
+                let stream = futures::stream::iter(std::iter::once(Ok(LogMsg::Finished))).boxed();
                 return Some(stream);
             }
 
