@@ -11,8 +11,9 @@ import DisplayConversationEntry from '@/components/NormalizedConversation/Displa
 import {
   ChatToolSummary,
   ChatFileEntry,
-  ChatMarkdown,
   ChatPlan,
+  ChatUserMessage,
+  ChatAssistantMessage,
 } from './primitives/conversation';
 
 type Props = {
@@ -125,13 +126,32 @@ function NewDisplayConversationEntry({
     }
 
     // Other tool uses - use ChatToolSummary
-    return <ChatToolSummary summary={getToolSummary(entryType)} />;
+    return (
+      <ToolSummaryEntry
+        summary={getToolSummary(entryType)}
+        expansionKey={expansionKey}
+      />
+    );
   }
 
-  // Assistant message - use ChatMarkdown
+  // User message - use ChatUserMessage
+  if (entryType.type === 'user_message') {
+    return (
+      <UserMessageEntry
+        content={entry.content}
+        expansionKey={expansionKey}
+        taskAttemptId={taskAttempt?.id}
+      />
+    );
+  }
+
+  // Assistant message - use ChatAssistantMessage
   if (entryType.type === 'assistant_message') {
     return (
-      <ChatMarkdown content={entry.content} taskAttemptId={taskAttempt?.id} />
+      <AssistantMessageEntry
+        content={entry.content}
+        taskAttemptId={taskAttempt?.id}
+      />
     );
   }
 
@@ -220,9 +240,65 @@ function PlanEntry({
   );
 }
 
+/**
+ * User message entry with expandable content
+ */
+function UserMessageEntry({
+  content,
+  expansionKey,
+  taskAttemptId,
+}: {
+  content: string;
+  expansionKey: string;
+  taskAttemptId?: string;
+}) {
+  const [expanded, toggle] = useExpandable(`user:${expansionKey}`, true);
+
+  return (
+    <ChatUserMessage
+      content={content}
+      expanded={expanded}
+      onToggle={toggle}
+      taskAttemptId={taskAttemptId}
+    />
+  );
+}
+
+/**
+ * Assistant message entry with expandable content
+ */
+function AssistantMessageEntry({
+  content,
+  taskAttemptId,
+}: {
+  content: string;
+  taskAttemptId?: string;
+}) {
+  return (
+    <ChatAssistantMessage content={content} taskAttemptId={taskAttemptId} />
+  );
+}
+
+/**
+ * Tool summary entry with collapsible content for multi-line summaries
+ */
+function ToolSummaryEntry({
+  summary,
+  expansionKey,
+}: {
+  summary: string;
+  expansionKey: string;
+}) {
+  const [expanded, toggle] = useExpandable(`tool:${expansionKey}`, false);
+
+  return (
+    <ChatToolSummary summary={summary} expanded={expanded} onToggle={toggle} />
+  );
+}
+
 const NewDisplayConversationEntrySpaced = (props: Props) => {
   return (
-    <div className="my-base">
+    <div className="my-base px-double">
       <NewDisplayConversationEntry {...props} />
     </div>
   );

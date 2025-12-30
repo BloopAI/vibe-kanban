@@ -1,7 +1,6 @@
-import { CaretDownIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../PrimaryButton';
 import { ChatMarkdown } from './ChatMarkdown';
+import { ChatEntryContainer } from './ChatEntryContainer';
 
 interface ChatPlanProps {
   title: string;
@@ -26,56 +25,34 @@ export function ChatPlan({
   className,
   taskAttemptId,
 }: ChatPlanProps) {
-  return (
-    <div className={cn('border rounded-sm w-full', className)}>
-      {/* Header */}
-      <div
-        className={cn(
-          'flex items-center bg-panel px-double py-base rounded-t-sm',
-          onToggle && 'cursor-pointer'
-        )}
-        onClick={onToggle}
-      >
-        <span className="flex-1 text-sm text-normal truncate">{title}</span>
-        {onToggle && (
-          <CaretDownIcon
-            className={cn(
-              'size-icon-xs shrink-0 text-low transition-transform',
-              !expanded && '-rotate-90'
-            )}
+  const actions = showActions ? (
+    <>
+      <span className="flex-1 text-sm text-low">
+        Would you like to approve this plan?
+      </span>
+      <div className="flex items-center gap-base">
+        {onReject && (
+          <PrimaryButton
+            variant="secondary"
+            onClick={onReject}
+            value="Reject"
           />
         )}
+        {onApprove && <PrimaryButton onClick={onApprove} value="Accept" />}
       </div>
+    </>
+  ) : undefined;
 
-      {/* Content */}
-      {expanded && (
-        <div className="bg-panel px-double py-double">
-          <ChatMarkdown
-            content={content}
-            maxWidth="600px"
-            taskAttemptId={taskAttemptId}
-          />
-        </div>
-      )}
-
-      {/* Actions */}
-      {showActions && (
-        <div className="flex items-center gap-base bg-panel px-double py-base border-t">
-          <span className="flex-1 text-sm text-low">
-            Would you like to approve this plan?
-          </span>
-          <div className="flex items-center gap-base">
-            {onReject && (
-              <PrimaryButton
-                variant="secondary"
-                onClick={onReject}
-                value="Reject"
-              />
-            )}
-            {onApprove && <PrimaryButton onClick={onApprove} value="Accept" />}
-          </div>
-        </div>
-      )}
-    </div>
+  return (
+    <ChatEntryContainer
+      variant="plan"
+      title={title}
+      expanded={expanded}
+      onToggle={onToggle}
+      actions={actions}
+      className={className}
+    >
+      <ChatMarkdown content={content} taskAttemptId={taskAttemptId} />
+    </ChatEntryContainer>
   );
 }
