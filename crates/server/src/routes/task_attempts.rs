@@ -19,7 +19,7 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
@@ -88,6 +88,19 @@ pub struct DiffStreamQuery {
     pub stats_only: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceStreamQuery {
+    pub archived: Option<bool>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct UpdateWorkspace {
+    pub archived: Option<bool>,
+    pub pinned: Option<bool>,
+    pub name: Option<String>,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -101,6 +114,26 @@ pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(workspace)))
+}
+
+pub async fn update_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<UpdateWorkspace>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+    Workspace::update(
+        pool,
+        workspace.id,
+        request.archived,
+        request.pinned,
+        request.name.as_deref(),
+    )
+    .await?;
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+    Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -300,6 +333,61 @@ async fn handle_task_attempt_diff_ws(
     Ok(())
 }
 
+pub async fn stream_workspaces_ws(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WorkspaceStreamQuery>,
+    State(deployment): State<DeploymentImpl>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
+        {
+            tracing::warn!("workspaces WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_workspaces_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    archived: Option<bool>,
+    limit: Option<i64>,
+) -> anyhow::Result<()> {
+    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+
+    let mut stream = deployment
+        .events()
+        .stream_workspaces_raw(archived, limit)
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    let (mut sender, mut receiver) = socket.split();
+
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
+            }
+            msg = receiver.next() => {
+                if msg.is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct MergeTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -368,6 +456,9 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
+    if !workspace.pinned {
+        Workspace::set_archived(pool, workspace.id, true).await?;
+    }
 
     // Stop any running dev servers for this workspace
     let dev_servers =
@@ -1501,6 +1592,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
+        .route("/", put(update_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
@@ -1508,6 +1600,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/stream/ws", get(stream_workspaces_ws))
         .nest("/{id}", task_attempt_id_router)
         .nest("/{id}/images", images::router(deployment));
 
