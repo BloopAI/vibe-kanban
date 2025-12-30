@@ -93,5 +93,11 @@
     "errorTitle": "Falló la autenticación",
     "errorDescription": "Hubo un problema al autenticar tu cuenta",
     "tryAgain": "Intentar de nuevo"
+  },
+  "updateNotification": {
+    "title": "Actualización Disponible",
+    "message": "Una nueva versión de vibe-kanban está disponible",
+    "current": "Actual:",
+    "latest": "Última:"
   }
 }

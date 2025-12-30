@@ -34,6 +34,7 @@ import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
+import { useUpdateCheck } from '@/hooks/useUpdateCheck';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -45,6 +46,9 @@ function AppContent() {
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Check for app updates every 10 minutes
+  useUpdateCheck();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
