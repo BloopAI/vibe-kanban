@@ -118,7 +118,8 @@ export const useConversationHistory = ({
       (ep) =>
         ep.run_reason === 'setupscript' ||
         ep.run_reason === 'cleanupscript' ||
-        ep.run_reason === 'codingagent'
+        ep.run_reason === 'codingagent' ||
+        ep.run_reason === 'usercommand'
     );
   }, [executionProcessesRaw]);
 
@@ -315,7 +316,7 @@ export const useConversationHistory = ({
           } else if (
             p.executionProcess.executor_action.typ.type === 'ScriptRequest'
           ) {
-            // Add setup and cleanup script as a tool call
+            // Add setup, cleanup, and user command scripts as tool calls
             let toolName = '';
             switch (p.executionProcess.executor_action.typ.context) {
               case 'SetupScript':
@@ -326,6 +327,9 @@ export const useConversationHistory = ({
                 break;
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
+                break;
+              case 'UserCommand':
+                toolName = 'User Command';
                 break;
               default:
                 return [];
@@ -674,6 +678,38 @@ export const useConversationHistory = ({
       });
     }
   }, [attempt.id, idListKey, executionProcessesRaw]);
+
+  // Handle newly completed execution processes that were never running when we saw them
+  // (e.g., fast-completing user commands)
+  useEffect(() => {
+    if (!loadedInitialEntries.current) return;
+
+    const newCompletedProcesses = executionProcesses.current.filter(
+      (p) =>
+        p.status !== ExecutionProcessStatus.running &&
+        !displayedExecutionProcesses.current[p.id] &&
+        !streamingProcessIdsRef.current.has(p.id)
+    );
+
+    if (newCompletedProcesses.length === 0) return;
+
+    (async () => {
+      for (const process of newCompletedProcesses) {
+        const entries = await loadEntriesForHistoricExecutionProcess(process);
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, process.id, idx)
+        );
+
+        mergeIntoDisplayed((state) => {
+          state[process.id] = {
+            executionProcess: process,
+            entries: entriesWithKey,
+          };
+        });
+      }
+      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+    })();
+  }, [idStatusKey, emitEntries]);
 
   // Reset state when attempt changes
   useEffect(() => {

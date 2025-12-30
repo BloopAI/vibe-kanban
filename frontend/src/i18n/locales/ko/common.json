@@ -39,6 +39,7 @@
   "conversation": {
     "args": "인자",
     "deniedByUser": "{{toolName}} 사용자에 의해 거부됨",
+    "rerunCommand": "명령 편집 및 다시 실행",
     "output": "출력",
     "plan": "계획",
     "planToggle": {

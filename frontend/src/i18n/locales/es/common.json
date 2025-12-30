@@ -39,6 +39,7 @@
   "conversation": {
     "args": "Argumentos",
     "deniedByUser": "{{toolName}} denegado por el usuario",
+    "rerunCommand": "Editar y volver a ejecutar comando",
     "output": "Salida",
     "plan": "Plan",
     "planToggle": {
