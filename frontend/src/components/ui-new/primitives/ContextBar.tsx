@@ -1,6 +1,7 @@
-import { type RefObject } from 'react';
+import { type RefObject, useState } from 'react';
 import {
   ArrowSquareOutIcon,
+  CheckIcon,
   CopyIcon,
   EyeIcon,
   CodeIcon,
@@ -13,18 +14,20 @@ interface ContextBarButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   label: string;
+  iconClassName?: string;
 }
 
 function ContextBarButton({
   icon: IconComponent,
   label,
   className,
+  iconClassName,
   ...props
 }: ContextBarButtonProps) {
   return (
     <button
       className={cn(
-        'flex items-center justify-center text-low hover:text-normal transition-colors',
+        'flex items-center justify-center transition-colors',
         'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
         className
       )}
@@ -32,7 +35,10 @@ function ContextBarButton({
       title={label}
       {...props}
     >
-      <IconComponent className="size-icon-xl" weight="bold" />
+      <IconComponent
+        className={cn('size-icon-xl text-low hover:text-normal', iconClassName)}
+        weight="bold"
+      />
     </button>
   );
 }
@@ -64,7 +70,7 @@ function DragHandle({
 export interface ContextBarProps {
   containerRef: RefObject<HTMLElement | null>;
   onOpen?: () => void;
-  onCopy?: () => void;
+  onCopy?: () => Promise<boolean>;
   onPreview?: () => void;
   onViewCode?: () => void;
 }
@@ -78,6 +84,16 @@ export function ContextBar({
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!onCopy) return;
+    const success = await onCopy();
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div
@@ -98,10 +114,17 @@ export function ContextBar({
           <div className="flex flex-col gap-double">
             <ContextBarButton
               icon={ArrowSquareOutIcon}
-              label="Open"
+              label="Open in IDE"
               onClick={onOpen}
             />
-            <ContextBarButton icon={CopyIcon} label="Copy" onClick={onCopy} />
+            <ContextBarButton
+              icon={copied ? CheckIcon : CopyIcon}
+              label={copied ? 'Copied!' : 'Copy path'}
+              onClick={handleCopy}
+              iconClassName={
+                copied ? 'text-success hover:text-success' : undefined
+              }
+            />
           </div>
 
           {/* Separator */}

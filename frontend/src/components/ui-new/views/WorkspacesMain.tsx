@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useCallback } from 'react';
 import type { Workspace, Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
@@ -8,6 +8,7 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 import { useTask } from '@/hooks/useTask';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
@@ -30,6 +31,24 @@ export function WorkspacesMain({
   const { data: task } = useTask(selectedWorkspace?.task_id, {
     enabled: !!selectedWorkspace?.task_id,
   });
+
+  // Open in IDE handler
+  const openInEditor = useOpenInEditor(selectedWorkspace?.id);
+
+  const handleOpen = useCallback(() => {
+    openInEditor();
+  }, [openInEditor]);
+
+  const handleCopy = useCallback(async (): Promise<boolean> => {
+    if (!selectedWorkspace?.container_ref) return false;
+    try {
+      await navigator.clipboard.writeText(selectedWorkspace.container_ref);
+      return true;
+    } catch (err) {
+      console.warn('Copy to clipboard failed:', err);
+      return false;
+    }
+  }, [selectedWorkspace?.container_ref]);
 
   // Create WorkspaceWithSession for ConversationList
   const workspaceWithSession: WorkspaceWithSession | undefined = useMemo(() => {
@@ -86,7 +105,11 @@ export function WorkspacesMain({
         </div>
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
-      <ContextBar containerRef={containerRef} />
+      <ContextBar
+        containerRef={containerRef}
+        onOpen={handleOpen}
+        onCopy={handleCopy}
+      />
     </main>
   );
 }
