@@ -24,6 +24,15 @@ pub struct DraftFollowUpData {
     pub variant: Option<String>,
 }
 
+/// Data for a draft task scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftTaskData {
+    pub title: String,
+    pub description: String,
+    #[serde(default)]
+    pub auto_start: bool,
+}
+
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
@@ -34,7 +43,7 @@ pub struct DraftFollowUpData {
 #[strum_discriminants(serde(rename_all = "SCREAMING_SNAKE_CASE"))]
 #[strum_discriminants(strum(serialize_all = "SCREAMING_SNAKE_CASE"))]
 pub enum ScratchPayload {
-    DraftTask(String),
+    DraftTask(DraftTaskData),
     DraftFollowUp(DraftFollowUpData),
 }
 
