@@ -287,7 +287,7 @@ function PlanEntry({
 
   return (
     <ChatPlan
-      title={`Plan - ${title}`}
+      title={title}
       content={plan}
       expanded={expanded}
       onToggle={toggle}
