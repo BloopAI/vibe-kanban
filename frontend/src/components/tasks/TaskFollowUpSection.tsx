@@ -444,6 +444,13 @@ export function TaskFollowUpSection({
     [isAttemptRunning, isQueued, handleQueueMessage, onSendFollowUp]
   );
 
+  // Keyboard shortcut handler - stop execution (Cmd+Period)
+  const handleStopShortcut = useCallback(() => {
+    if (isAttemptRunning && !isStopping) {
+      stopExecution();
+    }
+  }, [isAttemptRunning, isStopping, stopExecution]);
+
   // Ref to access setFollowUpMessage without adding it as a dependency
   const setFollowUpMessageRef = useRef(setFollowUpMessage);
   useEffect(() => {
@@ -739,6 +746,7 @@ export function TaskFollowUpSection({
                 projectId={projectId}
                 taskAttemptId={workspaceId}
                 onCmdEnter={handleSubmitShortcut}
+                onCmdPeriod={handleStopShortcut}
                 className="min-h-[40px]"
               />
             </div>

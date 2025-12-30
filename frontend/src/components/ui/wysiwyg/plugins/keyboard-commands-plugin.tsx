@@ -10,32 +10,44 @@ import {
 type Props = {
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
+  onCmdPeriod?: () => void;
 };
 
-export function KeyboardCommandsPlugin({ onCmdEnter, onShiftCmdEnter }: Props) {
+export function KeyboardCommandsPlugin({
+  onCmdEnter,
+  onShiftCmdEnter,
+  onCmdPeriod,
+}: Props) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    if (!onCmdEnter && !onShiftCmdEnter) return;
+    if (!onCmdEnter && !onShiftCmdEnter && !onCmdPeriod) return;
 
     // Handle the modifier command to trigger the callbacks
     const unregisterModifier = editor.registerCommand(
       KEY_MODIFIER_COMMAND,
       (event: KeyboardEvent) => {
-        if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter') {
+        if (!(event.metaKey || event.ctrlKey)) {
           return false;
         }
 
-        event.preventDefault();
-        event.stopPropagation();
+        // Determine which handler to call based on the key
+        let handler: (() => void) | undefined;
 
-        if (event.shiftKey && onShiftCmdEnter) {
-          onShiftCmdEnter();
-          return true;
+        if (event.key === '.' && onCmdPeriod) {
+          handler = onCmdPeriod;
+        } else if (event.key === 'Enter') {
+          if (event.shiftKey && onShiftCmdEnter) {
+            handler = onShiftCmdEnter;
+          } else if (!event.shiftKey && onCmdEnter) {
+            handler = onCmdEnter;
+          }
         }
 
-        if (!event.shiftKey && onCmdEnter) {
-          onCmdEnter();
+        if (handler) {
+          event.preventDefault();
+          event.stopPropagation();
+          handler();
           return true;
         }
 
@@ -61,7 +73,7 @@ export function KeyboardCommandsPlugin({ onCmdEnter, onShiftCmdEnter }: Props) {
       unregisterModifier();
       unregisterEnter();
     };
-  }, [editor, onCmdEnter, onShiftCmdEnter]);
+  }, [editor, onCmdEnter, onShiftCmdEnter, onCmdPeriod]);
 
   return null;
 }
