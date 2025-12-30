@@ -17,6 +17,7 @@
     "editBranchName": "브랜치 이름 편집",
     "gitActions": "Git 작업",
     "openInIde": "Open attempt in IDE",
+    "preview": "시사",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
