@@ -57,29 +57,62 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 
 ## Task Management Workflow (Vibe Kanban MCP)
 
-Use the Vibe Kanban MCP tools to manage tasks for this project:
+Use the Vibe Kanban MCP tools to manage tasks for this project. **All work should be tracked under the vibe-kanban team.**
 
-### Listing Tasks
-- Use `mcp__vibe_kanban__list_projects` to get the project ID
-- Use `mcp__vibe_kanban__list_tasks` with the project ID to view all tasks
-- Use `mcp__vibe_kanban__get_task` to get detailed task information
+### Available Projects for Task Mapping
+- **frontend** - `5b8810bc-b52f-464f-b87c-4a10542c14d3` - React/TypeScript UI work
+- **backend** - `270d5829-6691-44b8-af81-594e70e88f15` - Rust API/server work
+- **vibe-kanban** - `1277542c-2247-4c9d-a236-c38173459694` - General/full-stack work
 
-### Starting a New Task
-1. Create a new feature branch before starting work:
-   ```bash
-   git checkout -b feature/<task-name>
-   # or for bug fixes:
-   git checkout -b fix/<task-name>
-   ```
-2. Update task status to `inprogress`: use `mcp__vibe_kanban__update_task` with `status: "inprogress"`
+### Complete Workflow for Every Task
 
-### Completing a Task
-1. Ensure all changes are committed to the feature branch
-2. Update task status to `done`: use `mcp__vibe_kanban__update_task` with `status: "done"`
-3. Create a PR or merge the feature branch as appropriate
+#### 1. Create Task First (Before Starting Work)
+Use `mcp__vibe_kanban__create_task` with:
+- `project_id`: Map to relevant project (frontend, backend, or vibe-kanban)
+- `title`: Clear, descriptive task title
+- `description`: Detailed description of what needs to be done
 
-### Creating New Tasks
-- Use `mcp__vibe_kanban__create_task` with the project ID, title, and optional description
+#### 2. Update Task Status to In Progress
+Use `mcp__vibe_kanban__update_task` with:
+- `task_id`: The created task ID
+- `status`: `"inprogress"`
+
+#### 3. Create Feature Branch
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/<task-id>
+# Example: git checkout -b feature/a76b21a8
+```
+
+#### 4. Work on the Task
+- Make commits on the feature branch
+- Run type checks: `pnpm run frontend:check` and `pnpm run backend:check`
+- Test changes locally
+
+#### 5. Push Feature Branch
+```bash
+git push -u origin feature/<task-id>
+```
+
+#### 6. Merge to Main
+```bash
+git checkout main
+git pull origin main
+git merge feature/<task-id>
+git push origin main
+```
+
+#### 7. Clean Up Feature Branch
+```bash
+git branch -d feature/<task-id>
+git push origin --delete feature/<task-id>
+```
+
+#### 8. Update Task Status to Done
+Use `mcp__vibe_kanban__update_task` with:
+- `task_id`: The task ID
+- `status`: `"done"`
 
 ### Task Status Values
 - `todo` - Not started
@@ -87,3 +120,8 @@ Use the Vibe Kanban MCP tools to manage tasks for this project:
 - `inreview` - Ready for review
 - `done` - Completed
 - `cancelled` - No longer needed
+
+### Listing Tasks
+- Use `mcp__vibe_kanban__list_projects` to get project IDs
+- Use `mcp__vibe_kanban__list_tasks` with project ID to view all tasks
+- Use `mcp__vibe_kanban__get_task` to get detailed task information
