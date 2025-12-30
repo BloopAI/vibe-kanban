@@ -164,6 +164,11 @@ function NewDisplayConversationEntry({
     );
   }
 
+  // The new design doesn't need the next action bar
+  if (entryType.type === 'next_action') {
+    return null;
+  }
+
   // Fallback to old component for all other entry types
   return (
     <DisplayConversationEntry
