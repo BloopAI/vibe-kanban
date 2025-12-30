@@ -24,7 +24,8 @@ export type ExecutionStatus =
   | 'running'
   | 'queued'
   | 'stopping'
-  | 'queue-loading';
+  | 'queue-loading'
+  | 'feedback';
 
 interface EditorProps {
   value: string;
@@ -63,6 +64,15 @@ interface ExecutorProps {
   onChange: (executor: BaseCodingAgent) => void;
 }
 
+interface FeedbackModeProps {
+  isActive: boolean;
+  onSubmitFeedback: () => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+  error?: string | null;
+  isTimedOut: boolean;
+}
+
 interface SessionChatBoxProps {
   // Core state
   status: ExecutionStatus;
@@ -90,6 +100,9 @@ interface SessionChatBoxProps {
 
   // Agent for icon display
   agent?: BaseCodingAgent | null;
+
+  // Feedback mode (for approval editing)
+  feedbackMode?: FeedbackModeProps;
 }
 
 function formatSessionDate(dateString: string): string {
@@ -114,20 +127,27 @@ export function SessionChatBox({
   error,
   projectId,
   agent,
+  feedbackMode,
 }: SessionChatBoxProps) {
   // File input ref for attachments
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Determine if in feedback mode
+  const isInFeedbackMode = feedbackMode?.isActive ?? false;
+
   // Derived state from status
-  const isDisabled = status === 'sending' || status === 'stopping';
+  const isDisabled =
+    status === 'sending' || status === 'stopping' || feedbackMode?.isSubmitting;
   const canSend =
     editor.value.trim().length > 0 &&
     !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
 
-  // Placeholder
-  const placeholder = 'Continue working on this task...';
+  // Placeholder - different for feedback mode
+  const placeholder = isInFeedbackMode
+    ? 'Provide feedback for the plan...'
+    : 'Continue working on this task...';
 
   // Variant display - format for readability
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
@@ -140,8 +160,13 @@ export function SessionChatBox({
 
   // Cmd+Enter maps to correct action based on status
   const handleCmdEnter = () => {
-    if (status === 'running' && canSend) actions.onQueue();
-    else if (status === 'idle' && canSend) actions.onSend();
+    if (isInFeedbackMode && canSend && !feedbackMode?.isTimedOut) {
+      feedbackMode?.onSubmitFeedback();
+    } else if (status === 'running' && canSend) {
+      actions.onQueue();
+    } else if (status === 'idle' && canSend) {
+      actions.onSend();
+    }
   };
 
   // File input handler
@@ -174,6 +199,36 @@ export function SessionChatBox({
 
   // Render action buttons based on status
   const renderActionButtons = () => {
+    // Feedback mode takes precedence
+    if (isInFeedbackMode) {
+      if (feedbackMode?.isTimedOut) {
+        return (
+          <PrimaryButton
+            variant="secondary"
+            onClick={feedbackMode?.onCancel}
+            value="Cancel"
+          />
+        );
+      }
+      return (
+        <>
+          <PrimaryButton
+            variant="secondary"
+            onClick={feedbackMode?.onCancel}
+            value="Cancel"
+          />
+          <PrimaryButton
+            onClick={feedbackMode?.onSubmitFeedback}
+            disabled={!canSend || feedbackMode?.isSubmitting}
+            actionIcon={
+              feedbackMode?.isSubmitting ? 'spinner' : PaperPlaneTiltIcon
+            }
+            value="Submit Feedback"
+          />
+        </>
+      );
+    }
+
     switch (status) {
       case 'idle':
         return (
@@ -233,6 +288,9 @@ export function SessionChatBox({
         return <PrimaryButton disabled value="Stopping" actionIcon="spinner" />;
       case 'queue-loading':
         return <PrimaryButton disabled value="Loading" actionIcon="spinner" />;
+      case 'feedback':
+        // This shouldn't happen as we check isInFeedbackMode first
+        return null;
     }
   };
 
@@ -244,14 +302,25 @@ export function SessionChatBox({
       )}
     >
       {/* Error alert */}
-      {error && (
+      {(error || feedbackMode?.error) && (
         <div className="bg-error/10 border-b px-double py-base">
-          <p className="text-error text-sm">{error}</p>
+          <p className="text-error text-sm">{feedbackMode?.error ?? error}</p>
+        </div>
+      )}
+
+      {/* Feedback mode indicator */}
+      {isInFeedbackMode && (
+        <div className="bg-brand/10 border-b px-double py-base flex items-center gap-base">
+          <span className="text-sm text-brand">
+            {feedbackMode?.isTimedOut
+              ? 'Approval has timed out - feedback cannot be submitted'
+              : 'Providing feedback on plan'}
+          </span>
         </div>
       )}
 
       {/* Queued message indicator */}
-      {isQueued && (
+      {isQueued && !isInFeedbackMode && (
         <div className="bg-secondary border-b px-double py-base flex items-center gap-base">
           <ClockIcon className="h-4 w-4 text-low" />
           <span className="text-sm text-low">
@@ -284,7 +353,7 @@ export function SessionChatBox({
         <Toolbar className="gap-[9px]">
           <AgentIcon agent={agent} className="size-icon-xl" />
           {executor ? (
-            <ToolbarDropdown label={executorLabel}>
+            <ToolbarDropdown label={executorLabel} disabled={isInFeedbackMode}>
               <DropdownMenuLabel>Executors</DropdownMenuLabel>
               {executor.options.map((exec) => (
                 <DropdownMenuItem
@@ -297,7 +366,7 @@ export function SessionChatBox({
               ))}
             </ToolbarDropdown>
           ) : (
-            <ToolbarDropdown label={sessionLabel}>
+            <ToolbarDropdown label={sessionLabel} disabled={isInFeedbackMode}>
               {sessions.length > 0 ? (
                 <>
                   <DropdownMenuLabel>Sessions</DropdownMenuLabel>
@@ -334,7 +403,7 @@ export function SessionChatBox({
         {/* Footer - Controls */}
         <div className="flex items-end justify-between">
           <Toolbar className="flex-1 gap-double">
-            <ToolbarDropdown label={variantLabel}>
+            <ToolbarDropdown label={variantLabel} disabled={isInFeedbackMode}>
               <DropdownMenuLabel>Variants</DropdownMenuLabel>
               {variantOptions.map((variantName) => (
                 <DropdownMenuItem
