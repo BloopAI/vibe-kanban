@@ -204,8 +204,8 @@ function LinearIssueCardComponent({
           </h4>
         </div>
 
-        {/* Bottom row: Component label, Project label, and Severity label */}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
+        {/* Bottom row: All labels in same row - Component, Project, Priority */}
+        <div className="flex items-center gap-1.5 mt-1">
           {/* Component Selector - clickable label */}
           <div onClick={(e) => e.stopPropagation()}>
             <ComponentSelector
@@ -216,29 +216,22 @@ function LinearIssueCardComponent({
             />
           </div>
 
-          {/* Project tag - clickable to change component */}
+          {/* Project tag */}
           {projectName && (
-            <div onClick={(e) => e.stopPropagation()}>
-              <button
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs text-muted-foreground bg-muted/50 border border-border/50 hover:bg-muted transition-colors"
-                onClick={() => {
-                  // Could open a project selector here in the future
-                }}
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-muted-foreground bg-muted/50 border border-border/50">
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 16 16"
+                fill="currentColor"
               >
-                <svg
-                  className="h-3 w-3"
-                  viewBox="0 0 16 16"
-                  fill="currentColor"
-                >
-                  <path d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z" fillOpacity="0.3" />
-                  <path d="M8 2l5.196 3v6L8 14 2.804 11V5L8 2z" />
-                </svg>
-                {projectName}
-              </button>
-            </div>
+                <path d="M8 0L14.928 4v8L8 16 1.072 12V4L8 0z" fillOpacity="0.3" />
+                <path d="M8 2l5.196 3v6L8 14 2.804 11V5L8 2z" />
+              </svg>
+              {projectName}
+            </span>
           )}
 
-          {/* Priority/Severity Selector - shown as pill in bottom row */}
+          {/* Priority/Severity Selector - same row as other labels */}
           <div onClick={(e) => e.stopPropagation()}>
             <PrioritySelector
               value={priorityValue}
@@ -247,13 +240,6 @@ function LinearIssueCardComponent({
               disabled={!onPriorityChange}
             />
           </div>
-
-          {/* Due date indicator */}
-          {task.due_date && (
-            <span className="text-xs text-muted-foreground">
-              Due: {new Date(task.due_date).toLocaleDateString()}
-            </span>
-          )}
         </div>
       </div>
     </Card>
