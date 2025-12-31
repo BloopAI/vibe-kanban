@@ -1,0 +1,7 @@
+[install]
+# Equivalent to engine-strict=true in .npmrc
+exact = true
+
+[install.lockfile]
+# Save lockfile
+save = true

@@ -2,6 +2,10 @@
   "name": "vibe-kanban",
   "version": "0.0.143",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "remote-frontend"
+  ],
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
   },
@@ -38,7 +42,7 @@
   },
   "engines": {
     "node": ">=18",
-    "pnpm": ">=8"
+    "bun": ">=1.1"
   },
-  "packageManager": "pnpm@10.13.1"
+  "packageManager": "bun@1.1.45"
 }

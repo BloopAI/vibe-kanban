@@ -25,7 +25,7 @@ permissions:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 10.13.1
+  BUN_VERSION: 1.1.45
   RUST_TOOLCHAIN: nightly-2025-12-04
 
 jobs:
@@ -52,8 +52,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
 
-      - name: setup node
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Generate branch suffix
         id: branch
@@ -110,7 +110,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
+          git add package.json bun.lockb npx-cli/package.json frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
@@ -128,20 +128,20 @@ jobs:
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Lint frontend
-        run: cd frontend && npm run lint
+        run: cd frontend && bun run lint
 
       - name: Type check frontend
-        run: cd frontend && npx tsc --noEmit
+        run: cd frontend && bun x tsc --noEmit
 
       - name: Build frontend
-        run: cd frontend && npm run build
+        run: cd frontend && bun run build
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
@@ -596,8 +596,8 @@ jobs:
           mv frontend/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
           zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Setup Node for npm pack
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun for npm pack
+        uses: ./.github/actions/setup-bun
 
       - name: Inject R2 URL and tag, then Pack
         run: |

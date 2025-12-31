@@ -22,7 +22,7 @@ permissions:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 10.13.1
+  BUN_VERSION: 1.1.45
 
 jobs:
   publish:
@@ -34,8 +34,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag_name }}
 
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
 
       - name: Configure npm authentication
         run: |

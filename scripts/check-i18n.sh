@@ -18,7 +18,7 @@ lint_count() {
     set -eo pipefail
     cd "$dir/frontend"
     # Lint current directory using ESLint from PR workspace
-    LINT_I18N=true npx --prefix "$REPO_ROOT/frontend" eslint . \
+    LINT_I18N=true bunx --cwd "$REPO_ROOT/frontend" eslint . \
       --ext ts,tsx \
       --format json \
       --output-file "$tmp" \
@@ -211,7 +211,7 @@ if (( PR_COUNT > BASE_COUNT )); then
   echo "   After:  <Button>{t('buttons.save')}</Button>"
   echo ""
   echo "Files with new violations:"
-  (cd "$REPO_ROOT/frontend" && LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
+  (cd "$REPO_ROOT/frontend" && LINT_I18N=true bunx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
   EXIT_STATUS=1
 elif (( PR_COUNT < BASE_COUNT )); then
   echo "🎉 Great job! PR removes $((BASE_COUNT - PR_COUNT)) hard-coded strings."
