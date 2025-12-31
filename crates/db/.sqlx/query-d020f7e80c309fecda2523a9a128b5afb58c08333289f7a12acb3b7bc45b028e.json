@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks\n               SET github_issue_state = $2,\n                   github_issue_synced_at = CURRENT_TIMESTAMP,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "d020f7e80c309fecda2523a9a128b5afb58c08333289f7a12acb3b7bc45b028e"
+}

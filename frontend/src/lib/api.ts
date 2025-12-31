@@ -465,6 +465,48 @@ export const tasksApi = {
     });
     return handleApiResponse<Task | null>(response);
   },
+
+  createGitHubIssue: async (
+    taskId: string,
+    repoId: string
+  ): Promise<{ github_issue_number: number; github_issue_url: string }> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/github-issue`, {
+      method: 'POST',
+      body: JSON.stringify({ repo_id: repoId }),
+    });
+    return handleApiResponse<{
+      github_issue_number: number;
+      github_issue_url: string;
+    }>(response);
+  },
+};
+
+export interface GitHubUserResponse {
+  login: string;
+}
+
+export const githubApi = {
+  getCurrentUser: async (): Promise<GitHubUserResponse | null> => {
+    try {
+      const response = await makeRequest('/api/github/user');
+      if (!response.ok) {
+        return null;
+      }
+      return handleApiResponse<GitHubUserResponse>(response);
+    } catch {
+      return null;
+    }
+  },
+
+  syncIssues: async (projectId: string, repoId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories/${repoId}/sync-issues`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Sessions API

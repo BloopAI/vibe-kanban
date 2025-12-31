@@ -4,7 +4,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
-import { Image as ImageIcon } from 'lucide-react';
+import { Github, Image as ImageIcon, Loader2 as Spinner } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,9 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useGitHubIssueCreationEnabled,
 } from '@/hooks';
+import { tasksApi } from '@/lib/api';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -108,6 +110,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
     enabled: modal.visible,
   });
+
+  // Check if GitHub issue creation is enabled for any repo
+  const {
+    isEnabled: githubIssueCreationEnabled,
+    repoId: githubIssueRepoId,
+  } = useGitHubIssueCreationEnabled(projectId, projectRepos, modal.visible);
+  const [creatingGitHubIssue, setCreatingGitHubIssue] = useState(false);
   const initialBranch =
     mode === 'subtask' ? props.initialBaseBranch : undefined;
   const { configs: repoBranchConfigs, isLoading: branchesLoading } =
@@ -191,6 +200,27 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         image_ids: imageIds,
         shared_task_id: null,
       };
+
+      // Helper to create GitHub issue after task creation
+      const createGitHubIssueForTask = async (taskId: string) => {
+        if (!githubIssueCreationEnabled || !githubIssueRepoId) return;
+
+        setCreatingGitHubIssue(true);
+        try {
+          const result = await tasksApi.createGitHubIssue(
+            taskId,
+            githubIssueRepoId
+          );
+          console.log(
+            `Created GitHub issue #${result.github_issue_number}: ${result.github_issue_url}`
+          );
+        } catch (err) {
+          console.error('Failed to create GitHub issue:', err);
+        } finally {
+          setCreatingGitHubIssue(false);
+        }
+      };
+
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
         const repos = value.repoBranches.map((rb) => ({
@@ -203,10 +233,22 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             executor_profile_id: value.executorProfileId!,
             repos,
           },
-          { onSuccess: () => modal.remove() }
+          {
+            onSuccess: (result) => {
+              // Create GitHub issue in background (don't wait)
+              createGitHubIssueForTask(result.id);
+              modal.remove();
+            },
+          }
         );
       } else {
-        await createTask.mutateAsync(task, { onSuccess: () => modal.remove() });
+        await createTask.mutateAsync(task, {
+          onSuccess: (result) => {
+            // Create GitHub issue in background (don't wait)
+            createGitHubIssueForTask(result.id);
+            modal.remove();
+          },
+        });
       }
     }
   };
@@ -627,8 +669,33 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               </Button>
             </div>
 
-            {/* Autostart switch */}
+            {/* Autostart switch and GitHub indicator */}
             <div className="flex items-center gap-3">
+              {/* GitHub issue creation indicator */}
+              {!editMode && githubIssueCreationEnabled && (
+                <div
+                  className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400"
+                  title={t(
+                    'taskFormDialog.githubIssueWillBeCreated',
+                    'A GitHub issue will be created for this task'
+                  )}
+                >
+                  {creatingGitHubIssue ? (
+                    <Spinner className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Github className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {creatingGitHubIssue
+                      ? t(
+                          'taskFormDialog.creatingGitHubIssue',
+                          'Creating issue...'
+                        )
+                      : t('taskFormDialog.willCreateIssue', 'Will create issue')}
+                  </span>
+                </div>
+              )}
+
               {!editMode && (
                 <form.Field name="autoStart">
                   {(field) => (

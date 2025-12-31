@@ -22,7 +22,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Github, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
@@ -32,6 +33,13 @@ import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
+
+// Extended types with GitHub sync fields (until types are regenerated)
+interface ProjectRepoWithGitHub extends ProjectRepo {
+  github_issue_sync_enabled: boolean;
+  github_issue_import_to_todo: boolean;
+  github_issue_create_from_tasks: boolean;
+}
 
 interface ProjectFormState {
   name: string;
@@ -45,6 +53,10 @@ interface RepoScriptsFormState {
   parallel_setup_script: boolean;
   cleanup_script: string;
   copy_files: string;
+  // GitHub issue sync settings
+  github_issue_sync_enabled: boolean;
+  github_issue_import_to_todo: boolean;
+  github_issue_create_from_tasks: boolean;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -57,13 +69,18 @@ function projectToFormState(project: Project): ProjectFormState {
 }
 
 function projectRepoToScriptsFormState(
-  projectRepo: ProjectRepo | null
+  projectRepo: ProjectRepoWithGitHub | null
 ): RepoScriptsFormState {
   return {
     setup_script: projectRepo?.setup_script ?? '',
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
+    github_issue_sync_enabled: projectRepo?.github_issue_sync_enabled ?? false,
+    github_issue_import_to_todo:
+      projectRepo?.github_issue_import_to_todo ?? false,
+    github_issue_create_from_tasks:
+      projectRepo?.github_issue_create_from_tasks ?? false,
   };
 }
 
@@ -104,7 +121,7 @@ export function ProjectSettings() {
     string | null
   >(null);
   const [selectedProjectRepo, setSelectedProjectRepo] =
-    useState<ProjectRepo | null>(null);
+    useState<ProjectRepoWithGitHub | null>(null);
   const [scriptsDraft, setScriptsDraft] = useState<RepoScriptsFormState | null>(
     null
   );
@@ -291,8 +308,8 @@ export function ProjectSettings() {
     projectsApi
       .getRepository(selectedProjectId, selectedScriptsRepoId)
       .then((projectRepo) => {
-        setSelectedProjectRepo(projectRepo);
-        setScriptsDraft(projectRepoToScriptsFormState(projectRepo));
+        setSelectedProjectRepo(projectRepo as ProjectRepoWithGitHub);
+        setScriptsDraft(projectRepoToScriptsFormState(projectRepo as ProjectRepoWithGitHub));
       })
       .catch((err) => {
         setScriptsError(
@@ -426,10 +443,14 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
-        }
+          github_issue_sync_enabled: scriptsDraft.github_issue_sync_enabled,
+          github_issue_import_to_todo: scriptsDraft.github_issue_import_to_todo,
+          github_issue_create_from_tasks:
+            scriptsDraft.github_issue_create_from_tasks,
+        } as unknown as Parameters<typeof projectsApi.updateRepository>[2]
       );
-      setSelectedProjectRepo(updatedRepo);
-      setScriptsDraft(projectRepoToScriptsFormState(updatedRepo));
+      setSelectedProjectRepo(updatedRepo as ProjectRepoWithGitHub);
+      setScriptsDraft(projectRepoToScriptsFormState(updatedRepo as ProjectRepoWithGitHub));
       setScriptsSuccess(true);
       setTimeout(() => setScriptsSuccess(false), 3000);
     } catch (err) {
@@ -889,6 +910,113 @@ export function ProjectSettings() {
                         <p className="text-sm text-muted-foreground">
                           {t('settings.projects.scripts.copyFiles.helper')}
                         </p>
+                      </div>
+
+                      {/* GitHub Issue Sync Settings */}
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <Github className="h-5 w-5" />
+                          <Label className="text-base font-medium">
+                            {t(
+                              'settings.projects.github.title',
+                              'GitHub Issue Sync'
+                            )}
+                          </Label>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="github-sync-enabled">
+                              {t(
+                                'settings.projects.github.syncEnabled',
+                                'Enable GitHub issue sync'
+                              )}
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              {t(
+                                'settings.projects.github.syncEnabledHelper',
+                                'Sync issues between GitHub and this project'
+                              )}
+                            </p>
+                          </div>
+                          <Switch
+                            id="github-sync-enabled"
+                            checked={scriptsDraft.github_issue_sync_enabled}
+                            onCheckedChange={(checked) =>
+                              updateScriptsDraft({
+                                github_issue_sync_enabled: checked,
+                              })
+                            }
+                          />
+                        </div>
+
+                        {scriptsDraft.github_issue_sync_enabled && (
+                          <div className="space-y-4 pl-6 border-l-2 border-muted">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="github-import-to-todo"
+                                checked={
+                                  scriptsDraft.github_issue_import_to_todo
+                                }
+                                onCheckedChange={(checked) =>
+                                  updateScriptsDraft({
+                                    github_issue_import_to_todo:
+                                      checked === true,
+                                  })
+                                }
+                              />
+                              <div className="space-y-0.5">
+                                <Label
+                                  htmlFor="github-import-to-todo"
+                                  className="cursor-pointer"
+                                >
+                                  {t(
+                                    'settings.projects.github.importToTodo',
+                                    'Import open issues to TODO'
+                                  )}
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  {t(
+                                    'settings.projects.github.importToTodoHelper',
+                                    'Automatically create tasks from GitHub issues'
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="github-create-from-tasks"
+                                checked={
+                                  scriptsDraft.github_issue_create_from_tasks
+                                }
+                                onCheckedChange={(checked) =>
+                                  updateScriptsDraft({
+                                    github_issue_create_from_tasks:
+                                      checked === true,
+                                  })
+                                }
+                              />
+                              <div className="space-y-0.5">
+                                <Label
+                                  htmlFor="github-create-from-tasks"
+                                  className="cursor-pointer"
+                                >
+                                  {t(
+                                    'settings.projects.github.createFromTasks',
+                                    'Create issues from new tasks'
+                                  )}
+                                </Label>
+                                <p className="text-sm text-muted-foreground">
+                                  {t(
+                                    'settings.projects.github.createFromTasksHelper',
+                                    'Create a GitHub issue when a new task is created'
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Scripts Save Buttons */}

@@ -15,8 +15,9 @@ use axum::{
 use db::models::{
     image::TaskImage,
     project::{Project, ProjectError},
+    project_repo::ProjectRepo,
     repo::Repo,
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -25,7 +26,10 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
+    container::ContainerService,
+    github::{GitHubRepoInfo, GitHubService},
+    share::ShareError,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -261,7 +265,8 @@ pub async fn update_task(
         Some(s) => Some(s),                     // Non-empty string = update description
         None => existing_task.description,      // Field omitted = keep existing
     };
-    let status = payload.status.unwrap_or(existing_task.status);
+    let status = payload.status.unwrap_or(existing_task.status.clone());
+    let old_status = existing_task.status.clone();
     let parent_workspace_id = payload
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);
@@ -272,7 +277,7 @@ pub async fn update_task(
         existing_task.project_id,
         title,
         description,
-        status,
+        status.clone(),
         parent_workspace_id,
     )
     .await?;
@@ -290,7 +295,66 @@ pub async fn update_task(
         publisher.update_shared_task(&task).await?;
     }
 
+    // Auto-close GitHub issue when task moves to Done
+    let status_changed_to_done =
+        status == TaskStatus::Done && old_status != TaskStatus::Done;
+    if status_changed_to_done {
+        if let (Some(issue_number), Some(repo_id)) =
+            (task.github_issue_number, task.github_issue_repo_id)
+        {
+            // Spawn background task to close the issue (don't block the response)
+            let pool = deployment.db().pool.clone();
+            let task_id = task.id;
+            tokio::spawn(async move {
+                if let Err(e) =
+                    close_github_issue_for_task(&pool, task_id, repo_id, issue_number).await
+                {
+                    tracing::warn!(
+                        "Failed to auto-close GitHub issue #{} for task {}: {}",
+                        issue_number,
+                        task_id,
+                        e
+                    );
+                }
+            });
+        }
+    }
+
     Ok(ResponseJson(ApiResponse::success(task)))
+}
+
+/// Helper to close a GitHub issue when a task moves to Done
+async fn close_github_issue_for_task(
+    pool: &sqlx::SqlitePool,
+    task_id: Uuid,
+    repo_id: Uuid,
+    issue_number: i64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Get the repo to find the Git URL
+    let repo = Repo::find_by_id(pool, repo_id)
+        .await?
+        .ok_or("Repository not found")?;
+
+    // Parse the repo to get owner/repo for GitHub API
+    let repo_path_str = repo.path.to_string_lossy();
+    let repo_info = GitHubRepoInfo::from_repo_path(&repo_path_str)?;
+
+    // Close the issue on GitHub
+    let github_service = GitHubService::new()?;
+    github_service
+        .close_issue(&repo_info.owner, &repo_info.repo_name, issue_number)
+        .await?;
+
+    // Update the issue state in the database
+    Task::update_github_issue_state(pool, task_id, "closed").await?;
+
+    tracing::info!(
+        "Auto-closed GitHub issue #{} for task {}",
+        issue_number,
+        task_id
+    );
+
+    Ok(())
 }
 
 async fn ensure_shared_task_auth(
@@ -460,11 +524,102 @@ pub async fn share_task(
     })))
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct CreateGitHubIssueRequest {
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct CreateGitHubIssueResponse {
+    pub github_issue_number: i64,
+    pub github_issue_url: String,
+}
+
+/// Create a GitHub issue from a task
+pub async fn create_github_issue(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateGitHubIssueRequest>,
+) -> Result<ResponseJson<ApiResponse<CreateGitHubIssueResponse>>, ApiError> {
+    // Check if task already has a GitHub issue linked
+    if task.github_issue_number.is_some() {
+        return Err(ApiError::Conflict(
+            "Task already has a GitHub issue linked".to_string(),
+        ));
+    }
+
+    let pool = &deployment.db().pool;
+
+    // Verify the repo belongs to the task's project
+    let project_repo = ProjectRepo::find_by_project_and_repo(pool, task.project_id, payload.repo_id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("Repository not found in project".to_string()))?;
+
+    // Get the repo to find the Git URL
+    let repo = Repo::find_by_id(pool, payload.repo_id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("Repository not found".to_string()))?;
+
+    // Parse the repo to get owner/repo for GitHub API
+    let repo_path_str = repo.path.to_string_lossy();
+    let repo_info = GitHubRepoInfo::from_repo_path(&repo_path_str).map_err(|_| {
+        ApiError::BadRequest("Repository is not a GitHub repository or URL cannot be parsed".to_string())
+    })?;
+
+    // Create the GitHub issue
+    let github_service = GitHubService::new()?;
+    let issue = github_service
+        .create_issue(
+            &repo_info.owner,
+            &repo_info.repo_name,
+            &task.title,
+            task.description.as_deref(),
+        )
+        .await?;
+
+    // Get the first assignee if any
+    let first_assignee = issue.assignees.first().map(|a| a.login.as_str());
+
+    // Link the task to the GitHub issue
+    Task::link_github_issue(
+        pool,
+        task.id,
+        project_repo.repo_id,
+        issue.number,
+        &issue.url,
+        &issue.state,
+        first_assignee,
+    )
+    .await?;
+
+    tracing::info!(
+        "Created GitHub issue #{} for task {}",
+        issue.number,
+        task.id
+    );
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_issue_created",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "issue_number": issue.number,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(CreateGitHubIssueResponse {
+        github_issue_number: issue.number,
+        github_issue_url: issue.url,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
-        .route("/share", post(share_task));
+        .route("/share", post(share_task))
+        .route("/github-issue", post(create_github_issue));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

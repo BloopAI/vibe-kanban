@@ -28,6 +28,10 @@ pub struct ProjectRepo {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
+    // GitHub issue sync settings
+    pub github_issue_sync_enabled: bool,
+    pub github_issue_import_to_todo: bool,
+    pub github_issue_create_from_tasks: bool,
 }
 
 /// ProjectRepo with the associated repo name (for script execution in worktrees)
@@ -41,6 +45,10 @@ pub struct ProjectRepoWithName {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
+    // GitHub issue sync settings
+    pub github_issue_sync_enabled: bool,
+    pub github_issue_import_to_todo: bool,
+    pub github_issue_create_from_tasks: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -56,6 +64,10 @@ pub struct UpdateProjectRepo {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: Option<bool>,
+    // GitHub issue sync settings
+    pub github_issue_sync_enabled: Option<bool>,
+    pub github_issue_import_to_todo: Option<bool>,
+    pub github_issue_create_from_tasks: Option<bool>,
 }
 
 impl ProjectRepo {
@@ -71,7 +83,10 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                      github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                      github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool"
                FROM project_repos
                WHERE project_id = $1"#,
             project_id
@@ -92,7 +107,10 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                      github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                      github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool"
                FROM project_repos
                WHERE repo_id = $1"#,
             repo_id
@@ -114,7 +132,10 @@ impl ProjectRepo {
                       pr.setup_script,
                       pr.cleanup_script,
                       pr.copy_files,
-                      pr.parallel_setup_script as "parallel_setup_script!: bool"
+                      pr.parallel_setup_script as "parallel_setup_script!: bool",
+                      pr.github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                      pr.github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                      pr.github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool"
                FROM project_repos pr
                JOIN repos r ON r.id = pr.repo_id
                WHERE pr.project_id = $1
@@ -160,7 +181,10 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                      github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                      github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool"
                FROM project_repos
                WHERE project_id = $1 AND repo_id = $2"#,
             project_id,
@@ -235,7 +259,10 @@ impl ProjectRepo {
                          setup_script,
                          cleanup_script,
                          copy_files,
-                         parallel_setup_script as "parallel_setup_script!: bool""#,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                         github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                         github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool""#,
             id,
             project_id,
             repo_id
@@ -259,6 +286,15 @@ impl ProjectRepo {
         let parallel_setup_script = payload
             .parallel_setup_script
             .unwrap_or(existing.parallel_setup_script);
+        let github_issue_sync_enabled = payload
+            .github_issue_sync_enabled
+            .unwrap_or(existing.github_issue_sync_enabled);
+        let github_issue_import_to_todo = payload
+            .github_issue_import_to_todo
+            .unwrap_or(existing.github_issue_import_to_todo);
+        let github_issue_create_from_tasks = payload
+            .github_issue_create_from_tasks
+            .unwrap_or(existing.github_issue_create_from_tasks);
 
         sqlx::query_as!(
             ProjectRepo,
@@ -266,24 +302,56 @@ impl ProjectRepo {
                SET setup_script = $1,
                    cleanup_script = $2,
                    copy_files = $3,
-                   parallel_setup_script = $4
-               WHERE project_id = $5 AND repo_id = $6
+                   parallel_setup_script = $4,
+                   github_issue_sync_enabled = $5,
+                   github_issue_import_to_todo = $6,
+                   github_issue_create_from_tasks = $7
+               WHERE project_id = $8 AND repo_id = $9
                RETURNING id as "id!: Uuid",
                          project_id as "project_id!: Uuid",
                          repo_id as "repo_id!: Uuid",
                          setup_script,
                          cleanup_script,
                          copy_files,
-                         parallel_setup_script as "parallel_setup_script!: bool""#,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                         github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                         github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool""#,
             setup_script,
             cleanup_script,
             copy_files,
             parallel_setup_script,
+            github_issue_sync_enabled,
+            github_issue_import_to_todo,
+            github_issue_create_from_tasks,
             project_id,
             repo_id
         )
         .fetch_one(pool)
         .await
         .map_err(ProjectRepoError::from)
+    }
+
+    /// Find all project_repos with GitHub issue sync enabled
+    pub async fn find_with_github_sync_enabled(
+        pool: &SqlitePool,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectRepo,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      github_issue_sync_enabled as "github_issue_sync_enabled!: bool",
+                      github_issue_import_to_todo as "github_issue_import_to_todo!: bool",
+                      github_issue_create_from_tasks as "github_issue_create_from_tasks!: bool"
+               FROM project_repos
+               WHERE github_issue_sync_enabled = 1"#
+        )
+        .fetch_all(pool)
+        .await
     }
 }
