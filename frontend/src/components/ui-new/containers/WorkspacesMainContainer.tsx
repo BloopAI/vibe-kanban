@@ -1,6 +1,6 @@
-import { useRef, useMemo, useCallback, useState } from 'react';
+import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import type { Workspace, Session } from 'shared/types';
-import type { WorkspaceWithSession } from '@/types/attempt';
+import { createWorkspaceWithSession } from '@/types/attempt';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
@@ -40,27 +40,31 @@ export function WorkspacesMainContainer({
     try {
       await navigator.clipboard.writeText(selectedWorkspace.container_ref);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.warn('Copy to clipboard failed:', err);
     }
   }, [selectedWorkspace?.container_ref]);
 
+  // Reset copied state after 2 seconds
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   // Create WorkspaceWithSession for ConversationList
-  const workspaceWithSession: WorkspaceWithSession | undefined = useMemo(() => {
+  const workspaceWithSession = useMemo(() => {
     if (!selectedWorkspace) return undefined;
-    return { ...selectedWorkspace, session: selectedSession };
+    return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
   return (
     <WorkspacesMain
-      selectedWorkspace={selectedWorkspace}
-      selectedSession={selectedSession}
+      workspaceWithSession={workspaceWithSession}
       sessions={sessions}
       onSelectSession={onSelectSession}
       isLoading={isLoading}
       containerRef={containerRef}
-      workspaceWithSession={workspaceWithSession}
       projectId={task?.project_id}
       copied={copied}
       onOpen={handleOpen}
