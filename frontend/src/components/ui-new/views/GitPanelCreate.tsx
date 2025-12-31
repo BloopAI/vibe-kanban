@@ -8,16 +8,11 @@ import { RecentReposListContainer } from '@/components/ui-new/containers/RecentR
 import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
 import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
-import type { Project, GitBranch } from 'shared/types';
-
-interface RepoInfo {
-  id: string;
-  path: string;
-}
+import type { Project, GitBranch, Repo } from 'shared/types';
 
 interface GitPanelCreateProps {
   className?: string;
-  repos: RepoInfo[];
+  repos: Repo[];
   projects: Project[];
   selectedProjectId: string | null;
   selectedProjectName?: string;
@@ -27,7 +22,7 @@ interface GitPanelCreateProps {
   targetBranches: Record<string, string>;
   onBranchChange: (repoId: string, branch: string) => void;
   registeredRepoPaths: string[];
-  onRepoRegistered: (repo: RepoInfo) => void;
+  onRepoRegistered: (repo: Repo) => void;
 }
 
 export function GitPanelCreate({
