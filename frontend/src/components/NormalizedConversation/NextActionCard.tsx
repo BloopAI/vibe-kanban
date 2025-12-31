@@ -183,10 +183,12 @@ export function NextActionCard({
           {/* Left: Diff summary */}
           {!error && (
             <button
-              onClick={() => setSearchParams(prev => {
-                prev.set('view', 'diffs');
-                return prev;
-              })}
+              onClick={() =>
+                setSearchParams((prev) => {
+                  prev.set('view', 'diffs');
+                  return prev;
+                })
+              }
               className="flex items-center gap-1.5 text-sm shrink-0 cursor-pointer hover:underline transition-all"
               aria-label={t('attempt.diffs')}
             >
@@ -237,10 +239,12 @@ export function NextActionCard({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setSearchParams(prev => {
-                      prev.set('view', 'diffs');
-                      return prev;
-                    })}
+                    onClick={() =>
+                      setSearchParams((prev) => {
+                        prev.set('view', 'diffs');
+                        return prev;
+                      })
+                    }
                     aria-label={t('attempt.diffs')}
                   >
                     <FileDiff className="h-3.5 w-3.5" />
@@ -298,30 +302,34 @@ export function NextActionCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-block">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 w-7 p-0"
-                                        onClick={
-                                          runningDevServer ? () => stop() : () => {
-                                            start();
-                                            setSearchParams(prev => {
-                                              prev.set('view', 'preview');
-                                              return prev;
-                                            });
-                                          }
-                                        }
-                                        disabled={
-                                          (runningDevServer ? isStopping : isStarting) ||
-                                          !attemptId ||
-                                          !projectHasDevScript
-                                        }
-                                        aria-label={
-                                          runningDevServer
-                                            ? t('attempt.pauseDev')
-                                            : t('attempt.startDev')
-                                        }
-                                      >                      {runningDevServer ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={
+                        runningDevServer
+                          ? () => stop()
+                          : () => {
+                              start();
+                              setSearchParams((prev) => {
+                                prev.set('view', 'preview');
+                                return prev;
+                              });
+                            }
+                      }
+                      disabled={
+                        (runningDevServer ? isStopping : isStarting) ||
+                        !attemptId ||
+                        !projectHasDevScript
+                      }
+                      aria-label={
+                        runningDevServer
+                          ? t('attempt.pauseDev')
+                          : t('attempt.startDev')
+                      }
+                    >
+                      {' '}
+                      {runningDevServer ? (
                         <Pause className="h-3.5 w-3.5 text-destructive" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
