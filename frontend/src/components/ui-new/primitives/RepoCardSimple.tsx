@@ -1,6 +1,6 @@
 import { FolderSimpleIcon, XIcon, GitBranchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { SearchableDropdown } from './SearchableDropdown';
+import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdown';
 import type { GitBranch } from 'shared/types';
 
@@ -45,7 +45,7 @@ export function RepoCardSimple({
       <p className="text-xs text-low truncate">{path}</p>
 
       {branches && onBranchChange && (
-        <SearchableDropdown
+        <SearchableDropdownContainer
           items={branches}
           selectedValue={selectedBranch}
           getItemKey={(b) => b.name}

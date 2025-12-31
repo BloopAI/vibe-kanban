@@ -12,9 +12,9 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
+import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
-import { GitPanelCreate } from '@/components/ui-new/views/GitPanelCreate';
+import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
@@ -327,7 +327,7 @@ export function WorkspacesLayout() {
           panelRef={gitPanelRef}
           onResize={handleGitPanelResize}
         >
-          <GitPanelCreate />
+          <GitPanelCreateContainer />
         </Panel>
       </Group>
     </CreateModeProvider>
@@ -365,7 +365,7 @@ export function WorkspacesLayout() {
           attemptId={selectedWorkspace?.id}
           sessionId={selectedSessionId}
         >
-          <WorkspacesMain
+          <WorkspacesMainContainer
             selectedWorkspace={selectedWorkspace ?? null}
             selectedSession={selectedSession}
             sessions={sessions}

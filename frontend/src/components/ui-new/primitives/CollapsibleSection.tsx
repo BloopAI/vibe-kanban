@@ -1,43 +1,26 @@
-import { useState } from 'react';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 interface CollapsibleSectionProps {
   title: string;
-  expanded?: boolean;
-  onToggle?: () => void;
-  defaultExpanded?: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   children?: React.ReactNode;
   className?: string;
 }
 
 export function CollapsibleSection({
   title,
-  expanded: controlledExpanded,
+  expanded,
   onToggle,
-  defaultExpanded = true,
   children,
   className,
 }: CollapsibleSectionProps) {
-  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
-
-  const isControlled = controlledExpanded !== undefined;
-  const expanded = isControlled ? controlledExpanded : internalExpanded;
-
-  const handleToggle = () => {
-    if (onToggle) {
-      onToggle();
-    }
-    if (!isControlled) {
-      setInternalExpanded((prev) => !prev);
-    }
-  };
-
   return (
     <div className={cn('flex flex-col', className)}>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={onToggle}
         className="flex items-center justify-between w-full cursor-pointer"
       >
         <span className="font-medium truncate text-normal">{title}</span>

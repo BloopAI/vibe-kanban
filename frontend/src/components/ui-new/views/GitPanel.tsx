@@ -1,9 +1,7 @@
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import {
-  RepoCard,
-  type RepoAction,
-} from '@/components/ui-new/primitives/RepoCard';
+import { type RepoAction } from '@/components/ui-new/primitives/RepoCard';
+import { RepoCardContainer } from '@/components/ui-new/containers/RepoCardContainer';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 
@@ -60,7 +58,7 @@ export function GitPanel({
       </div>
       <div className="flex flex-col gap-double">
         {repos.map((repo) => (
-          <RepoCard
+          <RepoCardContainer
             key={repo.id}
             name={repo.name}
             targetBranch={repo.targetBranch}

@@ -1,6 +1,6 @@
 import { PlusIcon } from '@phosphor-icons/react';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { CollapsibleSection } from '@/components/ui-new/primitives/CollapsibleSection';
+import { CollapsibleSectionContainer } from '@/components/ui-new/containers/CollapsibleSectionContainer';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
 import { SectionHeader } from '../primitives/SectionHeader';
@@ -48,7 +48,7 @@ export function WorkspacesSidebar({
         placeholder="Search..."
       />
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-double">
-        <CollapsibleSection
+        <CollapsibleSectionContainer
           title="Active"
           defaultExpanded
           className="gap-double"
@@ -66,8 +66,8 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
-        </CollapsibleSection>
-        <CollapsibleSection
+        </CollapsibleSectionContainer>
+        <CollapsibleSectionContainer
           title="Archived"
           defaultExpanded={true}
           className="gap-double"
@@ -86,7 +86,7 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
-        </CollapsibleSection>
+        </CollapsibleSectionContainer>
       </div>
     </aside>
   );

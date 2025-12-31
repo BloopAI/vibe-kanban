@@ -1,5 +1,11 @@
 const i18nCheck = process.env.LINT_I18N === 'true';
 
+// Presentational components - these must be stateless and receive all data via props
+const presentationalComponentPatterns = [
+  'src/components/ui-new/views/**/*.tsx',
+  'src/components/ui-new/primitives/**/*.tsx',
+];
+
 module.exports = {
   root: true,
   env: {
@@ -181,66 +187,40 @@ module.exports = {
       },
     },
     {
-      // View components in ui-new/views/ - strict presentation rules (no logic)
-      files: ['src/components/ui-new/views/**/*.tsx'],
+      // ui-new components must use Phosphor icons (not Lucide) and avoid deprecated APIs
+      files: ['src/components/ui-new/**/*.{ts,tsx}'],
       rules: {
+        'deprecation/deprecation': 'error',
         'no-restricted-imports': [
           'error',
           {
             paths: [
               {
-                name: '@/lib/api',
-                message: 'View components cannot import API. Pass data via props.',
-              },
-              {
-                name: '@tanstack/react-query',
-                importNames: ['useQuery', 'useMutation', 'useQueryClient', 'useInfiniteQuery'],
-                message: 'View components cannot use data fetching hooks. Pass data via props.',
+                name: 'lucide-react',
+                message: 'Use @phosphor-icons/react instead of lucide-react in ui-new components.',
               },
             ],
           },
         ],
+        // Icon size restrictions - use Tailwind design system sizes
         'no-restricted-syntax': [
           'error',
           {
-            selector: 'CallExpression[callee.name="useState"]',
-            message: 'View components should not manage state. Use controlled props.',
+            selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
+            message:
+              'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
           },
           {
-            selector: 'CallExpression[callee.name="useReducer"]',
-            message: 'View components should not use useReducer. Use container component.',
+            // Catch arbitrary pixel sizes like size-[10px], size-[7px], etc. in className
+            selector: 'Literal[value=/size-\\[\\d+px\\]/]',
+            message:
+              'Use standard icon sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of arbitrary pixel values like size-[Npx].',
           },
           {
-            selector: 'CallExpression[callee.name="useContext"]',
-            message: 'View components should not consume context. Pass data via props.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useQuery"]',
-            message: 'View components should not fetch data. Pass data via props.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useMutation"]',
-            message: 'View components should not mutate data. Pass callbacks via props.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useInfiniteQuery"]',
-            message: 'View components should not fetch data. Pass data via props.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useEffect"]',
-            message: 'View components should avoid side effects. Move to container.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useLayoutEffect"]',
-            message: 'View components should avoid layout effects. Move to container.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useCallback"]',
-            message: 'View components should receive callbacks via props.',
-          },
-          {
-            selector: 'CallExpression[callee.name="useNavigate"]',
-            message: 'View components should not handle navigation. Pass callbacks via props.',
+            // Catch generic tailwind sizes like size-1, size-3, size-1.5, etc. (not size-icon-* or size-dot)
+            selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
+            message:
+              'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
           },
         ],
       },
@@ -263,54 +243,66 @@ module.exports = {
       },
     },
     {
-      // ui-new components must use Phosphor icons (not Lucide) and avoid deprecated APIs
-      files: ['src/components/ui-new/**/*.{ts,tsx}'],
+      // Presentational components (views & primitives) - strict presentation rules (no logic)
+      files: presentationalComponentPatterns,
       rules: {
-        'deprecation/deprecation': 'error',
         'no-restricted-imports': [
           'error',
           {
             paths: [
               {
-                name: 'lucide-react',
-                message: 'Use @phosphor-icons/react instead of lucide-react in ui-new components.',
+                name: '@/lib/api',
+                message: 'Presentational components cannot import API. Pass data via props.',
+              },
+              {
+                name: '@tanstack/react-query',
+                importNames: ['useQuery', 'useMutation', 'useQueryClient', 'useInfiniteQuery'],
+                message: 'Presentational components cannot use data fetching hooks. Pass data via props.',
               },
             ],
           },
         ],
-      },
-    },
-    {
-      // ui-new components must use Tailwind size classes for icons, not size prop
-      files: ['src/components/ui-new/**/*.{ts,tsx}'],
-      rules: {
         'no-restricted-syntax': [
           'error',
           {
-            selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
-            message:
-              'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
-          },
-        ],
-      },
-    },
-    {
-      // ui-new icon components must use standard icon sizes (size-icon-*), not arbitrary values
-      files: ['src/components/ui-new/**/*.{ts,tsx}'],
-      rules: {
-        'no-restricted-syntax': [
-          'error',
-          {
-            // Catch arbitrary pixel sizes like size-[10px], size-[7px], etc. in className
-            selector: 'Literal[value=/size-\\[\\d+px\\]/]',
-            message:
-              'Use standard icon sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of arbitrary pixel values like size-[Npx].',
+            selector: 'CallExpression[callee.name="useState"]',
+            message: 'Presentational components should not manage state. Use controlled props.',
           },
           {
-            // Catch generic tailwind sizes like size-1, size-3, size-1.5, etc. (not size-icon-* or size-dot)
-            selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
-            message:
-              'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
+            selector: 'CallExpression[callee.name="useReducer"]',
+            message: 'Presentational components should not use useReducer. Use container component.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useContext"]',
+            message: 'Presentational components should not consume context. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useQuery"]',
+            message: 'Presentational components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useMutation"]',
+            message: 'Presentational components should not mutate data. Pass callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useInfiniteQuery"]',
+            message: 'Presentational components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useEffect"]',
+            message: 'Presentational components should avoid side effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useLayoutEffect"]',
+            message: 'Presentational components should avoid layout effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useCallback"]',
+            message: 'Presentational components should receive callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useNavigate"]',
+            message: 'Presentational components should not handle navigation. Pass callbacks via props.',
           },
         ],
       },

@@ -1,4 +1,4 @@
-import { type RefObject, useState } from 'react';
+import type { RefObject } from 'react';
 import {
   ArrowSquareOutIcon,
   CheckIcon,
@@ -69,14 +69,16 @@ function DragHandle({
 
 export interface ContextBarProps {
   containerRef: RefObject<HTMLElement | null>;
+  copied?: boolean;
   onOpen?: () => void;
-  onCopy?: () => Promise<boolean>;
+  onCopy?: () => void;
   onPreview?: () => void;
   onViewCode?: () => void;
 }
 
 export function ContextBar({
   containerRef,
+  copied = false,
   onOpen,
   onCopy,
   onPreview,
@@ -84,16 +86,6 @@ export function ContextBar({
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    if (!onCopy) return;
-    const success = await onCopy();
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   return (
     <div
@@ -120,7 +112,7 @@ export function ContextBar({
             <ContextBarButton
               icon={copied ? CheckIcon : CopyIcon}
               label={copied ? 'Copied!' : 'Copy path'}
-              onClick={handleCopy}
+              onClick={onCopy}
               iconClassName={
                 copied ? 'text-success hover:text-success' : undefined
               }
