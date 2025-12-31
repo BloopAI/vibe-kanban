@@ -32,3 +32,8 @@ export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useVariant } from './useVariant';
 export { useRetryProcess } from './useRetryProcess';
+export { useGitHubUser } from './useGitHubUser';
+export {
+  useProjectRepoSettings,
+  useGitHubIssueCreationEnabled,
+} from './useProjectRepoSettings';

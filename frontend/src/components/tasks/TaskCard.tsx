@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Github, Link, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
-import { useNavigateWithSearch } from '@/hooks';
+import { useNavigateWithSearch, useGitHubUser } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
+import { cn } from '@/lib/utils';
 
 type Task = TaskWithAttemptStatus;
 
@@ -24,8 +25,15 @@ interface TaskCardProps {
   sharedTask?: SharedTaskRecord;
 }
 
+// Extended task type with GitHub issue fields (until types are regenerated)
+interface TaskWithGitHub extends Task {
+  github_issue_number?: number | null;
+  github_issue_url?: string | null;
+  github_issue_assignee?: string | null;
+}
+
 export function TaskCard({
-  task,
+  task: taskProp,
   index,
   status,
   onViewDetails,
@@ -37,6 +45,11 @@ export function TaskCard({
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
   const { isSignedIn } = useAuth();
+  const { data: githubUser } = useGitHubUser();
+
+  // Cast task to include GitHub fields
+  const task = taskProp as TaskWithGitHub;
+  const currentGhUser = githubUser?.login;
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -110,6 +123,48 @@ export function TaskCard({
           }
           right={
             <>
+              {/* GitHub Issue Badge */}
+              {task.github_issue_number && task.github_issue_url && (
+                <a
+                  href={task.github_issue_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                             bg-purple-100/60 dark:bg-purple-900/30
+                             text-purple-700 dark:text-purple-300
+                             text-xs font-medium hover:underline"
+                  title={t('githubIssue.viewOnGitHub', 'View on GitHub')}
+                >
+                  <Github className="h-3 w-3" />
+                  <span>#{task.github_issue_number}</span>
+                </a>
+              )}
+
+              {/* Assignee Badge - highlighted if current user */}
+              {task.github_issue_assignee && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs',
+                    task.github_issue_assignee === currentGhUser
+                      ? 'bg-green-100/60 dark:bg-green-900/30 text-green-700 dark:text-green-300 ring-1 ring-green-500'
+                      : 'bg-gray-100/60 dark:bg-gray-800/30 text-gray-600 dark:text-gray-400'
+                  )}
+                  title={
+                    task.github_issue_assignee === currentGhUser
+                      ? t('githubIssue.assignedToYou', 'Assigned to you')
+                      : t('githubIssue.assignedTo', {
+                          user: task.github_issue_assignee,
+                          defaultValue: `Assigned to ${task.github_issue_assignee}`,
+                        })
+                  }
+                >
+                  @{task.github_issue_assignee}
+                </span>
+              )}
+
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}

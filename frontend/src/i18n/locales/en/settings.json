@@ -363,6 +363,15 @@
           "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
         }
       },
+      "github": {
+        "title": "GitHub Issue Sync",
+        "syncEnabled": "Enable GitHub issue sync",
+        "syncEnabledHelper": "Sync issues between GitHub and this project",
+        "importToTodo": "Import open issues to TODO",
+        "importToTodoHelper": "Automatically create tasks from GitHub issues",
+        "createFromTasks": "Create issues from new tasks",
+        "createFromTasksHelper": "Create a GitHub issue when a new task is created"
+      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",

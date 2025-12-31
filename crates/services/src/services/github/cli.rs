@@ -58,6 +58,27 @@ pub struct PrReviewComment {
     pub author_association: String,
 }
 
+// ============================================================================
+// GitHub Issue Types
+// ============================================================================
+
+/// A GitHub user (used for issue assignees)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubUser {
+    pub login: String,
+}
+
+/// A GitHub issue
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubIssue {
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub url: String,
+    pub state: String, // "OPEN" or "CLOSED"
+    pub assignees: Vec<GitHubUser>,
+}
+
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
 pub enum GhCliError {
@@ -245,6 +266,116 @@ impl GhCli {
         ])?;
         Self::parse_pr_review_comments(&raw)
     }
+
+    // ========================================================================
+    // GitHub Issue Operations
+    // ========================================================================
+
+    /// List open issues for a repository.
+    pub fn list_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str, // "open", "closed", or "all"
+    ) -> Result<Vec<GitHubIssue>, GhCliError> {
+        let raw = self.run([
+            "issue",
+            "list",
+            "--repo",
+            &format!("{owner}/{repo}"),
+            "--state",
+            state,
+            "--json",
+            "number,title,body,url,state,assignees",
+            "--limit",
+            "100", // Reasonable limit for sync
+        ])?;
+        Self::parse_issue_list(&raw)
+    }
+
+    /// Create a new issue in a repository.
+    pub fn create_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        title: &str,
+        body: Option<&str>,
+    ) -> Result<GitHubIssue, GhCliError> {
+        let mut args: Vec<OsString> = Vec::with_capacity(10);
+        args.push(OsString::from("issue"));
+        args.push(OsString::from("create"));
+        args.push(OsString::from("--repo"));
+        args.push(OsString::from(format!("{owner}/{repo}")));
+        args.push(OsString::from("--title"));
+        args.push(OsString::from(title));
+
+        if let Some(body_text) = body {
+            args.push(OsString::from("--body"));
+            args.push(OsString::from(body_text));
+        }
+
+        let raw = self.run(args)?;
+        Self::parse_issue_create_text(&raw, owner, repo)
+    }
+
+    /// Close an issue.
+    pub fn close_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i64,
+    ) -> Result<(), GhCliError> {
+        self.run([
+            "issue",
+            "close",
+            &issue_number.to_string(),
+            "--repo",
+            &format!("{owner}/{repo}"),
+        ])?;
+        Ok(())
+    }
+
+    /// Reopen an issue.
+    pub fn reopen_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i64,
+    ) -> Result<(), GhCliError> {
+        self.run([
+            "issue",
+            "reopen",
+            &issue_number.to_string(),
+            "--repo",
+            &format!("{owner}/{repo}"),
+        ])?;
+        Ok(())
+    }
+
+    /// Get the currently authenticated GitHub user.
+    pub fn get_current_user(&self) -> Result<String, GhCliError> {
+        let raw = self.run(["api", "user", "--jq", ".login"])?;
+        Ok(raw.trim().to_string())
+    }
+
+    /// View a single issue by number.
+    pub fn view_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i64,
+    ) -> Result<GitHubIssue, GhCliError> {
+        let raw = self.run([
+            "issue",
+            "view",
+            &issue_number.to_string(),
+            "--repo",
+            &format!("{owner}/{repo}"),
+            "--json",
+            "number,title,body,url,state,assignees",
+        ])?;
+        Self::parse_issue_view(&raw)
+    }
 }
 
 impl GhCli {
@@ -386,6 +517,127 @@ impl GhCli {
             },
             merged_at,
             merge_commit_sha,
+        })
+    }
+
+    // ========================================================================
+    // GitHub Issue Parsing
+    // ========================================================================
+
+    fn parse_issue_list(raw: &str) -> Result<Vec<GitHubIssue>, GhCliError> {
+        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh issue list response: {err}; raw: {raw}"
+            ))
+        })?;
+        let arr = value.as_array().ok_or_else(|| {
+            GhCliError::UnexpectedOutput(format!(
+                "gh issue list response is not an array: {value:#?}"
+            ))
+        })?;
+        arr.iter()
+            .map(|item| {
+                Self::extract_issue_info(item).ok_or_else(|| {
+                    GhCliError::UnexpectedOutput(format!(
+                        "gh issue list item missing required fields: {item:#?}"
+                    ))
+                })
+            })
+            .collect()
+    }
+
+    fn parse_issue_view(raw: &str) -> Result<GitHubIssue, GhCliError> {
+        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh issue view response: {err}; raw: {raw}"
+            ))
+        })?;
+        Self::extract_issue_info(&value).ok_or_else(|| {
+            GhCliError::UnexpectedOutput(format!(
+                "gh issue view response missing required fields: {value:#?}"
+            ))
+        })
+    }
+
+    fn parse_issue_create_text(
+        raw: &str,
+        owner: &str,
+        repo: &str,
+    ) -> Result<GitHubIssue, GhCliError> {
+        // gh issue create outputs a URL like: https://github.com/owner/repo/issues/123
+        let issue_url = raw
+            .lines()
+            .rev()
+            .flat_map(|line| line.split_whitespace())
+            .map(|token| token.trim_matches(|c: char| c == '<' || c == '>'))
+            .find(|token| token.starts_with("http") && token.contains("/issues/"))
+            .ok_or_else(|| {
+                GhCliError::UnexpectedOutput(format!(
+                    "gh issue create did not return an issue URL; raw output: {raw}"
+                ))
+            })?
+            .trim_end_matches(['.', ',', ';'])
+            .to_string();
+
+        let number = issue_url
+            .rsplit('/')
+            .next()
+            .ok_or_else(|| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to extract issue number from URL '{issue_url}'"
+                ))
+            })?
+            .trim_end_matches(|c: char| !c.is_ascii_digit())
+            .parse::<i64>()
+            .map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse issue number from URL '{issue_url}': {err}"
+                ))
+            })?;
+
+        // Fetch full issue details to get title, body, etc.
+        // We need the owner and repo from the URL, which we have as parameters
+        let gh = GhCli::new();
+        gh.view_issue(owner, repo, number)
+    }
+
+    fn extract_issue_info(value: &Value) -> Option<GitHubIssue> {
+        let number = value.get("number")?.as_i64()?;
+        let title = value.get("title")?.as_str()?.to_string();
+        let body = value
+            .get("body")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+        let url = value.get("url")?.as_str()?.to_string();
+        let state = value
+            .get("state")
+            .and_then(Value::as_str)
+            .unwrap_or("OPEN")
+            .to_uppercase();
+        let assignees = value
+            .get("assignees")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|a| {
+                        a.get("login")
+                            .and_then(Value::as_str)
+                            .map(|login| GitHubUser {
+                                login: login.to_string(),
+                            })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Some(GitHubIssue {
+            number,
+            title,
+            body,
+            url,
+            state,
+            assignees,
         })
     }
 }
