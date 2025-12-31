@@ -2,11 +2,9 @@ import { useMemo, useCallback, useState } from 'react';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
+import { getVariantOptions } from '@/utils/executor';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
-import {
-  SessionChatBox,
-  type ExecutionStatus,
-} from '../primitives/SessionChatBox';
+import { CreateChatBox } from '../primitives/CreateChatBox';
 
 export function CreateChatBoxContainer() {
   const { profiles, config } = useUserSystem();
@@ -41,12 +39,10 @@ export function CreateChatBoxContainer() {
   }, [selectedProfile, config?.executor_profile, profiles]);
 
   // Get variant options for the current executor
-  const variantOptions = useMemo(() => {
-    if (!effectiveProfile || !profiles) return [];
-    const executorConfig = profiles[effectiveProfile.executor];
-    if (!executorConfig) return [];
-    return Object.keys(executorConfig);
-  }, [effectiveProfile, profiles]);
+  const variantOptions = useMemo(
+    () => getVariantOptions(effectiveProfile?.executor, profiles),
+    [effectiveProfile?.executor, profiles]
+  );
 
   // Get project ID from context
   const projectId = selectedProjectId;
@@ -115,15 +111,15 @@ export function CreateChatBoxContainer() {
     createWorkspace,
   ]);
 
-  // Execution status for UI
-  const status: ExecutionStatus = createWorkspace.isPending
-    ? 'sending'
-    : 'idle';
-  const error = createWorkspace.error
-    ? createWorkspace.error instanceof Error
-      ? createWorkspace.error.message
-      : 'Failed to create workspace'
-    : null;
+  // Determine error to display
+  const displayError =
+    hasAttemptedSubmit && repos.length === 0
+      ? 'Add at least one repository to create a workspace'
+      : createWorkspace.error
+        ? createWorkspace.error instanceof Error
+          ? createWorkspace.error.message
+          : 'Failed to create workspace'
+        : null;
 
   // Handle case where no project exists
   if (!projectId) {
@@ -141,48 +137,34 @@ export function CreateChatBoxContainer() {
     );
   }
 
-  // Common props for SessionChatBox
-  const chatBoxProps = {
-    status,
-    projectId,
-    agent: effectiveProfile?.executor ?? null,
-    editor: {
-      value: message,
-      onChange: setMessage,
-    },
-    actions: {
-      onSend: handleSubmit,
-      onQueue: () => {},
-      onCancelQueue: () => {},
-      onStop: () => {},
-      onAttach: () => {},
-    },
-    variant: effectiveProfile
-      ? {
-          selected: effectiveProfile.variant ?? 'DEFAULT',
-          options: variantOptions,
-          onChange: handleVariantChange,
-        }
-      : undefined,
-    executor: {
-      selected: effectiveProfile?.executor ?? null,
-      options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
-      onChange: handleExecutorChange,
-    },
-    hideStats: true,
-  };
-
   return (
     <div className="relative flex flex-1 flex-col bg-primary h-full">
       <div className="flex-1" />
       <div className="flex justify-center @container">
-        <SessionChatBox
-          {...chatBoxProps}
-          error={
-            hasAttemptedSubmit && repos.length === 0
-              ? 'Add at least one repository to create a workspace'
-              : error
+        <CreateChatBox
+          editor={{
+            value: message,
+            onChange: setMessage,
+          }}
+          onSend={handleSubmit}
+          isSending={createWorkspace.isPending}
+          executor={{
+            selected: effectiveProfile?.executor ?? null,
+            options: Object.keys(profiles ?? {}) as BaseCodingAgent[],
+            onChange: handleExecutorChange,
+          }}
+          variant={
+            effectiveProfile
+              ? {
+                  selected: effectiveProfile.variant ?? 'DEFAULT',
+                  options: variantOptions,
+                  onChange: handleVariantChange,
+                }
+              : undefined
           }
+          error={displayError}
+          projectId={projectId}
+          agent={effectiveProfile?.executor ?? null}
         />
       </div>
     </div>
