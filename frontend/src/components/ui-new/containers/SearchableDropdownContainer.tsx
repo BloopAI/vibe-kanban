@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { VirtuosoHandle } from 'react-virtuoso';
 import { SearchableDropdown } from '@/components/ui-new/primitives/SearchableDropdown';
 
@@ -61,37 +61,37 @@ export function SearchableDropdownContainer<T>({
     );
   }, [items, searchTerm, filterItem, getItemLabel]);
 
-  // Reset highlight when search changes
-  useEffect(() => {
-    setHighlightedIndex(null);
-  }, [searchTerm]);
+  // Derive safe highlight index (clamp to valid range)
+  const safeHighlightedIndex = useMemo(() => {
+    if (highlightedIndex === null) return null;
+    if (highlightedIndex >= filteredItems.length) return null;
+    return highlightedIndex;
+  }, [highlightedIndex, filteredItems.length]);
 
-  // Reset highlight if it exceeds list length
-  useEffect(() => {
-    if (highlightedIndex !== null && highlightedIndex >= filteredItems.length) {
-      setHighlightedIndex(null);
-    }
-  }, [filteredItems, highlightedIndex]);
+  const handleSearchTermChange = useCallback((value: string) => {
+    setSearchTerm(value);
+    setHighlightedIndex(null);
+  }, []);
 
   const moveHighlight = useCallback(
     (delta: 1 | -1) => {
       if (filteredItems.length === 0) return;
-      const start = highlightedIndex ?? -1;
+      const start = safeHighlightedIndex ?? -1;
       const next =
         (start + delta + filteredItems.length) % filteredItems.length;
       setHighlightedIndex(next);
       virtuosoRef.current?.scrollIntoView({ index: next, behavior: 'auto' });
     },
-    [filteredItems, highlightedIndex]
+    [filteredItems, safeHighlightedIndex]
   );
 
   const attemptSelect = useCallback(() => {
-    if (highlightedIndex == null) return;
-    const item = filteredItems[highlightedIndex];
+    if (safeHighlightedIndex == null) return;
+    const item = filteredItems[safeHighlightedIndex];
     if (!item) return;
     onSelect(item);
     setDropdownOpen(false);
-  }, [highlightedIndex, filteredItems, onSelect]);
+  }, [safeHighlightedIndex, filteredItems, onSelect]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -150,8 +150,8 @@ export function SearchableDropdownContainer<T>({
       onSelect={handleSelect}
       trigger={trigger}
       searchTerm={searchTerm}
-      onSearchTermChange={setSearchTerm}
-      highlightedIndex={highlightedIndex}
+      onSearchTermChange={handleSearchTermChange}
+      highlightedIndex={safeHighlightedIndex}
       onHighlightedIndexChange={setHighlightedIndex}
       open={dropdownOpen}
       onOpenChange={handleOpenChange}
