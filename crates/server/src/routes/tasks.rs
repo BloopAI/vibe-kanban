@@ -437,6 +437,13 @@ pub async fn share_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
+    // Block sharing when Google SSO is enabled
+    if deployment.google_sso_service().is_enabled() {
+        return Err(ApiError::Forbidden(
+            "Task sharing is disabled when SSO authentication is enabled".to_string(),
+        ));
+    }
+
     let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };

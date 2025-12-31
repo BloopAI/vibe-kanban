@@ -18,10 +18,13 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{
-    Config, ConfigError, SoundFile,
-    editor::{EditorConfig, EditorType},
-    save_config_to_file,
+use services::services::{
+    config::{
+        Config, ConfigError, SoundFile,
+        editor::{EditorConfig, EditorType},
+        save_config_to_file,
+    },
+    google_sso::GoogleSsoConfigDto,
 };
 use tokio::fs;
 use ts_rs::TS;
@@ -79,6 +82,8 @@ pub struct UserSystemInfo {
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
+    /// Google SSO configuration (enabled status and client ID)
+    pub google_sso_config: GoogleSsoConfigDto,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -88,6 +93,7 @@ async fn get_user_system_info(
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
     let login_status = deployment.get_login_status().await;
+    let google_sso_config = deployment.google_sso_service().config_dto();
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
@@ -105,6 +111,7 @@ async fn get_user_system_info(
             }
             caps
         },
+        google_sso_config,
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

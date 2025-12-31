@@ -33,6 +33,8 @@ import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import { GoogleSsoProvider } from '@/components/GoogleSsoProvider';
+import { GoogleSsoGuard } from '@/components/GoogleSsoGuard';
 import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -171,15 +173,19 @@ function App() {
   return (
     <BrowserRouter>
       <UserSystemProvider>
-        <ClickedElementsProvider>
-          <ProjectProvider>
-            <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <NiceModal.Provider>
-                <AppContent />
-              </NiceModal.Provider>
-            </HotkeysProvider>
-          </ProjectProvider>
-        </ClickedElementsProvider>
+        <GoogleSsoProvider>
+          <GoogleSsoGuard>
+            <ClickedElementsProvider>
+              <ProjectProvider>
+                <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+                  <NiceModal.Provider>
+                    <AppContent />
+                  </NiceModal.Provider>
+                </HotkeysProvider>
+              </ProjectProvider>
+            </ClickedElementsProvider>
+          </GoogleSsoGuard>
+        </GoogleSsoProvider>
       </UserSystemProvider>
     </BrowserRouter>
   );

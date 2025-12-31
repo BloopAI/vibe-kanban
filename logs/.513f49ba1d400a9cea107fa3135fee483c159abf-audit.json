@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/willypt/Work/open-source/vibe-kanban/logs/.513f49ba1d400a9cea107fa3135fee483c159abf-audit.json",
+    "files": [
+        {
+            "date": 1767162905147,
+            "name": "/Users/willypt/Work/open-source/vibe-kanban/logs/mcp-puppeteer-2025-12-31.log",
+            "hash": "444f6bfdd7ecfee1cc949ff4a16b7cd65e46c629c8b4d52dc3bedeec81d0dad7"
+        }
+    ],
+    "hashType": "sha256"
+}

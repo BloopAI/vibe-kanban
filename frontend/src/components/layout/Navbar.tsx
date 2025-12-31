@@ -39,7 +39,8 @@ import {
 } from '@/components/ui/tooltip';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { oauthApi } from '@/lib/api';
+import { oauthApi, googleSsoApi } from '@/lib/api';
+import { useGoogleSsoSession } from '@/hooks/auth/useGoogleSsoSession';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -78,7 +79,10 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
-  const { loginStatus, reloadSystem } = useUserSystem();
+  const { loginStatus, reloadSystem, system } = useUserSystem();
+  const ssoEnabled = system?.google_sso_config?.enabled ?? false;
+  const { data: googleSsoSession, refetch: refetchGoogleSsoSession } =
+    useGoogleSsoSession(ssoEnabled);
 
   const { data: repos } = useProjectRepos(projectId);
   const isSingleRepoProject = repos?.length === 1;
@@ -132,6 +136,17 @@ export function Navbar() {
       await reloadSystem();
     } catch (err) {
       console.error('Error logging out:', err);
+    }
+  };
+
+  const handleGoogleSsoLogout = async () => {
+    try {
+      await googleSsoApi.logout();
+      await refetchGoogleSsoSession();
+      // Reload the page to clear any cached state and redirect to login
+      window.location.reload();
+    } catch (err) {
+      console.error('Error logging out from Google SSO:', err);
     }
   };
 
@@ -302,7 +317,14 @@ export function Navbar() {
 
                   <DropdownMenuSeparator />
 
-                  {isOAuthLoggedIn ? (
+                  {/* When Google SSO is enabled, only show SSO logout (user must be authenticated to see this) */}
+                  {ssoEnabled ? (
+                    <DropdownMenuItem onSelect={handleGoogleSsoLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {t('common:signOut')}
+                      {googleSsoSession?.email ? ` (${googleSsoSession.email})` : ''}
+                    </DropdownMenuItem>
+                  ) : isOAuthLoggedIn ? (
                     <DropdownMenuItem onSelect={handleOAuthLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       {t('common:signOut')}
