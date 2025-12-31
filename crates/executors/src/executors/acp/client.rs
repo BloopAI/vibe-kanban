@@ -177,6 +177,12 @@ impl acp::Client for AcpClient {
             acp::SessionUpdate::ToolCall(tc) => Some(AcpEvent::ToolCall(tc)),
             acp::SessionUpdate::ToolCallUpdate(update) => Some(AcpEvent::ToolUpdate(update)),
             acp::SessionUpdate::Plan(plan) => Some(AcpEvent::Plan(plan)),
+            acp::SessionUpdate::AvailableCommandsUpdate(update) => {
+                Some(AcpEvent::AvailableCommands(update.available_commands))
+            }
+            acp::SessionUpdate::CurrentModeUpdate(update) => {
+                Some(AcpEvent::CurrentMode(update.current_mode_id))
+            }
             _ => Some(AcpEvent::Other(args)),
         };
 
