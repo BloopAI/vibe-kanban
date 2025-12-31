@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { GitPanelCreate } from '@/components/ui-new/views/GitPanelCreate';
 import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
 import { useProjects } from '@/hooks/useProjects';
@@ -21,7 +21,6 @@ export function GitPanelCreateContainer({
     setSelectedProjectId,
   } = useCreateMode();
   const { projects } = useProjects();
-  const [isAddExpanded, setIsAddExpanded] = useState(true);
 
   const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
   const { branchesByRepo } = useMultiRepoBranches(repoIds);
@@ -55,8 +54,6 @@ export function GitPanelCreateContainer({
       branchesByRepo={branchesByRepo}
       targetBranches={targetBranches}
       onBranchChange={setTargetBranch}
-      isAddExpanded={isAddExpanded}
-      onAddExpandedToggle={() => setIsAddExpanded(!isAddExpanded)}
       registeredRepoPaths={registeredRepoPaths}
       onRepoRegistered={addRepo}
     />

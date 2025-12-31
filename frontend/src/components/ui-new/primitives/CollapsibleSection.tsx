@@ -1,26 +1,32 @@
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import {
+  usePersistedExpanded,
+  type PersistKey,
+} from '@/stores/useUiPreferencesStore';
 
 interface CollapsibleSectionProps {
+  persistKey: PersistKey;
   title: string;
-  expanded: boolean;
-  onToggle: () => void;
+  defaultExpanded?: boolean;
   children?: React.ReactNode;
   className?: string;
 }
 
 export function CollapsibleSection({
+  persistKey,
   title,
-  expanded,
-  onToggle,
+  defaultExpanded = true,
   children,
   className,
 }: CollapsibleSectionProps) {
+  const [expanded, toggle] = usePersistedExpanded(persistKey, defaultExpanded);
+
   return (
     <div className={cn('flex flex-col', className)}>
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => toggle()}
         className="flex items-center justify-between w-full cursor-pointer"
       >
         <span className="font-medium truncate text-normal">{title}</span>

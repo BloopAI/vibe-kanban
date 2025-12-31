@@ -7,6 +7,7 @@ import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdo
 import { RecentReposListContainer } from '@/components/ui-new/containers/RecentReposListContainer';
 import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
 import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { Project, GitBranch } from 'shared/types';
 
 interface RepoInfo {
@@ -25,8 +26,6 @@ interface GitPanelCreateProps {
   branchesByRepo: Record<string, GitBranch[]>;
   targetBranches: Record<string, string>;
   onBranchChange: (repoId: string, branch: string) => void;
-  isAddExpanded: boolean;
-  onAddExpandedToggle: () => void;
   registeredRepoPaths: string[];
   onRepoRegistered: (repo: RepoInfo) => void;
 }
@@ -42,8 +41,6 @@ export function GitPanelCreate({
   branchesByRepo,
   targetBranches,
   onBranchChange,
-  isAddExpanded,
-  onAddExpandedToggle,
   registeredRepoPaths,
   onRepoRegistered,
 }: GitPanelCreateProps) {
@@ -81,9 +78,8 @@ export function GitPanelCreate({
       />
 
       <CollapsibleSection
+        persistKey={PERSIST_KEYS.gitPanelCreateAddRepo}
         title="Add Repository"
-        expanded={isAddExpanded}
-        onToggle={onAddExpandedToggle}
         className="gap-base"
       >
         <p className="text-xs text-low font-medium">Recent</p>
