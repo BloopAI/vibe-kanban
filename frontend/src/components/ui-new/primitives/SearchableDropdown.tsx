@@ -93,7 +93,7 @@ export function SearchableDropdown<T>({
           </div>
         ) : (
           <Virtuoso
-            ref={virtuosoRef}
+            ref={virtuosoRef as React.RefObject<VirtuosoHandle>}
             style={{ height: '16rem' }}
             totalCount={filteredItems.length}
             computeItemKey={(idx) =>
