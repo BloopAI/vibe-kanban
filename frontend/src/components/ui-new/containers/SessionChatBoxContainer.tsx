@@ -3,8 +3,6 @@ import {
   ScratchType,
   type Session,
   type DraftFollowUpData,
-  type ExecutorAction,
-  type ExecutorProfileId,
 } from 'shared/types';
 import { useScratch } from '@/hooks/useScratch';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
@@ -14,6 +12,10 @@ import { useVariant } from '@/hooks/useVariant';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
+import {
+  getVariantOptions,
+  getLatestProfileFromProcesses,
+} from '@/utils/executor';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -79,51 +81,21 @@ export function SessionChatBoxContainer({
   const [isTextareaFocused] = useState(false);
 
   // Variant selection - derive default from latest process
-  const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
-    if (!processes?.length) return null;
-
-    const extractProfile = (
-      action: ExecutorAction | null
-    ): ExecutorProfileId | null => {
-      let curr: ExecutorAction | null = action;
-      while (curr) {
-        const typ = curr.typ;
-        switch (typ.type) {
-          case 'CodingAgentInitialRequest':
-          case 'CodingAgentFollowUpRequest':
-            return typ.executor_profile_id;
-          case 'ScriptRequest':
-            curr = curr.next_action;
-            continue;
-        }
-      }
-      return null;
-    };
-    return (
-      processes
-        .slice()
-        .reverse()
-        .map((p) => extractProfile(p.executor_action ?? null))
-        .find((pid) => pid !== null) ?? null
-    );
-  }, [processes]);
+  const latestProfileId = useMemo(
+    () => getLatestProfileFromProcesses(processes),
+    [processes]
+  );
 
   const processVariant = latestProfileId?.variant ?? null;
 
   // Get executor profiles to extract variant options
   const { profiles } = useUserSystem();
 
-  // Get the ExecutorConfig for the current executor
-  const currentProfile = useMemo(() => {
-    if (!latestProfileId) return null;
-    return profiles?.[latestProfileId.executor] ?? null;
-  }, [latestProfileId, profiles]);
-
   // Extract variant names from ExecutorConfig keys
-  const variantOptions = useMemo(() => {
-    if (!currentProfile) return [];
-    return Object.keys(currentProfile);
-  }, [currentProfile]);
+  const variantOptions = useMemo(
+    () => getVariantOptions(latestProfileId?.executor, profiles),
+    [latestProfileId?.executor, profiles]
+  );
 
   // Variant selection with priority: user selection > scratch > process
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
@@ -376,7 +348,7 @@ export function SessionChatBoxContainer({
       session={{
         sessions,
         selectedSessionId: sessionId,
-        onSelectSession,
+        onSelectSession: onSelectSession ?? (() => {}),
       }}
       stats={{
         filesChanged,
