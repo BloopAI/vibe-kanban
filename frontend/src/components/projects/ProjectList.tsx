@@ -23,7 +23,7 @@ export function ProjectList() {
     try {
       const result = await ProjectFormDialog.show({});
       if (result === 'saved') return;
-    } catch (error) {
+    } catch {
       // User cancelled - do nothing
     }
   };

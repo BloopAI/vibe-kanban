@@ -20,6 +20,23 @@
       "@playwright/mcp@latest"
     ]
   },
+  "exa": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-exa"
+    ],
+    "env": {
+      "EXA_API_KEY": "YOUR_EXA_API_KEY"
+    }
+  },
+  "grep": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-grep"
+    ]
+  },
   "meta": {
     "vibe_kanban": {
       "name": "Vibe Kanban",
@@ -38,6 +55,18 @@
       "description": "Browser automation with Playwright",
       "url": "https://github.com/microsoft/playwright-mcp",
       "icon": "mcp/playwright_logo_icon.svg"
+    },
+    "exa": {
+      "name": "Exa",
+      "description": "AI-powered web search and retrieval",
+      "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/exa",
+      "icon": "mcp/exa_logo.png"
+    },
+    "grep": {
+      "name": "Grep",
+      "description": "Search code and files using ripgrep",
+      "url": "https://github.com/modelcontextprotocol/servers/tree/main/src/grep",
+      "icon": "mcp/grep_logo.png"
     }
   }
 }

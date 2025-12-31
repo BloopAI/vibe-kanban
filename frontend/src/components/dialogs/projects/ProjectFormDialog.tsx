@@ -14,7 +14,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { defineModal } from '@/lib/modals';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 
-export interface ProjectFormDialogProps {}
+export type ProjectFormDialogProps = Record<string, never>;
 
 export type ProjectFormDialogResult = 'saved' | 'canceled';
 

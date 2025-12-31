@@ -37,7 +37,7 @@ export function TagManager() {
         if (result === 'saved') {
           await fetchTags();
         }
-      } catch (error) {
+      } catch {
         // User cancelled - do nothing
       }
     },

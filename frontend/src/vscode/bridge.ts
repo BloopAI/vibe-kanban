@@ -274,7 +274,7 @@ export function parentClipboardWrite(text: string) {
       { type: 'vscode-iframe-clipboard-copy', text },
       '*'
     );
-  } catch (_err) {
+  } catch {
     void 0;
   }
 }
@@ -334,7 +334,7 @@ export function installVSCodeIframeKeyboardBridge() {
   const forward = (type: string, e: KeyboardEvent) => {
     try {
       window.parent.postMessage({ type, event: serializeKeyEvent(e) }, '*');
-    } catch (_err) {
+    } catch {
       void 0;
     }
   };

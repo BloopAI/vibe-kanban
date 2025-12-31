@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, XCircle, GitBranch } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,11 @@ import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
+import { Badge } from '@/components/ui/badge';
+import {
+  useWorkflowProgress,
+  getStageDisplayName,
+} from '@/hooks/useWorkflows';
 
 type Task = TaskWithAttemptStatus;
 
@@ -22,6 +27,7 @@ interface TaskCardProps {
   isOpen?: boolean;
   projectId: string;
   sharedTask?: SharedTaskRecord;
+  onShowWorkflow?: () => void;
 }
 
 export function TaskCard({
@@ -32,11 +38,15 @@ export function TaskCard({
   isOpen,
   projectId,
   sharedTask,
+  onShowWorkflow,
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
   const { isSignedIn } = useAuth();
+  const { state: workflowState } = useWorkflowProgress(
+    onShowWorkflow ? task.id : null
+  );
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -116,6 +126,15 @@ export function TaskCard({
               {task.last_attempt_failed && (
                 <XCircle className="h-4 w-4 text-destructive" />
               )}
+              {workflowState.status === 'success' &&
+                workflowState.data.current_stage && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs bg-blue-50 border-blue-200"
+                  >
+                    {getStageDisplayName(workflowState.data.current_stage)}
+                  </Badge>
+                )}
               {task.parent_workspace_id && (
                 <Button
                   variant="icon"
@@ -126,6 +145,20 @@ export function TaskCard({
                   title={t('navigateToParent')}
                 >
                   <Link className="h-4 w-4" />
+                </Button>
+              )}
+              {onShowWorkflow && (
+                <Button
+                  variant="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShowWorkflow();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  title="View workflow"
+                >
+                  <GitBranch className="h-4 w-4" />
                 </Button>
               )}
               <ActionsDropdown task={task} sharedTask={sharedTask} />
@@ -139,6 +172,26 @@ export function TaskCard({
               : task.description}
           </p>
         )}
+        {/* Workflow Progress Bar */}
+        {workflowState.status === 'success' &&
+          workflowState.data.status === 'in_progress' && (
+            <div className="mt-2">
+              <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all"
+                  style={{
+                    width: `${
+                      (workflowState.data.stages.filter(
+                        (s) => s.status === 'completed'
+                      ).length /
+                        workflowState.data.stages.length) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
       </div>
     </KanbanCard>
   );

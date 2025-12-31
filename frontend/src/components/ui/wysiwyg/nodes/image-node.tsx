@@ -14,6 +14,7 @@ import {
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
 } from '../lib/create-decorator-node';
+import type { ReactElement } from 'react';
 
 export interface ImageData {
   src: string;
@@ -41,7 +42,7 @@ function ImageComponent({
   data: ImageData;
   nodeKey: NodeKey;
   onDoubleClickEdit: (event: React.MouseEvent) => void;
-}): JSX.Element {
+}): ReactElement {
   const { src, altText } = data;
   const taskAttemptId = useTaskAttemptId();
   const taskId = useTaskId();

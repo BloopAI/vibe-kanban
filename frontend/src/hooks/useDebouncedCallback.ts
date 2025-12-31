@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 /**
  * Returns a debounced version of the callback that delays invocation
@@ -26,23 +26,23 @@ export function useDebouncedCallback<Args extends unknown[]>(
     };
   }, []);
 
-  // Return stable function reference
-  const debouncedRef = useRef((...args: Args) => {
+  // Debounced function
+  const debounced = useCallback((...args: Args) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
     timeoutRef.current = setTimeout(() => {
       callbackRef.current(...args);
     }, delay);
-  });
+  }, [delay]);
 
   // Cancel function to clear pending timeout
-  const cancelRef = useRef(() => {
+  const cancel = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-  });
+  }, []);
 
-  return { debounced: debouncedRef.current, cancel: cancelRef.current };
+  return { debounced, cancel };
 }

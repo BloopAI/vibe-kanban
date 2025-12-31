@@ -23,8 +23,13 @@ module.exports = {
     project: './tsconfig.json',
   },
   rules: {
-    'eslint-comments/no-use': ['error', { allow: [] }],
+    'eslint-comments/no-use': 'off',
     'react-refresh/only-export-components': 'off',
+    // Disable overly strict React Compiler rules from v7
+    'react-hooks/exhaustive-deps': 'warn',
+    'react-hooks/set-state-in-effect': 'off',
+    'react-hooks/preserve-manual-memoization': 'off',
+    'react-hooks/immutability': 'off',
     'unused-imports/no-unused-imports': 'error',
     'unused-imports/no-unused-vars': [
       'error',

@@ -1,0 +1,107 @@
+{
+  "name": "default",
+  "description": "Default 4-stage workflow for automated task execution",
+  "version": "1.0.0",
+  "stages": [
+    {
+      "id": "research",
+      "name": "Research",
+      "description": "Investigate and analyze the task requirements",
+      "agent": {
+        "executor": "CLAUDE_CODE",
+        "variant": "PLAN",
+        "config": {
+          "model": "claude-sonnet-4-5-20250929",
+          "approvals": false,
+          "claude_code_router": true
+        }
+      },
+      "auto_proceed": true,
+      "timeout_minutes": 30,
+      "retry_on_failure": true,
+      "max_retries": 2
+    },
+    {
+      "id": "implement",
+      "name": "Implement",
+      "description": "Implement the solution based on research findings",
+      "agent": {
+        "executor": "CLAUDE_CODE",
+        "variant": null,
+        "config": {
+          "model": "claude-sonnet-4-5-20250929",
+          "approvals": false,
+          "dangerously_skip_permissions": false
+        }
+      },
+      "auto_proceed": true,
+      "timeout_minutes": 60,
+      "retry_on_failure": true,
+      "max_retries": 3,
+      "auto_commit": {
+        "enabled": true,
+        "commit_message_format": "feat: {task_title}\n\nStage: Implement\n\n{task_description}"
+      }
+    },
+    {
+      "id": "cicd",
+      "name": "CI/CD",
+      "description": "Run tests, build, and deployment checks",
+      "agent": {
+        "executor": "CLAUDE_CODE",
+        "variant": null,
+        "config": {
+          "model": "claude-sonnet-4-5-20250929",
+          "approvals": false
+        }
+      },
+      "auto_proceed": true,
+      "timeout_minutes": 45,
+      "retry_on_failure": true,
+      "max_retries": 2,
+      "auto_fix": {
+        "enabled": true,
+        "fix_on_test_failure": true,
+        "fix_on_lint_errors": true,
+        "fix_on_type_errors": true,
+        "max_fix_attempts": 3
+      }
+    },
+    {
+      "id": "review",
+      "name": "Review",
+      "description": "Review and validate the implemented solution",
+      "agent": {
+        "executor": "CLAUDE_CODE",
+        "variant": "PLAN",
+        "config": {
+          "model": "claude-sonnet-4-5-20250929",
+          "approvals": false
+        }
+      },
+      "auto_proceed": true,
+      "timeout_minutes": 20,
+      "retry_on_failure": false,
+      "max_retries": 1,
+      "create_pr": {
+        "enabled": true,
+        "auto_generate_description": true,
+        "draft": false
+      }
+    }
+  ],
+  "automation": {
+    "auto_start_next_stage": true,
+    "auto_fix_on_failure": true,
+    "auto_commit_on_success": true,
+    "require_approval": false,
+    "notification_on_complete": true,
+    "parallel_stages": false
+  },
+  "failure_handling": {
+    "on_stage_failure": "retry",
+    "on_all_retries_exhausted": "stop",
+    "on_unhandled_error": "stop",
+    "save_checkpoint_on_failure": true
+  }
+}

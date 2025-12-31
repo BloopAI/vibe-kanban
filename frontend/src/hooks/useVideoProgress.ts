@@ -11,7 +11,7 @@ interface VideoProgress {
  * Track video loading state and playback/buffering progress
  */
 export function useVideoProgress(
-  videoRef: RefObject<HTMLVideoElement>
+  videoRef: RefObject<HTMLVideoElement | null>
 ): VideoProgress {
   const [isLoading, setIsLoading] = useState(true);
   const [playedPercent, setPlayedPercent] = useState(0);

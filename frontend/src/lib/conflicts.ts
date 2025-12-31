@@ -9,7 +9,9 @@ export function displayConflictOpLabel(op?: ConflictOp | null): string {
     case 'revert':
       return 'Revert';
     case 'rebase':
-    default:
+      return 'Rebase';
+    case null:
+    case undefined:
       return 'Rebase';
   }
 }
@@ -29,7 +31,9 @@ function formatConflictHeader(
     case 'revert':
       return `Revert conflicts on '${sourceBranch}'${repoContext}.`;
     case 'rebase':
-    default:
+      return `Rebase conflicts while rebasing '${sourceBranch}' onto '${baseBranch ?? 'base branch'}'${repoContext}.`;
+    case null:
+    case undefined:
       return `Rebase conflicts while rebasing '${sourceBranch}' onto '${baseBranch ?? 'base branch'}'${repoContext}.`;
   }
 }

@@ -62,8 +62,9 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
                 case 'STDERR':
                   addLogEntry({ type: value.type, content: value.content });
                   break;
-                // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
-                default:
+                case 'NORMALIZED_ENTRY':
+                case 'DIFF':
+                  // Ignore other patch types
                   break;
               }
             });

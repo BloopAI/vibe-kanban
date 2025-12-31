@@ -35,7 +35,7 @@ const DeleteConfigurationDialogImpl =
           // Resolve with 'deleted' to let parent handle the deletion
           modal.resolve('deleted' as DeleteConfigurationResult);
           modal.hide();
-        } catch (error) {
+        } catch {
           setError('Failed to delete configuration. Please try again.');
           setIsDeleting(false);
         }

@@ -5,7 +5,6 @@ import {
   Square,
   AlertCircle,
   CheckCircle,
-  Clock,
   Cog,
   ArrowLeft,
 } from 'lucide-react';
@@ -14,7 +13,7 @@ import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useLogStream } from '@/hooks/useLogStream';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';
-import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
+import { ExecutionProcessStatus, type ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -64,32 +63,28 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     }
   }, [logs]);
 
-  const getStatusIcon = (status: ExecutionProcessStatus) => {
+  const getStatusIcon = (status: ExecutionProcessStatus): React.ReactElement => {
     switch (status) {
-      case 'running':
+      case ExecutionProcessStatus.running:
         return <Play className="h-4 w-4 text-blue-500" />;
-      case 'completed':
+      case ExecutionProcessStatus.completed:
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'failed':
+      case ExecutionProcessStatus.failed:
         return <AlertCircle className="h-4 w-4 text-destructive" />;
-      case 'killed':
+      case ExecutionProcessStatus.killed:
         return <Square className="h-4 w-4 text-gray-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-400" />;
     }
   };
 
-  const getStatusColor = (status: ExecutionProcessStatus) => {
+  const getStatusColor = (status: ExecutionProcessStatus): string => {
     switch (status) {
-      case 'running':
+      case ExecutionProcessStatus.running:
         return 'bg-blue-50 border-blue-200 text-blue-800';
-      case 'completed':
+      case ExecutionProcessStatus.completed:
         return 'bg-green-50 border-green-200 text-green-800';
-      case 'failed':
+      case ExecutionProcessStatus.failed:
         return 'bg-red-50 border-red-200 text-red-800';
-      case 'killed':
-        return 'bg-gray-50 border-gray-200 text-gray-800';
-      default:
+      case ExecutionProcessStatus.killed:
         return 'bg-gray-50 border-gray-200 text-gray-800';
     }
   };

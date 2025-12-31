@@ -505,3 +505,126 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
+
+// ============================================================================
+// Vibe Kanban Workflow Types
+// ============================================================================
+
+export enum WorkflowStage {
+  RESEARCH = "research",
+  IMPLEMENT = "implement",
+  CI_CD = "cicd",
+  REVIEW = "review"
+}
+
+export type WorkflowStatus = "pending" | "in_progress" | "completed" | "failed" | "skipped";
+
+export type AgentStatus = "idle" | "running" | "completed" | "failed";
+
+export interface AgentAssignment {
+  executor: BaseCodingAgent;
+  variant?: string | null;
+  config?: {
+    model?: string;
+    approvals?: boolean;
+    [key: string]: unknown;
+  };
+}
+
+export interface WorkflowStageConfig {
+  id: WorkflowStage;
+  name: string;
+  description: string;
+  agent: AgentAssignment;
+  auto_proceed: boolean;
+  timeout_minutes: number;
+  retry_on_failure: boolean;
+  max_retries: number;
+  auto_commit?: {
+    enabled: boolean;
+    commit_message_format: string;
+  };
+  auto_fix?: {
+    enabled: boolean;
+    fix_on_test_failure: boolean;
+    fix_on_lint_errors: boolean;
+    fix_on_type_errors: boolean;
+    max_fix_attempts: number;
+  };
+  create_pr?: {
+    enabled: boolean;
+    auto_generate_description: boolean;
+    draft: boolean;
+  };
+}
+
+export interface WorkflowConfig {
+  name: string;
+  description: string;
+  version: string;
+  stages: Array<WorkflowStageConfig>;
+  automation: {
+    auto_start_next_stage: boolean;
+    auto_fix_on_failure: boolean;
+    auto_commit_on_success: boolean;
+    require_approval: boolean;
+    notification_on_complete: boolean;
+    parallel_stages: boolean;
+  };
+  failure_handling: {
+    on_stage_failure: "retry" | "skip" | "stop";
+    on_all_retries_exhausted: "stop" | "continue";
+    on_unhandled_error: "stop" | "continue";
+    save_checkpoint_on_failure: boolean;
+  };
+}
+
+export interface WorkflowProgress {
+  workflow_id: string;
+  task_id: string;
+  current_stage: WorkflowStage | null;
+  status: WorkflowStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  stages: Array<WorkflowStageProgress>;
+  error_message: string | null;
+  retry_count: number;
+}
+
+export interface WorkflowStageProgress {
+  stage: WorkflowStage;
+  status: WorkflowStatus;
+  agent_status: AgentStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  retry_count: number;
+  error_message: string | null;
+  output: string | null;
+}
+
+export interface WorkflowHistory {
+  workflow_id: string;
+  task_id: string;
+  task_title: string;
+  workflow_config: string;
+  status: WorkflowStatus;
+  started_at: string;
+  completed_at: string | null;
+  total_duration_seconds: number | null;
+  stages_completed: number;
+  total_stages: number;
+  success: boolean;
+}
+
+export interface CreateWorkflowRequest {
+  task_id: string;
+  workflow_config: string;
+}
+
+export interface StartWorkflowStageRequest {
+  workflow_id: string;
+  stage: WorkflowStage;
+}
+
+export type WorkflowResponse = { workflow: WorkflowProgress, stages: Array<WorkflowStageProgress>, };

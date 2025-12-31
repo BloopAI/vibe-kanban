@@ -49,7 +49,7 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
         return <Info className="h-6 w-6 text-blue-500" />;
       case 'success':
         return <CheckCircle className="h-6 w-6 text-green-500" />;
-      default:
+      case 'default':
         return <XCircle className="h-6 w-6 text-muted-foreground" />;
     }
   };

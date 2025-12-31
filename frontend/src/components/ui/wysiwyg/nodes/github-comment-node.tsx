@@ -6,6 +6,7 @@ import {
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
 } from '../lib/create-decorator-node';
+import type { ReactElement } from 'react';
 
 /**
  * Normalized comment data stored in the node.
@@ -36,7 +37,7 @@ function GitHubCommentComponent({
   data: NormalizedComment;
   nodeKey: NodeKey;
   onDoubleClickEdit: (event: React.MouseEvent) => void;
-}): JSX.Element {
+}): ReactElement {
   const handleClick = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();

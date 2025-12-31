@@ -178,7 +178,7 @@ export function OrganizationSettings() {
         setSuccess('Organization created successfully');
         setTimeout(() => setSuccess(null), 3000);
       }
-    } catch (err) {
+    } catch {
       // Dialog error
     }
   };
@@ -196,7 +196,7 @@ export function OrganizationSettings() {
         setSuccess('Member invited successfully');
         setTimeout(() => setSuccess(null), 3000);
       }
-    } catch (err) {
+    } catch {
       // Dialog error
     }
   };

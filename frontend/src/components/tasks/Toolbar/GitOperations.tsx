@@ -86,7 +86,7 @@ function GitOperations({
       if (result.action === 'confirmed' && result.branchName) {
         await handleChangeTargetBranchClick(result.branchName);
       }
-    } catch (error) {
+    } catch {
       // User cancelled - do nothing
     }
   };
@@ -238,7 +238,7 @@ function GitOperations({
           result.upstreamBranch
         );
       }
-    } catch (error) {
+    } catch {
       // User cancelled - do nothing
     }
   };

@@ -20,6 +20,53 @@
         "CLAUDE_CODE": {
           "approvals": true
         }
+      },
+      "RESEARCH": {
+        "CLAUDE_CODE": {
+          "model": "claude-sonnet-4-5-20250929",
+          "temperature": 0.3,
+          "dangerously_skip_permissions": true,
+          "allowed_tools": [
+            "exa",
+            "grep",
+            "read_file",
+            "search_files",
+            "list_directory",
+            "web_search"
+          ]
+        }
+      },
+      "IMPLEMENT": {
+        "CLAUDE_CODE": {
+          "model": "claude-opus-4-5-20251101",
+          "temperature": 0.5,
+          "auto_fix": true,
+          "dangerously_skip_permissions": true
+        }
+      },
+      "CICD": {
+        "CLAUDE_CODE": {
+          "model": "claude-sonnet-4-5-20250929",
+          "temperature": 0.2,
+          "dangerously_skip_permissions": true,
+          "allowed_tools": [
+            "bash",
+            "grep",
+            "read_file",
+            "write_file",
+            "edit_file",
+            "github"
+          ]
+        }
+      },
+      "REVIEW": {
+        "CLAUDE_CODE": {
+          "model": "claude-sonnet-4-5-20250929",
+          "temperature": 0.3,
+          "auto_commit": true,
+          "auto_push": true,
+          "dangerously_skip_permissions": true
+        }
       }
     },
     "AMP": {

@@ -99,6 +99,10 @@ export class ClickToComponentListener {
           }
           break;
 
+        case 'enable-button':
+          // This message is sent by us, not received
+          break;
+
         default:
           this.handlers.onUnknownMessage?.(data);
       }

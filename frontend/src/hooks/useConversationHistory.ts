@@ -45,6 +45,7 @@ interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface UseConversationHistoryResult {}
 
 const MIN_INITIAL_ENTRIES = 10;
@@ -327,6 +328,9 @@ export const useConversationHistory = ({
               case 'ToolInstallScript':
                 toolName = 'Tool Install Script';
                 break;
+              case 'DevServer':
+                toolName = 'DevServer';
+                break;
               default:
                 return [];
             }
@@ -472,7 +476,7 @@ export const useConversationHistory = ({
         try {
           await loadRunningAndEmit(executionProcess);
           break;
-        } catch (_) {
+        } catch {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }

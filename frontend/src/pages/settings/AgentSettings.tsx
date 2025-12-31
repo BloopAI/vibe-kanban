@@ -172,7 +172,7 @@ export function AgentSettings() {
           result.cloneFrom
         );
       }
-    } catch (error) {
+    } catch {
       // User cancelled - do nothing
     }
   };
@@ -220,7 +220,7 @@ export function AgentSettings() {
       if (result === 'deleted') {
         await handleDeleteConfiguration(configName);
       }
-    } catch (error) {
+    } catch {
       // User cancelled - do nothing
     }
   };
@@ -298,8 +298,8 @@ export function AgentSettings() {
         console.error('Failed to save deletion to backend:', saveError);
         setSaveError(t('settings.agents.errors.deleteFailed'));
       }
-    } catch (error) {
-      console.error('Error deleting configuration:', error);
+    } catch {
+      // Error already handled in inner catch
     }
   };
 
@@ -312,7 +312,7 @@ export function AgentSettings() {
       try {
         const parsed = JSON.parse(value);
         setLocalParsedProfiles(parsed);
-      } catch (err) {
+      } catch {
         // Invalid JSON, keep local content but clear parsed
         setLocalParsedProfiles(null);
       }
