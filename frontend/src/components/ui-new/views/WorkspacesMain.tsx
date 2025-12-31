@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from 'react';
+import type { RefObject } from 'react';
 import type { Workspace, Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
@@ -7,8 +7,6 @@ import { ConversationList } from '../ConversationList';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
-import { useTask } from '@/hooks/useTask';
-import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
@@ -16,6 +14,12 @@ interface WorkspacesMainProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  containerRef: RefObject<HTMLElement | null>;
+  workspaceWithSession: WorkspaceWithSession | undefined;
+  projectId?: string;
+  copied: boolean;
+  onOpen: () => void;
+  onCopy: () => void;
 }
 
 export function WorkspacesMain({
@@ -24,38 +28,13 @@ export function WorkspacesMain({
   sessions,
   onSelectSession,
   isLoading,
+  containerRef,
+  workspaceWithSession,
+  projectId,
+  copied,
+  onOpen,
+  onCopy,
 }: WorkspacesMainProps) {
-  const containerRef = useRef<HTMLElement>(null);
-
-  // Fetch task to get project_id for file search
-  const { data: task } = useTask(selectedWorkspace?.task_id, {
-    enabled: !!selectedWorkspace?.task_id,
-  });
-
-  // Open in IDE handler
-  const openInEditor = useOpenInEditor(selectedWorkspace?.id);
-
-  const handleOpen = useCallback(() => {
-    openInEditor();
-  }, [openInEditor]);
-
-  const handleCopy = useCallback(async (): Promise<boolean> => {
-    if (!selectedWorkspace?.container_ref) return false;
-    try {
-      await navigator.clipboard.writeText(selectedWorkspace.container_ref);
-      return true;
-    } catch (err) {
-      console.warn('Copy to clipboard failed:', err);
-      return false;
-    }
-  }, [selectedWorkspace?.container_ref]);
-
-  // Create WorkspaceWithSession for ConversationList
-  const workspaceWithSession: WorkspaceWithSession | undefined = useMemo(() => {
-    if (!selectedWorkspace) return undefined;
-    return { ...selectedWorkspace, session: selectedSession };
-  }, [selectedWorkspace, selectedSession]);
-
   if (isLoading) {
     return (
       <main className="flex flex-1 items-center justify-center bg-primary">
@@ -100,15 +79,16 @@ export function WorkspacesMain({
             filesChanged={19}
             linesAdded={10}
             linesRemoved={3}
-            projectId={task?.project_id}
+            projectId={projectId}
           />
         </div>
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
       <ContextBar
         containerRef={containerRef}
-        onOpen={handleOpen}
-        onCopy={handleCopy}
+        copied={copied}
+        onOpen={onOpen}
+        onCopy={onCopy}
       />
     </main>
   );

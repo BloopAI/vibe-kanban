@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   GitBranchIcon,
   GitMergeIcon,
@@ -15,7 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
-import { CollapsibleSection } from './CollapsibleSection';
+import { CollapsibleSectionContainer } from '@/components/ui-new/containers/CollapsibleSectionContainer';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 
 export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
@@ -37,6 +36,8 @@ interface RepoCardProps {
   linesAdded?: number;
   linesRemoved?: number;
   branchDropdownContent?: React.ReactNode;
+  selectedAction: RepoAction;
+  onSelectionChange: (action: RepoAction) => void;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
@@ -50,15 +51,18 @@ export function RepoCard({
   linesAdded,
   linesRemoved,
   branchDropdownContent,
+  selectedAction,
+  onSelectionChange,
   onChangeTarget,
   onRebase,
   onActionsClick,
 }: RepoCardProps) {
-  const [selectedAction, setSelectedAction] =
-    useState<RepoAction>('pull-request');
-
   return (
-    <CollapsibleSection title={name} className="gap-base" defaultExpanded>
+    <CollapsibleSectionContainer
+      title={name}
+      className="gap-base"
+      defaultExpanded
+    >
       {/* Branch row */}
       <div className="flex items-center gap-base">
         <div className="flex items-center justify-center">
@@ -133,9 +137,9 @@ export function RepoCard({
       <SplitButton
         options={repoActionOptions}
         selectedValue={selectedAction}
-        onSelectionChange={setSelectedAction}
+        onSelectionChange={onSelectionChange}
         onAction={(action) => onActionsClick?.(action)}
       />
-    </CollapsibleSection>
+    </CollapsibleSectionContainer>
   );
 }
