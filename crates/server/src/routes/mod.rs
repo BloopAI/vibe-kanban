@@ -1,9 +1,10 @@
 use axum::{
     Router,
+    middleware::from_fn_with_state,
     routing::{IntoMakeService, get},
 };
 
-use crate::DeploymentImpl;
+use crate::{DeploymentImpl, middleware::require_google_sso};
 
 pub mod approvals;
 pub mod config;
@@ -27,10 +28,9 @@ pub mod task_attempts;
 pub mod tasks;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
-    // Create routers with different middleware layers
-    let base_routes = Router::new()
-        .route("/health", get(health::health_check))
-        .merge(config::router())
+    // Protected routes - require Google SSO auth when enabled
+    // These routes contain project/task data that should be protected
+    let protected_routes = Router::new()
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
         .merge(tasks::router(&deployment))
@@ -38,20 +38,30 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
-        .merge(oauth::router())
-        .merge(organizations::router())
-        .merge(filesystem::router())
-        .merge(repo::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(sessions::router(&deployment))
         .nest("/images", images::routes())
+        .layer(from_fn_with_state(deployment.clone(), require_google_sso));
+
+    // Public routes - never require auth (config, health, auth endpoints, filesystem)
+    let public_routes = Router::new()
+        .route("/health", get(health::health_check))
+        .merge(config::router())
+        .merge(oauth::router())
+        .merge(organizations::router())
+        .merge(filesystem::router())
+        .merge(repo::router());
+
+    let api_routes = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .with_state(deployment);
 
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
-        .nest("/api", base_routes)
+        .nest("/api", api_routes)
         .into_make_service()
 }

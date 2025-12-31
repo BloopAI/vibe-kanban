@@ -13,6 +13,7 @@ import {
   type UserSystemInfo,
   type BaseAgentCapability,
   type LoginStatus,
+  type GoogleSsoConfigDto,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
@@ -25,6 +26,7 @@ interface UserSystemState {
   capabilities: Record<string, BaseAgentCapability[]> | null;
   analyticsUserId: string | null;
   loginStatus: LoginStatus | null;
+  google_sso_config: GoogleSsoConfigDto | null;
 }
 
 interface UserSystemContextType {
@@ -83,6 +85,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       string,
       BaseAgentCapability[]
     > | null) || null;
+  const google_sso_config = userSystemInfo?.google_sso_config || null;
 
   // Sync language with i18n when config changes
   useEffect(() => {
@@ -188,6 +191,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         capabilities,
         analyticsUserId,
         loginStatus,
+        google_sso_config,
       },
       config,
       environment,
@@ -211,6 +215,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       capabilities,
       analyticsUserId,
       loginStatus,
+      google_sso_config,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,

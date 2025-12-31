@@ -1290,3 +1290,56 @@ export const queueApi = {
     return handleApiResponse<QueueStatus>(response);
   },
 };
+
+// Google SSO API
+export interface GoogleSsoVerifyResponse {
+  email: string;
+}
+
+export interface GoogleSsoSessionResponse {
+  authenticated: boolean;
+  email: string | null;
+}
+
+export const googleSsoApi = {
+  /**
+   * Verify a Google ID token and create a session
+   */
+  verify: async (idToken: string): Promise<GoogleSsoVerifyResponse> => {
+    const response = await makeRequest('/api/auth/google/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_token: idToken }),
+      credentials: 'include', // Important for cookies
+    });
+    return handleApiResponse<GoogleSsoVerifyResponse>(response);
+  },
+
+  /**
+   * Check the current session status
+   */
+  session: async (): Promise<GoogleSsoSessionResponse> => {
+    const response = await makeRequest('/api/auth/google/session', {
+      credentials: 'include', // Important for cookies
+      cache: 'no-store',
+    });
+    return handleApiResponse<GoogleSsoSessionResponse>(response);
+  },
+
+  /**
+   * Logout from Google SSO (clear session)
+   */
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/auth/google/logout', {
+      method: 'POST',
+      credentials: 'include', // Important for cookies
+    });
+    if (!response.ok) {
+      throw new ApiError(
+        `Logout failed with status ${response.status}`,
+        response.status,
+        response
+      );
+    }
+  },
+};

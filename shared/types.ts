@@ -186,11 +186,20 @@ export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
 
-export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
+/**
+ * Google SSO configuration exposed to frontend
+ */
+export type GoogleSsoConfigDto = { enabled: boolean, client_id: string | null, };
+
+export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment,
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
-capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig },
+/**
+ * Google SSO configuration (enabled status and client ID)
+ */
+google_sso_config: GoogleSsoConfigDto, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 

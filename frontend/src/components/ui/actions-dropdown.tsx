@@ -27,6 +27,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -44,6 +45,10 @@ export function ActionsDropdown({
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
+  const { system } = useUserSystem();
+
+  // Check if SSO is enabled - sharing is disabled when SSO is enabled
+  const ssoEnabled = system?.google_sso_config?.enabled ?? false;
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -229,26 +234,31 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
-              <DropdownMenuItem
-                disabled={!task || isShared}
-                onClick={handleShare}
-              >
-                {t('actionsMenu.share')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canReassign}
-                onClick={handleReassign}
-              >
-                {t('actionsMenu.reassign')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canStopShare}
-                onClick={handleStopShare}
-                className="text-destructive"
-              >
-                {t('actionsMenu.stopShare')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {/* Share options are hidden when SSO is enabled */}
+              {!ssoEnabled && (
+                <>
+                  <DropdownMenuItem
+                    disabled={!task || isShared}
+                    onClick={handleShare}
+                  >
+                    {t('actionsMenu.share')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canReassign}
+                    onClick={handleReassign}
+                  >
+                    {t('actionsMenu.reassign')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!canStopShare}
+                    onClick={handleStopShare}
+                    className="text-destructive"
+                  >
+                    {t('actionsMenu.stopShare')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem
                 disabled={!projectId || !canEditShared}
                 onClick={handleEdit}

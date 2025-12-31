@@ -1,7 +1,7 @@
 use axum::{
     Router,
     extract::{Json, Query, State},
-    http::{Response, StatusCode},
+    http::{HeaderMap, Response, StatusCode, header::SET_COOKIE},
     response::Json as ResponseJson,
     routing::{get, post},
 };
@@ -9,7 +9,11 @@ use chrono::{DateTime, Utc};
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
+use services::services::{
+    config::save_config_to_file,
+    google_sso::{GoogleSsoError, SESSION_COOKIE_NAME},
+    oauth_credentials::Credentials,
+};
 use sha2::{Digest, Sha256};
 use tokio;
 use ts_rs::TS;
@@ -38,14 +42,45 @@ pub struct CurrentUserResponse {
     pub user_id: String,
 }
 
+// ============================================================================
+// Google SSO Types
+// ============================================================================
+
+/// Request body for POST /api/auth/google/verify
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct GoogleVerifyRequest {
+    pub id_token: String,
+}
+
+/// Response from POST /api/auth/google/verify
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct GoogleVerifyResponse {
+    pub email: String,
+}
+
+/// Response from GET /api/auth/google/session
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct GoogleSessionResponse {
+    pub authenticated: bool,
+    pub email: Option<String>,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        // Existing OAuth handoff routes (for remote/share functionality)
         .route("/auth/handoff/init", post(handoff_init))
         .route("/auth/handoff/complete", get(handoff_complete))
         .route("/auth/logout", post(logout))
         .route("/auth/status", get(status))
         .route("/auth/token", get(get_token))
         .route("/auth/user", get(get_current_user))
+        // Google SSO routes
+        .route("/auth/google/verify", post(google_verify))
+        .route("/auth/google/session", get(google_session))
+        .route("/auth/google/logout", post(google_logout))
 }
 
 #[derive(Debug, Deserialize)]
@@ -366,4 +401,120 @@ fn close_window_response(message: String) -> Response<String> {
         .header("content-type", "text/html; charset=utf-8")
         .body(body)
         .unwrap()
+}
+
+// ============================================================================
+// Google SSO Handlers
+// ============================================================================
+
+/// Verify a Google ID token and create a session
+async fn google_verify(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<GoogleVerifyRequest>,
+) -> Result<(StatusCode, [(axum::http::HeaderName, String); 1], ResponseJson<ApiResponse<GoogleVerifyResponse>>), ApiError> {
+    let google_sso = deployment.google_sso_service();
+
+    let (session_id, email) = google_sso
+        .verify_token(&payload.id_token)
+        .await
+        .map_err(|e| match e {
+            GoogleSsoError::NotEnabled => ApiError::BadRequest("Google SSO is not enabled".to_string()),
+            GoogleSsoError::MissingClientId => ApiError::BadRequest("Google SSO is not configured".to_string()),
+            GoogleSsoError::TokenValidation(msg) => ApiError::Unauthorized,
+            GoogleSsoError::DomainNotAllowed(domain) => {
+                ApiError::Forbidden(format!("Email domain '{}' is not allowed", domain))
+            }
+            GoogleSsoError::InvalidSession => ApiError::Unauthorized,
+            GoogleSsoError::HttpError(e) => {
+                tracing::error!("Google token validation HTTP error: {}", e);
+                ApiError::BadRequest("Failed to validate token with Google".to_string())
+            }
+        })?;
+
+    // Set session cookie (HttpOnly, SameSite=Lax for security)
+    let cookie = format!(
+        "{}={}; Path=/; HttpOnly; SameSite=Lax; Max-Age={}",
+        SESSION_COOKIE_NAME,
+        session_id,
+        24 * 60 * 60 // 24 hours in seconds
+    );
+
+    Ok((
+        StatusCode::OK,
+        [(SET_COOKIE, cookie)],
+        ResponseJson(ApiResponse::success(GoogleVerifyResponse { email })),
+    ))
+}
+
+/// Check the current Google SSO session status
+async fn google_session(
+    State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
+) -> ResponseJson<ApiResponse<GoogleSessionResponse>> {
+    let google_sso = deployment.google_sso_service();
+
+    // If SSO is not enabled, return not authenticated
+    if !google_sso.is_enabled() {
+        return ResponseJson(ApiResponse::success(GoogleSessionResponse {
+            authenticated: false,
+            email: None,
+        }));
+    }
+
+    // Extract session cookie
+    let session_id = extract_session_cookie(&headers);
+
+    let (authenticated, email) = match session_id {
+        Some(id) => match google_sso.validate_session(&id) {
+            Some(email) => (true, Some(email)),
+            None => (false, None),
+        },
+        None => (false, None),
+    };
+
+    ResponseJson(ApiResponse::success(GoogleSessionResponse {
+        authenticated,
+        email,
+    }))
+}
+
+/// Logout from Google SSO (clear session)
+async fn google_logout(
+    State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
+) -> (StatusCode, [(axum::http::HeaderName, String); 1]) {
+    let google_sso = deployment.google_sso_service();
+
+    // Extract and remove session if exists
+    if let Some(session_id) = extract_session_cookie(&headers) {
+        google_sso.remove_session(&session_id);
+    }
+
+    // Clear the cookie by setting it to expire immediately
+    let cookie = format!(
+        "{}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
+        SESSION_COOKIE_NAME
+    );
+
+    (StatusCode::NO_CONTENT, [(SET_COOKIE, cookie)])
+}
+
+/// Extract the session cookie from headers
+pub fn extract_session_cookie(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get(axum::http::header::COOKIE)?
+        .to_str()
+        .ok()?
+        .split(';')
+        .find_map(|cookie| {
+            let cookie = cookie.trim();
+            if cookie.starts_with(SESSION_COOKIE_NAME) {
+                cookie
+                    .strip_prefix(SESSION_COOKIE_NAME)
+                    .and_then(|s| s.strip_prefix('='))
+                    .map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
 }

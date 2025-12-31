@@ -14,6 +14,7 @@ use services::services::{
     file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
+    google_sso::GoogleSsoService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
     project::ProjectService,
@@ -56,6 +57,7 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    google_sso: GoogleSsoService,
 }
 
 #[derive(Debug, Clone)]
@@ -189,6 +191,11 @@ impl Deployment for LocalDeployment {
 
         let file_search_cache = Arc::new(FileSearchCache::new());
 
+        let google_sso = GoogleSsoService::new();
+        if google_sso.is_enabled() {
+            tracing::info!("Google SSO authentication is enabled");
+        }
+
         let deployment = Self {
             config,
             user_id,
@@ -209,6 +216,7 @@ impl Deployment for LocalDeployment {
             remote_client,
             auth_context,
             oauth_handoffs,
+            google_sso,
         };
 
         Ok(deployment)
@@ -339,5 +347,9 @@ impl LocalDeployment {
 
     pub fn share_config(&self) -> Option<&ShareConfig> {
         self.share_config.as_ref()
+    }
+
+    pub fn google_sso_service(&self) -> &GoogleSsoService {
+        &self.google_sso
     }
 }
