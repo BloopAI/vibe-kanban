@@ -245,7 +245,6 @@ pub async fn stream_task_attempt_diff_ws(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
-    // Touch workspace to reset cleanup timer
     let _ = Workspace::touch(&deployment.db().pool, workspace.id).await;
 
     let stats_only = params.stats_only;
@@ -524,7 +523,6 @@ pub async fn open_task_attempt_in_editor(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Touch workspace to reset cleanup timer
     Workspace::touch(&deployment.db().pool, workspace.id).await?;
 
     let workspace_path = Path::new(&container_ref);
