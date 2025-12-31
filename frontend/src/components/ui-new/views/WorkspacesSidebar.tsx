@@ -1,9 +1,10 @@
 import { PlusIcon } from '@phosphor-icons/react';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { CollapsibleSectionContainer } from '@/components/ui-new/containers/CollapsibleSectionContainer';
+import { CollapsibleSection } from '@/components/ui-new/primitives/CollapsibleSection';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
 import { SectionHeader } from '../primitives/SectionHeader';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
@@ -48,7 +49,8 @@ export function WorkspacesSidebar({
         placeholder="Search..."
       />
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-double">
-        <CollapsibleSectionContainer
+        <CollapsibleSection
+          persistKey={PERSIST_KEYS.workspacesSidebarActive}
           title="Active"
           defaultExpanded
           className="gap-double"
@@ -66,10 +68,11 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
-        </CollapsibleSectionContainer>
-        <CollapsibleSectionContainer
+        </CollapsibleSection>
+        <CollapsibleSection
+          persistKey={PERSIST_KEYS.workspacesSidebarArchived}
           title="Archived"
-          defaultExpanded={true}
+          defaultExpanded
           className="gap-double"
         >
           {filteredArchivedWorkspaces.map((workspace) => (
@@ -86,7 +89,7 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
-        </CollapsibleSectionContainer>
+        </CollapsibleSection>
       </div>
     </aside>
   );

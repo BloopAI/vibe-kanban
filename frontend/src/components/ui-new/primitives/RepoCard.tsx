@@ -14,8 +14,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
-import { CollapsibleSectionContainer } from '@/components/ui-new/containers/CollapsibleSectionContainer';
+import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
+import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
 
@@ -29,6 +30,7 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
 ];
 
 interface RepoCardProps {
+  repoId: string;
   name: string;
   targetBranch: string;
   commitsAhead?: number;
@@ -36,14 +38,13 @@ interface RepoCardProps {
   linesAdded?: number;
   linesRemoved?: number;
   branchDropdownContent?: React.ReactNode;
-  selectedAction: RepoAction;
-  onSelectionChange: (action: RepoAction) => void;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
 }
 
 export function RepoCard({
+  repoId,
   name,
   targetBranch,
   commitsAhead = 0,
@@ -51,14 +52,15 @@ export function RepoCard({
   linesAdded,
   linesRemoved,
   branchDropdownContent,
-  selectedAction,
-  onSelectionChange,
   onChangeTarget,
   onRebase,
   onActionsClick,
 }: RepoCardProps) {
+  const [selectedAction, setSelectedAction] = useRepoAction(repoId);
+
   return (
-    <CollapsibleSectionContainer
+    <CollapsibleSection
+      persistKey={PERSIST_KEYS.repoCard(repoId)}
       title={name}
       className="gap-base"
       defaultExpanded
@@ -137,9 +139,9 @@ export function RepoCard({
       <SplitButton
         options={repoActionOptions}
         selectedValue={selectedAction}
-        onSelectionChange={onSelectionChange}
+        onSelectionChange={setSelectedAction}
         onAction={(action) => onActionsClick?.(action)}
       />
-    </CollapsibleSectionContainer>
+    </CollapsibleSection>
   );
 }
