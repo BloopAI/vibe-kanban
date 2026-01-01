@@ -318,7 +318,8 @@
   "attemptHeaderActions": {
     "preview": "Preview",
     "diffs": "Diffs",
-    "relatedTasks": "Related tasks"
+    "relatedTasks": "Related tasks",
+    "tryNewUI": "try the new UI"
   },
   "actionsMenu": {
     "attempt": "Attempt",

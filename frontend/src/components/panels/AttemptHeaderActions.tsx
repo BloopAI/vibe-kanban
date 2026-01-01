@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Eye, FileDiff, X } from 'lucide-react';
+import { Eye, FileDiff, X, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -102,6 +103,25 @@ export const AttemptHeaderActions = ({
                 {t('attemptHeaderActions.diffs')}
               </TooltipContent>
             </Tooltip>
+            {attempt?.id && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/workspaces/${attempt.id}`}
+                      className="inline-flex items-center justify-center text-primary-foreground/70 hover:text-accent-foreground"
+                      aria-label="Try the new UI"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t('attemptHeaderActions.tryNewUI')}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </ToggleGroup>
         </TooltipProvider>
       )}
