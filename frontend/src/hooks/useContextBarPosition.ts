@@ -5,17 +5,14 @@ import {
   useRef,
   type RefObject,
 } from 'react';
+import {
+  useContextBarPosition as useContextBarPositionStore,
+  type ContextBarPosition,
+} from '@/stores/useUiPreferencesStore';
 
-const STORAGE_KEY = 'context-bar-position';
 const EDGE_PADDING = 16;
 
-export type SnapPosition =
-  | 'top-left'
-  | 'top-right'
-  | 'middle-left'
-  | 'middle-right'
-  | 'bottom-left'
-  | 'bottom-right';
+export type SnapPosition = ContextBarPosition;
 
 interface DragState {
   isDragging: boolean;
@@ -77,44 +74,12 @@ function calculateNearestSnapPosition(
   return `${yZone}-${xZone}` as SnapPosition;
 }
 
-function loadPosition(): SnapPosition {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      // Validate it's a valid position (6 positions - no top/bottom center)
-      const validPositions: SnapPosition[] = [
-        'top-left',
-        'top-right',
-        'middle-left',
-        'middle-right',
-        'bottom-left',
-        'bottom-right',
-      ];
-      if (validPositions.includes(parsed)) {
-        return parsed;
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-  return 'middle-right';
-}
-
-function savePosition(position: SnapPosition): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
-  } catch {
-    // Ignore errors
-  }
-}
-
 export function useContextBarPosition(
   containerRef: RefObject<HTMLElement | null>,
   barWidth = 38,
   barHeight = 197
 ): UseContextBarPositionReturn {
-  const [position, setPosition] = useState<SnapPosition>(loadPosition);
+  const [position, setPosition] = useContextBarPositionStore();
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     startX: 0,
@@ -201,7 +166,6 @@ export function useContextBarPosition(
       );
 
       setPosition(newPosition);
-      savePosition(newPosition);
       setDragState({
         isDragging: false,
         startX: 0,
@@ -225,6 +189,7 @@ export function useContextBarPosition(
     barWidth,
     barHeight,
     containerRef,
+    setPosition,
   ]);
 
   // Calculate style based on position or drag state

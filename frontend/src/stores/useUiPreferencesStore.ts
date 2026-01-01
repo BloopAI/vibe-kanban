@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
+export type ContextBarPosition =
+  | 'top-left'
+  | 'top-right'
+  | 'middle-left'
+  | 'middle-right'
+  | 'bottom-left'
+  | 'bottom-right';
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
@@ -9,6 +17,8 @@ export const PERSIST_KEYS = {
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
   // Git panel
   gitPanelCreateAddRepo: 'git-panel-create-add-repo',
+  // Context bar
+  contextBarPosition: 'context-bar-position',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
@@ -22,9 +32,11 @@ export type PersistKey =
 type State = {
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
+  contextBarPosition: ContextBarPosition;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
+  setContextBarPosition: (position: ContextBarPosition) => void;
 };
 
 const useUiPreferencesStore = create<State>()(
@@ -32,6 +44,7 @@ const useUiPreferencesStore = create<State>()(
     (set) => ({
       repoActions: {},
       expanded: {},
+      contextBarPosition: 'middle-right',
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -43,6 +56,8 @@ const useUiPreferencesStore = create<State>()(
             [key]: !(s.expanded[key] ?? defaultValue),
           },
         })),
+      setContextBarPosition: (position) =>
+        set({ contextBarPosition: position }),
     }),
     { name: 'ui-preferences' }
   )
@@ -77,4 +92,14 @@ export function usePersistedExpanded(
   };
 
   return [expanded, set];
+}
+
+// Hook for context bar position
+export function useContextBarPosition(): [
+  ContextBarPosition,
+  (position: ContextBarPosition) => void,
+] {
+  const position = useUiPreferencesStore((s) => s.contextBarPosition);
+  const setPosition = useUiPreferencesStore((s) => s.setContextBarPosition);
+  return [position, setPosition];
 }
