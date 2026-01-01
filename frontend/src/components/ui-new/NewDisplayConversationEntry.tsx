@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import {
   ActionType,
   NormalizedEntry,
@@ -10,7 +10,7 @@ import { DiffLineType, parseInstance } from '@git-diff-view/react';
 import { useExpandable } from '@/stores/useExpandableStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
-import { approvalsApi } from '@/lib/api';
+import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import {
   ChatToolSummary,
   ChatFileEntry,
@@ -245,8 +245,8 @@ function PlanEntry({
   executionProcessId?: string;
 }) {
   const [expanded, toggle] = useExpandable(`plan:${expansionKey}`, true);
-  const [isApproving, setIsApproving] = useState(false);
   const feedbackContext = useApprovalFeedbackOptional();
+  const { approve, isApproving } = useApprovalMutation();
 
   // Check if approval timed out
   const isTimedOut = approvalStatus
@@ -262,24 +262,23 @@ function PlanEntry({
   }, [plan]);
 
   // Handle approve action
-  const handleApprove = useCallback(async () => {
+  const handleApprove = useCallback(() => {
     if (!approvalStatus || !executionProcessId || isApproving) return;
 
     // Exit feedback mode if active
     feedbackContext?.exitFeedbackMode();
 
-    setIsApproving(true);
-    try {
-      await approvalsApi.respond(approvalStatus.approval_id, {
-        execution_process_id: executionProcessId,
-        status: { status: 'approved' },
-      });
-    } catch (error) {
-      console.error('Failed to approve:', error);
-    } finally {
-      setIsApproving(false);
-    }
-  }, [approvalStatus, executionProcessId, isApproving, feedbackContext]);
+    approve({
+      approvalId: approvalStatus.approval_id,
+      executionProcessId,
+    });
+  }, [
+    approvalStatus,
+    executionProcessId,
+    isApproving,
+    feedbackContext,
+    approve,
+  ]);
 
   // Handle edit action - enter feedback mode
   const handleEdit = useCallback(() => {

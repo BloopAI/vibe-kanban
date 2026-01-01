@@ -1,3 +1,4 @@
+import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { PrimaryButton } from '../PrimaryButton';
 import { ChatMarkdown } from './ChatMarkdown';
 import { ChatEntryContainer } from './ChatEntryContainer';
@@ -27,6 +28,9 @@ export function ChatPlan({
   className,
   taskAttemptId,
 }: ChatPlanProps) {
+  const feedbackContext = useApprovalFeedbackOptional();
+  const isInFeedbackMode = feedbackContext?.activeApproval !== null;
+
   const actions = showActions ? (
     <>
       <span className="flex-1 text-sm text-low">
@@ -41,9 +45,16 @@ export function ChatPlan({
               variant="secondary"
               onClick={onEdit}
               value="Request Changes"
+              disabled={isInFeedbackMode}
             />
           )}
-          {onApprove && <PrimaryButton onClick={onApprove} value="Approve" />}
+          {onApprove && (
+            <PrimaryButton
+              onClick={onApprove}
+              value="Approve"
+              disabled={isInFeedbackMode}
+            />
+          )}
         </div>
       )}
     </>

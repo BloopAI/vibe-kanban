@@ -5,8 +5,7 @@ import {
   useCallback,
   ReactNode,
 } from 'react';
-import { approvalsApi } from '@/lib/api';
-import type { ApprovalStatus } from 'shared/types';
+import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 
 interface ActiveApproval {
   approvalId: string;
@@ -51,22 +50,24 @@ export function ApprovalFeedbackProvider({
   const [activeApproval, setActiveApproval] = useState<ActiveApproval | null>(
     null
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { denyAsync, isDenying, denyError, reset } = useApprovalMutation();
 
   const isTimedOut = activeApproval
     ? new Date() > new Date(activeApproval.timeoutAt)
     : false;
 
-  const enterFeedbackMode = useCallback((approval: ActiveApproval) => {
-    setActiveApproval(approval);
-    setError(null);
-  }, []);
+  const enterFeedbackMode = useCallback(
+    (approval: ActiveApproval) => {
+      setActiveApproval(approval);
+      reset();
+    },
+    [reset]
+  );
 
   const exitFeedbackMode = useCallback(() => {
     setActiveApproval(null);
-    setError(null);
-  }, []);
+    reset();
+  }, [reset]);
 
   const submitFeedback = useCallback(
     async (message: string) => {
@@ -74,34 +75,17 @@ export function ApprovalFeedbackProvider({
 
       // Check timeout before submitting
       if (new Date() > new Date(activeApproval.timeoutAt)) {
-        setError('Approval has timed out');
-        return;
+        throw new Error('Approval has timed out');
       }
 
-      setIsSubmitting(true);
-      setError(null);
-
-      const status: ApprovalStatus = {
-        status: 'denied',
-        reason: message.trim() || 'User denied this request.',
-      };
-
-      try {
-        await approvalsApi.respond(activeApproval.approvalId, {
-          execution_process_id: activeApproval.executionProcessId,
-          status,
-        });
-        setActiveApproval(null);
-      } catch (e) {
-        const errorMessage =
-          e instanceof Error ? e.message : 'Failed to submit feedback';
-        setError(errorMessage);
-        throw e;
-      } finally {
-        setIsSubmitting(false);
-      }
+      await denyAsync({
+        approvalId: activeApproval.approvalId,
+        executionProcessId: activeApproval.executionProcessId,
+        reason: message.trim() || undefined,
+      });
+      setActiveApproval(null);
     },
-    [activeApproval]
+    [activeApproval, denyAsync]
   );
 
   return (
@@ -111,8 +95,8 @@ export function ApprovalFeedbackProvider({
         enterFeedbackMode,
         exitFeedbackMode,
         submitFeedback,
-        isSubmitting,
-        error,
+        isSubmitting: isDenying,
+        error: denyError?.message ?? null,
         isTimedOut,
       }}
     >
