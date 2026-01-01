@@ -175,6 +175,21 @@ impl NotificationService {
 
         // Shell-escape a value to prevent injection attacks
         fn escape_for_shell(value: &str) -> String {
+            fn is_safe_for_shell(s: &str) -> bool {
+                s.chars().all(|c| {
+                    c.is_ascii_alphanumeric()
+                        || c == '_'
+                        || c == '-'
+                        || c == '.'
+                        || c == '/'
+                        || (cfg!(target_os = "windows") && c == '\\')
+                })
+            }
+
+            if is_safe_for_shell(value) {
+                return value.to_string();
+            }
+
             if cfg!(target_os = "windows") {
                 // For cmd.exe, wrap in double quotes and escape existing double quotes
                 let mut escaped = String::from("\"");
