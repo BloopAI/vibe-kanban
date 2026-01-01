@@ -2,6 +2,7 @@ import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext'
 import { PrimaryButton } from '../PrimaryButton';
 import { ChatMarkdown } from './ChatMarkdown';
 import { ChatEntryContainer } from './ChatEntryContainer';
+import { ToolStatus } from 'shared/types';
 
 interface ChatPlanProps {
   title: string;
@@ -14,6 +15,7 @@ interface ChatPlanProps {
   isTimedOut?: boolean;
   className?: string;
   taskAttemptId?: string;
+  status: ToolStatus;
 }
 
 export function ChatPlan({
@@ -27,13 +29,14 @@ export function ChatPlan({
   isTimedOut = false,
   className,
   taskAttemptId,
+  status,
 }: ChatPlanProps) {
   const feedbackContext = useApprovalFeedbackOptional();
   const isInFeedbackMode = feedbackContext?.activeApproval !== null;
 
   const actions = showActions ? (
     <>
-      <span className="flex-1 text-sm text-low">
+      <span className="flex-1 text-sm text-high">
         {isTimedOut
           ? 'Approval has timed out'
           : 'Would you like to approve this plan?'}
@@ -42,18 +45,17 @@ export function ChatPlan({
         <div className="flex items-center gap-base">
           {onEdit && (
             <PrimaryButton
+              actionIcon={isInFeedbackMode ? 'spinner' : undefined}
               variant="secondary"
               onClick={onEdit}
-              value="Request Changes"
+              value={
+                isInFeedbackMode ? 'Requesting Changes' : 'Request Changes'
+              }
               disabled={isInFeedbackMode}
             />
           )}
-          {onApprove && (
-            <PrimaryButton
-              onClick={onApprove}
-              value="Approve"
-              disabled={isInFeedbackMode}
-            />
+          {onApprove && !isInFeedbackMode && (
+            <PrimaryButton onClick={onApprove} value="Approve" />
           )}
         </div>
       )}
@@ -68,6 +70,7 @@ export function ChatPlan({
       onToggle={onToggle}
       actions={actions}
       className={className}
+      status={status}
     >
       <ChatMarkdown content={content} taskAttemptId={taskAttemptId} />
     </ChatEntryContainer>
