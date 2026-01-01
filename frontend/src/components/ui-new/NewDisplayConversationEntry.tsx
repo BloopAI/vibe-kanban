@@ -3,6 +3,7 @@ import {
   ActionType,
   NormalizedEntry,
   ToolStatus,
+  TodoItem,
   type TaskWithAttemptStatus,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -13,6 +14,7 @@ import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext'
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import {
   ChatToolSummary,
+  ChatTodoList,
   ChatFileEntry,
   ChatPlan,
   ChatUserMessage,
@@ -132,6 +134,16 @@ function NewDisplayConversationEntry({
           approvalStatus={pendingStatus}
           executionProcessId={executionProcessId}
           status={status}
+        />
+      );
+    }
+
+    // Todo management - use ChatTodoList
+    if (action_type.action === 'todo_management') {
+      return (
+        <TodoManagementEntry
+          todos={action_type.todos}
+          expansionKey={expansionKey}
         />
       );
     }
@@ -372,6 +384,21 @@ function ToolSummaryEntry({
   return (
     <ChatToolSummary summary={summary} expanded={expanded} onToggle={toggle} />
   );
+}
+
+/**
+ * Todo management entry with expandable list of todos
+ */
+function TodoManagementEntry({
+  todos,
+  expansionKey,
+}: {
+  todos: TodoItem[];
+  expansionKey: string;
+}) {
+  const [expanded, toggle] = useExpandable(`todo:${expansionKey}`, false);
+
+  return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
 }
 
 /**

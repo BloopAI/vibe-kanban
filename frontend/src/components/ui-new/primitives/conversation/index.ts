@@ -1,4 +1,5 @@
 export { ChatToolSummary } from './ChatToolSummary';
+export { ChatTodoList } from './ChatTodoList';
 export { ChatFileEntry } from './ChatFileEntry';
 export { ChatMarkdown } from './ChatMarkdown';
 export { ChatPlan } from './ChatPlan';
