@@ -201,6 +201,26 @@ impl GitService {
         }
     }
 
+    /// Given a branch name that might be a remote branch (e.g., "origin/main"),
+    /// return the corresponding local branch name (e.g., "main").
+    /// If the branch is already local, returns it unchanged.
+    fn get_local_branch_name(&self, repo: &Repository, branch_name: &str) -> String {
+        // Check if this is a remote branch
+        if repo.find_branch(branch_name, BranchType::Remote).is_ok() {
+            // Try to strip the remote prefix
+            let default_remote = self.default_remote_name(repo);
+            if let Some(local_name) = branch_name.strip_prefix(&format!("{default_remote}/")) {
+                return local_name.to_string();
+            }
+            // If it's a remote branch but doesn't have the default remote prefix,
+            // try to find any remote prefix and strip it
+            if let Some(slash_pos) = branch_name.find('/') {
+                return branch_name[slash_pos + 1..].to_string();
+            }
+        }
+        branch_name.to_string()
+    }
+
     /// Initialize a new git repository with a main branch and initial commit
     pub fn initialize_repo_with_main_branch(
         &self,
@@ -794,6 +814,10 @@ impl GitService {
         let task_repo = self.open_repo(task_worktree_path)?;
         let base_repo = self.open_repo(base_worktree_path)?;
 
+        // If the base branch is a remote branch (e.g., "origin/main"), we need to merge
+        // into the corresponding local branch (e.g., "main") instead
+        let local_base_branch_name = self.get_local_branch_name(&base_repo, base_branch_name);
+
         // Check if base branch is ahead of task branch - this indicates the base has moved
         // ahead since the task was created, which should block the merge
         let (_, task_behind) =
@@ -806,7 +830,13 @@ impl GitService {
         }
 
         // Check where base branch is checked out (if anywhere)
-        match self.find_checkout_path_for_branch(base_worktree_path, base_branch_name)? {
+        // For remote branches, check for the local tracking branch instead
+        let checkout_branch_to_find = if local_base_branch_name != base_branch_name {
+            &local_base_branch_name
+        } else {
+            base_branch_name
+        };
+        match self.find_checkout_path_for_branch(base_worktree_path, checkout_branch_to_find)? {
             Some(base_checkout_path) => {
                 // base branch is checked out somewhere - use CLI merge
                 let git_cli = GitCli::new();
@@ -819,17 +849,17 @@ impl GitService {
                     })?
                 {
                     return Err(GitServiceError::WorktreeDirty(
-                        base_branch_name.to_string(),
+                        local_base_branch_name.to_string(),
                         "staged changes present".to_string(),
                     ));
                 }
 
-                // Use CLI merge in base context
+                // Use CLI merge in base context - use the local branch name
                 self.ensure_cli_commit_identity(&base_checkout_path)?;
                 let sha = git_cli
                     .merge_squash_commit(
                         &base_checkout_path,
-                        base_branch_name,
+                        &local_base_branch_name,
                         task_branch_name,
                         commit_message,
                     )
@@ -857,6 +887,7 @@ impl GitService {
                 let task_commit = task_branch.get().peel_to_commit()?;
 
                 // Create the squash commit in-memory (no checkout) and update the base branch ref
+                // Use the local branch name so refs/heads/main is updated, not refs/heads/origin/main
                 let signature = self.signature_with_fallback(&task_repo)?;
                 let squash_commit_id = self.perform_squash_merge(
                     &task_repo,
@@ -864,7 +895,7 @@ impl GitService {
                     &task_commit,
                     &signature,
                     commit_message,
-                    base_branch_name,
+                    &local_base_branch_name,
                 )?;
 
                 // Update the task branch to the new squash commit so follow-up
