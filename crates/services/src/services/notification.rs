@@ -173,58 +173,10 @@ impl NotificationService {
             vars.insert("{{tool_name}}", String::new());
         }
 
-        // Shell-escape a value to prevent injection attacks
-        fn escape_for_shell(value: &str) -> String {
-            fn is_safe_for_shell(s: &str) -> bool {
-                s.chars().all(|c| {
-                    c.is_ascii_alphanumeric()
-                        || c == '_'
-                        || c == '-'
-                        || c == '.'
-                        || c == '/'
-                        || (cfg!(target_os = "windows") && c == '\\')
-                })
-            }
-
-            if is_safe_for_shell(value) {
-                return value.to_string();
-            }
-
-            if cfg!(target_os = "windows") {
-                // For cmd.exe, wrap in double quotes and escape existing double quotes
-                let mut escaped = String::from("\"");
-                for ch in value.chars() {
-                    if ch == '"' {
-                        escaped.push('"');
-                    }
-                    escaped.push(ch);
-                }
-                escaped.push('"');
-                escaped
-            } else {
-                // For POSIX sh, use single quotes and escape existing single quotes
-                if value.is_empty() {
-                    "''".to_string()
-                } else {
-                    let mut escaped = String::from("'");
-                    for ch in value.chars() {
-                        if ch == '\'' {
-                            escaped.push_str("'\"'\"'");
-                        } else {
-                            escaped.push(ch);
-                        }
-                    }
-                    escaped.push('\'');
-                    escaped
-                }
-            }
-        }
-
-        // Perform variable substitution with shell-escaped values to prevent injection
+        // Perform variable substitution
         let mut command = script_command.to_string();
         for (var, value) in &vars {
-            let escaped_value = escape_for_shell(value);
-            command = command.replace(var, &escaped_value);
+            command = command.replace(var, value);
         }
 
         tracing::debug!("Executing notification script: {}", command);
