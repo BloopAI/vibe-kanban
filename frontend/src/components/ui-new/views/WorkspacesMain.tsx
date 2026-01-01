@@ -18,6 +18,10 @@ interface WorkspacesMainProps {
   copied: boolean;
   onOpen: () => void;
   onCopy: () => void;
+  /** Whether user is creating a new session */
+  isNewSessionMode?: boolean;
+  /** Callback to start new session mode */
+  onStartNewSession?: () => void;
 }
 
 export function WorkspacesMain({
@@ -30,6 +34,8 @@ export function WorkspacesMain({
   copied,
   onOpen,
   onCopy,
+  isNewSessionMode,
+  onStartNewSession,
 }: WorkspacesMainProps) {
   if (isLoading) {
     return (
@@ -74,6 +80,9 @@ export function WorkspacesMain({
             linesAdded={10}
             linesRemoved={3}
             projectId={projectId}
+            isNewSessionMode={isNewSessionMode}
+            onStartNewSession={onStartNewSession}
+            workspaceId={workspaceWithSession?.id}
           />
         </div>
       </ApprovalFeedbackProvider>

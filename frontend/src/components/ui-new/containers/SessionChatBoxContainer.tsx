@@ -1,25 +1,35 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import {
-  ScratchType,
-  type Session,
-  type DraftFollowUpData,
-} from 'shared/types';
-import { useScratch } from '@/hooks/useScratch';
-import { useFollowUpSend } from '@/hooks/useFollowUpSend';
-import { useQueueStatus } from '@/hooks/useQueueStatus';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { type Session } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { useVariant } from '@/hooks/useVariant';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
-import {
-  getVariantOptions,
-  getLatestProfileFromProcesses,
-} from '@/utils/executor';
+import { getLatestProfileFromProcesses } from '@/utils/executor';
+import { useExecutorSelection } from '@/hooks/useExecutorSelection';
+import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
+import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
+import { useSessionSend } from '@/hooks/useSessionSend';
 import {
   SessionChatBox,
   type ExecutionStatus,
 } from '../primitives/SessionChatBox';
+
+/** Compute execution status from boolean flags */
+function computeExecutionStatus(params: {
+  isInFeedbackMode: boolean;
+  isStopping: boolean;
+  isQueueLoading: boolean;
+  isSendingFollowUp: boolean;
+  isQueued: boolean;
+  isAttemptRunning: boolean;
+}): ExecutionStatus {
+  if (params.isInFeedbackMode) return 'feedback';
+  if (params.isStopping) return 'stopping';
+  if (params.isQueueLoading) return 'queue-loading';
+  if (params.isSendingFollowUp) return 'sending';
+  if (params.isQueued) return 'queued';
+  if (params.isAttemptRunning) return 'running';
+  return 'idle';
+}
 
 interface SessionChatBoxContainerProps {
   /** The current session */
@@ -38,6 +48,12 @@ interface SessionChatBoxContainerProps {
   onSelectSession?: (sessionId: string) => void;
   /** Project ID for file search in typeahead */
   projectId?: string;
+  /** Whether user is creating a new session */
+  isNewSessionMode?: boolean;
+  /** Callback to start new session mode */
+  onStartNewSession?: () => void;
+  /** Workspace ID for creating new sessions */
+  workspaceId?: string;
 }
 
 export function SessionChatBoxContainer({
@@ -49,9 +65,13 @@ export function SessionChatBoxContainer({
   sessions = [],
   onSelectSession,
   projectId,
+  isNewSessionMode = false,
+  onStartNewSession,
+  workspaceId: propWorkspaceId,
 }: SessionChatBoxContainerProps) {
-  const workspaceId = session?.workspace_id;
+  const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
+  const scratchId = isNewSessionMode ? workspaceId : sessionId;
 
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
@@ -61,81 +81,41 @@ export function SessionChatBoxContainer({
   const feedbackContext = useApprovalFeedbackOptional();
   const isInFeedbackMode = !!feedbackContext?.activeApproval;
 
-  // Scratch for draft persistence
-  const {
-    scratch,
-    updateScratch,
-    isLoading: isScratchLoading,
-  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, sessionId ?? '');
-
-  // Derive the message and variant from scratch
-  const scratchData: DraftFollowUpData | undefined =
-    scratch?.payload?.type === 'DRAFT_FOLLOW_UP'
-      ? scratch.payload.data
-      : undefined;
-
-  // Local message state for immediate UI feedback
-  const [localMessage, setLocalMessage] = useState('');
-
-  // Track whether textarea is focused (for sync with scratch)
-  const [isTextareaFocused] = useState(false);
-
-  // Variant selection - derive default from latest process
+  // User profiles and latest executor from processes
+  const { profiles } = useUserSystem();
   const latestProfileId = useMemo(
     () => getLatestProfileFromProcesses(processes),
     [processes]
   );
 
-  const processVariant = latestProfileId?.variant ?? null;
+  // Message editor state
+  const {
+    localMessage,
+    setLocalMessage,
+    scratchData,
+    isScratchLoading,
+    saveToScratch,
+    clearDraft,
+    cancelDebouncedSave,
+    handleMessageChange,
+  } = useSessionMessageEditor({ scratchId });
 
-  // Get executor profiles to extract variant options
-  const { profiles } = useUserSystem();
+  // Executor/variant selection
+  const {
+    effectiveExecutor,
+    executorOptions,
+    handleExecutorChange,
+    selectedVariant,
+    variantOptions,
+    setSelectedVariant: setVariantFromHook,
+  } = useExecutorSelection({
+    profiles,
+    latestProfileId,
+    isNewSessionMode,
+    scratchVariant: scratchData?.variant,
+  });
 
-  // Extract variant names from ExecutorConfig keys
-  const variantOptions = useMemo(
-    () => getVariantOptions(latestProfileId?.executor, profiles),
-    [latestProfileId?.executor, profiles]
-  );
-
-  // Variant selection with priority: user selection > scratch > process
-  const { selectedVariant, setSelectedVariant: setVariantFromHook } =
-    useVariant({
-      processVariant,
-      scratchVariant: scratchData?.variant,
-    });
-
-  // Ref to track current variant for use in message save callback
-  const variantRef = useRef<string | null>(selectedVariant);
-  useEffect(() => {
-    variantRef.current = selectedVariant;
-  }, [selectedVariant]);
-
-  // Refs to stabilize callbacks
-  const scratchRef = useRef(scratch);
-  useEffect(() => {
-    scratchRef.current = scratch;
-  }, [scratch]);
-
-  // Save scratch helper
-  const saveToScratch = useCallback(
-    async (message: string, variant: string | null) => {
-      if (!workspaceId) return;
-      if (!message.trim() && !variant && !scratchRef.current) return;
-      try {
-        await updateScratch({
-          payload: {
-            type: 'DRAFT_FOLLOW_UP',
-            data: { message, variant },
-          },
-        });
-      } catch (e) {
-        console.error('Failed to save follow-up draft', e);
-      }
-    },
-    [workspaceId, updateScratch]
-  );
-
-  // Wrapper to update variant and save to scratch immediately
+  // Wrap variant change to also save to scratch
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
@@ -144,37 +124,48 @@ export function SessionChatBoxContainer({
     [setVariantFromHook, saveToScratch, localMessage]
   );
 
-  // Debounced save for message changes
-  const { debounced: setFollowUpMessage, cancel: cancelDebouncedSave } =
-    useDebouncedCallback(
-      useCallback(
-        (value: string) => saveToScratch(value, variantRef.current),
-        [saveToScratch]
-      ),
-      500
-    );
-
-  // Sync local message from scratch when it loads
-  useEffect(() => {
-    if (isScratchLoading) return;
-    if (isTextareaFocused) return;
-    setLocalMessage(scratchData?.message ?? '');
-  }, [isScratchLoading, scratchData?.message, isTextareaFocused]);
-
-  // Note: Retry/approval blocking could be added here
-  // const { activeRetryProcessId } = useRetryUi();
-
-  // Queue status
+  // Queue interaction
   const {
     isQueued,
     queuedMessage,
-    isLoading: isQueueLoading,
+    isQueueLoading,
     queueMessage,
     cancelQueue,
-    refresh: refreshQueueStatus,
-  } = useQueueStatus(sessionId);
+    refreshQueueStatus,
+  } = useSessionQueueInteraction({ sessionId });
 
-  // Track previous process count
+  // Send actions
+  const {
+    send,
+    isSending,
+    error: sendError,
+    clearError,
+  } = useSessionSend({
+    sessionId,
+    workspaceId,
+    isNewSessionMode,
+    effectiveExecutor,
+    onSelectSession,
+  });
+
+  const handleSend = useCallback(async () => {
+    const success = await send(localMessage, selectedVariant);
+    if (success) {
+      cancelDebouncedSave();
+      setLocalMessage('');
+      if (isNewSessionMode) await clearDraft();
+    }
+  }, [
+    send,
+    localMessage,
+    selectedVariant,
+    cancelDebouncedSave,
+    setLocalMessage,
+    isNewSessionMode,
+    clearDraft,
+  ]);
+
+  // Track previous process count for queue refresh
   const prevProcessCountRef = useRef(processes.length);
 
   // Refresh queue status when execution stops or new process starts
@@ -199,37 +190,12 @@ export function SessionChatBoxContainer({
     processes.length,
     refreshQueueStatus,
     scratchData?.message,
+    setLocalMessage,
   ]);
-
-  // Display message - show queued message if queued
-  const displayMessage =
-    isQueued && queuedMessage ? queuedMessage.data.message : localMessage;
-
-  // Note: Pending approval blocking could be added here
-  // const { entries } = useEntries();
-  // const hasPendingApproval = entries.some(...);
-
-  // Send follow-up action
-  const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
-    useFollowUpSend({
-      sessionId,
-      message: localMessage,
-      conflictMarkdown: null,
-      reviewMarkdown: '',
-      clickedMarkdown: '',
-      selectedVariant,
-      clearComments: () => {},
-      clearClickedElements: () => {},
-      onAfterSendCleanup: () => {
-        cancelDebouncedSave();
-        setLocalMessage('');
-      },
-    });
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
     if (!localMessage.trim()) return;
-
     cancelDebouncedSave();
     await saveToScratch(localMessage, selectedVariant);
     await queueMessage(localMessage, selectedVariant);
@@ -241,55 +207,26 @@ export function SessionChatBoxContainer({
     saveToScratch,
   ]);
 
-  // Refs for stable onChange handler
-  const setFollowUpMessageRef = useRef(setFollowUpMessage);
-  useEffect(() => {
-    setFollowUpMessageRef.current = setFollowUpMessage;
-  }, [setFollowUpMessage]);
-
-  const followUpErrorRef = useRef(followUpError);
-  useEffect(() => {
-    followUpErrorRef.current = followUpError;
-  }, [followUpError]);
-
-  const isQueuedRef = useRef(isQueued);
-  useEffect(() => {
-    isQueuedRef.current = isQueued;
-  }, [isQueued]);
-
-  const cancelQueueRef = useRef(cancelQueue);
-  useEffect(() => {
-    cancelQueueRef.current = cancelQueue;
-  }, [cancelQueue]);
-
-  const queuedMessageRef = useRef(queuedMessage);
-  useEffect(() => {
-    queuedMessageRef.current = queuedMessage;
-  }, [queuedMessage]);
-
-  // Handle image paste/attach
-  const handleAttach = useCallback(async () => {
-    // This is called when user clicks attach - file selection handled in primitive
-    // For now, this is a placeholder - full implementation would need file input ref
-  }, []);
-
   // Editor change handler
   const handleEditorChange = useCallback(
     (value: string) => {
-      if (isQueuedRef.current) {
-        cancelQueueRef.current();
-      }
-      setLocalMessage(value);
-      setFollowUpMessageRef.current(value);
-      if (followUpErrorRef.current) setFollowUpError(null);
+      if (isQueued) cancelQueue();
+      handleMessageChange(value, selectedVariant);
+      if (sendError) clearError();
     },
-    [setFollowUpError]
+    [
+      isQueued,
+      cancelQueue,
+      handleMessageChange,
+      selectedVariant,
+      sendError,
+      clearError,
+    ]
   );
 
   // Handle feedback submission
   const handleSubmitFeedback = useCallback(async () => {
     if (!feedbackContext || !localMessage.trim()) return;
-
     try {
       await feedbackContext.submitFeedback(localMessage);
       cancelDebouncedSave();
@@ -297,48 +234,47 @@ export function SessionChatBoxContainer({
     } catch {
       // Error is handled in context
     }
-  }, [feedbackContext, localMessage, cancelDebouncedSave]);
+  }, [feedbackContext, localMessage, cancelDebouncedSave, setLocalMessage]);
 
   // Handle cancel feedback mode
   const handleCancelFeedback = useCallback(() => {
     feedbackContext?.exitFeedbackMode();
   }, [feedbackContext]);
 
-  // Derive execution status from booleans
-  const getExecutionStatus = (): ExecutionStatus => {
-    if (isInFeedbackMode) return 'feedback';
-    if (isStopping) return 'stopping';
-    if (isQueueLoading) return 'queue-loading';
-    if (isSendingFollowUp) return 'sending';
-    if (isQueued) return 'queued';
-    if (isAttemptRunning) return 'running';
-    return 'idle';
-  };
+  // Compute execution status
+  const status = computeExecutionStatus({
+    isInFeedbackMode,
+    isStopping,
+    isQueueLoading,
+    isSendingFollowUp: isSending,
+    isQueued,
+    isAttemptRunning,
+  });
 
-  // Don't render if no session
-  if (!session) {
+  // Don't render if no session and not in new session mode
+  if (!session && !isNewSessionMode) {
     return null;
   }
 
-  // Loading state
-  if (isScratchLoading) {
+  // Loading state (only applies when we have a session)
+  if (isScratchLoading && !isNewSessionMode) {
     return null;
   }
 
   return (
     <SessionChatBox
-      status={getExecutionStatus()}
+      status={status}
       projectId={projectId}
       editor={{
-        value: displayMessage,
+        value: queuedMessage ?? localMessage,
         onChange: handleEditorChange,
       }}
       actions={{
-        onSend: onSendFollowUp,
+        onSend: handleSend,
         onQueue: handleQueueMessage,
         onCancelQueue: cancelQueue,
         onStop: stopExecution,
-        onAttach: handleAttach,
+        onAttach: () => {},
       }}
       variant={{
         selected: selectedVariant,
@@ -349,14 +285,25 @@ export function SessionChatBoxContainer({
         sessions,
         selectedSessionId: sessionId,
         onSelectSession: onSelectSession ?? (() => {}),
+        isNewSessionMode,
+        onNewSession: onStartNewSession,
       }}
       stats={{
         filesChanged,
         linesAdded,
         linesRemoved,
       }}
-      error={followUpError}
+      error={sendError}
       agent={latestProfileId?.executor}
+      executor={
+        isNewSessionMode
+          ? {
+              selected: effectiveExecutor,
+              options: executorOptions,
+              onChange: handleExecutorChange,
+            }
+          : undefined
+      }
       feedbackMode={
         feedbackContext
           ? {

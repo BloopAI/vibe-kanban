@@ -16,20 +16,30 @@ export interface UseScratchResult {
   deleteScratch: () => Promise<void>;
 }
 
+interface UseScratchOptions {
+  /** Whether to enable the WebSocket connection. Defaults to true. */
+  enabled?: boolean;
+}
+
 /**
  * Stream a single scratch item via WebSocket (JSON Patch).
  * Server sends the scratch object directly at /scratch.
  */
 export const useScratch = (
   scratchType: ScratchType,
-  id: string
+  id: string,
+  options?: UseScratchOptions
 ): UseScratchResult => {
-  const endpoint = scratchApi.getStreamUrl(scratchType, id);
+  // Skip connection when disabled or no ID
+  const enabled = (options?.enabled ?? true) && id.length > 0;
+  const endpoint = enabled
+    ? scratchApi.getStreamUrl(scratchType, id)
+    : undefined;
 
   const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
   const { data, isConnected, isInitialized, error } =
-    useJsonPatchWsStream<ScratchState>(endpoint, true, initialData);
+    useJsonPatchWsStream<ScratchState>(endpoint, enabled, initialData);
 
   // Treat deleted scratches as null
   const rawScratch = data?.scratch as (Scratch & { deleted?: boolean }) | null;

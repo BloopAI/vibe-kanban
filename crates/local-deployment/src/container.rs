@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -792,16 +793,31 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor profile from the latest CodingAgent process in this session
-        let initial_executor_profile_id =
-            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
-                .await
-                .map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
+        // Get executor from the latest CodingAgent process, or fall back to session's executor
+        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
+        {
+            Some(profile) => profile.executor,
+            None => {
+                // No prior execution - use session's executor field
+                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
+                    ContainerError::Other(anyhow!(
+                        "No prior execution and no executor configured on session"
+                    ))
                 })?;
+                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
+                    .map_err(|_| {
+                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
+                    })?
+            }
+        };
 
         let executor_profile_id = ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
+            executor: base_executor,
             variant: queued_data.variant.clone(),
         };
 

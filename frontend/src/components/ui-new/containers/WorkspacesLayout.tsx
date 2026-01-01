@@ -152,6 +152,8 @@ export function WorkspacesLayout() {
     sessions,
     selectSession,
     repos,
+    isNewSessionMode,
+    startNewSession,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -371,6 +373,8 @@ export function WorkspacesLayout() {
             sessions={sessions}
             onSelectSession={selectSession}
             isLoading={isLoading}
+            isNewSessionMode={isNewSessionMode}
+            onStartNewSession={startNewSession}
           />
         </ExecutionProcessesProvider>
       </Panel>

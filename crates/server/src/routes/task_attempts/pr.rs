@@ -135,9 +135,16 @@ async fn trigger_pr_description_follow_up(
         };
 
     // Get executor profile from the latest coding agent process in this session
-    let executor_profile_id =
+    let Some(executor_profile_id) =
         ExecutionProcess::latest_executor_profile_for_session(&deployment.db().pool, session.id)
-            .await?;
+            .await?
+    else {
+        tracing::warn!(
+            "No executor profile found for session {}, skipping PR description follow-up",
+            session.id
+        );
+        return Ok(());
+    };
 
     // Get latest agent session ID if one exists (for coding agent continuity)
     let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(

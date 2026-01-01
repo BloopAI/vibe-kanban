@@ -32,6 +32,10 @@ interface WorkspaceContextValue {
   selectSession: (sessionId: string) => void;
   selectLatestSession: () => void;
   isSessionsLoading: boolean;
+  /** Whether user is creating a new session */
+  isNewSessionMode: boolean;
+  /** Enter new session mode */
+  startNewSession: () => void;
   /** Repos for the current workspace */
   repos: RepoWithTargetBranch[];
   isReposLoading: boolean;
@@ -72,6 +76,8 @@ export function WorkspaceProvider({
     selectSession,
     selectLatestSession,
     isLoading: isSessionsLoading,
+    isNewSessionMode,
+    startNewSession,
   } = useWorkspaceSessions(workspaceId, { enabled: !isCreateMode });
 
   // Fetch repos for the current workspace
@@ -111,6 +117,8 @@ export function WorkspaceProvider({
       selectSession,
       selectLatestSession,
       isSessionsLoading,
+      isNewSessionMode,
+      startNewSession,
       repos,
       isReposLoading,
     }),
@@ -129,6 +137,8 @@ export function WorkspaceProvider({
       selectSession,
       selectLatestSession,
       isSessionsLoading,
+      isNewSessionMode,
+      startNewSession,
       repos,
       isReposLoading,
     ]
