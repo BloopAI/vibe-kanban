@@ -14,7 +14,7 @@ use tokio_util::{
     compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt},
     io::ReaderStream,
 };
-use tracing::error;
+use tracing::{error, info, warn};
 use workspace_utils::{approvals::ApprovalStatus, stream_lines::LinesStreamExt};
 
 use super::{AcpClient, SessionManager};
@@ -307,39 +307,89 @@ impl AcpAgentHarness {
                             let _ = io_fut.await;
                         });
 
-                        // Initialize
-                        let _ = conn
+                        // Initialize and capture agent capabilities
+                        let init_response = match conn
                             .initialize(proto::InitializeRequest::new(proto::ProtocolVersion::V1))
-                            .await;
+                            .await
+                        {
+                            Ok(resp) => resp,
+                            Err(e) => {
+                                error!("Failed to initialize ACP connection: {}", e);
+                                return;
+                            }
+                        };
+
+                        // Log agent capabilities for debugging session resumption
+                        let supports_load_session =
+                            init_response.agent_capabilities.load_session;
+                        info!(
+                            "ACP agent capabilities: load_session={}",
+                            supports_load_session
+                        );
 
                         // Handle session creation/forking
+                        // Try load_session first if agent supports it, otherwise use fork fallback
                         let (acp_session_id, display_session_id, prompt_to_send) =
                             if let Some(existing) = existing_session {
-                                // Fork existing session
-                                let new_ui_id = uuid::Uuid::new_v4().to_string();
-                                let _ = session_manager.fork_session(&existing, &new_ui_id);
-
-                                let history = session_manager.read_session_raw(&new_ui_id).ok();
-                                let meta =
-                                    history.map(|h| serde_json::json!({ "history_jsonl": h }));
-
-                                let mut req = proto::NewSessionRequest::new(cwd.clone());
-                                if let Some(m) = meta
-                                    && let Some(obj) = m.as_object()
-                                {
-                                    req = req.meta(obj.clone());
-                                }
-                                match conn.new_session(req).await {
-                                    Ok(resp) => {
-                                        let resume_prompt = session_manager
-                                            .generate_resume_prompt(&new_ui_id, &prompt)
-                                            .unwrap_or_else(|_| prompt.clone());
-                                        (resp.session_id.0.to_string(), new_ui_id, resume_prompt)
+                                // Try native session loading first if supported
+                                if supports_load_session {
+                                    info!(
+                                        "Attempting load_session for session: {}",
+                                        existing
+                                    );
+                                    match conn
+                                        .load_session(proto::LoadSessionRequest::new(
+                                            proto::SessionId::new(existing.clone()),
+                                            cwd.clone(),
+                                        ))
+                                        .await
+                                    {
+                                        Ok(_resp) => {
+                                            info!(
+                                                "load_session succeeded for session: {}",
+                                                existing
+                                            );
+                                            // Use the original session ID for both ACP and display
+                                            // The prompt is used as-is since session history is restored
+                                            (existing.clone(), existing.clone(), prompt)
+                                        }
+                                        Err(e) => {
+                                            warn!(
+                                                "load_session failed: {}, falling back to fork",
+                                                e
+                                            );
+                                            // Fall back to fork approach
+                                            let result = Self::fork_session_fallback(
+                                                &conn,
+                                                &session_manager,
+                                                &existing,
+                                                &cwd,
+                                                &prompt,
+                                            )
+                                            .await;
+                                            if result.0.is_empty() {
+                                                return;
+                                            }
+                                            result
+                                        }
                                     }
-                                    Err(e) => {
-                                        error!("Failed to create session: {}", e);
+                                } else {
+                                    // Agent doesn't support load_session, use fork fallback
+                                    info!(
+                                        "Agent does not support load_session, using fork fallback"
+                                    );
+                                    let result = Self::fork_session_fallback(
+                                        &conn,
+                                        &session_manager,
+                                        &existing,
+                                        &cwd,
+                                        &prompt,
+                                    )
+                                    .await;
+                                    if result.0.is_empty() {
                                         return;
                                     }
+                                    result
                                 }
                             } else {
                                 // New session
@@ -505,5 +555,42 @@ impl AcpAgentHarness {
         });
 
         Ok(())
+    }
+
+    /// Fallback method for session resumption when agent doesn't support loadSession.
+    /// Forks the session files and creates a new session with history in meta.
+    async fn fork_session_fallback(
+        conn: &Rc<proto::ClientSideConnection>,
+        session_manager: &SessionManager,
+        existing_session_id: &str,
+        cwd: &std::path::PathBuf,
+        prompt: &str,
+    ) -> (String, String, String) {
+        // Fork existing session
+        let new_ui_id = uuid::Uuid::new_v4().to_string();
+        let _ = session_manager.fork_session(existing_session_id, &new_ui_id);
+
+        let history = session_manager.read_session_raw(&new_ui_id).ok();
+        let meta = history.map(|h| serde_json::json!({ "history_jsonl": h }));
+
+        let mut req = proto::NewSessionRequest::new(cwd.clone());
+        if let Some(m) = meta
+            && let Some(obj) = m.as_object()
+        {
+            req = req.meta(obj.clone());
+        }
+        match conn.new_session(req).await {
+            Ok(resp) => {
+                let resume_prompt = session_manager
+                    .generate_resume_prompt(&new_ui_id, prompt)
+                    .unwrap_or_else(|_| prompt.to_string());
+                (resp.session_id.0.to_string(), new_ui_id, resume_prompt)
+            }
+            Err(e) => {
+                error!("Failed to create session in fallback: {}", e);
+                // Return empty values - caller will handle the error case
+                (String::new(), String::new(), String::new())
+            }
+        }
     }
 }
