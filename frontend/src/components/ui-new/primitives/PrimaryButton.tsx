@@ -16,14 +16,17 @@ export function PrimaryButton({
   onClick,
   disabled,
 }: PrimaryButtonProps) {
+  const variantStyles = disabled
+    ? 'cursor-not-allowed bg-panel'
+    : variant === 'default'
+      ? 'bg-brand hover:bg-brand-hover text-on-brand'
+      : 'bg-brand-secondary hover:bg-brand-hover text-on-brand';
+
   return (
     <button
       className={cn(
         'rounded-sm px-base py-half text-cta h-cta flex gap-half items-center',
-        variant === 'default' && 'bg-brand text-on-brand hover:bg-brand-hover',
-        variant === 'secondary' &&
-          'border-2 border-brand bg-brand-secondary text-on-brand',
-        disabled && 'cursor-not-allowed bg-brand-secondary'
+        variantStyles
       )}
       onClick={onClick}
       disabled={disabled}

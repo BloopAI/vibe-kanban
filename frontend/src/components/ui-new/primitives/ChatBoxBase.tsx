@@ -17,6 +17,11 @@ export interface VariantProps {
   onChange: (variant: string | null) => void;
 }
 
+export enum VisualVariant {
+  NORMAL = 'NORMAL',
+  FEEDBACK = 'FEEDBACK',
+}
+
 interface ChatBoxBaseProps {
   // Editor
   editor: EditorProps;
@@ -24,6 +29,7 @@ interface ChatBoxBaseProps {
   onCmdEnter: () => void;
   disabled?: boolean;
   projectId?: string;
+  autoFocus?: boolean;
 
   // Variant selection
   variant?: VariantProps;
@@ -45,6 +51,9 @@ interface ChatBoxBaseProps {
 
   // Banner content (queued message indicator, feedback mode indicator)
   banner?: ReactNode;
+
+  // visualVariant
+  visualVariant: VisualVariant;
 }
 
 /**
@@ -57,6 +66,7 @@ export function ChatBoxBase({
   onCmdEnter,
   disabled,
   projectId,
+  autoFocus,
   variant,
   error,
   headerRight,
@@ -64,6 +74,7 @@ export function ChatBoxBase({
   footerLeft,
   footerRight,
   banner,
+  visualVariant,
 }: ChatBoxBaseProps) {
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
@@ -72,7 +83,8 @@ export function ChatBoxBase({
     <div
       className={cn(
         'flex w-chat max-w-full flex-col border-t',
-        '@chat:border-x @chat:rounded-t-md'
+        '@chat:border-x @chat:rounded-t-md',
+        visualVariant === VisualVariant.FEEDBACK && 'border-brand bg-brand/10'
       )}
     >
       {/* Error alert */}
@@ -86,15 +98,17 @@ export function ChatBoxBase({
       {banner}
 
       {/* Header - Stats and selector */}
-      <div className="flex items-center gap-base bg-secondary px-double py-[9px] @chat:rounded-t-md border-b">
-        <div className="flex flex-1 items-center gap-base text-sm">
-          {headerLeft}
+      {visualVariant === VisualVariant.NORMAL && (
+        <div className="flex items-center gap-base bg-secondary px-double py-[9px] @chat:rounded-t-md border-b">
+          <div className="flex flex-1 items-center gap-base text-sm">
+            {headerLeft}
+          </div>
+          <Toolbar className="gap-[9px]">{headerRight}</Toolbar>
         </div>
-        <Toolbar className="gap-[9px]">{headerRight}</Toolbar>
-      </div>
+      )}
 
       {/* Editor area */}
-      <div className="flex flex-col gap-plusfifty bg-primary px-double py-plusfifty">
+      <div className="flex flex-col gap-plusfifty px-double py-plusfifty rounded-md">
         <WYSIWYGEditor
           placeholder={placeholder}
           value={editor.value}
@@ -103,25 +117,28 @@ export function ChatBoxBase({
           disabled={disabled}
           className="min-h-0 max-h-[min(15rem,20vh)] overflow-y-auto"
           projectId={projectId}
+          autoFocus={autoFocus}
         />
 
         {/* Footer - Controls */}
         <div className="flex items-end justify-between">
           <Toolbar className="flex-1 gap-double">
-            <ToolbarDropdown label={variantLabel} disabled={disabled}>
-              <DropdownMenuLabel>Variants</DropdownMenuLabel>
-              {variantOptions.map((variantName) => (
-                <DropdownMenuItem
-                  key={variantName}
-                  icon={
-                    variant?.selected === variantName ? CheckIcon : undefined
-                  }
-                  onClick={() => variant?.onChange(variantName)}
-                >
-                  {toPrettyCase(variantName)}
-                </DropdownMenuItem>
-              ))}
-            </ToolbarDropdown>
+            {visualVariant === VisualVariant.NORMAL && (
+              <ToolbarDropdown label={variantLabel} disabled={disabled}>
+                <DropdownMenuLabel>Variants</DropdownMenuLabel>
+                {variantOptions.map((variantName) => (
+                  <DropdownMenuItem
+                    key={variantName}
+                    icon={
+                      variant?.selected === variantName ? CheckIcon : undefined
+                    }
+                    onClick={() => variant?.onChange(variantName)}
+                  >
+                    {toPrettyCase(variantName)}
+                  </DropdownMenuItem>
+                ))}
+              </ToolbarDropdown>
+            )}
             <ToolbarIconButton
               icon={MicrophoneIcon}
               aria-label="Voice input"

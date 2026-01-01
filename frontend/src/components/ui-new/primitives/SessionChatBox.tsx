@@ -14,6 +14,7 @@ import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
+  VisualVariant,
   type EditorProps,
   type VariantProps,
 } from './ChatBoxBase';
@@ -270,18 +271,6 @@ export function SessionChatBox({
 
   // Banner content
   const renderBanner = () => {
-    if (isInFeedbackMode) {
-      return (
-        <div className="bg-brand/10 border-b px-double py-base flex items-center gap-base">
-          <span className="text-sm text-brand">
-            {feedbackMode?.isTimedOut
-              ? 'Approval has timed out - feedback cannot be submitted'
-              : 'Providing feedback on plan'}
-          </span>
-        </div>
-      );
-    }
-
     if (isQueued) {
       return (
         <div className="bg-secondary border-b px-double py-base flex items-center gap-base">
@@ -306,9 +295,13 @@ export function SessionChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
       projectId={projectId}
+      autoFocus={isInFeedbackMode}
       variant={variant}
       error={displayError}
       banner={renderBanner()}
+      visualVariant={
+        isInFeedbackMode ? VisualVariant.FEEDBACK : VisualVariant.NORMAL
+      }
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}
