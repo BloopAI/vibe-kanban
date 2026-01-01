@@ -139,9 +139,9 @@ function WYSIWYGEditor({
         codeHighlight: CODE_HIGHLIGHT_CLASSES,
         table: 'border-collapse my-2 w-full text-sm',
         tableRow: '',
-        tableCell: 'border border-border px-3 py-2 text-left align-top',
+        tableCell: 'border border-low px-3 py-2 text-left align-top',
         tableCellHeader:
-          'bg-muted font-semibold border border-border px-3 py-2 text-left align-top',
+          'bg-muted font-semibold border border-low px-3 py-2 text-left align-top',
       },
       nodes: [
         HeadingNode,
