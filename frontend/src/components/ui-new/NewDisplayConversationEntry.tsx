@@ -131,6 +131,7 @@ function NewDisplayConversationEntry({
           taskAttemptId={taskAttempt?.id}
           approvalStatus={pendingStatus}
           executionProcessId={executionProcessId}
+          status={status}
         />
       );
     }
@@ -236,6 +237,7 @@ function PlanEntry({
   taskAttemptId,
   approvalStatus,
   executionProcessId,
+  status,
 }: {
   plan: string;
   expansionKey: string;
@@ -243,10 +245,16 @@ function PlanEntry({
   taskAttemptId?: string;
   approvalStatus?: Extract<ToolStatus, { status: 'pending_approval' }>;
   executionProcessId?: string;
+  status: ToolStatus;
 }) {
-  const [expanded, toggle] = useExpandable(`plan:${expansionKey}`, true);
+  // Expand plans by default, unless plan is not active
   const feedbackContext = useApprovalFeedbackOptional();
   const { approve, isApproving } = useApprovalMutation();
+  const pendingApproval = status.status === 'pending_approval';
+  const [expanded, toggle] = useExpandable(
+    `plan:${expansionKey}`,
+    pendingApproval
+  );
 
   // Check if approval timed out
   const isTimedOut = approvalStatus
@@ -305,6 +313,7 @@ function PlanEntry({
         showActions && !isTimedOut && feedbackContext ? handleEdit : undefined
       }
       taskAttemptId={taskAttemptId}
+      status={status}
     />
   );
 }

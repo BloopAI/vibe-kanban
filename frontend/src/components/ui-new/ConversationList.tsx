@@ -43,6 +43,14 @@ const AutoScrollToBottom: ScrollModifier = {
   autoScroll: 'smooth',
 };
 
+const ScrollToTopOfLastItem: ScrollModifier = {
+  type: 'item-location',
+  location: {
+    index: 'LAST',
+    align: 'start',
+  },
+};
+
 const ItemContent: VirtuosoMessageListProps<
   PatchTypeWithKey,
   MessageListContext
@@ -95,7 +103,11 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
   ) => {
     let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-    if (addType === 'running' && !loading) {
+    console.log('DEBUG', addType);
+
+    if (addType === 'plan' && !loading) {
+      scrollModifier = ScrollToTopOfLastItem;
+    } else if (addType === 'running' && !loading) {
       scrollModifier = AutoScrollToBottom;
     }
 
