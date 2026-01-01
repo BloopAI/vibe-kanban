@@ -1,6 +1,5 @@
 import type { RefObject } from 'react';
 import {
-  ArrowSquareOutIcon,
   CheckIcon,
   CopyIcon,
   EyeIcon,
@@ -8,6 +7,8 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { useUserSystem } from '@/components/ConfigProvider';
+import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
 
 interface ContextBarButtonProps
@@ -86,6 +87,9 @@ export function ContextBar({
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
+  const { config } = useUserSystem();
+  const editorType = config?.editor?.editor_type ?? null;
+  const ideLabel = `Open in ${getIdeName(editorType)}`;
 
   return (
     <div
@@ -104,11 +108,17 @@ export function ContextBar({
         <div className="flex flex-col py-double">
           {/* Primary Icons */}
           <div className="flex flex-col gap-double">
-            <ContextBarButton
-              icon={ArrowSquareOutIcon}
-              label="Open in IDE"
+            <button
+              className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
+              aria-label={ideLabel}
+              title={ideLabel}
               onClick={onOpen}
-            />
+            >
+              <IdeIcon
+                editorType={editorType}
+                className="size-icon-base hover:text-normal opacity-50 hover:opacity-80"
+              />
+            </button>
             <ContextBarButton
               icon={copied ? CheckIcon : CopyIcon}
               label={copied ? 'Copied!' : 'Copy path'}
