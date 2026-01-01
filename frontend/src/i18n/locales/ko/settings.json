@@ -172,13 +172,13 @@
           "commandPlaceholder": "예: curl -X POST https://webhook.example.com -d \"{\\\"title\\\": \\\"$VK_TITLE\\\"}\"",
           "commandHelper": "알림 이벤트에서 실행할 셸 명령을 입력하세요. 동적 값에는 VK_ 환경 변수를 사용하세요.",
           "variables": "사용 가능한 변수 (환경 변수를 통해 전달됨):",
-          "varTitle": "VK_TITLE: 알림 제목",
-          "varMessage": "VK_MESSAGE: 알림 메시지",
-          "varEvent": "VK_EVENT: 이벤트 유형 (task_completed, task_failed, approval_needed)",
-          "varTaskTitle": "VK_TASK_TITLE: 작업 제목",
-          "varTaskBranch": "VK_TASK_BRANCH: 작업 브랜치 이름",
-          "varExecutor": "VK_EXECUTOR: 실행자 이름",
-          "varToolName": "VK_TOOL_NAME: 도구 이름 (승인 이벤트용)"
+          "varTitle": "$VK_TITLE - 알림 제목",
+          "varMessage": "$VK_MESSAGE - 알림 메시지",
+          "varEvent": "$VK_EVENT - 이벤트 유형 (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "$VK_TASK_TITLE - 작업 제목",
+          "varTaskBranch": "$VK_TASK_BRANCH - 작업 브랜치 이름",
+          "varExecutor": "$VK_EXECUTOR - 실행자 이름",
+          "varToolName": "$VK_TOOL_NAME - 도구 이름 (승인 이벤트용)"
         }
       },
       "privacy": {

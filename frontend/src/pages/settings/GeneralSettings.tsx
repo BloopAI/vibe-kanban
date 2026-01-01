@@ -357,58 +357,58 @@ export function GeneralSettings() {
           {(draft?.editor.editor_type === EditorType.VS_CODE ||
             draft?.editor.editor_type === EditorType.CURSOR ||
             draft?.editor.editor_type === EditorType.WINDSURF) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="remote-ssh-host">
-                  {t('settings.general.editor.remoteSsh.host.label')}
-                </Label>
-                <Input
-                  id="remote-ssh-host"
-                  placeholder={t(
-                    'settings.general.editor.remoteSsh.host.placeholder'
-                  )}
-                  value={draft?.editor.remote_ssh_host || ''}
-                  onChange={(e) =>
-                    updateDraft({
-                      editor: {
-                        ...draft!.editor,
-                        remote_ssh_host: e.target.value || null,
-                      },
-                    })
-                  }
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.general.editor.remoteSsh.host.helper')}
-                </p>
-              </div>
-
-              {draft?.editor.remote_ssh_host && (
+              <>
                 <div className="space-y-2">
-                  <Label htmlFor="remote-ssh-user">
-                    {t('settings.general.editor.remoteSsh.user.label')}
+                  <Label htmlFor="remote-ssh-host">
+                    {t('settings.general.editor.remoteSsh.host.label')}
                   </Label>
                   <Input
-                    id="remote-ssh-user"
+                    id="remote-ssh-host"
                     placeholder={t(
-                      'settings.general.editor.remoteSsh.user.placeholder'
+                      'settings.general.editor.remoteSsh.host.placeholder'
                     )}
-                    value={draft?.editor.remote_ssh_user || ''}
+                    value={draft?.editor.remote_ssh_host || ''}
                     onChange={(e) =>
                       updateDraft({
                         editor: {
                           ...draft!.editor,
-                          remote_ssh_user: e.target.value || null,
+                          remote_ssh_host: e.target.value || null,
                         },
                       })
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.general.editor.remoteSsh.user.helper')}
+                    {t('settings.general.editor.remoteSsh.host.helper')}
                   </p>
                 </div>
-              )}
-            </>
-          )}
+
+                {draft?.editor.remote_ssh_host && (
+                  <div className="space-y-2">
+                    <Label htmlFor="remote-ssh-user">
+                      {t('settings.general.editor.remoteSsh.user.label')}
+                    </Label>
+                    <Input
+                      id="remote-ssh-user"
+                      placeholder={t(
+                        'settings.general.editor.remoteSsh.user.placeholder'
+                      )}
+                      value={draft?.editor.remote_ssh_user || ''}
+                      onChange={(e) =>
+                        updateDraft({
+                          editor: {
+                            ...draft!.editor,
+                            remote_ssh_user: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t('settings.general.editor.remoteSsh.user.helper')}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
         </CardContent>
       </Card>
 
@@ -510,11 +510,10 @@ export function GeneralSettings() {
           <div className="space-y-2">
             <textarea
               id="pr-custom-prompt"
-              className={`flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                draft?.pr_auto_description_prompt == null
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
-              }`}
+              className={`flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${draft?.pr_auto_description_prompt == null
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+                }`}
               value={
                 draft?.pr_auto_description_prompt ??
                 DEFAULT_PR_DESCRIPTION_PROMPT
@@ -704,34 +703,24 @@ export function GeneralSettings() {
                   {t('settings.general.notifications.script.variables')}
                 </p>
                 <ul className="list-disc list-inside space-y-0.5">
-                  <li>
-                    <span className="font-semibold">$VK_TITLE</span> -{' '}
-                    {t('settings.general.notifications.script.varTitle')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_MESSAGE</span> -{' '}
-                    {t('settings.general.notifications.script.varMessage')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_EVENT</span> -{' '}
-                    {t('settings.general.notifications.script.varEvent')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_TASK_TITLE</span> -{' '}
-                    {t('settings.general.notifications.script.varTaskTitle')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_TASK_BRANCH</span> -{' '}
-                    {t('settings.general.notifications.script.varTaskBranch')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_EXECUTOR</span> -{' '}
-                    {t('settings.general.notifications.script.varExecutor')}
-                  </li>
-                  <li>
-                    <span className="font-semibold">$VK_TOOL_NAME</span> -{' '}
-                    {t('settings.general.notifications.script.varToolName')}
-                  </li>
+                  {[
+                    'varTitle',
+                    'varMessage',
+                    'varEvent',
+                    'varTaskTitle',
+                    'varTaskBranch',
+                    'varExecutor',
+                    'varToolName',
+                  ].map((key) => {
+                    const text = t(`settings.general.notifications.script.${key}`);
+                    const [varName, ...descParts] = text.split(' - ');
+                    return (
+                      <li key={key}>
+                        <span className="font-semibold">{varName}</span>
+                        {descParts.length > 0 && <> - {descParts.join(' - ')}</>}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </div>

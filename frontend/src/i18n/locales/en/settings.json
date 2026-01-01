@@ -172,13 +172,13 @@
           "commandPlaceholder": "e.g., curl -X POST https://webhook.example.com -d \"{\\\"title\\\": \\\"$VK_TITLE\\\"}\"",
           "commandHelper": "Enter a shell command to execute on notification events. Use VK_ environment variables for dynamic values.",
           "variables": "Available Variables (passed via environment variables):",
-          "varTitle": "VK_TITLE: Notification title",
-          "varMessage": "VK_MESSAGE: Notification message",
-          "varEvent": "VK_EVENT: Event type (task_completed, task_failed, approval_needed)",
-          "varTaskTitle": "VK_TASK_TITLE: Task title",
-          "varTaskBranch": "VK_TASK_BRANCH: Task branch name",
-          "varExecutor": "VK_EXECUTOR: Executor name",
-          "varToolName": "VK_TOOL_NAME: Tool name (for approval events)"
+          "varTitle": "$VK_TITLE - Notification title",
+          "varMessage": "$VK_MESSAGE - Notification message",
+          "varEvent": "$VK_EVENT - Event type (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "$VK_TASK_TITLE - Task title",
+          "varTaskBranch": "$VK_TASK_BRANCH - Task branch name",
+          "varExecutor": "$VK_EXECUTOR - Executor name",
+          "varToolName": "$VK_TOOL_NAME - Tool name (for approval events)"
         }
       },
       "privacy": {
