@@ -1,6 +1,7 @@
 import { CheckIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
   type EditorProps,
@@ -61,21 +62,23 @@ export function CreateChatBox({
       disabled={isSending}
       projectId={projectId}
       variant={variant}
-      agent={agent}
       error={error}
-      headerRight={
-        <ToolbarDropdown label={executorLabel}>
-          <DropdownMenuLabel>Executors</DropdownMenuLabel>
-          {executor.options.map((exec) => (
-            <DropdownMenuItem
-              key={exec}
-              icon={executor.selected === exec ? CheckIcon : undefined}
-              onClick={() => executor.onChange(exec)}
-            >
-              {toPrettyCase(exec)}
-            </DropdownMenuItem>
-          ))}
-        </ToolbarDropdown>
+      headerLeft={
+        <>
+          <AgentIcon agent={agent} className="size-icon-xl" />
+          <ToolbarDropdown label={executorLabel}>
+            <DropdownMenuLabel>Executors</DropdownMenuLabel>
+            {executor.options.map((exec) => (
+              <DropdownMenuItem
+                key={exec}
+                icon={executor.selected === exec ? CheckIcon : undefined}
+                onClick={() => executor.onChange(exec)}
+              >
+                {toPrettyCase(exec)}
+              </DropdownMenuItem>
+            ))}
+          </ToolbarDropdown>
+        </>
       }
       footerRight={
         <PrimaryButton

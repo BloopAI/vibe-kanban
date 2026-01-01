@@ -11,6 +11,10 @@ interface WorkspacesMainContainerProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  /** Whether user is creating a new session */
+  isNewSessionMode?: boolean;
+  /** Callback to start new session mode */
+  onStartNewSession?: () => void;
 }
 
 export function WorkspacesMainContainer({
@@ -19,6 +23,8 @@ export function WorkspacesMainContainer({
   sessions,
   onSelectSession,
   isLoading,
+  isNewSessionMode,
+  onStartNewSession,
 }: WorkspacesMainContainerProps) {
   const containerRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
@@ -69,6 +75,8 @@ export function WorkspacesMainContainer({
       copied={copied}
       onOpen={handleOpen}
       onCopy={handleCopy}
+      isNewSessionMode={isNewSessionMode}
+      onStartNewSession={onStartNewSession}
     />
   );
 }

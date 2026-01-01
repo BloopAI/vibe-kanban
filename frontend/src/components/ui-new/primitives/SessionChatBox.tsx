@@ -6,9 +6,12 @@ import {
   XIcon,
   PaperPlaneTiltIcon,
   ArrowClockwiseIcon,
+  PlusIcon,
 } from '@phosphor-icons/react';
 import type { Session, BaseCodingAgent } from 'shared/types';
 import { formatDateShortWithTime } from '@/utils/date';
+import { toPrettyCase } from '@/utils/string';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
   type EditorProps,
@@ -16,7 +19,12 @@ import {
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
-import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './Dropdown';
+import { type ExecutorProps } from './CreateChatBox';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -43,6 +51,10 @@ interface SessionProps {
   sessions: Session[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
+  /** Whether user is creating a new session */
+  isNewSessionMode?: boolean;
+  /** Callback to start new session mode */
+  onNewSession?: () => void;
 }
 
 interface StatsProps {
@@ -71,6 +83,8 @@ interface SessionChatBoxProps {
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
+  /** Executor selection for new session mode */
+  executor?: ExecutorProps;
 }
 
 /**
@@ -88,6 +102,7 @@ export function SessionChatBox({
   error,
   projectId,
   agent,
+  executor,
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,7 +121,9 @@ export function SessionChatBox({
   // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
-    : 'Continue working on this task...';
+    : session.isNewSessionMode
+      ? 'Start a new conversation...'
+      : 'Continue working on this task...';
 
   // Cmd+Enter handler
   const handleCmdEnter = () => {
@@ -135,10 +152,20 @@ export function SessionChatBox({
   };
 
   // Session dropdown
-  const { sessions, selectedSessionId, onSelectSession } = session;
+  const {
+    sessions,
+    selectedSessionId,
+    onSelectSession,
+    isNewSessionMode,
+    onNewSession,
+  } = session;
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
-  const sessionLabel = isLatestSelected ? 'Latest' : 'Previous';
+  const sessionLabel = isNewSessionMode
+    ? 'New Session'
+    : isLatestSelected
+      ? 'Latest'
+      : 'Previous';
 
   // Stats
   const filesChanged = stats?.filesChanged ?? 0;
@@ -280,47 +307,93 @@ export function SessionChatBox({
       disabled={isDisabled}
       projectId={projectId}
       variant={variant}
-      agent={agent}
       error={displayError}
       banner={renderBanner()}
       headerLeft={
         <>
-          <span className="text-low">
-            {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
-          </span>
-          {(linesAdded !== undefined || linesRemoved !== undefined) && (
-            <span className="space-x-half">
-              {linesAdded !== undefined && (
-                <span className="text-success">+{linesAdded}</span>
+          {/* New session mode: agent icon + executor dropdown */}
+          {isNewSessionMode && executor && (
+            <>
+              <AgentIcon agent={agent} className="size-icon-xl" />
+              <ToolbarDropdown
+                label={
+                  executor.selected
+                    ? toPrettyCase(executor.selected)
+                    : 'Select Executor'
+                }
+              >
+                <DropdownMenuLabel>Executors</DropdownMenuLabel>
+                {executor.options.map((exec) => (
+                  <DropdownMenuItem
+                    key={exec}
+                    icon={executor.selected === exec ? CheckIcon : undefined}
+                    onClick={() => executor.onChange(exec)}
+                  >
+                    {toPrettyCase(exec)}
+                  </DropdownMenuItem>
+                ))}
+              </ToolbarDropdown>
+            </>
+          )}
+          {/* Existing session mode: file stats */}
+          {!isNewSessionMode && (
+            <>
+              <span className="text-low">
+                {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
+              </span>
+              {(linesAdded !== undefined || linesRemoved !== undefined) && (
+                <span className="space-x-half">
+                  {linesAdded !== undefined && (
+                    <span className="text-success">+{linesAdded}</span>
+                  )}
+                  {linesRemoved !== undefined && (
+                    <span className="text-error">-{linesRemoved}</span>
+                  )}
+                </span>
               )}
-              {linesRemoved !== undefined && (
-                <span className="text-error">-{linesRemoved}</span>
-              )}
-            </span>
+            </>
           )}
         </>
       }
       headerRight={
-        <ToolbarDropdown label={sessionLabel} disabled={isInFeedbackMode}>
-          {sessions.length > 0 ? (
-            <>
-              <DropdownMenuLabel>Sessions</DropdownMenuLabel>
-              {sessions.map((s, index) => (
-                <DropdownMenuItem
-                  key={s.id}
-                  icon={s.id === selectedSessionId ? CheckIcon : undefined}
-                  onClick={() => onSelectSession(s.id)}
-                >
-                  {index === 0
-                    ? 'Latest'
-                    : formatDateShortWithTime(s.created_at)}
-                </DropdownMenuItem>
-              ))}
-            </>
-          ) : (
-            <DropdownMenuItem disabled>No sessions</DropdownMenuItem>
+        <>
+          {/* Agent icon for existing session mode */}
+          {!isNewSessionMode && (
+            <AgentIcon agent={agent} className="size-icon-xl" />
           )}
-        </ToolbarDropdown>
+          <ToolbarDropdown label={sessionLabel} disabled={isInFeedbackMode}>
+            {/* New Session option */}
+            <DropdownMenuItem
+              icon={isNewSessionMode ? CheckIcon : PlusIcon}
+              onClick={() => onNewSession?.()}
+            >
+              New Session
+            </DropdownMenuItem>
+            {sessions.length > 0 && <DropdownMenuSeparator />}
+            {sessions.length > 0 ? (
+              <>
+                <DropdownMenuLabel>Sessions</DropdownMenuLabel>
+                {sessions.map((s, index) => (
+                  <DropdownMenuItem
+                    key={s.id}
+                    icon={
+                      !isNewSessionMode && s.id === selectedSessionId
+                        ? CheckIcon
+                        : undefined
+                    }
+                    onClick={() => onSelectSession(s.id)}
+                  >
+                    {index === 0
+                      ? 'Latest'
+                      : formatDateShortWithTime(s.created_at)}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            ) : (
+              <DropdownMenuItem disabled>No previous sessions</DropdownMenuItem>
+            )}
+          </ToolbarDropdown>
+        </>
       }
       footerLeft={
         <>

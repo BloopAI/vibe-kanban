@@ -2,9 +2,7 @@ import { type ReactNode } from 'react';
 import { CheckIcon, MicrophoneIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
-import type { BaseCodingAgent } from 'shared/types';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { AgentIcon } from '@/components/agents/AgentIcon';
 import { Toolbar, ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 
@@ -30,14 +28,11 @@ interface ChatBoxBaseProps {
   // Variant selection
   variant?: VariantProps;
 
-  // Agent icon
-  agent?: BaseCodingAgent | null;
-
   // Error display
   error?: string | null;
 
   // Header content (right side - session/executor dropdown)
-  headerRight: ReactNode;
+  headerRight?: ReactNode;
 
   // Header content (left side - stats)
   headerLeft?: ReactNode;
@@ -63,7 +58,6 @@ export function ChatBoxBase({
   disabled,
   projectId,
   variant,
-  agent,
   error,
   headerRight,
   headerLeft,
@@ -96,10 +90,7 @@ export function ChatBoxBase({
         <div className="flex flex-1 items-center gap-base text-sm">
           {headerLeft}
         </div>
-        <Toolbar className="gap-[9px]">
-          <AgentIcon agent={agent} className="size-icon-xl" />
-          {headerRight}
-        </Toolbar>
+        <Toolbar className="gap-[9px]">{headerRight}</Toolbar>
       </div>
 
       {/* Editor area */}

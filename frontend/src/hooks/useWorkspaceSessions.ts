@@ -7,6 +7,11 @@ interface UseWorkspaceSessionsOptions {
   enabled?: boolean;
 }
 
+/** Discriminated union for session selection state */
+export type SessionSelection =
+  | { mode: 'existing'; sessionId: string }
+  | { mode: 'new' };
+
 interface UseWorkspaceSessionsResult {
   sessions: Session[];
   selectedSession: Session | undefined;
@@ -14,6 +19,10 @@ interface UseWorkspaceSessionsResult {
   selectSession: (sessionId: string) => void;
   selectLatestSession: () => void;
   isLoading: boolean;
+  /** Whether user is creating a new session */
+  isNewSessionMode: boolean;
+  /** Enter new session mode */
+  startNewSession: () => void;
 }
 
 /**
@@ -26,9 +35,9 @@ export function useWorkspaceSessions(
   options: UseWorkspaceSessionsOptions = {}
 ): UseWorkspaceSessionsResult {
   const { enabled = true } = options;
-  const [selectedSessionId, setSelectedSessionId] = useState<
-    string | undefined
-  >(undefined);
+  const [selection, setSelection] = useState<SessionSelection | undefined>(
+    undefined
+  );
 
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ['workspaceSessions', workspaceId],
@@ -43,12 +52,21 @@ export function useWorkspaceSessions(
     if (sessions.length > 0) {
       // Sessions are ordered by created_at DESC, so first is latest
       // Always select first session when sessions are available for this workspace
-      setSelectedSessionId(sessions[0].id);
+      // Only auto-select if not in new session mode
+      setSelection((prev) => {
+        if (prev?.mode === 'new') return prev;
+        return { mode: 'existing', sessionId: sessions[0].id };
+      });
     } else {
       // No sessions - reset selection (handles workspace change before fetch completes)
-      setSelectedSessionId(undefined);
+      setSelection(undefined);
     }
   }, [workspaceId, sessions]);
+
+  // Derived values from selection state
+  const isNewSessionMode = selection?.mode === 'new';
+  const selectedSessionId =
+    selection?.mode === 'existing' ? selection.sessionId : undefined;
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
@@ -56,14 +74,18 @@ export function useWorkspaceSessions(
   );
 
   const selectSession = useCallback((sessionId: string) => {
-    setSelectedSessionId(sessionId);
+    setSelection({ mode: 'existing', sessionId });
   }, []);
 
   const selectLatestSession = useCallback(() => {
     if (sessions.length > 0) {
-      setSelectedSessionId(sessions[0].id);
+      setSelection({ mode: 'existing', sessionId: sessions[0].id });
     }
   }, [sessions]);
+
+  const startNewSession = useCallback(() => {
+    setSelection({ mode: 'new' });
+  }, []);
 
   return {
     sessions,
@@ -72,5 +94,7 @@ export function useWorkspaceSessions(
     selectSession,
     selectLatestSession,
     isLoading,
+    isNewSessionMode,
+    startNewSession,
   };
 }
