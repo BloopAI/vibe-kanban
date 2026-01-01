@@ -448,7 +448,8 @@
     "createTitle": "Create New Task",
     "editTitle": "Edit Task",
     "titlePlaceholder": "Task title...",
-    "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
+    "descriptionPlaceholder": "Describe what you want to accomplish...",
+    "descriptionPlaceholderEdit": "Add more details (optional). Type @ to search files.",
     "statusLabel": "Status",
     "statusOptions": {
       "todo": "To Do",
