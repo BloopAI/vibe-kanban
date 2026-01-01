@@ -1,4 +1,9 @@
-import { CheckIcon, PaperPlaneTiltIcon } from '@phosphor-icons/react';
+import { useRef } from 'react';
+import {
+  CheckIcon,
+  PaperclipIcon,
+  PaperPlaneTiltIcon,
+} from '@phosphor-icons/react';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
@@ -9,7 +14,7 @@ import {
   type VariantProps,
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
-import { ToolbarDropdown } from './Toolbar';
+import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 
 export interface ExecutorProps {
@@ -27,11 +32,12 @@ interface CreateChatBoxProps {
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
+  onPasteFiles?: (files: File[]) => void;
 }
 
 /**
  * Lightweight chat box for create mode.
- * Only supports sending - no queue, stop, attach, or feedback functionality.
+ * Supports sending and attachments - no queue, stop, or feedback functionality.
  */
 export function CreateChatBox({
   editor,
@@ -42,13 +48,29 @@ export function CreateChatBox({
   error,
   projectId,
   agent,
+  onPasteFiles,
 }: CreateChatBoxProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const canSend = editor.value.trim().length > 0 && !isSending;
 
   const handleCmdEnter = () => {
     if (canSend) {
       onSend();
     }
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter((f) =>
+      f.type.startsWith('image/')
+    );
+    if (files.length > 0 && onPasteFiles) {
+      onPasteFiles(files);
+    }
+    e.target.value = '';
   };
 
   const executorLabel = executor.selected
@@ -66,6 +88,7 @@ export function CreateChatBox({
       variant={variant}
       error={error}
       visualVariant={VisualVariant.NORMAL}
+      onPasteFiles={onPasteFiles}
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />
@@ -81,6 +104,24 @@ export function CreateChatBox({
               </DropdownMenuItem>
             ))}
           </ToolbarDropdown>
+        </>
+      }
+      footerLeft={
+        <>
+          <ToolbarIconButton
+            icon={PaperclipIcon}
+            aria-label="Attach file"
+            onClick={handleAttachClick}
+            disabled={isSending}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
         </>
       }
       footerRight={

@@ -45,7 +45,7 @@ interface ActionsProps {
   onQueue: () => void;
   onCancelQueue: () => void;
   onStop: () => void;
-  onAttach: () => void;
+  onPasteFiles: (files: File[]) => void;
 }
 
 interface SessionProps {
@@ -143,7 +143,7 @@ export function SessionChatBox({
       f.type.startsWith('image/')
     );
     if (files.length > 0) {
-      actions.onAttach();
+      actions.onPasteFiles(files);
     }
     e.target.value = '';
   };
@@ -302,6 +302,7 @@ export function SessionChatBox({
       visualVariant={
         isInFeedbackMode ? VisualVariant.FEEDBACK : VisualVariant.NORMAL
       }
+      onPasteFiles={actions.onPasteFiles}
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}

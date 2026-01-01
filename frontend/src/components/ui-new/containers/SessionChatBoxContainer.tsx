@@ -8,6 +8,7 @@ import { useExecutorSelection } from '@/hooks/useExecutorSelection';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '@/hooks/useSessionSend';
+import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -99,6 +100,29 @@ export function SessionChatBoxContainer({
     cancelDebouncedSave,
     handleMessageChange,
   } = useSessionMessageEditor({ scratchId });
+
+  // Ref to access current message value for attachment handler
+  const localMessageRef = useRef(localMessage);
+  useEffect(() => {
+    localMessageRef.current = localMessage;
+  }, [localMessage]);
+
+  // Attachment handling - insert markdown when images are uploaded
+  const handleInsertMarkdown = useCallback(
+    (markdown: string) => {
+      const currentMessage = localMessageRef.current;
+      const newMessage = currentMessage.trim()
+        ? `${currentMessage}\n\n${markdown}`
+        : markdown;
+      setLocalMessage(newMessage);
+    },
+    [setLocalMessage]
+  );
+
+  const { uploadFiles } = useSessionAttachments(
+    workspaceId,
+    handleInsertMarkdown
+  );
 
   // Executor/variant selection
   const {
@@ -281,7 +305,7 @@ export function SessionChatBoxContainer({
         onQueue: handleQueueMessage,
         onCancelQueue: cancelQueue,
         onStop: stopExecution,
-        onAttach: () => {},
+        onPasteFiles: uploadFiles,
       }}
       variant={{
         selected: selectedVariant,

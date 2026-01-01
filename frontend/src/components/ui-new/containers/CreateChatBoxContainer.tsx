@@ -2,6 +2,7 @@ import { useMemo, useCallback, useState } from 'react';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
+import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { getVariantOptions } from '@/utils/executor';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
@@ -20,6 +21,20 @@ export function CreateChatBoxContainer() {
 
   const { createWorkspace } = useCreateWorkspace();
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  // Attachment handling - insert markdown and track image IDs
+  const handleInsertMarkdown = useCallback(
+    (markdown: string) => {
+      const newMessage = message.trim()
+        ? `${message}\n\n${markdown}`
+        : markdown;
+      setMessage(newMessage);
+    },
+    [message, setMessage]
+  );
+
+  const { uploadFiles, getImageIds, clearAttachments } =
+    useCreateAttachments(handleInsertMarkdown);
 
   // Default to user's config profile or first available executor
   const effectiveProfile = useMemo<ExecutorProfileId | null>(() => {
@@ -92,7 +107,7 @@ export function CreateChatBoxContainer() {
           message.trim().split('\n').slice(1).join('\n').trim() || null,
         status: null,
         parent_workspace_id: null,
-        image_ids: null,
+        image_ids: getImageIds(),
         shared_task_id: null,
       },
       executor_profile_id: effectiveProfile,
@@ -101,6 +116,9 @@ export function CreateChatBoxContainer() {
         target_branch: targetBranches[r.id] ?? 'main',
       })),
     });
+
+    // Clear attachments after successful creation
+    clearAttachments();
   }, [
     canSubmit,
     effectiveProfile,
@@ -109,6 +127,8 @@ export function CreateChatBoxContainer() {
     repos,
     targetBranches,
     createWorkspace,
+    getImageIds,
+    clearAttachments,
   ]);
 
   // Determine error to display
@@ -165,6 +185,7 @@ export function CreateChatBoxContainer() {
           error={displayError}
           projectId={projectId}
           agent={effectiveProfile?.executor ?? null}
+          onPasteFiles={uploadFiles}
         />
       </div>
     </div>

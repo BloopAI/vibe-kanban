@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react';
-import { CheckIcon, MicrophoneIcon } from '@phosphor-icons/react';
+import { CheckIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { Toolbar, ToolbarIconButton, ToolbarDropdown } from './Toolbar';
+import { Toolbar, ToolbarDropdown } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 
 export interface EditorProps {
@@ -54,6 +54,9 @@ interface ChatBoxBaseProps {
 
   // visualVariant
   visualVariant: VisualVariant;
+
+  // File paste handler for attachments
+  onPasteFiles?: (files: File[]) => void;
 }
 
 /**
@@ -75,6 +78,7 @@ export function ChatBoxBase({
   footerRight,
   banner,
   visualVariant,
+  onPasteFiles,
 }: ChatBoxBaseProps) {
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
@@ -118,6 +122,7 @@ export function ChatBoxBase({
           className="min-h-0 max-h-[min(15rem,20vh)] overflow-y-auto"
           projectId={projectId}
           autoFocus={autoFocus}
+          onPasteFiles={onPasteFiles}
         />
 
         {/* Footer - Controls */}
@@ -139,11 +144,6 @@ export function ChatBoxBase({
                 ))}
               </ToolbarDropdown>
             )}
-            <ToolbarIconButton
-              icon={MicrophoneIcon}
-              aria-label="Voice input"
-              disabled={disabled}
-            />
             {footerLeft}
           </Toolbar>
           <div className="flex gap-base">{footerRight}</div>
