@@ -206,16 +206,8 @@ export function SessionChatBoxContainer({
 
     if (processes.length > prevCount) {
       refreshQueueStatus();
-      setLocalMessage(scratchData?.message ?? '');
     }
-  }, [
-    isAttemptRunning,
-    workspaceId,
-    processes.length,
-    refreshQueueStatus,
-    scratchData?.message,
-    setLocalMessage,
-  ]);
+  }, [isAttemptRunning, workspaceId, processes.length, refreshQueueStatus]);
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
