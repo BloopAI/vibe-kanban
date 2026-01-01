@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScratchType, type DraftFollowUpData } from 'shared/types';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
@@ -68,9 +68,14 @@ export function useSessionMessageEditor({
   const { debounced: debouncedSave, cancel: cancelDebouncedSave } =
     useDebouncedCallback(saveToScratch, 500);
 
-  // Sync local message from scratch when it loads
+  // Track whether initial load has happened to avoid re-syncing during typing
+  const hasLoadedRef = useRef(false);
+
+  // Sync local message from scratch only on initial load
   useEffect(() => {
     if (isScratchLoading) return;
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
     setLocalMessage(scratchData?.message ?? '');
   }, [isScratchLoading, scratchData?.message]);
 
