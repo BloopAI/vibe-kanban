@@ -160,6 +160,25 @@
         "push": {
           "label": "Push Notifications",
           "helper": "Show system notifications when task attempts finish running."
+        },
+        "browser": {
+          "label": "Browser Notifications",
+          "helper": "Show browser notifications when task attempts finish running. Requires browser permission."
+        },
+        "script": {
+          "label": "Script Notifications",
+          "helper": "Execute a custom script or webhook when notification events occur.",
+          "commandLabel": "Script Command",
+          "commandPlaceholder": "e.g., curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
+          "commandHelper": "Enter a shell command to execute on notification events. Use variables below for dynamic values.",
+          "variables": "Available Variables:",
+          "varTitle": "Notification title",
+          "varMessage": "Notification message",
+          "varEvent": "Event type (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "Task title",
+          "varTaskBranch": "Task branch name",
+          "varExecutor": "Executor name",
+          "varToolName": "Tool name (for approval events)"
         }
       },
       "privacy": {

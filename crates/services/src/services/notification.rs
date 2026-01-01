@@ -1,14 +1,58 @@
+use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use tokio::sync::RwLock;
-use utils;
+use utils::{self, msg_store::MsgStore};
 
-use crate::services::config::{Config, NotificationConfig, SoundFile};
+use crate::services::config::{Config, SoundFile};
+use crate::services::events::browser_notification_patch::{self, BrowserNotification};
+
+/// Event types for script notifications
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotificationEvent {
+    TaskCompleted,
+    TaskFailed,
+    ApprovalNeeded,
+}
+
+impl NotificationEvent {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NotificationEvent::TaskCompleted => "task_completed",
+            NotificationEvent::TaskFailed => "task_failed",
+            NotificationEvent::ApprovalNeeded => "approval_needed",
+        }
+    }
+}
+
+/// Context variables for script notifications
+#[derive(Debug, Clone, Default)]
+pub struct NotificationContext {
+    pub event: Option<NotificationEvent>,
+    pub task_title: Option<String>,
+    pub task_branch: Option<String>,
+    pub executor: Option<String>,
+    pub tool_name: Option<String>,
+}
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct NotificationService {
     config: Arc<RwLock<Config>>,
+    /// Optional events MsgStore for pushing browser notifications via SSE
+    events_msg_store: Option<Arc<MsgStore>>,
+}
+
+impl std::fmt::Debug for NotificationService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationService")
+            .field("config", &"<config>")
+            .field(
+                "events_msg_store",
+                &self.events_msg_store.as_ref().map(|_| "<MsgStore>"),
+            )
+            .finish()
+    }
 }
 
 /// Cache for WSL root path from PowerShell
@@ -16,17 +60,27 @@ static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 impl NotificationService {
     pub fn new(config: Arc<RwLock<Config>>) -> Self {
-        Self { config }
+        Self {
+            config,
+            events_msg_store: None,
+        }
+    }
+
+    pub fn with_events_msg_store(mut self, events_msg_store: Arc<MsgStore>) -> Self {
+        self.events_msg_store = Some(events_msg_store);
+        self
     }
 
     /// Send both sound and push notifications if enabled
     pub async fn notify(&self, title: &str, message: &str) {
-        let config = self.config.read().await.notifications.clone();
-        Self::send_notification(&config, title, message).await;
+        self.notify_with_context(title, message, NotificationContext::default())
+            .await;
     }
 
-    /// Internal method to send notifications with a given config
-    async fn send_notification(config: &NotificationConfig, title: &str, message: &str) {
+    /// Send notifications with additional context for script variable substitution
+    pub async fn notify_with_context(&self, title: &str, message: &str, context: NotificationContext) {
+        let config = self.config.read().await.notifications.clone();
+
         if config.sound_enabled {
             Self::play_sound_notification(&config.sound_file).await;
         }
@@ -34,6 +88,112 @@ impl NotificationService {
         if config.push_enabled {
             Self::send_push_notification(title, message).await;
         }
+
+        if config.script_enabled
+            && let Some(ref script_command) = config.script_command
+        {
+            Self::execute_script_notification(script_command, title, message, &context).await;
+        }
+
+        if config.browser_enabled {
+            self.send_browser_notification(title, message, &context);
+        }
+    }
+
+    /// Send a browser notification via SSE to the frontend
+    fn send_browser_notification(&self, title: &str, message: &str, context: &NotificationContext) {
+        if let Some(ref msg_store) = self.events_msg_store {
+            let notification = BrowserNotification {
+                title: title.to_string(),
+                message: message.to_string(),
+                event: context
+                    .event
+                    .map(|e| e.as_str().to_string())
+                    .unwrap_or_default(),
+                task_title: context.task_title.clone(),
+                task_branch: context.task_branch.clone(),
+                executor: context.executor.clone(),
+                tool_name: context.tool_name.clone(),
+            };
+            let patch = browser_notification_patch::send(notification);
+            msg_store.push_patch(patch);
+        } else {
+            tracing::debug!(
+                "Browser notification skipped: events_msg_store not configured"
+            );
+        }
+    }
+
+    /// Execute a user-configured script with variable substitution
+    async fn execute_script_notification(
+        script_command: &str,
+        title: &str,
+        message: &str,
+        context: &NotificationContext,
+    ) {
+        // Build variable substitutions
+        let mut vars: HashMap<&str, String> = HashMap::new();
+        vars.insert("{{title}}", title.to_string());
+        vars.insert("{{message}}", message.to_string());
+
+        if let Some(ref event) = context.event {
+            vars.insert("{{event}}", event.as_str().to_string());
+        } else {
+            vars.insert("{{event}}", String::new());
+        }
+
+        if let Some(ref task_title) = context.task_title {
+            vars.insert("{{task_title}}", task_title.clone());
+        } else {
+            vars.insert("{{task_title}}", String::new());
+        }
+
+        if let Some(ref task_branch) = context.task_branch {
+            vars.insert("{{task_branch}}", task_branch.clone());
+        } else {
+            vars.insert("{{task_branch}}", String::new());
+        }
+
+        if let Some(ref executor) = context.executor {
+            vars.insert("{{executor}}", executor.clone());
+        } else {
+            vars.insert("{{executor}}", String::new());
+        }
+
+        if let Some(ref tool_name) = context.tool_name {
+            vars.insert("{{tool_name}}", tool_name.clone());
+        } else {
+            vars.insert("{{tool_name}}", String::new());
+        }
+
+        // Perform variable substitution
+        let mut command = script_command.to_string();
+        for (var, value) in &vars {
+            command = command.replace(var, value);
+        }
+
+        tracing::debug!("Executing notification script: {}", command);
+
+        // Execute the script using the appropriate shell
+        let shell = if cfg!(target_os = "windows") {
+            "cmd"
+        } else {
+            "sh"
+        };
+        let shell_arg = if cfg!(target_os = "windows") {
+            "/C"
+        } else {
+            "-c"
+        };
+
+        // Fire-and-forget execution (don't await the result)
+        let _ = tokio::process::Command::new(shell)
+            .arg(shell_arg)
+            .arg(&command)
+            .spawn()
+            .map_err(|e| {
+                tracing::error!("Failed to execute notification script: {}", e);
+            });
     }
 
     /// Play a system sound notification across platforms

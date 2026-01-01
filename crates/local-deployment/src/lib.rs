@@ -182,6 +182,7 @@ impl Deployment for LocalDeployment {
             approvals.clone(),
             queued_message_service.clone(),
             share_publisher.clone(),
+            events_msg_store.clone(),
         )
         .await;
 

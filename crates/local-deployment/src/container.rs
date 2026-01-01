@@ -92,10 +92,12 @@ impl LocalContainerService {
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+        events_msg_store: Arc<MsgStore>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
-        let notification_service = NotificationService::new(config.clone());
+        let notification_service =
+            NotificationService::new(config.clone()).with_events_msg_store(events_msg_store);
 
         let container = LocalContainerService {
             db,

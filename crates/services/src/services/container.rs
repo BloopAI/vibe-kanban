@@ -50,7 +50,7 @@ use uuid::Uuid;
 
 use crate::services::{
     git::{GitService, GitServiceError},
-    notification::NotificationService,
+    notification::{NotificationContext, NotificationEvent, NotificationService},
     share::SharePublisher,
     workspace_manager::WorkspaceError as WorkspaceManagerError,
     worktree_manager::WorktreeError,
@@ -190,14 +190,20 @@ pub trait ContainerService {
         }
 
         let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
+        let (message, event) = match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => (
+                format!(
+                    "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
+                    ctx.task.title, ctx.workspace.branch, ctx.session.executor
+                ),
+                NotificationEvent::TaskCompleted,
             ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
+            ExecutionProcessStatus::Failed => (
+                format!(
+                    "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
+                    ctx.task.title, ctx.workspace.branch, ctx.session.executor
+                ),
+                NotificationEvent::TaskFailed,
             ),
             _ => {
                 tracing::warn!(
@@ -207,7 +213,18 @@ pub trait ContainerService {
                 return;
             }
         };
-        self.notification_service().notify(&title, &message).await;
+
+        let notification_context = NotificationContext {
+            event: Some(event),
+            task_title: Some(ctx.task.title.clone()),
+            task_branch: Some(ctx.workspace.branch.clone()),
+            executor: Some(format!("{:?}", ctx.session.executor)),
+            tool_name: None,
+        };
+
+        self.notification_service()
+            .notify_with_context(&title, &message, notification_context)
+            .await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup

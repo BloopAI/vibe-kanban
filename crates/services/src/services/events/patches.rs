@@ -175,6 +175,37 @@ pub mod workspace_patch {
     }
 }
 
+/// Helper functions for creating browser notification patches.
+/// Uses a fixed path "/browser_notification" to push notifications to the frontend.
+pub mod browser_notification_patch {
+    use json_patch::{AddOperation, Patch, PatchOperation};
+    use serde::Serialize;
+
+    const NOTIFICATION_PATH: &str = "/browser_notification";
+
+    #[derive(Serialize)]
+    pub struct BrowserNotification {
+        pub title: String,
+        pub message: String,
+        pub event: String,
+        pub task_title: Option<String>,
+        pub task_branch: Option<String>,
+        pub executor: Option<String>,
+        pub tool_name: Option<String>,
+    }
+
+    /// Create patch for sending a browser notification
+    pub fn send(notification: BrowserNotification) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: NOTIFICATION_PATH
+                .try_into()
+                .expect("Notification path should be valid"),
+            value: serde_json::to_value(notification)
+                .expect("Notification serialization should not fail"),
+        })])
+    }
+}
+
 /// Helper functions for creating scratch-specific patches.
 /// All patches use path "/scratch" - filtering is done by matching id and payload type in the value.
 pub mod scratch_patch {

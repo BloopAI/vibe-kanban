@@ -7,7 +7,10 @@ use serde_json::Value;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
 use uuid::Uuid;
 
-use crate::services::{approvals::Approvals, notification::NotificationService};
+use crate::services::{
+    approvals::Approvals,
+    notification::{NotificationContext, NotificationEvent, NotificationService},
+};
 
 pub struct ExecutorApprovalBridge {
     approvals: Approvals,
@@ -58,10 +61,16 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             .map_err(ExecutorApprovalError::request_failed)?;
 
         // Play notification sound when approval is needed
+        let notification_context = NotificationContext {
+            event: Some(NotificationEvent::ApprovalNeeded),
+            tool_name: Some(tool_name.to_string()),
+            ..Default::default()
+        };
         self.notification_service
-            .notify(
+            .notify_with_context(
                 "Approval Needed",
                 &format!("Tool '{}' requires approval", tool_name),
+                notification_context,
             )
             .await;
 
