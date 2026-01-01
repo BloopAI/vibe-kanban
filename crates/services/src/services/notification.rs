@@ -166,10 +166,43 @@ impl NotificationService {
             vars.insert("{{tool_name}}", String::new());
         }
 
-        // Perform variable substitution
+        // Shell-escape a value to prevent injection attacks
+        fn escape_for_shell(value: &str) -> String {
+            if cfg!(target_os = "windows") {
+                // For cmd.exe, wrap in double quotes and escape existing double quotes
+                let mut escaped = String::from("\"");
+                for ch in value.chars() {
+                    if ch == '"' {
+                        escaped.push('"');
+                    }
+                    escaped.push(ch);
+                }
+                escaped.push('"');
+                escaped
+            } else {
+                // For POSIX sh, use single quotes and escape existing single quotes
+                if value.is_empty() {
+                    "''".to_string()
+                } else {
+                    let mut escaped = String::from("'");
+                    for ch in value.chars() {
+                        if ch == '\'' {
+                            escaped.push_str("'\"'\"'");
+                        } else {
+                            escaped.push(ch);
+                        }
+                    }
+                    escaped.push('\'');
+                    escaped
+                }
+            }
+        }
+
+        // Perform variable substitution with shell-escaped values to prevent injection
         let mut command = script_command.to_string();
         for (var, value) in &vars {
-            command = command.replace(var, value);
+            let escaped_value = escape_for_shell(value);
+            command = command.replace(var, &escaped_value);
         }
 
         tracing::debug!("Executing notification script: {}", command);
