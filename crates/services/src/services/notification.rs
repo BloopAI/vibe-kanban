@@ -173,10 +173,21 @@ impl NotificationService {
             vars.insert("{{tool_name}}", String::new());
         }
 
-        // Perform variable substitution
+        // Perform variable substitution using environment variables to prevent injection
         let mut command = script_command.to_string();
+        let mut env_vars = Vec::new();
         for (var, value) in &vars {
-            command = command.replace(var, value);
+            let env_name = var.trim_matches(|c| c == '{' || c == '}').to_uppercase();
+            let env_name = format!("VK_{}", env_name);
+
+            let replacement = if cfg!(target_os = "windows") {
+                format!("%{}%", env_name)
+            } else {
+                format!("${}", env_name)
+            };
+
+            command = command.replace(*var, &replacement);
+            env_vars.push((env_name, value.clone()));
         }
 
         tracing::debug!("Executing notification script: {}", command);
@@ -194,13 +205,17 @@ impl NotificationService {
         };
 
         // Fire-and-forget execution (don't await the result)
-        let _ = tokio::process::Command::new(shell)
-            .arg(shell_arg)
-            .arg(&command)
-            .spawn()
-            .map_err(|e| {
-                tracing::error!("Failed to execute notification script: {}", e);
-            });
+        let mut cmd = tokio::process::Command::new(shell);
+        cmd.arg(shell_arg).arg(&command);
+
+        // Add environment variables for safe substitution
+        for (name, value) in env_vars {
+            cmd.env(name, value);
+        }
+
+        let _ = cmd.spawn().map_err(|e| {
+            tracing::error!("Failed to execute notification script: {}", e);
+        });
     }
 
     /// Play a system sound notification across platforms

@@ -169,16 +169,16 @@
           "label": "Notificaciones por Script",
           "helper": "Ejecuta un script personalizado o webhook cuando ocurren eventos de notificación.",
           "commandLabel": "Comando del Script",
-          "commandPlaceholder": "ej., curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
-          "commandHelper": "Ingresa un comando de shell para ejecutar en eventos de notificación. Usa las variables a continuación para valores dinámicos.",
-          "variables": "Variables Disponibles:",
-          "varTitle": "Título de notificación",
-          "varMessage": "Mensaje de notificación",
-          "varEvent": "Tipo de evento (task_completed, task_failed, approval_needed)",
-          "varTaskTitle": "Título de tarea",
-          "varTaskBranch": "Nombre de rama de tarea",
-          "varExecutor": "Nombre del ejecutor",
-          "varToolName": "Nombre de herramienta (para eventos de aprobación)"
+          "commandPlaceholder": "ej., curl -X POST https://webhook.example.com -d \"{\\\"title\\\": \\\"$VK_TITLE\\\"}\"",
+          "commandHelper": "Ingresa un comando de shell para ejecutar en eventos de notificación. Usa las variables de entorno VK_ para valores dinámicos.",
+          "variables": "Variables Disponibles (pasadas vía variables de entorno):",
+          "varTitle": "VK_TITLE: Título de notificación",
+          "varMessage": "VK_MESSAGE: Mensaje de notificación",
+          "varEvent": "VK_EVENT: Tipo de evento (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "VK_TASK_TITLE: Título de tarea",
+          "varTaskBranch": "VK_TASK_BRANCH: Nombre de rama de tarea",
+          "varExecutor": "VK_EXECUTOR: Nombre del ejecutor",
+          "varToolName": "VK_TOOL_NAME: Nombre de herramienta (para eventos de aprobación)"
         }
       },
       "privacy": {

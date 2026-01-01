@@ -705,31 +705,31 @@ export function GeneralSettings() {
                 </p>
                 <ul className="list-disc list-inside space-y-0.5">
                   <li>
-                    {'{{title}}'} -{' '}
+                    <span className="font-semibold">$VK_TITLE</span> -{' '}
                     {t('settings.general.notifications.script.varTitle')}
                   </li>
                   <li>
-                    {'{{message}}'} -{' '}
+                    <span className="font-semibold">$VK_MESSAGE</span> -{' '}
                     {t('settings.general.notifications.script.varMessage')}
                   </li>
                   <li>
-                    {'{{event}}'} -{' '}
+                    <span className="font-semibold">$VK_EVENT</span> -{' '}
                     {t('settings.general.notifications.script.varEvent')}
                   </li>
                   <li>
-                    {'{{task_title}}'} -{' '}
+                    <span className="font-semibold">$VK_TASK_TITLE</span> -{' '}
                     {t('settings.general.notifications.script.varTaskTitle')}
                   </li>
                   <li>
-                    {'{{task_branch}}'} -{' '}
+                    <span className="font-semibold">$VK_TASK_BRANCH</span> -{' '}
                     {t('settings.general.notifications.script.varTaskBranch')}
                   </li>
                   <li>
-                    {'{{executor}}'} -{' '}
+                    <span className="font-semibold">$VK_EXECUTOR</span> -{' '}
                     {t('settings.general.notifications.script.varExecutor')}
                   </li>
                   <li>
-                    {'{{tool_name}}'} -{' '}
+                    <span className="font-semibold">$VK_TOOL_NAME</span> -{' '}
                     {t('settings.general.notifications.script.varToolName')}
                   </li>
                 </ul>

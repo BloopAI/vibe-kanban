@@ -169,16 +169,16 @@
           "label": "スクリプト通知",
           "helper": "通知イベントが発生したときにカスタムスクリプトまたはWebhookを実行します。",
           "commandLabel": "スクリプトコマンド",
-          "commandPlaceholder": "例: curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
-          "commandHelper": "通知イベントで実行するシェルコマンドを入力してください。動的な値には以下の変数を使用してください。",
-          "variables": "使用可能な変数：",
-          "varTitle": "通知タイトル",
-          "varMessage": "通知メッセージ",
-          "varEvent": "イベントタイプ（task_completed、task_failed、approval_needed）",
-          "varTaskTitle": "タスクタイトル",
-          "varTaskBranch": "タスクブランチ名",
-          "varExecutor": "実行者名",
-          "varToolName": "ツール名（承認イベント用）"
+          "commandPlaceholder": "例: curl -X POST https://webhook.example.com -d \"{\\\"title\\\": \\\"$VK_TITLE\\\"}\"",
+          "commandHelper": "通知イベントで実行するシェルコマンドを入力してください。動的な値には VK_ 環境変数を使用してください。",
+          "variables": "使用可能な変数（環境変数を介して渡されます）：",
+          "varTitle": "VK_TITLE: 通知タイトル",
+          "varMessage": "VK_MESSAGE: 通知メッセージ",
+          "varEvent": "VK_EVENT: イベントタイプ（task_completed、task_failed、approval_needed）",
+          "varTaskTitle": "VK_TASK_TITLE: タスクタイトル",
+          "varTaskBranch": "VK_TASK_BRANCH: タスクブランチ名",
+          "varExecutor": "VK_EXECUTOR: 実行者名",
+          "varToolName": "VK_TOOL_NAME: ツール名（承認イベント用）"
         }
       },
       "privacy": {

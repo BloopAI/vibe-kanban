@@ -169,16 +169,16 @@
           "label": "脚本通知",
           "helper": "在通知事件发生时执行自定义脚本或 webhook。",
           "commandLabel": "脚本命令",
-          "commandPlaceholder": "例如：curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
-          "commandHelper": "输入要在通知事件上执行的 shell 命令。使用下面的变量来获取动态值。",
-          "variables": "可用变量：",
-          "varTitle": "通知标题",
-          "varMessage": "通知消息",
-          "varEvent": "事件类型（task_completed、task_failed、approval_needed）",
-          "varTaskTitle": "任务标题",
-          "varTaskBranch": "任务分支名称",
-          "varExecutor": "执行器名称",
-          "varToolName": "工具名称（用于批准事件）"
+          "commandPlaceholder": "例如：curl -X POST https://webhook.example.com -d \"{\\\"title\\\": \\\"$VK_TITLE\\\"}\"",
+          "commandHelper": "输入要在通知事件上执行的 shell 命令。使用 VK_ 环境变量来获取动态值。",
+          "variables": "可用变量（通过环境变量传递）：",
+          "varTitle": "VK_TITLE: 通知标题",
+          "varMessage": "VK_MESSAGE: 通知消息",
+          "varEvent": "VK_EVENT: 事件类型（task_completed、task_failed、approval_needed）",
+          "varTaskTitle": "VK_TASK_TITLE: 任务标题",
+          "varTaskBranch": "VK_TASK_BRANCH: 任务分支名称",
+          "varExecutor": "VK_EXECUTOR: 执行器名称",
+          "varToolName": "VK_TOOL_NAME: 工具名称（用于批准事件）"
         }
       },
       "privacy": {
