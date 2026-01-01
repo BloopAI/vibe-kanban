@@ -231,10 +231,17 @@ export function SessionChatBoxContainer({
       await feedbackContext.submitFeedback(localMessage);
       cancelDebouncedSave();
       setLocalMessage('');
+      await clearDraft();
     } catch {
       // Error is handled in context
     }
-  }, [feedbackContext, localMessage, cancelDebouncedSave, setLocalMessage]);
+  }, [
+    feedbackContext,
+    localMessage,
+    cancelDebouncedSave,
+    setLocalMessage,
+    clearDraft,
+  ]);
 
   // Handle cancel feedback mode
   const handleCancelFeedback = useCallback(() => {
