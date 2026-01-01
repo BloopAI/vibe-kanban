@@ -17,6 +17,7 @@ import {
   ChatPlan,
   ChatUserMessage,
   ChatAssistantMessage,
+  ChatSystemMessage,
 } from './primitives/conversation';
 
 type Props = {
@@ -161,6 +162,13 @@ function NewDisplayConversationEntry({
         content={entry.content}
         taskAttemptId={taskAttempt?.id}
       />
+    );
+  }
+
+  // System message - use ChatSystemMessage
+  if (entryType.type === 'system_message') {
+    return (
+      <SystemMessageEntry content={entry.content} expansionKey={expansionKey} />
     );
   }
 
@@ -355,6 +363,27 @@ function ToolSummaryEntry({
 
   return (
     <ChatToolSummary summary={summary} expanded={expanded} onToggle={toggle} />
+  );
+}
+
+/**
+ * System message entry with expandable content
+ */
+function SystemMessageEntry({
+  content,
+  expansionKey,
+}: {
+  content: string;
+  expansionKey: string;
+}) {
+  const [expanded, toggle] = useExpandable(`system:${expansionKey}`, false);
+
+  return (
+    <ChatSystemMessage
+      content={content}
+      expanded={expanded}
+      onToggle={toggle}
+    />
   );
 }
 

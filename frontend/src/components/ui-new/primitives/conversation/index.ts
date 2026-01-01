@@ -5,3 +5,4 @@ export { ChatPlan } from './ChatPlan';
 export { ChatEntryContainer } from './ChatEntryContainer';
 export { ChatUserMessage } from './ChatUserMessage';
 export { ChatAssistantMessage } from './ChatAssistantMessage';
+export { ChatSystemMessage } from './ChatSystemMessage';
