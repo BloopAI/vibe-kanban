@@ -4,6 +4,7 @@ import type { BaseCodingAgent } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
+  VisualVariant,
   type EditorProps,
   type VariantProps,
 } from './ChatBoxBase';
@@ -61,8 +62,10 @@ export function CreateChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isSending}
       projectId={projectId}
+      autoFocus
       variant={variant}
       error={error}
+      visualVariant={VisualVariant.NORMAL}
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />
