@@ -1,11 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
 
 use tokio::sync::RwLock;
 use utils::{self, msg_store::MsgStore};
 
-use crate::services::config::{Config, SoundFile};
-use crate::services::events::browser_notification_patch::{self, BrowserNotification};
+use crate::services::{
+    config::{Config, SoundFile},
+    events::browser_notification_patch::{self, BrowserNotification},
+};
 
 /// Event types for script notifications
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,7 +82,12 @@ impl NotificationService {
     }
 
     /// Send notifications with additional context for script variable substitution
-    pub async fn notify_with_context(&self, title: &str, message: &str, context: NotificationContext) {
+    pub async fn notify_with_context(
+        &self,
+        title: &str,
+        message: &str,
+        context: NotificationContext,
+    ) {
         let config = self.config.read().await.notifications.clone();
 
         if config.sound_enabled {
@@ -118,9 +127,7 @@ impl NotificationService {
             let patch = browser_notification_patch::send(notification);
             msg_store.push_patch(patch);
         } else {
-            tracing::debug!(
-                "Browser notification skipped: events_msg_store not configured"
-            );
+            tracing::debug!("Browser notification skipped: events_msg_store not configured");
         }
     }
 

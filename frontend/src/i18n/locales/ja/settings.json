@@ -160,6 +160,25 @@
         "push": {
           "label": "プッシュ通知",
           "helper": "タスク試行の実行が完了したときにシステム通知を表示します。"
+        },
+        "browser": {
+          "label": "ブラウザ通知",
+          "helper": "タスク試行の実行が完了したときにブラウザ通知を表示します。ブラウザの許可が必要です。"
+        },
+        "script": {
+          "label": "スクリプト通知",
+          "helper": "通知イベントが発生したときにカスタムスクリプトまたはWebhookを実行します。",
+          "commandLabel": "スクリプトコマンド",
+          "commandPlaceholder": "例: curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
+          "commandHelper": "通知イベントで実行するシェルコマンドを入力してください。動的な値には以下の変数を使用してください。",
+          "variables": "使用可能な変数：",
+          "varTitle": "通知タイトル",
+          "varMessage": "通知メッセージ",
+          "varEvent": "イベントタイプ（task_completed、task_failed、approval_needed）",
+          "varTaskTitle": "タスクタイトル",
+          "varTaskBranch": "タスクブランチ名",
+          "varExecutor": "実行者名",
+          "varToolName": "ツール名（承認イベント用）"
         }
       },
       "privacy": {

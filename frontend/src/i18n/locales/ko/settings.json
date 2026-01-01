@@ -160,6 +160,25 @@
         "push": {
           "label": "푸시 알림",
           "helper": "작업 시도가 완료되면 시스템 알림을 표시합니다."
+        },
+        "browser": {
+          "label": "브라우저 알림",
+          "helper": "작업 시도가 완료되면 브라우저 알림을 표시합니다. 브라우저 권한이 필요합니다."
+        },
+        "script": {
+          "label": "스크립트 알림",
+          "helper": "알림 이벤트가 발생할 때 사용자 정의 스크립트 또는 웹훅을 실행합니다.",
+          "commandLabel": "스크립트 명령",
+          "commandPlaceholder": "예: curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
+          "commandHelper": "알림 이벤트에서 실행할 셸 명령을 입력하세요. 동적 값에는 아래 변수를 사용하세요.",
+          "variables": "사용 가능한 변수:",
+          "varTitle": "알림 제목",
+          "varMessage": "알림 메시지",
+          "varEvent": "이벤트 유형 (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "작업 제목",
+          "varTaskBranch": "작업 브랜치 이름",
+          "varExecutor": "실행자 이름",
+          "varToolName": "도구 이름 (승인 이벤트용)"
         }
       },
       "privacy": {

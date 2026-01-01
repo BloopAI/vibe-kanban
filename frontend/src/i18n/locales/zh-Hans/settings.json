@@ -160,6 +160,25 @@
         "push": {
           "label": "推送通知",
           "helper": "任务尝试完成运行时显示系统通知。"
+        },
+        "browser": {
+          "label": "浏览器通知",
+          "helper": "任务尝试完成运行时显示浏览器通知。需要浏览器权限。"
+        },
+        "script": {
+          "label": "脚本通知",
+          "helper": "在通知事件发生时执行自定义脚本或 webhook。",
+          "commandLabel": "脚本命令",
+          "commandPlaceholder": "例如：curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
+          "commandHelper": "输入要在通知事件上执行的 shell 命令。使用下面的变量来获取动态值。",
+          "variables": "可用变量：",
+          "varTitle": "通知标题",
+          "varMessage": "通知消息",
+          "varEvent": "事件类型（task_completed、task_failed、approval_needed）",
+          "varTaskTitle": "任务标题",
+          "varTaskBranch": "任务分支名称",
+          "varExecutor": "执行器名称",
+          "varToolName": "工具名称（用于批准事件）"
         }
       },
       "privacy": {

@@ -160,6 +160,25 @@
         "push": {
           "label": "Notificaciones Push",
           "helper": "Muestra notificaciones del sistema cuando las tareas terminan de ejecutarse."
+        },
+        "browser": {
+          "label": "Notificaciones del Navegador",
+          "helper": "Muestra notificaciones del navegador cuando las tareas terminan de ejecutarse. Requiere permiso del navegador."
+        },
+        "script": {
+          "label": "Notificaciones por Script",
+          "helper": "Ejecuta un script personalizado o webhook cuando ocurren eventos de notificación.",
+          "commandLabel": "Comando del Script",
+          "commandPlaceholder": "ej., curl -X POST https://webhook.example.com -d '{\"title\": \"{{title}}\"}'",
+          "commandHelper": "Ingresa un comando de shell para ejecutar en eventos de notificación. Usa las variables a continuación para valores dinámicos.",
+          "variables": "Variables Disponibles:",
+          "varTitle": "Título de notificación",
+          "varMessage": "Mensaje de notificación",
+          "varEvent": "Tipo de evento (task_completed, task_failed, approval_needed)",
+          "varTaskTitle": "Título de tarea",
+          "varTaskBranch": "Nombre de rama de tarea",
+          "varExecutor": "Nombre del ejecutor",
+          "varToolName": "Nombre de herramienta (para eventos de aprobación)"
         }
       },
       "privacy": {
