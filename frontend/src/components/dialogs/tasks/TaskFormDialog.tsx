@@ -211,8 +211,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     }
   };
 
+  // Whether to show title input (only in edit mode, title is auto-generated for new tasks)
+  const showTitleInput = editMode;
+
   const validator = (value: TaskFormValues): string | undefined => {
-    if (!value.title.trim().length) return 'need title';
+    // In edit mode, title is required; in create mode, title will be auto-generated
+    if (editMode && !value.title.trim().length) return 'need title';
     if (value.autoStart && !forceCreateOnlyRef.current) {
       if (!value.executorProfileId) return 'need executor profile';
       if (
@@ -338,7 +342,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const canSubmitAlt = useStore(
     form.store,
-    (state) => state.values.title.trim().length > 0 && !state.isSubmitting
+    (state) =>
+      // In edit mode, require title; in create mode, title is auto-generated
+      (editMode ? state.values.title.trim().length > 0 : true) &&
+      !state.isSubmitting
   );
 
   const handleSubmitCreateOnly = useCallback(() => {
@@ -422,29 +429,35 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </div>
           )}
 
-          {/* Title */}
-          <div className="flex-none px-4 py-2 border border-1 border-border">
-            <form.Field name="title">
-              {(field) => (
-                <Input
-                  id="task-title"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-semibold placeholder:text-muted-foreground/60 border-none p-0"
-                  disabled={isSubmitting}
-                  autoFocus
-                />
-              )}
-            </form.Field>
-          </div>
+          {/* Title - only shown in edit mode, auto-generated for new tasks */}
+          {showTitleInput && (
+            <div className="flex-none px-4 py-2 border border-1 border-border">
+              <form.Field name="title">
+                {(field) => (
+                  <Input
+                    id="task-title"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder={t('taskFormDialog.titlePlaceholder')}
+                    className="text-lg font-semibold placeholder:text-muted-foreground/60 border-none p-0"
+                    disabled={isSubmitting}
+                    autoFocus
+                  />
+                )}
+              </form.Field>
+            </div>
+          )}
 
           <div className="flex-1 p-4 min-h-0 overflow-y-auto overscroll-contain space-y-1 border border-1 border-border">
             {/* Description */}
             <form.Field name="description">
               {(field) => (
                 <WYSIWYGEditor
-                  placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                  placeholder={t(
+                    editMode
+                      ? 'taskFormDialog.descriptionPlaceholderEdit'
+                      : 'taskFormDialog.descriptionPlaceholder'
+                  )}
                   value={field.state.value}
                   onChange={(desc) => field.handleChange(desc)}
                   disabled={isSubmitting}
@@ -455,6 +468,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   onShiftCmdEnter={handleSubmitCreateOnly}
                   taskId={editMode ? props.task.id : undefined}
                   localImages={localImages}
+                  autoFocus={!showTitleInput}
                 />
               )}
             </form.Field>

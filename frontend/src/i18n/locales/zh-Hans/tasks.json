@@ -448,7 +448,8 @@
     "createTitle": "创建新任务",
     "editTitle": "编辑任务",
     "titlePlaceholder": "任务标题",
-    "descriptionPlaceholder": "添加更多详情（可选）。输入 @ 搜索文件。",
+    "descriptionPlaceholder": "描述你想要完成的任务...",
+    "descriptionPlaceholderEdit": "添加更多详情（可选）。输入 @ 搜索文件。",
     "statusLabel": "状态",
     "statusOptions": {
       "todo": "待办",
