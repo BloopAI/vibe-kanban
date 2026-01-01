@@ -207,7 +207,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-chivo-mono;
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* 代码块使用等宽字体 */
+  code, pre, .code-block {
+    @apply font-mono;
   }
 
   *:focus {

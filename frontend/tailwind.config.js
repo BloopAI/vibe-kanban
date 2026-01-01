@@ -123,7 +123,31 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        'chivo-mono': ['Chivo Mono', 'Noto Emoji', 'monospace'],
+        // UI 文本字体栈（非等宽）- 支持中文显示
+        'sans': [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'PingFang SC',              // macOS/iOS 苹方简体
+          'Microsoft YaHei',          // Windows 微软雅黑
+          'Noto Sans SC',             // Linux/跨平台
+          'Hiragino Sans GB',         // macOS 备选
+          'Source Han Sans SC',       // 思源黑体
+          'sans-serif',
+          'Noto Emoji',
+        ],
+        // 等宽字体栈（用于代码）
+        'mono': [
+          'Chivo Mono',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Consolas',
+          'Liberation Mono',
+          'Menlo',
+          'monospace',
+          'Noto Emoji',
+        ],
+        // 保留旧名称以兼容现有代码
+        'chivo-mono': ['Chivo Mono', 'ui-monospace', 'monospace', 'Noto Emoji'],
       },
       keyframes: {
         "accordion-down": {
