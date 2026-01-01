@@ -74,6 +74,9 @@
     "selectPlaceholder": "Select an organization",
     "currentBadge": " (current)"
   },
+  "navbar": {
+    "tryNewUI": "try the new UI"
+  },
   "signOut": "Sign out",
   "devMode": {
     "banner": "Development Mode - This is a development build"
