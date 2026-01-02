@@ -34,6 +34,7 @@ function ContextBarButton({
       className={cn(
         'flex items-center justify-center transition-colors',
         'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
+        'text-low group-hover:text-normal',
         className
       )}
       aria-label={label}
@@ -41,7 +42,7 @@ function ContextBarButton({
       {...props}
     >
       <IconComponent
-        className={cn('size-icon-xl text-low hover:text-normal', iconClassName)}
+        className={cn('size-icon-base', iconClassName)}
         weight="bold"
       />
     </button>
@@ -107,15 +108,15 @@ export function ContextBar({
       )}
       style={style}
     >
-      <div className="bg-secondary/50 backdrop-blur-sm border border-secondary rounded-sm shadow-[inset_2px_2px_5px_rgba(255,255,255,0.03),_0_0_10px_rgba(0,0,0,0.2)] px-base">
+      <div className="group bg-secondary/50 backdrop-blur-sm border border-secondary rounded-sm shadow-[inset_2px_2px_5px_rgba(255,255,255,0.03),_0_0_10px_rgba(0,0,0,0.2)] hover:shadow-[inset_2px_2px_5px_rgba(255,255,255,0.06),_0_0_10px_rgba(0,0,0,0.4)] transition-shadow px-base">
         <DragHandle
           onMouseDown={dragHandlers.onMouseDown}
           isDragging={isDragging}
         />
 
-        <div className="flex flex-col py-double">
+        <div className="flex flex-col py-base">
           {/* Primary Icons */}
-          <div className="flex flex-col gap-double">
+          <div className="flex flex-col gap-base">
             <button
               className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
               aria-label={ideLabel}
@@ -124,7 +125,7 @@ export function ContextBar({
             >
               <IdeIcon
                 editorType={editorType}
-                className="size-icon-base hover:text-normal opacity-50 hover:opacity-80"
+                className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
               />
             </button>
             <ContextBarButton
@@ -132,16 +133,18 @@ export function ContextBar({
               label={copied ? 'Copied!' : 'Copy path'}
               onClick={onCopy}
               iconClassName={
-                copied ? 'text-success hover:text-success' : undefined
+                copied
+                  ? 'text-success hover:text-success group-hover:text-success'
+                  : undefined
               }
             />
           </div>
 
           {/* Separator */}
-          <div className="h-px bg-border my-double" />
+          <div className="h-px bg-border my-base" />
 
           {/* Secondary Icons */}
-          <div className="flex flex-col gap-double">
+          <div className="flex flex-col gap-base">
             {attemptId && (
               <ContextBarButton
                 icon={
@@ -171,7 +174,7 @@ export function ContextBar({
                 iconClassName={cn(
                   isStarting || isStopping ? 'animate-spin' : undefined,
                   runningDevServer && !isStopping
-                    ? 'text-error hover:text-error'
+                    ? 'text-error hover:text-error group-hover:text-error'
                     : undefined
                 )}
               />
