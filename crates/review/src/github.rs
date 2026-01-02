@@ -2,6 +2,7 @@ use std::{path::Path, process::Command};
 
 use serde::Deserialize;
 use tracing::debug;
+use url::Url;
 
 use crate::error::ReviewError;
 
@@ -31,34 +32,39 @@ struct GhPrView {
 /// Parse a GitHub PR URL to extract owner, repo, and PR number
 ///
 /// Expected format: https://github.com/owner/repo/pull/123
+/// Also supports GitHub Enterprise: https://github.company.com/owner/repo/pull/123
 pub fn parse_pr_url(url: &str) -> Result<(String, String, i64), ReviewError> {
     let url = url.trim();
 
-    // Remove trailing slashes
-    let url = url.trim_end_matches('/');
+    // Parse the URL using the url crate
+    let parsed_url = Url::parse(url).map_err(|_| ReviewError::InvalidPrUrl)?;
 
-    // Try to parse as URL
-    let parts: Vec<&str> = url.split('/').collect();
+    // Get path segments
+    let path_segments: Vec<&str> = parsed_url
+        .path_segments()
+        .ok_or(ReviewError::InvalidPrUrl)?
+        .collect();
 
-    // Find the index of "github.com" and then extract owner/repo/pull/number
-    let github_idx = parts
+    // We need at least: owner / repo / pull / number
+    if path_segments.len() < 4 {
+        return Err(ReviewError::InvalidPrUrl);
+    }
+
+    // Find the "pull" segment and extract owner/repo/number
+    let pull_idx = path_segments
         .iter()
-        .position(|&p| p == "github.com")
+        .position(|&p| p == "pull")
         .ok_or(ReviewError::InvalidPrUrl)?;
 
-    // We need at least: github.com / owner / repo / pull / number
-    if parts.len() < github_idx + 5 {
+    // We need at least: owner / repo / pull / number
+    if pull_idx < 2 || path_segments.len() < pull_idx + 2 {
         return Err(ReviewError::InvalidPrUrl);
     }
 
-    let owner = parts[github_idx + 1].to_string();
-    let repo = parts[github_idx + 2].to_string();
+    let owner = path_segments[pull_idx - 2].to_string();
+    let repo = path_segments[pull_idx - 1].to_string();
 
-    if parts[github_idx + 3] != "pull" {
-        return Err(ReviewError::InvalidPrUrl);
-    }
-
-    let pr_number: i64 = parts[github_idx + 4]
+    let pr_number: i64 = path_segments[pull_idx + 1]
         .parse()
         .map_err(|_| ReviewError::InvalidPrUrl)?;
 
@@ -214,6 +220,46 @@ mod tests {
     fn test_parse_pr_url_with_trailing_slash() {
         let (owner, repo, pr) =
             parse_pr_url("https://github.com/owner/repo/pull/456/").expect("Should parse");
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+        assert_eq!(pr, 456);
+    }
+
+    #[test]
+    fn test_parse_pr_url_github_enterprise() {
+        let (owner, repo, pr) =
+            parse_pr_url("https://github.company.com/anthropics/claude-code/pull/123")
+                .expect("Should parse GitHub Enterprise URL");
+        assert_eq!(owner, "anthropics");
+        assert_eq!(repo, "claude-code");
+        assert_eq!(pr, 123);
+    }
+
+    #[test]
+    fn test_parse_pr_url_github_enterprise_with_trailing_slash() {
+        let (owner, repo, pr) =
+            parse_pr_url("https://git.company.com/owner/repo/pull/456/")
+                .expect("Should parse GitHub Enterprise URL with trailing slash");
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+        assert_eq!(pr, 456);
+    }
+
+    #[test]
+    fn test_parse_pr_url_with_query_params() {
+        // URLs with query parameters should still work
+        let (owner, repo, pr) = parse_pr_url("https://github.com/owner/repo/pull/123?tab=files")
+            .expect("Should parse URL with query params");
+        assert_eq!(owner, "owner");
+        assert_eq!(repo, "repo");
+        assert_eq!(pr, 123);
+    }
+
+    #[test]
+    fn test_parse_pr_url_enterprise_with_query_params() {
+        // GitHub Enterprise URLs with query parameters
+        let (owner, repo, pr) = parse_pr_url("https://github.company.com/owner/repo/pull/456?tab=commits")
+            .expect("Should parse Enterprise URL with query params");
         assert_eq!(owner, "owner");
         assert_eq!(repo, "repo");
         assert_eq!(pr, 456);
