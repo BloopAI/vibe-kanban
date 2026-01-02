@@ -27,3 +27,4 @@ tracing-subscriber = { workspace = true }
 dialoguer = "0.11"
 dirs = "5.0"
 toml = "0.8"
+url = "2.5"
