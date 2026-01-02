@@ -59,6 +59,12 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 
 **All work should be tracked as Team Issues under the vibe-kanban team.** Team Issues are tasks that appear on the Team Issues board with auto-assigned issue numbers (VIB-XX).
 
+### Quick Reference - Creating a Task
+```bash
+./scripts/vk-cli.py create <project> "<title>" --team vibe-kanban -d "<description>"
+```
+Example: `./scripts/vk-cli.py create frontend "Add search feature" --team vibe-kanban -d "Implement search"`
+
 ### Team and Project Mapping
 - **Team**: `vibe-kanban` - `ea68ef91-e9b7-4c28-9f53-077cf6a08fd3`
 - **Projects** (map issues to the relevant project based on work type):
