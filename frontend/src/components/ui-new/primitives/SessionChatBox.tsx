@@ -142,7 +142,8 @@ export function SessionChatBox({
   const isRunning = status === 'running' || status === 'queued';
   const showRunningAnimation =
     (status === 'running' || status === 'queued' || status === 'sending') &&
-    !hasPendingApproval;
+    !hasPendingApproval &&
+    editor.value.trim().length === 0;
 
   // Placeholder
   const placeholder = isInFeedbackMode
