@@ -252,18 +252,20 @@ pub async fn create_document(
     // Extract content for filesystem storage
     let content = payload.content.take().unwrap_or_default();
     let file_type = payload.file_type.clone().unwrap_or_else(|| "markdown".to_string());
+    let title = payload.title.clone();
 
     // Create document record in DB (without content)
     let document = Document::create(&deployment.db().pool, &payload).await?;
 
-    // Write content to filesystem (use team's custom path if configured)
+    // Write content to filesystem using human-readable title as filename
     let file_info = storage
-        .write_document_with_path(
+        .write_document_with_title(
             team.id,
-            document.id,
+            &title,
             &content,
             &file_type,
             team.document_storage_path.as_deref(),
+            None, // No subfolder for new documents
         )
         .await
         .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
@@ -324,18 +326,34 @@ pub async fn update_document(
     // Update document metadata in DB
     let mut document = Document::update(&deployment.db().pool, document_id, &payload).await?;
 
-    // If content was provided, write to filesystem (use team's custom path if configured)
+    // If content was provided, write to filesystem
     if let Some(ref content) = payload.content {
-        let file_info = storage
-            .write_document_with_path(
-                team.id,
-                document.id,
-                content,
-                &document.file_type,
-                team.document_storage_path.as_deref(),
-            )
-            .await
-            .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+        // Determine file path - use existing if available, otherwise create new title-based path
+        let file_info = if let Some(ref existing_path) = existing.file_path {
+            // Write to existing file path (preserves user's file organization)
+            tokio::fs::write(existing_path, content.as_bytes())
+                .await
+                .map_err(|e| ApiError::Io(e))?;
+
+            services::services::document_storage::DocumentFileInfo {
+                file_path: existing_path.clone(),
+                file_size: content.len() as i64,
+                mime_type: storage.get_mime_type_for_file_type(&document.file_type),
+            }
+        } else {
+            // No existing path - create new file with title-based name
+            storage
+                .write_document_with_title(
+                    team.id,
+                    &document.title,
+                    content,
+                    &document.file_type,
+                    team.document_storage_path.as_deref(),
+                    None,
+                )
+                .await
+                .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
+        };
 
         // Update file metadata
         document = Document::update_file_metadata(

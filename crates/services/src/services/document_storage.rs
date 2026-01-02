@@ -88,7 +88,7 @@ impl DocumentStorageService {
         }
     }
 
-    /// Get the mime type for a file extension
+    /// Get the mime type for a file extension (internal)
     fn get_mime_type(file_type: &str) -> &'static str {
         match file_type.to_lowercase().as_str() {
             "markdown" | "md" => "text/markdown",
@@ -97,6 +97,55 @@ impl DocumentStorageService {
             "csv" => "text/csv",
             "xlsx" | "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             _ => "text/markdown",
+        }
+    }
+
+    /// Get the mime type for a file type (public API)
+    pub fn get_mime_type_for_file_type(&self, file_type: &str) -> String {
+        Self::get_mime_type(file_type).to_string()
+    }
+
+    /// Sanitize a title for use as a filename
+    /// Replaces invalid characters, handles spaces, and limits length
+    fn sanitize_filename(title: &str) -> String {
+        // Replace characters that are invalid in filenames
+        let sanitized: String = title
+            .chars()
+            .map(|c| match c {
+                // Replace invalid filename characters with dash
+                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '-',
+                // Keep alphanumeric, spaces, dashes, underscores, dots
+                c if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' || c == '.' => c,
+                // Replace other special chars with dash
+                _ => '-',
+            })
+            .collect();
+
+        // Replace multiple consecutive dashes/spaces with single dash
+        let mut result = String::new();
+        let mut last_was_separator = false;
+        for c in sanitized.chars() {
+            if c == ' ' || c == '-' {
+                if !last_was_separator && !result.is_empty() {
+                    result.push('-');
+                    last_was_separator = true;
+                }
+            } else {
+                result.push(c);
+                last_was_separator = false;
+            }
+        }
+
+        // Trim dashes from start and end
+        let result = result.trim_matches('-').to_string();
+
+        // Limit length to 100 characters (reasonable filename length)
+        if result.len() > 100 {
+            result[..100].trim_end_matches('-').to_string()
+        } else if result.is_empty() {
+            "untitled".to_string()
+        } else {
+            result
         }
     }
 
@@ -113,7 +162,52 @@ impl DocumentStorageService {
         Ok(dir)
     }
 
-    /// Generate a file path for a new document
+    /// Generate a file path for a new document using title
+    /// If a file with the same name exists, append a number suffix
+    fn generate_file_path_with_title(
+        &self,
+        team_id: Uuid,
+        title: &str,
+        file_type: &str,
+        custom_path: Option<&str>,
+        subfolder: Option<&str>,
+    ) -> PathBuf {
+        let extension = Self::get_extension(file_type);
+        let sanitized_title = Self::sanitize_filename(title);
+
+        let mut base_dir = self.team_documents_dir(team_id, custom_path);
+
+        // If a subfolder is specified, append it to the path
+        if let Some(folder) = subfolder {
+            if !folder.is_empty() {
+                base_dir = base_dir.join(folder);
+            }
+        }
+
+        // Try the base filename first
+        let base_filename = format!("{}.{}", sanitized_title, extension);
+        let mut file_path = base_dir.join(&base_filename);
+
+        // If file exists, append a number suffix to make it unique
+        let mut counter = 1;
+        while file_path.exists() {
+            let numbered_filename = format!("{}-{}.{}", sanitized_title, counter, extension);
+            file_path = base_dir.join(numbered_filename);
+            counter += 1;
+
+            // Safety limit to prevent infinite loop
+            if counter > 1000 {
+                // Fall back to UUID if too many conflicts
+                file_path = base_dir.join(format!("{}-{}.{}", sanitized_title, Uuid::new_v4(), extension));
+                break;
+            }
+        }
+
+        file_path
+    }
+
+    /// Generate a file path for a new document (legacy, uses UUID)
+    #[allow(dead_code)]
     fn generate_file_path(
         &self,
         team_id: Uuid,
@@ -126,9 +220,47 @@ impl DocumentStorageService {
             .join(format!("{}.{}", document_id, extension))
     }
 
-    /// Write document content to filesystem
+    /// Write document content to filesystem using human-readable title as filename
     /// Returns the file path and file size
-    /// If custom_path is provided, store documents there instead of default location
+    pub async fn write_document_with_title(
+        &self,
+        team_id: Uuid,
+        title: &str,
+        content: &str,
+        file_type: &str,
+        custom_path: Option<&str>,
+        subfolder: Option<&str>,
+    ) -> Result<DocumentFileInfo, DocumentStorageError> {
+        // Ensure base directory exists
+        let mut target_dir = self.team_documents_dir(team_id, custom_path);
+
+        // If subfolder specified, create it
+        if let Some(folder) = subfolder {
+            if !folder.is_empty() {
+                target_dir = target_dir.join(folder);
+            }
+        }
+
+        if !target_dir.exists() {
+            fs::create_dir_all(&target_dir).await?;
+        }
+
+        let file_path =
+            self.generate_file_path_with_title(team_id, title, file_type, custom_path, subfolder);
+        fs::write(&file_path, content.as_bytes()).await?;
+
+        let file_size = content.len() as i64;
+        let mime_type = Self::get_mime_type(file_type);
+
+        Ok(DocumentFileInfo {
+            file_path: file_path.to_string_lossy().to_string(),
+            file_size,
+            mime_type: mime_type.to_string(),
+        })
+    }
+
+    /// Write document content to filesystem (legacy, uses UUID as filename)
+    #[allow(dead_code)]
     pub async fn write_document(
         &self,
         team_id: Uuid,
@@ -140,7 +272,8 @@ impl DocumentStorageService {
             .await
     }
 
-    /// Write document content to filesystem with optional custom path
+    /// Write document content to filesystem with optional custom path (legacy, uses UUID)
+    #[allow(dead_code)]
     pub async fn write_document_with_path(
         &self,
         team_id: Uuid,
