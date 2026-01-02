@@ -60,6 +60,9 @@ interface ChatBoxBaseProps {
 
   // Whether the workspace is running (shows animated border)
   isRunning?: boolean;
+
+  // Key to force editor remount (e.g., when entering feedback mode to trigger auto-focus)
+  focusKey?: string;
 }
 
 /**
@@ -83,6 +86,7 @@ export function ChatBoxBase({
   visualVariant,
   onPasteFiles,
   isRunning,
+  focusKey,
 }: ChatBoxBaseProps) {
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
@@ -119,6 +123,7 @@ export function ChatBoxBase({
       {/* Editor area */}
       <div className="flex flex-col gap-plusfifty px-double py-plusfifty rounded-md">
         <WYSIWYGEditor
+          key={focusKey}
           placeholder={placeholder}
           value={editor.value}
           onChange={editor.onChange}
