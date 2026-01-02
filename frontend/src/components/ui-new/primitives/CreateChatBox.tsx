@@ -1,9 +1,5 @@
 import { useRef } from 'react';
-import {
-  CheckIcon,
-  PaperclipIcon,
-  PaperPlaneTiltIcon,
-} from '@phosphor-icons/react';
+import { CheckIcon, PaperclipIcon } from '@phosphor-icons/react';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
@@ -128,7 +124,7 @@ export function CreateChatBox({
         <PrimaryButton
           onClick={onSend}
           disabled={!canSend}
-          actionIcon={isSending ? 'spinner' : PaperPlaneTiltIcon}
+          actionIcon={isSending ? 'spinner' : undefined}
           value={isSending ? 'Creating...' : 'Create'}
         />
       }
