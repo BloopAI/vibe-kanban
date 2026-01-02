@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { teamsApi } from '@/lib/api';
 import type {
   GitHubConnectionWithRepos,
@@ -14,6 +14,7 @@ export interface UseGitHubConnectionResult {
   isLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
+  connectWithOAuth: () => Promise<void>;
   createConnection: (data: CreateGitHubConnection) => Promise<void>;
   updateConnection: (data: UpdateGitHubConnection) => Promise<void>;
   deleteConnection: () => Promise<void>;
@@ -25,6 +26,7 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
   const [connection, setConnection] = useState<GitHubConnectionWithRepos | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const oauthWindowRef = useRef<Window | null>(null);
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
@@ -44,7 +46,37 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
     refresh();
   }, [refresh]);
 
+  // Listen for OAuth window close to refresh connection
+  useEffect(() => {
+    const checkOAuthWindow = setInterval(() => {
+      if (oauthWindowRef.current?.closed) {
+        oauthWindowRef.current = null;
+        refresh();
+      }
+    }, 500);
+
+    return () => clearInterval(checkOAuthWindow);
+  }, [refresh]);
+
   const repositories = connection?.repositories ?? [];
+
+  const connectWithOAuth = useCallback(async () => {
+    try {
+      const { authorize_url } = await teamsApi.getGitHubAuthorizeUrl(teamId);
+      // Open OAuth window
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      oauthWindowRef.current = window.open(
+        authorize_url,
+        'github-oauth',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+    } catch (err) {
+      throw err instanceof Error ? err : new Error('Failed to start OAuth flow');
+    }
+  }, [teamId]);
 
   const createConnection = useCallback(
     async (data: CreateGitHubConnection) => {
@@ -90,6 +122,7 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
     isLoading,
     error,
     refresh,
+    connectWithOAuth,
     createConnection,
     updateConnection,
     deleteConnection,

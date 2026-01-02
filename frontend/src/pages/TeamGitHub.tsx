@@ -6,15 +6,12 @@ import {
   AlertCircle,
   Link,
   Unlink,
-  Eye,
-  EyeOff,
   Trash2,
   ExternalLink,
   Lock,
   Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -55,50 +52,25 @@ export default function TeamGitHub() {
     repositories,
     isLoading,
     error,
-    createConnection,
-    updateConnection,
+    connectWithOAuth,
     deleteConnection,
     unlinkRepository,
   } = useGitHubConnection(teamId || '');
 
-  const [token, setToken] = useState('');
-  const [showToken, setShowToken] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
   const [repoToUnlink, setRepoToUnlink] = useState<string | null>(null);
 
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token.trim()) return;
-
+  const handleOAuthConnect = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      await createConnection({ access_token: token.trim() });
-      setToken('');
+      await connectWithOAuth();
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : 'Failed to connect GitHub'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateToken = async () => {
-    if (!token.trim()) return;
-
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      await updateConnection({ access_token: token.trim(), github_username: null });
-      setToken('');
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to update token'
+        err instanceof Error ? err.message : 'Failed to start OAuth flow'
       );
     } finally {
       setIsSubmitting(false);
@@ -202,43 +174,29 @@ export default function TeamGitHub() {
                 </Badge>
               </div>
 
-              {/* Update Token Section */}
+              {/* Reconnect Section */}
               <div className="border-t pt-4 space-y-3">
-                <Label>Update Personal Access Token</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type={showToken ? 'text' : 'password'}
-                      value={token}
-                      onChange={(e) => setToken(e.target.value)}
-                      placeholder="ghp_xxxxxxxxxxxx"
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3"
-                      onClick={() => setShowToken(!showToken)}
-                    >
-                      {showToken ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <Button
-                    onClick={handleUpdateToken}
-                    disabled={!token.trim() || isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Update'
-                    )}
-                  </Button>
-                </div>
+                <Label>Reconnect GitHub</Label>
+                <p className="text-sm text-muted-foreground">
+                  If you need to refresh your connection or change accounts, reconnect below.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleOAuthConnect}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Reconnecting...
+                    </>
+                  ) : (
+                    <>
+                      <Github className="h-4 w-4 mr-2" />
+                      Reconnect with GitHub
+                    </>
+                  )}
+                </Button>
               </div>
 
               {/* Disconnect Button */}
@@ -253,47 +211,13 @@ export default function TeamGitHub() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleConnect} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="token">Personal Access Token</Label>
-                <div className="relative">
-                  <Input
-                    id="token"
-                    type={showToken ? 'text' : 'password'}
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="ghp_xxxxxxxxxxxx"
-                    className="pr-10"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowToken(!showToken)}
-                  >
-                    {showToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Generate a token at{' '}
-                  <a
-                    href="https://github.com/settings/tokens"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    GitHub Settings &rarr; Developer settings &rarr; Personal access tokens
-                  </a>
-                </p>
-              </div>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Click the button below to authorize this app with your GitHub account.
+                This will allow us to access your repositories.
+              </p>
 
-              <Button type="submit" disabled={isSubmitting || !token.trim()}>
+              <Button onClick={handleOAuthConnect} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -302,11 +226,11 @@ export default function TeamGitHub() {
                 ) : (
                   <>
                     <Github className="h-4 w-4 mr-2" />
-                    Connect GitHub
+                    Connect with GitHub
                   </>
                 )}
               </Button>
-            </form>
+            </div>
           )}
         </CardContent>
       </Card>

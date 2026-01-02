@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use db::models::github_connection::{CreateGitHubConnection, GitHubConnection, UpdateGitHubConnection};
 use chrono::{DateTime, Utc};
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
@@ -46,6 +47,9 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/auth/status", get(status))
         .route("/auth/token", get(get_token))
         .route("/auth/user", get(get_current_user))
+        // GitHub OAuth for team connections
+        .route("/oauth/github/authorize", get(github_authorize))
+        .route("/oauth/github/callback", get(github_callback))
 }
 
 #[derive(Debug, Deserialize)]
@@ -366,4 +370,170 @@ fn close_window_response(message: String) -> Response<String> {
         .header("content-type", "text/html; charset=utf-8")
         .body(body)
         .unwrap()
+}
+
+// ============================================================================
+// GitHub OAuth for Team Connections
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+struct GitHubAuthorizeQuery {
+    team_id: Uuid,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct GitHubAuthorizeResponse {
+    pub authorize_url: String,
+    pub state: String,
+}
+
+/// Initiates GitHub OAuth flow - returns the authorization URL
+async fn github_authorize(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<GitHubAuthorizeQuery>,
+) -> Result<ResponseJson<ApiResponse<GitHubAuthorizeResponse>>, ApiError> {
+    let client_id = std::env::var("GITHUB_CLIENT_ID")
+        .map_err(|_| ApiError::BadRequest("GITHUB_CLIENT_ID not configured".to_string()))?;
+
+    let redirect_uri = std::env::var("GITHUB_REDIRECT_URI").unwrap_or_else(|_| {
+        let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+        format!("http://localhost:{}/api/oauth/github/callback", port)
+    });
+
+    // Generate state with team_id encoded
+    let state = format!("{}:{}", query.team_id, generate_secret());
+
+    // Store the state for verification
+    deployment
+        .store_github_oauth_state(state.clone(), query.team_id)
+        .await;
+
+    let authorize_url = format!(
+        "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope={}&state={}",
+        client_id,
+        urlencoding::encode(&redirect_uri),
+        urlencoding::encode("repo read:user"),
+        urlencoding::encode(&state)
+    );
+
+    Ok(ResponseJson(ApiResponse::success(GitHubAuthorizeResponse {
+        authorize_url,
+        state,
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubCallbackQuery {
+    code: String,
+    state: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubTokenResponse {
+    access_token: String,
+    token_type: String,
+    scope: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitHubUserResponse {
+    login: String,
+}
+
+/// Handles GitHub OAuth callback - exchanges code for token
+async fn github_callback(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<GitHubCallbackQuery>,
+) -> Result<Response<String>, ApiError> {
+    // Verify state and get team_id
+    let team_id = match deployment.take_github_oauth_state(&query.state).await {
+        Some(id) => id,
+        None => {
+            return Ok(simple_html_response(
+                StatusCode::BAD_REQUEST,
+                "Invalid or expired OAuth state".to_string(),
+            ));
+        }
+    };
+
+    let client_id = std::env::var("GITHUB_CLIENT_ID")
+        .map_err(|_| ApiError::BadRequest("GITHUB_CLIENT_ID not configured".to_string()))?;
+    let client_secret = std::env::var("GITHUB_CLIENT_SECRET")
+        .map_err(|_| ApiError::BadRequest("GITHUB_CLIENT_SECRET not configured".to_string()))?;
+
+    // Exchange code for access token
+    let client = reqwest::Client::new();
+    let token_response = client
+        .post("https://github.com/login/oauth/access_token")
+        .header("Accept", "application/json")
+        .form(&[
+            ("client_id", &client_id),
+            ("client_secret", &client_secret),
+            ("code", &query.code),
+        ])
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to exchange code: {}", e)))?;
+
+    if !token_response.status().is_success() {
+        return Ok(simple_html_response(
+            StatusCode::BAD_REQUEST,
+            "Failed to exchange authorization code".to_string(),
+        ));
+    }
+
+    let token_data: GitHubTokenResponse = token_response
+        .json()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid token response: {}", e)))?;
+
+    // Fetch GitHub username
+    let user_response = client
+        .get("https://api.github.com/user")
+        .header("Authorization", format!("Bearer {}", token_data.access_token))
+        .header("User-Agent", "vibe-kanban")
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to fetch user: {}", e)))?;
+
+    let github_username = if user_response.status().is_success() {
+        user_response
+            .json::<GitHubUserResponse>()
+            .await
+            .ok()
+            .map(|u| u.login)
+    } else {
+        None
+    };
+
+    // Store or update the connection
+    let existing = GitHubConnection::find_by_team_id(&deployment.db().pool, team_id).await?;
+
+    if let Some(conn) = existing {
+        // Update existing connection
+        let update = UpdateGitHubConnection {
+            access_token: Some(token_data.access_token),
+            github_username,
+        };
+        GitHubConnection::update(&deployment.db().pool, conn.id, &update).await?;
+    } else {
+        // Create new connection
+        let create = CreateGitHubConnection {
+            access_token: token_data.access_token,
+        };
+        let conn = GitHubConnection::create(&deployment.db().pool, team_id, &create).await?;
+
+        // Update with username if available
+        if github_username.is_some() {
+            let update = UpdateGitHubConnection {
+                access_token: None,
+                github_username,
+            };
+            GitHubConnection::update(&deployment.db().pool, conn.id, &update).await?;
+        }
+    }
+
+    Ok(close_window_response(
+        "GitHub connected successfully! You can close this window.".to_string(),
+    ))
 }

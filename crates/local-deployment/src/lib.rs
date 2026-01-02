@@ -56,6 +56,7 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    github_oauth_states: Arc<RwLock<HashMap<String, Uuid>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +166,7 @@ impl Deployment for LocalDeployment {
             .map_err(|e| *e);
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let github_oauth_states = Arc::new(RwLock::new(HashMap::new()));
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -209,6 +211,7 @@ impl Deployment for LocalDeployment {
             remote_client,
             auth_context,
             oauth_handoffs,
+            github_oauth_states,
         };
 
         Ok(deployment)
@@ -335,6 +338,17 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub async fn store_github_oauth_state(&self, state: String, team_id: Uuid) {
+        self.github_oauth_states
+            .write()
+            .await
+            .insert(state, team_id);
+    }
+
+    pub async fn take_github_oauth_state(&self, state: &str) -> Option<Uuid> {
+        self.github_oauth_states.write().await.remove(state)
     }
 
     pub fn share_config(&self) -> Option<&ShareConfig> {

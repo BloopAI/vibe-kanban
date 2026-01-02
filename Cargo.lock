@@ -5337,6 +5337,7 @@ dependencies = [
  "tracing-subscriber",
  "ts-rs 11.0.1",
  "url",
+ "urlencoding",
  "utils",
  "uuid",
 ]

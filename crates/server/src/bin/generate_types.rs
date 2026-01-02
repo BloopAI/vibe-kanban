@@ -133,6 +133,7 @@ fn generate_types_content() -> String {
         server::routes::config::CheckEditorAvailabilityResponse::decl(),
         server::routes::config::CheckAgentAvailabilityQuery::decl(),
         server::routes::oauth::CurrentUserResponse::decl(),
+        server::routes::oauth::GitHubAuthorizeResponse::decl(),
         server::routes::sessions::CreateFollowUpAttempt::decl(),
         server::routes::task_attempts::ChangeTargetBranchRequest::decl(),
         server::routes::task_attempts::ChangeTargetBranchResponse::decl(),

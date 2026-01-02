@@ -113,6 +113,7 @@ import {
   CreateGitHubConnection,
   UpdateGitHubConnection,
   LinkGitHubRepository,
+  GitHubAuthorizeResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1474,6 +1475,16 @@ export const teamsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  // GitHub OAuth
+  getGitHubAuthorizeUrl: async (
+    teamId: string
+  ): Promise<GitHubAuthorizeResponse> => {
+    const response = await makeRequest(
+      `/api/oauth/github/authorize?team_id=${teamId}`
+    );
+    return handleApiResponse<GitHubAuthorizeResponse>(response);
   },
 };
 
