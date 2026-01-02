@@ -122,6 +122,13 @@ export function SessionChatBox({
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
   const isInEditMode = editMode?.isActive ?? false;
 
+  // Key to force editor remount when entering feedback/edit mode (triggers auto-focus)
+  const focusKey = isInFeedbackMode
+    ? 'feedback'
+    : isInEditMode
+      ? 'edit'
+      : 'normal';
+
   // Derived state from status
   const isDisabled =
     status === 'sending' ||
@@ -334,6 +341,7 @@ export function SessionChatBox({
       disabled={isDisabled}
       projectId={projectId}
       autoFocus={true}
+      focusKey={focusKey}
       variant={variant}
       error={displayError}
       banner={renderBanner()}
