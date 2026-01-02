@@ -2,6 +2,7 @@ import {
   SidebarSimpleIcon,
   ArchiveIcon,
   ArrowSquareOutIcon,
+  ListDashesIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -52,11 +53,14 @@ export interface NavbarProps {
   // Panel visibility states
   isSidebarVisible?: boolean;
   isGitPanelVisible?: boolean;
+  isChangesMode?: boolean;
+  isCreateMode?: boolean;
   // Archive state
   isArchived?: boolean;
   // Panel toggle handlers
   onToggleSidebar?: () => void;
   onToggleGitPanel?: () => void;
+  onToggleChangesMode?: () => void;
   onToggleArchive?: () => void;
   // Navigation to old UI
   onNavigateToOldUI?: () => void;
@@ -67,9 +71,12 @@ export function Navbar({
   workspaceTitle = 'Workspace Title',
   isSidebarVisible,
   isGitPanelVisible,
+  isChangesMode,
+  isCreateMode,
   isArchived,
   onToggleSidebar,
   onToggleGitPanel,
+  onToggleChangesMode,
   onToggleArchive,
   onNavigateToOldUI,
   className,
@@ -85,9 +92,11 @@ export function Navbar({
       <div className="flex-1 flex items-center gap-base">
         <NavbarIconButton
           icon={SidebarSimpleIcon}
-          isActive={isSidebarVisible}
+          isActive={isSidebarVisible && !isChangesMode}
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
+          disabled={isChangesMode}
+          className={isChangesMode ? 'opacity-40 cursor-not-allowed' : ''}
         />
         {(onToggleArchive || onNavigateToOldUI) && (
           <>
@@ -118,8 +127,16 @@ export function Navbar({
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
-      {/* Right - Git Panel Toggle */}
-      <div className="flex-1 flex items-center justify-end">
+      {/* Right - Changes Toggle & Git Panel Toggle */}
+      <div className="flex-1 flex items-center justify-end gap-base">
+        <NavbarIconButton
+          icon={ListDashesIcon}
+          isActive={isChangesMode}
+          onClick={onToggleChangesMode}
+          aria-label="Toggle changes mode"
+          disabled={isCreateMode}
+          className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
+        />
         <NavbarIconButton
           icon={SidebarSimpleIcon}
           rotation={180}

@@ -40,7 +40,7 @@ export function GitPanel({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col gap-double pt-double px-double text-low',
+        'w-full h-full bg-secondary flex flex-col gap-double p-double text-low overflow-y-auto',
         className
       )}
     >
