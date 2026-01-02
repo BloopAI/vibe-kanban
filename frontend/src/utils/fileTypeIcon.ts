@@ -33,7 +33,7 @@ import {
   PostgreSQL,
   GraphQL,
 } from 'developer-icons';
-import { FileIcon, FileMd } from '@phosphor-icons/react';
+import { FileIcon, FileMd, FileCss } from '@phosphor-icons/react';
 
 // Match the DeveloperIconProps from developer-icons
 interface DeveloperIconProps extends Partial<SVGProps<SVGElement>> {
@@ -68,6 +68,14 @@ const FileMdWrapper: DeveloperIcon = ({ size, ...props }) => {
   }) as unknown as FunctionComponentElement<DeveloperIconProps>;
 };
 
+// Wrapper for FileCss from phosphor
+const FileCssWrapper: DeveloperIcon = ({ size, ...props }) => {
+  return createElement(FileCss, {
+    size,
+    ...(props as object),
+  }) as unknown as FunctionComponentElement<DeveloperIconProps>;
+};
+
 const extToIcon: Record<string, IconMapping> = {
   // TypeScript/JavaScript
   ts: icon(TypeScript),
@@ -80,7 +88,7 @@ const extToIcon: Record<string, IconMapping> = {
   // Web
   html: icon(HTML5),
   htm: icon(HTML5),
-  css: icon(CSS3),
+  css: icon(FileCssWrapper),
   scss: icon(Sass),
   sass: icon(Sass),
   less: icon(CSS3),
