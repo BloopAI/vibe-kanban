@@ -52,13 +52,13 @@ export type CreateTag = { tag_name: string, content: string, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
-export type Team = { id: string, name: string, identifier: string | null, icon: string | null, color: string | null, created_at: Date, updated_at: Date, };
+export type Team = { id: string, name: string, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, created_at: Date, updated_at: Date, };
 
 export type TeamProject = { team_id: string, project_id: string, created_at: Date, };
 
 export type CreateTeam = { name: string, identifier: string | null, icon: string | null, color: string | null, };
 
-export type UpdateTeam = { name: string | null, identifier: string | null, icon: string | null, color: string | null, };
+export type UpdateTeam = { name: string | null, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, };
 
 export type TeamProjectAssignment = { project_id: string, };
 
@@ -77,6 +77,22 @@ migrated_count: number,
  * List of migrated task IDs
  */
 task_ids: Array<string>, };
+
+export type ValidateStoragePathRequest = { 
+/**
+ * The path to validate
+ */
+path: string, };
+
+export type ValidateStoragePathResponse = { 
+/**
+ * Whether the path is valid
+ */
+valid: boolean, 
+/**
+ * Error message if invalid
+ */
+error: string | null, };
 
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 

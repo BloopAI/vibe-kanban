@@ -256,9 +256,15 @@ pub async fn create_document(
     // Create document record in DB (without content)
     let document = Document::create(&deployment.db().pool, &payload).await?;
 
-    // Write content to filesystem
+    // Write content to filesystem (use team's custom path if configured)
     let file_info = storage
-        .write_document(team.id, document.id, &content, &file_type)
+        .write_document_with_path(
+            team.id,
+            document.id,
+            &content,
+            &file_type,
+            team.document_storage_path.as_deref(),
+        )
         .await
         .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
@@ -318,10 +324,16 @@ pub async fn update_document(
     // Update document metadata in DB
     let mut document = Document::update(&deployment.db().pool, document_id, &payload).await?;
 
-    // If content was provided, write to filesystem
+    // If content was provided, write to filesystem (use team's custom path if configured)
     if let Some(ref content) = payload.content {
         let file_info = storage
-            .write_document(team.id, document.id, content, &document.file_type)
+            .write_document_with_path(
+                team.id,
+                document.id,
+                content,
+                &document.file_type,
+                team.document_storage_path.as_deref(),
+            )
             .await
             .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 

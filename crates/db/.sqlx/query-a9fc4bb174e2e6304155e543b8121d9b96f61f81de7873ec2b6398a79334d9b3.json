@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT t.id as \"id!: Uuid\",\n                      t.name,\n                      t.identifier,\n                      t.icon,\n                      t.color,\n                      t.created_at as \"created_at!: DateTime<Utc>\",\n                      t.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM teams t\n               INNER JOIN team_projects tp ON t.id = tp.team_id\n               WHERE tp.project_id = $1\n               ORDER BY t.name ASC",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      identifier,\n                      icon,\n                      color,\n                      document_storage_path,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM teams\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -29,13 +29,18 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "document_storage_path",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
@@ -48,9 +53,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "db2ea837270bc863399bf0a02a9b4b369fa04620a21379c2a777a3f79f003fd6"
+  "hash": "a9fc4bb174e2e6304155e543b8121d9b96f61f81de7873ec2b6398a79334d9b3"
 }

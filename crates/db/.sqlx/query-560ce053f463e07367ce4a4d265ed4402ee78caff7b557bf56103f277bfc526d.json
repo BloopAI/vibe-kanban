@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.id as \"id!: Uuid\",\n                      t.name,\n                      t.identifier,\n                      t.icon,\n                      t.color,\n                      t.document_storage_path,\n                      t.created_at as \"created_at!: DateTime<Utc>\",\n                      t.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM teams t\n               INNER JOIN team_projects tp ON t.id = tp.team_id\n               WHERE tp.project_id = $1\n               ORDER BY t.name ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "identifier",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "icon",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "color",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "document_storage_path",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "560ce053f463e07367ce4a4d265ed4402ee78caff7b557bf56103f277bfc526d"
+}

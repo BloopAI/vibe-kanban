@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO teams (id, name, identifier, icon, color)\n               VALUES ($1, $2, $3, $4, $5)\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         identifier,\n                         icon,\n                         color,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      identifier,\n                      icon,\n                      color,\n                      document_storage_path,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM teams\n               ORDER BY name ASC",
   "describe": {
     "columns": [
       {
@@ -29,18 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "document_storage_path",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 0
     },
     "nullable": [
       true,
@@ -48,9 +53,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "4531720c1c3fb7b4ac6138dc922c60610cc09efa2034d5663d48c858138e6dc9"
+  "hash": "9bd682d11ecfc9aaea710b4d40dfaafd21851a62be22e0a2aa43c33bf5add632"
 }

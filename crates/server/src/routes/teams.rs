@@ -7,7 +7,8 @@ use axum::{
 };
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
 use deployment::Deployment;
 use utils::response::ApiResponse;
@@ -29,6 +30,22 @@ pub struct MigrateTasksResponse {
     pub migrated_count: usize,
     /// List of migrated task IDs
     pub task_ids: Vec<Uuid>,
+}
+
+/// Request to validate a storage path
+#[derive(Debug, Deserialize, TS)]
+pub struct ValidateStoragePathRequest {
+    /// The path to validate
+    pub path: String,
+}
+
+/// Response for storage path validation
+#[derive(Debug, Serialize, TS)]
+pub struct ValidateStoragePathResponse {
+    /// Whether the path is valid
+    pub valid: bool,
+    /// Error message if invalid
+    pub error: Option<String>,
 }
 
 /// Get all teams
@@ -205,6 +222,26 @@ pub async fn migrate_tasks_to_team(
     })))
 }
 
+/// Validate a storage path for document storage
+pub async fn validate_storage_path(
+    Json(payload): Json<ValidateStoragePathRequest>,
+) -> Result<ResponseJson<ApiResponse<ValidateStoragePathResponse>>, ApiError> {
+    match DocumentStorageService::validate_storage_path(&payload.path).await {
+        Ok(()) => Ok(ResponseJson(ApiResponse::success(
+            ValidateStoragePathResponse {
+                valid: true,
+                error: None,
+            },
+        ))),
+        Err(e) => Ok(ResponseJson(ApiResponse::success(
+            ValidateStoragePathResponse {
+                valid: false,
+                error: Some(e.to_string()),
+            },
+        ))),
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -216,6 +253,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let inner = Router::new()
         .route("/", get(get_teams).post(create_team))
+        .route("/validate-storage-path", post(validate_storage_path))
         .nest("/{team_id}", team_router);
 
     Router::new().nest("/teams", inner)

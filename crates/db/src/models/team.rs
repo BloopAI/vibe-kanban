@@ -11,6 +11,7 @@ pub struct Team {
     pub identifier: Option<String>, // Team prefix for issue IDs (e.g., "VIB")
     pub icon: Option<String>,
     pub color: Option<String>,
+    pub document_storage_path: Option<String>, // Custom path for document storage
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -39,6 +40,7 @@ pub struct UpdateTeam {
     pub identifier: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
+    pub document_storage_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -74,6 +76,7 @@ impl Team {
                       identifier,
                       icon,
                       color,
+                      document_storage_path,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM teams
@@ -91,6 +94,7 @@ impl Team {
                       identifier,
                       icon,
                       color,
+                      document_storage_path,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM teams
@@ -118,6 +122,7 @@ impl Team {
                          identifier,
                          icon,
                          color,
+                         document_storage_path,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -143,24 +148,30 @@ impl Team {
         let identifier = data.identifier.clone().or(existing.identifier);
         let icon = data.icon.clone().or(existing.icon);
         let color = data.color.clone().or(existing.color);
+        let document_storage_path = data
+            .document_storage_path
+            .clone()
+            .or(existing.document_storage_path);
 
         sqlx::query_as!(
             Team,
             r#"UPDATE teams
-               SET name = $2, identifier = $3, icon = $4, color = $5, updated_at = datetime('now', 'subsec')
+               SET name = $2, identifier = $3, icon = $4, color = $5, document_storage_path = $6, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
                          identifier,
                          icon,
                          color,
+                         document_storage_path,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
             identifier,
             icon,
-            color
+            color,
+            document_storage_path
         )
         .fetch_one(pool)
         .await
@@ -235,6 +246,7 @@ impl Team {
                       t.identifier,
                       t.icon,
                       t.color,
+                      t.document_storage_path,
                       t.created_at as "created_at!: DateTime<Utc>",
                       t.updated_at as "updated_at!: DateTime<Utc>"
                FROM teams t

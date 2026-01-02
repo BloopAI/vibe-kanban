@@ -96,6 +96,8 @@ import {
   TeamProjectAssignment,
   MigrateTasksRequest,
   MigrateTasksResponse,
+  ValidateStoragePathRequest,
+  ValidateStoragePathResponse,
   InboxItem,
   CreateInboxItem,
   InboxSummary,
@@ -1390,6 +1392,16 @@ export const teamsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<MigrateTasksResponse>(response);
+  },
+
+  validateStoragePath: async (
+    data: ValidateStoragePathRequest
+  ): Promise<ValidateStoragePathResponse> => {
+    const response = await makeRequest('/api/teams/validate-storage-path', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ValidateStoragePathResponse>(response);
   },
 };
 

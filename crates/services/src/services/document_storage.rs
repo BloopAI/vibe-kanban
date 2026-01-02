@@ -11,6 +11,10 @@ pub enum DocumentStorageError {
     NotFound(String),
     #[error("Invalid file extension")]
     InvalidExtension,
+    #[error("Invalid storage path: {0}")]
+    InvalidPath(String),
+    #[error("Path is not writable: {0}")]
+    NotWritable(String),
 }
 
 /// Service for storing documents on the filesystem
@@ -27,10 +31,49 @@ impl DocumentStorageService {
     }
 
     /// Get the documents directory for a team
-    fn team_documents_dir(&self, team_id: Uuid) -> PathBuf {
-        self.base_path
-            .join("documents")
-            .join(team_id.to_string())
+    /// If custom_path is provided, use it directly; otherwise use default
+    fn team_documents_dir(&self, team_id: Uuid, custom_path: Option<&str>) -> PathBuf {
+        if let Some(path) = custom_path {
+            PathBuf::from(path)
+        } else {
+            self.base_path
+                .join("documents")
+                .join(team_id.to_string())
+        }
+    }
+
+    /// Validate that a storage path exists and is writable
+    pub async fn validate_storage_path(path: &str) -> Result<(), DocumentStorageError> {
+        let path_buf = PathBuf::from(path);
+
+        // Check if path exists
+        if !path_buf.exists() {
+            // Try to create it
+            fs::create_dir_all(&path_buf).await.map_err(|_| {
+                DocumentStorageError::InvalidPath(format!(
+                    "Path does not exist and cannot be created: {}",
+                    path
+                ))
+            })?;
+        }
+
+        // Check if path is a directory
+        if !path_buf.is_dir() {
+            return Err(DocumentStorageError::InvalidPath(format!(
+                "Path is not a directory: {}",
+                path
+            )));
+        }
+
+        // Check if writable by creating a temp file
+        let test_file = path_buf.join(".vibe-kanban-test");
+        match fs::write(&test_file, b"test").await {
+            Ok(_) => {
+                let _ = fs::remove_file(&test_file).await;
+                Ok(())
+            }
+            Err(_) => Err(DocumentStorageError::NotWritable(path.to_string())),
+        }
     }
 
     /// Get the file extension for a document type
@@ -58,8 +101,12 @@ impl DocumentStorageService {
     }
 
     /// Ensure the team's documents directory exists
-    async fn ensure_team_dir(&self, team_id: Uuid) -> Result<PathBuf, DocumentStorageError> {
-        let dir = self.team_documents_dir(team_id);
+    async fn ensure_team_dir(
+        &self,
+        team_id: Uuid,
+        custom_path: Option<&str>,
+    ) -> Result<PathBuf, DocumentStorageError> {
+        let dir = self.team_documents_dir(team_id, custom_path);
         if !dir.exists() {
             fs::create_dir_all(&dir).await?;
         }
@@ -67,14 +114,21 @@ impl DocumentStorageService {
     }
 
     /// Generate a file path for a new document
-    fn generate_file_path(&self, team_id: Uuid, document_id: Uuid, file_type: &str) -> PathBuf {
+    fn generate_file_path(
+        &self,
+        team_id: Uuid,
+        document_id: Uuid,
+        file_type: &str,
+        custom_path: Option<&str>,
+    ) -> PathBuf {
         let extension = Self::get_extension(file_type);
-        self.team_documents_dir(team_id)
+        self.team_documents_dir(team_id, custom_path)
             .join(format!("{}.{}", document_id, extension))
     }
 
     /// Write document content to filesystem
     /// Returns the file path and file size
+    /// If custom_path is provided, store documents there instead of default location
     pub async fn write_document(
         &self,
         team_id: Uuid,
@@ -82,9 +136,22 @@ impl DocumentStorageService {
         content: &str,
         file_type: &str,
     ) -> Result<DocumentFileInfo, DocumentStorageError> {
-        self.ensure_team_dir(team_id).await?;
+        self.write_document_with_path(team_id, document_id, content, file_type, None)
+            .await
+    }
 
-        let file_path = self.generate_file_path(team_id, document_id, file_type);
+    /// Write document content to filesystem with optional custom path
+    pub async fn write_document_with_path(
+        &self,
+        team_id: Uuid,
+        document_id: Uuid,
+        content: &str,
+        file_type: &str,
+        custom_path: Option<&str>,
+    ) -> Result<DocumentFileInfo, DocumentStorageError> {
+        self.ensure_team_dir(team_id, custom_path).await?;
+
+        let file_path = self.generate_file_path(team_id, document_id, file_type, custom_path);
         fs::write(&file_path, content.as_bytes()).await?;
 
         let file_size = content.len() as i64;
@@ -124,6 +191,7 @@ impl DocumentStorageService {
         team_id: Uuid,
         document_id: Uuid,
         new_file_type: &str,
+        custom_path: Option<&str>,
     ) -> Result<DocumentFileInfo, DocumentStorageError> {
         let old_path_buf = PathBuf::from(old_path);
 
@@ -135,7 +203,9 @@ impl DocumentStorageService {
         };
 
         // Write to new location
-        let info = self.write_document(team_id, document_id, &content, new_file_type).await?;
+        let info = self
+            .write_document_with_path(team_id, document_id, &content, new_file_type, custom_path)
+            .await?;
 
         // Delete old file if different path
         if old_path != info.file_path && old_path_buf.exists() {
@@ -146,8 +216,12 @@ impl DocumentStorageService {
     }
 
     /// Delete all documents in a team's folder
-    pub async fn delete_team_documents(&self, team_id: Uuid) -> Result<(), DocumentStorageError> {
-        let dir = self.team_documents_dir(team_id);
+    pub async fn delete_team_documents(
+        &self,
+        team_id: Uuid,
+        custom_path: Option<&str>,
+    ) -> Result<(), DocumentStorageError> {
+        let dir = self.team_documents_dir(team_id, custom_path);
         if dir.exists() {
             fs::remove_dir_all(&dir).await?;
         }

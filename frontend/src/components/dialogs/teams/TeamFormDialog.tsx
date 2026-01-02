@@ -19,11 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, Lock } from 'lucide-react';
+import { AlertCircle, Lock, FolderOpen, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
 import { EmojiPicker } from '@/components/ui/emoji-picker';
+import { teamsApi } from '@/lib/api';
 import type { Team } from 'shared/types';
 
 export interface TeamFormDialogProps {
@@ -81,6 +82,11 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [documentStoragePath, setDocumentStoragePath] = useState<string>(editTeam?.document_storage_path || '');
+  const [pathValidation, setPathValidation] = useState<{
+    status: 'idle' | 'validating' | 'valid' | 'invalid';
+    error?: string;
+  }>({ status: 'idle' });
 
   // Auto-generate identifier from name (only for new teams)
   useEffect(() => {
@@ -92,6 +98,34 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
   const handleIdentifierChange = (value: string) => {
     setIdentifier(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
     setIdentifierManuallySet(true);
+  };
+
+  const validatePath = async (path: string) => {
+    if (!path.trim()) {
+      setPathValidation({ status: 'idle' });
+      return;
+    }
+
+    setPathValidation({ status: 'validating' });
+    try {
+      const result = await teamsApi.validateStoragePath({ path: path.trim() });
+      if (result.valid) {
+        setPathValidation({ status: 'valid' });
+      } else {
+        setPathValidation({ status: 'invalid', error: result.error || 'Invalid path' });
+      }
+    } catch (err) {
+      setPathValidation({
+        status: 'invalid',
+        error: err instanceof Error ? err.message : 'Failed to validate path',
+      });
+    }
+  };
+
+  const handlePathChange = (value: string) => {
+    setDocumentStoragePath(value);
+    // Reset validation when path changes
+    setPathValidation({ status: 'idle' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,7 +145,8 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
           name: name.trim(),
           identifier: null, // Keep existing identifier (auto-generated if null)
           icon: icon,
-          color: editTeam.color
+          color: editTeam.color,
+          document_storage_path: documentStoragePath.trim() || null,
         });
       } else {
         await createTeam({
@@ -263,6 +298,57 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
                 disabled={isSubmitting}
               />
             </div>
+
+            {/* Document Storage Path (Edit mode only) */}
+            {isEditing && (
+              <div className="space-y-2">
+                <Label htmlFor="document-storage-path">
+                  <div className="flex items-center gap-2">
+                    <FolderOpen className="h-4 w-4" />
+                    Document storage path
+                  </div>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Custom directory path for storing team documents. Leave empty to use default application storage.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    id="document-storage-path"
+                    value={documentStoragePath}
+                    onChange={(e) => handlePathChange(e.target.value)}
+                    placeholder="/path/to/documents (optional)"
+                    disabled={isSubmitting}
+                    className="h-10 flex-1 font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => validatePath(documentStoragePath)}
+                    disabled={isSubmitting || pathValidation.status === 'validating' || !documentStoragePath.trim()}
+                    className="h-10"
+                  >
+                    {pathValidation.status === 'validating' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Validate'
+                    )}
+                  </Button>
+                </div>
+                {pathValidation.status === 'valid' && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Path is valid and writable
+                  </div>
+                )}
+                {pathValidation.status === 'invalid' && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <XCircle className="h-4 w-4" />
+                    {pathValidation.error}
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && (
               <Alert variant="destructive">

@@ -38,6 +38,8 @@ fn generate_types_content() -> String {
         db::models::team::TeamProjectAssignment::decl(),
         server::routes::teams::MigrateTasksRequest::decl(),
         server::routes::teams::MigrateTasksResponse::decl(),
+        server::routes::teams::ValidateStoragePathRequest::decl(),
+        server::routes::teams::ValidateStoragePathResponse::decl(),
         db::models::document::DocumentFileType::decl(),
         db::models::document::DocumentFolder::decl(),
         db::models::document::Document::decl(),
