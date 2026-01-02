@@ -877,9 +877,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/github/repos",
             get(get_github_repositories).post(link_github_repository),
         )
-        .route("/github/repos/{repo_id}", delete(unlink_github_repository))
-        // GitHub sync routes
+        // GitHub sync routes - must come before {repo_id} routes
         .route("/github/repos/available", get(get_available_github_repos))
+        .route("/github/repos/{repo_id}", delete(unlink_github_repository))
         .route(
             "/github/repos/{repo_id}/sync",
             post(configure_repo_sync).delete(clear_repo_sync),
