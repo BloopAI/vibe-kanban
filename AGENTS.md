@@ -91,11 +91,12 @@ Use the CLI to create a team issue (task mapped to the vibe-kanban team):
 ```
 
 #### 3. Create Feature Branch
+Use the issue number (VIB-XX) from the Team Issues board:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/<task-id>-<task-name-kebab-case>
-# Example: git checkout -b feature/a76b21a8-add-document-tree-view
+git checkout -b feature/<issue-number>-<feature-name-kebab-case>
+# Example: git checkout -b feature/VIB-11-multi-workspace-support
 ```
 
 #### 4. Work on the Task
@@ -105,21 +106,22 @@ git checkout -b feature/<task-id>-<task-name-kebab-case>
 
 #### 5. Push Feature Branch
 ```bash
-git push -u origin feature/<task-id>-<task-name-kebab-case>
+git push -u origin feature/<issue-number>-<feature-name-kebab-case>
+# Example: git push -u origin feature/VIB-11-multi-workspace-support
 ```
 
 #### 6. Merge to Main
 ```bash
 git checkout main
 git pull origin main
-git merge feature/<task-id>-<task-name-kebab-case>
+git merge feature/<issue-number>-<feature-name-kebab-case>
 git push origin main
 ```
 
 #### 7. Clean Up Feature Branch
 ```bash
-git branch -d feature/<task-id>-<task-name-kebab-case>
-git push origin --delete feature/<task-id>-<task-name-kebab-case>
+git branch -d feature/<issue-number>-<feature-name-kebab-case>
+git push origin --delete feature/<issue-number>-<feature-name-kebab-case>
 ```
 
 #### 8. Update Task Status to Done
