@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { TreeView, type TreeDataItem } from '@/components/ui/tree-view';
-import { Hash, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 interface HeadingNode {
   id: string;
@@ -85,7 +85,6 @@ function headingsToTreeData(
   return headings.map((heading) => ({
     id: heading.id,
     name: heading.text,
-    icon: Hash,
     onClick: () => onHeadingClick?.(heading.line),
     children:
       heading.children.length > 0
@@ -127,8 +126,6 @@ export function DocumentOutline({
       <TreeView
         data={treeData}
         expandAll
-        defaultNodeIcon={Hash}
-        defaultLeafIcon={Hash}
         className="text-sm"
       />
     </div>

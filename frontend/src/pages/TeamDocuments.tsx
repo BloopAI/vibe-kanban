@@ -17,8 +17,8 @@ import {
   Trash2,
   Edit,
   ArrowLeft,
-  PanelRightClose,
-  PanelRightOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -322,9 +322,9 @@ export function TeamDocuments() {
                 title={showOutline ? 'Hide outline' : 'Show outline'}
               >
                 {showOutline ? (
-                  <PanelRightClose className="h-4 w-4" />
+                  <PanelLeftClose className="h-4 w-4" />
                 ) : (
-                  <PanelRightOpen className="h-4 w-4" />
+                  <PanelLeftOpen className="h-4 w-4" />
                 )}
               </Button>
               <Button size="sm" onClick={handleSaveDocument}>
@@ -336,6 +336,16 @@ export function TeamDocuments() {
 
         {/* Editor Content with Outline Sidebar */}
         <div className="flex-1 min-h-0 flex">
+          {/* Outline Sidebar (Left) */}
+          {showOutline && (
+            <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
+              <DocumentOutline
+                content={editingDoc.content || ''}
+                onHeadingClick={handleHeadingClick}
+              />
+            </div>
+          )}
+
           {/* Main Editor */}
           <div className="flex-1 min-w-0 p-4">
             <Textarea
@@ -348,16 +358,6 @@ export function TeamDocuments() {
               placeholder="Start writing your document in Markdown..."
             />
           </div>
-
-          {/* Outline Sidebar */}
-          {showOutline && (
-            <div className="w-64 shrink-0 border-l bg-muted/30 overflow-auto">
-              <DocumentOutline
-                content={editingDoc.content || ''}
-                onHeadingClick={handleHeadingClick}
-              />
-            </div>
-          )}
         </div>
       </div>
     );
