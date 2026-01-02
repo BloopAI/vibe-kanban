@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, post},
 };
+use base64::Engine as _;
 use db::models::github_connection::{
     CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
     LinkGitHubRepository, UpdateGitHubConnection,
@@ -50,6 +51,49 @@ pub struct ValidateStoragePathResponse {
     pub valid: bool,
     /// Error message if invalid
     pub error: Option<String>,
+}
+
+// ============================================================================
+// GitHub Sync Types
+// ============================================================================
+
+/// A GitHub repository from the API (not yet linked)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubRepoInfo {
+    pub id: i64,
+    pub name: String,
+    pub full_name: String,
+    pub html_url: String,
+    pub default_branch: Option<String>,
+    pub private: bool,
+    pub description: Option<String>,
+}
+
+/// Request to configure sync for a repository
+#[derive(Debug, Deserialize, TS)]
+pub struct ConfigureSyncRequest {
+    /// Path in the repo where documents will be synced (e.g., "docs/team-notes")
+    pub sync_path: String,
+    /// The folder ID in vibe-kanban to sync
+    pub sync_folder_id: String,
+}
+
+/// Request to push documents to GitHub
+#[derive(Debug, Deserialize, TS)]
+pub struct PushDocumentsRequest {
+    /// Commit message for the push
+    pub commit_message: Option<String>,
+}
+
+/// Response for push/pull operations
+#[derive(Debug, Serialize, TS)]
+pub struct SyncOperationResponse {
+    /// Number of files synced
+    pub files_synced: usize,
+    /// List of file paths that were synced
+    pub synced_files: Vec<String>,
+    /// Any warnings or notes
+    pub message: Option<String>,
 }
 
 /// Get all teams
@@ -410,6 +454,410 @@ pub async fn unlink_github_repository(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+// ============================================================================
+// GitHub Sync Routes
+// ============================================================================
+
+/// Fetch available GitHub repositories from the user's account
+pub async fn get_available_github_repos(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepoInfo>>>, ApiError> {
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    // Fetch repos from GitHub API
+    let client = reqwest::Client::new();
+    let response = client
+        .get("https://api.github.com/user/repos")
+        .header("Authorization", format!("Bearer {}", connection.access_token))
+        .header("User-Agent", "vibe-kanban")
+        .query(&[("per_page", "100"), ("sort", "updated")])
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to fetch repos: {}", e)))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!(
+            "GitHub API error ({}): {}",
+            status, body
+        )));
+    }
+
+    let repos: Vec<GitHubRepoInfo> = response
+        .json()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid response from GitHub: {}", e)))?;
+
+    Ok(ResponseJson(ApiResponse::success(repos)))
+}
+
+/// Configure sync settings for a linked repository
+pub async fn configure_repo_sync(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<ConfigureSyncRequest>,
+) -> Result<ResponseJson<ApiResponse<GitHubRepository>>, ApiError> {
+    // Verify the repo belongs to this team's connection
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    // Update sync configuration
+    let updated = GitHubRepository::configure_sync(
+        &deployment.db().pool,
+        repo_id,
+        &payload.sync_path,
+        &payload.sync_folder_id,
+    )
+    .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_sync_configured",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_id": repo_id.to_string(),
+                "sync_path": payload.sync_path,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+/// Clear sync configuration for a repository
+pub async fn clear_repo_sync(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<GitHubRepository>>, ApiError> {
+    // Verify the repo belongs to this team's connection
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    let updated = GitHubRepository::clear_sync(&deployment.db().pool, repo_id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+/// Push documents from a folder to GitHub repository
+pub async fn push_documents_to_github(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<PushDocumentsRequest>,
+) -> Result<ResponseJson<ApiResponse<SyncOperationResponse>>, ApiError> {
+    use db::models::document::Document;
+
+    // Get connection and repo
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    let sync_path = repo
+        .sync_path
+        .as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+
+    let sync_folder_id = repo
+        .sync_folder_id
+        .as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
+
+    // Get documents from the folder
+    let folder_id = if sync_folder_id == "root" {
+        None
+    } else {
+        Uuid::parse_str(sync_folder_id).ok()
+    };
+    let folder_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+
+    let client = reqwest::Client::new();
+    let mut synced_files = Vec::new();
+
+    for doc in &folder_docs {
+        // Get document content
+        let content = doc.content.clone().unwrap_or_default();
+        let file_path = format!("{}/{}.md", sync_path, doc.title.replace(" ", "-").to_lowercase());
+
+        // Create or update file via GitHub API
+        // First, try to get the file SHA if it exists
+        let get_response = client
+            .get(format!(
+                "https://api.github.com/repos/{}/contents/{}",
+                repo.repo_full_name, file_path
+            ))
+            .header("Authorization", format!("Bearer {}", connection.access_token))
+            .header("User-Agent", "vibe-kanban")
+            .send()
+            .await;
+
+        let sha = if let Ok(resp) = get_response {
+            if resp.status().is_success() {
+                resp.json::<serde_json::Value>()
+                    .await
+                    .ok()
+                    .and_then(|v| v.get("sha").and_then(|s| s.as_str()).map(|s| s.to_string()))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Prepare the request body
+        let mut body = serde_json::json!({
+            "message": payload.commit_message.clone().unwrap_or_else(|| format!("Update {}", doc.title)),
+            "content": base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+            "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
+        });
+
+        if let Some(sha) = sha {
+            body["sha"] = serde_json::Value::String(sha);
+        }
+
+        let put_response = client
+            .put(format!(
+                "https://api.github.com/repos/{}/contents/{}",
+                repo.repo_full_name, file_path
+            ))
+            .header("Authorization", format!("Bearer {}", connection.access_token))
+            .header("User-Agent", "vibe-kanban")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Failed to push file: {}", e)))?;
+
+        if put_response.status().is_success() {
+            synced_files.push(file_path);
+        } else {
+            let error = put_response.text().await.unwrap_or_default();
+            tracing::warn!("Failed to push {}: {}", doc.title, error);
+        }
+    }
+
+    // Update last synced timestamp
+    GitHubRepository::update_last_synced(&deployment.db().pool, repo_id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_documents_pushed",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_id": repo_id.to_string(),
+                "files_count": synced_files.len(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(SyncOperationResponse {
+        files_synced: synced_files.len(),
+        synced_files,
+        message: Some(format!("Pushed {} documents to GitHub", folder_docs.len())),
+    })))
+}
+
+/// Pull documents from GitHub repository to a folder
+pub async fn pull_documents_from_github(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<SyncOperationResponse>>, ApiError> {
+    use db::models::document::{CreateDocument, Document, UpdateDocument};
+
+    // Get connection and repo
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    let sync_path = repo
+        .sync_path
+        .as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+
+    let sync_folder_id = repo
+        .sync_folder_id
+        .as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
+
+    // List files in the sync path
+    let client = reqwest::Client::new();
+    let list_response = client
+        .get(format!(
+            "https://api.github.com/repos/{}/contents/{}",
+            repo.repo_full_name, sync_path
+        ))
+        .header("Authorization", format!("Bearer {}", connection.access_token))
+        .header("User-Agent", "vibe-kanban")
+        .query(&[("ref", repo.default_branch.as_deref().unwrap_or("main"))])
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to list files: {}", e)))?;
+
+    if !list_response.status().is_success() {
+        if list_response.status() == reqwest::StatusCode::NOT_FOUND {
+            return Ok(ResponseJson(ApiResponse::success(SyncOperationResponse {
+                files_synced: 0,
+                synced_files: vec![],
+                message: Some("Sync path does not exist in repository".to_string()),
+            })));
+        }
+        let error = list_response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!("Failed to list files: {}", error)));
+    }
+
+    let files: Vec<serde_json::Value> = list_response
+        .json()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid response: {}", e)))?;
+
+    let folder_id = if sync_folder_id == "root" {
+        None
+    } else {
+        Uuid::parse_str(sync_folder_id).ok()
+    };
+
+    let mut synced_files = Vec::new();
+
+    for file in files {
+        let file_name = file.get("name").and_then(|n| n.as_str()).unwrap_or("");
+        let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
+        let download_url = file.get("download_url").and_then(|u| u.as_str());
+
+        // Only process markdown files
+        if file_type != "file" || !file_name.ends_with(".md") {
+            continue;
+        }
+
+        if let Some(url) = download_url {
+            // Download file content
+            let content_response = client
+                .get(url)
+                .header("User-Agent", "vibe-kanban")
+                .send()
+                .await;
+
+            if let Ok(resp) = content_response {
+                if resp.status().is_success() {
+                    if let Ok(content) = resp.text().await {
+                        // Create document title from filename
+                        let title = file_name
+                            .trim_end_matches(".md")
+                            .replace("-", " ")
+                            .split_whitespace()
+                            .map(|w| {
+                                let mut chars = w.chars();
+                                match chars.next() {
+                                    Some(c) => c.to_uppercase().chain(chars).collect(),
+                                    None => String::new(),
+                                }
+                            })
+                            .collect::<Vec<String>>()
+                            .join(" ");
+
+                        // Check if document already exists in this folder
+                        let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+                        let existing = existing_docs.into_iter().find(|d| d.title == title);
+
+                        if let Some(doc) = existing {
+                            // Update existing document
+                            let update = UpdateDocument {
+                                folder_id: None,
+                                title: None,
+                                content: Some(content),
+                                icon: None,
+                                is_pinned: None,
+                                is_archived: None,
+                                position: None,
+                            };
+                            Document::update(&deployment.db().pool, doc.id, &update).await?;
+                        } else {
+                            // Create new document
+                            let create = CreateDocument {
+                                team_id: team.id,
+                                folder_id,
+                                title: title.clone(),
+                                content: Some(content),
+                                file_type: Some("markdown".to_string()),
+                                icon: None,
+                            };
+                            Document::create(&deployment.db().pool, &create).await?;
+                        }
+
+                        synced_files.push(file_name.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Update last synced timestamp
+    GitHubRepository::update_last_synced(&deployment.db().pool, repo_id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_documents_pulled",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_id": repo_id.to_string(),
+                "files_count": synced_files.len(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(SyncOperationResponse {
+        files_synced: synced_files.len(),
+        synced_files,
+        message: Some("Pulled documents from GitHub".to_string()),
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -430,6 +878,20 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_github_repositories).post(link_github_repository),
         )
         .route("/github/repos/{repo_id}", delete(unlink_github_repository))
+        // GitHub sync routes
+        .route("/github/repos/available", get(get_available_github_repos))
+        .route(
+            "/github/repos/{repo_id}/sync",
+            post(configure_repo_sync).delete(clear_repo_sync),
+        )
+        .route(
+            "/github/repos/{repo_id}/push",
+            post(push_documents_to_github),
+        )
+        .route(
+            "/github/repos/{repo_id}/pull",
+            post(pull_documents_from_github),
+        )
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     let inner = Router::new()

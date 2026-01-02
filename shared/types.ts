@@ -64,7 +64,19 @@ export type TeamProjectAssignment = { project_id: string, };
 
 export type GitHubConnection = { id: string, team_id: string, access_token: string, github_username: string | null, connected_at: Date, updated_at: Date, };
 
-export type GitHubRepository = { id: string, connection_id: string, repo_full_name: string, repo_name: string, repo_owner: string, repo_url: string, default_branch: string | null, is_private: boolean, linked_at: Date, };
+export type GitHubRepository = { id: string, connection_id: string, repo_full_name: string, repo_name: string, repo_owner: string, repo_url: string, default_branch: string | null, is_private: boolean, linked_at: Date, 
+/**
+ * Path in the repo where documents are synced (e.g., "docs/team-notes")
+ */
+sync_path: string | null, 
+/**
+ * The folder ID in vibe-kanban that syncs to this repo
+ */
+sync_folder_id: string | null, 
+/**
+ * Last sync timestamp
+ */
+last_synced_at: Date | null, };
 
 export type CreateGitHubConnection = { access_token: string, };
 
@@ -105,6 +117,38 @@ valid: boolean,
  * Error message if invalid
  */
 error: string | null, };
+
+export type GitHubRepoInfo = { id: bigint, name: string, full_name: string, html_url: string, default_branch: string | null, private: boolean, description: string | null, };
+
+export type ConfigureSyncRequest = { 
+/**
+ * Path in the repo where documents will be synced (e.g., "docs/team-notes")
+ */
+sync_path: string, 
+/**
+ * The folder ID in vibe-kanban to sync
+ */
+sync_folder_id: string, };
+
+export type PushDocumentsRequest = { 
+/**
+ * Commit message for the push
+ */
+commit_message: string | null, };
+
+export type SyncOperationResponse = { 
+/**
+ * Number of files synced
+ */
+files_synced: number, 
+/**
+ * List of file paths that were synced
+ */
+synced_files: Array<string>, 
+/**
+ * Any warnings or notes
+ */
+message: string | null, };
 
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 

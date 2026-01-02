@@ -28,6 +28,13 @@ pub struct GitHubRepository {
     pub is_private: bool,
     #[ts(type = "Date")]
     pub linked_at: DateTime<Utc>,
+    /// Path in the repo where documents are synced (e.g., "docs/team-notes")
+    pub sync_path: Option<String>,
+    /// The folder ID in vibe-kanban that syncs to this repo
+    pub sync_folder_id: Option<String>,
+    /// Last sync timestamp
+    #[ts(type = "Date | null")]
+    pub last_synced_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -183,13 +190,65 @@ impl GitHubRepository {
                       repo_url,
                       default_branch,
                       is_private as "is_private!: bool",
-                      linked_at as "linked_at!: DateTime<Utc>"
+                      linked_at as "linked_at!: DateTime<Utc>",
+                      sync_path,
+                      sync_folder_id,
+                      last_synced_at as "last_synced_at: DateTime<Utc>"
                FROM github_repositories
                WHERE connection_id = $1
                ORDER BY repo_full_name ASC"#,
             connection_id
         )
         .fetch_all(pool)
+        .await
+    }
+
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepository,
+            r#"SELECT id as "id!: Uuid",
+                      connection_id as "connection_id!: Uuid",
+                      repo_full_name,
+                      repo_name,
+                      repo_owner,
+                      repo_url,
+                      default_branch,
+                      is_private as "is_private!: bool",
+                      linked_at as "linked_at!: DateTime<Utc>",
+                      sync_path,
+                      sync_folder_id,
+                      last_synced_at as "last_synced_at: DateTime<Utc>"
+               FROM github_repositories
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_by_sync_folder(
+        pool: &SqlitePool,
+        sync_folder_id: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepository,
+            r#"SELECT id as "id!: Uuid",
+                      connection_id as "connection_id!: Uuid",
+                      repo_full_name,
+                      repo_name,
+                      repo_owner,
+                      repo_url,
+                      default_branch,
+                      is_private as "is_private!: bool",
+                      linked_at as "linked_at!: DateTime<Utc>",
+                      sync_path,
+                      sync_folder_id,
+                      last_synced_at as "last_synced_at: DateTime<Utc>"
+               FROM github_repositories
+               WHERE sync_folder_id = $1"#,
+            sync_folder_id
+        )
+        .fetch_optional(pool)
         .await
     }
 
@@ -214,7 +273,10 @@ impl GitHubRepository {
                          repo_url,
                          default_branch,
                          is_private as "is_private!: bool",
-                         linked_at as "linked_at!: DateTime<Utc>""#,
+                         linked_at as "linked_at!: DateTime<Utc>",
+                         sync_path,
+                         sync_folder_id,
+                         last_synced_at as "last_synced_at: DateTime<Utc>""#,
             id,
             connection_id,
             data.repo_full_name,
@@ -223,6 +285,88 @@ impl GitHubRepository {
             data.repo_url,
             data.default_branch,
             data.is_private
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Configure sync settings for a repository
+    pub async fn configure_sync(
+        pool: &SqlitePool,
+        id: Uuid,
+        sync_path: &str,
+        sync_folder_id: &str,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepository,
+            r#"UPDATE github_repositories
+               SET sync_path = $2, sync_folder_id = $3
+               WHERE id = $1
+               RETURNING id as "id!: Uuid",
+                         connection_id as "connection_id!: Uuid",
+                         repo_full_name,
+                         repo_name,
+                         repo_owner,
+                         repo_url,
+                         default_branch,
+                         is_private as "is_private!: bool",
+                         linked_at as "linked_at!: DateTime<Utc>",
+                         sync_path,
+                         sync_folder_id,
+                         last_synced_at as "last_synced_at: DateTime<Utc>""#,
+            id,
+            sync_path,
+            sync_folder_id
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Update last synced timestamp
+    pub async fn update_last_synced(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepository,
+            r#"UPDATE github_repositories
+               SET last_synced_at = datetime('now', 'subsec')
+               WHERE id = $1
+               RETURNING id as "id!: Uuid",
+                         connection_id as "connection_id!: Uuid",
+                         repo_full_name,
+                         repo_name,
+                         repo_owner,
+                         repo_url,
+                         default_branch,
+                         is_private as "is_private!: bool",
+                         linked_at as "linked_at!: DateTime<Utc>",
+                         sync_path,
+                         sync_folder_id,
+                         last_synced_at as "last_synced_at: DateTime<Utc>""#,
+            id
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Clear sync configuration for a repository
+    pub async fn clear_sync(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepository,
+            r#"UPDATE github_repositories
+               SET sync_path = NULL, sync_folder_id = NULL, last_synced_at = NULL
+               WHERE id = $1
+               RETURNING id as "id!: Uuid",
+                         connection_id as "connection_id!: Uuid",
+                         repo_full_name,
+                         repo_name,
+                         repo_owner,
+                         repo_url,
+                         default_branch,
+                         is_private as "is_private!: bool",
+                         linked_at as "linked_at!: DateTime<Utc>",
+                         sync_path,
+                         sync_folder_id,
+                         last_synced_at as "last_synced_at: DateTime<Utc>""#,
+            id
         )
         .fetch_one(pool)
         .await

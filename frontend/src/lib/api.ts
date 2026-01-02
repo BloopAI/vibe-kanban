@@ -114,6 +114,10 @@ import {
   UpdateGitHubConnection,
   LinkGitHubRepository,
   GitHubAuthorizeResponse,
+  GitHubRepoInfo,
+  ConfigureSyncRequest,
+  PushDocumentsRequest,
+  SyncOperationResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1485,6 +1489,72 @@ export const teamsApi = {
       `/api/oauth/github/authorize?team_id=${teamId}`
     );
     return handleApiResponse<GitHubAuthorizeResponse>(response);
+  },
+
+  // GitHub Sync
+  getAvailableGitHubRepos: async (
+    teamId: string
+  ): Promise<GitHubRepoInfo[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/available`
+    );
+    return handleApiResponse<GitHubRepoInfo[]>(response);
+  },
+
+  configureRepoSync: async (
+    teamId: string,
+    repoId: string,
+    data: ConfigureSyncRequest
+  ): Promise<GitHubRepository> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/sync`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<GitHubRepository>(response);
+  },
+
+  clearRepoSync: async (
+    teamId: string,
+    repoId: string
+  ): Promise<GitHubRepository> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/sync`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<GitHubRepository>(response);
+  },
+
+  pushDocumentsToGitHub: async (
+    teamId: string,
+    repoId: string,
+    data?: PushDocumentsRequest
+  ): Promise<SyncOperationResponse> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/push`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }
+    );
+    return handleApiResponse<SyncOperationResponse>(response);
+  },
+
+  pullDocumentsFromGitHub: async (
+    teamId: string,
+    repoId: string
+  ): Promise<SyncOperationResponse> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/pull`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<SyncOperationResponse>(response);
   },
 };
 

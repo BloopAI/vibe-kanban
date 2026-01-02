@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      connection_id as \"connection_id!: Uuid\",\n                      repo_full_name,\n                      repo_name,\n                      repo_owner,\n                      repo_url,\n                      default_branch,\n                      is_private as \"is_private!: bool\",\n                      linked_at as \"linked_at!: DateTime<Utc>\",\n                      sync_path,\n                      sync_folder_id,\n                      last_synced_at as \"last_synced_at: DateTime<Utc>\"\n               FROM github_repositories\n               WHERE sync_folder_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "connection_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_full_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_owner",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_branch",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_private!: bool",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "linked_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_path",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_folder_id",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "90da580ae95cf81fb206ef1d914c3212c2dcccee5adf93ea0aae93a803d51a8d"
+}

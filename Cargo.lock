@@ -5300,6 +5300,7 @@ version = "0.0.142"
 dependencies = [
  "anyhow",
  "axum",
+ "base64",
  "chrono",
  "db",
  "deployment",
