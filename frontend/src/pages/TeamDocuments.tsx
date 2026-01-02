@@ -20,6 +20,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Wand2,
+  LayoutGrid,
+  List,
+  GripVertical,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -83,6 +86,9 @@ export function TeamDocuments() {
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showOutline, setShowOutline] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
@@ -211,6 +217,55 @@ export function TeamDocuments() {
   const handleOpenDocument = useCallback((doc: Document) => {
     setEditingDoc(doc);
   }, []);
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, docId: string) => {
+    e.dataTransfer.setData('text/plain', docId);
+    setDraggedDocId(docId);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedDocId(null);
+    setDragOverFolderId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDragOverFolderId(folderId);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverFolderId(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, targetFolderId: string) => {
+      e.preventDefault();
+      const docId = e.dataTransfer.getData('text/plain');
+      if (!docId) return;
+
+      const doc = documents.find((d) => d.id === docId);
+      if (!doc) return;
+
+      try {
+        await updateDocument(doc.id, {
+          folder_id: targetFolderId,
+          title: doc.title,
+          content: doc.content,
+          icon: doc.icon,
+          is_pinned: doc.is_pinned,
+          is_archived: doc.is_archived,
+          position: doc.position,
+        });
+      } catch (err) {
+        console.error('Failed to move document:', err);
+      }
+
+      setDraggedDocId(null);
+      setDragOverFolderId(null);
+    },
+    [documents, updateDocument]
+  );
 
   const handleSaveDocument = useCallback(async () => {
     if (!editingDoc) return;
@@ -501,15 +556,37 @@ export function TeamDocuments() {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="mt-3 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search documents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search and View Toggle */}
+        <div className="mt-3 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search documents..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="rounded-r-none"
+              title="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+              className="rounded-l-none"
+              title="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -539,42 +616,66 @@ export function TeamDocuments() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
+          <div className={viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-2'}>
             {/* Folders */}
             {currentFolders.map((folder) => (
               <div
                 key={folder.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group"
+                className={`${
+                  viewMode === 'grid'
+                    ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
+                    : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
+                } ${dragOverFolderId === folder.id ? 'ring-2 ring-primary bg-primary/10' : ''}`}
                 onClick={() => handleNavigateToFolder(folder.id)}
+                onDragOver={(e) => handleDragOver(e, folder.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, folder.id)}
               >
-                <div className="flex items-center gap-3">
-                  <Folder className="h-5 w-5 text-blue-500" />
-                  <span className="font-medium">{folder.name}</span>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFolder(folder.id);
-                      }}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {viewMode === 'grid' ? (
+                  <>
+                    <Folder className="h-12 w-12 text-blue-500 mb-2" />
+                    <span className="font-medium text-sm truncate w-full">{folder.name}</span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      {new Date(folder.updated_at).toLocaleDateString()}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Folder className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium">{folder.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(folder.updated_at).toLocaleDateString()}
+                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFolder(folder.id);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
 
@@ -582,70 +683,97 @@ export function TeamDocuments() {
             {currentDocuments.map((doc) => (
               <div
                 key={doc.id}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group"
+                draggable
+                onDragStart={(e) => handleDragStart(e, doc.id)}
+                onDragEnd={handleDragEnd}
+                className={`${
+                  viewMode === 'grid'
+                    ? 'flex flex-col items-center p-4 rounded-lg border hover:bg-accent cursor-pointer group text-center'
+                    : 'flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer group'
+                } ${draggedDocId === doc.id ? 'opacity-50' : ''}`}
                 onClick={() => handleOpenDocument(doc)}
               >
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{doc.title}</span>
+                {viewMode === 'grid' ? (
+                  <>
+                    <div className="relative">
+                      <FileText className="h-12 w-12 text-gray-500 mb-2" />
                       {doc.is_pinned && (
-                        <Pin className="h-3 w-3 text-amber-500" />
+                        <Pin className="h-3 w-3 text-amber-500 absolute -top-1 -right-1" />
                       )}
-                      <span className="text-xs text-muted-foreground uppercase">
-                        {FILE_TYPE_ICONS[doc.file_type] || doc.file_type}
-                      </span>
                     </div>
+                    <span className="font-medium text-sm truncate w-full">{doc.title}</span>
+                    <span className="text-xs text-muted-foreground uppercase mt-1">
+                      {FILE_TYPE_ICONS[doc.file_type] || doc.file_type}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      Updated{' '}
                       {new Date(doc.updated_at).toLocaleDateString()}
                     </span>
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDocument(doc);
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTogglePin(doc);
-                      }}
-                    >
-                      <Pin className="h-4 w-4 mr-2" />
-                      {doc.is_pinned ? 'Unpin' : 'Pin'}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteDocument(doc.id);
-                      }}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
+                      <FileText className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{doc.title}</span>
+                          {doc.is_pinned && (
+                            <Pin className="h-3 w-3 text-amber-500" />
+                          )}
+                          <span className="text-xs text-muted-foreground uppercase">
+                            {FILE_TYPE_ICONS[doc.file_type] || doc.file_type}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Updated {new Date(doc.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDocument(doc);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePin(doc);
+                          }}
+                        >
+                          <Pin className="h-4 w-4 mr-2" />
+                          {doc.is_pinned ? 'Unpin' : 'Pin'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteDocument(doc.id);
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
               </div>
             ))}
 
