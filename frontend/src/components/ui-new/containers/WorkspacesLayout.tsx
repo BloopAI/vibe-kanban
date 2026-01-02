@@ -241,7 +241,7 @@ export function WorkspacesLayout() {
   );
   const [changesPanelWidth, setChangesPanelWidth] = usePaneSize(
     PERSIST_KEYS.changesPanelWidth,
-    300
+    '40%'
   );
   const [fileTreeHeight, setFileTreeHeight] = usePaneSize(
     PERSIST_KEYS.fileTreeHeight,
@@ -392,7 +392,11 @@ export function WorkspacesLayout() {
           </div>
         </Allotment.Pane>
 
-        <Allotment.Pane visible={true} priority={LayoutPriority.High}>
+        <Allotment.Pane
+          visible={true}
+          priority={LayoutPriority.High}
+          minSize={300}
+        >
           <div className="h-full overflow-hidden">
             {isCreateMode ? (
               <CreateChatBoxContainer />
@@ -429,7 +433,6 @@ export function WorkspacesLayout() {
         <Allotment.Pane
           minSize={300}
           preferredSize={changesPanelWidth}
-          maxSize={600}
           visible={isChangesMode}
         >
           <div className="h-full overflow-hidden">
