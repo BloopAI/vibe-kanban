@@ -243,21 +243,57 @@ export function TeamDocuments() {
     // Normalize line endings
     content = content.replace(/\r\n/g, '\n');
 
-    // Ensure headings have proper spacing (blank line before, space after #)
-    content = content.replace(/\n*(#{1,6})([^\s#])/g, '\n\n$1 $2');
-    content = content.replace(/^(#{1,6})([^\s#])/gm, '$1 $2');
+    // Split into lines for processing
+    const lines = content.split('\n');
+    const formattedLines: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trimEnd();
+      const nextLine = lines[i + 1]?.trim() || '';
+      const prevLine = formattedLines[formattedLines.length - 1]?.trim() || '';
+
+      // Skip if already a markdown heading
+      if (line.match(/^#{1,6}\s/)) {
+        formattedLines.push(line);
+        continue;
+      }
+
+      // Detect potential headings:
+      // - Short line (< 80 chars) that's not empty
+      // - Ends with ? or is title-like (starts with capital, no ending punctuation except ?)
+      // - Followed by blank line or longer paragraph
+      // - Previous line is blank or doesn't exist
+      const isShortLine = line.length > 0 && line.length < 80;
+      const looksLikeHeading =
+        line.match(/^[A-Z]/) && // Starts with capital
+        !line.match(/[.!,;:]$/) && // Doesn't end with sentence punctuation
+        !line.match(/^[-*]\s/); // Not a list item
+      const followedByParagraph =
+        nextLine === '' || (nextLine.length > line.length && !nextLine.match(/^[-*#]/));
+      const afterBlankOrStart = prevLine === '' || formattedLines.length === 0;
+
+      if (isShortLine && looksLikeHeading && followedByParagraph && afterBlankOrStart) {
+        // Convert to heading - use ## for most, # for very short/title-like
+        const headingLevel = line.length < 30 && i === 0 ? '#' : '##';
+        formattedLines.push(`${headingLevel} ${line}`);
+      } else {
+        formattedLines.push(line);
+      }
+    }
+
+    content = formattedLines.join('\n');
 
     // Ensure blank line before headings (except at start)
     content = content.replace(/([^\n])\n(#{1,6}\s)/g, '$1\n\n$2');
+
+    // Ensure blank line after headings
+    content = content.replace(/(#{1,6}\s[^\n]+)\n([^#\n])/g, '$1\n\n$2');
 
     // Ensure proper list formatting (space after - or *)
     content = content.replace(/^(\s*[-*])([^\s])/gm, '$1 $2');
 
     // Normalize multiple blank lines to double
     content = content.replace(/\n{3,}/g, '\n\n');
-
-    // Ensure paragraphs are separated by blank lines
-    content = content.replace(/([^\n])\n([A-Z])/g, '$1\n\n$2');
 
     // Trim trailing whitespace from each line
     content = content
