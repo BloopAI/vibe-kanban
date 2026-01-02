@@ -4,12 +4,16 @@ import {
   CopyIcon,
   EyeIcon,
   CodeIcon,
+  PlayIcon,
+  PauseIcon,
+  SpinnerIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
+import { useDevServer } from '@/hooks/useDevServer';
 
 interface ContextBarButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -75,6 +79,7 @@ export interface ContextBarProps {
   onCopy?: () => void;
   onPreview?: () => void;
   onViewCode?: () => void;
+  attemptId?: string;
 }
 
 export function ContextBar({
@@ -84,12 +89,15 @@ export function ContextBar({
   onCopy,
   onPreview,
   onViewCode,
+  attemptId,
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
   const { config } = useUserSystem();
   const editorType = config?.editor?.editor_type ?? null;
   const ideLabel = `Open in ${getIdeName(editorType)}`;
+  const { start, stop, isStarting, isStopping, runningDevServer } =
+    useDevServer(attemptId);
 
   return (
     <div
@@ -134,6 +142,40 @@ export function ContextBar({
 
           {/* Secondary Icons */}
           <div className="flex flex-col gap-double">
+            {attemptId && (
+              <ContextBarButton
+                icon={
+                  isStarting || isStopping
+                    ? SpinnerIcon
+                    : runningDevServer
+                      ? PauseIcon
+                      : PlayIcon
+                }
+                label={
+                  isStarting
+                    ? 'Starting dev server...'
+                    : isStopping
+                      ? 'Stopping dev server...'
+                      : runningDevServer
+                        ? 'Stop dev server'
+                        : 'Start dev server'
+                }
+                onClick={() => {
+                  if (runningDevServer) {
+                    stop();
+                  } else {
+                    start();
+                  }
+                }}
+                disabled={isStarting || isStopping}
+                iconClassName={cn(
+                  isStarting || isStopping ? 'animate-spin' : undefined,
+                  runningDevServer && !isStopping
+                    ? 'text-error hover:text-error'
+                    : undefined
+                )}
+              />
+            )}
             <ContextBarButton
               icon={EyeIcon}
               label="Preview"
