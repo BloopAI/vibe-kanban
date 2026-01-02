@@ -28,3 +28,11 @@ export const generateProjectNameFromPath = (path: string): string => {
 export const stripLineEnding = (value: string): string => {
   return value.replace(/(?:\r\n|\r|\n)$/, '');
 };
+
+/**
+ * Splits a string by newlines and returns an array of lines.
+ * Handles CRLF, CR, and LF line endings.
+ */
+export const splitLines = (value: string): string[] => {
+  return value.split(/\r\n|\r|\n/);
+};

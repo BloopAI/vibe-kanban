@@ -6,6 +6,7 @@ import {
 } from '@/components/ui-new/primitives/RepoCard';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
+import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 
 export interface RepoInfo {
   id: string;
@@ -24,6 +25,7 @@ interface GitPanelProps {
   onActionsClick?: (repoId: string, action: RepoAction) => void;
   onAddRepo?: () => void;
   className?: string;
+  error?: string | null;
 }
 
 export function GitPanel({
@@ -33,6 +35,7 @@ export function GitPanel({
   onActionsClick,
   onAddRepo,
   className,
+  error,
 }: GitPanelProps) {
   return (
     <div
@@ -41,6 +44,7 @@ export function GitPanel({
         className
       )}
     >
+      {error && <ErrorAlert message={error} />}
       <SectionHeader
         title="Repositories"
         icon={PlusIcon}

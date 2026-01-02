@@ -55,6 +55,9 @@ function GitPanelContainer({
 
   // Track selected repo for git operations (default to first repo)
   const [selectedRepoId, setSelectedRepoId] = useState<string | undefined>();
+
+  // Error state for git operations
+  const [error, setError] = useState<string | null>(null);
   const activeRepoId = selectedRepoId ?? repos[0]?.id;
 
   // Fetch branches for the selected repo
@@ -94,9 +97,10 @@ function GitPanelContainer({
           });
           break;
 
-        case 'pull-request':
+        case 'pull-request': {
           if (!task) return;
-          await CreatePRDialog.show({
+          setError(null);
+          const prResult = await CreatePRDialog.show({
             attempt: selectedWorkspace,
             task: {
               ...task,
@@ -107,7 +111,11 @@ function GitPanelContainer({
             repoId,
             targetBranch,
           });
+          if (!prResult.success && prResult.error) {
+            setError(prResult.error);
+          }
           break;
+        }
 
         case 'merge': {
           const result = await ConfirmDialog.show({
@@ -117,7 +125,14 @@ function GitPanelContainer({
             cancelText: t('common:buttons.cancel'),
           });
           if (result === 'confirmed') {
-            await merge.mutateAsync({ repoId });
+            try {
+              setError(null);
+              await merge.mutateAsync({ repoId });
+            } catch (err) {
+              setError(
+                err instanceof Error ? err.message : t('tasks:git.errors.merge')
+              );
+            }
           }
           break;
         }
@@ -133,6 +148,7 @@ function GitPanelContainer({
       onWorkingBranchNameChange={onBranchNameChange}
       onActionsClick={handleActionsClick}
       onAddRepo={() => console.log('Add repo clicked')}
+      error={error}
     />
   );
 }
