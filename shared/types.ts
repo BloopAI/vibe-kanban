@@ -86,6 +86,16 @@ export type LinkGitHubRepository = { repo_full_name: string, repo_name: string, 
 
 export type GitHubConnectionWithRepos = { repositories: Array<GitHubRepository>, id: string, team_id: string, access_token: string, github_username: string | null, connected_at: Date, updated_at: Date, };
 
+export type GitHubRepoSyncConfig = { id: string, repo_id: string, folder_id: string, 
+/**
+ * Path in repo where folder syncs. If None, uses folder name.
+ */
+github_path: string | null, created_at: Date, };
+
+export type CreateRepoSyncConfig = { folder_id: string, github_path: string | null, };
+
+export type ConfigureMultiFolderSync = { folder_configs: Array<CreateRepoSyncConfig>, };
+
 export type MigrateTasksRequest = { 
 /**
  * The project ID to migrate tasks from
@@ -149,6 +159,20 @@ synced_files: Array<string>,
  * Any warnings or notes
  */
 message: string | null, };
+
+export type ScanFilesystemResponse = { 
+/**
+ * Number of new documents found and registered
+ */
+documents_added: number, 
+/**
+ * List of document titles that were added
+ */
+added_titles: Array<string>, 
+/**
+ * Number of files scanned
+ */
+files_scanned: number, };
 
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM github_repo_sync_configs WHERE repo_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e1281011caa9a8423e8fbad6fea3f6071747bdfcb8cf3f10a691a0bc10437a08"
+}

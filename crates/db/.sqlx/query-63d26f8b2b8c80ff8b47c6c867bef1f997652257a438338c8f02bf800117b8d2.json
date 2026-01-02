@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO github_repo_sync_configs (id, repo_id, folder_id, github_path)\n               VALUES ($1, $2, $3, $4)\n               ON CONFLICT (repo_id, folder_id) DO UPDATE SET github_path = $4\n               RETURNING id as \"id!: Uuid\",\n                         repo_id as \"repo_id!: Uuid\",\n                         folder_id,\n                         github_path,\n                         created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "folder_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_path",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "63d26f8b2b8c80ff8b47c6c867bef1f997652257a438338c8f02bf800117b8d2"
+}

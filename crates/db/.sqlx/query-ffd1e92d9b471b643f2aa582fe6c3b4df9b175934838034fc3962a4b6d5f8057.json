@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      folder_id,\n                      github_path,\n                      created_at as \"created_at!: DateTime<Utc>\"\n               FROM github_repo_sync_configs\n               WHERE repo_id = $1\n               ORDER BY folder_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "folder_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_path",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ffd1e92d9b471b643f2aa582fe6c3b4df9b175934838034fc3962a4b6d5f8057"
+}

@@ -118,6 +118,9 @@ import {
   ConfigureSyncRequest,
   PushDocumentsRequest,
   SyncOperationResponse,
+  ScanFilesystemResponse,
+  GitHubRepoSyncConfig,
+  ConfigureMultiFolderSync,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1556,6 +1559,42 @@ export const teamsApi = {
     );
     return handleApiResponse<SyncOperationResponse>(response);
   },
+
+  // Multi-folder sync config endpoints
+  getSyncConfigs: async (
+    teamId: string,
+    repoId: string
+  ): Promise<GitHubRepoSyncConfig[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/sync-configs`
+    );
+    return handleApiResponse<GitHubRepoSyncConfig[]>(response);
+  },
+
+  configureMultiFolderSync: async (
+    teamId: string,
+    repoId: string,
+    data: ConfigureMultiFolderSync
+  ): Promise<GitHubRepoSyncConfig[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/sync-configs`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<GitHubRepoSyncConfig[]>(response);
+  },
+
+  clearMultiFolderSync: async (teamId: string, repoId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}/sync-configs`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Inbox API
@@ -1697,5 +1736,16 @@ export const documentsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  // Scan filesystem for new documents
+  scanFilesystem: async (
+    teamId: string,
+    folderId: string
+  ): Promise<ScanFilesystemResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/folders/${folderId}/scan`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ScanFilesystemResponse>(response);
   },
 };

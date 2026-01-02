@@ -9,6 +9,8 @@ import type {
   GitHubRepoInfo,
   ConfigureSyncRequest,
   SyncOperationResponse,
+  GitHubRepoSyncConfig,
+  ConfigureMultiFolderSync,
 } from 'shared/types';
 
 export interface UseGitHubConnectionResult {
@@ -30,6 +32,10 @@ export interface UseGitHubConnectionResult {
   clearSync: (repoId: string) => Promise<GitHubRepository>;
   pushDocuments: (repoId: string, commitMessage?: string) => Promise<SyncOperationResponse>;
   pullDocuments: (repoId: string) => Promise<SyncOperationResponse>;
+  // Multi-folder sync
+  getSyncConfigs: (repoId: string) => Promise<GitHubRepoSyncConfig[]>;
+  configureMultiFolderSync: (repoId: string, data: ConfigureMultiFolderSync) => Promise<GitHubRepoSyncConfig[]>;
+  clearMultiFolderSync: (repoId: string) => Promise<void>;
 }
 
 export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
@@ -179,6 +185,31 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
     [teamId, refresh]
   );
 
+  // Multi-folder sync functions
+  const getSyncConfigs = useCallback(
+    async (repoId: string) => {
+      return teamsApi.getSyncConfigs(teamId, repoId);
+    },
+    [teamId]
+  );
+
+  const configureMultiFolderSync = useCallback(
+    async (repoId: string, data: ConfigureMultiFolderSync) => {
+      const result = await teamsApi.configureMultiFolderSync(teamId, repoId, data);
+      await refresh();
+      return result;
+    },
+    [teamId, refresh]
+  );
+
+  const clearMultiFolderSync = useCallback(
+    async (repoId: string) => {
+      await teamsApi.clearMultiFolderSync(teamId, repoId);
+      await refresh();
+    },
+    [teamId, refresh]
+  );
+
   return {
     connection,
     repositories,
@@ -198,5 +229,8 @@ export function useGitHubConnection(teamId: string): UseGitHubConnectionResult {
     clearSync,
     pushDocuments,
     pullDocuments,
+    getSyncConfigs,
+    configureMultiFolderSync,
+    clearMultiFolderSync,
   };
 }

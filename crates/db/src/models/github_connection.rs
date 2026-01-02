@@ -175,6 +175,95 @@ impl GitHubConnection {
     }
 }
 
+/// Sync configuration for a specific folder to a GitHub repository
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+pub struct GitHubRepoSyncConfig {
+    pub id: Uuid,
+    pub repo_id: Uuid,
+    pub folder_id: String,
+    /// Path in repo where folder syncs. If None, uses folder name.
+    pub github_path: Option<String>,
+    #[ts(type = "Date")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct CreateRepoSyncConfig {
+    pub folder_id: String,
+    pub github_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct ConfigureMultiFolderSync {
+    pub folder_configs: Vec<CreateRepoSyncConfig>,
+}
+
+impl GitHubRepoSyncConfig {
+    pub async fn find_by_repo_id(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubRepoSyncConfig,
+            r#"SELECT id as "id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      folder_id,
+                      github_path,
+                      created_at as "created_at!: DateTime<Utc>"
+               FROM github_repo_sync_configs
+               WHERE repo_id = $1
+               ORDER BY folder_id ASC"#,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn upsert(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+        folder_id: &str,
+        github_path: Option<&str>,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+        sqlx::query_as!(
+            GitHubRepoSyncConfig,
+            r#"INSERT INTO github_repo_sync_configs (id, repo_id, folder_id, github_path)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (repo_id, folder_id) DO UPDATE SET github_path = $4
+               RETURNING id as "id!: Uuid",
+                         repo_id as "repo_id!: Uuid",
+                         folder_id,
+                         github_path,
+                         created_at as "created_at!: DateTime<Utc>""#,
+            id,
+            repo_id,
+            folder_id,
+            github_path
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    pub async fn delete_by_repo_id(pool: &SqlitePool, repo_id: Uuid) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM github_repo_sync_configs WHERE repo_id = $1", repo_id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
+
+    pub async fn delete(pool: &SqlitePool, repo_id: Uuid, folder_id: &str) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
+            "DELETE FROM github_repo_sync_configs WHERE repo_id = $1 AND folder_id = $2",
+            repo_id,
+            folder_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+}
+
 impl GitHubRepository {
     pub async fn find_by_connection_id(
         pool: &SqlitePool,

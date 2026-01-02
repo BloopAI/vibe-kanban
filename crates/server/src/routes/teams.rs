@@ -7,8 +7,9 @@ use axum::{
 };
 use base64::Engine as _;
 use db::models::github_connection::{
-    CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
-    LinkGitHubRepository, UpdateGitHubConnection,
+    ConfigureMultiFolderSync, CreateGitHubConnection, GitHubConnection,
+    GitHubConnectionWithRepos, GitHubRepoSyncConfig, GitHubRepository, LinkGitHubRepository,
+    UpdateGitHubConnection,
 };
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
@@ -573,7 +574,9 @@ pub async fn push_documents_to_github(
     Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<PushDocumentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<SyncOperationResponse>>, ApiError> {
-    use db::models::document::Document;
+    use db::models::document::{Document, DocumentFolder};
+    use services::services::document_storage::DocumentStorageService;
+    use utils::assets::asset_dir;
 
     // Get connection and repo
     let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
@@ -590,85 +593,153 @@ pub async fn push_documents_to_github(
         ));
     }
 
-    let sync_path = repo
-        .sync_path
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+    // Get multi-folder sync configs (new approach)
+    let sync_configs = GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
 
-    let sync_folder_id = repo
-        .sync_folder_id
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
-
-    // Get documents from the folder
-    let folder_id = if sync_folder_id == "root" {
-        None
+    // Build list of (folder_id, github_path) pairs
+    let folder_sync_list: Vec<(Option<Uuid>, String)> = if !sync_configs.is_empty() {
+        // Use multi-folder sync configs
+        let mut list = Vec::new();
+        for config in &sync_configs {
+            let folder_id = if config.folder_id == "root" {
+                None
+            } else {
+                Uuid::parse_str(&config.folder_id).ok()
+            };
+            // Use github_path or fall back to folder name
+            let github_path = if let Some(ref path) = config.github_path {
+                if !path.is_empty() {
+                    path.clone()
+                } else {
+                    // Empty github_path: use folder name
+                    if let Some(fid) = folder_id {
+                        if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                            folder.name.clone()
+                        } else {
+                            "docs".to_string()
+                        }
+                    } else {
+                        "docs".to_string() // root folder
+                    }
+                }
+            } else {
+                // Null github_path: use folder name
+                if let Some(fid) = folder_id {
+                    if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                        folder.name.clone()
+                    } else {
+                        "docs".to_string()
+                    }
+                } else {
+                    "docs".to_string() // root folder
+                }
+            };
+            list.push((folder_id, github_path));
+        }
+        list
     } else {
-        Uuid::parse_str(sync_folder_id).ok()
-    };
-    let folder_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+        // Fall back to legacy single-folder sync
+        let sync_path = repo
+            .sync_path
+            .as_ref()
+            .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
 
+        let sync_folder_id = repo
+            .sync_folder_id
+            .as_ref()
+            .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
+
+        let folder_id = if sync_folder_id == "root" {
+            None
+        } else {
+            Uuid::parse_str(sync_folder_id).ok()
+        };
+        vec![(folder_id, sync_path.clone())]
+    };
+
+    let storage = DocumentStorageService::new(asset_dir());
     let client = reqwest::Client::new();
     let mut synced_files = Vec::new();
+    let mut total_docs = 0;
 
-    for doc in &folder_docs {
-        // Get document content
-        let content = doc.content.clone().unwrap_or_default();
-        let file_path = format!("{}/{}.md", sync_path, doc.title.replace(" ", "-").to_lowercase());
+    for (folder_id, github_path) in folder_sync_list {
+        // Get documents from the folder
+        let mut folder_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+        total_docs += folder_docs.len();
 
-        // Create or update file via GitHub API
-        // First, try to get the file SHA if it exists
-        let get_response = client
-            .get(format!(
-                "https://api.github.com/repos/{}/contents/{}",
-                repo.repo_full_name, file_path
-            ))
-            .header("Authorization", format!("Bearer {}", connection.access_token))
-            .header("User-Agent", "vibe-kanban")
-            .send()
-            .await;
-
-        let sha = if let Ok(resp) = get_response {
-            if resp.status().is_success() {
-                resp.json::<serde_json::Value>()
-                    .await
-                    .ok()
-                    .and_then(|v| v.get("sha").and_then(|s| s.as_str()).map(|s| s.to_string()))
-            } else {
-                None
+        // Load content from filesystem for documents that have file_path
+        for doc in &mut folder_docs {
+            if let Some(ref file_path) = doc.file_path {
+                if doc.content.is_none() {
+                    match storage.read_document(file_path).await {
+                        Ok(content) => doc.content = Some(content),
+                        Err(e) => {
+                            tracing::warn!("Failed to read document content from {}: {}", file_path, e);
+                        }
+                    }
+                }
             }
-        } else {
-            None
-        };
-
-        // Prepare the request body
-        let mut body = serde_json::json!({
-            "message": payload.commit_message.clone().unwrap_or_else(|| format!("Update {}", doc.title)),
-            "content": base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
-            "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
-        });
-
-        if let Some(sha) = sha {
-            body["sha"] = serde_json::Value::String(sha);
         }
 
-        let put_response = client
-            .put(format!(
-                "https://api.github.com/repos/{}/contents/{}",
-                repo.repo_full_name, file_path
-            ))
-            .header("Authorization", format!("Bearer {}", connection.access_token))
-            .header("User-Agent", "vibe-kanban")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| ApiError::BadRequest(format!("Failed to push file: {}", e)))?;
+        for doc in &folder_docs {
+            // Get document content
+            let content = doc.content.clone().unwrap_or_default();
+            let file_path = format!("{}/{}.md", github_path, doc.title.replace(" ", "-").to_lowercase());
 
-        if put_response.status().is_success() {
-            synced_files.push(file_path);
-        } else {
-            let error = put_response.text().await.unwrap_or_default();
-            tracing::warn!("Failed to push {}: {}", doc.title, error);
+            // Create or update file via GitHub API
+            // First, try to get the file SHA if it exists
+            let get_response = client
+                .get(format!(
+                    "https://api.github.com/repos/{}/contents/{}",
+                    repo.repo_full_name, file_path
+                ))
+                .header("Authorization", format!("Bearer {}", connection.access_token))
+                .header("User-Agent", "vibe-kanban")
+                .send()
+                .await;
+
+            let sha = if let Ok(resp) = get_response {
+                if resp.status().is_success() {
+                    resp.json::<serde_json::Value>()
+                        .await
+                        .ok()
+                        .and_then(|v| v.get("sha").and_then(|s| s.as_str()).map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Prepare the request body
+            let mut body = serde_json::json!({
+                "message": payload.commit_message.clone().unwrap_or_else(|| format!("Update {}", doc.title)),
+                "content": base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
+            });
+
+            if let Some(sha) = sha {
+                body["sha"] = serde_json::Value::String(sha);
+            }
+
+            let put_response = client
+                .put(format!(
+                    "https://api.github.com/repos/{}/contents/{}",
+                    repo.repo_full_name, file_path
+                ))
+                .header("Authorization", format!("Bearer {}", connection.access_token))
+                .header("User-Agent", "vibe-kanban")
+                .json(&body)
+                .send()
+                .await
+                .map_err(|e| ApiError::BadRequest(format!("Failed to push file: {}", e)))?;
+
+            if put_response.status().is_success() {
+                synced_files.push(file_path);
+            } else {
+                let error = put_response.text().await.unwrap_or_default();
+                tracing::warn!("Failed to push {}: {}", doc.title, error);
+            }
         }
     }
 
@@ -689,7 +760,7 @@ pub async fn push_documents_to_github(
     Ok(ResponseJson(ApiResponse::success(SyncOperationResponse {
         files_synced: synced_files.len(),
         synced_files,
-        message: Some(format!("Pushed {} documents to GitHub", folder_docs.len())),
+        message: Some(format!("Pushed {} documents to GitHub", total_docs)),
     })))
 }
 
@@ -699,7 +770,7 @@ pub async fn pull_documents_from_github(
     State(deployment): State<DeploymentImpl>,
     Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<SyncOperationResponse>>, ApiError> {
-    use db::models::document::{CreateDocument, Document, UpdateDocument};
+    use db::models::document::{CreateDocument, Document, DocumentFolder, UpdateDocument};
 
     // Get connection and repo
     let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
@@ -716,121 +787,169 @@ pub async fn pull_documents_from_github(
         ));
     }
 
-    let sync_path = repo
-        .sync_path
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+    // Get multi-folder sync configs (new approach)
+    let sync_configs = GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
 
-    let sync_folder_id = repo
-        .sync_folder_id
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
-
-    // List files in the sync path
-    let client = reqwest::Client::new();
-    let list_response = client
-        .get(format!(
-            "https://api.github.com/repos/{}/contents/{}",
-            repo.repo_full_name, sync_path
-        ))
-        .header("Authorization", format!("Bearer {}", connection.access_token))
-        .header("User-Agent", "vibe-kanban")
-        .query(&[("ref", repo.default_branch.as_deref().unwrap_or("main"))])
-        .send()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("Failed to list files: {}", e)))?;
-
-    if !list_response.status().is_success() {
-        if list_response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(ResponseJson(ApiResponse::success(SyncOperationResponse {
-                files_synced: 0,
-                synced_files: vec![],
-                message: Some("Sync path does not exist in repository".to_string()),
-            })));
+    // Build list of (folder_id, github_path) pairs
+    let folder_sync_list: Vec<(Option<Uuid>, String)> = if !sync_configs.is_empty() {
+        // Use multi-folder sync configs
+        let mut list = Vec::new();
+        for config in &sync_configs {
+            let folder_id = if config.folder_id == "root" {
+                None
+            } else {
+                Uuid::parse_str(&config.folder_id).ok()
+            };
+            // Use github_path or fall back to folder name
+            let github_path = if let Some(ref path) = config.github_path {
+                if !path.is_empty() {
+                    path.clone()
+                } else {
+                    // Empty github_path: use folder name
+                    if let Some(fid) = folder_id {
+                        if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                            folder.name.clone()
+                        } else {
+                            "docs".to_string()
+                        }
+                    } else {
+                        "docs".to_string() // root folder
+                    }
+                }
+            } else {
+                // Null github_path: use folder name
+                if let Some(fid) = folder_id {
+                    if let Ok(Some(folder)) = DocumentFolder::find_by_id(&deployment.db().pool, fid).await {
+                        folder.name.clone()
+                    } else {
+                        "docs".to_string()
+                    }
+                } else {
+                    "docs".to_string() // root folder
+                }
+            };
+            list.push((folder_id, github_path));
         }
-        let error = list_response.text().await.unwrap_or_default();
-        return Err(ApiError::BadRequest(format!("Failed to list files: {}", error)));
-    }
-
-    let files: Vec<serde_json::Value> = list_response
-        .json()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("Invalid response: {}", e)))?;
-
-    let folder_id = if sync_folder_id == "root" {
-        None
+        list
     } else {
-        Uuid::parse_str(sync_folder_id).ok()
+        // Fall back to legacy single-folder sync
+        let sync_path = repo
+            .sync_path
+            .as_ref()
+            .ok_or_else(|| ApiError::BadRequest("Sync not configured for this repository".to_string()))?;
+
+        let sync_folder_id = repo
+            .sync_folder_id
+            .as_ref()
+            .ok_or_else(|| ApiError::BadRequest("Sync folder not configured".to_string()))?;
+
+        let folder_id = if sync_folder_id == "root" {
+            None
+        } else {
+            Uuid::parse_str(sync_folder_id).ok()
+        };
+        vec![(folder_id, sync_path.clone())]
     };
 
+    let client = reqwest::Client::new();
     let mut synced_files = Vec::new();
 
-    for file in files {
-        let file_name = file.get("name").and_then(|n| n.as_str()).unwrap_or("");
-        let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
-        let download_url = file.get("download_url").and_then(|u| u.as_str());
+    for (folder_id, github_path) in folder_sync_list {
+        // List files in the sync path
+        let list_response = client
+            .get(format!(
+                "https://api.github.com/repos/{}/contents/{}",
+                repo.repo_full_name, github_path
+            ))
+            .header("Authorization", format!("Bearer {}", connection.access_token))
+            .header("User-Agent", "vibe-kanban")
+            .query(&[("ref", repo.default_branch.as_deref().unwrap_or("main"))])
+            .send()
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Failed to list files: {}", e)))?;
 
-        // Only process markdown files
-        if file_type != "file" || !file_name.ends_with(".md") {
-            continue;
+        if !list_response.status().is_success() {
+            if list_response.status() == reqwest::StatusCode::NOT_FOUND {
+                // Skip this folder if the path doesn't exist
+                tracing::info!("Sync path {} does not exist in repository, skipping", github_path);
+                continue;
+            }
+            let error = list_response.text().await.unwrap_or_default();
+            return Err(ApiError::BadRequest(format!("Failed to list files: {}", error)));
         }
 
-        if let Some(url) = download_url {
-            // Download file content
-            let content_response = client
-                .get(url)
-                .header("User-Agent", "vibe-kanban")
-                .send()
-                .await;
+        let files: Vec<serde_json::Value> = list_response
+            .json()
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Invalid response: {}", e)))?;
 
-            if let Ok(resp) = content_response {
-                if resp.status().is_success() {
-                    if let Ok(content) = resp.text().await {
-                        // Create document title from filename
-                        let title = file_name
-                            .trim_end_matches(".md")
-                            .replace("-", " ")
-                            .split_whitespace()
-                            .map(|w| {
-                                let mut chars = w.chars();
-                                match chars.next() {
-                                    Some(c) => c.to_uppercase().chain(chars).collect(),
-                                    None => String::new(),
-                                }
-                            })
-                            .collect::<Vec<String>>()
-                            .join(" ");
+        for file in files {
+            let file_name = file.get("name").and_then(|n| n.as_str()).unwrap_or("");
+            let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
+            let download_url = file.get("download_url").and_then(|u| u.as_str());
 
-                        // Check if document already exists in this folder
-                        let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
-                        let existing = existing_docs.into_iter().find(|d| d.title == title);
+            // Only process markdown files
+            if file_type != "file" || !file_name.ends_with(".md") {
+                continue;
+            }
 
-                        if let Some(doc) = existing {
-                            // Update existing document
-                            let update = UpdateDocument {
-                                folder_id: None,
-                                title: None,
-                                content: Some(content),
-                                icon: None,
-                                is_pinned: None,
-                                is_archived: None,
-                                position: None,
-                            };
-                            Document::update(&deployment.db().pool, doc.id, &update).await?;
-                        } else {
-                            // Create new document
-                            let create = CreateDocument {
-                                team_id: team.id,
-                                folder_id,
-                                title: title.clone(),
-                                content: Some(content),
-                                file_type: Some("markdown".to_string()),
-                                icon: None,
-                            };
-                            Document::create(&deployment.db().pool, &create).await?;
+            if let Some(url) = download_url {
+                // Download file content
+                let content_response = client
+                    .get(url)
+                    .header("User-Agent", "vibe-kanban")
+                    .send()
+                    .await;
+
+                if let Ok(resp) = content_response {
+                    if resp.status().is_success() {
+                        if let Ok(content) = resp.text().await {
+                            // Create document title from filename
+                            let title = file_name
+                                .trim_end_matches(".md")
+                                .replace("-", " ")
+                                .split_whitespace()
+                                .map(|w| {
+                                    let mut chars = w.chars();
+                                    match chars.next() {
+                                        Some(c) => c.to_uppercase().chain(chars).collect(),
+                                        None => String::new(),
+                                    }
+                                })
+                                .collect::<Vec<String>>()
+                                .join(" ");
+
+                            // Check if document already exists in this folder
+                            let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
+                            let existing = existing_docs.into_iter().find(|d| d.title == title);
+
+                            if let Some(doc) = existing {
+                                // Update existing document
+                                let update = UpdateDocument {
+                                    folder_id: None,
+                                    title: None,
+                                    content: Some(content),
+                                    icon: None,
+                                    is_pinned: None,
+                                    is_archived: None,
+                                    position: None,
+                                };
+                                Document::update(&deployment.db().pool, doc.id, &update).await?;
+                            } else {
+                                // Create new document
+                                let create = CreateDocument {
+                                    team_id: team.id,
+                                    folder_id,
+                                    title: title.clone(),
+                                    content: Some(content),
+                                    file_type: Some("markdown".to_string()),
+                                    icon: None,
+                                };
+                                Document::create(&deployment.db().pool, &create).await?;
+                            }
+
+                            synced_files.push(format!("{}/{}", github_path, file_name));
                         }
-
-                        synced_files.push(file_name.to_string());
                     }
                 }
             }
@@ -858,6 +977,107 @@ pub async fn pull_documents_from_github(
     })))
 }
 
+/// Get sync configurations for a repository
+pub async fn get_repo_sync_configs(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepoSyncConfig>>>, ApiError> {
+    // Verify the repo belongs to this team
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    let configs = GitHubRepoSyncConfig::find_by_repo_id(&deployment.db().pool, repo_id).await?;
+    Ok(ResponseJson(ApiResponse::success(configs)))
+}
+
+/// Configure multi-folder sync for a repository
+pub async fn configure_multi_folder_sync(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<ConfigureMultiFolderSync>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepoSyncConfig>>>, ApiError> {
+    // Verify the repo belongs to this team
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    // Clear existing configs and add new ones
+    GitHubRepoSyncConfig::delete_by_repo_id(&deployment.db().pool, repo_id).await?;
+
+    let mut configs = Vec::new();
+    for folder_config in payload.folder_configs {
+        let config = GitHubRepoSyncConfig::upsert(
+            &deployment.db().pool,
+            repo_id,
+            &folder_config.folder_id,
+            folder_config.github_path.as_deref(),
+        )
+        .await?;
+        configs.push(config);
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_multi_folder_sync_configured",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_id": repo_id.to_string(),
+                "folder_count": configs.len(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(configs)))
+}
+
+/// Clear all sync configurations for a repository
+pub async fn clear_multi_folder_sync(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Verify the repo belongs to this team
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
+
+    if repo.connection_id != connection.id {
+        return Err(ApiError::BadRequest(
+            "Repository does not belong to this team".to_string(),
+        ));
+    }
+
+    GitHubRepoSyncConfig::delete_by_repo_id(&deployment.db().pool, repo_id).await?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -883,6 +1103,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route(
             "/github/repos/{repo_id}/sync",
             post(configure_repo_sync).delete(clear_repo_sync),
+        )
+        .route(
+            "/github/repos/{repo_id}/sync-configs",
+            get(get_repo_sync_configs).post(configure_multi_folder_sync).delete(clear_multi_folder_sync),
         )
         .route(
             "/github/repos/{repo_id}/push",
