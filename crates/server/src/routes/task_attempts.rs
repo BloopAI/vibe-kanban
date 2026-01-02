@@ -275,6 +275,7 @@ async fn handle_task_attempt_diff_ws(
     let (mut sender, mut receiver) = socket.split();
 
     let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // interval ticks immediately; skip the first one so we don't ping on connect.
     keepalive.tick().await;
 

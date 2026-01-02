@@ -108,6 +108,7 @@ async fn handle_raw_logs_ws(
 
     // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
     let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // interval ticks immediately; skip the first one so we don't ping on connect.
     keepalive.tick().await;
 
@@ -172,6 +173,7 @@ async fn handle_normalized_logs_ws(
 
     // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
     let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // interval ticks immediately; skip the first one so we don't ping on connect.
     keepalive.tick().await;
 
@@ -255,6 +257,7 @@ async fn handle_execution_processes_ws(
 
     // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
     let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    keepalive.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // interval ticks immediately; skip the first one so we don't ping on connect.
     keepalive.tick().await;
 
