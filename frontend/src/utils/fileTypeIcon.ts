@@ -1,4 +1,4 @@
-import { FunctionComponentElement, SVGProps } from 'react';
+import { createElement, FunctionComponentElement, SVGProps } from 'react';
 import {
   TypeScript,
   JavaScript,
@@ -23,7 +23,6 @@ import {
   CSS3,
   Sass,
   JSON,
-  Markdown,
   Bash,
   PowerShell,
   React,
@@ -34,7 +33,7 @@ import {
   PostgreSQL,
   GraphQL,
 } from 'developer-icons';
-import { FileIcon } from '@phosphor-icons/react';
+import { FileIcon, FileMd } from '@phosphor-icons/react';
 
 // Match the DeveloperIconProps from developer-icons
 interface DeveloperIconProps extends Partial<SVGProps<SVGElement>> {
@@ -60,6 +59,14 @@ function iconWithVariants(
 ): IconMapping {
   return { light: lightIcon, dark: darkIcon };
 }
+
+// Wrapper for FileMd from phosphor
+const FileMdWrapper: DeveloperIcon = ({ size, ...props }) => {
+  return createElement(FileMd, {
+    size,
+    ...(props as object),
+  }) as unknown as FunctionComponentElement<DeveloperIconProps>;
+};
 
 const extToIcon: Record<string, IconMapping> = {
   // TypeScript/JavaScript
@@ -107,7 +114,7 @@ const extToIcon: Record<string, IconMapping> = {
 
   // Data/Config
   json: icon(JSON),
-  md: icon(Markdown),
+  md: icon(FileMdWrapper),
   // No YAML icon in developer-icons, use JSON as fallback
   yaml: icon(JSON),
   yml: icon(JSON),
@@ -137,10 +144,10 @@ const filenameToIcon: Record<string, IconMapping> = {
 
 // Wrapper component to adapt phosphor FileIcon to same interface
 const FileIconWrapper: DeveloperIcon = ({ size, ...props }) => {
-  return FileIcon({
+  return createElement(FileIcon, {
     size,
-    ...props,
-  } as SVGProps<SVGSVGElement>) as FunctionComponentElement<DeveloperIconProps>;
+    ...(props as object),
+  }) as unknown as FunctionComponentElement<DeveloperIconProps>;
 };
 
 export function getFileIcon(
