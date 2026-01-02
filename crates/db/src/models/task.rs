@@ -490,11 +490,14 @@ ORDER BY t.issue_number ASC"#,
         description: Option<String>,
         status: TaskStatus,
         parent_workspace_id: Option<Uuid>,
+        priority: Option<i32>,
+        due_date: Option<String>,
+        assignee_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Task,
             r#"UPDATE tasks
-               SET title = $3, description = $4, status = $5, parent_workspace_id = $6
+               SET title = $3, description = $4, status = $5, parent_workspace_id = $6, priority = $7, due_date = $8, assignee_id = $9
                WHERE id = $1 AND project_id = $2
                RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", issue_number as "issue_number: i32", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -502,7 +505,10 @@ ORDER BY t.issue_number ASC"#,
             title,
             description,
             status,
-            parent_workspace_id
+            parent_workspace_id,
+            priority,
+            due_date,
+            assignee_id
         )
         .fetch_one(pool)
         .await

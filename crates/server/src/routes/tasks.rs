@@ -265,6 +265,9 @@ pub async fn update_task(
     let parent_workspace_id = payload
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);
+    let priority = payload.priority.or(existing_task.priority);
+    let due_date = payload.due_date.or(existing_task.due_date);
+    let assignee_id = payload.assignee_id.or(existing_task.assignee_id);
 
     let task = Task::update(
         &deployment.db().pool,
@@ -274,6 +277,9 @@ pub async fn update_task(
         description,
         status,
         parent_workspace_id,
+        priority,
+        due_date,
+        assignee_id,
     )
     .await?;
 
