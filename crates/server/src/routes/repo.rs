@@ -28,6 +28,12 @@ pub struct InitRepoRequest {
     pub folder_name: String,
 }
 
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct BatchRepoRequest {
+    pub ids: Vec<Uuid>,
+}
+
 pub async fn register_repo(
     State(deployment): State<DeploymentImpl>,
     ResponseJson(payload): ResponseJson<RegisterRepoRequest>,
@@ -74,9 +80,18 @@ pub async fn get_repo_branches(
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
 
+pub async fn get_repos_batch(
+    State(deployment): State<DeploymentImpl>,
+    ResponseJson(payload): ResponseJson<BatchRepoRequest>,
+) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
+    let repos = Repo::find_by_ids(&deployment.db().pool, &payload.ids).await?;
+    Ok(ResponseJson(ApiResponse::success(repos)))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", post(register_repo))
         .route("/repos/init", post(init_repo))
+        .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
 }
