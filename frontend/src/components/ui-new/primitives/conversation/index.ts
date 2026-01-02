@@ -8,3 +8,4 @@ export { ChatUserMessage } from './ChatUserMessage';
 export { ChatAssistantMessage } from './ChatAssistantMessage';
 export { ChatSystemMessage } from './ChatSystemMessage';
 export { ChatThinkingMessage } from './ChatThinkingMessage';
+export { ToolStatusDot } from './ToolStatusDot';
