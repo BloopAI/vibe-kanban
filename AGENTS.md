@@ -72,6 +72,39 @@ Example: `./scripts/vk-cli.py create frontend "Add search feature" --team vibe-k
   - **backend** - `270d5829-6691-44b8-af81-594e70e88f15` - Rust API/server work
   - **vibe-kanban** - `1277542c-2247-4c9d-a236-c38173459694` - General/full-stack work
 
+### Feature Planning Documentation
+
+**Before implementing any new feature or significant fix**, create planning documents in the **Documents > planning** folder:
+
+#### Required Documents:
+1. **`<feature-name>-flow.md`** - ASCII flow diagram showing:
+   - User interactions
+   - System components involved
+   - Data flow between frontend → backend → database
+   - External service integrations (if any)
+
+2. **`<feature-name>-spec.md`** - Feature specification containing:
+   - **Purpose**: One-line description
+   - **Scope**: What's included / excluded
+   - **Components**: Files and modules affected
+   - **API Endpoints**: Routes with request/response
+   - **Database Changes**: New tables or migrations
+   - **UI Changes**: Pages and components
+
+**Rules:**
+- No code snippets in planning docs
+- Be precise and specific
+- Focus on WHAT, not HOW
+- Keep it brief - one page maximum per document
+
+#### Example:
+```
+Documents/
+└── planning/
+    ├── github-oauth-flow.md      # ASCII flow diagram
+    └── github-oauth-spec.md      # Feature specification
+```
+
 ### Complete Workflow for Every Task
 
 #### 1. Create Team Issue First (Before Starting Work)
