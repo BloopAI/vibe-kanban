@@ -77,7 +77,7 @@ function calculateNearestSnapPosition(
 export function useContextBarPosition(
   containerRef: RefObject<HTMLElement | null>,
   barWidth = 38,
-  barHeight = 197
+  barHeight = 177
 ): UseContextBarPositionReturn {
   const [position, setPosition] = useContextBarPositionStore();
   const [dragState, setDragState] = useState<DragState>({
