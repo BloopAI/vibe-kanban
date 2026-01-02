@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
+  Wand2,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -215,7 +216,7 @@ export function TeamDocuments() {
     if (!editingDoc) return;
 
     try {
-      await updateDocument(editingDoc.id, {
+      const updated = await updateDocument(editingDoc.id, {
         folder_id: editingDoc.folder_id,
         title: editingDoc.title,
         content: editingDoc.content,
@@ -224,11 +225,54 @@ export function TeamDocuments() {
         is_archived: editingDoc.is_archived,
         position: editingDoc.position,
       });
-      setEditingDoc(null);
+      // Update local state with saved document but stay on same page
+      if (updated) {
+        setEditingDoc(updated);
+      }
     } catch (err) {
       console.error('Failed to save document:', err);
     }
   }, [editingDoc, updateDocument]);
+
+  // Format document content as proper markdown
+  const handleFormatDocument = useCallback(() => {
+    if (!editingDoc?.content) return;
+
+    let content = editingDoc.content;
+
+    // Normalize line endings
+    content = content.replace(/\r\n/g, '\n');
+
+    // Ensure headings have proper spacing (blank line before, space after #)
+    content = content.replace(/\n*(#{1,6})([^\s#])/g, '\n\n$1 $2');
+    content = content.replace(/^(#{1,6})([^\s#])/gm, '$1 $2');
+
+    // Ensure blank line before headings (except at start)
+    content = content.replace(/([^\n])\n(#{1,6}\s)/g, '$1\n\n$2');
+
+    // Ensure proper list formatting (space after - or *)
+    content = content.replace(/^(\s*[-*])([^\s])/gm, '$1 $2');
+
+    // Normalize multiple blank lines to double
+    content = content.replace(/\n{3,}/g, '\n\n');
+
+    // Ensure paragraphs are separated by blank lines
+    content = content.replace(/([^\n])\n([A-Z])/g, '$1\n\n$2');
+
+    // Trim trailing whitespace from each line
+    content = content
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .join('\n');
+
+    // Trim start and end
+    content = content.trim();
+
+    // Ensure file ends with single newline
+    content = content + '\n';
+
+    setEditingDoc({ ...editingDoc, content });
+  }, [editingDoc]);
 
   // Scroll to a specific line in the textarea
   const handleHeadingClick = useCallback((line: number) => {
@@ -326,6 +370,15 @@ export function TeamDocuments() {
                 ) : (
                   <PanelLeftOpen className="h-4 w-4" />
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFormatDocument}
+                title="Format document"
+              >
+                <Wand2 className="h-4 w-4 mr-1" />
+                Format
               </Button>
               <Button size="sm" onClick={handleSaveDocument}>
                 Save
