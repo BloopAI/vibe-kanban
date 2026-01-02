@@ -88,6 +88,7 @@ pub struct Document {
 /// Request to create a new folder
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateDocumentFolder {
+    #[serde(default)]
     pub team_id: Uuid,
     pub parent_id: Option<Uuid>,
     pub name: String,
@@ -108,6 +109,7 @@ pub struct UpdateDocumentFolder {
 /// Request to create a new document
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateDocument {
+    #[serde(default)]
     pub team_id: Uuid,
     pub folder_id: Option<Uuid>,
     pub title: String,

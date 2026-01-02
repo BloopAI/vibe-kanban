@@ -4,6 +4,7 @@ pub mod auth;
 pub mod config;
 pub mod container;
 pub mod diff_stream;
+pub mod document_storage;
 pub mod events;
 pub mod file_ranker;
 pub mod file_search_cache;
