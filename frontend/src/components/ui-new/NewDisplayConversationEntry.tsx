@@ -22,6 +22,7 @@ import {
   ChatUserMessage,
   ChatAssistantMessage,
   ChatSystemMessage,
+  ChatThinkingMessage,
 } from './primitives/conversation';
 
 type Props = {
@@ -185,6 +186,16 @@ function NewDisplayConversationEntry({
   if (entryType.type === 'system_message') {
     return (
       <SystemMessageEntry content={entry.content} expansionKey={expansionKey} />
+    );
+  }
+
+  // Thinking message - use ChatThinkingMessage
+  if (entryType.type === 'thinking') {
+    return (
+      <ChatThinkingMessage
+        content={entry.content}
+        taskAttemptId={taskAttempt?.id}
+      />
     );
   }
 

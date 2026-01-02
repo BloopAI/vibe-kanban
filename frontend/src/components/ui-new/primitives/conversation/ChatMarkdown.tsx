@@ -15,7 +15,7 @@ export function ChatMarkdown({
   workspaceId,
 }: ChatMarkdownProps) {
   return (
-    <div className={cn('text-sm text-normal', className)} style={{ maxWidth }}>
+    <div className={cn('text-sm', className)} style={{ maxWidth }}>
       <WYSIWYGEditor
         value={content}
         disabled
