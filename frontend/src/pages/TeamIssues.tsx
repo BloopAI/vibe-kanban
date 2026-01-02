@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -284,10 +284,15 @@ export function TeamIssues() {
             <h1 className="text-lg font-semibold">{team.name}</h1>
             <span className="text-muted-foreground">/ Issues</span>
           </div>
-          <Button size="sm" onClick={handleCreateIssue}>
-            <Plus className="h-4 w-4 mr-1" />
-            New Issue
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => refresh()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button size="sm" onClick={handleCreateIssue}>
+              <Plus className="h-4 w-4 mr-1" />
+              New Issue
+            </Button>
+          </div>
         </div>
       </div>
 
