@@ -114,7 +114,7 @@ async fn handle_raw_logs_ws(
     loop {
         tokio::select! {
             _ = keepalive.tick() => {
-                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                if sender.send(Message::Ping(Vec::new().into())).await.is_err() {
                     break; // client disconnected
                 }
             }
@@ -178,7 +178,7 @@ async fn handle_normalized_logs_ws(
     loop {
         tokio::select! {
             _ = keepalive.tick() => {
-                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                if sender.send(Message::Ping(Vec::new().into())).await.is_err() {
                     break;
                 }
             }
@@ -261,7 +261,7 @@ async fn handle_execution_processes_ws(
     loop {
         tokio::select! {
             _ = keepalive.tick() => {
-                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                if sender.send(Message::Ping(Vec::new().into())).await.is_err() {
                     break; // client disconnected
                 }
             }

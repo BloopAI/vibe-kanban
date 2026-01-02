@@ -138,7 +138,7 @@ async fn handle_scratch_ws(
     loop {
         tokio::select! {
             _ = keepalive.tick() => {
-                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                if sender.send(Message::Ping(Vec::new().into())).await.is_err() {
                     break;
                 }
             }
