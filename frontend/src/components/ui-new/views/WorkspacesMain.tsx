@@ -95,6 +95,7 @@ export function WorkspacesMain({
         copied={copied}
         onOpen={onOpen}
         onCopy={onCopy}
+        attemptId={workspaceWithSession?.id}
       />
     </main>
   );
