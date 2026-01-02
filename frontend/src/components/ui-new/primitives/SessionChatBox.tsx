@@ -4,8 +4,6 @@ import {
   CheckIcon,
   ClockIcon,
   XIcon,
-  PaperPlaneTiltIcon,
-  ArrowClockwiseIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
 import type { Session, BaseCodingAgent } from 'shared/types';
@@ -214,9 +212,7 @@ export function SessionChatBox({
           <PrimaryButton
             onClick={feedbackMode?.onSubmitFeedback}
             disabled={!canSend || feedbackMode?.isSubmitting}
-            actionIcon={
-              feedbackMode?.isSubmitting ? 'spinner' : PaperPlaneTiltIcon
-            }
+            actionIcon={feedbackMode?.isSubmitting ? 'spinner' : undefined}
             value="Submit Feedback"
           />
         </>
@@ -235,7 +231,7 @@ export function SessionChatBox({
           <PrimaryButton
             onClick={editMode?.onSubmitEdit}
             disabled={!canSend || editMode?.isSubmitting}
-            actionIcon={editMode?.isSubmitting ? 'spinner' : ArrowClockwiseIcon}
+            actionIcon={editMode?.isSubmitting ? 'spinner' : undefined}
             value="Retry"
           />
         </>
@@ -248,7 +244,6 @@ export function SessionChatBox({
           <PrimaryButton
             onClick={actions.onSend}
             disabled={!canSend}
-            actionIcon={PaperPlaneTiltIcon}
             value="Send"
           />
         );
@@ -269,7 +264,6 @@ export function SessionChatBox({
               onClick={actions.onQueue}
               disabled={!canSend}
               value="Queue"
-              actionIcon={ArrowClockwiseIcon}
             />
             <PrimaryButton
               onClick={actions.onStop}
