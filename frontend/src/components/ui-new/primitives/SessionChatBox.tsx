@@ -329,7 +329,7 @@ export function SessionChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
       projectId={projectId}
-      autoFocus={isInFeedbackMode || isInEditMode}
+      autoFocus={true}
       variant={variant}
       error={displayError}
       banner={renderBanner()}
