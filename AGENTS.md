@@ -55,27 +55,34 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 - Use `.env` for local overrides; never commit secrets. Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST`
 - Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
 
-## Task Management Workflow (Vibe Kanban MCP)
+## Task Management Workflow (Team Issues)
 
-Use the Vibe Kanban MCP tools to manage tasks for this project. **All work should be tracked under the vibe-kanban team.**
+**All work should be tracked as Team Issues under the vibe-kanban team.** Team Issues are tasks that appear on the Team Issues board with auto-assigned issue numbers (VIB-XX).
 
-### Available Projects for Task Mapping
-- **frontend** - `5b8810bc-b52f-464f-b87c-4a10542c14d3` - React/TypeScript UI work
-- **backend** - `270d5829-6691-44b8-af81-594e70e88f15` - Rust API/server work
-- **vibe-kanban** - `1277542c-2247-4c9d-a236-c38173459694` - General/full-stack work
+### Team and Project Mapping
+- **Team**: `vibe-kanban` - `ea68ef91-e9b7-4c28-9f53-077cf6a08fd3`
+- **Projects** (map issues to the relevant project based on work type):
+  - **frontend** - `5b8810bc-b52f-464f-b87c-4a10542c14d3` - React/TypeScript UI work
+  - **backend** - `270d5829-6691-44b8-af81-594e70e88f15` - Rust API/server work
+  - **vibe-kanban** - `1277542c-2247-4c9d-a236-c38173459694` - General/full-stack work
 
 ### Complete Workflow for Every Task
 
-#### 1. Create Task First (Before Starting Work)
-Use `mcp__vibe_kanban__create_task` with:
-- `project_id`: Map to relevant project (frontend, backend, or vibe-kanban)
-- `title`: Clear, descriptive task title
-- `description`: Detailed description of what needs to be done
+#### 1. Create Team Issue First (Before Starting Work)
+Use the CLI to create a team issue (task mapped to the vibe-kanban team):
+```bash
+./scripts/vk-cli.py create <project> "<title>" --team vibe-kanban -d "<description>"
+# Examples:
+./scripts/vk-cli.py create frontend "Add dark mode toggle" --team vibe-kanban -d "Implement dark mode"
+./scripts/vk-cli.py create backend "Add rate limiting" --team vibe-kanban -d "Add API rate limiting"
+```
+
+**Important**: Always include `--team vibe-kanban` to create a Team Issue that appears on the Issues board.
 
 #### 2. Update Task Status to In Progress
-Use `mcp__vibe_kanban__update_task` with:
-- `task_id`: The created task ID
-- `status`: `"inprogress"`
+```bash
+./scripts/vk-cli.py update <task-id> --status inprogress
+```
 
 #### 3. Create Feature Branch
 ```bash
@@ -110,9 +117,9 @@ git push origin --delete feature/<task-id>-<task-name-kebab-case>
 ```
 
 #### 8. Update Task Status to Done
-Use `mcp__vibe_kanban__update_task` with:
-- `task_id`: The task ID
-- `status`: `"done"`
+```bash
+./scripts/vk-cli.py update <task-id> --status done
+```
 
 ### Task Status Values
 - `todo` - Not started
@@ -121,7 +128,23 @@ Use `mcp__vibe_kanban__update_task` with:
 - `done` - Completed
 - `cancelled` - No longer needed
 
-### Listing Tasks
-- Use `mcp__vibe_kanban__list_projects` to get project IDs
-- Use `mcp__vibe_kanban__list_tasks` with project ID to view all tasks
-- Use `mcp__vibe_kanban__get_task` to get detailed task information
+### Useful CLI Commands
+```bash
+# List all projects
+./scripts/vk-cli.py projects
+
+# List all teams
+./scripts/vk-cli.py teams
+
+# List team issues (on the Issues board)
+./scripts/vk-cli.py issues ea68ef91-e9b7-4c28-9f53-077cf6a08fd3
+
+# List project tasks
+./scripts/vk-cli.py tasks frontend
+
+# Get task details
+./scripts/vk-cli.py task <task-id>
+
+# Update task
+./scripts/vk-cli.py update <task-id> --status done --title "New title"
+```

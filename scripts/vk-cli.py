@@ -4,13 +4,14 @@ vibe-kanban CLI - Direct API client for vibe-kanban task management.
 Bypasses MCP and communicates directly with the backend API.
 
 Usage:
-    ./vk-cli.py projects                    # List all projects
-    ./vk-cli.py tasks <project_id>          # List tasks in a project
-    ./vk-cli.py task <task_id>              # Get task details
-    ./vk-cli.py create <project_id> "title" # Create a task
+    ./vk-cli.py projects                                    # List all projects
+    ./vk-cli.py tasks <project_id>                          # List tasks in a project
+    ./vk-cli.py task <task_id>                              # Get task details
+    ./vk-cli.py create <project_id> "title" --team <team>   # Create team issue
+    ./vk-cli.py create <project_id> "title"                 # Create project task
     ./vk-cli.py update <task_id> --status inprogress
-    ./vk-cli.py teams                       # List all teams
-    ./vk-cli.py issues <team_id>            # List issues for a team
+    ./vk-cli.py teams                                       # List all teams
+    ./vk-cli.py issues <team_id>                            # List issues for a team
 """
 
 import argparse
@@ -30,6 +31,11 @@ KNOWN_PROJECTS = {
     "frontend": "5b8810bc-b52f-464f-b87c-4a10542c14d3",
     "backend": "270d5829-6691-44b8-af81-594e70e88f15",
     "vibe-kanban": "1277542c-2247-4c9d-a236-c38173459694",
+}
+
+# Known team IDs for convenience
+KNOWN_TEAMS = {
+    "vibe-kanban": "ea68ef91-e9b7-4c28-9f53-077cf6a08fd3",
 }
 
 # Status mappings
@@ -86,6 +92,13 @@ def resolve_project_id(project_ref):
     if project_ref in KNOWN_PROJECTS:
         return KNOWN_PROJECTS[project_ref]
     return project_ref
+
+
+def resolve_team_id(team_ref):
+    """Resolve team name or ID to actual ID."""
+    if team_ref in KNOWN_TEAMS:
+        return KNOWN_TEAMS[team_ref]
+    return team_ref
 
 
 def format_task(task, verbose=False):
@@ -216,7 +229,7 @@ def cmd_task(args):
 
 
 def cmd_create(args):
-    """Create a new task."""
+    """Create a new task (or team issue if --team is specified)."""
     project_id = resolve_project_id(args.project_id)
 
     data = {
@@ -230,6 +243,8 @@ def cmd_create(args):
         data["status"] = args.status
     if args.priority:
         data["priority"] = args.priority
+    if args.team:
+        data["team_id"] = resolve_team_id(args.team)
 
     result = api_request("/tasks", method="POST", data=data)
 
@@ -243,7 +258,13 @@ def cmd_create(args):
         print(json.dumps(task, indent=2))
         return
 
-    print(f"✓ Created task: {task.get('id', '')}")
+    # Show issue number if it's a team issue
+    issue_number = task.get("issue_number")
+    if issue_number:
+        print(f"✓ Created team issue: {task.get('id', '')}")
+        print(f"  Issue #: {issue_number}")
+    else:
+        print(f"✓ Created task: {task.get('id', '')}")
     print(f"  Title: {task.get('title', '')}")
     print(f"  Status: {task.get('status', '')}")
 
@@ -359,12 +380,15 @@ Examples:
   %(prog)s tasks vibe-kanban                  List tasks (use project name)
   %(prog)s tasks 1277542c-2247-4c9d-a236-c38173459694  List tasks (use ID)
   %(prog)s task abc123                        Get task details
-  %(prog)s create vibe-kanban "My new task"   Create a task
+  %(prog)s create frontend "My task" --team vibe-kanban   Create team issue
+  %(prog)s create vibe-kanban "My task"       Create project task (no team)
   %(prog)s update abc123 --status done        Update task status
   %(prog)s teams                              List all teams
+  %(prog)s issues ea68ef91-...                List issues for a team
   %(prog)s health                             Check backend connection
 
 Known project names: frontend, backend, vibe-kanban
+Known team names: vibe-kanban
         """
     )
 
@@ -386,12 +410,13 @@ Known project names: frontend, backend, vibe-kanban
     task_parser.add_argument("task_id", help="Task ID")
 
     # create command
-    create_parser = subparsers.add_parser("create", help="Create a new task")
-    create_parser.add_argument("project_id", help="Project ID or name")
+    create_parser = subparsers.add_parser("create", help="Create a new task or team issue")
+    create_parser.add_argument("project_id", help="Project ID or name (frontend, backend, vibe-kanban)")
     create_parser.add_argument("title", help="Task title")
     create_parser.add_argument("-d", "--description", help="Task description")
     create_parser.add_argument("-s", "--status", choices=STATUSES, default="todo", help="Initial status")
     create_parser.add_argument("-p", "--priority", type=int, help="Priority (0-4)")
+    create_parser.add_argument("-t", "--team", help="Team ID or name to create as team issue (e.g., vibe-kanban)")
 
     # update command
     update_parser = subparsers.add_parser("update", help="Update a task")
