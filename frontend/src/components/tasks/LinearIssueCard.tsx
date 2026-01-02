@@ -6,10 +6,8 @@ import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import { StatusIcon } from '@/utils/statusIcons';
 import {
   PrioritySelector,
-  ComponentSelector,
   type TeamMember,
   type PriorityValue,
-  type ComponentValue,
 } from '@/components/selectors';
 import {
   DropdownMenu,
@@ -33,14 +31,12 @@ interface LinearIssueCardProps {
   issueKey?: string; // e.g., "VIB-1"
   projectName?: string;
   projectId?: string;
-  component?: string | null; // e.g., "frontend", "backend"
   onViewDetails: (task: TaskWithAttemptStatus) => void;
   isSelected?: boolean;
   teamMembers?: TeamMember[];
   teamProjects?: TeamProject[];
   onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
-  onComponentChange?: (taskId: string, component: string | null) => void;
   onProjectChange?: (taskId: string, projectId: string) => void;
 }
 
@@ -51,14 +47,12 @@ function LinearIssueCardComponent({
   issueKey,
   projectName,
   projectId,
-  component,
   onViewDetails,
   isSelected,
   teamMembers = [],
   teamProjects = [],
   onAssigneeChange,
   onPriorityChange,
-  onComponentChange,
   onProjectChange,
 }: LinearIssueCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -97,10 +91,6 @@ function LinearIssueCardComponent({
   const handlePriorityChange = useCallback((priority: PriorityValue) => {
     onPriorityChange?.(task.id, priority);
   }, [task.id, onPriorityChange]);
-
-  const handleComponentChange = useCallback((newComponent: ComponentValue) => {
-    onComponentChange?.(task.id, newComponent);
-  }, [task.id, onComponentChange]);
 
   const handleProjectChange = useCallback((newProjectId: string) => {
     onProjectChange?.(task.id, newProjectId);
@@ -220,18 +210,8 @@ function LinearIssueCardComponent({
           </h4>
         </div>
 
-        {/* Bottom row: All labels in same row - Component, Project, Priority */}
+        {/* Bottom row: Project and Priority labels */}
         <div className="flex items-center gap-1.5 mt-1">
-          {/* Component Selector - clickable label */}
-          <div onClick={(e) => e.stopPropagation()}>
-            <ComponentSelector
-              value={component || null}
-              onChange={handleComponentChange}
-              variant="tag"
-              disabled={!onComponentChange}
-            />
-          </div>
-
           {/* Project Selector - clickable dropdown */}
           <div onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>

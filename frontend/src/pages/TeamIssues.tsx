@@ -40,9 +40,6 @@ export function TeamIssues() {
   const { projects } = useProjects();
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
 
-  // Local state for component labels (frontend-only for now until backend supports it)
-  const [componentsByTaskId, setComponentsByTaskId] = useState<Record<string, string | null>>({});
-
   // Mock team members - in real app, this would come from API
   // Note: IDs must be valid UUIDs as the backend expects UUID for assignee_id
   const teamMembers: TeamMember[] = useMemo(() => [
@@ -90,7 +87,7 @@ export function TeamIssues() {
   }, [projects]);
 
   const kanbanColumns = useMemo(() => {
-    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string; component?: string | null }[]> = {
+    const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]> = {
       todo: [],
       inprogress: [],
       inreview: [],
@@ -110,7 +107,6 @@ export function TeamIssues() {
         task: issue,
         issueKey,
         projectName: projectNamesById[issue.project_id],
-        component: componentsByTaskId[issue.id] || null,
       });
     });
 
@@ -124,7 +120,7 @@ export function TeamIssues() {
     });
 
     return columns;
-  }, [issues, team, projectNamesById, componentsByTaskId]);
+  }, [issues, team, projectNamesById]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -213,18 +209,6 @@ export function TeamIssues() {
       }
     },
     [issuesById, refresh]
-  );
-
-  // Handler for component label changes (frontend-only for now)
-  const handleComponentChange = useCallback(
-    (taskId: string, component: string | null) => {
-      setComponentsByTaskId((prev) => ({
-        ...prev,
-        [taskId]: component,
-      }));
-      // TODO: When backend supports component field, call API here
-    },
-    []
   );
 
   // Handler for project changes - moves issue to a different project
@@ -333,7 +317,6 @@ export function TeamIssues() {
               teamProjects={teamProjectsForDropdown}
               onAssigneeChange={handleAssigneeChange}
               onPriorityChange={handlePriorityChange}
-              onComponentChange={handleComponentChange}
               onProjectChange={handleProjectChange}
             />
           </div>

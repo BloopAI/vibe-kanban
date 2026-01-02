@@ -51,7 +51,20 @@ fi
 
 # Export the port for the MCP server
 export BACKEND_PORT=$(cat "$PORT_FILE")
+export PORT=$BACKEND_PORT
+export VIBE_BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
 echo "Using backend port: $BACKEND_PORT" >&2
+echo "Using backend URL: $VIBE_BACKEND_URL" >&2
 
-# Now run the MCP server
-exec npx -y vibe-kanban@latest --mcp
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Run the local MCP server binary if available, otherwise use npx
+if [ -f "$PROJECT_DIR/target/debug/mcp_task_server" ]; then
+    echo "Using local MCP server binary" >&2
+    exec "$PROJECT_DIR/target/debug/mcp_task_server"
+else
+    echo "Using npx MCP server" >&2
+    exec npx -y vibe-kanban@latest --mcp
+fi

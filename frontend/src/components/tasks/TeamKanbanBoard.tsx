@@ -32,7 +32,6 @@ interface ColumnItem {
   issueKey?: string;
   projectName?: string;
   projectId?: string;
-  component?: string | null;
 }
 
 interface TeamKanbanBoardProps {
@@ -45,7 +44,6 @@ interface TeamKanbanBoardProps {
   teamProjects?: TeamProject[];
   onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
-  onComponentChange?: (taskId: string, component: string | null) => void;
   onProjectChange?: (taskId: string, projectId: string) => void;
 }
 
@@ -60,7 +58,6 @@ interface KanbanColumnProps {
   teamProjects?: TeamProject[];
   onAssigneeChange?: (taskId: string, assigneeId: string | null) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
-  onComponentChange?: (taskId: string, component: string | null) => void;
   onProjectChange?: (taskId: string, projectId: string) => void;
 }
 
@@ -75,7 +72,6 @@ function KanbanColumn({
   teamProjects,
   onAssigneeChange,
   onPriorityChange,
-  onComponentChange,
   onProjectChange,
 }: KanbanColumnProps) {
   const { isOver, setNodeRef } = useDroppable({ id: status });
@@ -136,14 +132,12 @@ function KanbanColumn({
               issueKey={item.issueKey}
               projectName={item.projectName}
               projectId={item.projectId || item.task.project_id}
-              component={item.component}
               onViewDetails={onViewTaskDetails}
               isSelected={selectedTaskId === item.task.id}
               teamMembers={teamMembers}
               teamProjects={teamProjects}
               onAssigneeChange={onAssigneeChange}
               onPriorityChange={onPriorityChange}
-              onComponentChange={onComponentChange}
               onProjectChange={onProjectChange}
             />
           ))}
@@ -223,7 +217,6 @@ function TeamKanbanBoardComponent({
   teamProjects,
   onAssigneeChange,
   onPriorityChange,
-  onComponentChange,
   onProjectChange,
 }: TeamKanbanBoardProps) {
   const [visibleStatuses, setVisibleStatuses] = useState<TaskStatus[]>(DEFAULT_VISIBLE);
@@ -275,7 +268,6 @@ function TeamKanbanBoardComponent({
               teamProjects={teamProjects}
               onAssigneeChange={onAssigneeChange}
               onPriorityChange={onPriorityChange}
-              onComponentChange={onComponentChange}
               onProjectChange={onProjectChange}
             />
           ))}
