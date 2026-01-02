@@ -130,6 +130,8 @@ export function SessionChatBox({
     !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
+  const showRunningAnimation =
+    status === 'running' || status === 'queued' || status === 'sending';
 
   // Placeholder
   const placeholder = isInFeedbackMode
@@ -336,6 +338,7 @@ export function SessionChatBox({
           ? VisualVariant.FEEDBACK
           : VisualVariant.NORMAL
       }
+      isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
       headerLeft={
         <>

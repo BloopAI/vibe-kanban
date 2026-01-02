@@ -57,6 +57,9 @@ interface ChatBoxBaseProps {
 
   // File paste handler for attachments
   onPasteFiles?: (files: File[]) => void;
+
+  // Whether the workspace is running (shows animated border)
+  isRunning?: boolean;
 }
 
 /**
@@ -79,6 +82,7 @@ export function ChatBoxBase({
   banner,
   visualVariant,
   onPasteFiles,
+  isRunning,
 }: ChatBoxBaseProps) {
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
@@ -88,7 +92,8 @@ export function ChatBoxBase({
       className={cn(
         'flex w-chat max-w-full flex-col border-t',
         '@chat:border-x @chat:rounded-t-md',
-        visualVariant === VisualVariant.FEEDBACK && 'border-brand bg-brand/10'
+        visualVariant === VisualVariant.FEEDBACK && 'border-brand bg-brand/10',
+        isRunning && 'chat-box-running'
       )}
     >
       {/* Error alert */}

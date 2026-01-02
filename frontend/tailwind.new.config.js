@@ -148,6 +148,10 @@ module.exports = {
           '0%, 100%': { opacity: '0.3' },
           '50%': { opacity: '1' },
         },
+        'border-flash': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -156,6 +160,7 @@ module.exports = {
         'running-dot-1': 'running-dot 1.4s ease-in-out infinite',
         'running-dot-2': 'running-dot 1.4s ease-in-out 0.2s infinite',
         'running-dot-3': 'running-dot 1.4s ease-in-out 0.4s infinite',
+        'border-flash': 'border-flash 2s linear infinite',
       },
     },
   },
