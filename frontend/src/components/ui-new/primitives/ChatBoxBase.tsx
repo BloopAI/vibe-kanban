@@ -20,6 +20,7 @@ export interface VariantProps {
 export enum VisualVariant {
   NORMAL = 'NORMAL',
   FEEDBACK = 'FEEDBACK',
+  EDIT = 'EDIT',
 }
 
 interface ChatBoxBaseProps {
@@ -96,7 +97,9 @@ export function ChatBoxBase({
       className={cn(
         'flex w-chat max-w-full flex-col border-t',
         '@chat:border-x @chat:rounded-t-md',
-        visualVariant === VisualVariant.FEEDBACK && 'border-brand bg-brand/10',
+        (visualVariant === VisualVariant.FEEDBACK ||
+          visualVariant === VisualVariant.EDIT) &&
+          'border-brand bg-brand/10',
         isRunning && 'chat-box-running'
       )}
     >
@@ -138,22 +141,26 @@ export function ChatBoxBase({
         {/* Footer - Controls */}
         <div className="flex items-end justify-between">
           <Toolbar className="flex-1 gap-double">
-            {visualVariant === VisualVariant.NORMAL && (
-              <ToolbarDropdown label={variantLabel} disabled={disabled}>
-                <DropdownMenuLabel>Variants</DropdownMenuLabel>
-                {variantOptions.map((variantName) => (
-                  <DropdownMenuItem
-                    key={variantName}
-                    icon={
-                      variant?.selected === variantName ? CheckIcon : undefined
-                    }
-                    onClick={() => variant?.onChange(variantName)}
-                  >
-                    {toPrettyCase(variantName)}
-                  </DropdownMenuItem>
-                ))}
-              </ToolbarDropdown>
-            )}
+            {(visualVariant === VisualVariant.NORMAL ||
+              visualVariant === VisualVariant.EDIT) &&
+              variant && (
+                <ToolbarDropdown label={variantLabel} disabled={disabled}>
+                  <DropdownMenuLabel>Variants</DropdownMenuLabel>
+                  {variantOptions.map((variantName) => (
+                    <DropdownMenuItem
+                      key={variantName}
+                      icon={
+                        variant?.selected === variantName
+                          ? CheckIcon
+                          : undefined
+                      }
+                      onClick={() => variant?.onChange(variantName)}
+                    >
+                      {toPrettyCase(variantName)}
+                    </DropdownMenuItem>
+                  ))}
+                </ToolbarDropdown>
+              )}
             {footerLeft}
           </Toolbar>
           <div className="flex gap-base">{footerRight}</div>

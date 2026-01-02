@@ -347,9 +347,11 @@ export function SessionChatBox({
       error={displayError}
       banner={renderBanner()}
       visualVariant={
-        isInFeedbackMode || isInEditMode
+        isInFeedbackMode
           ? VisualVariant.FEEDBACK
-          : VisualVariant.NORMAL
+          : isInEditMode
+            ? VisualVariant.EDIT
+            : VisualVariant.NORMAL
       }
       isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
