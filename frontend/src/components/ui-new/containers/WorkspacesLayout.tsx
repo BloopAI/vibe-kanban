@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Group,
@@ -137,6 +138,7 @@ function GitPanelContainer({
 }
 
 export function WorkspacesLayout() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     workspace: selectedWorkspace,
@@ -156,6 +158,11 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch task for current workspace (used for old UI navigation)
+  const { data: selectedWorkspaceTask } = useTask(selectedWorkspace?.task_id, {
+    enabled: !!selectedWorkspace?.task_id,
+  });
 
   // Archive/unarchive mutation
   const toggleArchiveMutation = useMutation({
@@ -261,6 +268,15 @@ export function WorkspacesLayout() {
       nextWorkspaceId,
     });
   }, [selectedWorkspace, sidebarWorkspaces, toggleArchiveMutation]);
+
+  // Navigate to old UI handler
+  const handleNavigateToOldUI = useCallback(() => {
+    if (selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id) {
+      navigate(
+        `/projects/${selectedWorkspaceTask.project_id}/tasks/${selectedWorkspace.task_id}`
+      );
+    }
+  }, [selectedWorkspaceTask?.project_id, selectedWorkspace?.task_id, navigate]);
 
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
@@ -412,6 +428,11 @@ export function WorkspacesLayout() {
         onToggleSidebar={handleToggleSidebar}
         onToggleGitPanel={handleToggleGitPanel}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
+        onNavigateToOldUI={
+          selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id
+            ? handleNavigateToOldUI
+            : undefined
+        }
       />
       {isCreateMode ? renderCreateModeContent() : renderWorkspaceContent()}
     </div>

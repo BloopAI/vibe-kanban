@@ -1,6 +1,7 @@
 import {
   SidebarSimpleIcon,
   ArchiveIcon,
+  ArrowSquareOutIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,8 @@ export interface NavbarProps {
   onToggleSidebar?: () => void;
   onToggleGitPanel?: () => void;
   onToggleArchive?: () => void;
+  // Navigation to old UI
+  onNavigateToOldUI?: () => void;
   className?: string;
 }
 
@@ -68,6 +71,7 @@ export function Navbar({
   onToggleSidebar,
   onToggleGitPanel,
   onToggleArchive,
+  onNavigateToOldUI,
   className,
 }: NavbarProps) {
   return (
@@ -77,7 +81,7 @@ export function Navbar({
         className
       )}
     >
-      {/* Left - Sidebar Toggle & Archive */}
+      {/* Left - Sidebar Toggle, Archive & Old UI Link */}
       <div className="flex-1 flex items-center gap-base">
         <NavbarIconButton
           icon={SidebarSimpleIcon}
@@ -85,17 +89,26 @@ export function Navbar({
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
         />
-        {onToggleArchive && (
+        {(onToggleArchive || onNavigateToOldUI) && (
           <>
             <div className="w-px h-4 bg-low/20" />
-            <NavbarIconButton
-              icon={ArchiveIcon}
-              isActive={isArchived}
-              onClick={onToggleArchive}
-              aria-label={
-                isArchived ? 'Unarchive workspace' : 'Archive workspace'
-              }
-            />
+            {onToggleArchive && (
+              <NavbarIconButton
+                icon={ArchiveIcon}
+                isActive={isArchived}
+                onClick={onToggleArchive}
+                aria-label={
+                  isArchived ? 'Unarchive workspace' : 'Archive workspace'
+                }
+              />
+            )}
+            {onNavigateToOldUI && (
+              <NavbarIconButton
+                icon={ArrowSquareOutIcon}
+                onClick={onNavigateToOldUI}
+                aria-label="Open in old UI"
+              />
+            )}
           </>
         )}
       </div>
