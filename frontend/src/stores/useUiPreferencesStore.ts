@@ -19,6 +19,9 @@ export const PERSIST_KEYS = {
   gitPanelCreateAddRepo: 'git-panel-create-add-repo',
   // Context bar
   contextBarPosition: 'context-bar-position',
+  // Pane sizes
+  sidebarWidth: 'workspaces-sidebar-width',
+  gitPanelWidth: 'workspaces-git-panel-width',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
@@ -27,16 +30,20 @@ export type PersistKey =
   | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
   | typeof PERSIST_KEYS.gitPanelCreateAddRepo
+  | typeof PERSIST_KEYS.sidebarWidth
+  | typeof PERSIST_KEYS.gitPanelWidth
   | `repo-card-${string}`;
 
 type State = {
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
+  paneSizes: Record<string, number>;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
   setContextBarPosition: (position: ContextBarPosition) => void;
+  setPaneSize: (key: string, size: number) => void;
 };
 
 const useUiPreferencesStore = create<State>()(
@@ -45,6 +52,7 @@ const useUiPreferencesStore = create<State>()(
       repoActions: {},
       expanded: {},
       contextBarPosition: 'middle-right',
+      paneSizes: {},
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -58,6 +66,8 @@ const useUiPreferencesStore = create<State>()(
         })),
       setContextBarPosition: (position) =>
         set({ contextBarPosition: position }),
+      setPaneSize: (key, size) =>
+        set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
     }),
     { name: 'ui-preferences' }
   )
@@ -102,4 +112,14 @@ export function useContextBarPosition(): [
   const position = useUiPreferencesStore((s) => s.contextBarPosition);
   const setPosition = useUiPreferencesStore((s) => s.setContextBarPosition);
   return [position, setPosition];
+}
+
+// Hook for pane size preference
+export function usePaneSize(
+  key: PersistKey,
+  defaultSize: number
+): [number, (size: number) => void] {
+  const size = useUiPreferencesStore((s) => s.paneSizes[key] ?? defaultSize);
+  const setSize = useUiPreferencesStore((s) => s.setPaneSize);
+  return [size, (s) => setSize(key, s)];
 }
