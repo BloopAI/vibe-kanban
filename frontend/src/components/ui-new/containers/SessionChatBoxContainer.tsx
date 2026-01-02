@@ -4,6 +4,7 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
+import { useEntries } from '@/contexts/EntriesContext';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
@@ -93,6 +94,19 @@ export function SessionChatBoxContainer({
   // Message edit context
   const editContext = useMessageEditContext();
   const isInEditMode = editContext.isInEditMode;
+
+  // Detect pending approval from entries
+  const { entries } = useEntries();
+  const hasPendingApproval = useMemo(() => {
+    return entries.some((entry) => {
+      if (entry.type !== 'NORMALIZED_ENTRY') return false;
+      const entryType = entry.content.entry_type;
+      return (
+        entryType.type === 'tool_use' &&
+        entryType.status.status === 'pending_approval'
+      );
+    });
+  }, [entries]);
 
   // Branch status for edit retry
   const { data: branchStatus } = useBranchStatus(attemptId);
@@ -377,6 +391,7 @@ export function SessionChatBoxContainer({
       }}
       error={sendError}
       agent={latestProfileId?.executor}
+      hasPendingApproval={hasPendingApproval}
       executor={
         isNewSessionMode
           ? {
