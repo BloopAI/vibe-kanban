@@ -93,6 +93,8 @@ interface SessionChatBoxProps {
   agent?: BaseCodingAgent | null;
   /** Executor selection for new session mode */
   executor?: ExecutorProps;
+  /** Whether there's a pending approval (suppresses running animation) */
+  hasPendingApproval?: boolean;
 }
 
 /**
@@ -112,6 +114,7 @@ export function SessionChatBox({
   projectId,
   agent,
   executor,
+  hasPendingApproval,
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,7 +134,8 @@ export function SessionChatBox({
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
   const showRunningAnimation =
-    status === 'running' || status === 'queued' || status === 'sending';
+    (status === 'running' || status === 'queued' || status === 'sending') &&
+    !hasPendingApproval;
 
   // Placeholder
   const placeholder = isInFeedbackMode
