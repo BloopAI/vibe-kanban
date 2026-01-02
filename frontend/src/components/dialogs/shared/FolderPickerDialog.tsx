@@ -93,6 +93,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
 
     const handleFolderClick = (entry: DirectoryEntry) => {
       if (entry.is_directory) {
+        setSearchTerm('');
         loadDirectory(entry.path);
         setManualPath(entry.path); // Auto-populate the manual path field
       }
