@@ -23,6 +23,8 @@ import {
   LayoutGrid,
   List,
   GripVertical,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -78,6 +80,7 @@ export function TeamDocuments() {
     deleteDocument,
     createFolder,
     deleteFolder,
+    scanFilesystem,
   } = useDocuments(teamId || '');
 
   // Dialog states
@@ -89,6 +92,8 @@ export function TeamDocuments() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ added: number; scanned: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
@@ -210,9 +215,29 @@ export function TeamDocuments() {
     (folderId: string | null) => {
       setCurrentFolderId(folderId);
       setSearchQuery('');
+      setScanResult(null);
     },
     [setCurrentFolderId]
   );
+
+  const handleScanFilesystem = useCallback(async () => {
+    if (!currentFolderId) return;
+
+    setIsScanning(true);
+    setScanResult(null);
+
+    try {
+      const result = await scanFilesystem(currentFolderId);
+      setScanResult({
+        added: result.documents_added,
+        scanned: result.files_scanned,
+      });
+    } catch (err) {
+      console.error('Failed to scan filesystem:', err);
+    } finally {
+      setIsScanning(false);
+    }
+  }, [currentFolderId, scanFilesystem]);
 
   const handleOpenDocument = useCallback((doc: Document) => {
     setEditingDoc(doc);
@@ -520,6 +545,22 @@ export function TeamDocuments() {
             <span className="text-muted-foreground">/ Documents</span>
           </div>
           <div className="flex items-center gap-2">
+            {currentFolderId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleScanFilesystem}
+                disabled={isScanning}
+                title="Scan filesystem for new documents"
+              >
+                {isScanning ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                )}
+                Scan
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -534,6 +575,13 @@ export function TeamDocuments() {
             </Button>
           </div>
         </div>
+
+        {/* Scan Result */}
+        {scanResult && (
+          <div className="mt-2 text-sm text-muted-foreground">
+            Scanned {scanResult.scanned} files, added {scanResult.added} new documents
+          </div>
+        )}
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground">

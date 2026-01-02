@@ -9,6 +9,7 @@ use db::models::{
     tag::Tag, task::Task, team::Team, workspace::Workspace,
 };
 use deployment::Deployment;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -173,10 +174,19 @@ pub async fn load_session_middleware(
 // Middleware that loads and injects Team based on the team_id path parameter
 pub async fn load_team_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(team_id): Path<Uuid>,
+    Path(params): Path<HashMap<String, String>>,
     request: axum::extract::Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Extract team_id from path params
+    let team_id = params
+        .get("team_id")
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .ok_or_else(|| {
+            tracing::error!("Missing or invalid team_id in path");
+            StatusCode::BAD_REQUEST
+        })?;
+
     // Load the team from the database
     let team = match Team::find_by_id(&deployment.db().pool, team_id).await {
         Ok(Some(team)) => team,

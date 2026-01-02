@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, post},
 };
 use db::models::document::{
     CreateDocument, CreateDocumentFolder, Document, DocumentFolder, UpdateDocument,
@@ -11,12 +11,13 @@ use db::models::document::{
 };
 use db::models::team::Team;
 use deployment::Deployment;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
 use utils::assets::asset_dir;
 use utils::response::ApiResponse;
 use uuid::Uuid;
+use std::collections::HashSet;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_team_middleware};
 
@@ -438,6 +439,139 @@ pub async fn delete_document(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Response for scan filesystem operation
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct ScanFilesystemResponse {
+    /// Number of new documents found and registered
+    pub documents_added: usize,
+    /// List of document titles that were added
+    pub added_titles: Vec<String>,
+    /// Number of files scanned
+    pub files_scanned: usize,
+}
+
+/// Scan the filesystem for documents and register them in the database
+pub async fn scan_filesystem(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, folder_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<ScanFilesystemResponse>>, ApiError> {
+    // Get the folder to scan
+    let folder = DocumentFolder::find_by_id(&deployment.db().pool, folder_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Folder not found".to_string()))?;
+
+    // Verify folder belongs to team
+    if folder.team_id != team.id {
+        return Err(ApiError::NotFound("Folder not found".to_string()));
+    }
+
+    // Build the filesystem path for this team's documents
+    let base_path = asset_dir();
+    let team_docs_path = base_path.join("documents").join(team.id.to_string());
+
+    // Get all existing documents for this folder to avoid duplicates
+    let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, Some(folder_id)).await?;
+    let existing_paths: HashSet<String> = existing_docs
+        .iter()
+        .filter_map(|d| d.file_path.clone())
+        .collect();
+
+    let mut documents_added = 0;
+    let mut added_titles = Vec::new();
+    let mut files_scanned = 0;
+
+    // Scan the directory for markdown files
+    if team_docs_path.exists() {
+        let mut entries = tokio::fs::read_dir(&team_docs_path).await
+            .map_err(|e| ApiError::Io(e))?;
+
+        while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
+            let path = entry.path();
+
+            // Only process .md files
+            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+                continue;
+            }
+
+            files_scanned += 1;
+            let path_str = path.to_string_lossy().to_string();
+
+            // Skip if already registered
+            if existing_paths.contains(&path_str) {
+                continue;
+            }
+
+            // Also check if any document in the team (any folder) already has this path
+            let all_team_docs = Document::find_all_by_team(&deployment.db().pool, team.id, false).await?;
+            let all_paths: HashSet<String> = all_team_docs
+                .iter()
+                .filter_map(|d| d.file_path.clone())
+                .collect();
+
+            if all_paths.contains(&path_str) {
+                continue;
+            }
+
+            // Extract title from filename (remove .md extension)
+            let title = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Untitled")
+                .to_string();
+
+            // Get file metadata
+            let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+            let file_size = metadata.len() as i64;
+
+            // Create document record
+            let create_payload = CreateDocument {
+                team_id: team.id,
+                folder_id: Some(folder_id),
+                title: title.clone(),
+                content: None, // Content loaded from file on read
+                file_type: Some("markdown".to_string()),
+                icon: None,
+            };
+
+            let document = Document::create(&deployment.db().pool, &create_payload).await?;
+
+            // Update with file metadata
+            Document::update_file_metadata(
+                &deployment.db().pool,
+                document.id,
+                &path_str,
+                file_size,
+                "text/markdown",
+                "markdown",
+            )
+            .await?;
+
+            documents_added += 1;
+            added_titles.push(title);
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "documents_filesystem_scan",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "folder_id": folder_id.to_string(),
+                "documents_added": documents_added,
+                "files_scanned": files_scanned,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(ScanFilesystemResponse {
+        documents_added,
+        added_titles,
+        files_scanned,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // Routes with only team_id (can use middleware)
     let documents_list_router = Router::new()
@@ -446,6 +580,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let folders_list_router = Router::new()
         .route("/", get(get_folders).post(create_folder))
+        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
+
+    // Scan filesystem route (requires team middleware)
+    let scan_router = Router::new()
+        .route("/folders/{folder_id}/scan", post(scan_filesystem))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     // Routes with additional path params (manually load team)
@@ -472,7 +611,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // Combine under team context
     let team_documents_router = Router::new()
         .nest("/documents", documents_router)
-        .nest("/folders", folders_router);
+        .nest("/folders", folders_router)
+        .merge(scan_router);
 
     // Match teams router pattern: /teams + /{team_id}
     let inner = Router::new().nest("/{team_id}", team_documents_router);

@@ -7,6 +7,7 @@ import type {
   UpdateDocument,
   CreateDocumentFolder,
   UpdateDocumentFolder,
+  ScanFilesystemResponse,
 } from 'shared/types';
 
 export interface UseDocumentsResult {
@@ -27,6 +28,8 @@ export interface UseDocumentsResult {
   deleteFolder: (folderId: string) => Promise<void>;
   // Search
   searchDocuments: (query: string) => Promise<Document[]>;
+  // Filesystem scan
+  scanFilesystem: (folderId: string) => Promise<ScanFilesystemResponse>;
 }
 
 export function useDocuments(teamId: string): UseDocumentsResult {
@@ -136,6 +139,17 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     [teamId]
   );
 
+  // Scan filesystem for new documents
+  const scanFilesystem = useCallback(
+    async (folderId: string) => {
+      const result = await documentsApi.scanFilesystem(teamId, folderId);
+      // Refresh documents after scan
+      await refresh();
+      return result;
+    },
+    [teamId, refresh]
+  );
+
   return {
     documents,
     folders,
@@ -151,5 +165,6 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     updateFolder,
     deleteFolder,
     searchDocuments,
+    scanFilesystem,
   };
 }
