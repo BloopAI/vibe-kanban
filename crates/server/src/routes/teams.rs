@@ -5,6 +5,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, post},
 };
+use db::models::github_connection::{
+    CreateGitHubConnection, GitHubConnection, GitHubConnectionWithRepos, GitHubRepository,
+    LinkGitHubRepository, UpdateGitHubConnection,
+};
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
 use serde::{Deserialize, Serialize};
@@ -242,6 +246,170 @@ pub async fn validate_storage_path(
     }
 }
 
+// ============================================================================
+// GitHub Connection Routes
+// ============================================================================
+
+/// Get GitHub connection for a team (with linked repositories)
+pub async fn get_github_connection(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Option<GitHubConnectionWithRepos>>>, ApiError> {
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await?;
+
+    match connection {
+        Some(conn) => {
+            let repositories =
+                GitHubRepository::find_by_connection_id(&deployment.db().pool, conn.id).await?;
+            Ok(ResponseJson(ApiResponse::success(Some(
+                GitHubConnectionWithRepos {
+                    connection: conn,
+                    repositories,
+                },
+            ))))
+        }
+        None => Ok(ResponseJson(ApiResponse::success(None))),
+    }
+}
+
+/// Create a new GitHub connection for a team
+pub async fn create_github_connection(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateGitHubConnection>,
+) -> Result<ResponseJson<ApiResponse<GitHubConnection>>, ApiError> {
+    // Check if connection already exists
+    let existing = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await?;
+    if existing.is_some() {
+        return Err(ApiError::BadRequest(
+            "GitHub connection already exists for this team. Use PUT to update.".to_string(),
+        ));
+    }
+
+    let connection = GitHubConnection::create(&deployment.db().pool, team.id, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_connection_created",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(connection)))
+}
+
+/// Update an existing GitHub connection
+pub async fn update_github_connection(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<UpdateGitHubConnection>,
+) -> Result<ResponseJson<ApiResponse<GitHubConnection>>, ApiError> {
+    let existing = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let updated = GitHubConnection::update(&deployment.db().pool, existing.id, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_connection_updated",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+/// Delete a GitHub connection for a team
+pub async fn delete_github_connection(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let rows_affected = GitHubConnection::delete_by_team_id(&deployment.db().pool, team.id).await?;
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound("GitHub connection not found".to_string()));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_connection_deleted",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+/// Get linked GitHub repositories for a team's connection
+pub async fn get_github_repositories(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepository>>>, ApiError> {
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repositories =
+        GitHubRepository::find_by_connection_id(&deployment.db().pool, connection.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(repositories)))
+}
+
+/// Link a GitHub repository to a team's connection
+pub async fn link_github_repository(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkGitHubRepository>,
+) -> Result<ResponseJson<ApiResponse<GitHubRepository>>, ApiError> {
+    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+
+    let repository = GitHubRepository::link(&deployment.db().pool, connection.id, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_repository_linked",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_full_name": payload.repo_full_name,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(repository)))
+}
+
+/// Unlink a GitHub repository from a team's connection
+pub async fn unlink_github_repository(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let rows_affected = GitHubRepository::unlink(&deployment.db().pool, repo_id).await?;
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound("GitHub repository not found".to_string()));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "github_repository_unlinked",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "repo_id": repo_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -249,6 +417,19 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/migrate-tasks", post(migrate_tasks_to_team))
         .route("/projects", get(get_team_projects).post(assign_project_to_team))
         .route("/projects/{project_id}", delete(remove_project_from_team))
+        // GitHub connection routes
+        .route(
+            "/github",
+            get(get_github_connection)
+                .post(create_github_connection)
+                .put(update_github_connection)
+                .delete(delete_github_connection),
+        )
+        .route(
+            "/github/repos",
+            get(get_github_repositories).post(link_github_repository),
+        )
+        .route("/github/repos/{repo_id}", delete(unlink_github_repository))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     let inner = Router::new()

@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO github_repositories (id, connection_id, repo_full_name, repo_name, repo_owner, repo_url, default_branch, is_private)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               ON CONFLICT (connection_id, repo_full_name) DO UPDATE SET\n                   repo_name = $4, repo_owner = $5, repo_url = $6, default_branch = $7, is_private = $8\n               RETURNING id as \"id!: Uuid\",\n                         connection_id as \"connection_id!: Uuid\",\n                         repo_full_name,\n                         repo_name,\n                         repo_owner,\n                         repo_url,\n                         default_branch,\n                         is_private as \"is_private!: bool\",\n                         linked_at as \"linked_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "connection_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_full_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_owner",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_branch",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_private!: bool",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "linked_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "8e278a66b62b9c620f9c815f80133c77db203e1e3b6527cc3899d3fb5695f0e8"
+}

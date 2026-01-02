@@ -62,6 +62,18 @@ export type UpdateTeam = { name: string | null, identifier: string | null, icon:
 
 export type TeamProjectAssignment = { project_id: string, };
 
+export type GitHubConnection = { id: string, team_id: string, access_token: string, github_username: string | null, connected_at: Date, updated_at: Date, };
+
+export type GitHubRepository = { id: string, connection_id: string, repo_full_name: string, repo_name: string, repo_owner: string, repo_url: string, default_branch: string | null, is_private: boolean, linked_at: Date, };
+
+export type CreateGitHubConnection = { access_token: string, };
+
+export type UpdateGitHubConnection = { access_token: string | null, github_username: string | null, };
+
+export type LinkGitHubRepository = { repo_full_name: string, repo_name: string, repo_owner: string, repo_url: string, default_branch: string | null, is_private: boolean, };
+
+export type GitHubConnectionWithRepos = { repositories: Array<GitHubRepository>, id: string, team_id: string, access_token: string, github_username: string | null, connected_at: Date, updated_at: Date, };
+
 export type MigrateTasksRequest = { 
 /**
  * The project ID to migrate tasks from

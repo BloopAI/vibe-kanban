@@ -310,6 +310,13 @@ function SidebarTeamItem({
             isActive={pathname === `${teamBasePath}/documents`}
             indent
           />
+          <SidebarItem
+            icon={Github}
+            label="GitHub"
+            to={`${teamBasePath}/github`}
+            isActive={pathname === `${teamBasePath}/github`}
+            indent
+          />
         </div>
       )}
     </div>

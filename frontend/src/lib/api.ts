@@ -107,6 +107,12 @@ import {
   UpdateDocument,
   CreateDocumentFolder,
   UpdateDocumentFolder,
+  GitHubConnection,
+  GitHubConnectionWithRepos,
+  GitHubRepository,
+  CreateGitHubConnection,
+  UpdateGitHubConnection,
+  LinkGitHubRepository,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1402,6 +1408,72 @@ export const teamsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<ValidateStoragePathResponse>(response);
+  },
+
+  // GitHub connection methods
+  getGitHubConnection: async (
+    teamId: string
+  ): Promise<GitHubConnectionWithRepos | null> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github`);
+    return handleApiResponse<GitHubConnectionWithRepos | null>(response);
+  },
+
+  createGitHubConnection: async (
+    teamId: string,
+    data: CreateGitHubConnection
+  ): Promise<GitHubConnection> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubConnection>(response);
+  },
+
+  updateGitHubConnection: async (
+    teamId: string,
+    data: UpdateGitHubConnection
+  ): Promise<GitHubConnection> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubConnection>(response);
+  },
+
+  deleteGitHubConnection: async (teamId: string): Promise<void> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getGitHubRepositories: async (teamId: string): Promise<GitHubRepository[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github/repos`);
+    return handleApiResponse<GitHubRepository[]>(response);
+  },
+
+  linkGitHubRepository: async (
+    teamId: string,
+    data: LinkGitHubRepository
+  ): Promise<GitHubRepository> => {
+    const response = await makeRequest(`/api/teams/${teamId}/github/repos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubRepository>(response);
+  },
+
+  unlinkGitHubRepository: async (
+    teamId: string,
+    repoId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/github/repos/${repoId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 };
 
