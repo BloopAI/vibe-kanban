@@ -55,6 +55,7 @@ interface ChatEntryContainerProps {
   actions?: React.ReactNode;
   className?: string;
   status?: ToolStatus;
+  isGreyed?: boolean;
 }
 
 export function ChatEntryContainer({
@@ -67,6 +68,7 @@ export function ChatEntryContainer({
   actions,
   className,
   status,
+  isGreyed,
 }: ChatEntryContainerProps) {
   // Special case for plan denied
   const config =
@@ -82,6 +84,7 @@ export function ChatEntryContainer({
         config.border && 'border',
         config.border,
         config.bg,
+        isGreyed && 'opacity-50 pointer-events-none',
         className
       )}
     >

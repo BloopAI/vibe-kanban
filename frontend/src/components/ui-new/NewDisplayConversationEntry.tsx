@@ -11,7 +11,9 @@ import { DiffLineType, parseInstance } from '@git-diff-view/react';
 import { useExpandable } from '@/stores/useExpandableStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
+import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
+import { cn } from '@/lib/utils';
 import {
   ChatToolSummary,
   ChatTodoList,
@@ -130,7 +132,7 @@ function NewDisplayConversationEntry({
           plan={action_type.plan}
           expansionKey={expansionKey}
           showActions={isPendingApproval}
-          taskAttemptId={taskAttempt?.id}
+          workspaceId={taskAttempt?.id}
           approvalStatus={pendingStatus}
           executionProcessId={executionProcessId}
           status={status}
@@ -163,7 +165,8 @@ function NewDisplayConversationEntry({
       <UserMessageEntry
         content={entry.content}
         expansionKey={expansionKey}
-        taskAttemptId={taskAttempt?.id}
+        workspaceId={taskAttempt?.id}
+        executionProcessId={executionProcessId}
       />
     );
   }
@@ -173,7 +176,7 @@ function NewDisplayConversationEntry({
     return (
       <AssistantMessageEntry
         content={entry.content}
-        taskAttemptId={taskAttempt?.id}
+        workspaceId={taskAttempt?.id}
       />
     );
   }
@@ -246,7 +249,7 @@ function PlanEntry({
   plan,
   expansionKey,
   showActions,
-  taskAttemptId,
+  workspaceId,
   approvalStatus,
   executionProcessId,
   status,
@@ -254,7 +257,7 @@ function PlanEntry({
   plan: string;
   expansionKey: string;
   showActions: boolean;
-  taskAttemptId?: string;
+  workspaceId?: string;
   approvalStatus?: Extract<ToolStatus, { status: 'pending_approval' }>;
   executionProcessId?: string;
   status: ToolStatus;
@@ -324,7 +327,7 @@ function PlanEntry({
       onEdit={
         showActions && !isTimedOut && feedbackContext ? handleEdit : undefined
       }
-      taskAttemptId={taskAttemptId}
+      workspaceId={workspaceId}
       status={status}
     />
   );
@@ -336,20 +339,36 @@ function PlanEntry({
 function UserMessageEntry({
   content,
   expansionKey,
-  taskAttemptId,
+  workspaceId,
+  executionProcessId,
 }: {
   content: string;
   expansionKey: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
+  executionProcessId?: string;
 }) {
   const [expanded, toggle] = useExpandable(`user:${expansionKey}`, true);
+  const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
+
+  const isGreyed = isEntryGreyed(expansionKey);
+
+  const handleEdit = useCallback(() => {
+    if (executionProcessId) {
+      startEdit(expansionKey, executionProcessId, content);
+    }
+  }, [startEdit, expansionKey, executionProcessId, content]);
+
+  // Only show edit button if we have a process ID and not already in edit mode
+  const canEdit = !!executionProcessId && !isInEditMode;
 
   return (
     <ChatUserMessage
       content={content}
       expanded={expanded}
       onToggle={toggle}
-      taskAttemptId={taskAttemptId}
+      workspaceId={workspaceId}
+      onEdit={canEdit ? handleEdit : undefined}
+      isGreyed={isGreyed}
     />
   );
 }
@@ -359,14 +378,12 @@ function UserMessageEntry({
  */
 function AssistantMessageEntry({
   content,
-  taskAttemptId,
+  workspaceId,
 }: {
   content: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
 }) {
-  return (
-    <ChatAssistantMessage content={content} taskAttemptId={taskAttemptId} />
-  );
+  return <ChatAssistantMessage content={content} workspaceId={workspaceId} />;
 }
 
 /**
@@ -423,8 +440,16 @@ function SystemMessageEntry({
 }
 
 const NewDisplayConversationEntrySpaced = (props: Props) => {
+  const { isEntryGreyed } = useMessageEditContext();
+  const isGreyed = isEntryGreyed(props.expansionKey);
+
   return (
-    <div className="my-base px-double">
+    <div
+      className={cn(
+        'my-base px-double',
+        isGreyed && 'opacity-50 pointer-events-none'
+      )}
+    >
       <NewDisplayConversationEntry {...props} />
     </div>
   );
