@@ -17,6 +17,7 @@ export function CreateChatBoxContainer() {
     message,
     setMessage,
     selectedProjectId,
+    clearDraft,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -117,8 +118,9 @@ export function CreateChatBoxContainer() {
       })),
     });
 
-    // Clear attachments after successful creation
+    // Clear attachments and draft after successful creation
     clearAttachments();
+    await clearDraft();
   }, [
     canSubmit,
     effectiveProfile,
@@ -129,6 +131,7 @@ export function CreateChatBoxContainer() {
     createWorkspace,
     getImageIds,
     clearAttachments,
+    clearDraft,
   ]);
 
   // Determine error to display
