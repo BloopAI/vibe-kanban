@@ -14,7 +14,7 @@ use axum::{
     Extension, Json, Router,
     extract::{
         Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
@@ -260,6 +260,8 @@ async fn handle_task_attempt_diff_ws(
     workspace: Workspace,
     stats_only: bool,
 ) -> anyhow::Result<()> {
+    use std::time::Duration;
+
     use futures_util::{SinkExt, StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
 
@@ -272,8 +274,17 @@ async fn handle_task_attempt_diff_ws(
 
     let (mut sender, mut receiver) = socket.split();
 
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
     loop {
         tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                    break;
+                }
+            }
             // Wait for next stream item
             item = stream.next() => {
                 match item {

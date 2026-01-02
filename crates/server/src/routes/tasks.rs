@@ -5,7 +5,7 @@ use axum::{
     Extension, Json, Router,
     extract::{
         Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
@@ -70,6 +70,8 @@ async fn handle_tasks_ws(
     deployment: DeploymentImpl,
     project_id: Uuid,
 ) -> anyhow::Result<()> {
+    use std::time::Duration;
+
     // Get the raw stream and convert LogMsg to WebSocket messages
     let mut stream = deployment
         .events()
@@ -83,17 +85,31 @@ async fn handle_tasks_ws(
     // Drain (and ignore) any client->server messages so pings/pongs work
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+    // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
+    loop {
+        tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
                     break; // client disconnected
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break; // client disconnected
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
             }
         }
     }

@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::{
         Path, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::{IntoResponse, Json as ResponseJson},
     routing::get,
@@ -118,6 +118,8 @@ async fn handle_scratch_ws(
     id: Uuid,
     scratch_type: ScratchType,
 ) -> anyhow::Result<()> {
+    use std::time::Duration;
+
     let mut stream = deployment
         .events()
         .stream_scratch_raw(id, &scratch_type)
@@ -128,16 +130,31 @@ async fn handle_scratch_ws(
 
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+    // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
+    loop {
+        tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
                     break;
                 }
             }
-            Err(e) => {
-                tracing::error!("scratch stream error: {}", e);
-                break;
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("scratch stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
             }
         }
     }

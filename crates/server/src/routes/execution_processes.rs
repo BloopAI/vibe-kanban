@@ -3,7 +3,7 @@ use axum::{
     Extension, Router,
     extract::{
         Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
@@ -63,9 +63,12 @@ async fn handle_raw_logs_ws(
     deployment: DeploymentImpl,
     exec_id: Uuid,
 ) -> anyhow::Result<()> {
-    use std::sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
+    use std::{
+        sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        },
+        time::Duration,
     };
 
     use executors::logs::utils::patch::ConversationPatch;
@@ -103,17 +106,31 @@ async fn handle_raw_logs_ws(
     // Drain (and ignore) any client->server messages so pings/pongs work
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+    // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
+    loop {
+        tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
                     break; // client disconnected
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break; // client disconnected
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
             }
         }
     }
@@ -147,19 +164,37 @@ async fn handle_normalized_logs_ws(
     socket: WebSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
+    use std::time::Duration;
+
     let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+
+    // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
+    loop {
+        tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
                     break;
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
             }
         }
     }
@@ -203,6 +238,8 @@ async fn handle_execution_processes_ws(
     workspace_id: uuid::Uuid,
     show_soft_deleted: bool,
 ) -> anyhow::Result<()> {
+    use std::time::Duration;
+
     // Get the raw stream and convert LogMsg to WebSocket messages
     let mut stream = deployment
         .events()
@@ -216,17 +253,31 @@ async fn handle_execution_processes_ws(
     // Drain (and ignore) any client->server messages so pings/pongs work
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
 
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+    // Forward server messages + keepalive ping (for remote proxies that drop idle WS).
+    let mut keepalive = tokio::time::interval(Duration::from_secs(20));
+    // interval ticks immediately; skip the first one so we don't ping on connect.
+    keepalive.tick().await;
+
+    loop {
+        tokio::select! {
+            _ = keepalive.tick() => {
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
                     break; // client disconnected
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break; // client disconnected
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
             }
         }
     }
