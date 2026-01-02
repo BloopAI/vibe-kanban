@@ -115,6 +115,7 @@ function NewDisplayConversationEntry({
               path={fileEditAction.path}
               change={change}
               expansionKey={`edit:${expansionKey}:${idx}`}
+              status={status}
             />
           ))}
         </>
@@ -156,6 +157,7 @@ function NewDisplayConversationEntry({
       <ToolSummaryEntry
         summary={getToolSummary(entryType)}
         expansionKey={expansionKey}
+        status={status}
       />
     );
   }
@@ -223,10 +225,12 @@ function FileEditEntry({
   path,
   change,
   expansionKey,
+  status,
 }: {
   path: string;
   change: FileEditAction['changes'][number];
   expansionKey: string;
+  status: ToolStatus;
 }) {
   const [expanded, toggle] = useExpandable(expansionKey, false);
 
@@ -249,6 +253,7 @@ function FileEditEntry({
       deletions={deletions}
       expanded={expanded}
       onToggle={toggle}
+      status={status}
     />
   );
 }
@@ -403,14 +408,21 @@ function AssistantMessageEntry({
 function ToolSummaryEntry({
   summary,
   expansionKey,
+  status,
 }: {
   summary: string;
   expansionKey: string;
+  status: ToolStatus;
 }) {
   const [expanded, toggle] = useExpandable(`tool:${expansionKey}`, false);
 
   return (
-    <ChatToolSummary summary={summary} expanded={expanded} onToggle={toggle} />
+    <ChatToolSummary
+      summary={summary}
+      expanded={expanded}
+      onToggle={toggle}
+      status={status}
+    />
   );
 }
 

@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
+import { ToolStatus } from 'shared/types';
+import { ToolStatusDot } from './ToolStatusDot';
 
 interface ChatFileEntryProps {
   filename: string;
@@ -11,6 +13,7 @@ interface ChatFileEntryProps {
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
+  status?: ToolStatus;
 }
 
 export function ChatFileEntry({
@@ -20,6 +23,7 @@ export function ChatFileEntry({
   expanded = false,
   onToggle,
   className,
+  status,
 }: ChatFileEntryProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
@@ -36,7 +40,15 @@ export function ChatFileEntry({
       onClick={onToggle}
     >
       <div className="flex-1 flex items-center gap-base min-w-0">
-        <FileIcon className="shrink-0 size-icon-base" />
+        <span className="relative shrink-0">
+          <FileIcon className="size-icon-base" />
+          {status && (
+            <ToolStatusDot
+              status={status}
+              className="absolute -bottom-0.5 -right-0.5"
+            />
+          )}
+        </span>
         <span className="text-sm text-normal truncate">{filename}</span>
         {hasStats && (
           <span className="text-sm shrink-0">
