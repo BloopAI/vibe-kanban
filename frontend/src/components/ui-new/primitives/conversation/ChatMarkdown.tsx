@@ -5,14 +5,14 @@ interface ChatMarkdownProps {
   content: string;
   maxWidth?: string;
   className?: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
 }
 
 export function ChatMarkdown({
   content,
   maxWidth = '800px',
   className,
-  taskAttemptId,
+  workspaceId,
 }: ChatMarkdownProps) {
   return (
     <div className={cn('text-sm text-normal', className)} style={{ maxWidth }}>
@@ -20,7 +20,7 @@ export function ChatMarkdown({
         value={content}
         disabled
         className="whitespace-pre-wrap break-words"
-        taskAttemptId={taskAttemptId}
+        taskAttemptId={workspaceId}
       />
     </div>
   );

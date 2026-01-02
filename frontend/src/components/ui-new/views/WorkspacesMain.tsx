@@ -5,6 +5,7 @@ import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionC
 import { ContextBar } from '@/components/ui-new/primitives/ContextBar';
 import { ConversationList } from '../ConversationList';
 import { EntriesProvider } from '@/contexts/EntriesContext';
+import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 
@@ -61,30 +62,32 @@ export function WorkspacesMain({
       className="relative flex flex-1 flex-col bg-primary h-full"
     >
       <ApprovalFeedbackProvider>
-        <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
-          <div className="w-chat max-w-full h-full">
-            <EntriesProvider key={`${workspaceWithSession.id}-${session?.id}`}>
-              <RetryUiProvider attemptId={workspaceWithSession.id}>
-                <ConversationList attempt={workspaceWithSession} />
-              </RetryUiProvider>
-            </EntriesProvider>
-          </div>
-        </div>
-        {/* Chat box centered at bottom */}
-        <div className="flex justify-center @container">
-          <SessionChatBoxContainer
-            session={session}
-            sessions={sessions}
-            onSelectSession={onSelectSession}
-            filesChanged={19}
-            linesAdded={10}
-            linesRemoved={3}
-            projectId={projectId}
-            isNewSessionMode={isNewSessionMode}
-            onStartNewSession={onStartNewSession}
-            workspaceId={workspaceWithSession?.id}
-          />
-        </div>
+        <EntriesProvider key={`${workspaceWithSession.id}-${session?.id}`}>
+          <MessageEditProvider>
+            <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
+              <div className="w-chat max-w-full h-full">
+                <RetryUiProvider attemptId={workspaceWithSession.id}>
+                  <ConversationList attempt={workspaceWithSession} />
+                </RetryUiProvider>
+              </div>
+            </div>
+            {/* Chat box centered at bottom */}
+            <div className="flex justify-center @container">
+              <SessionChatBoxContainer
+                session={session}
+                sessions={sessions}
+                onSelectSession={onSelectSession}
+                filesChanged={19}
+                linesAdded={10}
+                linesRemoved={3}
+                projectId={projectId}
+                isNewSessionMode={isNewSessionMode}
+                onStartNewSession={onStartNewSession}
+                workspaceId={workspaceWithSession?.id}
+              />
+            </div>
+          </MessageEditProvider>
+        </EntriesProvider>
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
       <ContextBar

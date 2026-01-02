@@ -14,7 +14,7 @@ interface ChatPlanProps {
   showActions?: boolean;
   isTimedOut?: boolean;
   className?: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
   status: ToolStatus;
 }
 
@@ -28,7 +28,7 @@ export function ChatPlan({
   showActions = false,
   isTimedOut = false,
   className,
-  taskAttemptId,
+  workspaceId,
   status,
 }: ChatPlanProps) {
   const feedbackContext = useApprovalFeedbackOptional();
@@ -72,7 +72,7 @@ export function ChatPlan({
       className={className}
       status={status}
     >
-      <ChatMarkdown content={content} taskAttemptId={taskAttemptId} />
+      <ChatMarkdown content={content} workspaceId={workspaceId} />
     </ChatEntryContainer>
   );
 }

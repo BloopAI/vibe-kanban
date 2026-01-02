@@ -1,3 +1,4 @@
+import { PencilSimpleIcon } from '@phosphor-icons/react';
 import { ChatEntryContainer } from './ChatEntryContainer';
 import { ChatMarkdown } from './ChatMarkdown';
 
@@ -6,7 +7,9 @@ interface ChatUserMessageProps {
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
+  onEdit?: () => void;
+  isGreyed?: boolean;
 }
 
 export function ChatUserMessage({
@@ -14,7 +17,9 @@ export function ChatUserMessage({
   expanded = true,
   onToggle,
   className,
-  taskAttemptId,
+  workspaceId,
+  onEdit,
+  isGreyed,
 }: ChatUserMessageProps) {
   return (
     <ChatEntryContainer
@@ -23,8 +28,24 @@ export function ChatUserMessage({
       expanded={expanded}
       onToggle={onToggle}
       className={className}
+      isGreyed={isGreyed}
+      headerRight={
+        onEdit && !isGreyed ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="p-1 rounded hover:bg-muted text-low hover:text-normal transition-colors"
+            aria-label="Edit message"
+          >
+            <PencilSimpleIcon className="size-icon-xs" />
+          </button>
+        ) : undefined
+      }
     >
-      <ChatMarkdown content={content} taskAttemptId={taskAttemptId} />
+      <ChatMarkdown content={content} workspaceId={workspaceId} />
     </ChatEntryContainer>
   );
 }

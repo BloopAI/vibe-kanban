@@ -2,12 +2,12 @@ import { ChatMarkdown } from './ChatMarkdown';
 
 interface ChatAssistantMessageProps {
   content: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
 }
 
 export function ChatAssistantMessage({
   content,
-  taskAttemptId,
+  workspaceId,
 }: ChatAssistantMessageProps) {
-  return <ChatMarkdown content={content} taskAttemptId={taskAttemptId} />;
+  return <ChatMarkdown content={content} workspaceId={workspaceId} />;
 }

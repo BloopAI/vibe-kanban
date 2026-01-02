@@ -38,7 +38,8 @@ export type ExecutionStatus =
   | 'queued'
   | 'stopping'
   | 'queue-loading'
-  | 'feedback';
+  | 'feedback'
+  | 'edit';
 
 interface ActionsProps {
   onSend: () => void;
@@ -73,6 +74,13 @@ interface FeedbackModeProps {
   isTimedOut: boolean;
 }
 
+interface EditModeProps {
+  isActive: boolean;
+  onSubmitEdit: () => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+}
+
 interface SessionChatBoxProps {
   status: ExecutionStatus;
   editor: EditorProps;
@@ -81,6 +89,7 @@ interface SessionChatBoxProps {
   stats?: StatsProps;
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
+  editMode?: EditModeProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
@@ -100,6 +109,7 @@ export function SessionChatBox({
   stats,
   variant,
   feedbackMode,
+  editMode,
   error,
   projectId,
   agent,
@@ -107,12 +117,16 @@ export function SessionChatBox({
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Determine if in feedback mode
+  // Determine if in feedback mode or edit mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
+  const isInEditMode = editMode?.isActive ?? false;
 
   // Derived state from status
   const isDisabled =
-    status === 'sending' || status === 'stopping' || feedbackMode?.isSubmitting;
+    status === 'sending' ||
+    status === 'stopping' ||
+    feedbackMode?.isSubmitting ||
+    editMode?.isSubmitting;
   const canSend =
     editor.value.trim().length > 0 &&
     !['sending', 'stopping', 'queue-loading'].includes(status);
@@ -122,14 +136,18 @@ export function SessionChatBox({
   // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
-    : session.isNewSessionMode
-      ? 'Start a new conversation...'
-      : 'Continue working on this task...';
+    : isInEditMode
+      ? 'Edit your message...'
+      : session.isNewSessionMode
+        ? 'Start a new conversation...'
+        : 'Continue working on this task...';
 
   // Cmd+Enter handler
   const handleCmdEnter = () => {
     if (isInFeedbackMode && canSend && !feedbackMode?.isTimedOut) {
       feedbackMode?.onSubmitFeedback();
+    } else if (isInEditMode && canSend) {
+      editMode?.onSubmitEdit();
     } else if (status === 'running' && canSend) {
       actions.onQueue();
     } else if (status === 'idle' && canSend) {
@@ -205,6 +223,25 @@ export function SessionChatBox({
       );
     }
 
+    // Edit mode
+    if (isInEditMode) {
+      return (
+        <>
+          <PrimaryButton
+            variant="secondary"
+            onClick={editMode?.onCancel}
+            value="Cancel"
+          />
+          <PrimaryButton
+            onClick={editMode?.onSubmitEdit}
+            disabled={!canSend || editMode?.isSubmitting}
+            actionIcon={editMode?.isSubmitting ? 'spinner' : ArrowClockwiseIcon}
+            value="Retry"
+          />
+        </>
+      );
+    }
+
     switch (status) {
       case 'idle':
         return (
@@ -265,6 +302,7 @@ export function SessionChatBox({
       case 'queue-loading':
         return <PrimaryButton disabled value="Loading" actionIcon="spinner" />;
       case 'feedback':
+      case 'edit':
         return null;
     }
   };
@@ -295,12 +333,14 @@ export function SessionChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
       projectId={projectId}
-      autoFocus={isInFeedbackMode}
+      autoFocus={isInFeedbackMode || isInEditMode}
       variant={variant}
       error={displayError}
       banner={renderBanner()}
       visualVariant={
-        isInFeedbackMode ? VisualVariant.FEEDBACK : VisualVariant.NORMAL
+        isInFeedbackMode || isInEditMode
+          ? VisualVariant.FEEDBACK
+          : VisualVariant.NORMAL
       }
       onPasteFiles={actions.onPasteFiles}
       headerLeft={
@@ -355,7 +395,10 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
-          <ToolbarDropdown label={sessionLabel} disabled={isInFeedbackMode}>
+          <ToolbarDropdown
+            label={sessionLabel}
+            disabled={isInFeedbackMode || isInEditMode}
+          >
             {/* New Session option */}
             <DropdownMenuItem
               icon={isNewSessionMode ? CheckIcon : PlusIcon}

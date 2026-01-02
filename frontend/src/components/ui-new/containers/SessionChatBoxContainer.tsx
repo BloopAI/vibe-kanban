@@ -3,12 +3,15 @@ import { type Session } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
+import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '@/hooks/useSessionSend';
 import { useSessionAttachments } from '@/hooks/useSessionAttachments';
+import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -17,6 +20,7 @@ import {
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
   isInFeedbackMode: boolean;
+  isInEditMode: boolean;
   isStopping: boolean;
   isQueueLoading: boolean;
   isSendingFollowUp: boolean;
@@ -24,6 +28,7 @@ function computeExecutionStatus(params: {
   isAttemptRunning: boolean;
 }): ExecutionStatus {
   if (params.isInFeedbackMode) return 'feedback';
+  if (params.isInEditMode) return 'edit';
   if (params.isStopping) return 'stopping';
   if (params.isQueueLoading) return 'queue-loading';
   if (params.isSendingFollowUp) return 'sending';
@@ -37,6 +42,8 @@ interface SessionChatBoxContainerProps {
   session?: Session;
   /** Task ID for execution tracking */
   taskId?: string;
+  /** Attempt ID for branch status (required for edit mode) */
+  attemptId?: string;
   /** Number of files changed in current session */
   filesChanged?: number;
   /** Number of lines added */
@@ -60,6 +67,7 @@ interface SessionChatBoxContainerProps {
 export function SessionChatBoxContainer({
   session,
   taskId,
+  attemptId,
   filesChanged,
   linesAdded,
   linesRemoved,
@@ -81,6 +89,13 @@ export function SessionChatBoxContainer({
   // Approval feedback context
   const feedbackContext = useApprovalFeedbackOptional();
   const isInFeedbackMode = !!feedbackContext?.activeApproval;
+
+  // Message edit context
+  const editContext = useMessageEditContext();
+  const isInEditMode = editContext.isInEditMode;
+
+  // Branch status for edit retry
+  const { data: branchStatus } = useBranchStatus(attemptId);
 
   // User profiles and latest executor from processes
   const { profiles } = useUserSystem();
@@ -264,9 +279,53 @@ export function SessionChatBoxContainer({
     feedbackContext?.exitFeedbackMode();
   }, [feedbackContext]);
 
+  // Message edit retry mutation
+  const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
+    // On success, clear edit mode and reset editor
+    editContext.cancelEdit();
+    cancelDebouncedSave();
+    setLocalMessage('');
+  });
+
+  // Handle edit submission
+  const handleSubmitEdit = useCallback(async () => {
+    if (!editContext.activeEdit || !localMessage.trim()) return;
+    editRetryMutation.mutate({
+      message: localMessage,
+      variant: selectedVariant,
+      executionProcessId: editContext.activeEdit.processId,
+      branchStatus,
+      processes,
+    });
+  }, [
+    editContext.activeEdit,
+    localMessage,
+    selectedVariant,
+    branchStatus,
+    processes,
+    editRetryMutation,
+  ]);
+
+  // Handle cancel edit mode
+  const handleCancelEdit = useCallback(() => {
+    editContext.cancelEdit();
+    setLocalMessage('');
+  }, [editContext, setLocalMessage]);
+
+  // Populate editor with original message when entering edit mode
+  const prevEditRef = useRef(editContext.activeEdit);
+  useEffect(() => {
+    if (editContext.activeEdit && !prevEditRef.current) {
+      // Just entered edit mode - populate with original message
+      setLocalMessage(editContext.activeEdit.originalMessage);
+    }
+    prevEditRef.current = editContext.activeEdit;
+  }, [editContext.activeEdit, setLocalMessage]);
+
   // Compute execution status
   const status = computeExecutionStatus({
     isInFeedbackMode,
+    isInEditMode,
     isStopping,
     isQueueLoading,
     isSendingFollowUp: isSending,
@@ -339,6 +398,12 @@ export function SessionChatBoxContainer({
             }
           : undefined
       }
+      editMode={{
+        isActive: isInEditMode,
+        onSubmitEdit: handleSubmitEdit,
+        onCancel: handleCancelEdit,
+        isSubmitting: editRetryMutation.isPending,
+      }}
     />
   );
 }
