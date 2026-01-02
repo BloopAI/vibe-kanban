@@ -1,13 +1,8 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  Group,
-  Panel,
-  Separator,
-  type PanelImperativeHandle,
-  type PanelSize,
-} from 'react-resizable-panels';
+import { Allotment, LayoutPriority } from 'allotment';
+import 'allotment/dist/style.css';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -25,6 +20,7 @@ import { useRepoBranches } from '@/hooks';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useMerge } from '@/hooks/useMerge';
+import { usePaneSize, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -227,38 +223,37 @@ export function WorkspacesLayout() {
     [repos]
   );
 
-  // Panel refs for programmatic collapse/expand
-  const sidebarRef = useRef<PanelImperativeHandle>(null);
-  const gitPanelRef = useRef<PanelImperativeHandle>(null);
+  // Visibility state for sidebar panels
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
 
-  // Track collapsed state for navbar button active states
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isGitPanelCollapsed, setIsGitPanelCollapsed] = useState(false);
+  // Persisted pane sizes
+  const [sidebarWidth, setSidebarWidth] = usePaneSize(
+    PERSIST_KEYS.sidebarWidth,
+    300
+  );
+  const [gitPanelWidth, setGitPanelWidth] = usePaneSize(
+    PERSIST_KEYS.gitPanelWidth,
+    300
+  );
+
+  // Handle pane resize end
+  const handlePaneResize = useCallback(
+    (sizes: number[]) => {
+      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = git panel
+      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
+      if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
+    },
+    [setSidebarWidth, setGitPanelWidth]
+  );
 
   // Panel toggle handlers
   const handleToggleSidebar = useCallback(() => {
-    if (sidebarRef.current?.isCollapsed()) {
-      sidebarRef.current.expand();
-    } else {
-      sidebarRef.current?.collapse();
-    }
+    setIsSidebarVisible((prev) => !prev);
   }, []);
 
   const handleToggleGitPanel = useCallback(() => {
-    if (gitPanelRef.current?.isCollapsed()) {
-      gitPanelRef.current.expand();
-    } else {
-      gitPanelRef.current?.collapse();
-    }
-  }, []);
-
-  // Panel resize handlers to track collapsed state
-  const handleSidebarResize = useCallback((size: PanelSize) => {
-    setIsSidebarCollapsed(size.inPixels === 0);
-  }, []);
-
-  const handleGitPanelResize = useCallback((size: PanelSize) => {
-    setIsGitPanelCollapsed(size.inPixels === 0);
+    setIsGitPanelVisible((prev) => !prev);
   }, []);
 
   const handleToggleArchive = useCallback(() => {
@@ -313,133 +308,94 @@ export function WorkspacesLayout() {
     }
   );
 
-  // Render create mode content (wrapped in CreateModeProvider)
-  const renderCreateModeContent = () => (
-    <CreateModeProvider
-      initialProjectId={lastWorkspaceTask?.project_id}
-      initialRepos={lastWorkspaceRepos}
-    >
-      <Group orientation="horizontal" className="flex-1 min-h-0">
-        <Panel
-          id="sidebar"
-          defaultSize="300px"
-          minSize="300px"
-          maxSize="600px"
-          className="min-w-0 min-h-0 overflow-hidden"
-          collapsible={true}
-          collapsedSize="0px"
-          panelRef={sidebarRef}
-          onResize={handleSidebarResize}
+  // Render layout content (create mode or workspace mode)
+  const renderContent = () => {
+    const content = (
+      <Allotment className="flex-1 min-h-0" onDragEnd={handlePaneResize}>
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={sidebarWidth}
+          maxSize={600}
+          visible={isSidebarVisible}
         >
-          <WorkspacesSidebar
-            workspaces={sidebarWorkspaces}
-            archivedWorkspaces={archivedSidebarWorkspaces}
-            selectedWorkspaceId={selectedWorkspaceId ?? null}
-            onSelectWorkspace={selectWorkspace}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onAddWorkspace={navigateToCreate}
-          />
-        </Panel>
+          <div className="h-full overflow-hidden">
+            <WorkspacesSidebar
+              workspaces={sidebarWorkspaces}
+              archivedWorkspaces={archivedSidebarWorkspaces}
+              selectedWorkspaceId={selectedWorkspaceId ?? null}
+              onSelectWorkspace={selectWorkspace}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onAddWorkspace={navigateToCreate}
+            />
+          </div>
+        </Allotment.Pane>
 
-        <Separator id="handle-left" />
+        <Allotment.Pane visible={true} priority={LayoutPriority.High}>
+          <div className="h-full overflow-hidden">
+            {isCreateMode ? (
+              <CreateChatBoxContainer />
+            ) : (
+              <ExecutionProcessesProvider
+                attemptId={selectedWorkspace?.id}
+                sessionId={selectedSessionId}
+              >
+                <WorkspacesMainContainer
+                  selectedWorkspace={selectedWorkspace ?? null}
+                  selectedSession={selectedSession}
+                  sessions={sessions}
+                  onSelectSession={selectSession}
+                  isLoading={isLoading}
+                  isNewSessionMode={isNewSessionMode}
+                  onStartNewSession={startNewSession}
+                />
+              </ExecutionProcessesProvider>
+            )}
+          </div>
+        </Allotment.Pane>
 
-        <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
-          <CreateChatBoxContainer />
-        </Panel>
-
-        <Separator id="handle-right" />
-
-        <Panel
-          id="git"
-          defaultSize="300px"
-          minSize="300px"
-          maxSize="600px"
-          className="min-w-0 min-h-0 overflow-hidden"
-          collapsible={true}
-          collapsedSize="0px"
-          panelRef={gitPanelRef}
-          onResize={handleGitPanelResize}
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={gitPanelWidth}
+          maxSize={600}
+          visible={isGitPanelVisible}
         >
-          <GitPanelCreateContainer />
-        </Panel>
-      </Group>
-    </CreateModeProvider>
-  );
+          <div className="h-full overflow-hidden">
+            {isCreateMode ? (
+              <GitPanelCreateContainer />
+            ) : (
+              <GitPanelContainer
+                selectedWorkspace={selectedWorkspace}
+                repos={repos}
+                repoInfos={repoInfos}
+                onBranchNameChange={handleBranchNameChange}
+              />
+            )}
+          </div>
+        </Allotment.Pane>
+      </Allotment>
+    );
 
-  // Render normal workspace content
-  const renderWorkspaceContent = () => (
-    <Group orientation="horizontal" className="flex-1 min-h-0">
-      <Panel
-        id="sidebar"
-        defaultSize="300px"
-        minSize="300px"
-        maxSize="600px"
-        className="min-w-0 min-h-0 overflow-hidden"
-        collapsible={true}
-        collapsedSize="0px"
-        panelRef={sidebarRef}
-        onResize={handleSidebarResize}
-      >
-        <WorkspacesSidebar
-          workspaces={sidebarWorkspaces}
-          archivedWorkspaces={archivedSidebarWorkspaces}
-          selectedWorkspaceId={selectedWorkspaceId ?? null}
-          onSelectWorkspace={selectWorkspace}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAddWorkspace={navigateToCreate}
-        />
-      </Panel>
-
-      <Separator id="handle-left" />
-
-      <Panel id="main" className="min-w-0 min-h-0 overflow-hidden">
-        <ExecutionProcessesProvider
-          attemptId={selectedWorkspace?.id}
-          sessionId={selectedSessionId}
+    if (isCreateMode) {
+      return (
+        <CreateModeProvider
+          initialProjectId={lastWorkspaceTask?.project_id}
+          initialRepos={lastWorkspaceRepos}
         >
-          <WorkspacesMainContainer
-            selectedWorkspace={selectedWorkspace ?? null}
-            selectedSession={selectedSession}
-            sessions={sessions}
-            onSelectSession={selectSession}
-            isLoading={isLoading}
-            isNewSessionMode={isNewSessionMode}
-            onStartNewSession={startNewSession}
-          />
-        </ExecutionProcessesProvider>
-      </Panel>
+          {content}
+        </CreateModeProvider>
+      );
+    }
 
-      <Separator id="handle-right" />
-
-      <Panel
-        id="git"
-        defaultSize="300px"
-        minSize="300px"
-        maxSize="600px"
-        className="min-w-0 min-h-0 overflow-hidden"
-        collapsible={true}
-        collapsedSize="0px"
-        panelRef={gitPanelRef}
-        onResize={handleGitPanelResize}
-      >
-        <GitPanelContainer
-          selectedWorkspace={selectedWorkspace}
-          repos={repos}
-          repoInfos={repoInfos}
-          onBranchNameChange={handleBranchNameChange}
-        />
-      </Panel>
-    </Group>
-  );
+    return content;
+  };
 
   return (
     <div className="flex flex-col h-screen">
       <Navbar
         workspaceTitle={navbarTitle}
-        isSidebarVisible={!isSidebarCollapsed}
-        isGitPanelVisible={!isGitPanelCollapsed}
+        isSidebarVisible={isSidebarVisible}
+        isGitPanelVisible={isGitPanelVisible}
         isArchived={selectedWorkspace?.archived}
         onToggleSidebar={handleToggleSidebar}
         onToggleGitPanel={handleToggleGitPanel}
@@ -450,7 +406,7 @@ export function WorkspacesLayout() {
             : undefined
         }
       />
-      {isCreateMode ? renderCreateModeContent() : renderWorkspaceContent()}
+      {renderContent()}
     </div>
   );
 }
