@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,10 @@ import {
   Trash2,
   Edit,
   ArrowLeft,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
+import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -78,6 +81,8 @@ export function TeamDocuments() {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOutline, setShowOutline] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
   const [newDocTitle, setNewDocTitle] = useState('');
@@ -225,6 +230,28 @@ export function TeamDocuments() {
     }
   }, [editingDoc, updateDocument]);
 
+  // Scroll to a specific line in the textarea
+  const handleHeadingClick = useCallback((line: number) => {
+    if (!textareaRef.current || !editingDoc?.content) return;
+
+    const lines = editingDoc.content.split('\n');
+    let charIndex = 0;
+
+    // Calculate character position of the target line
+    for (let i = 0; i < line - 1 && i < lines.length; i++) {
+      charIndex += lines[i].length + 1; // +1 for newline
+    }
+
+    // Focus and scroll to position
+    textareaRef.current.focus();
+    textareaRef.current.setSelectionRange(charIndex, charIndex);
+
+    // Calculate approximate scroll position
+    const lineHeight = 20; // approximate line height in pixels
+    const scrollTop = (line - 1) * lineHeight;
+    textareaRef.current.scrollTop = Math.max(0, scrollTop - 100);
+  }, [editingDoc?.content]);
+
   // Loading state
   if (error) {
     return (
@@ -287,22 +314,50 @@ export function TeamDocuments() {
                 placeholder="Document title"
               />
             </div>
-            <Button size="sm" onClick={handleSaveDocument}>
-              Save
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowOutline(!showOutline)}
+                title={showOutline ? 'Hide outline' : 'Show outline'}
+              >
+                {showOutline ? (
+                  <PanelRightClose className="h-4 w-4" />
+                ) : (
+                  <PanelRightOpen className="h-4 w-4" />
+                )}
+              </Button>
+              <Button size="sm" onClick={handleSaveDocument}>
+                Save
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Editor Content */}
-        <div className="flex-1 min-h-0 p-4">
-          <Textarea
-            value={editingDoc.content || ''}
-            onChange={(e) =>
-              setEditingDoc({ ...editingDoc, content: e.target.value })
-            }
-            className="w-full h-full resize-none font-mono text-sm"
-            placeholder="Start writing your document in Markdown..."
-          />
+        {/* Editor Content with Outline Sidebar */}
+        <div className="flex-1 min-h-0 flex">
+          {/* Main Editor */}
+          <div className="flex-1 min-w-0 p-4">
+            <Textarea
+              ref={textareaRef}
+              value={editingDoc.content || ''}
+              onChange={(e) =>
+                setEditingDoc({ ...editingDoc, content: e.target.value })
+              }
+              className="w-full h-full resize-none font-mono text-sm"
+              placeholder="Start writing your document in Markdown..."
+            />
+          </div>
+
+          {/* Outline Sidebar */}
+          {showOutline && (
+            <div className="w-64 shrink-0 border-l bg-muted/30 overflow-auto">
+              <DocumentOutline
+                content={editingDoc.content || ''}
+                onHeadingClick={handleHeadingClick}
+              />
+            </div>
+          )}
         </div>
       </div>
     );

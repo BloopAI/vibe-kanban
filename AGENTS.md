@@ -81,8 +81,8 @@ Use `mcp__vibe_kanban__update_task` with:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/<task-id>
-# Example: git checkout -b feature/a76b21a8
+git checkout -b feature/<task-id>-<task-name-kebab-case>
+# Example: git checkout -b feature/a76b21a8-add-document-tree-view
 ```
 
 #### 4. Work on the Task
@@ -92,21 +92,21 @@ git checkout -b feature/<task-id>
 
 #### 5. Push Feature Branch
 ```bash
-git push -u origin feature/<task-id>
+git push -u origin feature/<task-id>-<task-name-kebab-case>
 ```
 
 #### 6. Merge to Main
 ```bash
 git checkout main
 git pull origin main
-git merge feature/<task-id>
+git merge feature/<task-id>-<task-name-kebab-case>
 git push origin main
 ```
 
 #### 7. Clean Up Feature Branch
 ```bash
-git branch -d feature/<task-id>
-git push origin --delete feature/<task-id>
+git branch -d feature/<task-id>-<task-name-kebab-case>
+git push origin --delete feature/<task-id>-<task-name-kebab-case>
 ```
 
 #### 8. Update Task Status to Done
