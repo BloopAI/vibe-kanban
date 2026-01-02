@@ -10,6 +10,8 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
+import { FileTreePlaceholder } from '@/components/ui-new/views/FileTreePlaceholder';
+import { ChangesPanel } from '@/components/ui-new/views/ChangesPanel';
 import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
@@ -226,6 +228,7 @@ export function WorkspacesLayout() {
   // Visibility state for sidebar panels
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
+  const [isChangesMode, setIsChangesMode] = useState(false);
 
   // Persisted pane sizes
   const [sidebarWidth, setSidebarWidth] = usePaneSize(
@@ -236,24 +239,47 @@ export function WorkspacesLayout() {
     PERSIST_KEYS.gitPanelWidth,
     300
   );
+  const [changesPanelWidth, setChangesPanelWidth] = usePaneSize(
+    PERSIST_KEYS.changesPanelWidth,
+    300
+  );
+  const [fileTreeHeight, setFileTreeHeight] = usePaneSize(
+    PERSIST_KEYS.fileTreeHeight,
+    '70%'
+  );
+
+  // Handle file tree resize (vertical split within git panel)
+  const handleFileTreeResize = useCallback(
+    (sizes: number[]) => {
+      if (sizes[0] !== undefined) setFileTreeHeight(sizes[0]);
+    },
+    [setFileTreeHeight]
+  );
 
   // Handle pane resize end
   const handlePaneResize = useCallback(
     (sizes: number[]) => {
-      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = git panel
+      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = git panel, sizes[3] = changes panel (if visible)
       if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
       if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
+      if (sizes[3] !== undefined) setChangesPanelWidth(sizes[3]);
     },
-    [setSidebarWidth, setGitPanelWidth]
+    [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
   );
 
   // Panel toggle handlers
   const handleToggleSidebar = useCallback(() => {
-    setIsSidebarVisible((prev) => !prev);
-  }, []);
+    if (!isChangesMode) {
+      setIsSidebarVisible((prev) => !prev);
+    }
+  }, [isChangesMode]);
 
   const handleToggleGitPanel = useCallback(() => {
     setIsGitPanelVisible((prev) => !prev);
+  }, []);
+
+  const handleToggleChangesMode = useCallback(() => {
+    setIsChangesMode((prev) => !prev);
   }, []);
 
   const handleToggleArchive = useCallback(() => {
@@ -308,6 +334,41 @@ export function WorkspacesLayout() {
     }
   );
 
+  // Render git panel content - either split (in changes mode) or normal
+  const renderGitPanelContent = () => {
+    if (isCreateMode) {
+      return <GitPanelCreateContainer />;
+    }
+
+    if (isChangesMode) {
+      // In changes mode, split git panel vertically: file tree on top, git on bottom
+      return (
+        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
+          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+            <FileTreePlaceholder />
+          </Allotment.Pane>
+          <Allotment.Pane minSize={200}>
+            <GitPanelContainer
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+              repoInfos={repoInfos}
+              onBranchNameChange={handleBranchNameChange}
+            />
+          </Allotment.Pane>
+        </Allotment>
+      );
+    }
+
+    return (
+      <GitPanelContainer
+        selectedWorkspace={selectedWorkspace}
+        repos={repos}
+        repoInfos={repoInfos}
+        onBranchNameChange={handleBranchNameChange}
+      />
+    );
+  };
+
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
     const content = (
@@ -316,7 +377,7 @@ export function WorkspacesLayout() {
           minSize={300}
           preferredSize={sidebarWidth}
           maxSize={600}
-          visible={isSidebarVisible}
+          visible={isSidebarVisible && !isChangesMode}
         >
           <div className="h-full overflow-hidden">
             <WorkspacesSidebar
@@ -361,16 +422,18 @@ export function WorkspacesLayout() {
           visible={isGitPanelVisible}
         >
           <div className="h-full overflow-hidden">
-            {isCreateMode ? (
-              <GitPanelCreateContainer />
-            ) : (
-              <GitPanelContainer
-                selectedWorkspace={selectedWorkspace}
-                repos={repos}
-                repoInfos={repoInfos}
-                onBranchNameChange={handleBranchNameChange}
-              />
-            )}
+            {renderGitPanelContent()}
+          </div>
+        </Allotment.Pane>
+
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={changesPanelWidth}
+          maxSize={600}
+          visible={isChangesMode}
+        >
+          <div className="h-full overflow-hidden">
+            <ChangesPanel />
           </div>
         </Allotment.Pane>
       </Allotment>
@@ -396,9 +459,12 @@ export function WorkspacesLayout() {
         workspaceTitle={navbarTitle}
         isSidebarVisible={isSidebarVisible}
         isGitPanelVisible={isGitPanelVisible}
+        isChangesMode={isChangesMode}
+        isCreateMode={isCreateMode}
         isArchived={selectedWorkspace?.archived}
         onToggleSidebar={handleToggleSidebar}
         onToggleGitPanel={handleToggleGitPanel}
+        onToggleChangesMode={handleToggleChangesMode}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
         onNavigateToOldUI={
           selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id

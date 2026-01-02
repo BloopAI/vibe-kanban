@@ -22,6 +22,8 @@ export const PERSIST_KEYS = {
   // Pane sizes
   sidebarWidth: 'workspaces-sidebar-width',
   gitPanelWidth: 'workspaces-git-panel-width',
+  changesPanelWidth: 'workspaces-changes-panel-width',
+  fileTreeHeight: 'workspaces-file-tree-height',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
@@ -32,6 +34,8 @@ export type PersistKey =
   | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.sidebarWidth
   | typeof PERSIST_KEYS.gitPanelWidth
+  | typeof PERSIST_KEYS.changesPanelWidth
+  | typeof PERSIST_KEYS.fileTreeHeight
   | `repo-card-${string}`;
 
 type State = {
@@ -117,7 +121,7 @@ export function useContextBarPosition(): [
 // Hook for pane size preference
 export function usePaneSize(
   key: PersistKey,
-  defaultSize: number
+  defaultSize: number | string
 ): [number, (size: number) => void] {
   const size = useUiPreferencesStore((s) => s.paneSizes[key] ?? defaultSize);
   const setSize = useUiPreferencesStore((s) => s.setPaneSize);
