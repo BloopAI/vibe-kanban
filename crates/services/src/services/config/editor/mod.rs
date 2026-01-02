@@ -50,6 +50,7 @@ pub enum EditorType {
     IntelliJ,
     Zed,
     Xcode,
+    GoogleAntigravity,
     Custom,
 }
 
@@ -88,6 +89,7 @@ impl EditorConfig {
             EditorType::IntelliJ => "idea",
             EditorType::Zed => "zed",
             EditorType::Xcode => "xed",
+            EditorType::GoogleAntigravity => "antigravity",
             EditorType::Custom => {
                 // Custom editor - use user-provided command or fallback to VSCode
                 self.custom_command.as_deref().unwrap_or("code")
@@ -142,6 +144,7 @@ impl EditorConfig {
             EditorType::VsCode => "vscode",
             EditorType::Cursor => "cursor",
             EditorType::Windsurf => "windsurf",
+            EditorType::GoogleAntigravity => "antigravity",
             _ => return None,
         };
         let user_part = self
