@@ -4,7 +4,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,15 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useTaskRefinement,
 } from '@/hooks';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -101,6 +109,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
+  const [includeCodebaseContext, setIncludeCodebaseContext] = useState(true);
+
+  // Task refinement mutation
+  const refineDescription = useTaskRefinement();
 
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
@@ -394,6 +406,37 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     when: () => modal.visible && showDiscardWarning,
   });
 
+  // Handle refine with AI
+  const handleRefineWithAI = useCallback(async () => {
+    const title = form.getFieldValue('title');
+    const description = form.getFieldValue('description');
+    const executorProfileId = form.getFieldValue('executorProfileId');
+
+    if (!executorProfileId) {
+      console.error('No executor profile selected for refinement');
+      return;
+    }
+
+    try {
+      const result = await refineDescription.mutateAsync({
+        title,
+        description,
+        include_codebase_context: includeCodebaseContext,
+        executor_profile_id: executorProfileId,
+        project_id: projectId,
+      });
+
+      // Append refined task to the description
+      const newDescription = description.trim()
+        ? `${description}\n\n---\n### Refined Task\n${result.suggestions}`
+        : result.suggestions;
+
+      form.setFieldValue('description', newDescription);
+    } catch (err) {
+      console.error('Failed to refine description:', err);
+    }
+  }, [form, refineDescription, includeCodebaseContext, projectId]);
+
   const loading = branchesLoading || userSystemLoading;
   if (loading) return <></>;
 
@@ -614,18 +657,70 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
           {/* Actions */}
           <div className="flex items-center justify-between gap-3">
-            {/* Attach Image*/}
+            {/* Attach Image and Refine with AI */}
+            <TooltipProvider>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={dropzoneOpen}
-                className="h-9 w-9 p-0 rounded-none"
-                aria-label={t('taskFormDialog.attachImage')}
-              >
-                <ImageIcon className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={dropzoneOpen}
+                    className="h-9 w-9 p-0 rounded-none"
+                    aria-label={t('taskFormDialog.attachImage')}
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('taskFormDialog.attachImage')}</TooltipContent>
+              </Tooltip>
+
+              {/* Refine with AI Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefineWithAI}
+                    disabled={isSubmitting || refineDescription.isPending || !form.getFieldValue('executorProfileId')}
+                    className="h-9 px-2 rounded-none gap-1"
+                    aria-label={t('taskFormDialog.refineWithAi')}
+                  >
+                    {refineDescription.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    <span className="text-xs hidden sm:inline">
+                      {refineDescription.isPending
+                        ? t('taskFormDialog.refiningWithAi')
+                        : t('taskFormDialog.refineWithAi')}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('taskFormDialog.refineWithAi')}</TooltipContent>
+              </Tooltip>
+
+              {/* Include Codebase Context Toggle */}
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  id="include-codebase"
+                  checked={includeCodebaseContext}
+                  onCheckedChange={(checked) =>
+                    setIncludeCodebaseContext(checked === true)
+                  }
+                  disabled={isSubmitting || refineDescription.isPending}
+                  className="h-4 w-4"
+                />
+                <Label
+                  htmlFor="include-codebase"
+                  className="text-xs cursor-pointer text-muted-foreground"
+                >
+                  {t('taskFormDialog.includeCodebaseContext')}
+                </Label>
+              </div>
             </div>
+            </TooltipProvider>
 
             {/* Autostart switch */}
             <div className="flex items-center gap-3">

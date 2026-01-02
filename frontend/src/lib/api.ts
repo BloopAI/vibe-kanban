@@ -82,6 +82,8 @@ import {
   SharedTaskResponse,
   SharedTaskDetails,
   QueueStatus,
+  RefineDescriptionRequest,
+  RefineDescriptionResponse,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
   PushTaskAttemptRequest,
@@ -464,6 +466,16 @@ export const tasksApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Task | null>(response);
+  },
+
+  refineDescription: async (
+    data: RefineDescriptionRequest
+  ): Promise<RefineDescriptionResponse> => {
+    const response = await makeRequest('/api/tasks/refine-description', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<RefineDescriptionResponse>(response);
   },
 };
 

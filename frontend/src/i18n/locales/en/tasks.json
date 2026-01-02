@@ -470,7 +470,11 @@
       "description": "You have unsaved changes. Are you sure you want to discard them?",
       "continueEditing": "Continue Editing",
       "discardChanges": "Discard Changes"
-    }
+    },
+    "refineWithAi": "Refine with AI",
+    "refiningWithAi": "Refining...",
+    "includeCodebaseContext": "Include codebase",
+    "refineError": "Failed to refine description"
   },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
