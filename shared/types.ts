@@ -182,6 +182,46 @@ added_titles: Array<string>,
  */
 files_scanned: number, };
 
+export type DocumentContentResponse = { 
+/**
+ * The document ID
+ */
+document_id: string, 
+/**
+ * Content type: "text", "csv", "pdf_text", "image_base64", "binary"
+ */
+content_type: string, 
+/**
+ * The actual content (text, extracted text, or base64 for images)
+ */
+content: string, 
+/**
+ * Optional structured data for CSV files
+ */
+csv_data: CsvDataResponse | null, 
+/**
+ * File path on disk
+ */
+file_path: string | null, 
+/**
+ * Original file type/extension
+ */
+file_type: string, 
+/**
+ * MIME type
+ */
+mime_type: string | null, };
+
+export type CsvDataResponse = { 
+/**
+ * Column headers
+ */
+headers: Array<string>, 
+/**
+ * Data rows (limited to 1000)
+ */
+rows: Array<Array<string>>, };
+
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 
 export type DocumentFolder = { id: string, team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, 

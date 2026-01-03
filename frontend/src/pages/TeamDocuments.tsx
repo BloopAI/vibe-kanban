@@ -40,8 +40,9 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
+import { documentsApi } from '@/lib/api';
 
-import type { Document, DocumentFolder } from 'shared/types';
+import type { Document, DocumentFolder, DocumentContentResponse } from 'shared/types';
 
 // File type icons
 const FILE_TYPE_ICONS: Record<string, string> = {
@@ -78,6 +79,8 @@ export function TeamDocuments() {
   const [isCreateDocOpen, setIsCreateDocOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+  const [docContent, setDocContent] = useState<DocumentContentResponse | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showOutline, setShowOutline] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -231,9 +234,35 @@ export function TeamDocuments() {
     }
   }, [currentFolderId, folders, scanFilesystem]);
 
-  const handleOpenDocument = useCallback((doc: Document) => {
+  const handleOpenDocument = useCallback(async (doc: Document) => {
     setEditingDoc(doc);
-  }, []);
+    setDocContent(null);
+    setIsLoadingContent(true);
+
+    try {
+      // Fetch content using the new API that handles different file types
+      const content = await documentsApi.getContent(teamId!, doc.id);
+      setDocContent(content);
+      // For text content, also update the editingDoc.content for editing
+      if (content.content_type === 'text') {
+        setEditingDoc(prev => prev ? { ...prev, content: content.content } : null);
+      }
+    } catch (err) {
+      console.error('Failed to load document content:', err);
+      // Fallback to existing content if API fails
+      setDocContent({
+        document_id: doc.id,
+        content_type: 'text',
+        content: doc.content || '',
+        csv_data: null,
+        file_path: doc.file_path,
+        file_type: doc.file_type,
+        mime_type: doc.mime_type,
+      });
+    } finally {
+      setIsLoadingContent(false);
+    }
+  }, [teamId]);
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, docId: string) => {
@@ -441,8 +470,13 @@ export function TeamDocuments() {
     );
   }
 
-  // Document editor view
+  // Document editor/viewer view
   if (editingDoc) {
+    const isTextEditable = docContent?.content_type === 'text' || docContent?.content_type === 'pdf_text';
+    const isCsv = docContent?.content_type === 'csv';
+    const isImage = docContent?.content_type === 'image_base64';
+    const isBinary = docContent?.content_type === 'binary';
+
     return (
       <div className="h-full flex flex-col">
         {/* Editor Header */}
@@ -452,7 +486,10 @@ export function TeamDocuments() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setEditingDoc(null)}
+                onClick={() => {
+                  setEditingDoc(null);
+                  setDocContent(null);
+                }}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back
@@ -464,61 +501,142 @@ export function TeamDocuments() {
                 }
                 className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 px-0"
                 placeholder="Document title"
+                disabled={!isTextEditable}
               />
+              {docContent && (
+                <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
+                  {docContent.file_type.toUpperCase()}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowOutline(!showOutline)}
-                title={showOutline ? 'Hide outline' : 'Show outline'}
-              >
-                {showOutline ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFormatDocument}
-                title="Format document"
-              >
-                <Wand2 className="h-4 w-4 mr-1" />
-                Format
-              </Button>
-              <Button size="sm" onClick={handleSaveDocument}>
-                Save
-              </Button>
+              {isTextEditable && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowOutline(!showOutline)}
+                    title={showOutline ? 'Hide outline' : 'Show outline'}
+                  >
+                    {showOutline ? (
+                      <PanelLeftClose className="h-4 w-4" />
+                    ) : (
+                      <PanelLeftOpen className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleFormatDocument}
+                    title="Format document"
+                  >
+                    <Wand2 className="h-4 w-4 mr-1" />
+                    Format
+                  </Button>
+                  <Button size="sm" onClick={handleSaveDocument}>
+                    Save
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Editor Content with Outline Sidebar */}
+        {/* Content Area */}
         <div className="flex-1 min-h-0 flex">
-          {/* Outline Sidebar (Left) */}
-          {showOutline && (
-            <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
-              <DocumentOutline
-                content={editingDoc.content || ''}
-                onHeadingClick={handleHeadingClick}
+          {/* Loading State */}
+          {isLoadingContent && (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Text Editor (for text and pdf_text) */}
+          {!isLoadingContent && isTextEditable && (
+            <>
+              {showOutline && (
+                <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
+                  <DocumentOutline
+                    content={editingDoc.content || ''}
+                    onHeadingClick={handleHeadingClick}
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 p-4">
+                <Textarea
+                  ref={textareaRef}
+                  value={editingDoc.content || ''}
+                  onChange={(e) =>
+                    setEditingDoc({ ...editingDoc, content: e.target.value })
+                  }
+                  className="w-full h-full resize-none font-mono text-sm"
+                  placeholder="Start writing your document in Markdown..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* CSV Table View */}
+          {!isLoadingContent && isCsv && docContent?.csv_data && (
+            <div className="flex-1 min-w-0 p-4 overflow-auto">
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      {docContent.csv_data.headers.map((header, i) => (
+                        <th key={i} className="px-4 py-2 text-left font-medium border-b">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {docContent.csv_data.rows.map((row, rowIdx) => (
+                      <tr key={rowIdx} className="hover:bg-muted/50">
+                        {row.map((cell, cellIdx) => (
+                          <td key={cellIdx} className="px-4 py-2 border-b">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {docContent.csv_data.rows.length >= 1000 && (
+                  <div className="p-2 text-center text-xs text-muted-foreground bg-muted">
+                    Showing first 1000 rows
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Image Viewer */}
+          {!isLoadingContent && isImage && docContent && (
+            <div className="flex-1 min-w-0 p-4 flex items-center justify-center bg-muted/30">
+              <img
+                src={docContent.content}
+                alt={editingDoc.title}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
               />
             </div>
           )}
 
-          {/* Main Editor */}
-          <div className="flex-1 min-w-0 p-4">
-            <Textarea
-              ref={textareaRef}
-              value={editingDoc.content || ''}
-              onChange={(e) =>
-                setEditingDoc({ ...editingDoc, content: e.target.value })
-              }
-              className="w-full h-full resize-none font-mono text-sm"
-              placeholder="Start writing your document in Markdown..."
-            />
-          </div>
+          {/* Binary File Info */}
+          {!isLoadingContent && isBinary && docContent && (
+            <div className="flex-1 min-w-0 p-8 flex flex-col items-center justify-center">
+              <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">{editingDoc.title}</h3>
+              <p className="text-muted-foreground text-center whitespace-pre-line">
+                {docContent.content}
+              </p>
+              {docContent.file_path && (
+                <p className="mt-4 text-xs text-muted-foreground font-mono">
+                  {docContent.file_path}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

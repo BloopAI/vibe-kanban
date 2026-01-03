@@ -119,6 +119,7 @@ import {
   PushDocumentsRequest,
   SyncOperationResponse,
   ScanFilesystemResponse,
+  DocumentContentResponse,
   GitHubRepoSyncConfig,
   ConfigureMultiFolderSync,
 } from 'shared/types';
@@ -1807,5 +1808,14 @@ export const documentsApi = {
       method: 'POST',
     });
     return handleApiResponse<ScanFilesystemResponse>(response);
+  },
+
+  // Get document content with type-specific handling
+  getContent: async (
+    teamId: string,
+    documentId: string
+  ): Promise<DocumentContentResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}/content`);
+    return handleApiResponse<DocumentContentResponse>(response);
   },
 };

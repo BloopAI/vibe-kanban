@@ -20,6 +20,7 @@ use uuid::Uuid;
 use std::collections::HashSet;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_team_middleware};
+use crate::file_reader::{read_file_content, ContentType};
 
 /// Get the document storage service
 fn get_document_storage() -> DocumentStorageService {
@@ -470,6 +471,65 @@ pub async fn delete_document(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Get document file content with type-specific handling
+/// Supports: text files (md, txt, json, xml, html), CSV, PDF (text extraction), images (base64)
+pub async fn get_document_content(
+    State(deployment): State<DeploymentImpl>,
+    Path((team_id, document_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<DocumentContentResponse>>, ApiError> {
+    // Verify team exists
+    let _team = Team::find_by_id(&deployment.db().pool, team_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Get document
+    let document = Document::find_by_id(&deployment.db().pool, document_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Verify document belongs to team
+    if document.team_id != team_id {
+        return Err(ApiError::Database(sqlx::Error::RowNotFound));
+    }
+
+    // Get file path
+    let file_path = document.file_path.as_ref().ok_or_else(|| {
+        ApiError::NotFound("Document has no file path".to_string())
+    })?;
+
+    // Read file content using the file reader
+    let file_content = read_file_content(file_path)
+        .await
+        .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+
+    // Convert content type to string
+    let content_type_str = match file_content.content_type {
+        ContentType::Text => "text",
+        ContentType::Csv => "csv",
+        ContentType::PdfText => "pdf_text",
+        ContentType::ImageBase64 => "image_base64",
+        ContentType::Binary => "binary",
+    }.to_string();
+
+    // Convert CSV data if present
+    let csv_data = file_content.structured_data.map(|data| CsvDataResponse {
+        headers: data.headers,
+        rows: data.rows,
+    });
+
+    let response = DocumentContentResponse {
+        document_id,
+        content_type: content_type_str,
+        content: file_content.content,
+        csv_data,
+        file_path: document.file_path,
+        file_type: document.file_type,
+        mime_type: document.mime_type,
+    };
+
+    Ok(ResponseJson(ApiResponse::success(response)))
+}
+
 /// Response for scan filesystem operation
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
@@ -480,6 +540,36 @@ pub struct ScanFilesystemResponse {
     pub added_titles: Vec<String>,
     /// Number of files scanned
     pub files_scanned: usize,
+}
+
+/// Response containing document file content with type information
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct DocumentContentResponse {
+    /// The document ID
+    pub document_id: Uuid,
+    /// Content type: "text", "csv", "pdf_text", "image_base64", "binary"
+    pub content_type: String,
+    /// The actual content (text, extracted text, or base64 for images)
+    pub content: String,
+    /// Optional structured data for CSV files
+    pub csv_data: Option<CsvDataResponse>,
+    /// File path on disk
+    pub file_path: Option<String>,
+    /// Original file type/extension
+    pub file_type: String,
+    /// MIME type
+    pub mime_type: Option<String>,
+}
+
+/// Structured CSV data for frontend rendering
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct CsvDataResponse {
+    /// Column headers
+    pub headers: Vec<String>,
+    /// Data rows (limited to 1000)
+    pub rows: Vec<Vec<String>>,
 }
 
 /// Get mime type from file extension
@@ -779,10 +869,12 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     // Routes with additional path params (manually load team)
-    let document_item_router = Router::new().route(
-        "/",
-        get(get_document).put(update_document).delete(delete_document),
-    );
+    let document_item_router = Router::new()
+        .route(
+            "/",
+            get(get_document).put(update_document).delete(delete_document),
+        )
+        .route("/content", get(get_document_content));
 
     let folder_item_router = Router::new().route(
         "/",

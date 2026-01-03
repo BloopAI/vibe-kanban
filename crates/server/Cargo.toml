@@ -50,6 +50,8 @@ sha2 = "0.10"
 strum = "0.27.2"
 regex = "1"
 urlencoding = "2.1"
+pdf-extract = "0.7"
+csv = "1.3"
 
 [build-dependencies]
 dotenv = "0.15"
