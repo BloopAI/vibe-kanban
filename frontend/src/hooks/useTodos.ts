@@ -2,18 +2,18 @@ import { useMemo } from 'react';
 import type { TodoItem, NormalizedEntry } from 'shared/types';
 import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
 
-interface UsePinnedTodosResult {
+interface UseTodosResult {
   todos: TodoItem[];
+  inProgressTodo: TodoItem | null;
   lastUpdated: string | null;
 }
 
 /**
  * Hook that extracts and maintains the latest TODO state from normalized conversation entries.
- * Filters for TodoManagement ActionType entries and returns the most recent todo list.
+ * Filters for TodoManagement ActionType entries and returns the most recent todo list,
+ * along with the currently in-progress todo item.
  */
-export const usePinnedTodos = (
-  entries: PatchTypeWithKey[]
-): UsePinnedTodosResult => {
+export const useTodos = (entries: PatchTypeWithKey[]): UseTodosResult => {
   return useMemo(() => {
     let latestTodos: TodoItem[] = [];
     let lastUpdatedTime: string | null = null;
@@ -52,8 +52,16 @@ export const usePinnedTodos = (
       }
     }
 
+    // Find the currently in-progress todo
+    const inProgressTodo =
+      latestTodos.find((todo) => {
+        const status = todo.status?.toLowerCase();
+        return status === 'in_progress' || status === 'in-progress';
+      }) ?? null;
+
     return {
       todos: latestTodos,
+      inProgressTodo,
       lastUpdated: lastUpdatedTime,
     };
   }, [entries]);

@@ -5,6 +5,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useEntries } from '@/contexts/EntriesContext';
+import { useTodos } from '@/hooks/useTodos';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
@@ -95,8 +96,9 @@ export function SessionChatBoxContainer({
   const editContext = useMessageEditContext();
   const isInEditMode = editContext.isInEditMode;
 
-  // Detect pending approval from entries
+  // Detect pending approval and todos from entries
   const { entries } = useEntries();
+  const { inProgressTodo } = useTodos(entries);
   const hasPendingApproval = useMemo(() => {
     return entries.some((entry) => {
       if (entry.type !== 'NORMALIZED_ENTRY') return false;
@@ -392,6 +394,7 @@ export function SessionChatBoxContainer({
       error={sendError}
       agent={latestProfileId?.executor}
       hasPendingApproval={hasPendingApproval}
+      inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode
           ? {
