@@ -14,6 +14,7 @@ import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
 
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
+import { InsightsPanel } from '@/components/tasks/InsightsPanel';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
@@ -39,6 +40,7 @@ export function TeamIssues() {
   const team = teamId ? teamsById[teamId] : null;
   const { projects } = useProjects();
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
+  const [showInsights, setShowInsights] = useState(false);
 
   // Mock team members - in real app, this would come from API
   // Note: IDs must be valid UUIDs as the backend expects UUID for assignee_id
@@ -335,7 +337,12 @@ export function TeamIssues() {
 
           {/* Right side: Insight and Display */}
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${showInsights ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setShowInsights(!showInsights)}
+            >
               <BarChart3 className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
@@ -347,34 +354,45 @@ export function TeamIssues() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        {!hasIssues ? (
-          <div className="max-w-7xl mx-auto mt-8 px-4">
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-muted-foreground">No issues in this team yet</p>
-                <Button className="mt-4" onClick={handleCreateIssue}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Issue
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
-            <TeamKanbanBoard
-              columns={kanbanColumns}
-              onDragEnd={handleDragEnd}
-              onViewTaskDetails={handleViewIssueDetails}
-              onCreateTask={handleCreateIssue}
-              selectedTaskId={undefined}
-              teamMembers={teamMembers}
-              teamProjects={teamProjectsForDropdown}
-              onAssigneeChange={handleAssigneeChange}
-              onPriorityChange={handlePriorityChange}
-              onProjectChange={handleProjectChange}
-            />
-          </div>
+      <div className="flex-1 min-h-0 flex">
+        {/* Main content area */}
+        <div className="flex-1 overflow-auto">
+          {!hasIssues ? (
+            <div className="max-w-7xl mx-auto mt-8 px-4">
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">No issues in this team yet</p>
+                  <Button className="mt-4" onClick={handleCreateIssue}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Issue
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain p-4">
+              <TeamKanbanBoard
+                columns={kanbanColumns}
+                onDragEnd={handleDragEnd}
+                onViewTaskDetails={handleViewIssueDetails}
+                onCreateTask={handleCreateIssue}
+                selectedTaskId={undefined}
+                teamMembers={teamMembers}
+                teamProjects={teamProjectsForDropdown}
+                onAssigneeChange={handleAssigneeChange}
+                onPriorityChange={handlePriorityChange}
+                onProjectChange={handleProjectChange}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Insights Panel */}
+        {showInsights && (
+          <InsightsPanel
+            issues={issues}
+            onClose={() => setShowInsights(false)}
+          />
         )}
       </div>
     </div>
