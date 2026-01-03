@@ -23,6 +23,8 @@ import {
   GripVertical,
   RefreshCw,
   Loader2,
+  Pencil,
+  Eye,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { PdfViewer } from '@/components/documents/PdfViewer';
@@ -93,6 +95,7 @@ export function TeamDocuments() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ added: number; scanned: number } | null>(null);
+  const [isMarkdownEditMode, setIsMarkdownEditMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
@@ -243,6 +246,7 @@ export function TeamDocuments() {
     setEditingDoc(doc);
     setDocContent(null);
     setIsLoadingContent(true);
+    setIsMarkdownEditMode(false); // Reset to view mode when opening a new document
 
     try {
       // Fetch content using the new API that handles different file types
@@ -520,7 +524,7 @@ export function TeamDocuments() {
                 }
                 className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 px-0"
                 placeholder="Document title"
-                disabled={!isEditable}
+                disabled={!isEditable && !(isMarkdown && isMarkdownEditMode)}
               />
               {docContent && (
                 <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
@@ -558,18 +562,54 @@ export function TeamDocuments() {
                 </>
               )}
               {isMarkdown && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowOutline(!showOutline)}
-                  title={showOutline ? 'Hide outline' : 'Show outline'}
-                >
-                  {showOutline ? (
-                    <PanelLeftClose className="h-4 w-4" />
-                  ) : (
-                    <PanelLeftOpen className="h-4 w-4" />
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowOutline(!showOutline)}
+                    title={showOutline ? 'Hide outline' : 'Show outline'}
+                  >
+                    {showOutline ? (
+                      <PanelLeftClose className="h-4 w-4" />
+                    ) : (
+                      <PanelLeftOpen className="h-4 w-4" />
+                    )}
+                  </Button>
+                  {isMarkdownEditMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFormatDocument}
+                      title="Format document"
+                    >
+                      <Wand2 className="h-4 w-4 mr-1" />
+                      Format
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    variant={isMarkdownEditMode ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() => setIsMarkdownEditMode(!isMarkdownEditMode)}
+                    title={isMarkdownEditMode ? 'Switch to view mode' : 'Switch to edit mode'}
+                  >
+                    {isMarkdownEditMode ? (
+                      <>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </>
+                    ) : (
+                      <>
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
+                      </>
+                    )}
+                  </Button>
+                  {isMarkdownEditMode && (
+                    <Button size="sm" onClick={handleSaveDocument}>
+                      Save
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -584,13 +624,37 @@ export function TeamDocuments() {
             </div>
           )}
 
-          {/* Markdown Viewer */}
+          {/* Markdown Viewer / Editor */}
           {!isLoadingContent && isMarkdown && docContent && (
-            <MarkdownViewer
-              content={docContent.content || ''}
-              showOutline={showOutline}
-              className="flex-1 min-w-0"
-            />
+            isMarkdownEditMode ? (
+              <>
+                {showOutline && (
+                  <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
+                    <DocumentOutline
+                      content={editingDoc.content || ''}
+                      onHeadingClick={handleHeadingClick}
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 p-4">
+                  <Textarea
+                    ref={textareaRef}
+                    value={editingDoc.content || ''}
+                    onChange={(e) =>
+                      setEditingDoc({ ...editingDoc, content: e.target.value })
+                    }
+                    className="w-full h-full resize-none font-mono text-sm"
+                    placeholder="Start writing..."
+                  />
+                </div>
+              </>
+            ) : (
+              <MarkdownViewer
+                content={docContent.content || ''}
+                showOutline={showOutline}
+                className="flex-1 min-w-0"
+              />
+            )
           )}
 
           {/* PDF Viewer */}
