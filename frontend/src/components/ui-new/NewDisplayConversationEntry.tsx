@@ -23,6 +23,7 @@ import {
   ChatAssistantMessage,
   ChatSystemMessage,
   ChatThinkingMessage,
+  ChatErrorMessage,
 } from './primitives/conversation';
 
 type Props = {
@@ -198,6 +199,13 @@ function NewDisplayConversationEntry({
         content={entry.content}
         taskAttemptId={taskAttempt?.id}
       />
+    );
+  }
+
+  // Error message - use ChatErrorMessage
+  if (entryType.type === 'error_message') {
+    return (
+      <ErrorMessageEntry content={entry.content} expansionKey={expansionKey} />
     );
   }
 
@@ -459,6 +467,23 @@ function SystemMessageEntry({
       expanded={expanded}
       onToggle={toggle}
     />
+  );
+}
+
+/**
+ * Error message entry with expandable content
+ */
+function ErrorMessageEntry({
+  content,
+  expansionKey,
+}: {
+  content: string;
+  expansionKey: string;
+}) {
+  const [expanded, toggle] = useExpandable(`error:${expansionKey}`, false);
+
+  return (
+    <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
   );
 }
 
