@@ -212,6 +212,11 @@ pub async fn create(
             return;
         }
 
+        // Send Ready message to indicate initial data has been sent
+        if tx_clone.send(Ok(LogMsg::Ready)).await.is_err() {
+            return;
+        }
+
         // Set up filesystem watcher for live updates
         let worktree_for_watcher = worktree_path.clone();
         let watcher_result = tokio::task::spawn_blocking(move || {
