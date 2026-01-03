@@ -138,6 +138,10 @@
       "pullRequests": {
         "title": "Pull Requests",
         "description": "Configure PR creation behavior",
+        "autoCreate": {
+          "label": "Auto-create PR when task completes",
+          "helper": "When enabled, a pull request will be automatically created when the coding agent finishes and goes idle."
+        },
         "autoDescription": {
           "label": "Auto-generate PR description by default",
           "helper": "When enabled, the AI agent will automatically update the PR title and description after creation."

@@ -17,6 +17,10 @@ fn default_pr_auto_description_enabled() -> bool {
     true
 }
 
+fn default_pr_auto_create_on_completion() -> bool {
+    false
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -41,6 +45,8 @@ pub struct Config {
     pub pr_auto_description_enabled: bool,
     #[serde(default)]
     pub pr_auto_description_prompt: Option<String>,
+    #[serde(default = "default_pr_auto_create_on_completion")]
+    pub pr_auto_create_on_completion: bool,
 }
 
 impl Config {
@@ -66,6 +72,7 @@ impl Config {
             showcases: old_config.showcases,
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            pr_auto_create_on_completion: false,
         }
     }
 
@@ -116,6 +123,7 @@ impl Default for Config {
             showcases: ShowcaseState::default(),
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            pr_auto_create_on_completion: false,
         }
     }
 }
