@@ -2,7 +2,6 @@ import type { RefObject } from 'react';
 import {
   CheckIcon,
   CopyIcon,
-  EyeIcon,
   CodeIcon,
   PlayIcon,
   PauseIcon,
@@ -78,7 +77,6 @@ export interface ContextBarProps {
   copied?: boolean;
   onOpen?: () => void;
   onCopy?: () => void;
-  onPreview?: () => void;
   onViewCode?: () => void;
   attemptId?: string;
 }
@@ -88,7 +86,6 @@ export function ContextBar({
   copied = false,
   onOpen,
   onCopy,
-  onPreview,
   onViewCode,
   attemptId,
 }: ContextBarProps) {
@@ -179,11 +176,6 @@ export function ContextBar({
                 )}
               />
             )}
-            <ContextBarButton
-              icon={EyeIcon}
-              label="Preview"
-              onClick={onPreview}
-            />
             <ContextBarButton
               icon={CodeIcon}
               label="View Code"
