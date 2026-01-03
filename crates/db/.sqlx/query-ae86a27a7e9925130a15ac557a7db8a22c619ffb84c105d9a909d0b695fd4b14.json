@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO github_connections (id, team_id, access_token)\n               VALUES ($1, $2, $3)\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id: Uuid\",\n                         access_token,\n                         github_username,\n                         connected_at as \"connected_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "access_token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_username",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ae86a27a7e9925130a15ac557a7db8a22c619ffb84c105d9a909d0b695fd4b14"
+}

@@ -15,8 +15,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, UserPlus, Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Loader2,
+  UserPlus,
+  Plus,
+  Trash2,
+  Github,
+  Link,
+  Unlink,
+  ExternalLink,
+  Lock,
+  Globe,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
@@ -40,6 +63,11 @@ import { useTranslation } from 'react-i18next';
 import { useProjects } from '@/hooks/useProjects';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import {
+  useWorkspaceGitHubConnection,
+  useWorkspaceAvailableGitHubRepos,
+  useWorkspaceGitHubMutations,
+} from '@/hooks/useWorkspaceGitHub';
 
 export function OrganizationSettings() {
   const { t } = useTranslation('organization');
@@ -47,6 +75,11 @@ export function OrganizationSettings() {
   const { isSignedIn, isLoaded } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // GitHub integration state
+  const [showLinkRepoDialog, setShowLinkRepoDialog] = useState(false);
+  const [repoToUnlink, setRepoToUnlink] = useState<string | null>(null);
+  const [repoSearchQuery, setRepoSearchQuery] = useState('');
 
   // Fetch all organizations
   const {
@@ -167,6 +200,24 @@ export function OrganizationSettings() {
     },
   });
 
+  // GitHub integration hooks
+  const {
+    data: githubConnection,
+    isLoading: loadingGitHubConnection,
+    refetch: refetchGitHubConnection,
+  } = useWorkspaceGitHubConnection();
+
+  const {
+    data: availableRepos = [],
+    isLoading: loadingAvailableRepos,
+    refetch: refetchAvailableRepos,
+  } = useWorkspaceAvailableGitHubRepos(!!githubConnection);
+
+  const {
+    linkRepository: linkGitHubRepository,
+    unlinkRepository: unlinkGitHubRepository,
+  } = useWorkspaceGitHubMutations();
+
   const handleCreateOrganization = async () => {
     try {
       const result: CreateOrganizationResult =
@@ -253,6 +304,39 @@ export function OrganizationSettings() {
     unlinkProject.mutate(projectId);
   };
 
+  // GitHub handlers
+  const handleLinkRepo = async (repo: { name: string; full_name: string; html_url: string; default_branch: string | null; private: boolean }) => {
+    try {
+      // Parse owner from full_name (e.g., "owner/repo")
+      const [owner] = repo.full_name.split('/');
+      await linkGitHubRepository.mutateAsync({
+        repo_name: repo.name,
+        repo_full_name: repo.full_name,
+        repo_owner: owner,
+        repo_url: repo.html_url,
+        default_branch: repo.default_branch,
+        is_private: repo.private,
+      });
+      setShowLinkRepoDialog(false);
+      setSuccess(`Repository ${repo.name} linked successfully`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to link repository');
+    }
+  };
+
+  const handleUnlinkRepo = async () => {
+    if (!repoToUnlink) return;
+    try {
+      await unlinkGitHubRepository.mutateAsync(repoToUnlink);
+      setRepoToUnlink(null);
+      setSuccess('Repository unlinked successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to unlink repository');
+    }
+  };
+
   if (!isLoaded || orgsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -262,19 +346,7 @@ export function OrganizationSettings() {
     );
   }
 
-  if (!isSignedIn) {
-    return (
-      <div className="py-8">
-        <LoginRequiredPrompt
-          title={t('loginRequired.title')}
-          description={t('loginRequired.description')}
-          actionLabel={t('loginRequired.action')}
-        />
-      </div>
-    );
-  }
-
-  if (orgsError) {
+  if (orgsError && isSignedIn) {
     return (
       <div className="py-8">
         <Alert variant="destructive">
@@ -304,46 +376,157 @@ export function OrganizationSettings() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{t('settings.title')}</CardTitle>
-              <CardDescription>{t('settings.description')}</CardDescription>
+      {/* Linked Repositories Card - Only visible when GitHub is connected */}
+      {githubConnection && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Github className="h-5 w-5" />
+                <div>
+                  <CardTitle>Linked Repositories</CardTitle>
+                  <CardDescription>
+                    Manage repositories linked to your workspace for document sync
+                  </CardDescription>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetchGitHubConnection()}
+                disabled={loadingGitHubConnection}
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingGitHubConnection ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
-            <Button onClick={handleCreateOrganization} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              {t('createDialog.createButton')}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="org-selector">{t('settings.selectLabel')}</Label>
-            <Select value={selectedOrgId} onValueChange={handleOrgSelect}>
-              <SelectTrigger id="org-selector">
-                <SelectValue placeholder={t('settings.selectPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.length > 0 ? (
-                  organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-orgs" disabled>
-                    {t('settings.noOrganizations')}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-muted-foreground">
-              {t('settings.selectHelper')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Connected as @{githubConnection.github_username}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refetchAvailableRepos();
+                  setShowLinkRepoDialog(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Link Repository
+              </Button>
+            </div>
+
+            {githubConnection.repositories.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
+                No repositories linked yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {githubConnection.repositories.map((repo) => (
+                  <div
+                    key={repo.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      {repo.is_private ? (
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className="font-medium">{repo.repo_full_name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {repo.default_branch}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                      >
+                        <a
+                          href={repo.repo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setRepoToUnlink(repo.id)}
+                      >
+                        <Unlink className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Organization features - require login */}
+      {!isSignedIn ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings.title')}</CardTitle>
+            <CardDescription>{t('settings.description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LoginRequiredPrompt
+              title={t('loginRequired.title')}
+              description={t('loginRequired.description')}
+              actionLabel={t('loginRequired.action')}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t('settings.title')}</CardTitle>
+                  <CardDescription>{t('settings.description')}</CardDescription>
+                </div>
+                <Button onClick={handleCreateOrganization} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('createDialog.createButton')}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="org-selector">{t('settings.selectLabel')}</Label>
+                <Select value={selectedOrgId} onValueChange={handleOrgSelect}>
+                  <SelectTrigger id="org-selector">
+                    <SelectValue placeholder={t('settings.selectPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.length > 0 ? (
+                      organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-orgs" disabled>
+                        {t('settings.noOrganizations')}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.selectHelper')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
       {selectedOrg && isAdmin && !isPersonalOrg && (
         <Card>
@@ -512,6 +695,132 @@ export function OrganizationSettings() {
           </CardContent>
         </Card>
       )}
+        </>
+      )}
+
+      {/* Link Repository Dialog */}
+      <Dialog open={showLinkRepoDialog} onOpenChange={(open) => {
+        setShowLinkRepoDialog(open);
+        if (!open) setRepoSearchQuery('');
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Link Repository</DialogTitle>
+            <DialogDescription>
+              Select a repository to link. Linked repositories can be used for document sync across all teams.
+            </DialogDescription>
+          </DialogHeader>
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search repositories..."
+              value={repoSearchQuery}
+              onChange={(e) => setRepoSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="max-h-[350px] overflow-y-auto space-y-2">
+            {loadingAvailableRepos ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading repositories...</span>
+              </div>
+            ) : availableRepos.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No repositories available to link
+              </div>
+            ) : (
+              (() => {
+                const filteredRepos = availableRepos
+                  .filter(
+                    (repo) =>
+                      !githubConnection?.repositories.some(
+                        (linked) => linked.repo_full_name === repo.full_name
+                      )
+                  )
+                  .filter(
+                    (repo) =>
+                      !repoSearchQuery ||
+                      repo.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+                      repo.description?.toLowerCase().includes(repoSearchQuery.toLowerCase())
+                  );
+
+                if (filteredRepos.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No repositories match "{repoSearchQuery}"
+                    </div>
+                  );
+                }
+
+                return filteredRepos.map((repo) => (
+                  <div
+                    key={repo.full_name}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => handleLinkRepo(repo)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {repo.private ? (
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium">{repo.full_name}</p>
+                        {repo.description && (
+                          <p className="text-sm text-muted-foreground truncate max-w-xs">
+                            {repo.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Link className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ));
+              })()
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLinkRepoDialog(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unlink Repository Dialog */}
+      <Dialog open={!!repoToUnlink} onOpenChange={() => setRepoToUnlink(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unlink Repository</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to unlink this repository? Teams using this repository for sync will need to be reconfigured.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRepoToUnlink(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleUnlinkRepo}
+              disabled={unlinkGitHubRepository.isPending}
+            >
+              {unlinkGitHubRepository.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Unlink
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

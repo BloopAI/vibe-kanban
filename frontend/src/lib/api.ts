@@ -1418,7 +1418,67 @@ export const teamsApi = {
     return handleApiResponse<ValidateStoragePathResponse>(response);
   },
 
-  // GitHub connection methods
+  // Workspace-level GitHub connection methods
+  getWorkspaceGitHubConnection: async (): Promise<GitHubConnectionWithRepos | null> => {
+    const response = await makeRequest('/api/settings/github');
+    return handleApiResponse<GitHubConnectionWithRepos | null>(response);
+  },
+
+  createWorkspaceGitHubConnection: async (
+    data: CreateGitHubConnection
+  ): Promise<GitHubConnection> => {
+    const response = await makeRequest('/api/settings/github', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubConnection>(response);
+  },
+
+  updateWorkspaceGitHubConnection: async (
+    data: UpdateGitHubConnection
+  ): Promise<GitHubConnection> => {
+    const response = await makeRequest('/api/settings/github', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubConnection>(response);
+  },
+
+  deleteWorkspaceGitHubConnection: async (): Promise<void> => {
+    const response = await makeRequest('/api/settings/github', {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getWorkspaceGitHubRepositories: async (): Promise<GitHubRepository[]> => {
+    const response = await makeRequest('/api/settings/github/repos');
+    return handleApiResponse<GitHubRepository[]>(response);
+  },
+
+  getWorkspaceAvailableGitHubRepos: async (): Promise<GitHubRepoInfo[]> => {
+    const response = await makeRequest('/api/settings/github/repos/available');
+    return handleApiResponse<GitHubRepoInfo[]>(response);
+  },
+
+  linkWorkspaceGitHubRepository: async (
+    data: LinkGitHubRepository
+  ): Promise<GitHubRepository> => {
+    const response = await makeRequest('/api/settings/github/repos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<GitHubRepository>(response);
+  },
+
+  unlinkWorkspaceGitHubRepository: async (repoId: string): Promise<void> => {
+    const response = await makeRequest(`/api/settings/github/repos/${repoId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Team-level GitHub connection methods (deprecated - use workspace level)
   getGitHubConnection: async (
     teamId: string
   ): Promise<GitHubConnectionWithRepos | null> => {

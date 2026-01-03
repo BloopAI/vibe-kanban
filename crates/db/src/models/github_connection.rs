@@ -7,7 +7,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct GitHubConnection {
     pub id: Uuid,
-    pub team_id: Uuid,
+    /// Team ID - NULL for workspace-level connection
+    pub team_id: Option<Uuid>,
     pub access_token: String,
     pub github_username: Option<String>,
     #[ts(type = "Date")]
@@ -67,6 +68,23 @@ pub struct GitHubConnectionWithRepos {
 }
 
 impl GitHubConnection {
+    /// Find workspace-level connection (team_id IS NULL)
+    pub async fn find_workspace_connection(pool: &SqlitePool) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubConnection,
+            r#"SELECT id as "id!: Uuid",
+                      team_id as "team_id: Uuid",
+                      access_token,
+                      github_username,
+                      connected_at as "connected_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM github_connections
+               WHERE team_id IS NULL"#
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn find_by_team_id(
         pool: &SqlitePool,
         team_id: Uuid,
@@ -74,7 +92,7 @@ impl GitHubConnection {
         sqlx::query_as!(
             GitHubConnection,
             r#"SELECT id as "id!: Uuid",
-                      team_id as "team_id!: Uuid",
+                      team_id as "team_id: Uuid",
                       access_token,
                       github_username,
                       connected_at as "connected_at!: DateTime<Utc>",
@@ -91,7 +109,7 @@ impl GitHubConnection {
         sqlx::query_as!(
             GitHubConnection,
             r#"SELECT id as "id!: Uuid",
-                      team_id as "team_id!: Uuid",
+                      team_id as "team_id: Uuid",
                       access_token,
                       github_username,
                       connected_at as "connected_at!: DateTime<Utc>",
@@ -101,6 +119,30 @@ impl GitHubConnection {
             id
         )
         .fetch_optional(pool)
+        .await
+    }
+
+    /// Create a workspace-level connection (no team_id)
+    pub async fn create_workspace_connection(
+        pool: &SqlitePool,
+        data: &CreateGitHubConnection,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+
+        sqlx::query_as!(
+            GitHubConnection,
+            r#"INSERT INTO github_connections (id, team_id, access_token)
+               VALUES ($1, NULL, $2)
+               RETURNING id as "id!: Uuid",
+                         team_id as "team_id: Uuid",
+                         access_token,
+                         github_username,
+                         connected_at as "connected_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            data.access_token
+        )
+        .fetch_one(pool)
         .await
     }
 
@@ -116,7 +158,7 @@ impl GitHubConnection {
             r#"INSERT INTO github_connections (id, team_id, access_token)
                VALUES ($1, $2, $3)
                RETURNING id as "id!: Uuid",
-                         team_id as "team_id!: Uuid",
+                         team_id as "team_id: Uuid",
                          access_token,
                          github_username,
                          connected_at as "connected_at!: DateTime<Utc>",
@@ -147,7 +189,7 @@ impl GitHubConnection {
                SET access_token = $2, github_username = $3, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
-                         team_id as "team_id!: Uuid",
+                         team_id as "team_id: Uuid",
                          access_token,
                          github_username,
                          connected_at as "connected_at!: DateTime<Utc>",
@@ -162,6 +204,14 @@ impl GitHubConnection {
 
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_connections WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
+
+    /// Delete workspace-level connection
+    pub async fn delete_workspace_connection(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM github_connections WHERE team_id IS NULL")
             .execute(pool)
             .await?;
         Ok(result.rows_affected())

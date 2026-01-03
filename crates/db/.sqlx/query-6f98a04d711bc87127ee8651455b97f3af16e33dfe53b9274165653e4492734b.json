@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id: Uuid\",\n                      access_token,\n                      github_username,\n                      connected_at as \"connected_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM github_connections\n               WHERE team_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "access_token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_username",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6f98a04d711bc87127ee8651455b97f3af16e33dfe53b9274165653e4492734b"
+}
