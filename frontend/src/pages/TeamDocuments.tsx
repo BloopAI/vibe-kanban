@@ -26,6 +26,10 @@ import {
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { PdfViewer } from '@/components/documents/PdfViewer';
+import { MarkdownViewer } from '@/components/documents/MarkdownViewer';
+import { DocxViewer } from '@/components/documents/DocxViewer';
+import { CsvViewer } from '@/components/documents/CsvViewer';
+import { ImageViewer } from '@/components/documents/ImageViewer';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -473,12 +477,24 @@ export function TeamDocuments() {
 
   // Document editor/viewer view
   if (editingDoc) {
-    const isPdf = docContent?.file_type?.toLowerCase() === 'pdf';
-    const isTextEditable = !isPdf && (docContent?.content_type === 'text' || docContent?.content_type === 'pdf_text');
-    const isCsv = docContent?.content_type === 'csv';
-    const isImage = docContent?.content_type === 'image_base64';
-    const isBinary = !isPdf && docContent?.content_type === 'binary';
-    const pdfFileUrl = isPdf && teamId ? documentsApi.getFileUrl(teamId, editingDoc.id) : null;
+    const fileType = docContent?.file_type?.toLowerCase() || '';
+    const contentType = docContent?.content_type || '';
+
+    // Determine viewer type based on file type
+    const isPdf = fileType === 'pdf';
+    const isMarkdown = fileType === 'md' || fileType === 'markdown';
+    const isDocx = fileType === 'docx';
+    const isCsv = contentType === 'csv';
+    const isImage = contentType === 'image_base64';
+    const isPlainText = !isPdf && !isMarkdown && !isDocx && !isCsv && !isImage &&
+      (contentType === 'text' || contentType === 'pdf_text');
+    const isBinary = !isPdf && !isDocx && contentType === 'binary';
+
+    // Get file URL for viewers that need it
+    const fileUrl = teamId ? documentsApi.getFileUrl(teamId, editingDoc.id) : null;
+
+    // Editable types (plain text, txt files)
+    const isEditable = isPlainText && !['json', 'xml', 'html', 'htm'].includes(fileType);
 
     return (
       <div className="h-full flex flex-col">
@@ -504,7 +520,7 @@ export function TeamDocuments() {
                 }
                 className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 px-0"
                 placeholder="Document title"
-                disabled={!isTextEditable}
+                disabled={!isEditable}
               />
               {docContent && (
                 <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded">
@@ -513,7 +529,7 @@ export function TeamDocuments() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              {isTextEditable && (
+              {isEditable && (
                 <>
                   <Button
                     variant="ghost"
@@ -541,6 +557,20 @@ export function TeamDocuments() {
                   </Button>
                 </>
               )}
+              {isMarkdown && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowOutline(!showOutline)}
+                  title={showOutline ? 'Hide outline' : 'Show outline'}
+                >
+                  {showOutline ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -554,8 +584,50 @@ export function TeamDocuments() {
             </div>
           )}
 
-          {/* Text Editor (for text and pdf_text) */}
-          {!isLoadingContent && isTextEditable && (
+          {/* Markdown Viewer */}
+          {!isLoadingContent && isMarkdown && docContent && (
+            <MarkdownViewer
+              content={docContent.content || ''}
+              showOutline={showOutline}
+              className="flex-1 min-w-0"
+            />
+          )}
+
+          {/* PDF Viewer */}
+          {!isLoadingContent && isPdf && fileUrl && (
+            <div className="flex-1 min-w-0">
+              <PdfViewer fileUrl={fileUrl} className="h-full" />
+            </div>
+          )}
+
+          {/* DOCX Viewer */}
+          {!isLoadingContent && isDocx && fileUrl && (
+            <DocxViewer
+              fileUrl={fileUrl}
+              showOutline={showOutline}
+              className="flex-1 min-w-0"
+            />
+          )}
+
+          {/* CSV Viewer */}
+          {!isLoadingContent && isCsv && docContent?.csv_data && (
+            <CsvViewer
+              data={docContent.csv_data}
+              className="flex-1 min-w-0"
+            />
+          )}
+
+          {/* Image Viewer */}
+          {!isLoadingContent && isImage && docContent && (
+            <ImageViewer
+              src={docContent.content}
+              alt={editingDoc.title}
+              className="flex-1 min-w-0"
+            />
+          )}
+
+          {/* Plain Text Editor (for txt, etc.) */}
+          {!isLoadingContent && isEditable && (
             <>
               {showOutline && (
                 <div className="w-64 shrink-0 border-r bg-muted/30 overflow-auto">
@@ -573,55 +645,18 @@ export function TeamDocuments() {
                     setEditingDoc({ ...editingDoc, content: e.target.value })
                   }
                   className="w-full h-full resize-none font-mono text-sm"
-                  placeholder="Start writing your document in Markdown..."
+                  placeholder="Start writing..."
                 />
               </div>
             </>
           )}
 
-          {/* CSV Table View */}
-          {!isLoadingContent && isCsv && docContent?.csv_data && (
+          {/* Read-only text viewer (JSON, XML, HTML) */}
+          {!isLoadingContent && isPlainText && !isEditable && docContent && (
             <div className="flex-1 min-w-0 p-4 overflow-auto">
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted">
-                    <tr>
-                      {docContent.csv_data.headers.map((header, i) => (
-                        <th key={i} className="px-4 py-2 text-left font-medium border-b">
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {docContent.csv_data.rows.map((row, rowIdx) => (
-                      <tr key={rowIdx} className="hover:bg-muted/50">
-                        {row.map((cell, cellIdx) => (
-                          <td key={cellIdx} className="px-4 py-2 border-b">
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {docContent.csv_data.rows.length >= 1000 && (
-                  <div className="p-2 text-center text-xs text-muted-foreground bg-muted">
-                    Showing first 1000 rows
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Image Viewer */}
-          {!isLoadingContent && isImage && docContent && (
-            <div className="flex-1 min-w-0 p-4 flex items-center justify-center bg-muted/30">
-              <img
-                src={docContent.content}
-                alt={editingDoc.title}
-                className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-              />
+              <pre className="font-mono text-sm whitespace-pre-wrap">
+                {docContent.content}
+              </pre>
             </div>
           )}
 
@@ -638,13 +673,6 @@ export function TeamDocuments() {
                   {docContent.file_path}
                 </p>
               )}
-            </div>
-          )}
-
-          {/* PDF Viewer */}
-          {!isLoadingContent && isPdf && pdfFileUrl && (
-            <div className="flex-1 min-w-0">
-              <PdfViewer fileUrl={pdfFileUrl} className="h-full" />
             </div>
           )}
         </div>
