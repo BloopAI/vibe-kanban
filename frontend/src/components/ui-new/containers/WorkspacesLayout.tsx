@@ -249,6 +249,7 @@ export function WorkspacesLayout() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
   const [isChangesMode, setIsChangesMode] = useState(false);
+  const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
 
   // Persisted pane sizes
   const [sidebarWidth, setSidebarWidth] = usePaneSize(
@@ -279,28 +280,37 @@ export function WorkspacesLayout() {
   // Handle pane resize end
   const handlePaneResize = useCallback(
     (sizes: number[]) => {
-      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = git panel, sizes[3] = changes panel (if visible)
+      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes panel, sizes[3] = git panel
       if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
-      if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
-      if (sizes[3] !== undefined) setChangesPanelWidth(sizes[3]);
+      if (sizes[2] !== undefined) setChangesPanelWidth(sizes[2]);
+      if (sizes[3] !== undefined) setGitPanelWidth(sizes[3]);
     },
     [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
   );
 
   // Panel toggle handlers
   const handleToggleSidebar = useCallback(() => {
-    if (!isChangesMode) {
-      setIsSidebarVisible((prev) => !prev);
-    }
-  }, [isChangesMode]);
+    setIsSidebarVisible((prev) => !prev);
+  }, []);
 
   const handleToggleGitPanel = useCallback(() => {
     setIsGitPanelVisible((prev) => !prev);
   }, []);
 
   const handleToggleChangesMode = useCallback(() => {
-    setIsChangesMode((prev) => !prev);
+    setIsChangesMode((prev) => {
+      const newChangesMode = !prev;
+      // Auto-hide sidebar when entering changes mode, auto-show when exiting
+      setIsSidebarVisible(!newChangesMode);
+      return newChangesMode;
+    });
   }, []);
+
+  const handleToggleMainPanel = useCallback(() => {
+    // At least one of Main or Changes must be visible
+    if (isMainPanelVisible && !isChangesMode) return;
+    setIsMainPanelVisible((prev) => !prev);
+  }, [isMainPanelVisible, isChangesMode]);
 
   const handleToggleArchive = useCallback(() => {
     if (!selectedWorkspace) return;
@@ -400,7 +410,7 @@ export function WorkspacesLayout() {
           minSize={300}
           preferredSize={sidebarWidth}
           maxSize={600}
-          visible={isSidebarVisible && !isChangesMode}
+          visible={isSidebarVisible}
         >
           <div className="h-full overflow-hidden">
             <WorkspacesSidebar
@@ -416,7 +426,7 @@ export function WorkspacesLayout() {
         </Allotment.Pane>
 
         <Allotment.Pane
-          visible={true}
+          visible={isMainPanelVisible}
           priority={LayoutPriority.High}
           minSize={300}
         >
@@ -444,17 +454,6 @@ export function WorkspacesLayout() {
 
         <Allotment.Pane
           minSize={300}
-          preferredSize={gitPanelWidth}
-          maxSize={600}
-          visible={isGitPanelVisible}
-        >
-          <div className="h-full overflow-hidden">
-            {renderGitPanelContent()}
-          </div>
-        </Allotment.Pane>
-
-        <Allotment.Pane
-          minSize={300}
           preferredSize={changesPanelWidth}
           visible={isChangesMode}
         >
@@ -463,6 +462,17 @@ export function WorkspacesLayout() {
               diffs={realDiffs}
               selectedFilePath={selectedFilePath}
             />
+          </div>
+        </Allotment.Pane>
+
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={gitPanelWidth}
+          maxSize={600}
+          visible={isGitPanelVisible}
+        >
+          <div className="h-full overflow-hidden">
+            {renderGitPanelContent()}
           </div>
         </Allotment.Pane>
       </Allotment>
@@ -487,11 +497,13 @@ export function WorkspacesLayout() {
       <Navbar
         workspaceTitle={navbarTitle}
         isSidebarVisible={isSidebarVisible}
+        isMainPanelVisible={isMainPanelVisible}
         isGitPanelVisible={isGitPanelVisible}
         isChangesMode={isChangesMode}
         isCreateMode={isCreateMode}
         isArchived={selectedWorkspace?.archived}
         onToggleSidebar={handleToggleSidebar}
+        onToggleMainPanel={handleToggleMainPanel}
         onToggleGitPanel={handleToggleGitPanel}
         onToggleChangesMode={handleToggleChangesMode}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
