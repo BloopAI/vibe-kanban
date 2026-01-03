@@ -81,6 +81,16 @@ pub async fn create_folder(
 
     let folder = DocumentFolder::create(&deployment.db().pool, &payload).await?;
 
+    // If team has a document_storage_path, create the directory on filesystem
+    if let Some(ref base_path) = team.document_storage_path {
+        let folder_path = std::path::PathBuf::from(base_path).join(&folder.name);
+        if let Err(e) = tokio::fs::create_dir_all(&folder_path).await {
+            tracing::warn!("Failed to create folder directory on filesystem: {}", e);
+        } else {
+            tracing::info!("Created folder directory: {:?}", folder_path);
+        }
+    }
+
     deployment
         .track_if_analytics_allowed(
             "document_folder_created",
@@ -255,6 +265,15 @@ pub async fn create_document(
     let file_type = payload.file_type.clone().unwrap_or_else(|| "markdown".to_string());
     let title = payload.title.clone();
 
+    // Get folder name if document is in a folder (for subfolder path)
+    let subfolder = if let Some(folder_id) = payload.folder_id {
+        DocumentFolder::find_by_id(&deployment.db().pool, folder_id)
+            .await?
+            .map(|f| f.name)
+    } else {
+        None
+    };
+
     // Create document record in DB (without content)
     let document = Document::create(&deployment.db().pool, &payload).await?;
 
@@ -266,7 +285,7 @@ pub async fn create_document(
             &content,
             &file_type,
             team.document_storage_path.as_deref(),
-            None, // No subfolder for new documents
+            subfolder.as_deref(), // Use folder name as subfolder
         )
         .await
         .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
