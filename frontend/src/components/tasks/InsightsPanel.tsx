@@ -123,10 +123,13 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
     return Math.ceil(maxCount / 5) * 5;
   }, [maxCount]);
 
+  // Chart area height in pixels (h-48 = 192px, minus pb-6 = 168px usable)
+  const chartHeight = 168;
+
   return (
-    <div className="w-80 border-l bg-background flex flex-col h-full">
+    <div className="w-[420px] border-l bg-background flex flex-col overflow-hidden shrink-0">
       {/* Header */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b shrink-0">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm text-muted-foreground leading-relaxed">
             Insights makes it easy to analyze issue data. Create reports to
@@ -156,7 +159,7 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {/* Issue count header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-baseline gap-1">
@@ -225,9 +228,9 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
 
         {/* Bar Chart */}
         <div className="mb-6">
-          <div className="relative h-48 flex items-end justify-center gap-8 pb-6 border-b border-dashed">
+          <div className="relative h-48 pb-6 border-b border-dashed">
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-xs text-muted-foreground pr-2">
+            <div className="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-xs text-muted-foreground text-right pr-2">
               <span>{yAxisMax}</span>
               <span>{Math.round((yAxisMax * 3) / 4)}</span>
               <span>{Math.round(yAxisMax / 2)}</span>
@@ -236,7 +239,7 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
             </div>
 
             {/* Horizontal grid lines */}
-            <div className="absolute left-8 right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
+            <div className="absolute left-10 right-0 top-0 bottom-6 flex flex-col justify-between pointer-events-none">
               {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
@@ -245,21 +248,24 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
               ))}
             </div>
 
-            {/* Bars */}
-            <div className="flex items-end gap-6 ml-8 h-full pb-0">
+            {/* Bars - positioned absolutely at bottom */}
+            <div
+              className="absolute left-10 right-4 bottom-6 flex items-end justify-around"
+              style={{ height: `${chartHeight}px` }}
+            >
               {activeStatuses.map((status) => {
                 const count = statusCounts[status];
-                const heightPercent = (count / yAxisMax) * 100;
+                const barHeight = Math.round((count / yAxisMax) * chartHeight);
                 return (
                   <div
                     key={status}
-                    className="flex flex-col items-center gap-1"
+                    className="flex flex-col items-center"
+                    style={{ width: '48px' }}
                   >
                     <div
-                      className={`w-8 ${STATUS_COLORS[status]} rounded-t transition-all`}
+                      className={`w-10 ${STATUS_COLORS[status]} rounded-t transition-all`}
                       style={{
-                        height: `${Math.max(heightPercent, 2)}%`,
-                        minHeight: count > 0 ? '8px' : '0',
+                        height: `${Math.max(barHeight, count > 0 ? 4 : 0)}px`,
                       }}
                     />
                   </div>
@@ -269,11 +275,12 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
           </div>
 
           {/* X-axis labels */}
-          <div className="flex justify-center gap-6 mt-2 ml-8">
+          <div className="flex justify-around mt-2 ml-10 mr-4">
             {activeStatuses.map((status) => (
               <span
                 key={status}
-                className="text-xs text-muted-foreground text-center w-16 truncate"
+                className="text-xs text-muted-foreground text-center"
+                style={{ width: '48px' }}
               >
                 {STATUS_LABELS[status]}
               </span>
