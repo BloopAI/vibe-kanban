@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/select';
 import {
   X,
-  Maximize2,
-  SlidersHorizontal,
   MoreHorizontal,
   Circle,
   CheckCircle2,
@@ -36,7 +34,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
   todo: 'bg-gray-400',
   inprogress: 'bg-yellow-500',
   inreview: 'bg-blue-500',
-  done: 'bg-gray-600',
+  done: 'bg-green-500',
   cancelled: 'bg-red-500',
 };
 
@@ -135,12 +133,6 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
             <span className="text-sm text-muted-foreground">issues</span>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
