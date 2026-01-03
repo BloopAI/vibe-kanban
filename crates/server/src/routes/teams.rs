@@ -685,10 +685,20 @@ pub async fn push_documents_to_github(
             }
         }
 
-        // Build set of local document filenames (normalized)
+        // Build set of local document filenames (using original filenames)
         let local_filenames: std::collections::HashSet<String> = folder_docs
             .iter()
-            .map(|d| format!("{}.md", d.title.replace(" ", "-").to_lowercase()))
+            .map(|d| {
+                if let Some(ref fp) = d.file_path {
+                    std::path::Path::new(fp)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| format!("{}.{}", d.title.replace(" ", "-"), d.file_type))
+                } else {
+                    format!("{}.{}", d.title.replace(" ", "-"), d.file_type)
+                }
+            })
             .collect();
 
         // List existing files on GitHub to detect deletions
@@ -712,8 +722,8 @@ pub async fn push_documents_to_github(
                         let file_type = file.get("type").and_then(|t| t.as_str()).unwrap_or("");
                         let file_sha = file.get("sha").and_then(|s| s.as_str());
 
-                        // Only process markdown files
-                        if file_type != "file" || !file_name.ends_with(".md") {
+                        // Only process files (not directories)
+                        if file_type != "file" {
                             continue;
                         }
 
@@ -752,16 +762,49 @@ pub async fn push_documents_to_github(
         }
 
         for doc in &folder_docs {
-            // Get document content
-            let content = doc.content.clone().unwrap_or_default();
-            let file_path = format!("{}/{}.md", github_path, doc.title.replace(" ", "-").to_lowercase());
+            // Determine the filename - use original from file_path or construct from title + file_type
+            let filename = if let Some(ref fp) = doc.file_path {
+                // Extract filename from file_path
+                std::path::Path::new(fp)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("{}.{}", doc.title.replace(" ", "-"), doc.file_type))
+            } else {
+                // Construct from title and file_type
+                format!("{}.{}", doc.title.replace(" ", "-"), doc.file_type)
+            };
+
+            let github_file_path = format!("{}/{}", github_path, filename);
+
+            // Get file content as bytes - either from filesystem or from content field
+            let file_bytes: Vec<u8> = if let Some(ref fp) = doc.file_path {
+                // Read from filesystem (works for binary files like PDFs)
+                match tokio::fs::read(fp).await {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        tracing::warn!("Failed to read file {}: {}", fp, e);
+                        // Fall back to content field if available
+                        doc.content.clone().unwrap_or_default().into_bytes()
+                    }
+                }
+            } else {
+                // Use content field
+                doc.content.clone().unwrap_or_default().into_bytes()
+            };
+
+            // Skip empty files
+            if file_bytes.is_empty() {
+                tracing::warn!("Skipping empty file: {}", github_file_path);
+                continue;
+            }
 
             // Create or update file via GitHub API
             // First, try to get the file SHA if it exists
             let get_response = client
                 .get(format!(
                     "https://api.github.com/repos/{}/contents/{}",
-                    repo.repo_full_name, file_path
+                    repo.repo_full_name, github_file_path
                 ))
                 .header("Authorization", format!("Bearer {}", connection.access_token))
                 .header("User-Agent", "vibe-kanban")
@@ -781,10 +824,10 @@ pub async fn push_documents_to_github(
                 None
             };
 
-            // Prepare the request body
+            // Prepare the request body with base64 encoded content
             let mut body = serde_json::json!({
-                "message": payload.commit_message.clone().unwrap_or_else(|| format!("Update {}", doc.title)),
-                "content": base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                "message": payload.commit_message.clone().unwrap_or_else(|| format!("Update {}", filename)),
+                "content": base64::engine::general_purpose::STANDARD.encode(&file_bytes),
                 "branch": repo.default_branch.clone().unwrap_or_else(|| "main".to_string())
             });
 
@@ -795,7 +838,7 @@ pub async fn push_documents_to_github(
             let put_response = client
                 .put(format!(
                     "https://api.github.com/repos/{}/contents/{}",
-                    repo.repo_full_name, file_path
+                    repo.repo_full_name, github_file_path
                 ))
                 .header("Authorization", format!("Bearer {}", connection.access_token))
                 .header("User-Agent", "vibe-kanban")
@@ -805,10 +848,10 @@ pub async fn push_documents_to_github(
                 .map_err(|e| ApiError::BadRequest(format!("Failed to push file: {}", e)))?;
 
             if put_response.status().is_success() {
-                synced_files.push(file_path);
+                synced_files.push(github_file_path);
             } else {
                 let error = put_response.text().await.unwrap_or_default();
-                tracing::warn!("Failed to push {}: {}", doc.title, error);
+                tracing::warn!("Failed to push {}: {}", filename, error);
             }
         }
     }
