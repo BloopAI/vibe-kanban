@@ -157,7 +157,7 @@ function LinearIssueCardComponent({
                     'border border-dashed border-muted-foreground/40',
                     'text-muted-foreground hover:border-primary hover:text-primary',
                     'transition-colors text-xs font-medium',
-                    hasAssignee && 'border-solid bg-primary/10 text-primary border-primary/30'
+                    hasAssignee && 'border-solid bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
                   )}
                   title={selectedMember ? selectedMember.name : hasAssignee ? `Assigned: ${task.assignee_id}` : 'Assign'}
                 >
@@ -193,7 +193,7 @@ function LinearIssueCardComponent({
                       onClick={() => handleAssigneeChange(member.id)}
                       className={cn('cursor-pointer gap-2', isSelected && 'bg-accent')}
                     >
-                      <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium">
+                      <div className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-medium">
                         {getInitials(member.name)}
                       </div>
                       <div className="flex flex-col flex-1 min-w-0">
