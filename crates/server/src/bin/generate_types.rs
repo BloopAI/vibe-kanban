@@ -62,6 +62,7 @@ fn generate_types_content() -> String {
         server::routes::teams::PushDocumentsRequest::decl(),
         server::routes::teams::SyncOperationResponse::decl(),
         server::routes::documents::ScanFilesystemResponse::decl(),
+        server::routes::documents::DiscoverFoldersResponse::decl(),
         server::routes::documents::DocumentContentResponse::decl(),
         server::routes::documents::CsvDataResponse::decl(),
         db::models::document::DocumentFileType::decl(),

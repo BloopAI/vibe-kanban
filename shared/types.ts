@@ -198,6 +198,20 @@ added_titles: Array<string>,
  */
 files_scanned: number, };
 
+export type DiscoverFoldersResponse = { 
+/**
+ * Names of folders that were created in the database
+ */
+folders_created: Array<string>, 
+/**
+ * Names of folders that already existed in the database
+ */
+folders_existing: Array<string>, 
+/**
+ * Total number of folders found on filesystem
+ */
+total_folders: number, };
+
 export type DocumentContentResponse = { 
 /**
  * The document ID

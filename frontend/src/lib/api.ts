@@ -119,6 +119,7 @@ import {
   PushDocumentsRequest,
   SyncOperationResponse,
   ScanFilesystemResponse,
+  DiscoverFoldersResponse,
   DocumentContentResponse,
   GitHubRepoSyncConfig,
   ConfigureMultiFolderSync,
@@ -1728,19 +1729,19 @@ export const teamsApi = {
 // User Invitations API (for users to manage their own invitations)
 export const userInvitationsApi = {
   getMyInvitations: async (): Promise<TeamInvitationWithTeam[]> => {
-    const response = await makeRequest('/api/invitations');
+    const response = await makeRequest('/api/team-invitations');
     return handleApiResponse<TeamInvitationWithTeam[]>(response);
   },
 
   acceptInvitation: async (invitationId: string): Promise<TeamMember> => {
-    const response = await makeRequest(`/api/invitations/${invitationId}/accept`, {
+    const response = await makeRequest(`/api/team-invitations/${invitationId}/accept`, {
       method: 'POST',
     });
     return handleApiResponse<TeamMember>(response);
   },
 
   declineInvitation: async (invitationId: string): Promise<void> => {
-    const response = await makeRequest(`/api/invitations/${invitationId}/decline`, {
+    const response = await makeRequest(`/api/team-invitations/${invitationId}/decline`, {
       method: 'POST',
     });
     return handleApiResponse<void>(response);
@@ -1897,6 +1898,14 @@ export const documentsApi = {
       method: 'POST',
     });
     return handleApiResponse<ScanFilesystemResponse>(response);
+  },
+
+  // Discover folders from filesystem and create them in database
+  discoverFolders: async (teamId: string): Promise<DiscoverFoldersResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/discover-folders`, {
+      method: 'POST',
+    });
+    return handleApiResponse<DiscoverFoldersResponse>(response);
   },
 
   // Get document content with type-specific handling

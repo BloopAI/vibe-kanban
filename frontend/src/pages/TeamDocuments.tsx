@@ -80,6 +80,7 @@ export function TeamDocuments() {
     createFolder,
     deleteFolder,
     scanFilesystem,
+    discoverFolders,
   } = useDocuments(teamId || '');
 
   // Dialog states
@@ -217,10 +218,16 @@ export function TeamDocuments() {
           scanned: result.files_scanned,
         });
       } else {
+        // Root level: first discover folders from filesystem, then scan all
+        await discoverFolders();
+
+        // Re-fetch folders to get the updated list (including newly created ones)
+        const updatedFolders = await documentsApi.listFolders(teamId || '');
+
         // Scan all folders
         let totalAdded = 0;
         let totalScanned = 0;
-        for (const folder of folders) {
+        for (const folder of updatedFolders) {
           try {
             const result = await scanFilesystem(folder.id);
             totalAdded += result.documents_added;
@@ -240,7 +247,7 @@ export function TeamDocuments() {
     } finally {
       setIsScanning(false);
     }
-  }, [currentFolderId, folders, scanFilesystem]);
+  }, [currentFolderId, teamId, scanFilesystem, discoverFolders]);
 
   const handleOpenDocument = useCallback(async (doc: Document) => {
     setEditingDoc(doc);

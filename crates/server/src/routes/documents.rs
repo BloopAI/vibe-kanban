@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{header, StatusCode},
     middleware::from_fn_with_state,
-    response::{IntoResponse, Json as ResponseJson, Response},
+    response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
 use db::models::document::{
@@ -601,6 +601,18 @@ pub struct ScanFilesystemResponse {
     pub files_scanned: usize,
 }
 
+/// Response for discover folders operation
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct DiscoverFoldersResponse {
+    /// Names of folders that were created in the database
+    pub folders_created: Vec<String>,
+    /// Names of folders that already existed in the database
+    pub folders_existing: Vec<String>,
+    /// Total number of folders found on filesystem
+    pub total_folders: usize,
+}
+
 /// Response containing document file content with type information
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
@@ -665,6 +677,68 @@ fn is_text_document(extension: &str) -> bool {
         extension.to_lowercase().as_str(),
         "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" | "csv"
     )
+}
+
+/// Discover folders from filesystem and create them in database
+///
+/// This function reads the team's document_storage_path, finds all subdirectories,
+/// and creates database records for any folders that don't already exist.
+pub async fn discover_folders(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<DiscoverFoldersResponse>>, ApiError> {
+    // Get team's document_storage_path
+    let base_path = team.document_storage_path.as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Team has no document storage path configured. Set it in Team Settings.".to_string()))?;
+
+    // Read directories from filesystem
+    let mut fs_folders: Vec<String> = Vec::new();
+    let path = std::path::Path::new(base_path);
+
+    if path.exists() {
+        let mut entries = tokio::fs::read_dir(path).await
+            .map_err(|e| ApiError::Io(e))?;
+
+        while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
+            if entry.path().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    // Skip hidden folders (starting with .)
+                    if !name.starts_with('.') {
+                        fs_folders.push(name.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Get existing DB folders (all folders for this team)
+    let existing_folders = DocumentFolder::find_all_by_team(&deployment.db().pool, team.id).await?;
+    let existing_names: HashSet<String> = existing_folders.iter().map(|f| f.name.clone()).collect();
+
+    // Create missing folders in DB
+    let mut folders_created = Vec::new();
+    for folder_name in &fs_folders {
+        if !existing_names.contains(folder_name) {
+            DocumentFolder::create(&deployment.db().pool, &CreateDocumentFolder {
+                team_id: team.id,
+                parent_id: None,
+                name: folder_name.clone(),
+                icon: None,
+                color: None,
+                local_path: None,
+            }).await?;
+            folders_created.push(folder_name.clone());
+        }
+    }
+
+    let folders_existing: Vec<String> = existing_names.into_iter().collect();
+    let total_folders = fs_folders.len();
+
+    Ok(ResponseJson(ApiResponse::success(DiscoverFoldersResponse {
+        folders_created,
+        folders_existing,
+        total_folders,
+    })))
 }
 
 /// Supported document extensions for scanning
@@ -927,6 +1001,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/folders/{folder_id}/scan", post(scan_filesystem))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
+    // Discover folders route (requires team middleware)
+    let discover_router = Router::new()
+        .route("/documents/discover-folders", post(discover_folders))
+        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
+
     // Routes with additional path params (manually load team)
     let document_item_router = Router::new()
         .route(
@@ -955,7 +1034,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_documents_router = Router::new()
         .nest("/documents", documents_router)
         .nest("/folders", folders_router)
-        .merge(scan_router);
+        .merge(scan_router)
+        .merge(discover_router);
 
     // Match teams router pattern: /teams + /{team_id}
     let inner = Router::new().nest("/{team_id}", team_documents_router);

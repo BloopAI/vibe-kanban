@@ -8,6 +8,7 @@ import type {
   CreateDocumentFolder,
   UpdateDocumentFolder,
   ScanFilesystemResponse,
+  DiscoverFoldersResponse,
 } from 'shared/types';
 
 export interface UseDocumentsResult {
@@ -30,6 +31,8 @@ export interface UseDocumentsResult {
   searchDocuments: (query: string) => Promise<Document[]>;
   // Filesystem scan
   scanFilesystem: (folderId: string) => Promise<ScanFilesystemResponse>;
+  // Discover folders from filesystem
+  discoverFolders: () => Promise<DiscoverFoldersResponse>;
 }
 
 export function useDocuments(teamId: string): UseDocumentsResult {
@@ -150,6 +153,14 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     [teamId, refresh]
   );
 
+  // Discover folders from filesystem
+  const discoverFolders = useCallback(async () => {
+    const result = await documentsApi.discoverFolders(teamId);
+    // Refresh folders after discovery
+    await refresh();
+    return result;
+  }, [teamId, refresh]);
+
   return {
     documents,
     folders,
@@ -166,5 +177,6 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     deleteFolder,
     searchDocuments,
     scanFilesystem,
+    discoverFolders,
   };
 }

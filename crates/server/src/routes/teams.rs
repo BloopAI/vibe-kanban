@@ -1542,6 +1542,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .nest("/{team_id}", team_router);
 
     // User invitation routes (not under a specific team)
+    // Note: using /team-invitations to avoid conflict with /invitations used by organizations
     let invitations_router = Router::new()
         .route("/", get(get_my_invitations))
         .route("/{invitation_id}/accept", post(accept_invitation))
@@ -1549,5 +1550,5 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     Router::new()
         .nest("/teams", inner)
-        .nest("/invitations", invitations_router)
+        .nest("/team-invitations", invitations_router)
 }
