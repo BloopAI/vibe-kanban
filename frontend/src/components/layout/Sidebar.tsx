@@ -24,7 +24,6 @@ import {
   UserPlus,
   Target,
   RotateCcw,
-  Github,
   Hash,
   Plus,
   CircleDot,
@@ -310,13 +309,6 @@ function SidebarTeamItem({
             isActive={pathname === `${teamBasePath}/documents`}
             indent
           />
-          <SidebarItem
-            icon={Github}
-            label="GitHub"
-            to={`${teamBasePath}/github`}
-            isActive={pathname === `${teamBasePath}/github`}
-            indent
-          />
         </div>
       )}
     </div>
@@ -533,12 +525,6 @@ export function Sidebar() {
               <SidebarItem
                 icon={RotateCcw}
                 label="Cycles"
-                onClick={() => {}}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
-                icon={Github}
-                label="Link GitHub"
                 onClick={() => {}}
                 isCollapsed={isCollapsed}
               />

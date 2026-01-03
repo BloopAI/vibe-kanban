@@ -578,18 +578,22 @@ pub async fn push_documents_to_github(
     use services::services::document_storage::DocumentStorageService;
     use utils::assets::asset_dir;
 
-    // Get connection and repo
-    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+    // Get connection (try team-level first, then fall back to workspace-level)
+    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await? {
+        Some(conn) => conn,
+        None => GitHubConnection::find_workspace_connection(&deployment.db().pool)
+            .await?
+            .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?,
+    };
 
     let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
         .await?
         .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
 
+    // Verify repository belongs to this connection
     if repo.connection_id != connection.id {
         return Err(ApiError::BadRequest(
-            "Repository does not belong to this team".to_string(),
+            "Repository does not belong to this connection".to_string(),
         ));
     }
 
@@ -772,18 +776,22 @@ pub async fn pull_documents_from_github(
 ) -> Result<ResponseJson<ApiResponse<SyncOperationResponse>>, ApiError> {
     use db::models::document::{CreateDocument, Document, DocumentFolder, UpdateDocument};
 
-    // Get connection and repo
-    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
+    // Get connection (try team-level first, then fall back to workspace-level)
+    let connection = match GitHubConnection::find_by_team_id(&deployment.db().pool, team.id).await? {
+        Some(conn) => conn,
+        None => GitHubConnection::find_workspace_connection(&deployment.db().pool)
+            .await?
+            .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?,
+    };
 
     let repo = GitHubRepository::find_by_id(&deployment.db().pool, repo_id)
         .await?
         .ok_or_else(|| ApiError::NotFound("Repository not found".to_string()))?;
 
+    // Verify repository belongs to this connection
     if repo.connection_id != connection.id {
         return Err(ApiError::BadRequest(
-            "Repository does not belong to this team".to_string(),
+            "Repository does not belong to this connection".to_string(),
         ));
     }
 

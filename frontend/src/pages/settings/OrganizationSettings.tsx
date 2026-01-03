@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -39,6 +39,11 @@ import {
   Globe,
   RefreshCw,
   Search,
+  FolderSync,
+  Folder,
+  Users,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
@@ -68,6 +73,11 @@ import {
   useWorkspaceAvailableGitHubRepos,
   useWorkspaceGitHubMutations,
 } from '@/hooks/useWorkspaceGitHub';
+import { useTeams } from '@/hooks/useTeams';
+import { useDocuments } from '@/hooks/useDocuments';
+import { teamsApi } from '@/lib/api';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { GitHubRepository, CreateRepoSyncConfig } from 'shared/types';
 
 export function OrganizationSettings() {
   const { t } = useTranslation('organization');
@@ -80,6 +90,18 @@ export function OrganizationSettings() {
   const [showLinkRepoDialog, setShowLinkRepoDialog] = useState(false);
   const [repoToUnlink, setRepoToUnlink] = useState<string | null>(null);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
+
+  // Sync configuration state
+  const [repoToConfigureSync, setRepoToConfigureSync] = useState<GitHubRepository | null>(null);
+  const [selectedTeamIdForSync, setSelectedTeamIdForSync] = useState<string | null>(null);
+  const [folderSyncConfigs, setFolderSyncConfigs] = useState<Array<{
+    folderId: string;
+    folderName: string;
+    selected: boolean;
+    githubPath: string;
+  }>>([]);
+  const [isLoadingSyncConfigs, setIsLoadingSyncConfigs] = useState(false);
+  const [isConfiguringSync, setIsConfiguringSync] = useState(false);
 
   // Fetch all organizations
   const {
@@ -218,6 +240,12 @@ export function OrganizationSettings() {
     unlinkRepository: unlinkGitHubRepository,
   } = useWorkspaceGitHubMutations();
 
+  // Teams for sync configuration
+  const { teams } = useTeams();
+
+  // Documents for selected team (for sync config)
+  const { folders: teamFolders, isLoading: isLoadingTeamFolders } = useDocuments(selectedTeamIdForSync || '');
+
   const handleCreateOrganization = async () => {
     try {
       const result: CreateOrganizationResult =
@@ -337,6 +365,123 @@ export function OrganizationSettings() {
     }
   };
 
+  // Sync configuration handlers
+  const handleOpenSyncConfig = async (repo: GitHubRepository) => {
+    setRepoToConfigureSync(repo);
+    setSelectedTeamIdForSync(null);
+    setFolderSyncConfigs([]);
+  };
+
+  const handleTeamSelectForSync = (teamId: string) => {
+    if (!repoToConfigureSync) return;
+    setSelectedTeamIdForSync(teamId);
+    setIsLoadingSyncConfigs(true);
+    // Reset folder configs - they will be populated by the effect when useDocuments loads
+    setFolderSyncConfigs([]);
+  };
+
+  // Effect to initialize folder configs when team changes and folders are loaded
+  useEffect(() => {
+    const initializeFolderConfigs = async () => {
+      if (!selectedTeamIdForSync || !repoToConfigureSync) {
+        setIsLoadingSyncConfigs(false);
+        return;
+      }
+
+      // Wait for useDocuments to finish loading
+      if (isLoadingTeamFolders) {
+        setIsLoadingSyncConfigs(true);
+        return;
+      }
+
+      // Now loading is complete, check if there are folders
+      if (teamFolders.length === 0) {
+        // Team genuinely has no folders
+        setFolderSyncConfigs([]);
+        setIsLoadingSyncConfigs(false);
+        return;
+      }
+
+      try {
+        const existingConfigs = await teamsApi.getSyncConfigs(selectedTeamIdForSync, repoToConfigureSync.id);
+
+        const configs = teamFolders.map(folder => {
+          const existing = existingConfigs.find(c => c.folder_id === folder.id);
+          return {
+            folderId: folder.id,
+            folderName: folder.name,
+            selected: !!existing,
+            githubPath: existing?.github_path || '',
+          };
+        });
+
+        setFolderSyncConfigs(configs);
+      } catch (err) {
+        console.error('Failed to initialize folder configs:', err);
+        // On error, still show the folders but without existing sync config
+        setFolderSyncConfigs(teamFolders.map(folder => ({
+          folderId: folder.id,
+          folderName: folder.name,
+          selected: false,
+          githubPath: '',
+        })));
+      } finally {
+        setIsLoadingSyncConfigs(false);
+      }
+    };
+
+    initializeFolderConfigs();
+  }, [selectedTeamIdForSync, teamFolders, repoToConfigureSync, isLoadingTeamFolders]);
+
+  const toggleFolderSelection = (folderId: string) => {
+    setFolderSyncConfigs(prev => prev.map(f =>
+      f.folderId === folderId ? { ...f, selected: !f.selected } : f
+    ));
+  };
+
+  const toggleAllFolders = () => {
+    const allSelected = folderSyncConfigs.every(f => f.selected);
+    setFolderSyncConfigs(prev => prev.map(f => ({ ...f, selected: !allSelected })));
+  };
+
+  const updateFolderGitHubPath = (folderId: string, path: string) => {
+    setFolderSyncConfigs(prev => prev.map(f =>
+      f.folderId === folderId ? { ...f, githubPath: path } : f
+    ));
+  };
+
+  const handleSaveSync = async () => {
+    if (!repoToConfigureSync || !selectedTeamIdForSync) return;
+
+    const selectedFolders = folderSyncConfigs.filter(f => f.selected);
+    if (selectedFolders.length === 0) {
+      setError('Please select at least one folder to sync');
+      return;
+    }
+
+    setIsConfiguringSync(true);
+    try {
+      const folderConfigs: CreateRepoSyncConfig[] = selectedFolders.map(folder => ({
+        folder_id: folder.folderId,
+        github_path: folder.githubPath.trim() || null,
+      }));
+
+      await teamsApi.configureMultiFolderSync(selectedTeamIdForSync, repoToConfigureSync.id, {
+        folder_configs: folderConfigs,
+      });
+
+      setRepoToConfigureSync(null);
+      setSelectedTeamIdForSync(null);
+      setFolderSyncConfigs([]);
+      setSuccess('Sync configuration saved successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to configure sync');
+    } finally {
+      setIsConfiguringSync(false);
+    }
+  };
+
   if (!isLoaded || orgsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -441,6 +586,15 @@ export function OrganizationSettings() {
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenSyncConfig(repo)}
+                        title="Configure sync for teams"
+                      >
+                        <FolderSync className="h-4 w-4 mr-1" />
+                        Configure Sync
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -817,6 +971,172 @@ export function OrganizationSettings() {
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               )}
               Unlink
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Configure Sync Dialog */}
+      <Dialog
+        open={!!repoToConfigureSync}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRepoToConfigureSync(null);
+            setSelectedTeamIdForSync(null);
+            setFolderSyncConfigs([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderSync className="h-5 w-5" />
+              Configure Sync
+            </DialogTitle>
+            <DialogDescription>
+              Select a team and configure which folders sync with{' '}
+              <span className="font-medium">{repoToConfigureSync?.repo_full_name}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Team Selection */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Select Team
+              </Label>
+              <Select
+                value={selectedTeamIdForSync || ''}
+                onValueChange={handleTeamSelectForSync}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a team..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Documents from this team's folders will sync with the repository
+              </p>
+            </div>
+
+            {/* Folder Selection - only show when team is selected */}
+            {selectedTeamIdForSync && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <Label className="flex items-center gap-2">
+                    <Folder className="h-4 w-4" />
+                    Folders to Sync
+                  </Label>
+                  {folderSyncConfigs.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleAllFolders}
+                      className="text-xs"
+                    >
+                      {folderSyncConfigs.every(f => f.selected) ? (
+                        <>
+                          <CheckSquare className="h-3 w-3 mr-1" />
+                          Deselect All
+                        </>
+                      ) : (
+                        <>
+                          <Square className="h-3 w-3 mr-1" />
+                          Select All
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+
+                {isLoadingSyncConfigs ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : folderSyncConfigs.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No folders in this team</p>
+                    <p className="text-xs">Create folders in the team's Documents section first</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {folderSyncConfigs.map((config) => (
+                      <div
+                        key={config.folderId}
+                        className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          id={`sync-folder-${config.folderId}`}
+                          checked={config.selected}
+                          onCheckedChange={() => toggleFolderSelection(config.folderId)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 space-y-1">
+                          <label
+                            htmlFor={`sync-folder-${config.folderId}`}
+                            className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                          >
+                            <Folder className="h-4 w-4 text-muted-foreground" />
+                            {config.folderName}
+                          </label>
+                          {config.selected && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">→ GitHub path:</span>
+                              <Input
+                                value={config.githubPath}
+                                onChange={(e) => updateFolderGitHubPath(config.folderId, e.target.value)}
+                                placeholder={config.folderName}
+                                className="h-7 text-xs flex-1"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Leave GitHub path empty to use folder name as path
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRepoToConfigureSync(null);
+                setSelectedTeamIdForSync(null);
+                setFolderSyncConfigs([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveSync}
+              disabled={!selectedTeamIdForSync || !folderSyncConfigs.some(f => f.selected) || isConfiguringSync}
+            >
+              {isConfiguringSync ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FolderSync className="h-4 w-4 mr-2" />
+                  Save Sync Configuration
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

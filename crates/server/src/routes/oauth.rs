@@ -387,11 +387,11 @@ pub struct GitHubAuthorizeResponse {
     pub state: String,
 }
 
-/// Initiates GitHub OAuth flow - returns the authorization URL
+/// Initiates GitHub OAuth flow - redirects to GitHub authorization page
 async fn github_authorize(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<GitHubAuthorizeQuery>,
-) -> Result<ResponseJson<ApiResponse<GitHubAuthorizeResponse>>, ApiError> {
+) -> Result<Response<String>, ApiError> {
     let client_id = std::env::var("GITHUB_CLIENT_ID")
         .map_err(|_| ApiError::BadRequest("GITHUB_CLIENT_ID not configured".to_string()))?;
 
@@ -417,10 +417,12 @@ async fn github_authorize(
         urlencoding::encode(&state)
     );
 
-    Ok(ResponseJson(ApiResponse::success(GitHubAuthorizeResponse {
-        authorize_url,
-        state,
-    })))
+    // Redirect to GitHub authorization page
+    Ok(Response::builder()
+        .status(StatusCode::FOUND)
+        .header("Location", authorize_url)
+        .body(String::new())
+        .unwrap())
 }
 
 #[derive(Debug, Deserialize)]
