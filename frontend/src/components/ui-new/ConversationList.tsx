@@ -103,8 +103,6 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
   ) => {
     let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-    console.log('DEBUG', addType);
-
     if (addType === 'plan' && !loading) {
       scrollModifier = ScrollToTopOfLastItem;
     } else if (addType === 'running' && !loading) {
