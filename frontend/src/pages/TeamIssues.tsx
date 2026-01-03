@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -293,6 +293,20 @@ export function TeamIssues() {
               New Issue
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Sub-header with Filter and Display */}
+      <div className="shrink-0 border-b px-4 py-2">
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+            <ListFilter className="h-4 w-4" />
+            Filter
+          </Button>
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+            <SlidersHorizontal className="h-4 w-4" />
+            Display
+          </Button>
         </div>
       </div>
 
