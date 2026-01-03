@@ -5,8 +5,9 @@ import {
   ClockIcon,
   XIcon,
   PlusIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
-import type { Session, BaseCodingAgent } from 'shared/types';
+import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
@@ -95,6 +96,8 @@ interface SessionChatBoxProps {
   executor?: ExecutorProps;
   /** Whether there's a pending approval (suppresses running animation) */
   hasPendingApproval?: boolean;
+  /** Currently in-progress todo item (shown when agent is running) */
+  inProgressTodo?: TodoItem | null;
 }
 
 /**
@@ -115,6 +118,7 @@ export function SessionChatBox({
   agent,
   executor,
   hasPendingApproval,
+  inProgressTodo,
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -381,24 +385,34 @@ export function SessionChatBox({
               </ToolbarDropdown>
             </>
           )}
-          {/* Existing session mode: file stats */}
+          {/* Existing session mode: show in-progress todo when running, otherwise file stats */}
           {!isNewSessionMode && (
             <PrimaryButton variant="tertiary">
-              <span className="text-sm space-x-half">
-                <span>
-                  {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
-                </span>
-                {(linesAdded !== undefined || linesRemoved !== undefined) && (
-                  <span className="space-x-half">
-                    {linesAdded !== undefined && (
-                      <span className="text-success">+{linesAdded}</span>
-                    )}
-                    {linesRemoved !== undefined && (
-                      <span className="text-error">-{linesRemoved}</span>
-                    )}
+              {isRunning && inProgressTodo ? (
+                <span className="text-sm flex items-center gap-1">
+                  <SpinnerIcon className="size-icon-sm animate-spin flex-shrink-0" />
+                  <span className="truncate max-w-[200px]">
+                    {inProgressTodo.content}
                   </span>
-                )}
-              </span>
+                </span>
+              ) : (
+                <span className="text-sm space-x-half">
+                  <span>
+                    {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
+                    changed
+                  </span>
+                  {(linesAdded !== undefined || linesRemoved !== undefined) && (
+                    <span className="space-x-half">
+                      {linesAdded !== undefined && (
+                        <span className="text-success">+{linesAdded}</span>
+                      )}
+                      {linesRemoved !== undefined && (
+                        <span className="text-error">-{linesRemoved}</span>
+                      )}
+                    </span>
+                  )}
+                </span>
+              )}
             </PrimaryButton>
           )}
         </>
