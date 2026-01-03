@@ -10,3 +10,5 @@ export { ChatSystemMessage } from './ChatSystemMessage';
 export { ChatThinkingMessage } from './ChatThinkingMessage';
 export { ChatErrorMessage } from './ChatErrorMessage';
 export { ToolStatusDot } from './ToolStatusDot';
+export { DiffViewCard, DiffViewBody, useDiffData } from './DiffViewCard';
+export type { DiffInput } from './DiffViewCard';

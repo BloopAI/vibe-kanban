@@ -25,6 +25,7 @@ import {
   ChatThinkingMessage,
   ChatErrorMessage,
 } from './primitives/conversation';
+import type { DiffInput } from './primitives/conversation/DiffViewCard';
 
 type Props = {
   entry: NormalizedEntry;
@@ -254,6 +255,19 @@ function FileEditEntry({
   const writeAdditions =
     change.action === 'write' ? change.content.split('\n').length : undefined;
 
+  // Build diff content for rendering when expanded
+  const diffContent: DiffInput | undefined = useMemo(() => {
+    if (change.action === 'edit' && change.unified_diff) {
+      return {
+        type: 'unified',
+        path,
+        unifiedDiff: change.unified_diff,
+        hasLineNumbers: change.has_line_numbers ?? true,
+      };
+    }
+    return undefined;
+  }, [change, path]);
+
   return (
     <ChatFileEntry
       filename={path}
@@ -262,6 +276,7 @@ function FileEditEntry({
       expanded={expanded}
       onToggle={toggle}
       status={status}
+      diffContent={diffContent}
     />
   );
 }

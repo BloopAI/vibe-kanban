@@ -11,7 +11,7 @@ import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContainer';
-import { ChangesPanel } from '@/components/ui-new/views/ChangesPanel';
+import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
@@ -28,7 +28,87 @@ import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type { Workspace, RepoWithTargetBranch } from 'shared/types';
+import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
+
+// Mock diffs for development - shared between FileTree and ChangesPanel
+const MOCK_DIFFS: Diff[] = [
+  {
+    change: 'modified',
+    oldPath: 'src/components/App.tsx',
+    newPath: 'src/components/App.tsx',
+    oldContent:
+      '// Old App content\nexport function App() {\n  return <div>Hello</div>;\n}',
+    newContent:
+      '// New App content\nexport function App() {\n  return <div>Hello World!</div>;\n}',
+    contentOmitted: false,
+    additions: 15,
+    deletions: 3,
+  },
+  {
+    change: 'added',
+    oldPath: null,
+    newPath: 'src/components/ui-new/views/FileTree.tsx',
+    oldContent: null,
+    newContent:
+      '// FileTree component\nexport function FileTree() {\n  return <div>Tree</div>;\n}',
+    contentOmitted: false,
+    additions: 120,
+    deletions: null,
+  },
+  {
+    change: 'added',
+    oldPath: null,
+    newPath: 'src/components/ui-new/views/FileTreeNode.tsx',
+    oldContent: null,
+    newContent:
+      '// FileTreeNode component\nexport function FileTreeNode() {\n  return <div>Node</div>;\n}',
+    contentOmitted: false,
+    additions: 95,
+    deletions: null,
+  },
+  {
+    change: 'deleted',
+    oldPath: 'src/utils/oldHelper.ts',
+    newPath: null,
+    oldContent: '// Old helper\nexport function helper() {}',
+    newContent: null,
+    contentOmitted: false,
+    additions: null,
+    deletions: 45,
+  },
+  {
+    change: 'modified',
+    oldPath: 'src/styles/new/index.css',
+    newPath: 'src/styles/new/index.css',
+    oldContent: '/* Old styles */\n.container { padding: 10px; }',
+    newContent:
+      '/* New styles */\n.container { padding: 20px; }\n.header { color: blue; }',
+    contentOmitted: false,
+    additions: 8,
+    deletions: 2,
+  },
+  {
+    change: 'renamed',
+    oldPath: 'src/utils/helper.ts',
+    newPath: 'src/utils/fileHelper.ts',
+    oldContent: '// Helper functions',
+    newContent: '// File helper functions',
+    contentOmitted: false,
+    additions: 0,
+    deletions: 0,
+  },
+  {
+    change: 'modified',
+    oldPath: 'package.json',
+    newPath: 'package.json',
+    oldContent: '{\n  "name": "app",\n  "version": "1.0.0"\n}',
+    newContent:
+      '{\n  "name": "app",\n  "version": "1.0.1",\n  "description": "My app"\n}',
+    contentOmitted: false,
+    additions: 2,
+    deletions: 1,
+  },
+];
 
 // Container component for GitPanel that uses hooks requiring GitOperationsProvider
 interface GitPanelContainerProps {
@@ -172,6 +252,9 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Selected file path for scroll-to in changes mode
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
 
   // Fetch task for current workspace (used for old UI navigation)
   const { data: selectedWorkspaceTask } = useTask(selectedWorkspace?.task_id, {
@@ -345,7 +428,10 @@ export function WorkspacesLayout() {
       return (
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
-            <FileTreeContainer />
+            <FileTreeContainer
+              diffs={MOCK_DIFFS}
+              onSelectFile={(path) => setSelectedFilePath(path)}
+            />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
             <GitPanelContainer
@@ -436,7 +522,10 @@ export function WorkspacesLayout() {
           visible={isChangesMode}
         >
           <div className="h-full overflow-hidden">
-            <ChangesPanel />
+            <ChangesPanelContainer
+              diffs={MOCK_DIFFS}
+              selectedFilePath={selectedFilePath}
+            />
           </div>
         </Allotment.Pane>
       </Allotment>

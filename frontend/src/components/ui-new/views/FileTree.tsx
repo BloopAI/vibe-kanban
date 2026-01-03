@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
 import type { TreeNode } from '../types/fileTree';
+import { SectionHeader } from '../primitives/SectionHeader';
 
 interface FileTreeProps {
   nodes: TreeNode[];
@@ -55,6 +56,7 @@ export function FileTree({
 
   return (
     <div className={cn('w-full h-full bg-secondary flex flex-col', className)}>
+      <SectionHeader title="Changes" />
       <div className="px-base pt-base">
         <FileTreeSearchBar
           searchQuery={searchQuery}
@@ -63,7 +65,7 @@ export function FileTree({
           onToggleExpandAll={onToggleExpandAll}
         />
       </div>
-      <div className="px-base pb-base flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
+      <div className="p-base flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
         {nodes.length > 0 ? (
           renderNodes(nodes)
         ) : (
