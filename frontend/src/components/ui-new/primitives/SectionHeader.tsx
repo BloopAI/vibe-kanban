@@ -15,7 +15,12 @@ export function SectionHeader({
   className,
 }: SectionHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between w-full', className)}>
+    <div
+      className={cn(
+        'flex items-center justify-between w-full border-b px-base py-half bg-secondary border-l-half',
+        className
+      )}
+    >
       <span className="font-medium truncate text-normal">{title}</span>
       {IconComponent && onIconClick && (
         <button

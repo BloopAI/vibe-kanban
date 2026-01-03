@@ -36,24 +36,28 @@ export function WorkspacesSidebar({
   );
 
   return (
-    <aside className="w-full h-full bg-secondary flex flex-col gap-double pt-double px-double text-low">
-      <SectionHeader
-        title="Workspaces"
-        icon={PlusIcon}
-        onIconClick={onAddWorkspace}
-      />
-      <InputField
-        variant="search"
-        value={searchQuery}
-        onChange={onSearchChange}
-        placeholder="Search..."
-      />
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-double">
+    <div className="w-full h-full bg-secondary flex flex-col">
+      <div className="flex flex-col gap-base">
+        <SectionHeader
+          title="Workspaces"
+          icon={PlusIcon}
+          onIconClick={onAddWorkspace}
+        />
+        <div className="px-base">
+          <InputField
+            variant="search"
+            value={searchQuery}
+            onChange={onSearchChange}
+            placeholder="Search..."
+          />
+        </div>
+      </div>
+      <div className="flex flex-col flex-1 overflow-y-auto">
         <CollapsibleSection
           persistKey={PERSIST_KEYS.workspacesSidebarActive}
           title="Active"
           defaultExpanded
-          className="gap-double"
+          className="gap-base p-base"
         >
           {filteredWorkspaces.map((workspace) => (
             <WorkspaceSummary
@@ -73,7 +77,7 @@ export function WorkspacesSidebar({
           persistKey={PERSIST_KEYS.workspacesSidebarArchived}
           title="Archived"
           defaultExpanded
-          className="gap-double"
+          className="gap-half px-base pb-half"
         >
           {filteredArchivedWorkspaces.map((workspace) => (
             <WorkspaceSummary
@@ -91,6 +95,6 @@ export function WorkspacesSidebar({
           ))}
         </CollapsibleSection>
       </div>
-    </aside>
+    </div>
   );
 }
