@@ -1,13 +1,11 @@
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
-import { CollapsibleSection } from '@/components/ui-new/primitives/CollapsibleSection';
 import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposList';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdown';
 import { RecentReposListContainer } from '@/components/ui-new/containers/RecentReposListContainer';
 import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
 import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { Project, GitBranch, Repo } from 'shared/types';
 
 interface GitPanelCreateProps {
@@ -42,41 +40,40 @@ export function GitPanelCreate({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col gap-double pt-double px-double text-low overflow-y-auto',
+        'w-full h-full bg-secondary flex flex-col text-low overflow-y-auto',
         className
       )}
     >
       <SectionHeader title="Project" />
-      <SearchableDropdownContainer
-        items={projects}
-        selectedValue={selectedProjectId}
-        getItemKey={(p) => p.id}
-        getItemLabel={(p) => p.name}
-        onSelect={onProjectSelect}
-        trigger={
-          <DropdownMenuTriggerButton
-            label={selectedProjectName ?? 'Select project'}
-          />
-        }
-        placeholder="Search projects..."
-        emptyMessage="No projects found"
-      />
+      <div className="p-base border-b">
+        <SearchableDropdownContainer
+          items={projects}
+          selectedValue={selectedProjectId}
+          getItemKey={(p) => p.id}
+          getItemLabel={(p) => p.name}
+          onSelect={onProjectSelect}
+          trigger={
+            <DropdownMenuTriggerButton
+              label={selectedProjectName ?? 'Select project'}
+            />
+          }
+          placeholder="Search projects..."
+          emptyMessage="No projects found"
+        />
+      </div>
 
       <SectionHeader title="Repositories" />
-
-      <SelectedReposList
-        repos={repos}
-        onRemove={onRepoRemove}
-        branchesByRepo={branchesByRepo}
-        selectedBranches={targetBranches}
-        onBranchChange={onBranchChange}
-      />
-
-      <CollapsibleSection
-        persistKey={PERSIST_KEYS.gitPanelCreateAddRepo}
-        title="Add Repository"
-        className="gap-base"
-      >
+      <div className="p-base border-b">
+        <SelectedReposList
+          repos={repos}
+          onRemove={onRepoRemove}
+          branchesByRepo={branchesByRepo}
+          selectedBranches={targetBranches}
+          onBranchChange={onBranchChange}
+        />
+      </div>
+      <SectionHeader title="Add Repositories" />
+      <div className="flex flex-col p-base gap-half">
         <p className="text-xs text-low font-medium">Recent</p>
         <RecentReposListContainer
           registeredRepoPaths={registeredRepoPaths}
@@ -85,7 +82,7 @@ export function GitPanelCreate({
         <p className="text-xs text-low font-medium">Other</p>
         <BrowseRepoButtonContainer onRepoRegistered={onRepoRegistered} />
         <CreateRepoButtonContainer onRepoCreated={onRepoRegistered} />
-      </CollapsibleSection>
+      </div>
     </div>
   );
 }

@@ -115,7 +115,7 @@ export function ChatBoxBase({
 
       {/* Header - Stats and selector */}
       {visualVariant === VisualVariant.NORMAL && (
-        <div className="flex items-center gap-base bg-secondary px-double py-[9px] @chat:rounded-t-md border-b">
+        <div className="flex items-center gap-base bg-secondary px-base py-[9px] @chat:rounded-t-md border-b">
           <div className="flex flex-1 items-center gap-base text-sm">
             {headerLeft}
           </div>
@@ -124,7 +124,7 @@ export function ChatBoxBase({
       )}
 
       {/* Editor area */}
-      <div className="flex flex-col gap-plusfifty px-double py-plusfifty rounded-md">
+      <div className="flex flex-col gap-plusfifty px-base py-base rounded-md">
         <WYSIWYGEditor
           key={focusKey}
           placeholder={placeholder}

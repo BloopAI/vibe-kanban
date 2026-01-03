@@ -1,4 +1,4 @@
-import { FolderSimpleIcon, XIcon, GitBranchIcon } from '@phosphor-icons/react';
+import { XIcon, GitBranchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdown';
@@ -29,7 +29,6 @@ export function RepoCardSimple({
     >
       <div className="flex items-center gap-base text-normal ">
         <div className="flex-1 flex items-center gap-half">
-          <FolderSimpleIcon className="size-icon-base" weight="fill" />
           <p className="truncate">{name}</p>
         </div>
         {onRemove && (

@@ -383,21 +383,23 @@ export function SessionChatBox({
           )}
           {/* Existing session mode: file stats */}
           {!isNewSessionMode && (
-            <>
-              <span className="text-low">
-                {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
-              </span>
-              {(linesAdded !== undefined || linesRemoved !== undefined) && (
-                <span className="space-x-half">
-                  {linesAdded !== undefined && (
-                    <span className="text-success">+{linesAdded}</span>
-                  )}
-                  {linesRemoved !== undefined && (
-                    <span className="text-error">-{linesRemoved}</span>
-                  )}
+            <PrimaryButton variant="tertiary">
+              <span className="text-sm space-x-half">
+                <span>
+                  {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
                 </span>
-              )}
-            </>
+                {(linesAdded !== undefined || linesRemoved !== undefined) && (
+                  <span className="space-x-half">
+                    {linesAdded !== undefined && (
+                      <span className="text-success">+{linesAdded}</span>
+                    )}
+                    {linesRemoved !== undefined && (
+                      <span className="text-error">-{linesRemoved}</span>
+                    )}
+                  </span>
+                )}
+              </span>
+            </PrimaryButton>
           )}
         </>
       }

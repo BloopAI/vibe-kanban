@@ -7,6 +7,8 @@ import {
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
+import { CollapsibleSection } from '../primitives/CollapsibleSection';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 export interface RepoInfo {
   id: string;
@@ -45,20 +47,8 @@ export function GitPanel({
     >
       {error && <ErrorAlert message={error} />}
       <SectionHeader title="Repositories" />
-      <div className="p-base gap-base">
-        <div className="flex flex-col gap-base w-full">
-          <div className="flex gap-base items-center">
-            <GitBranchIcon className="size-icon-base text-base" weight="fill" />
-            <p className="text-base">Working Branch</p>
-          </div>
-          <InputField
-            variant="editable"
-            value={workingBranchName}
-            onChange={onWorkingBranchNameChange}
-            placeholder="e.g acme Corp"
-          />
-        </div>
-        <div className="flex flex-col gap-double">
+      <div className="flex flex-col p-base gap-base">
+        <div className="flex flex-col gap-base">
           {repos.map((repo) => (
             <RepoCard
               key={repo.id}
@@ -74,6 +64,27 @@ export function GitPanel({
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}
             />
           ))}
+        </div>
+        <div className="flex flex-col gap-base w-full">
+          <CollapsibleSection
+            title="Advanced"
+            persistKey={PERSIST_KEYS.gitAdvancedSettings}
+            defaultExpanded={false}
+            className="flex flex-col gap-half"
+          >
+            <div className="flex gap-base items-center">
+              <GitBranchIcon className="size-icon-xs text-base" weight="fill" />
+              <p className="text-sm font-medium text-low truncate">
+                Working Branch
+              </p>
+            </div>
+            <InputField
+              variant="editable"
+              value={workingBranchName}
+              onChange={onWorkingBranchNameChange}
+              placeholder="e.g acme Corp"
+            />
+          </CollapsibleSection>
         </div>
       </div>
     </div>

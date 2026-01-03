@@ -33,7 +33,7 @@ export function IconListItem({
   );
 
   const baseClasses = cn(
-    'flex items-center gap-base py-half px-base rounded-sm text-left',
+    'flex items-center gap-base rounded-sm text-left',
     onClick && 'hover:bg-tertiary cursor-pointer',
     disabled && 'opacity-50 pointer-events-none',
     className

@@ -77,7 +77,7 @@ export function WorkspacesSidebar({
           persistKey={PERSIST_KEYS.workspacesSidebarArchived}
           title="Archived"
           defaultExpanded
-          className="gap-half px-base pb-half"
+          className="px-base pb-half"
         >
           {filteredArchivedWorkspaces.map((workspace) => (
             <WorkspaceSummary

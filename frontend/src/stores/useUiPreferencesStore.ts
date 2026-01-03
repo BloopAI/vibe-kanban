@@ -16,6 +16,7 @@ export const PERSIST_KEYS = {
   workspacesSidebarActive: 'workspaces-sidebar-active',
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
   // Git panel
+  gitAdvancedSettings: 'git-advanced-settings',
   gitPanelCreateAddRepo: 'git-panel-create-add-repo',
   // Context bar
   contextBarPosition: 'context-bar-position',
@@ -31,6 +32,7 @@ export const PERSIST_KEYS = {
 export type PersistKey =
   | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
+  | typeof PERSIST_KEYS.gitAdvancedSettings
   | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.sidebarWidth
   | typeof PERSIST_KEYS.gitPanelWidth
