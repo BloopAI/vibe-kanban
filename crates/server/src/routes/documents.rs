@@ -470,6 +470,52 @@ pub struct ScanFilesystemResponse {
     pub files_scanned: usize,
 }
 
+/// Get mime type from file extension
+fn get_mime_type(extension: &str) -> &'static str {
+    match extension.to_lowercase().as_str() {
+        "md" | "markdown" => "text/markdown",
+        "txt" => "text/plain",
+        "pdf" => "application/pdf",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "csv" => "text/csv",
+        "json" => "application/json",
+        "xml" => "application/xml",
+        "html" | "htm" => "text/html",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "ppt" => "application/vnd.ms-powerpoint",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "zip" => "application/zip",
+        "tar" => "application/x-tar",
+        "gz" => "application/gzip",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Check if file is a text-based document that we should read content from
+fn is_text_document(extension: &str) -> bool {
+    matches!(
+        extension.to_lowercase().as_str(),
+        "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" | "csv"
+    )
+}
+
+/// Supported document extensions for scanning
+fn is_supported_document(extension: &str) -> bool {
+    matches!(
+        extension.to_lowercase().as_str(),
+        "md" | "markdown" | "txt" | "pdf" | "doc" | "docx" | "xls" | "xlsx" | "csv"
+        | "json" | "xml" | "html" | "htm" | "ppt" | "pptx" | "png" | "jpg" | "jpeg"
+        | "gif" | "svg" | "webp"
+    )
+}
+
 /// Scan the filesystem for documents and register them in the database
 pub async fn scan_filesystem(
     Extension(team): Extension<Team>,
@@ -486,14 +532,12 @@ pub async fn scan_filesystem(
         return Err(ApiError::NotFound("Folder not found".to_string()));
     }
 
-    // Use folder's local_path if set, otherwise fall back to default path
-    let scan_path = if let Some(ref local_path) = folder.local_path {
-        std::path::PathBuf::from(local_path)
-    } else {
-        // Default fallback: dev_assets/documents/{team_id}/
-        let base_path = asset_dir();
-        base_path.join("documents").join(team.id.to_string())
-    };
+    // Use team's document_storage_path if set
+    let base_path = team.document_storage_path.as_ref()
+        .ok_or_else(|| ApiError::BadRequest("Team has no document storage path configured. Set it in Team Settings.".to_string()))?;
+
+    // Scan path is base_path + folder name
+    let scan_path = std::path::PathBuf::from(base_path).join(&folder.name);
 
     // Get all existing documents for this folder to avoid duplicates
     let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, Some(folder_id)).await?;
@@ -505,7 +549,7 @@ pub async fn scan_filesystem(
     // Also build a set of normalized existing titles for matching
     let existing_titles: HashSet<String> = existing_docs
         .iter()
-        .map(|d| d.title.to_lowercase().replace(' ', "-"))
+        .map(|d| d.title.to_lowercase().replace(' ', "-").replace(' ', "_"))
         .collect();
 
     let mut documents_added = 0;
@@ -513,7 +557,7 @@ pub async fn scan_filesystem(
     let mut files_scanned = 0;
     let mut documents_updated = 0;
 
-    // Scan the directory for markdown files
+    // Scan the directory for supported document files
     if scan_path.exists() {
         let mut entries = tokio::fs::read_dir(&scan_path).await
             .map_err(|e| ApiError::Io(e))?;
@@ -521,22 +565,36 @@ pub async fn scan_filesystem(
         while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
             let path = entry.path();
 
-            // Only process .md files
-            if path.extension().and_then(|e| e.to_str()) != Some("md") {
+            // Skip directories
+            if path.is_dir() {
+                continue;
+            }
+
+            // Get extension and check if supported
+            let extension = path.extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("");
+
+            if !is_supported_document(extension) {
                 continue;
             }
 
             files_scanned += 1;
             let path_str = path.to_string_lossy().to_string();
 
-            // Extract title from filename (remove .md extension, convert kebab-case to Title Case)
+            // Get mime type and file type
+            let mime_type = get_mime_type(extension);
+            let file_type = extension.to_lowercase();
+            let is_text = is_text_document(extension);
+
+            // Extract title from filename (convert kebab-case/snake_case to Title Case)
             let file_stem = path
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("Untitled");
 
             let title = file_stem
-                .split('-')
+                .split(|c| c == '-' || c == '_')
                 .map(|word| {
                     let mut chars = word.chars();
                     match chars.next() {
@@ -552,50 +610,26 @@ pub async fn scan_filesystem(
 
             // Check if document already exists by path
             if existing_paths.contains(&path_str) {
-                // Path matches, update content from file
+                // Path matches - for text files, update content; for others, just update metadata
                 if let Some(existing_doc) = existing_docs.iter().find(|d| d.file_path.as_ref() == Some(&path_str)) {
-                    // Read file content
-                    let content = tokio::fs::read_to_string(&path).await.ok();
-                    if content.is_some() {
-                        // Update document content
-                        let update_payload = UpdateDocument {
-                            folder_id: Some(folder_id),
-                            title: Some(existing_doc.title.clone()),
-                            content,
-                            icon: None,
-                            is_pinned: None,
-                            is_archived: None,
-                            position: None,
-                        };
-                        Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
-                        documents_updated += 1;
-                    }
-                }
-                continue;
-            }
-
-            // Check if document exists by normalized title
-            if existing_titles.contains(&normalized_title) {
-                // Title matches, update the existing document with new file path and content
-                if let Some(existing_doc) = existing_docs.iter().find(|d|
-                    d.title.to_lowercase().replace(' ', "-") == normalized_title
-                ) {
-                    let content = tokio::fs::read_to_string(&path).await.ok();
                     let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
                     let file_size = metadata.len() as i64;
 
-                    // Update content
-                    if content.is_some() {
-                        let update_payload = UpdateDocument {
-                            folder_id: Some(folder_id),
-                            title: Some(existing_doc.title.clone()),
-                            content,
-                            icon: None,
-                            is_pinned: None,
-                            is_archived: None,
-                            position: None,
-                        };
-                        Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                    if is_text {
+                        // Read and update content for text files
+                        let content = tokio::fs::read_to_string(&path).await.ok();
+                        if content.is_some() {
+                            let update_payload = UpdateDocument {
+                                folder_id: Some(folder_id),
+                                title: Some(existing_doc.title.clone()),
+                                content,
+                                icon: None,
+                                is_pinned: None,
+                                is_archived: None,
+                                position: None,
+                            };
+                            Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                        }
                     }
 
                     // Update file metadata
@@ -604,8 +638,8 @@ pub async fn scan_filesystem(
                         existing_doc.id,
                         &path_str,
                         file_size,
-                        "text/markdown",
-                        "markdown",
+                        mime_type,
+                        &file_type,
                     ).await?;
 
                     documents_updated += 1;
@@ -613,20 +647,65 @@ pub async fn scan_filesystem(
                 continue;
             }
 
-            // New document - read content from file
-            let content = tokio::fs::read_to_string(&path).await.ok();
+            // Check if document exists by normalized title
+            if existing_titles.contains(&normalized_title) {
+                // Title matches, update the existing document with new file path
+                if let Some(existing_doc) = existing_docs.iter().find(|d|
+                    d.title.to_lowercase().replace(' ', "-").replace(' ', "_") == normalized_title
+                ) {
+                    let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+                    let file_size = metadata.len() as i64;
+
+                    if is_text {
+                        // Update content for text files
+                        let content = tokio::fs::read_to_string(&path).await.ok();
+                        if content.is_some() {
+                            let update_payload = UpdateDocument {
+                                folder_id: Some(folder_id),
+                                title: Some(existing_doc.title.clone()),
+                                content,
+                                icon: None,
+                                is_pinned: None,
+                                is_archived: None,
+                                position: None,
+                            };
+                            Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                        }
+                    }
+
+                    // Update file metadata
+                    Document::update_file_metadata(
+                        &deployment.db().pool,
+                        existing_doc.id,
+                        &path_str,
+                        file_size,
+                        mime_type,
+                        &file_type,
+                    ).await?;
+
+                    documents_updated += 1;
+                }
+                continue;
+            }
+
+            // New document - only read content for text files
+            let content = if is_text {
+                tokio::fs::read_to_string(&path).await.ok()
+            } else {
+                None // Non-text files store only metadata
+            };
 
             // Get file metadata
             let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
             let file_size = metadata.len() as i64;
 
-            // Create document record with content
+            // Create document record (metadata only for non-text files)
             let create_payload = CreateDocument {
                 team_id: team.id,
                 folder_id: Some(folder_id),
                 title: title.clone(),
                 content,
-                file_type: Some("markdown".to_string()),
+                file_type: Some(file_type.clone()),
                 icon: None,
             };
 
@@ -638,8 +717,8 @@ pub async fn scan_filesystem(
                 document.id,
                 &path_str,
                 file_size,
-                "text/markdown",
-                "markdown",
+                mime_type,
+                &file_type,
             )
             .await?;
 
@@ -656,10 +735,11 @@ pub async fn scan_filesystem(
             serde_json::json!({
                 "team_id": team.id.to_string(),
                 "folder_id": folder_id.to_string(),
+                "folder_name": folder.name,
                 "documents_added": documents_added,
                 "documents_updated": documents_updated,
                 "files_scanned": files_scanned,
-                "local_path": folder.local_path,
+                "scan_path": scan_path.to_string_lossy(),
             }),
         )
         .await;

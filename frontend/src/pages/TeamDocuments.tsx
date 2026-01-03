@@ -587,14 +587,14 @@ export function TeamDocuments() {
                 size="sm"
                 onClick={handleScanFilesystem}
                 disabled={isScanning}
-                title="Scan filesystem for new documents"
+                title="Scan local filesystem for documents in this folder"
               >
                 {isScanning ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-1" />
                 )}
-                Scan
+                Local Scan
               </Button>
             )}
             {githubConnection && linkedRepos && linkedRepos.length > 0 && (
