@@ -97,7 +97,10 @@ function LinearIssueCardComponent({
   }, [task.id, onProjectChange]);
 
   // Get assignee initials (first letter of first name + first letter of last name)
-  const selectedMember = teamMembers.find((m) => m.id === task.assignee_id);
+  const selectedMember = task.assignee_id
+    ? teamMembers.find((m) => m.id === task.assignee_id)
+    : undefined;
+
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
@@ -105,6 +108,14 @@ function LinearIssueCardComponent({
     }
     return name.slice(0, 2).toUpperCase();
   };
+
+  // Debug: if assignee_id exists but no match found, show ID prefix as fallback
+  const hasAssignee = !!task.assignee_id;
+  const assigneeInitials = selectedMember
+    ? getInitials(selectedMember.name)
+    : hasAssignee
+      ? task.assignee_id!.slice(0, 2).toUpperCase()
+      : null;
 
   // Get priority value for display
   const priorityValue = (task.priority ?? 0) as PriorityValue;
@@ -146,12 +157,12 @@ function LinearIssueCardComponent({
                     'border border-dashed border-muted-foreground/40',
                     'text-muted-foreground hover:border-primary hover:text-primary',
                     'transition-colors text-xs font-medium',
-                    selectedMember && 'border-solid bg-primary/10 text-primary border-primary/30'
+                    hasAssignee && 'border-solid bg-primary/10 text-primary border-primary/30'
                   )}
-                  title={selectedMember ? selectedMember.name : 'Assign'}
+                  title={selectedMember ? selectedMember.name : hasAssignee ? `Assigned: ${task.assignee_id}` : 'Assign'}
                 >
-                  {selectedMember ? (
-                    getInitials(selectedMember.name)
+                  {assigneeInitials ? (
+                    assigneeInitials
                   ) : (
                     <User className="h-3.5 w-3.5" />
                   )}
