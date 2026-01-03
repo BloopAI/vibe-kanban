@@ -10,7 +10,7 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
-import { FileTreePlaceholder } from '@/components/ui-new/views/FileTreePlaceholder';
+import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContainer';
 import { ChangesPanel } from '@/components/ui-new/views/ChangesPanel';
 import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
@@ -345,7 +345,7 @@ export function WorkspacesLayout() {
       return (
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
-            <FileTreePlaceholder />
+            <FileTreeContainer />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
             <GitPanelContainer
