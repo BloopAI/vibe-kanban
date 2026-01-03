@@ -23,8 +23,6 @@ import {
   GripVertical,
   RefreshCw,
   Loader2,
-  ArrowUpDown,
-  Check,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -42,11 +40,6 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
-import {
-  useWorkspaceGitHubConnection,
-  useWorkspaceGitHubRepositories,
-  useWorkspaceGitHubMutations,
-} from '@/hooks/useWorkspaceGitHub';
 
 import type { Document, DocumentFolder } from 'shared/types';
 
@@ -81,11 +74,6 @@ export function TeamDocuments() {
     scanFilesystem,
   } = useDocuments(teamId || '');
 
-  // GitHub connection hooks
-  const { data: githubConnection } = useWorkspaceGitHubConnection();
-  const { data: linkedRepos } = useWorkspaceGitHubRepositories();
-  const { syncRepository } = useWorkspaceGitHubMutations();
-
   // Dialog states
   const [isCreateDocOpen, setIsCreateDocOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
@@ -97,8 +85,6 @@ export function TeamDocuments() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ added: number; scanned: number } | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ pulled: number; pushed: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
@@ -244,27 +230,6 @@ export function TeamDocuments() {
       setIsScanning(false);
     }
   }, [currentFolderId, folders, scanFilesystem]);
-
-  const handleGitHubSync = useCallback(async () => {
-    if (!teamId || !linkedRepos || linkedRepos.length === 0) return;
-
-    setIsSyncing(true);
-    setSyncResult(null);
-
-    try {
-      // Sync the first linked repository
-      const repo = linkedRepos[0];
-      const result = await syncRepository.mutateAsync({ teamId, repoId: repo.id });
-      setSyncResult({
-        pulled: result.pulled.files_synced,
-        pushed: result.pushed.files_synced,
-      });
-    } catch (err) {
-      console.error('Failed to sync with GitHub:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [teamId, linkedRepos, syncRepository]);
 
   const handleOpenDocument = useCallback((doc: Document) => {
     setEditingDoc(doc);
@@ -586,32 +551,6 @@ export function TeamDocuments() {
               )}
               Local Scan
             </Button>
-            {githubConnection && linkedRepos && linkedRepos.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGitHubSync}
-                disabled={isSyncing}
-                title="Sync documents with GitHub (pull + push)"
-              >
-                {isSyncing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Syncing...
-                  </>
-                ) : syncResult ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    <span className="text-xs">↓{syncResult.pulled} ↑{syncResult.pushed}</span>
-                  </>
-                ) : (
-                  <>
-                    <ArrowUpDown className="h-4 w-4 mr-1" />
-                    Sync
-                  </>
-                )}
-              </Button>
-            )}
             <Button
               variant="outline"
               size="sm"
