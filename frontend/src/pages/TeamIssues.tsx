@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal, CircleDot, PlayCircle, Circle } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -293,6 +293,34 @@ export function TeamIssues() {
               New Issue
             </Button>
           </div>
+        </div>
+
+        {/* Issue view tabs */}
+        <div className="flex items-center gap-2 mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-background border-border gap-1.5"
+          >
+            <CircleDot className="h-4 w-4" />
+            All issues
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-background border-border gap-1.5"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Active
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-background border-border gap-1.5"
+          >
+            <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
+            Backlog
+          </Button>
         </div>
       </div>
 
