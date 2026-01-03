@@ -15,6 +15,8 @@ interface WorkspacesMainContainerProps {
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
   onStartNewSession?: () => void;
+  /** Callback to toggle changes panel */
+  onViewCode?: () => void;
 }
 
 export function WorkspacesMainContainer({
@@ -25,6 +27,7 @@ export function WorkspacesMainContainer({
   isLoading,
   isNewSessionMode,
   onStartNewSession,
+  onViewCode,
 }: WorkspacesMainContainerProps) {
   const containerRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
@@ -75,6 +78,7 @@ export function WorkspacesMainContainer({
       copied={copied}
       onOpen={handleOpen}
       onCopy={handleCopy}
+      onViewCode={onViewCode}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
     />

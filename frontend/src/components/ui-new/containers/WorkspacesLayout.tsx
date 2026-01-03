@@ -484,6 +484,7 @@ export function WorkspacesLayout() {
                   isLoading={isLoading}
                   isNewSessionMode={isNewSessionMode}
                   onStartNewSession={startNewSession}
+                  onViewCode={handleToggleChangesMode}
                 />
               </ExecutionProcessesProvider>
             )}

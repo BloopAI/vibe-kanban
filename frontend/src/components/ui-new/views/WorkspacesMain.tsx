@@ -19,6 +19,7 @@ interface WorkspacesMainProps {
   copied: boolean;
   onOpen: () => void;
   onCopy: () => void;
+  onViewCode?: () => void;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
@@ -35,6 +36,7 @@ export function WorkspacesMain({
   copied,
   onOpen,
   onCopy,
+  onViewCode,
   isNewSessionMode,
   onStartNewSession,
 }: WorkspacesMainProps) {
@@ -95,6 +97,7 @@ export function WorkspacesMain({
         copied={copied}
         onOpen={onOpen}
         onCopy={onCopy}
+        onViewCode={onViewCode}
         attemptId={workspaceWithSession?.id}
       />
     </main>
