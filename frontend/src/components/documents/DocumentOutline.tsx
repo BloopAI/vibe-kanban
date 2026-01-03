@@ -17,21 +17,66 @@ interface DocumentOutlineProps {
 }
 
 /**
- * Parses markdown content and extracts headings
+ * Parses content and extracts headings (supports both markdown and PDF-style headings)
  */
-function parseMarkdownHeadings(content: string): HeadingNode[] {
+function parseHeadings(content: string): HeadingNode[] {
   const lines = content.split('\n');
   const headings: { text: string; level: number; line: number }[] = [];
 
   lines.forEach((line, index) => {
-    // Match markdown headings (# to ######)
-    const match = line.match(/^(#{1,6})\s+(.+)$/);
-    if (match) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.length < 2) return;
+
+    // 1. Match markdown headings (# to ######)
+    const markdownMatch = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (markdownMatch) {
       headings.push({
-        text: match[2].trim(),
-        level: match[1].length,
+        text: markdownMatch[2].trim(),
+        level: markdownMatch[1].length,
         line: index + 1,
       });
+      return;
+    }
+
+    // 2. Match numbered sections like "1. Title", "1.1 Title", "2.1.3 Title"
+    const numberedMatch = trimmed.match(/^(\d+(?:\.\d+)*)[.\s]+([A-Z].{2,60})$/);
+    if (numberedMatch) {
+      const depth = numberedMatch[1].split('.').length;
+      headings.push({
+        text: trimmed,
+        level: Math.min(depth, 6),
+        line: index + 1,
+      });
+      return;
+    }
+
+    // 3. Match ALL CAPS lines (potential PDF headings) - must be 3-60 chars, mostly letters
+    if (
+      trimmed.length >= 3 &&
+      trimmed.length <= 60 &&
+      trimmed === trimmed.toUpperCase() &&
+      /^[A-Z][A-Z\s\d\-:]+$/.test(trimmed) &&
+      (trimmed.match(/[A-Z]/g) || []).length >= trimmed.length * 0.6
+    ) {
+      headings.push({
+        text: trimmed,
+        level: 1,
+        line: index + 1,
+      });
+      return;
+    }
+
+    // 4. Match Chapter/Section patterns like "Chapter 1: Title" or "Section 2.1 Title"
+    const chapterMatch = trimmed.match(/^(Chapter|Section|Part)\s+[\d.]+[:\s]*(.*)$/i);
+    if (chapterMatch) {
+      const level = chapterMatch[1].toLowerCase() === 'chapter' ? 1 :
+                    chapterMatch[1].toLowerCase() === 'part' ? 1 : 2;
+      headings.push({
+        text: trimmed,
+        level,
+        line: index + 1,
+      });
+      return;
     }
   });
 
@@ -100,7 +145,7 @@ export function DocumentOutline({
 }: DocumentOutlineProps) {
   const treeData = useMemo(() => {
     if (!content) return [];
-    const headings = parseMarkdownHeadings(content);
+    const headings = parseHeadings(content);
     return headingsToTreeData(headings, onHeadingClick);
   }, [content, onHeadingClick]);
 
