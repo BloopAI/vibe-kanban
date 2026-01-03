@@ -1,7 +1,9 @@
 import { memo, useState, useCallback } from 'react';
 import {
   DndContext,
+  DragOverlay,
   type DragEndEvent,
+  type DragStartEvent,
   PointerSensor,
   rectIntersection,
   useSensor,
@@ -220,6 +222,8 @@ function TeamKanbanBoardComponent({
   onProjectChange,
 }: TeamKanbanBoardProps) {
   const [visibleStatuses, setVisibleStatuses] = useState<TaskStatus[]>(DEFAULT_VISIBLE);
+  const [activeItem, setActiveItem] = useState<ColumnItem | null>(null);
+  const [activeStatus, setActiveStatus] = useState<TaskStatus | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -246,10 +250,31 @@ function TeamKanbanBoardComponent({
     });
   }, []);
 
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const { active } = event;
+    const taskId = active.id as string;
+    // Find the item being dragged across all columns
+    for (const status of ALL_STATUSES) {
+      const item = columns[status]?.find((item) => item.task.id === taskId);
+      if (item) {
+        setActiveItem(item);
+        setActiveStatus(status);
+        break;
+      }
+    }
+  }, [columns]);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveItem(null);
+    setActiveStatus(null);
+    onDragEnd(event);
+  }, [onDragEnd]);
+
   return (
     <DndContext
       collisionDetection={rectIntersection}
-      onDragEnd={onDragEnd}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       sensors={sensors}
     >
       <div className="flex h-full gap-0">
@@ -280,6 +305,26 @@ function TeamKanbanBoardComponent({
           onShowColumn={handleShowColumn}
         />
       </div>
+
+      {/* Drag Overlay - renders a floating copy of the card while dragging */}
+      <DragOverlay dropAnimation={null}>
+        {activeItem && activeStatus ? (
+          <div className="cursor-grabbing">
+            <LinearIssueCard
+              task={activeItem.task}
+              index={0}
+              status={activeStatus}
+              issueKey={activeItem.issueKey}
+              projectName={activeItem.projectName}
+              projectId={activeItem.projectId || activeItem.task.project_id}
+              onViewDetails={() => {}}
+              isSelected={false}
+              teamMembers={teamMembers}
+              teamProjects={teamProjects}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
