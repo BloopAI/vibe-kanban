@@ -15,18 +15,27 @@ Vibe Kanban is a task management tool for orchestrating AI coding agents (Claude
 - `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
 - `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
+- `mcp/`: MCP server (`server.py`) and CLI (`cli.py`) for task management.
 - `scripts/`: Dev helpers (ports, DB preparation).
 - `docs/`: Documentation files.
 
 
-### GIT COMMIT GUIDELINE
+### Git Commit Guidelines
 
-DONT INCLUDE below in the git commit message
+**DO NOT include** the following in commit messages:
+- `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
+- `Co-Authored-By: Claude ...` signatures
 
-  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+**Commit message format:**
+```
+<type>: <short description> (<task-id>)
 
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-  
+<optional longer description>
+```
+
+**Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+
+
 
 ## Managing Shared Types Between Rust and TypeScript
 
@@ -73,30 +82,56 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 
 ## Task Management Workflow (Vibe Kanban MCP)
 
-Use the Vibe Kanban MCP tools to manage tasks for this project. **All work should be tracked under the vibe-kanban team.**
+Use the Vibe Kanban MCP tools to manage tasks for this project.
 
-### Available Projects for Task Mapping
+### Data Model
 
-- **frontend** - `5b8810bc-b52f-464f-b87c-4a10542c14d3` - React/TypeScript UI work
-- **backend** - `270d5829-6691-44b8-af81-594e70e88f15` - Rust API/server work
-- **vibe-kanban** - `1277542c-2247-4c9d-a236-c38173459694` - General/full-stack work
+**Team: vibe-kanban** - All work is tracked under this team
+- **Issues/Tasks** - Created and mapped to projects
+- **Documents** - Stored in folders as markdown files
+- **Projects** - Categorize work by area (frontend, backend, integration)
+
+### Available Projects (under vibe-kanban team)
+
+| Project | ID | Use For |
+|---------|-----|---------|
+| **frontend** | `5b8810bc-b52f-464f-b87c-4a10542c14d3` | React/TypeScript UI work |
+| **backend** | `270d5829-6691-44b8-af81-594e70e88f15` | Rust API/server work |
+| **integration** | `45da934b-60f3-4ecd-8795-acbd9b454a22` | Cross-cutting/integration work |
+
+### Document Folders
+
+Store planning documents and specs under **Team > Documents** in the appropriate folder:
+- **planning/** - Feature plans, implementation specs
+- Use markdown format for all documents
 
 ### Complete Workflow for Every Task
 
 #### 1. Create Task First (Before Starting Work)
 
-Use `mcp__vibe_kanban__create_task` with:
+Use the **MCP tools** or **CLI** to create team issues:
 
-- `project_id`: Map to relevant project (frontend, backend, or vibe-kanban)
-- `title`: Clear, descriptive task title
-- `description`: Detailed description of what needs to be done
+**MCP (preferred in Claude Code):**
+```
+vk_create_issue(title="Task title", project="frontend", team="vibe-kanban", status="inprogress")
+```
 
-#### 2. Update Task Status to In Progress
+**CLI:**
+```bash
+./mcp/cli.py create <project> "Task title" --team vibe-kanban --status inprogress -d "Description"
+```
 
-Use `mcp__vibe_kanban__update_task` with:
+#### 2. Update Task Status
 
-- `task_id`: The created task ID
-- `status`: `"inprogress"`
+**MCP:**
+```
+vk_update_task(task_id="<uuid>", status="done")
+```
+
+**CLI:**
+```bash
+./mcp/cli.py update <task_id> --status done
+```
 
 #### 3. Create Feature Branch
 
@@ -137,10 +172,9 @@ git push origin --delete feature/<task-id>-<task-name-kebab-case>
 
 #### 8. Update Task Status to Done
 
-Use `mcp__vibe_kanban__update_task` with:
-
-- `task_id`: The task ID
-- `status`: `"done"`
+```bash
+./scripts/vk-cli.py update <task_id> --status done
+```
 
 ### Task Status Values
 
@@ -150,8 +184,37 @@ Use `mcp__vibe_kanban__update_task` with:
 - `done` - Completed
 - `cancelled` - No longer needed
 
-### Listing Tasks
+### MCP Tools (vk)
 
-- Use `mcp__vibe_kanban__list_projects` to get project IDs
-- Use `mcp__vibe_kanban__list_tasks` with project ID to view all tasks
-- Use `mcp__vibe_kanban__get_task` to get detailed task information
+The `vk` MCP server provides these tools for task management:
+
+| Tool | Description |
+|------|-------------|
+| `vk_list_teams` | List all teams |
+| `vk_list_projects` | List all projects |
+| `vk_list_issues` | List issues for a team (kanban board) |
+| `vk_list_tasks` | List tasks in a project |
+| `vk_get_task` | Get task details by ID |
+| `vk_create_issue` | Create a new team issue |
+| `vk_update_task` | Update task status/title/description |
+
+**Creating Issues:**
+```
+vk_create_issue(title="My task", project="frontend", team="vibe-kanban", status="inprogress")
+```
+
+### CLI Alternative (mcp/cli.py)
+
+```bash
+# List projects
+./mcp/cli.py projects
+
+# List team issues
+./mcp/cli.py issues vibe-kanban
+
+# Create team issue (ALWAYS use --team flag)
+./mcp/cli.py create <project> "title" --team vibe-kanban
+
+# Update task
+./mcp/cli.py update <task_id> --status done
+```

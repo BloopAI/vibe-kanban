@@ -88,3 +88,7 @@ vibe-kanban-cloud/
 
 # Local backups
 backups/
+
+# Local development
+.logs/
+.mcp.json

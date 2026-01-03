@@ -1,16 +1,12 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Github,
   Loader2,
   AlertCircle,
-  Link,
-  Unlink,
-  Trash2,
   ExternalLink,
   Lock,
   Globe,
-  Plus,
   RefreshCw,
   FolderSync,
   Settings,
@@ -18,18 +14,12 @@ import {
   Folder,
   CheckSquare,
   Square,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Card,
   CardContent,
@@ -55,11 +45,12 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useWorkspaceGitHubConnection } from '@/hooks/useWorkspaceGitHub';
 import { useGitHubConnection } from '@/hooks/useGitHubConnection';
 import { useTeams } from '@/hooks/useTeams';
 import { useDocuments } from '@/hooks/useDocuments';
 import { format } from 'date-fns';
-import type { GitHubRepoInfo, GitHubRepository, CreateRepoSyncConfig } from 'shared/types';
+import type { GitHubRepository, CreateRepoSyncConfig } from 'shared/types';
 
 interface FolderSyncConfig {
   folderId: string;
@@ -73,18 +64,14 @@ export default function TeamGitHub() {
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
+  // Use workspace-level GitHub connection
   const {
-    connection,
-    repositories,
-    availableRepos,
-    isLoading,
-    isLoadingAvailableRepos,
-    error,
-    fetchAvailableRepos,
-    connectWithOAuth,
-    deleteConnection,
-    linkRepository,
-    unlinkRepository,
+    data: workspaceConnection,
+    isLoading: isLoadingWorkspaceConnection,
+  } = useWorkspaceGitHubConnection();
+
+  // Use team-level sync operations (these don't require team connection anymore)
+  const {
     pushDocuments,
     pullDocuments,
     getSyncConfigs,
@@ -94,15 +81,7 @@ export default function TeamGitHub() {
 
   const { folders } = useDocuments(teamId || '');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
-  const [repoToUnlink, setRepoToUnlink] = useState<string | null>(null);
-
-  // Link repo state
-  const [showLinkRepoDialog, setShowLinkRepoDialog] = useState(false);
-  const [selectedRepoToLink, setSelectedRepoToLink] = useState<GitHubRepoInfo | null>(null);
-  const [isLinking, setIsLinking] = useState(false);
 
   // Sync config state (multi-folder)
   const [repoToConfigureSync, setRepoToConfigureSync] = useState<GitHubRepository | null>(null);
@@ -113,76 +92,6 @@ export default function TeamGitHub() {
   // Sync state
   const [syncingRepoId, setSyncingRepoId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ message: string; pushedCount: number; pulledCount: number } | null>(null);
-
-  const handleOAuthConnect = async () => {
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      await connectWithOAuth();
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to start OAuth flow'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDisconnect = async () => {
-    setIsSubmitting(true);
-    try {
-      await deleteConnection();
-      setShowDisconnectDialog(false);
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to disconnect GitHub'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUnlinkRepo = async () => {
-    if (!repoToUnlink) return;
-    try {
-      await unlinkRepository(repoToUnlink);
-      setRepoToUnlink(null);
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to unlink repository'
-      );
-    }
-  };
-
-  const handleOpenLinkDialog = async () => {
-    setShowLinkRepoDialog(true);
-    setSelectedRepoToLink(null);
-    await fetchAvailableRepos();
-  };
-
-  const handleLinkRepo = async () => {
-    if (!selectedRepoToLink) return;
-    setIsLinking(true);
-    try {
-      await linkRepository({
-        repo_full_name: selectedRepoToLink.full_name,
-        repo_name: selectedRepoToLink.name,
-        repo_owner: selectedRepoToLink.full_name.split('/')[0],
-        repo_url: selectedRepoToLink.html_url,
-        default_branch: selectedRepoToLink.default_branch ?? 'main',
-        is_private: selectedRepoToLink.private,
-      });
-      setShowLinkRepoDialog(false);
-      setSelectedRepoToLink(null);
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Failed to link repository'
-      );
-    } finally {
-      setIsLinking(false);
-    }
-  };
 
   const handleOpenSyncConfig = async (repo: GitHubRepository) => {
     setRepoToConfigureSync(repo);
@@ -307,7 +216,7 @@ export default function TeamGitHub() {
     }
   };
 
-  if (isLoading) {
+  if (isLoadingWorkspaceConnection) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -315,14 +224,8 @@ export default function TeamGitHub() {
     );
   }
 
-  if (error) {
-    return (
-      <Alert variant="destructive" className="m-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error.message}</AlertDescription>
-      </Alert>
-    );
-  }
+  // Get repositories from workspace connection
+  const repositories = workspaceConnection?.repositories || [];
 
   return (
     <div className="h-full overflow-y-auto space-y-6 p-6">
@@ -331,7 +234,7 @@ export default function TeamGitHub() {
         <div>
           <h1 className="text-2xl font-semibold">GitHub Integration</h1>
           <p className="text-sm text-muted-foreground">
-            Connect GitHub to {team?.name || 'this team'} using a Personal Access Token
+            Sync documents from {team?.name || 'this team'} with GitHub repositories
           </p>
         </div>
       </div>
@@ -343,96 +246,50 @@ export default function TeamGitHub() {
         </Alert>
       )}
 
-      {/* Connection Status Card */}
+      {/* Workspace Connection Status Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Link className="h-5 w-5" />
-            Connection Status
+            <Github className="h-5 w-5" />
+            Workspace GitHub Connection
           </CardTitle>
           <CardDescription>
-            {connection
-              ? 'Your GitHub account is connected'
-              : 'Connect your GitHub account to link repositories'}
+            GitHub is connected at the workspace level and shared across all teams
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {connection ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Github className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium">
-                      {connection.github_username || 'GitHub Connected'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Connected {format(new Date(connection.connected_at), 'MMM d, yyyy')}
-                    </p>
-                  </div>
+          {workspaceConnection ? (
+            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Github className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Connected
-                </Badge>
+                <div>
+                  <p className="font-medium">
+                    @{workspaceConnection.github_username || 'GitHub Connected'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Connected {format(new Date(workspaceConnection.connected_at), 'MMM d, yyyy')}
+                  </p>
+                </div>
               </div>
-
-              {/* Reconnect Section */}
-              <div className="border-t pt-4 space-y-3">
-                <Label>Reconnect GitHub</Label>
-                <p className="text-sm text-muted-foreground">
-                  If you need to refresh your connection or change accounts, reconnect below.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleOAuthConnect}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Reconnecting...
-                    </>
-                  ) : (
-                    <>
-                      <Github className="h-4 w-4 mr-2" />
-                      Reconnect with GitHub
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Disconnect Button */}
-              <div className="border-t pt-4">
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowDisconnectDialog(true)}
-                >
-                  <Unlink className="h-4 w-4 mr-2" />
-                  Disconnect GitHub
-                </Button>
-              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                Connected
+              </Badge>
             </div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Click the button below to authorize this app with your GitHub account.
-                This will allow us to access your repositories.
+            <div className="text-center py-6">
+              <Github className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+              <h3 className="font-medium mb-2">GitHub Not Connected</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Connect GitHub in Organization Settings to enable document sync
               </p>
-
-              <Button onClick={handleOAuthConnect} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <Github className="h-4 w-4 mr-2" />
-                    Connect with GitHub
-                  </>
-                )}
+              <Button asChild>
+                <RouterLink to="/settings/organization">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Go to Organization Settings
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </RouterLink>
               </Button>
             </div>
           )}
@@ -449,23 +306,19 @@ export default function TeamGitHub() {
         </Alert>
       )}
 
-      {/* Linked Repositories */}
-      {connection && (
+      {/* Available Repositories for Sync */}
+      {workspaceConnection && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader>
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Github className="h-5 w-5" />
-                Linked Repositories
+                <FolderSync className="h-5 w-5" />
+                Document Sync
               </CardTitle>
               <CardDescription>
-                Repositories linked to this team ({repositories.length})
+                Configure which repositories sync with this team's document folders ({repositories.length} available)
               </CardDescription>
             </div>
-            <Button onClick={handleOpenLinkDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Link Repository
-            </Button>
           </CardHeader>
           <CardContent>
             {repositories.length === 0 ? (
@@ -473,8 +326,13 @@ export default function TeamGitHub() {
                 <Github className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No repositories linked yet</p>
                 <p className="text-sm">
-                  Click "Link Repository" to connect a GitHub repository
+                  Link repositories in Organization Settings to enable sync
                 </p>
+                <Button asChild variant="outline" className="mt-4">
+                  <RouterLink to="/settings/organization">
+                    Go to Organization Settings
+                  </RouterLink>
+                </Button>
               </div>
             ) : (
               <Table>
@@ -483,7 +341,6 @@ export default function TeamGitHub() {
                     <TableHeaderCell>Repository</TableHeaderCell>
                     <TableHeaderCell>Visibility</TableHeaderCell>
                     <TableHeaderCell>Sync Status</TableHeaderCell>
-                    <TableHeaderCell>Last Synced</TableHeaderCell>
                     <TableHeaderCell className="w-[200px]">Actions</TableHeaderCell>
                   </TableRow>
                 </TableHead>
@@ -548,11 +405,6 @@ export default function TeamGitHub() {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {repo.last_synced_at
-                            ? format(new Date(repo.last_synced_at), 'MMM d, yyyy h:mm a')
-                            : 'Never'}
-                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             {hasSyncConfig ? (
@@ -589,14 +441,6 @@ export default function TeamGitHub() {
                                 Setup Sync
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setRepoToUnlink(repo.id)}
-                              title="Unlink repository"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -608,144 +452,6 @@ export default function TeamGitHub() {
           </CardContent>
         </Card>
       )}
-
-      {/* Disconnect Confirmation Dialog */}
-      <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Disconnect GitHub?</DialogTitle>
-            <DialogDescription>
-              This will remove the GitHub connection and all linked repositories
-              for this team. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDisconnectDialog(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDisconnect}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Disconnect'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Unlink Repository Confirmation Dialog */}
-      <Dialog open={!!repoToUnlink} onOpenChange={() => setRepoToUnlink(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unlink Repository?</DialogTitle>
-            <DialogDescription>
-              This will remove the repository link from this team. You can
-              re-link it later.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRepoToUnlink(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleUnlinkRepo}>
-              Unlink
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Link Repository Dialog */}
-      <Dialog open={showLinkRepoDialog} onOpenChange={setShowLinkRepoDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Link GitHub Repository</DialogTitle>
-            <DialogDescription>
-              Select a repository from your GitHub account to link to this team.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {isLoadingAvailableRepos ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : availableRepos.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Github className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No repositories available</p>
-                <p className="text-sm">Make sure your GitHub account has repositories</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Repository</Label>
-                <Select
-                  value={selectedRepoToLink?.full_name || ''}
-                  onValueChange={(value) => {
-                    const repo = availableRepos.find(r => r.full_name === value);
-                    setSelectedRepoToLink(repo || null);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a repository" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableRepos.map((repo) => (
-                      <SelectItem key={repo.id} value={repo.full_name}>
-                        <div className="flex items-center gap-2">
-                          {repo.private ? (
-                            <Lock className="h-3 w-3" />
-                          ) : (
-                            <Globe className="h-3 w-3" />
-                          )}
-                          {repo.full_name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedRepoToLink?.description && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {selectedRepoToLink.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowLinkRepoDialog(false)}
-              disabled={isLinking}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleLinkRepo}
-              disabled={!selectedRepoToLink || isLinking}
-            >
-              {isLinking ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Linking...
-                </>
-              ) : (
-                <>
-                  <Link className="h-4 w-4 mr-2" />
-                  Link Repository
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Configure Sync Dialog - Multi-folder */}
       <Dialog open={!!repoToConfigureSync} onOpenChange={() => setRepoToConfigureSync(null)}>
@@ -787,36 +493,44 @@ export default function TeamGitHub() {
 
               {/* Folder list with checkboxes */}
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {folderSyncConfigs.map((config) => (
-                  <div key={config.folderId} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
-                    <Checkbox
-                      id={`folder-${config.folderId}`}
-                      checked={config.selected}
-                      onCheckedChange={() => toggleFolderSelection(config.folderId)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1 space-y-1">
-                      <label
-                        htmlFor={`folder-${config.folderId}`}
-                        className="flex items-center gap-2 text-sm font-medium cursor-pointer"
-                      >
-                        <Folder className="h-4 w-4 text-muted-foreground" />
-                        {config.folderName}
-                      </label>
-                      {config.selected && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <Input
-                            value={config.githubPath}
-                            onChange={(e) => updateFolderGitHubPath(config.folderId, e.target.value)}
-                            placeholder={config.folderName}
-                            className="h-7 text-xs"
-                          />
-                        </div>
-                      )}
-                    </div>
+                {folderSyncConfigs.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No folders available</p>
+                    <p className="text-xs">Create folders in the Documents section first</p>
                   </div>
-                ))}
+                ) : (
+                  folderSyncConfigs.map((config) => (
+                    <div key={config.folderId} className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50">
+                      <Checkbox
+                        id={`folder-${config.folderId}`}
+                        checked={config.selected}
+                        onCheckedChange={() => toggleFolderSelection(config.folderId)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <label
+                          htmlFor={`folder-${config.folderId}`}
+                          className="flex items-center gap-2 text-sm font-medium cursor-pointer"
+                        >
+                          <Folder className="h-4 w-4 text-muted-foreground" />
+                          {config.folderName}
+                        </label>
+                        {config.selected && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">→</span>
+                            <Input
+                              value={config.githubPath}
+                              onChange={(e) => updateFolderGitHubPath(config.folderId, e.target.value)}
+                              placeholder={config.folderName}
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <p className="text-xs text-muted-foreground">
