@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use base64::Engine as _;
 use db::models::github_connection::{
@@ -15,7 +15,7 @@ use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
 use db::models::team_member::{
     CreateTeamInvitation, CreateTeamMember, TeamInvitation, TeamInvitationWithTeam,
-    TeamMember, UpdateTeamMemberRole,
+    TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
 };
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
@@ -1425,6 +1425,43 @@ pub async fn delete_team_invitation(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Update a team invitation's role (only for pending invitations)
+pub async fn update_team_invitation(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, invitation_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<UpdateTeamInvitation>,
+) -> Result<ResponseJson<ApiResponse<TeamInvitation>>, ApiError> {
+    // Verify the invitation belongs to this team
+    let existing = TeamInvitation::find_by_id(&deployment.db().pool, invitation_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Invitation does not belong to this team".to_string()));
+    }
+
+    // Only pending invitations can be updated
+    if existing.status != db::models::team_member::TeamInvitationStatus::Pending {
+        return Err(ApiError::BadRequest("Only pending invitations can be updated".to_string()));
+    }
+
+    let updated = TeamInvitation::update_role(&deployment.db().pool, invitation_id, payload.role).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_role_updated",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "invitation_id": invitation_id.to_string(),
+                "new_role": payload.role.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
 // ============================================================================
 // User Invitations Routes (for the invitee)
 // ============================================================================
@@ -1583,7 +1620,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/invitations",
             get(get_team_invitations).post(create_team_invitation),
         )
-        .route("/invitations/{invitation_id}", delete(delete_team_invitation))
+        .route(
+            "/invitations/{invitation_id}",
+            put(update_team_invitation).delete(delete_team_invitation),
+        )
         // GitHub connection routes
         .route(
             "/github",

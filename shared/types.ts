@@ -86,6 +86,8 @@ token: string | null, expires_at: Date, created_at: Date, };
 
 export type CreateTeamInvitation = { email: string, role: TeamMemberRole | null, };
 
+export type UpdateTeamInvitation = { role: TeamMemberRole, };
+
 export type GitHubConnection = { id: string, 
 /**
  * Team ID - NULL for workspace-level connection

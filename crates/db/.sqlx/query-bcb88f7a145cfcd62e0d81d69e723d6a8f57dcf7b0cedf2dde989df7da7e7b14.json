@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE team_invitations\n               SET role = $2\n               WHERE id = $1 AND status = 'pending'\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         email,\n                         role,\n                         status,\n                         invited_by as \"invited_by: Uuid\",\n                         token,\n                         expires_at as \"expires_at!: DateTime<Utc>\",\n                         created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "role",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "invited_by: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "token",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "bcb88f7a145cfcd62e0d81d69e723d6a8f57dcf7b0cedf2dde989df7da7e7b14"
+}

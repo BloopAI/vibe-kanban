@@ -129,6 +129,7 @@ import {
   TeamInvitation,
   TeamInvitationWithTeam,
   CreateTeamInvitation,
+  UpdateTeamInvitation,
   InvitationByTokenResponse,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
@@ -1724,6 +1725,21 @@ export const teamsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  updateInvitationRole: async (
+    teamId: string,
+    invitationId: string,
+    data: UpdateTeamInvitation
+  ): Promise<TeamInvitation> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/invitations/${invitationId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<TeamInvitation>(response);
   },
 };
 

@@ -19,6 +19,7 @@ export interface UseTeamMembersResult {
   updateMemberRole: (memberId: string, role: TeamMemberRole) => Promise<TeamMember>;
   removeMember: (memberId: string) => Promise<void>;
   createInvitation: (data: CreateTeamInvitation) => Promise<TeamInvitation>;
+  updateInvitationRole: (invitationId: string, role: TeamMemberRole) => Promise<TeamInvitation>;
   cancelInvitation: (invitationId: string) => Promise<void>;
 }
 
@@ -100,6 +101,18 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     [teamId]
   );
 
+  const updateInvitationRole = useCallback(
+    async (invitationId: string, role: TeamMemberRole) => {
+      if (!teamId) throw new Error('No team selected');
+      const updated = await teamsApi.updateInvitationRole(teamId, invitationId, { role });
+      setInvitations((prev) =>
+        prev.map((i) => (i.id === invitationId ? updated : i))
+      );
+      return updated;
+    },
+    [teamId]
+  );
+
   const cancelInvitation = useCallback(
     async (invitationId: string) => {
       if (!teamId) throw new Error('No team selected');
@@ -119,6 +132,7 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
     updateMemberRole,
     removeMember,
     createInvitation,
+    updateInvitationRole,
     cancelInvitation,
   };
 }

@@ -180,16 +180,30 @@ function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProp
 
 interface InvitationRowProps {
   invitation: TeamInvitation;
+  onRoleChange: (invitationId: string, role: TeamMemberRole) => Promise<void>;
   onCancel: (invitationId: string) => Promise<void>;
   onResend?: (invitation: TeamInvitation) => Promise<void>;
+  isUpdating?: boolean;
 }
 
-function InvitationRow({ invitation, onCancel, onResend }: InvitationRowProps) {
+function InvitationRow({ invitation, onRoleChange, onCancel, onResend, isUpdating }: InvitationRowProps) {
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isChangingRole, setIsChangingRole] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const expiresAt = new Date(invitation.expires_at);
   const isExpired = invitation.status === 'expired' || expiresAt < new Date();
   const isPending = invitation.status === 'pending' && !isExpired;
+  const RoleIcon = getRoleIcon(invitation.role);
+
+  const handleRoleChange = async (newRole: TeamMemberRole) => {
+    if (newRole === invitation.role) return;
+    setIsChangingRole(true);
+    try {
+      await onRoleChange(invitation.id, newRole);
+    } finally {
+      setIsChangingRole(false);
+    }
+  };
 
   const handleCancel = async () => {
     setIsCanceling(true);
@@ -250,9 +264,38 @@ function InvitationRow({ invitation, onCancel, onResend }: InvitationRowProps) {
         <Badge variant={getStatusBadgeVariant(effectiveStatus)} className="capitalize">
           {effectiveStatus}
         </Badge>
-        <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize">
-          {invitation.role}
-        </Badge>
+
+        {/* Role selector - editable for pending invitations, static badge for others */}
+        {isPending ? (
+          <Select
+            value={invitation.role}
+            onValueChange={handleRoleChange}
+            disabled={isUpdating || isChangingRole}
+          >
+            <SelectTrigger className="w-32 h-8">
+              <SelectValue>
+                <div className="flex items-center gap-1.5">
+                  <RoleIcon className="h-3.5 w-3.5" />
+                  <span className="capitalize">{invitation.role}</span>
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ROLE_OPTIONS.filter(o => o.value !== 'owner').map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <div className="flex items-center gap-2">
+                    <option.icon className="h-4 w-4" />
+                    <span>{option.label}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize">
+            {invitation.role}
+          </Badge>
+        )}
 
         {/* Copy Link button - only for pending invitations with token */}
         {isPending && invitation.token && (
@@ -316,6 +359,7 @@ export function TeamMembers() {
     error,
     updateMemberRole,
     removeMember,
+    updateInvitationRole,
     cancelInvitation,
   } = useTeamMembers(teamId);
 
@@ -347,6 +391,15 @@ export function TeamMembers() {
 
   const handleCancelInvitation = async (invitationId: string) => {
     await cancelInvitation(invitationId);
+  };
+
+  const handleInvitationRoleChange = async (invitationId: string, role: TeamMemberRole) => {
+    setIsUpdating(true);
+    try {
+      await updateInvitationRole(invitationId, role);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   if (!team) {
@@ -442,7 +495,9 @@ export function TeamMembers() {
                       <InvitationRow
                         key={invitation.id}
                         invitation={invitation}
+                        onRoleChange={handleInvitationRoleChange}
                         onCancel={handleCancelInvitation}
+                        isUpdating={isUpdating}
                       />
                     ))}
                   </div>

@@ -154,6 +154,12 @@ pub struct CreateTeamInvitation {
     pub role: Option<TeamMemberRole>,
 }
 
+/// Request to update a team invitation's role
+#[derive(Debug, Deserialize, TS)]
+pub struct UpdateTeamInvitation {
+    pub role: TeamMemberRole,
+}
+
 // Helper struct for raw DB rows
 #[derive(FromRow)]
 struct TeamMemberRow {
@@ -647,5 +653,36 @@ impl TeamInvitation {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    /// Update an invitation's role (only for pending invitations)
+    pub async fn update_role(
+        pool: &SqlitePool,
+        id: Uuid,
+        new_role: TeamMemberRole,
+    ) -> Result<Self, sqlx::Error> {
+        let role_str = new_role.to_string();
+
+        let row = sqlx::query_as!(
+            TeamInvitationRow,
+            r#"UPDATE team_invitations
+               SET role = $2
+               WHERE id = $1 AND status = 'pending'
+               RETURNING id as "id!: Uuid",
+                         team_id as "team_id!: Uuid",
+                         email,
+                         role,
+                         status,
+                         invited_by as "invited_by: Uuid",
+                         token,
+                         expires_at as "expires_at!: DateTime<Utc>",
+                         created_at as "created_at!: DateTime<Utc>""#,
+            id,
+            role_str
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(row.into())
     }
 }
