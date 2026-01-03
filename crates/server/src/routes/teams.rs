@@ -987,12 +987,12 @@ pub async fn pull_documents_from_github(
 
 /// Get sync configurations for a repository
 pub async fn get_repo_sync_configs(
-    Extension(team): Extension<Team>,
+    Extension(_team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
     Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepoSyncConfig>>>, ApiError> {
-    // Verify the repo belongs to this team
-    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+    // Try workspace-level connection first, fall back to team-level
+    let connection = GitHubConnection::find_workspace_connection(&deployment.db().pool)
         .await?
         .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
 
@@ -1002,7 +1002,7 @@ pub async fn get_repo_sync_configs(
 
     if repo.connection_id != connection.id {
         return Err(ApiError::BadRequest(
-            "Repository does not belong to this team".to_string(),
+            "Repository does not belong to this workspace".to_string(),
         ));
     }
 
@@ -1017,8 +1017,8 @@ pub async fn configure_multi_folder_sync(
     Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<ConfigureMultiFolderSync>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitHubRepoSyncConfig>>>, ApiError> {
-    // Verify the repo belongs to this team
-    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+    // Try workspace-level connection first
+    let connection = GitHubConnection::find_workspace_connection(&deployment.db().pool)
         .await?
         .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
 
@@ -1028,7 +1028,7 @@ pub async fn configure_multi_folder_sync(
 
     if repo.connection_id != connection.id {
         return Err(ApiError::BadRequest(
-            "Repository does not belong to this team".to_string(),
+            "Repository does not belong to this workspace".to_string(),
         ));
     }
 
@@ -1063,12 +1063,12 @@ pub async fn configure_multi_folder_sync(
 
 /// Clear all sync configurations for a repository
 pub async fn clear_multi_folder_sync(
-    Extension(team): Extension<Team>,
+    Extension(_team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
     Path((_team_id, repo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    // Verify the repo belongs to this team
-    let connection = GitHubConnection::find_by_team_id(&deployment.db().pool, team.id)
+    // Try workspace-level connection first
+    let connection = GitHubConnection::find_workspace_connection(&deployment.db().pool)
         .await?
         .ok_or_else(|| ApiError::NotFound("GitHub connection not found".to_string()))?;
 
@@ -1078,7 +1078,7 @@ pub async fn clear_multi_folder_sync(
 
     if repo.connection_id != connection.id {
         return Err(ApiError::BadRequest(
-            "Repository does not belong to this team".to_string(),
+            "Repository does not belong to this workspace".to_string(),
         ));
     }
 
