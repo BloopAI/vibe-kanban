@@ -236,23 +236,42 @@ export function TeamDocuments() {
   );
 
   const handleScanFilesystem = useCallback(async () => {
-    if (!currentFolderId) return;
-
     setIsScanning(true);
     setScanResult(null);
 
     try {
-      const result = await scanFilesystem(currentFolderId);
-      setScanResult({
-        added: result.documents_added,
-        scanned: result.files_scanned,
-      });
+      if (currentFolderId) {
+        // Scan single folder
+        const result = await scanFilesystem(currentFolderId);
+        setScanResult({
+          added: result.documents_added,
+          scanned: result.files_scanned,
+        });
+      } else {
+        // Scan all folders
+        let totalAdded = 0;
+        let totalScanned = 0;
+        for (const folder of folders) {
+          try {
+            const result = await scanFilesystem(folder.id);
+            totalAdded += result.documents_added;
+            totalScanned += result.files_scanned;
+          } catch (err) {
+            // Continue scanning other folders even if one fails
+            console.warn(`Failed to scan folder ${folder.name}:`, err);
+          }
+        }
+        setScanResult({
+          added: totalAdded,
+          scanned: totalScanned,
+        });
+      }
     } catch (err) {
       console.error('Failed to scan filesystem:', err);
     } finally {
       setIsScanning(false);
     }
-  }, [currentFolderId, scanFilesystem]);
+  }, [currentFolderId, folders, scanFilesystem]);
 
   const handleGitHubSync = useCallback(async () => {
     if (!teamId || !linkedRepos || linkedRepos.length === 0) return;
@@ -581,22 +600,20 @@ export function TeamDocuments() {
             <span className="text-muted-foreground">/ Documents</span>
           </div>
           <div className="flex items-center gap-2">
-            {currentFolderId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleScanFilesystem}
-                disabled={isScanning}
-                title="Scan local filesystem for documents in this folder"
-              >
-                {isScanning ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                )}
-                Local Scan
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleScanFilesystem}
+              disabled={isScanning}
+              title={currentFolderId ? "Scan local filesystem for documents in this folder" : "Scan all folders for documents"}
+            >
+              {isScanning ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-1" />
+              )}
+              Local Scan
+            </Button>
             {githubConnection && linkedRepos && linkedRepos.length > 0 && (
               <Button
                 variant="outline"
