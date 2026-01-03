@@ -44,6 +44,8 @@ import {
   Users,
   CheckSquare,
   Square,
+  ArrowUpDown,
+  Check,
 } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
@@ -102,6 +104,10 @@ export function OrganizationSettings() {
   }>>([]);
   const [isLoadingSyncConfigs, setIsLoadingSyncConfigs] = useState(false);
   const [isConfiguringSync, setIsConfiguringSync] = useState(false);
+
+  // Bidirectional sync state
+  const [syncingRepoId, setSyncingRepoId] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{ repoId: string; pulled: number; pushed: number } | null>(null);
 
   // Fetch all organizations
   const {
@@ -238,6 +244,7 @@ export function OrganizationSettings() {
   const {
     linkRepository: linkGitHubRepository,
     unlinkRepository: unlinkGitHubRepository,
+    syncRepository,
   } = useWorkspaceGitHubMutations();
 
   // Teams for sync configuration
@@ -362,6 +369,54 @@ export function OrganizationSettings() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to unlink repository');
+    }
+  };
+
+  // Bidirectional sync handler
+  const handleSyncRepo = async (repoId: string) => {
+    // Get the first team that has sync configs for this repo
+    // For simplicity, we use the first team - in a more complete implementation
+    // you might want to let the user choose which team to sync
+    if (teams.length === 0) {
+      setError('No teams available for sync');
+      return;
+    }
+
+    setSyncingRepoId(repoId);
+    setSyncResult(null);
+    setError(null);
+
+    try {
+      // Try each team until we find one with sync configs
+      let syncSucceeded = false;
+      for (const team of teams) {
+        try {
+          const result = await syncRepository.mutateAsync({ teamId: team.id, repoId });
+          setSyncResult({
+            repoId,
+            pulled: result.pulled.files_synced,
+            pushed: result.pushed.files_synced
+          });
+          setSuccess(`Sync complete: ${result.pulled.files_synced} pulled, ${result.pushed.files_synced} pushed`);
+          setTimeout(() => {
+            setSuccess(null);
+            setSyncResult(null);
+          }, 5000);
+          syncSucceeded = true;
+          break;
+        } catch (teamErr) {
+          // This team may not have sync configs, try next
+          continue;
+        }
+      }
+
+      if (!syncSucceeded) {
+        setError('No sync configuration found. Configure sync first.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setSyncingRepoId(null);
     }
   };
 
@@ -594,6 +649,32 @@ export function OrganizationSettings() {
                       >
                         <FolderSync className="h-4 w-4 mr-1" />
                         Configure Sync
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleSyncRepo(repo.id)}
+                        disabled={syncingRepoId === repo.id}
+                        title="Sync documents with GitHub (pull + push)"
+                      >
+                        {syncingRepoId === repo.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Syncing...
+                          </>
+                        ) : syncResult?.repoId === repo.id ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            <span className="text-xs">
+                              ↓{syncResult.pulled} ↑{syncResult.pushed}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpDown className="h-4 w-4 mr-1" />
+                            Sync
+                          </>
+                        )}
                       </Button>
                       <Button
                         variant="ghost"

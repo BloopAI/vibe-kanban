@@ -7,7 +7,15 @@ import type {
   UpdateGitHubConnection,
   LinkGitHubRepository,
   GitHubRepoInfo,
+  SyncOperationResponse,
 } from 'shared/types';
+
+// Result of bidirectional sync operation
+export interface BidirectionalSyncResult {
+  pulled: SyncOperationResponse;
+  pushed: SyncOperationResponse;
+  totalFilesSynced: number;
+}
 
 const QUERY_KEY = ['workspace', 'github'];
 
@@ -74,11 +82,34 @@ export function useWorkspaceGitHubMutations() {
     },
   });
 
+  // Bidirectional sync: pull from GitHub first, then push local changes
+  const syncRepository = useMutation({
+    mutationFn: async ({ teamId, repoId }: { teamId: string; repoId: string }): Promise<BidirectionalSyncResult> => {
+      // First pull from GitHub to get any remote changes
+      const pulled = await teamsApi.pullDocumentsFromGitHub(teamId, repoId);
+
+      // Then push local changes to GitHub
+      const pushed = await teamsApi.pushDocumentsToGitHub(teamId, repoId, {
+        commit_message: null,
+      });
+
+      return {
+        pulled,
+        pushed,
+        totalFilesSynced: pulled.files_synced + pushed.files_synced,
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+
   return {
     createConnection,
     updateConnection,
     deleteConnection,
     linkRepository,
     unlinkRepository,
+    syncRepository,
   };
 }
