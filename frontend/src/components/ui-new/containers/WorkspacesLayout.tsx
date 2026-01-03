@@ -16,7 +16,7 @@ import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanel
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
 import { useDiffStream } from '@/hooks/useDiffStream';
@@ -64,6 +64,35 @@ function GitPanelContainer({
 
   // Merge hook for merge action
   const merge = useMerge(selectedWorkspace?.id);
+
+  // Handle copying repo path to clipboard
+  const handleCopyPath = useCallback(
+    (repoId: string) => {
+      const repo = repos.find((r) => r.id === repoId);
+      if (repo?.path) {
+        navigator.clipboard.writeText(repo.path);
+      }
+    },
+    [repos]
+  );
+
+  // Handle opening repo in editor
+  const handleOpenInEditor = useCallback(async (repoId: string) => {
+    try {
+      const response = await repoApi.openEditor(repoId, {
+        editor_type: null,
+        file_path: null,
+      });
+
+      // If a URL is returned (remote mode), open it in a new tab
+      if (response.url) {
+        window.open(response.url, '_blank');
+      }
+    } catch (err) {
+      console.error('Failed to open repo in editor:', err);
+      setError(err instanceof Error ? err.message : 'Failed to open editor');
+    }
+  }, []);
 
   // Handle GitPanel actions
   const handleActionsClick = useCallback(
@@ -146,6 +175,8 @@ function GitPanelContainer({
       workingBranchName={selectedWorkspace?.branch ?? ''}
       onWorkingBranchNameChange={onBranchNameChange}
       onActionsClick={handleActionsClick}
+      onOpenInEditor={handleOpenInEditor}
+      onCopyPath={handleCopyPath}
       onAddRepo={() => console.log('Add repo clicked')}
       error={error}
     />
