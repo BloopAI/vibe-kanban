@@ -467,9 +467,14 @@ pub async fn scan_filesystem(
         return Err(ApiError::NotFound("Folder not found".to_string()));
     }
 
-    // Build the filesystem path for this team's documents
-    let base_path = asset_dir();
-    let team_docs_path = base_path.join("documents").join(team.id.to_string());
+    // Use folder's local_path if set, otherwise fall back to default path
+    let scan_path = if let Some(ref local_path) = folder.local_path {
+        std::path::PathBuf::from(local_path)
+    } else {
+        // Default fallback: dev_assets/documents/{team_id}/
+        let base_path = asset_dir();
+        base_path.join("documents").join(team.id.to_string())
+    };
 
     // Get all existing documents for this folder to avoid duplicates
     let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, Some(folder_id)).await?;
@@ -478,13 +483,20 @@ pub async fn scan_filesystem(
         .filter_map(|d| d.file_path.clone())
         .collect();
 
+    // Also build a set of normalized existing titles for matching
+    let existing_titles: HashSet<String> = existing_docs
+        .iter()
+        .map(|d| d.title.to_lowercase().replace(' ', "-"))
+        .collect();
+
     let mut documents_added = 0;
     let mut added_titles = Vec::new();
     let mut files_scanned = 0;
+    let mut documents_updated = 0;
 
     // Scan the directory for markdown files
-    if team_docs_path.exists() {
-        let mut entries = tokio::fs::read_dir(&team_docs_path).await
+    if scan_path.exists() {
+        let mut entries = tokio::fs::read_dir(&scan_path).await
             .map_err(|e| ApiError::Io(e))?;
 
         while let Some(entry) = entries.next_entry().await.map_err(|e| ApiError::Io(e))? {
@@ -498,39 +510,103 @@ pub async fn scan_filesystem(
             files_scanned += 1;
             let path_str = path.to_string_lossy().to_string();
 
-            // Skip if already registered
-            if existing_paths.contains(&path_str) {
-                continue;
-            }
-
-            // Also check if any document in the team (any folder) already has this path
-            let all_team_docs = Document::find_all_by_team(&deployment.db().pool, team.id, false).await?;
-            let all_paths: HashSet<String> = all_team_docs
-                .iter()
-                .filter_map(|d| d.file_path.clone())
-                .collect();
-
-            if all_paths.contains(&path_str) {
-                continue;
-            }
-
-            // Extract title from filename (remove .md extension)
-            let title = path
+            // Extract title from filename (remove .md extension, convert kebab-case to Title Case)
+            let file_stem = path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .unwrap_or("Untitled")
-                .to_string();
+                .unwrap_or("Untitled");
+
+            let title = file_stem
+                .split('-')
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().chain(chars).collect(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            // Normalized title for matching
+            let normalized_title = file_stem.to_lowercase();
+
+            // Check if document already exists by path
+            if existing_paths.contains(&path_str) {
+                // Path matches, update content from file
+                if let Some(existing_doc) = existing_docs.iter().find(|d| d.file_path.as_ref() == Some(&path_str)) {
+                    // Read file content
+                    let content = tokio::fs::read_to_string(&path).await.ok();
+                    if content.is_some() {
+                        // Update document content
+                        let update_payload = UpdateDocument {
+                            folder_id: Some(folder_id),
+                            title: Some(existing_doc.title.clone()),
+                            content,
+                            icon: None,
+                            is_pinned: None,
+                            is_archived: None,
+                            position: None,
+                        };
+                        Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                        documents_updated += 1;
+                    }
+                }
+                continue;
+            }
+
+            // Check if document exists by normalized title
+            if existing_titles.contains(&normalized_title) {
+                // Title matches, update the existing document with new file path and content
+                if let Some(existing_doc) = existing_docs.iter().find(|d|
+                    d.title.to_lowercase().replace(' ', "-") == normalized_title
+                ) {
+                    let content = tokio::fs::read_to_string(&path).await.ok();
+                    let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
+                    let file_size = metadata.len() as i64;
+
+                    // Update content
+                    if content.is_some() {
+                        let update_payload = UpdateDocument {
+                            folder_id: Some(folder_id),
+                            title: Some(existing_doc.title.clone()),
+                            content,
+                            icon: None,
+                            is_pinned: None,
+                            is_archived: None,
+                            position: None,
+                        };
+                        Document::update(&deployment.db().pool, existing_doc.id, &update_payload).await?;
+                    }
+
+                    // Update file metadata
+                    Document::update_file_metadata(
+                        &deployment.db().pool,
+                        existing_doc.id,
+                        &path_str,
+                        file_size,
+                        "text/markdown",
+                        "markdown",
+                    ).await?;
+
+                    documents_updated += 1;
+                }
+                continue;
+            }
+
+            // New document - read content from file
+            let content = tokio::fs::read_to_string(&path).await.ok();
 
             // Get file metadata
             let metadata = tokio::fs::metadata(&path).await.map_err(|e| ApiError::Io(e))?;
             let file_size = metadata.len() as i64;
 
-            // Create document record
+            // Create document record with content
             let create_payload = CreateDocument {
                 team_id: team.id,
                 folder_id: Some(folder_id),
                 title: title.clone(),
-                content: None, // Content loaded from file on read
+                content,
                 file_type: Some("markdown".to_string()),
                 icon: None,
             };
@@ -551,6 +627,8 @@ pub async fn scan_filesystem(
             documents_added += 1;
             added_titles.push(title);
         }
+    } else {
+        tracing::warn!("Scan path does not exist: {:?}", scan_path);
     }
 
     deployment
@@ -560,7 +638,9 @@ pub async fn scan_filesystem(
                 "team_id": team.id.to_string(),
                 "folder_id": folder_id.to_string(),
                 "documents_added": documents_added,
+                "documents_updated": documents_updated,
                 "files_scanned": files_scanned,
+                "local_path": folder.local_path,
             }),
         )
         .await;

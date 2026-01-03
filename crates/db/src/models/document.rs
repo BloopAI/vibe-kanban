@@ -55,6 +55,8 @@ pub struct DocumentFolder {
     pub name: String,
     pub icon: Option<String>,
     pub color: Option<String>,
+    /// Optional local filesystem path for syncing documents
+    pub local_path: Option<String>,
     pub position: i32,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -94,6 +96,8 @@ pub struct CreateDocumentFolder {
     pub name: String,
     pub icon: Option<String>,
     pub color: Option<String>,
+    /// Optional local filesystem path for syncing documents
+    pub local_path: Option<String>,
 }
 
 /// Request to update a folder
@@ -103,6 +107,8 @@ pub struct UpdateDocumentFolder {
     pub name: Option<String>,
     pub icon: Option<String>,
     pub color: Option<String>,
+    /// Optional local filesystem path for syncing documents
+    pub local_path: Option<String>,
     pub position: Option<i32>,
 }
 
@@ -143,6 +149,7 @@ impl DocumentFolder {
                       name,
                       icon,
                       color,
+                      local_path,
                       position as "position!: i32",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -164,6 +171,7 @@ impl DocumentFolder {
                       name,
                       icon,
                       color,
+                      local_path,
                       position as "position!: i32",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -189,6 +197,7 @@ impl DocumentFolder {
                           name,
                           icon,
                           color,
+                          local_path,
                           position as "position!: i32",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>"
@@ -209,6 +218,7 @@ impl DocumentFolder {
                           name,
                           icon,
                           color,
+                          local_path,
                           position as "position!: i32",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>"
@@ -249,14 +259,15 @@ impl DocumentFolder {
 
         sqlx::query_as!(
             DocumentFolder,
-            r#"INSERT INTO document_folders (id, team_id, parent_id, name, icon, color, position)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO document_folders (id, team_id, parent_id, name, icon, color, local_path, position)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          parent_id as "parent_id: Uuid",
                          name,
                          icon,
                          color,
+                         local_path,
                          position as "position!: i32",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -266,6 +277,7 @@ impl DocumentFolder {
             data.name,
             data.icon,
             data.color,
+            data.local_path,
             max_position
         )
         .fetch_one(pool)
@@ -289,12 +301,13 @@ impl DocumentFolder {
         let name = data.name.as_ref().unwrap_or(&existing.name);
         let icon = data.icon.clone().or(existing.icon);
         let color = data.color.clone().or(existing.color);
+        let local_path = data.local_path.clone().or(existing.local_path);
         let position = data.position.unwrap_or(existing.position);
 
         sqlx::query_as!(
             DocumentFolder,
             r#"UPDATE document_folders
-               SET parent_id = $2, name = $3, icon = $4, color = $5, position = $6,
+               SET parent_id = $2, name = $3, icon = $4, color = $5, local_path = $6, position = $7,
                    updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
@@ -303,6 +316,7 @@ impl DocumentFolder {
                          name,
                          icon,
                          color,
+                         local_path,
                          position as "position!: i32",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -311,6 +325,7 @@ impl DocumentFolder {
             name,
             icon,
             color,
+            local_path,
             position
         )
         .fetch_one(pool)

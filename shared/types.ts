@@ -184,13 +184,25 @@ files_scanned: number, };
 
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 
-export type DocumentFolder = { id: string, team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, position: number, created_at: Date, updated_at: Date, };
+export type DocumentFolder = { id: string, team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, 
+/**
+ * Optional local filesystem path for syncing documents
+ */
+local_path: string | null, position: number, created_at: Date, updated_at: Date, };
 
 export type Document = { id: string, team_id: string, folder_id: string | null, title: string, content: string | null, file_path: string | null, file_type: string, file_size: bigint | null, mime_type: string | null, icon: string | null, is_pinned: boolean, is_archived: boolean, position: number, created_by: string | null, created_at: Date, updated_at: Date, };
 
-export type CreateDocumentFolder = { team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, };
+export type CreateDocumentFolder = { team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, 
+/**
+ * Optional local filesystem path for syncing documents
+ */
+local_path: string | null, };
 
-export type UpdateDocumentFolder = { parent_id: string | null, name: string | null, icon: string | null, color: string | null, position: number | null, };
+export type UpdateDocumentFolder = { parent_id: string | null, name: string | null, icon: string | null, color: string | null, 
+/**
+ * Optional local filesystem path for syncing documents
+ */
+local_path: string | null, position: number | null, };
 
 export type CreateDocument = { team_id: string, folder_id: string | null, title: string, content: string | null, file_type: string | null, icon: string | null, };
 

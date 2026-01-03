@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      parent_id as \"parent_id: Uuid\",\n                      name,\n                      icon,\n                      color,\n                      position as \"position!: i32\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM document_folders\n               WHERE team_id = $1\n               ORDER BY position ASC, name ASC",
+  "query": "SELECT id as \"id!: Uuid\",\n                          team_id as \"team_id!: Uuid\",\n                          parent_id as \"parent_id: Uuid\",\n                          name,\n                          icon,\n                          color,\n                          local_path,\n                          position as \"position!: i32\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"\n                   FROM document_folders\n                   WHERE parent_id = $1 AND team_id = $2\n                   ORDER BY position ASC, name ASC",
   "describe": {
     "columns": [
       {
@@ -34,23 +34,28 @@
         "type_info": "Text"
       },
       {
-        "name": "position!: i32",
+        "name": "local_path",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -59,10 +64,11 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "b63900c4633a87ef53c4de57242cd6d5a7b000c08ee0afbb81a4f6b2ac75599c"
+  "hash": "a04bad7ff6a9e61cf08dd9330b5be54f0b45182823ecb6f452d4cdafc70964c7"
 }

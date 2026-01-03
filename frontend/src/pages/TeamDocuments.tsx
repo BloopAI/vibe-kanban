@@ -25,6 +25,9 @@ import {
   GripVertical,
   RefreshCw,
   Loader2,
+  FolderCog,
+  ArrowUpDown,
+  Check,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { Loader } from '@/components/ui/loader';
@@ -49,6 +52,11 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
+import {
+  useWorkspaceGitHubConnection,
+  useWorkspaceGitHubRepositories,
+  useWorkspaceGitHubMutations,
+} from '@/hooks/useWorkspaceGitHub';
 
 import type { Document, DocumentFolder } from 'shared/types';
 
@@ -79,13 +87,21 @@ export function TeamDocuments() {
     updateDocument,
     deleteDocument,
     createFolder,
+    updateFolder,
     deleteFolder,
     scanFilesystem,
   } = useDocuments(teamId || '');
 
+  // GitHub connection hooks
+  const { data: githubConnection } = useWorkspaceGitHubConnection();
+  const { data: linkedRepos } = useWorkspaceGitHubRepositories();
+  const { syncRepository } = useWorkspaceGitHubMutations();
+
   // Dialog states
   const [isCreateDocOpen, setIsCreateDocOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [isLocalPathDialogOpen, setIsLocalPathDialogOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<DocumentFolder | null>(null);
   const [editingDoc, setEditingDoc] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showOutline, setShowOutline] = useState(true);
@@ -94,12 +110,15 @@ export function TeamDocuments() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ added: number; scanned: number } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ pulled: number; pushed: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Form states
   const [newDocTitle, setNewDocTitle] = useState('');
   const [newDocContent, setNewDocContent] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
+  const [folderLocalPath, setFolderLocalPath] = useState('');
 
   // Build breadcrumb path
   const breadcrumbs = useMemo(() => {
@@ -162,6 +181,7 @@ export function TeamDocuments() {
         parent_id: currentFolderId,
         icon: null,
         color: null,
+        local_path: null,
       });
       setIsCreateFolderOpen(false);
       setNewFolderName('');
@@ -238,6 +258,53 @@ export function TeamDocuments() {
       setIsScanning(false);
     }
   }, [currentFolderId, scanFilesystem]);
+
+  const handleOpenLocalPathDialog = useCallback((folder: DocumentFolder) => {
+    setEditingFolder(folder);
+    setFolderLocalPath(folder.local_path || '');
+    setIsLocalPathDialogOpen(true);
+  }, []);
+
+  const handleSaveLocalPath = useCallback(async () => {
+    if (!editingFolder) return;
+
+    try {
+      await updateFolder(editingFolder.id, {
+        parent_id: editingFolder.parent_id,
+        name: editingFolder.name,
+        icon: editingFolder.icon,
+        color: editingFolder.color,
+        local_path: folderLocalPath || null,
+        position: editingFolder.position,
+      });
+      setIsLocalPathDialogOpen(false);
+      setEditingFolder(null);
+      setFolderLocalPath('');
+    } catch (err) {
+      console.error('Failed to update folder local path:', err);
+    }
+  }, [editingFolder, folderLocalPath, updateFolder]);
+
+  const handleGitHubSync = useCallback(async () => {
+    if (!teamId || !linkedRepos || linkedRepos.length === 0) return;
+
+    setIsSyncing(true);
+    setSyncResult(null);
+
+    try {
+      // Sync the first linked repository
+      const repo = linkedRepos[0];
+      const result = await syncRepository.mutateAsync({ teamId, repoId: repo.id });
+      setSyncResult({
+        pulled: result.pulled.files_synced,
+        pushed: result.pushed.files_synced,
+      });
+    } catch (err) {
+      console.error('Failed to sync with GitHub:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [teamId, linkedRepos, syncRepository]);
 
   const handleOpenDocument = useCallback((doc: Document) => {
     setEditingDoc(doc);
@@ -561,6 +628,32 @@ export function TeamDocuments() {
                 Scan
               </Button>
             )}
+            {githubConnection && linkedRepos && linkedRepos.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGitHubSync}
+                disabled={isSyncing}
+                title="Sync documents with GitHub (pull + push)"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Syncing...
+                  </>
+                ) : syncResult ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1" />
+                    <span className="text-xs">↓{syncResult.pulled} ↑{syncResult.pushed}</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUpDown className="h-4 w-4 mr-1" />
+                    Sync
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -709,6 +802,16 @@ export function TeamDocuments() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenLocalPathDialog(folder);
+                            }}
+                          >
+                            <FolderCog className="h-4 w-4 mr-2" />
+                            Set Local Path
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -905,6 +1008,53 @@ export function TeamDocuments() {
               disabled={!newFolderName.trim()}
             >
               Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Local Path Configuration Dialog */}
+      <Dialog open={isLocalPathDialogOpen} onOpenChange={setIsLocalPathDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure Local Path</DialogTitle>
+            <DialogDescription>
+              Set a local filesystem path for this folder. When you click "Scan",
+              documents will be synced from this directory.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="folder-local-path">Local Directory Path</Label>
+              <Input
+                id="folder-local-path"
+                value={folderLocalPath}
+                onChange={(e) => setFolderLocalPath(e.target.value)}
+                placeholder="/Users/yourname/Documents/project-docs"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter the full absolute path to the directory containing your markdown files.
+              </p>
+            </div>
+            {editingFolder?.local_path && (
+              <div className="text-sm text-muted-foreground">
+                Current path: <code className="bg-muted px-1 py-0.5 rounded">{editingFolder.local_path}</code>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLocalPathDialogOpen(false);
+                setEditingFolder(null);
+                setFolderLocalPath('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLocalPath}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                          team_id as \"team_id!: Uuid\",\n                          parent_id as \"parent_id: Uuid\",\n                          name,\n                          icon,\n                          color,\n                          position as \"position!: i32\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"\n                   FROM document_folders\n                   WHERE parent_id = $1 AND team_id = $2\n                   ORDER BY position ASC, name ASC",
+  "query": "INSERT INTO document_folders (id, team_id, parent_id, name, icon, color, local_path, position)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         parent_id as \"parent_id: Uuid\",\n                         name,\n                         icon,\n                         color,\n                         local_path,\n                         position as \"position!: i32\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -34,23 +34,28 @@
         "type_info": "Text"
       },
       {
-        "name": "position!: i32",
+        "name": "local_path",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 8
     },
     "nullable": [
       true,
@@ -59,10 +64,11 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "c5b612bcb4b66919bb310d246c5b658db109d70faeb24329557a62a96387379a"
+  "hash": "088fc41423525ea10da1a43856faa48c46a101d8d09e5d69e73a8573c26b8922"
 }

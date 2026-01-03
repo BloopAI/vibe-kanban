@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE document_folders\n               SET parent_id = $2, name = $3, icon = $4, color = $5, position = $6,\n                   updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         parent_id as \"parent_id: Uuid\",\n                         name,\n                         icon,\n                         color,\n                         position as \"position!: i32\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE document_folders\n               SET parent_id = $2, name = $3, icon = $4, color = $5, local_path = $6, position = $7,\n                   updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         parent_id as \"parent_id: Uuid\",\n                         name,\n                         icon,\n                         color,\n                         local_path,\n                         position as \"position!: i32\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -34,23 +34,28 @@
         "type_info": "Text"
       },
       {
-        "name": "position!: i32",
+        "name": "local_path",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 6
+      "Right": 7
     },
     "nullable": [
       true,
@@ -59,10 +64,11 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "821e3d3d26d0497444929fad796069f9d8b7422b4c3809b4ae0ce2cf58bc50ef"
+  "hash": "346cf8d7d72d5494dce9adda4b6b641ce22d7d453fade7ef6656343008397d45"
 }

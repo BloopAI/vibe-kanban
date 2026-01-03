@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      parent_id as \"parent_id: Uuid\",\n                      name,\n                      icon,\n                      color,\n                      position as \"position!: i32\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM document_folders\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                          team_id as \"team_id!: Uuid\",\n                          parent_id as \"parent_id: Uuid\",\n                          name,\n                          icon,\n                          color,\n                          local_path,\n                          position as \"position!: i32\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"\n                   FROM document_folders\n                   WHERE parent_id IS NULL AND team_id = $1\n                   ORDER BY position ASC, name ASC",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,23 @@
         "type_info": "Text"
       },
       {
-        "name": "position!: i32",
+        "name": "local_path",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
@@ -59,10 +64,11 @@
       false,
       true,
       true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "f678363340d39e4bc07e9a461177adad6ad94c923485a568394ae3cf3ffd7656"
+  "hash": "20940ca1cd8e9bd6dc3b9a7a555c574d24cc340ab427c9c6f2e0faf497601c07"
 }
