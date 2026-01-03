@@ -69,7 +69,7 @@ module.exports = {
         'icon-base': getSize('base', iconMultiplier),
         'icon-lg': getSize('lg', iconMultiplier),
         'icon-xl': getSize('xl', iconMultiplier),
-        'dot': '0.375rem', // 6px - for animated indicator dots
+        'dot': '0.3rem', // 6px - for animated indicator dots
       },
       backgroundImage: {
         'diagonal-lines': `
