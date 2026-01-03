@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,6 +63,8 @@ const FILE_TYPE_ICONS: Record<string, string> = {
 export function TeamDocuments() {
   const { t } = useTranslation(['common']);
   const { teamId } = useParams<{ teamId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const docIdFromUrl = searchParams.get('doc');
 
   const { teamsById, isLoading: teamsLoading } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
@@ -103,6 +105,52 @@ export function TeamDocuments() {
   const [newDocTitle, setNewDocTitle] = useState('');
   const [newDocContent, setNewDocContent] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
+
+  // Handle URL query param for direct document linking
+  useEffect(() => {
+    if (docIdFromUrl && teamId && !editingDoc && !isLoading) {
+      // Fetch and open the document from URL param
+      documentsApi.get(teamId, docIdFromUrl)
+        .then(async (doc) => {
+          // Navigate to the document's folder if needed
+          if (doc.folder_id && doc.folder_id !== currentFolderId) {
+            setCurrentFolderId(doc.folder_id);
+          }
+          // Open the document
+          setEditingDoc(doc);
+          setDocContent(null);
+          setIsLoadingContent(true);
+          setIsMarkdownEditMode(false);
+
+          try {
+            const content = await documentsApi.getContent(teamId, doc.id);
+            setDocContent(content);
+            if (content.content_type === 'text' || content.content_type === 'pdf_text') {
+              setEditingDoc(prev => prev ? { ...prev, content: content.content } : null);
+            }
+          } catch (err) {
+            console.error('Failed to load document content:', err);
+            setDocContent({
+              document_id: doc.id,
+              content_type: 'text',
+              content: doc.content || '',
+              csv_data: null,
+              file_path: doc.file_path,
+              file_type: doc.file_type,
+              mime_type: doc.mime_type,
+            });
+          } finally {
+            setIsLoadingContent(false);
+          }
+        })
+        .catch((err) => {
+          console.error('Document not found:', err);
+          // Remove invalid doc param from URL
+          searchParams.delete('doc');
+          setSearchParams(searchParams, { replace: true });
+        });
+    }
+  }, [docIdFromUrl, teamId, isLoading]);
 
   // Build breadcrumb path
   const breadcrumbs = useMemo(() => {
@@ -255,6 +303,9 @@ export function TeamDocuments() {
     setIsLoadingContent(true);
     setIsMarkdownEditMode(false); // Reset to view mode when opening a new document
 
+    // Update URL with document ID for direct linking
+    setSearchParams({ doc: doc.id }, { replace: true });
+
     try {
       // Fetch content using the new API that handles different file types
       const content = await documentsApi.getContent(teamId!, doc.id);
@@ -278,7 +329,7 @@ export function TeamDocuments() {
     } finally {
       setIsLoadingContent(false);
     }
-  }, [teamId]);
+  }, [teamId, setSearchParams]);
 
   // Drag and drop handlers
   const handleDragStart = useCallback((e: React.DragEvent, docId: string) => {
@@ -519,6 +570,9 @@ export function TeamDocuments() {
                 onClick={() => {
                   setEditingDoc(null);
                   setDocContent(null);
+                  // Clear document ID from URL
+                  searchParams.delete('doc');
+                  setSearchParams(searchParams, { replace: true });
                 }}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
