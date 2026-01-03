@@ -2,7 +2,8 @@ import {
   SidebarSimpleIcon,
   ArchiveIcon,
   ArrowSquareOutIcon,
-  ListDashesIcon,
+  FilesIcon,
+  ChatsTeardropIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,7 @@ export interface NavbarProps {
   workspaceTitle?: string;
   // Panel visibility states
   isSidebarVisible?: boolean;
+  isMainPanelVisible?: boolean;
   isGitPanelVisible?: boolean;
   isChangesMode?: boolean;
   isCreateMode?: boolean;
@@ -59,6 +61,7 @@ export interface NavbarProps {
   isArchived?: boolean;
   // Panel toggle handlers
   onToggleSidebar?: () => void;
+  onToggleMainPanel?: () => void;
   onToggleGitPanel?: () => void;
   onToggleChangesMode?: () => void;
   onToggleArchive?: () => void;
@@ -70,17 +73,21 @@ export interface NavbarProps {
 export function Navbar({
   workspaceTitle = 'Workspace Title',
   isSidebarVisible,
+  isMainPanelVisible,
   isGitPanelVisible,
   isChangesMode,
   isCreateMode,
   isArchived,
   onToggleSidebar,
+  onToggleMainPanel,
   onToggleGitPanel,
   onToggleChangesMode,
   onToggleArchive,
   onNavigateToOldUI,
   className,
 }: NavbarProps) {
+  // Main toggle is disabled when Main is visible and Changes is not (can't hide both)
+  const isMainToggleDisabled = isMainPanelVisible && !isChangesMode;
   return (
     <nav
       className={cn(
@@ -88,19 +95,10 @@ export function Navbar({
         className
       )}
     >
-      {/* Left - Sidebar Toggle, Archive & Old UI Link */}
+      {/* Left - Archive & Old UI Link */}
       <div className="flex-1 flex items-center gap-base">
-        <NavbarIconButton
-          icon={SidebarSimpleIcon}
-          isActive={isSidebarVisible && !isChangesMode}
-          onClick={onToggleSidebar}
-          aria-label="Toggle sidebar"
-          disabled={isChangesMode}
-          className={isChangesMode ? 'opacity-40 cursor-not-allowed' : ''}
-        />
         {(onToggleArchive || onNavigateToOldUI) && (
           <>
-            <div className="w-px h-4 bg-low/20" />
             {onToggleArchive && (
               <NavbarIconButton
                 icon={ArchiveIcon}
@@ -127,10 +125,26 @@ export function Navbar({
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
-      {/* Right - Changes Toggle & Git Panel Toggle */}
+      {/* Right - All Panel Toggles */}
       <div className="flex-1 flex items-center justify-end gap-base">
         <NavbarIconButton
-          icon={ListDashesIcon}
+          icon={SidebarSimpleIcon}
+          isActive={isSidebarVisible}
+          onClick={onToggleSidebar}
+          aria-label="Toggle sidebar"
+        />
+        <NavbarIconButton
+          icon={ChatsTeardropIcon}
+          isActive={isMainPanelVisible}
+          onClick={onToggleMainPanel}
+          aria-label="Toggle main panel"
+          disabled={isMainToggleDisabled}
+          className={
+            isMainToggleDisabled ? 'opacity-40 cursor-not-allowed' : ''
+          }
+        />
+        <NavbarIconButton
+          icon={FilesIcon}
           isActive={isChangesMode}
           onClick={onToggleChangesMode}
           aria-label="Toggle changes mode"
