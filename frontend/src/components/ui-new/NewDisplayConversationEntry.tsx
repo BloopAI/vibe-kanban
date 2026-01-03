@@ -24,6 +24,7 @@ import {
   ChatSystemMessage,
   ChatThinkingMessage,
   ChatErrorMessage,
+  ChatScriptEntry,
 } from './primitives/conversation';
 import type { DiffInput } from './primitives/conversation/DiffViewCard';
 
@@ -150,6 +151,31 @@ function NewDisplayConversationEntry({
         <TodoManagementEntry
           todos={action_type.todos}
           expansionKey={expansionKey}
+        />
+      );
+    }
+
+    // Script entries (Setup Script, Cleanup Script, Tool Install Script)
+    const scriptToolNames = [
+      'Setup Script',
+      'Cleanup Script',
+      'Tool Install Script',
+    ];
+    if (
+      action_type.action === 'command_run' &&
+      scriptToolNames.includes(entryType.tool_name)
+    ) {
+      const exitCode =
+        action_type.result?.exit_status?.type === 'exit_code'
+          ? action_type.result.exit_status.code
+          : null;
+
+      return (
+        <ChatScriptEntry
+          title={entryType.tool_name}
+          processId={executionProcessId ?? ''}
+          exitCode={exitCode}
+          status={status}
         />
       );
     }
