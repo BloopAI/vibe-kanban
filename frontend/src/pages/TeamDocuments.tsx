@@ -25,6 +25,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
+import { PdfViewer } from '@/components/documents/PdfViewer';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -243,8 +244,8 @@ export function TeamDocuments() {
       // Fetch content using the new API that handles different file types
       const content = await documentsApi.getContent(teamId!, doc.id);
       setDocContent(content);
-      // For text content, also update the editingDoc.content for editing
-      if (content.content_type === 'text') {
+      // For text/pdf content, also update the editingDoc.content for editing
+      if (content.content_type === 'text' || content.content_type === 'pdf_text') {
         setEditingDoc(prev => prev ? { ...prev, content: content.content } : null);
       }
     } catch (err) {
@@ -472,10 +473,12 @@ export function TeamDocuments() {
 
   // Document editor/viewer view
   if (editingDoc) {
-    const isTextEditable = docContent?.content_type === 'text' || docContent?.content_type === 'pdf_text';
+    const isPdf = docContent?.file_type?.toLowerCase() === 'pdf';
+    const isTextEditable = !isPdf && (docContent?.content_type === 'text' || docContent?.content_type === 'pdf_text');
     const isCsv = docContent?.content_type === 'csv';
     const isImage = docContent?.content_type === 'image_base64';
-    const isBinary = docContent?.content_type === 'binary';
+    const isBinary = !isPdf && docContent?.content_type === 'binary';
+    const pdfFileUrl = isPdf && teamId ? documentsApi.getFileUrl(teamId, editingDoc.id) : null;
 
     return (
       <div className="h-full flex flex-col">
@@ -635,6 +638,13 @@ export function TeamDocuments() {
                   {docContent.file_path}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* PDF Viewer */}
+          {!isLoadingContent && isPdf && pdfFileUrl && (
+            <div className="flex-1 min-w-0">
+              <PdfViewer fileUrl={pdfFileUrl} className="h-full" />
             </div>
           )}
         </div>

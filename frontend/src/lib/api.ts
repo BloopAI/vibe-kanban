@@ -1818,4 +1818,9 @@ export const documentsApi = {
     const response = await makeRequest(`/api/teams/${teamId}/documents/${documentId}/content`);
     return handleApiResponse<DocumentContentResponse>(response);
   },
+
+  // Get document file URL for direct file access (PDF viewer, images, etc.)
+  getFileUrl: (teamId: string, documentId: string): string => {
+    return `/api/teams/${teamId}/documents/${documentId}/file`;
+  },
 };

@@ -1,8 +1,10 @@
 use axum::{
     Extension, Json, Router,
+    body::Body,
     extract::{Path, Query, State},
+    http::{header, StatusCode},
     middleware::from_fn_with_state,
-    response::Json as ResponseJson,
+    response::{IntoResponse, Json as ResponseJson, Response},
     routing::{get, post},
 };
 use db::models::document::{
@@ -530,6 +532,63 @@ pub async fn get_document_content(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
+/// Serve document file as binary (for PDF viewer, image display, etc.)
+pub async fn get_document_file(
+    State(deployment): State<DeploymentImpl>,
+    Path((team_id, document_id)): Path<(Uuid, Uuid)>,
+) -> Result<Response, ApiError> {
+    // Verify team exists
+    let _team = Team::find_by_id(&deployment.db().pool, team_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Get document
+    let document = Document::find_by_id(&deployment.db().pool, document_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Verify document belongs to team
+    if document.team_id != team_id {
+        return Err(ApiError::Database(sqlx::Error::RowNotFound));
+    }
+
+    // Get file path
+    let file_path = document.file_path.as_ref().ok_or_else(|| {
+        ApiError::NotFound("Document has no file path".to_string())
+    })?;
+
+    // Read file bytes
+    let file_bytes = tokio::fs::read(file_path)
+        .await
+        .map_err(|e| ApiError::Io(e))?;
+
+    // Determine content type from extension or mime_type
+    let content_type = document.mime_type.clone().unwrap_or_else(|| {
+        let extension = std::path::Path::new(file_path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+        get_mime_type(extension).to_string()
+    });
+
+    // Build response with proper headers
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CONTENT_LENGTH, file_bytes.len())
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!(
+                "inline; filename=\"{}\"",
+                document.title.replace('"', "\\\"")
+            ),
+        )
+        .body(Body::from(file_bytes))
+        .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+
+    Ok(response)
+}
+
 /// Response for scan filesystem operation
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
@@ -874,7 +933,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_document).put(update_document).delete(delete_document),
         )
-        .route("/content", get(get_document_content));
+        .route("/content", get(get_document_content))
+        .route("/file", get(get_document_file));
 
     let folder_item_router = Router::new().route(
         "/",
