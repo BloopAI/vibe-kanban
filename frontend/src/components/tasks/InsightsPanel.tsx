@@ -9,8 +9,6 @@ import {
 } from '@/components/ui/select';
 import {
   X,
-  BarChart3,
-  FileText,
   Maximize2,
   SlidersHorizontal,
   MoreHorizontal,
@@ -128,36 +126,6 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
 
   return (
     <div className="w-[420px] border-l bg-background flex flex-col overflow-hidden shrink-0">
-      {/* Header */}
-      <div className="p-4 border-b shrink-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Insights makes it easy to analyze issue data. Create reports to
-            reveal trends and find outlier issues that need attention.
-          </p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Links */}
-        <div className="flex items-center gap-4 mt-3">
-          <button className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-            <BarChart3 className="h-4 w-4" />
-            Examples
-          </button>
-          <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline">
-            <FileText className="h-4 w-4" />
-            Documentation
-          </button>
-        </div>
-      </div>
-
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {/* Issue count header */}
@@ -175,6 +143,14 @@ export function InsightsPanel({ issues, onClose }: InsightsPanelProps) {
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
