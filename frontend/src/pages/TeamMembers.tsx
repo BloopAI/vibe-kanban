@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -20,8 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   UserPlus,
-  Users,
-  MoreHorizontal,
   Loader2,
   Mail,
   Clock,
@@ -33,14 +31,19 @@ import {
   UserMinus,
   Copy,
   Check,
-  RefreshCw,
   Send,
+  Search,
+  ArrowUpDown,
+  MoreVertical,
+  UserPlus2,
+  CheckCircle2,
+  Hourglass,
 } from 'lucide-react';
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 import type { TeamMember, TeamMemberRole, TeamInvitation } from 'shared/types';
-import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 
 const ROLE_OPTIONS: { value: TeamMemberRole; label: string; icon: React.ElementType }[] = [
   { value: 'viewer', label: 'Viewer', icon: Eye },
@@ -49,50 +52,48 @@ const ROLE_OPTIONS: { value: TeamMemberRole; label: string; icon: React.ElementT
   { value: 'owner', label: 'Owner', icon: Crown },
 ];
 
-function getRoleIcon(role: TeamMemberRole) {
-  const option = ROLE_OPTIONS.find((o) => o.value === role);
-  return option?.icon || Eye;
-}
+type SortField = 'account' | 'role' | 'created' | 'activity';
 
-function getRoleBadgeVariant(role: TeamMemberRole): 'default' | 'secondary' | 'outline' | 'destructive' {
+function getRoleColor(role: TeamMemberRole): string {
   switch (role) {
     case 'owner':
-      return 'default';
+      return 'text-blue-600 dark:text-blue-400';
     case 'maintainer':
-      return 'secondary';
+      return 'text-blue-600 dark:text-blue-400';
     case 'contributor':
-      return 'outline';
+      return 'text-blue-600 dark:text-blue-400';
     case 'viewer':
     default:
-      return 'outline';
+      return 'text-blue-600 dark:text-blue-400';
   }
 }
 
-function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
-  switch (status) {
-    case 'pending':
-      return 'secondary';
-    case 'accepted':
-      return 'default';
-    case 'declined':
-      return 'destructive';
-    case 'expired':
-      return 'outline';
-    default:
-      return 'outline';
-  }
+// Generate a deterministic pattern for avatar based on email/name
+function getAvatarPattern(str: string): string {
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-orange-500',
+    'bg-pink-500',
+    'bg-teal-500',
+    'bg-indigo-500',
+    'bg-cyan-500',
+  ];
+  const hash = str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length];
 }
 
-interface MemberRowProps {
+interface MemberTableRowProps {
   member: TeamMember;
+  isCurrentUser: boolean;
   onRoleChange: (memberId: string, role: TeamMemberRole) => Promise<void>;
   onRemove: (memberId: string) => Promise<void>;
   isUpdating: boolean;
 }
 
-function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProps) {
+function MemberTableRow({ member, isCurrentUser, onRoleChange, onRemove, isUpdating }: MemberTableRowProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
-  const RoleIcon = getRoleIcon(member.role);
 
   const handleRoleChange = async (newRole: TeamMemberRole) => {
     if (newRole === member.role) return;
@@ -116,35 +117,58 @@ function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProp
     }
   };
 
-  return (
-    <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/50">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <span className="text-sm font-medium text-primary">
-            {(member.display_name || member.email).slice(0, 2).toUpperCase()}
-          </span>
-        </div>
-        <div>
-          <p className="text-sm font-medium">
-            {member.display_name || member.email}
-          </p>
-          <p className="text-xs text-muted-foreground">{member.email}</p>
-        </div>
-      </div>
+  const displayName = member.display_name || member.email.split('@')[0];
+  const username = member.email.split('@')[0];
+  const avatarColor = getAvatarPattern(member.email);
+  const joinedDate = new Date(member.joined_at);
+  const updatedDate = new Date(member.updated_at);
 
-      <div className="flex items-center gap-2">
+  return (
+    <tr className="border-b hover:bg-muted/50">
+      {/* Account */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
+            <span className="text-sm font-medium text-white">
+              {displayName.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{displayName}</span>
+              {isCurrentUser && (
+                <Badge variant="outline" className="text-xs border-green-500 text-green-600 dark:text-green-400">
+                  It's you
+                </Badge>
+              )}
+            </div>
+            <span className="text-sm text-muted-foreground">@{username}</span>
+          </div>
+        </div>
+      </td>
+
+      {/* Source */}
+      <td className="py-4 px-4">
+        <span className="text-sm text-muted-foreground">
+          {member.invited_by ? (
+            <>Direct member by <span className="text-blue-600 dark:text-blue-400">Admin</span></>
+          ) : (
+            'Direct member'
+          )}
+        </span>
+      </td>
+
+      {/* Role */}
+      <td className="py-4 px-4">
         <Select
           value={member.role}
           onValueChange={handleRoleChange}
           disabled={isUpdating || isChangingRole}
         >
-          <SelectTrigger className="w-32 h-8">
-            <SelectValue>
-              <div className="flex items-center gap-1.5">
-                <RoleIcon className="h-3.5 w-3.5" />
-                <span className="capitalize">{member.role}</span>
-              </div>
-            </SelectValue>
+          <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0">
+            <span className={`font-medium capitalize ${getRoleColor(member.role)}`}>
+              {member.role}
+            </span>
           </SelectTrigger>
           <SelectContent>
             {ROLE_OPTIONS.map((option) => (
@@ -157,45 +181,74 @@ function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProp
             ))}
           </SelectContent>
         </Select>
+      </td>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={handleRemove}
-              className="text-destructive focus:text-destructive"
-            >
-              <UserMinus className="h-4 w-4 mr-2" />
-              Remove member
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+      {/* Joined */}
+      <td className="py-4 px-4">
+        <span className="text-sm">{format(joinedDate, 'MMM dd, yyyy')}</span>
+      </td>
+
+      {/* Activity */}
+      <td className="py-4 px-4">
+        <div className="text-sm space-y-0.5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <UserPlus2 className="h-3.5 w-3.5" />
+            <span>{format(joinedDate, 'MMM dd, yyyy')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>{format(updatedDate, 'MMM dd, yyyy')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Hourglass className="h-3.5 w-3.5" />
+            <span>{format(updatedDate, 'MMM dd, yyyy')}</span>
+          </div>
+        </div>
+      </td>
+
+      {/* Actions */}
+      <td className="py-4 px-4 w-10">
+        {!isCurrentUser && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={handleRemove}
+                className="text-destructive focus:text-destructive"
+              >
+                <UserMinus className="h-4 w-4 mr-2" />
+                Remove member
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </td>
+    </tr>
   );
 }
 
-interface InvitationRowProps {
+interface InvitationTableRowProps {
   invitation: TeamInvitation;
   teamName: string;
   onRoleChange: (invitationId: string, role: TeamMemberRole) => Promise<void>;
   onCancel: (invitationId: string) => Promise<void>;
-  onResend?: (invitation: TeamInvitation) => Promise<void>;
-  isUpdating?: boolean;
+  isUpdating: boolean;
 }
 
-function InvitationRow({ invitation, teamName, onRoleChange, onCancel, onResend, isUpdating }: InvitationRowProps) {
-  const [isCanceling, setIsCanceling] = useState(false);
+function InvitationTableRow({ invitation, teamName, onRoleChange, onCancel, isUpdating }: InvitationTableRowProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+
   const expiresAt = new Date(invitation.expires_at);
+  const createdAt = new Date(invitation.created_at);
   const isExpired = invitation.status === 'expired' || expiresAt < new Date();
   const isPending = invitation.status === 'pending' && !isExpired;
-  const RoleIcon = getRoleIcon(invitation.role);
+  const effectiveStatus = isExpired && invitation.status === 'pending' ? 'expired' : invitation.status;
 
   const handleRoleChange = async (newRole: TeamMemberRole) => {
     if (newRole === invitation.role) return;
@@ -228,12 +281,6 @@ function InvitationRow({ invitation, teamName, onRoleChange, onCancel, onResend,
     }
   };
 
-  const handleResend = async () => {
-    if (onResend) {
-      await onResend(invitation);
-    }
-  };
-
   const handleSendEmail = () => {
     if (!invitation.token) return;
     const inviteUrl = `${window.location.origin}/join?token=${invitation.token}`;
@@ -255,53 +302,48 @@ Best regards`
     window.open(`mailto:${invitation.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  // Determine effective status (check if expired even if status is pending)
-  const effectiveStatus = isExpired && invitation.status === 'pending' ? 'expired' : invitation.status;
+  const username = invitation.email.split('@')[0];
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/50">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="text-sm font-medium">{invitation.email}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {effectiveStatus === 'expired' ? (
-              <span className="text-destructive">Expired</span>
-            ) : effectiveStatus === 'accepted' ? (
-              <span className="text-green-600 dark:text-green-400">Accepted</span>
-            ) : effectiveStatus === 'declined' ? (
-              <span className="text-muted-foreground">Declined</span>
-            ) : (
-              <span>
-                Expires {formatDistanceToNow(expiresAt, { addSuffix: true })}
-              </span>
-            )}
+    <tr className="border-b hover:bg-muted/50">
+      {/* Account */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{invitation.email}</span>
+              <Badge
+                variant={effectiveStatus === 'pending' ? 'secondary' : effectiveStatus === 'accepted' ? 'default' : 'outline'}
+                className="text-xs"
+              >
+                {effectiveStatus}
+              </Badge>
+            </div>
+            <span className="text-sm text-muted-foreground">@{username}</span>
           </div>
         </div>
-      </div>
+      </td>
 
-      <div className="flex items-center gap-2">
-        <Badge variant={getStatusBadgeVariant(effectiveStatus)} className="capitalize">
-          {effectiveStatus}
-        </Badge>
+      {/* Source */}
+      <td className="py-4 px-4">
+        <span className="text-sm text-muted-foreground">Pending invitation</span>
+      </td>
 
-        {/* Role selector - editable for pending invitations, static badge for others */}
+      {/* Role */}
+      <td className="py-4 px-4">
         {isPending ? (
           <Select
             value={invitation.role}
             onValueChange={handleRoleChange}
             disabled={isUpdating || isChangingRole}
           >
-            <SelectTrigger className="w-32 h-8">
-              <SelectValue>
-                <div className="flex items-center gap-1.5">
-                  <RoleIcon className="h-3.5 w-3.5" />
-                  <span className="capitalize">{invitation.role}</span>
-                </div>
-              </SelectValue>
+            <SelectTrigger className="w-auto border-0 p-0 h-auto shadow-none focus:ring-0">
+              <span className={`font-medium capitalize ${getRoleColor(invitation.role)}`}>
+                {invitation.role}
+              </span>
             </SelectTrigger>
             <SelectContent>
               {ROLE_OPTIONS.filter(o => o.value !== 'owner').map((option) => (
@@ -315,73 +357,81 @@ Best regards`
             </SelectContent>
           </Select>
         ) : (
-          <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize">
+          <span className={`font-medium capitalize ${getRoleColor(invitation.role)}`}>
             {invitation.role}
-          </Badge>
+          </span>
         )}
+      </td>
 
-        {/* Send Email button - only for pending invitations with token */}
-        {isPending && invitation.token && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleSendEmail}
-            title="Send invite email"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
+      {/* Expiration */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-2">
+          <span className={`text-sm ${isExpired ? 'text-destructive' : ''}`}>
+            {format(expiresAt, 'MMM dd, yyyy')}
+          </span>
+        </div>
+      </td>
 
-        {/* Copy Link button - only for pending invitations with token */}
-        {isPending && invitation.token && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleCopyLink}
-            title="Copy invite link"
-          >
-            {isCopied ? (
-              <Check className="h-4 w-4 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
-        )}
+      {/* Activity */}
+      <td className="py-4 px-4">
+        <div className="text-sm space-y-0.5">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <UserPlus2 className="h-3.5 w-3.5" />
+            <span>{format(createdAt, 'MMM dd, yyyy')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Hourglass className="h-3.5 w-3.5" />
+            <span>{format(expiresAt, 'MMM dd, yyyy')}</span>
+          </div>
+        </div>
+      </td>
 
-        {/* Resend button for expired invitations */}
-        {effectiveStatus === 'expired' && onResend && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleResend}
-            title="Resend invitation"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        )}
-
-        {/* Cancel button - only for pending invitations */}
-        {isPending && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleCancel}
-            disabled={isCanceling}
-            title="Cancel invitation"
-          >
-            {isCanceling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <X className="h-4 w-4" />
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
+      {/* Actions */}
+      <td className="py-4 px-4 w-10">
+        <div className="flex items-center gap-1">
+          {isPending && invitation.token && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleSendEmail}
+                title="Send invite email"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleCopyLink}
+                title="Copy invite link"
+              >
+                {isCopied ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleCancel}
+                disabled={isCanceling}
+                title="Cancel invitation"
+              >
+                {isCanceling ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+              </Button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -401,6 +451,64 @@ export function TeamMembers() {
 
   const team = teamId ? teamsById[teamId] : undefined;
   const [isUpdating, setIsUpdating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortField>('account');
+  const [sortAsc, setSortAsc] = useState(true);
+
+  // TODO: Get current user email from auth context
+  const currentUserEmail = 'rupeshpanwar43@gmail.com';
+
+  const totalCount = members.length + invitations.filter(i => i.status === 'pending').length;
+
+  // Filter and sort members
+  const filteredMembers = useMemo(() => {
+    let result = [...members];
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(m =>
+        m.display_name?.toLowerCase().includes(query) ||
+        m.email.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'account':
+          comparison = (a.display_name || a.email).localeCompare(b.display_name || b.email);
+          break;
+        case 'role': {
+          const roleOrder: Record<TeamMemberRole, number> = { owner: 0, maintainer: 1, contributor: 2, viewer: 3 };
+          comparison = roleOrder[a.role] - roleOrder[b.role];
+          break;
+        }
+        case 'created':
+          comparison = new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
+          break;
+        case 'activity':
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          break;
+      }
+      return sortAsc ? comparison : -comparison;
+    });
+
+    return result;
+  }, [members, searchQuery, sortBy, sortAsc]);
+
+  // Filter invitations (only pending shown in main list)
+  const filteredInvitations = useMemo(() => {
+    let result = invitations.filter(i => i.status === 'pending');
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(i => i.email.toLowerCase().includes(query));
+    }
+
+    return result;
+  }, [invitations, searchQuery]);
 
   const handleInvite = async () => {
     if (!team) return;
@@ -438,6 +546,10 @@ export function TeamMembers() {
     }
   };
 
+  const toggleSortDirection = () => {
+    setSortAsc(!sortAsc);
+  };
+
   if (!team) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -449,26 +561,78 @@ export function TeamMembers() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b">
-        <div className="flex items-center gap-3">
-          <Users className="h-5 w-5 text-muted-foreground" />
+      <div className="px-6 py-6 border-b">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">Team Members</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold">Team Members</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Manage who has access to {team.name}
             </p>
           </div>
+          <Button onClick={handleInvite}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Invite people
+          </Button>
         </div>
-        <Button onClick={handleInvite}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Invite people
+      </div>
+
+      {/* Tab Bar */}
+      <div className="px-6 border-b">
+        <button className="px-4 py-3 border-b-2 border-primary text-sm font-medium">
+          Members <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
+        </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="px-6 py-4 flex items-center gap-4 border-b">
+        {/* Time Filter */}
+        <Select defaultValue="all">
+          <SelectTrigger className="w-[110px]">
+            <Clock className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All time</SelectItem>
+            <SelectItem value="week">Last week</SelectItem>
+            <SelectItem value="month">Last month</SelectItem>
+            <SelectItem value="year">Last year</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Search */}
+        <div className="flex-1 relative">
+          <Input
+            placeholder="Filter members"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pr-10"
+          />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+
+        {/* Sort By */}
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="account">Account</SelectItem>
+            <SelectItem value="role">Role</SelectItem>
+            <SelectItem value="created">User created</SelectItem>
+            <SelectItem value="activity">Last activity</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Sort Direction */}
+        <Button variant="outline" size="icon" onClick={toggleSortDirection}>
+          <ArrowUpDown className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto">
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="m-6">
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
@@ -478,70 +642,49 @@ export function TeamMembers() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <>
-            {/* Members */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Members</CardTitle>
-                <CardDescription>
-                  {members.length} member{members.length !== 1 ? 's' : ''} in this team
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {members.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground">
-                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No members yet</p>
-                    <p className="text-sm">Invite people to join this team</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {members.map((member) => (
-                      <MemberRow
-                        key={member.id}
-                        member={member}
-                        onRoleChange={handleRoleChange}
-                        onRemove={handleRemoveMember}
-                        isUpdating={isUpdating}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Invitations */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Invitations</CardTitle>
-                <CardDescription>
-                  {invitations.length} invitation{invitations.length !== 1 ? 's' : ''} (pending, accepted, declined, expired)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {invitations.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b text-left text-sm text-muted-foreground">
+                <th className="py-3 px-4 font-medium">Account</th>
+                <th className="py-3 px-4 font-medium">Source</th>
+                <th className="py-3 px-4 font-medium">Role</th>
+                <th className="py-3 px-4 font-medium">Joined</th>
+                <th className="py-3 px-4 font-medium">Activity</th>
+                <th className="py-3 px-4 w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMembers.map((member) => (
+                <MemberTableRow
+                  key={member.id}
+                  member={member}
+                  isCurrentUser={member.email === currentUserEmail}
+                  onRoleChange={handleRoleChange}
+                  onRemove={handleRemoveMember}
+                  isUpdating={isUpdating}
+                />
+              ))}
+              {filteredInvitations.map((invitation) => (
+                <InvitationTableRow
+                  key={invitation.id}
+                  invitation={invitation}
+                  teamName={team.name}
+                  onRoleChange={handleInvitationRoleChange}
+                  onCancel={handleCancelInvitation}
+                  isUpdating={isUpdating}
+                />
+              ))}
+              {filteredMembers.length === 0 && filteredInvitations.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No invitations yet</p>
+                    <p>No members found</p>
                     <p className="text-sm">Invite people to join this team</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {invitations.map((invitation) => (
-                      <InvitationRow
-                        key={invitation.id}
-                        invitation={invitation}
-                        teamName={team.name}
-                        onRoleChange={handleInvitationRoleChange}
-                        onCancel={handleCancelInvitation}
-                        isUpdating={isUpdating}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
