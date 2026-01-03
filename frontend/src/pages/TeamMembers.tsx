@@ -31,6 +31,9 @@ import {
   Pencil,
   Eye,
   UserMinus,
+  Copy,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
@@ -59,6 +62,21 @@ function getRoleBadgeVariant(role: TeamMemberRole): 'default' | 'secondary' | 'o
     case 'contributor':
       return 'outline';
     case 'viewer':
+    default:
+      return 'outline';
+  }
+}
+
+function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
+  switch (status) {
+    case 'pending':
+      return 'secondary';
+    case 'accepted':
+      return 'default';
+    case 'declined':
+      return 'destructive';
+    case 'expired':
+      return 'outline';
     default:
       return 'outline';
   }
@@ -160,15 +178,18 @@ function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProp
   );
 }
 
-interface PendingInvitationRowProps {
+interface InvitationRowProps {
   invitation: TeamInvitation;
   onCancel: (invitationId: string) => Promise<void>;
+  onResend?: (invitation: TeamInvitation) => Promise<void>;
 }
 
-function PendingInvitationRow({ invitation, onCancel }: PendingInvitationRowProps) {
+function InvitationRow({ invitation, onCancel, onResend }: InvitationRowProps) {
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const expiresAt = new Date(invitation.expires_at);
-  const isExpired = expiresAt < new Date();
+  const isExpired = invitation.status === 'expired' || expiresAt < new Date();
+  const isPending = invitation.status === 'pending' && !isExpired;
 
   const handleCancel = async () => {
     setIsCanceling(true);
@@ -178,6 +199,27 @@ function PendingInvitationRow({ invitation, onCancel }: PendingInvitationRowProp
       setIsCanceling(false);
     }
   };
+
+  const handleCopyLink = async () => {
+    if (!invitation.token) return;
+    const url = `${window.location.origin}/join?token=${invitation.token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const handleResend = async () => {
+    if (onResend) {
+      await onResend(invitation);
+    }
+  };
+
+  // Determine effective status (check if expired even if status is pending)
+  const effectiveStatus = isExpired && invitation.status === 'pending' ? 'expired' : invitation.status;
 
   return (
     <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/50">
@@ -189,8 +231,12 @@ function PendingInvitationRow({ invitation, onCancel }: PendingInvitationRowProp
           <p className="text-sm font-medium">{invitation.email}</p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
-            {isExpired ? (
+            {effectiveStatus === 'expired' ? (
               <span className="text-destructive">Expired</span>
+            ) : effectiveStatus === 'accepted' ? (
+              <span className="text-green-600 dark:text-green-400">Accepted</span>
+            ) : effectiveStatus === 'declined' ? (
+              <span className="text-muted-foreground">Declined</span>
             ) : (
               <span>
                 Expires {formatDistanceToNow(expiresAt, { addSuffix: true })}
@@ -201,22 +247,60 @@ function PendingInvitationRow({ invitation, onCancel }: PendingInvitationRowProp
       </div>
 
       <div className="flex items-center gap-2">
+        <Badge variant={getStatusBadgeVariant(effectiveStatus)} className="capitalize">
+          {effectiveStatus}
+        </Badge>
         <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize">
           {invitation.role}
         </Badge>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={handleCancel}
-          disabled={isCanceling}
-        >
-          {isCanceling ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <X className="h-4 w-4" />
-          )}
-        </Button>
+
+        {/* Copy Link button - only for pending invitations with token */}
+        {isPending && invitation.token && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCopyLink}
+            title="Copy invite link"
+          >
+            {isCopied ? (
+              <Check className="h-4 w-4 text-green-600" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+
+        {/* Resend button for expired invitations */}
+        {effectiveStatus === 'expired' && onResend && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleResend}
+            title="Resend invitation"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Cancel button - only for pending invitations */}
+        {isPending && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCancel}
+            disabled={isCanceling}
+            title="Cancel invitation"
+          >
+            {isCanceling ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <X className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -337,28 +421,34 @@ export function TeamMembers() {
               </CardContent>
             </Card>
 
-            {/* Pending Invitations */}
-            {invitations.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Pending Invitations</CardTitle>
-                  <CardDescription>
-                    {invitations.length} pending invitation{invitations.length !== 1 ? 's' : ''}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
+            {/* Invitations */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Invitations</CardTitle>
+                <CardDescription>
+                  {invitations.length} invitation{invitations.length !== 1 ? 's' : ''} (pending, accepted, declined, expired)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {invitations.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No invitations yet</p>
+                    <p className="text-sm">Invite people to join this team</p>
+                  </div>
+                ) : (
                   <div className="divide-y">
                     {invitations.map((invitation) => (
-                      <PendingInvitationRow
+                      <InvitationRow
                         key={invitation.id}
                         invitation={invitation}
                         onCancel={handleCancelInvitation}
                       />
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
       </div>

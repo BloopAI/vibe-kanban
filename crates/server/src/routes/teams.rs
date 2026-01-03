@@ -1356,12 +1356,12 @@ pub async fn remove_team_member(
 // Team Invitations Routes
 // ============================================================================
 
-/// Get all pending invitations for a team
+/// Get all invitations for a team (all statuses: pending, accepted, declined, expired)
 pub async fn get_team_invitations(
     Extension(team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TeamInvitation>>>, ApiError> {
-    let invitations = TeamInvitation::find_pending_by_team(&deployment.db().pool, team.id).await?;
+    let invitations = TeamInvitation::find_all_by_team(&deployment.db().pool, team.id).await?;
     Ok(ResponseJson(ApiResponse::success(invitations)))
 }
 
@@ -1484,6 +1484,87 @@ pub async fn decline_invitation(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+// ============================================================================
+// Token-Based Invitation Routes (for shareable links)
+// ============================================================================
+
+/// Response for invitation by token - includes team name for display
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct InvitationByTokenResponse {
+    pub invitation: TeamInvitation,
+    pub team_name: String,
+}
+
+/// Get an invitation by token (for the join page)
+pub async fn get_invitation_by_token(
+    State(deployment): State<DeploymentImpl>,
+    Path(token): Path<String>,
+) -> Result<ResponseJson<ApiResponse<InvitationByTokenResponse>>, ApiError> {
+    let invitation = TeamInvitation::find_by_token(&deployment.db().pool, &token)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Invitation not found or expired".to_string()))?;
+
+    // Get team name
+    let team = Team::find_by_id(&deployment.db().pool, invitation.team_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Team not found".to_string()))?;
+
+    Ok(ResponseJson(ApiResponse::success(InvitationByTokenResponse {
+        invitation,
+        team_name: team.name,
+    })))
+}
+
+/// Accept an invitation via token
+pub async fn accept_invitation_by_token(
+    State(deployment): State<DeploymentImpl>,
+    Path(token): Path<String>,
+) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
+    let invitation = TeamInvitation::find_by_token(&deployment.db().pool, &token)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Invitation not found or expired".to_string()))?;
+
+    let member = TeamInvitation::accept(&deployment.db().pool, invitation.id)
+        .await
+        .map_err(|_| ApiError::BadRequest("Invitation already accepted or expired".to_string()))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_accepted_via_token",
+            serde_json::json!({
+                "invitation_id": invitation.id.to_string(),
+                "team_id": member.team_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(member)))
+}
+
+/// Decline an invitation via token
+pub async fn decline_invitation_by_token(
+    State(deployment): State<DeploymentImpl>,
+    Path(token): Path<String>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let invitation = TeamInvitation::find_by_token(&deployment.db().pool, &token)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
+
+    TeamInvitation::decline(&deployment.db().pool, invitation.id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_declined_via_token",
+            serde_json::json!({
+                "invitation_id": invitation.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -1546,7 +1627,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let invitations_router = Router::new()
         .route("/", get(get_my_invitations))
         .route("/{invitation_id}/accept", post(accept_invitation))
-        .route("/{invitation_id}/decline", post(decline_invitation));
+        .route("/{invitation_id}/decline", post(decline_invitation))
+        // Token-based routes for shareable links
+        .route("/by-token/{token}", get(get_invitation_by_token))
+        .route("/by-token/{token}/accept", post(accept_invitation_by_token))
+        .route("/by-token/{token}/decline", post(decline_invitation_by_token));
 
     Router::new()
         .nest("/teams", inner)

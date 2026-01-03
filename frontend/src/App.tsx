@@ -9,6 +9,7 @@ import { TeamProjects } from '@/pages/TeamProjects';
 import { TeamProjectDetail } from '@/pages/TeamProjectDetail';
 import { TeamDocuments } from '@/pages/TeamDocuments';
 import { TeamMembers } from '@/pages/TeamMembers';
+import { JoinTeam } from '@/pages/JoinTeam';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
@@ -134,6 +135,9 @@ function AppContent() {
                 path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
                 element={<FullAttemptLogsPage />}
               />
+
+              {/* Join team via invite link (standalone page) */}
+              <Route path="/join" element={<JoinTeam />} />
 
               <Route element={<NormalLayout />}>
                 <Route path="/" element={<Projects />} />

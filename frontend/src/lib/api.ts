@@ -129,6 +129,7 @@ import {
   TeamInvitation,
   TeamInvitationWithTeam,
   CreateTeamInvitation,
+  InvitationByTokenResponse,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -1742,6 +1743,26 @@ export const userInvitationsApi = {
 
   declineInvitation: async (invitationId: string): Promise<void> => {
     const response = await makeRequest(`/api/team-invitations/${invitationId}/decline`, {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Token-based invitation methods (for shareable links)
+  getInvitationByToken: async (token: string): Promise<InvitationByTokenResponse> => {
+    const response = await makeRequest(`/api/team-invitations/by-token/${token}`);
+    return handleApiResponse<InvitationByTokenResponse>(response);
+  },
+
+  acceptInvitationByToken: async (token: string): Promise<TeamMember> => {
+    const response = await makeRequest(`/api/team-invitations/by-token/${token}/accept`, {
+      method: 'POST',
+    });
+    return handleApiResponse<TeamMember>(response);
+  },
+
+  declineInvitationByToken: async (token: string): Promise<void> => {
+    const response = await makeRequest(`/api/team-invitations/by-token/${token}/decline`, {
       method: 'POST',
     });
     return handleApiResponse<void>(response);

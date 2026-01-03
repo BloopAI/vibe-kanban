@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      email,\n                      role,\n                      status,\n                      invited_by as \"invited_by: Uuid\",\n                      expires_at as \"expires_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\"\n               FROM team_invitations\n               WHERE team_id = $1 AND status = 'pending'\n               ORDER BY created_at DESC",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      email,\n                      role,\n                      status,\n                      invited_by as \"invited_by: Uuid\",\n                      token,\n                      expires_at as \"expires_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\"\n               FROM team_invitations\n               WHERE team_id = $1 AND status = 'pending'\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -34,13 +34,18 @@
         "type_info": "Blob"
       },
       {
-        "name": "expires_at!: DateTime<Utc>",
+        "name": "token",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "expires_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -54,9 +59,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "de63ab9294a470eafe556004b3bcc7a655dcdd8beeea4cc6f809e9040a0b41a6"
+  "hash": "81e8a0b471ff5bf1eaa44a9741fcd84be2bec6b5c6c8de02a6b843c6b1dbfd10"
 }

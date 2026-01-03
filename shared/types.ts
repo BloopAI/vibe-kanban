@@ -72,9 +72,17 @@ export type CreateTeamMember = { email: string, display_name: string | null, rol
 
 export type UpdateTeamMemberRole = { role: TeamMemberRole, };
 
-export type TeamInvitation = { id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, expires_at: Date, created_at: Date, };
+export type TeamInvitation = { id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, 
+/**
+ * Unique token for shareable invite link
+ */
+token: string | null, expires_at: Date, created_at: Date, };
 
-export type TeamInvitationWithTeam = { team_name: string, id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, expires_at: Date, created_at: Date, };
+export type TeamInvitationWithTeam = { team_name: string, id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, 
+/**
+ * Unique token for shareable invite link
+ */
+token: string | null, expires_at: Date, created_at: Date, };
 
 export type CreateTeamInvitation = { email: string, role: TeamMemberRole | null, };
 
@@ -183,6 +191,8 @@ synced_files: Array<string>,
  * Any warnings or notes
  */
 message: string | null, };
+
+export type InvitationByTokenResponse = { invitation: TeamInvitation, team_name: string, };
 
 export type ScanFilesystemResponse = { 
 /**

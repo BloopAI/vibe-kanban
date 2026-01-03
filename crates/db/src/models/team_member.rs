@@ -131,6 +131,8 @@ pub struct TeamInvitation {
     pub role: TeamMemberRole,
     pub status: TeamInvitationStatus,
     pub invited_by: Option<Uuid>,
+    /// Unique token for shareable invite link
+    pub token: Option<String>,
     #[ts(type = "Date")]
     pub expires_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -190,6 +192,7 @@ struct TeamInvitationRow {
     role: String,
     status: String,
     invited_by: Option<Uuid>,
+    token: Option<String>,
     expires_at: DateTime<Utc>,
     created_at: DateTime<Utc>,
 }
@@ -203,6 +206,7 @@ impl From<TeamInvitationRow> for TeamInvitation {
             role: TeamMemberRole::from_str(&row.role).unwrap_or_default(),
             status: TeamInvitationStatus::from_str(&row.status).unwrap_or_default(),
             invited_by: row.invited_by,
+            token: row.token,
             expires_at: row.expires_at,
             created_at: row.created_at,
         }
@@ -397,11 +401,46 @@ impl TeamInvitation {
                       role,
                       status,
                       invited_by as "invited_by: Uuid",
+                      token,
                       expires_at as "expires_at!: DateTime<Utc>",
                       created_at as "created_at!: DateTime<Utc>"
                FROM team_invitations
                WHERE team_id = $1 AND status = 'pending'
                ORDER BY created_at DESC"#,
+            team_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
+    /// Get all invitations for a team (all statuses)
+    pub async fn find_all_by_team(
+        pool: &SqlitePool,
+        team_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            TeamInvitationRow,
+            r#"SELECT id as "id!: Uuid",
+                      team_id as "team_id!: Uuid",
+                      email,
+                      role,
+                      status,
+                      invited_by as "invited_by: Uuid",
+                      token,
+                      expires_at as "expires_at!: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>"
+               FROM team_invitations
+               WHERE team_id = $1
+               ORDER BY
+                   CASE status
+                       WHEN 'pending' THEN 1
+                       WHEN 'accepted' THEN 2
+                       WHEN 'declined' THEN 3
+                       WHEN 'expired' THEN 4
+                   END,
+                   created_at DESC"#,
             team_id
         )
         .fetch_all(pool)
@@ -422,6 +461,7 @@ impl TeamInvitation {
                       ti.role,
                       ti.status,
                       ti.invited_by as "invited_by: Uuid",
+                      ti.token,
                       ti.expires_at as "expires_at!: DateTime<Utc>",
                       ti.created_at as "created_at!: DateTime<Utc>",
                       t.name as team_name
@@ -444,6 +484,7 @@ impl TeamInvitation {
                     role: TeamMemberRole::from_str(&row.role).unwrap_or_default(),
                     status: TeamInvitationStatus::from_str(&row.status).unwrap_or_default(),
                     invited_by: row.invited_by,
+                    token: row.token,
                     expires_at: row.expires_at,
                     created_at: row.created_at,
                 },
@@ -462,11 +503,35 @@ impl TeamInvitation {
                       role,
                       status,
                       invited_by as "invited_by: Uuid",
+                      token,
                       expires_at as "expires_at!: DateTime<Utc>",
                       created_at as "created_at!: DateTime<Utc>"
                FROM team_invitations
                WHERE id = $1"#,
             id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| r.into()))
+    }
+
+    /// Find an invitation by token (for shareable links)
+    pub async fn find_by_token(pool: &SqlitePool, token: &str) -> Result<Option<Self>, sqlx::Error> {
+        let row = sqlx::query_as!(
+            TeamInvitationRow,
+            r#"SELECT id as "id!: Uuid",
+                      team_id as "team_id!: Uuid",
+                      email,
+                      role,
+                      status,
+                      invited_by as "invited_by: Uuid",
+                      token,
+                      expires_at as "expires_at!: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>"
+               FROM team_invitations
+               WHERE token = $1"#,
+            token
         )
         .fetch_optional(pool)
         .await?;
@@ -486,17 +551,20 @@ impl TeamInvitation {
         let status = TeamInvitationStatus::Pending.to_string();
         // Invitations expire in 7 days
         let expires_at = Utc::now() + Duration::days(7);
+        // Generate unique token for shareable invite link
+        let token = Uuid::new_v4().to_string().replace("-", "");
 
         let row = sqlx::query_as!(
             TeamInvitationRow,
-            r#"INSERT INTO team_invitations (id, team_id, email, role, status, invited_by, expires_at)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO team_invitations (id, team_id, email, role, status, invited_by, token, expires_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          email,
                          role,
                          status,
                          invited_by as "invited_by: Uuid",
+                         token,
                          expires_at as "expires_at!: DateTime<Utc>",
                          created_at as "created_at!: DateTime<Utc>""#,
             id,
@@ -505,6 +573,7 @@ impl TeamInvitation {
             role,
             status,
             invited_by,
+            token,
             expires_at
         )
         .fetch_one(pool)

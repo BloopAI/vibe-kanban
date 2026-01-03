@@ -61,6 +61,7 @@ fn generate_types_content() -> String {
         server::routes::teams::ConfigureSyncRequest::decl(),
         server::routes::teams::PushDocumentsRequest::decl(),
         server::routes::teams::SyncOperationResponse::decl(),
+        server::routes::teams::InvitationByTokenResponse::decl(),
         server::routes::documents::ScanFilesystemResponse::decl(),
         server::routes::documents::DiscoverFoldersResponse::decl(),
         server::routes::documents::DocumentContentResponse::decl(),
