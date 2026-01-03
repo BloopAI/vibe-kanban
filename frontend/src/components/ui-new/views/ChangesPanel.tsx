@@ -6,6 +6,7 @@ import type { DiffInput } from '../primitives/conversation/DiffViewCard';
 interface DiffItemData {
   path: string;
   input: DiffInput;
+  initialExpanded?: boolean;
 }
 
 interface ChangesPanelProps {
@@ -27,8 +28,14 @@ export function ChangesPanel({
       )}
     >
       <div className="space-y-base">
-        {diffItems.map(({ path, input }) => (
-          <DiffItem key={path} path={path} input={input} onRef={onDiffRef} />
+        {diffItems.map(({ path, input, initialExpanded }) => (
+          <DiffItem
+            key={path}
+            path={path}
+            input={input}
+            initialExpanded={initialExpanded}
+            onRef={onDiffRef}
+          />
         ))}
       </div>
       {diffItems.length === 0 && (
@@ -43,13 +50,15 @@ export function ChangesPanel({
 function DiffItem({
   path,
   input,
+  initialExpanded = true,
   onRef,
 }: {
   path: string;
   input: DiffInput;
+  initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
 }) {
-  const [expanded, toggle] = useExpandable(`diff:${path}`, true);
+  const [expanded, toggle] = useExpandable(`diff:${path}`, initialExpanded);
 
   return (
     <div ref={(el) => onRef?.(path, el)}>

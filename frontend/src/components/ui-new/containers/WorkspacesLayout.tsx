@@ -19,6 +19,7 @@ import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { attemptsApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
+import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useMerge } from '@/hooks/useMerge';
@@ -28,87 +29,7 @@ import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
-
-// Mock diffs for development - shared between FileTree and ChangesPanel
-const MOCK_DIFFS: Diff[] = [
-  {
-    change: 'modified',
-    oldPath: 'src/components/App.tsx',
-    newPath: 'src/components/App.tsx',
-    oldContent:
-      '// Old App content\nexport function App() {\n  return <div>Hello</div>;\n}',
-    newContent:
-      '// New App content\nexport function App() {\n  return <div>Hello World!</div>;\n}',
-    contentOmitted: false,
-    additions: 15,
-    deletions: 3,
-  },
-  {
-    change: 'added',
-    oldPath: null,
-    newPath: 'src/components/ui-new/views/FileTree.tsx',
-    oldContent: null,
-    newContent:
-      '// FileTree component\nexport function FileTree() {\n  return <div>Tree</div>;\n}',
-    contentOmitted: false,
-    additions: 120,
-    deletions: null,
-  },
-  {
-    change: 'added',
-    oldPath: null,
-    newPath: 'src/components/ui-new/views/FileTreeNode.tsx',
-    oldContent: null,
-    newContent:
-      '// FileTreeNode component\nexport function FileTreeNode() {\n  return <div>Node</div>;\n}',
-    contentOmitted: false,
-    additions: 95,
-    deletions: null,
-  },
-  {
-    change: 'deleted',
-    oldPath: 'src/utils/oldHelper.ts',
-    newPath: null,
-    oldContent: '// Old helper\nexport function helper() {}',
-    newContent: null,
-    contentOmitted: false,
-    additions: null,
-    deletions: 45,
-  },
-  {
-    change: 'modified',
-    oldPath: 'src/styles/new/index.css',
-    newPath: 'src/styles/new/index.css',
-    oldContent: '/* Old styles */\n.container { padding: 10px; }',
-    newContent:
-      '/* New styles */\n.container { padding: 20px; }\n.header { color: blue; }',
-    contentOmitted: false,
-    additions: 8,
-    deletions: 2,
-  },
-  {
-    change: 'renamed',
-    oldPath: 'src/utils/helper.ts',
-    newPath: 'src/utils/fileHelper.ts',
-    oldContent: '// Helper functions',
-    newContent: '// File helper functions',
-    contentOmitted: false,
-    additions: 0,
-    deletions: 0,
-  },
-  {
-    change: 'modified',
-    oldPath: 'package.json',
-    newPath: 'package.json',
-    oldContent: '{\n  "name": "app",\n  "version": "1.0.0"\n}',
-    newContent:
-      '{\n  "name": "app",\n  "version": "1.0.1",\n  "description": "My app"\n}',
-    contentOmitted: false,
-    additions: 2,
-    deletions: 1,
-  },
-];
+import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 
 // Container component for GitPanel that uses hooks requiring GitOperationsProvider
 interface GitPanelContainerProps {
@@ -261,6 +182,12 @@ export function WorkspacesLayout() {
     enabled: !!selectedWorkspace?.task_id,
   });
 
+  // Stream real diffs for the selected workspace
+  const { diffs: realDiffs } = useDiffStream(
+    selectedWorkspace?.id ?? null,
+    !isCreateMode && !!selectedWorkspace?.id
+  );
+
   // Archive/unarchive mutation
   const toggleArchiveMutation = useMutation({
     mutationFn: ({
@@ -293,6 +220,16 @@ export function WorkspacesLayout() {
     [renameBranch]
   );
 
+  // Compute diff stats from real diffs
+  const diffStats = useMemo(
+    () => ({
+      filesChanged: realDiffs.length,
+      linesAdded: realDiffs.reduce((sum, d) => sum + (d.additions ?? 0), 0),
+      linesRemoved: realDiffs.reduce((sum, d) => sum + (d.deletions ?? 0), 0),
+    }),
+    [realDiffs]
+  );
+
   // Transform repos to RepoInfo format for GitPanel
   const repoInfos: RepoInfo[] = useMemo(
     () =>
@@ -300,12 +237,12 @@ export function WorkspacesLayout() {
         id: repo.id,
         name: repo.display_name || repo.name,
         targetBranch: repo.target_branch || 'main',
-        commitsAhead: 0, // Mock for now
-        filesChanged: 0, // Mock for now
-        linesAdded: 0, // Mock for now
-        linesRemoved: 0, // Mock for now
+        commitsAhead: 0, // TODO: compute from git
+        filesChanged: diffStats.filesChanged,
+        linesAdded: diffStats.linesAdded,
+        linesRemoved: diffStats.linesRemoved,
       })),
-    [repos]
+    [repos, diffStats]
   );
 
   // Visibility state for sidebar panels
@@ -429,7 +366,7 @@ export function WorkspacesLayout() {
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
             <FileTreeContainer
-              diffs={MOCK_DIFFS}
+              diffs={realDiffs}
               onSelectFile={(path) => setSelectedFilePath(path)}
             />
           </Allotment.Pane>
@@ -523,7 +460,7 @@ export function WorkspacesLayout() {
         >
           <div className="h-full overflow-hidden">
             <ChangesPanelContainer
-              diffs={MOCK_DIFFS}
+              diffs={realDiffs}
               selectedFilePath={selectedFilePath}
             />
           </div>
