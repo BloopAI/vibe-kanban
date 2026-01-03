@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal, CircleDot, PlayCircle, Circle } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal, CircleDot, PlayCircle, Circle, BarChart3 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -295,46 +295,54 @@ export function TeamIssues() {
           </div>
         </div>
 
-        {/* Issue view tabs */}
-        <div className="flex items-center gap-2 mt-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-background border-border gap-1.5"
-          >
-            <CircleDot className="h-4 w-4" />
-            All issues
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-background border-border gap-1.5"
-          >
-            <PlayCircle className="h-4 w-4" />
-            Active
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-background border-border gap-1.5"
-          >
-            <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
-            Backlog
-          </Button>
-        </div>
       </div>
 
-      {/* Sub-header with Filter and Display */}
+      {/* Sub-header: View tabs + Filter/Insight/Display */}
       <div className="shrink-0 border-b px-4 py-2">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
-            <ListFilter className="h-4 w-4" />
-            Filter
-          </Button>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
-            <SlidersHorizontal className="h-4 w-4" />
-            Display
-          </Button>
+          {/* Left side: View tabs and Filter */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background border-border gap-1.5"
+            >
+              <CircleDot className="h-4 w-4" />
+              All issues
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background border-border gap-1.5"
+            >
+              <PlayCircle className="h-4 w-4" />
+              Active
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-background border-border gap-1.5"
+            >
+              <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
+              Backlog
+            </Button>
+            <div className="w-px h-5 bg-border mx-1" />
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+              <ListFilter className="h-4 w-4" />
+              Filter
+            </Button>
+          </div>
+
+          {/* Right side: Insight and Display */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+              <BarChart3 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+              <SlidersHorizontal className="h-4 w-4" />
+              Display
+            </Button>
+          </div>
         </div>
       </div>
 
