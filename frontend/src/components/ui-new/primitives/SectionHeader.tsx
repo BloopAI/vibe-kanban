@@ -17,7 +17,7 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        'flex items-center justify-between w-full border-b px-base py-half bg-secondary border-l-half',
+        'flex items-center justify-between w-full border-b px-base py-half bg-secondary border-l-half border-l-low',
         className
       )}
     >

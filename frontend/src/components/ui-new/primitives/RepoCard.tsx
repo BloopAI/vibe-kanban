@@ -62,7 +62,7 @@ export function RepoCard({
     <CollapsibleSection
       persistKey={PERSIST_KEYS.repoCard(repoId)}
       title={name}
-      className="gap-base"
+      className="gap-half"
       defaultExpanded
     >
       {/* Branch row */}

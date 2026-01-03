@@ -2,11 +2,12 @@ import { cn } from '@/lib/utils';
 import { SpinnerIcon, type Icon } from '@phosphor-icons/react';
 
 interface PrimaryButtonProps {
-  variant?: 'default' | 'secondary';
+  variant?: 'default' | 'secondary' | 'tertiary';
   actionIcon?: Icon | 'spinner';
   value?: string;
   onClick?: () => void;
   disabled?: boolean;
+  children?: React.ReactNode;
 }
 
 export function PrimaryButton({
@@ -15,12 +16,15 @@ export function PrimaryButton({
   value,
   onClick,
   disabled,
+  children,
 }: PrimaryButtonProps) {
   const variantStyles = disabled
     ? 'cursor-not-allowed bg-panel'
     : variant === 'default'
       ? 'bg-brand hover:bg-brand-hover text-on-brand'
-      : 'bg-brand-secondary hover:bg-brand-hover text-on-brand';
+      : variant === 'secondary'
+        ? 'bg-brand-secondary hover:bg-brand-hover text-on-brand'
+        : 'bg-panel hover:bg-secondary text-normal';
 
   return (
     <button
@@ -32,6 +36,7 @@ export function PrimaryButton({
       disabled={disabled}
     >
       {value}
+      {children}
       {ActionIcon ? (
         ActionIcon === 'spinner' ? (
           <SpinnerIcon className={'size-icon-sm animate-spin'} weight="bold" />
