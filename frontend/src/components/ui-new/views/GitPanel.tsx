@@ -1,4 +1,4 @@
-import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
+import { GitBranchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
   RepoCard,
@@ -33,51 +33,48 @@ export function GitPanel({
   workingBranchName,
   onWorkingBranchNameChange,
   onActionsClick,
-  onAddRepo,
   className,
   error,
 }: GitPanelProps) {
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col gap-double p-double text-low overflow-y-auto',
+        'w-full h-full bg-secondary flex flex-col text-low overflow-y-auto',
         className
       )}
     >
       {error && <ErrorAlert message={error} />}
-      <SectionHeader
-        title="Repositories"
-        icon={PlusIcon}
-        onIconClick={onAddRepo}
-      />
-      <div className="flex flex-col gap-base w-full">
-        <div className="flex gap-base items-center">
-          <GitBranchIcon className="size-icon-base text-base" weight="fill" />
-          <p className="text-base">Working Branch</p>
-        </div>
-        <InputField
-          variant="editable"
-          value={workingBranchName}
-          onChange={onWorkingBranchNameChange}
-          placeholder="e.g acme Corp"
-        />
-      </div>
-      <div className="flex flex-col gap-double">
-        {repos.map((repo) => (
-          <RepoCard
-            key={repo.id}
-            repoId={repo.id}
-            name={repo.name}
-            targetBranch={repo.targetBranch}
-            commitsAhead={repo.commitsAhead}
-            filesChanged={repo.filesChanged}
-            linesAdded={repo.linesAdded}
-            linesRemoved={repo.linesRemoved}
-            onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
-            onRebase={() => onActionsClick?.(repo.id, 'rebase')}
-            onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+      <SectionHeader title="Repositories" />
+      <div className="p-base gap-base">
+        <div className="flex flex-col gap-base w-full">
+          <div className="flex gap-base items-center">
+            <GitBranchIcon className="size-icon-base text-base" weight="fill" />
+            <p className="text-base">Working Branch</p>
+          </div>
+          <InputField
+            variant="editable"
+            value={workingBranchName}
+            onChange={onWorkingBranchNameChange}
+            placeholder="e.g acme Corp"
           />
-        ))}
+        </div>
+        <div className="flex flex-col gap-double">
+          {repos.map((repo) => (
+            <RepoCard
+              key={repo.id}
+              repoId={repo.id}
+              name={repo.name}
+              targetBranch={repo.targetBranch}
+              commitsAhead={repo.commitsAhead}
+              filesChanged={repo.filesChanged}
+              linesAdded={repo.linesAdded}
+              linesRemoved={repo.linesRemoved}
+              onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
+              onRebase={() => onActionsClick?.(repo.id, 'rebase')}
+              onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

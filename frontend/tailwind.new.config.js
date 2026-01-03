@@ -125,6 +125,10 @@ module.exports = {
         md: getSize('sm', radiusMultiplier),
         sm: getSize('xs', radiusMultiplier),
       },
+      borderWidth: {
+        base: getSize('base'),
+        half: getSize('base', 0.5),
+      },
       fontFamily: {
         'ibm-plex-sans': ['IBM Plex Sans', 'Noto Emoji', 'sans-serif'],
         'ibm-plex-mono': ['IBM Plex Mono', 'Noto Emoji', 'monospace'],

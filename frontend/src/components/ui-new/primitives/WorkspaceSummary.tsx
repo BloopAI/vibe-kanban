@@ -42,12 +42,17 @@ export function WorkspaceSummary({
     <button
       onClick={onClick}
       className={cn(
-        'group flex w-full cursor-pointer flex-col border-l-4 text-left',
+        'group flex w-full cursor-pointer flex-col border-l-4 text-left text-low',
         isActive ? 'border-normal pl-base' : 'border-none',
         className
       )}
     >
-      <div className={cn('truncate text-normal group-hover:text-high')}>
+      <div
+        className={cn(
+          'truncate  group-hover:text-high',
+          !summary && 'text-normal'
+        )}
+      >
         {name}
       </div>
       {hasStats && (!summary || isActive) && (
