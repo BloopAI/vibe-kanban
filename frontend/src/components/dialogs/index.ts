@@ -115,3 +115,10 @@ export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
 } from './shared/FolderPickerDialog';
+
+// Team dialogs
+export {
+  InvitePeopleDialog,
+  type InvitePeopleDialogProps,
+  type InvitePeopleDialogResult,
+} from './teams/InvitePeopleDialog';

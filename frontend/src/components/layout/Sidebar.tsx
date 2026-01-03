@@ -42,6 +42,7 @@ import {
 import type { Team } from 'shared/types';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
+import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 interface SidebarSectionProps {
@@ -188,6 +189,7 @@ interface SidebarTeamItemProps {
   isCollapsed?: boolean;
   pathname: string;
   onEdit: (team: Team) => void;
+  onInvite: (team: Team) => void;
 }
 
 function SidebarTeamItem({
@@ -197,6 +199,7 @@ function SidebarTeamItem({
   isCollapsed,
   pathname,
   onEdit,
+  onInvite,
 }: SidebarTeamItemProps) {
   const teamBasePath = `/teams/${team.id}`;
   const isTeamActive = pathname.startsWith(teamBasePath);
@@ -262,6 +265,11 @@ function SidebarTeamItem({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={() => onInvite(team)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite people
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEdit(team)}>
               <Settings className="h-4 w-4 mr-2" />
               Team settings
@@ -309,6 +317,13 @@ function SidebarTeamItem({
             isActive={pathname === `${teamBasePath}/documents`}
             indent
           />
+          <SidebarItem
+            icon={Users}
+            label="Members"
+            to={`${teamBasePath}/members`}
+            isActive={pathname === `${teamBasePath}/members`}
+            indent
+          />
         </div>
       )}
     </div>
@@ -341,6 +356,14 @@ export function Sidebar() {
   const handleEditTeam = async (team: Team) => {
     try {
       await TeamFormDialog.show({ editTeam: team });
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleInviteTeam = async (team: Team) => {
+    try {
+      await InvitePeopleDialog.show({ teamId: team.id, teamName: team.name });
     } catch {
       // User cancelled
     }
@@ -484,6 +507,7 @@ export function Sidebar() {
                   isCollapsed={isCollapsed}
                   pathname={location.pathname}
                   onEdit={handleEditTeam}
+                  onInvite={handleInviteTeam}
                 />
               ))}
               {!isCollapsed && teams.length === 0 && (

@@ -13,6 +13,10 @@ use db::models::github_connection::{
 };
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
+use db::models::team_member::{
+    CreateTeamInvitation, CreateTeamMember, TeamInvitation, TeamInvitationWithTeam,
+    TeamMember, UpdateTeamMemberRole,
+};
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
@@ -1243,6 +1247,243 @@ pub async fn clear_multi_folder_sync(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+// ============================================================================
+// Team Members Routes
+// ============================================================================
+
+/// Get all members of a team
+pub async fn get_team_members(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TeamMember>>>, ApiError> {
+    let members = TeamMember::find_by_team(&deployment.db().pool, team.id).await?;
+    Ok(ResponseJson(ApiResponse::success(members)))
+}
+
+/// Add a member directly to a team (without invitation)
+pub async fn add_team_member(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateTeamMember>,
+) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
+    // Check if member already exists
+    let existing = TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
+    if existing.is_some() {
+        return Err(ApiError::BadRequest("Member with this email already exists in the team".to_string()));
+    }
+
+    let member = TeamMember::create(&deployment.db().pool, team.id, &payload, None).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_member_added",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "member_email": payload.email,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(member)))
+}
+
+/// Update a team member's role
+pub async fn update_team_member_role(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, member_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<UpdateTeamMemberRole>,
+) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
+    // Verify the member belongs to this team
+    let existing = TeamMember::find_by_id(&deployment.db().pool, member_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+    }
+
+    let updated = TeamMember::update_role(&deployment.db().pool, member_id, payload.role).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_member_role_updated",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "member_id": member_id.to_string(),
+                "new_role": payload.role.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(updated)))
+}
+
+/// Remove a member from a team
+pub async fn remove_team_member(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, member_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Verify the member belongs to this team
+    let existing = TeamMember::find_by_id(&deployment.db().pool, member_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+    }
+
+    let rows_affected = TeamMember::delete(&deployment.db().pool, member_id).await?;
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound("Team member not found".to_string()));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_member_removed",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "member_id": member_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+// ============================================================================
+// Team Invitations Routes
+// ============================================================================
+
+/// Get all pending invitations for a team
+pub async fn get_team_invitations(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TeamInvitation>>>, ApiError> {
+    let invitations = TeamInvitation::find_pending_by_team(&deployment.db().pool, team.id).await?;
+    Ok(ResponseJson(ApiResponse::success(invitations)))
+}
+
+/// Create an invitation for a team
+pub async fn create_team_invitation(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateTeamInvitation>,
+) -> Result<ResponseJson<ApiResponse<TeamInvitation>>, ApiError> {
+    // Check if member already exists
+    let existing_member = TeamMember::find_by_team_and_email(&deployment.db().pool, team.id, &payload.email).await?;
+    if existing_member.is_some() {
+        return Err(ApiError::BadRequest("User is already a member of this team".to_string()));
+    }
+
+    let invitation = TeamInvitation::create(&deployment.db().pool, team.id, &payload, None).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_created",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "invited_email": payload.email,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(invitation)))
+}
+
+/// Cancel/delete an invitation
+pub async fn delete_team_invitation(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, invitation_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Verify the invitation belongs to this team
+    let existing = TeamInvitation::find_by_id(&deployment.db().pool, invitation_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Invitation not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Invitation does not belong to this team".to_string()));
+    }
+
+    let rows_affected = TeamInvitation::delete(&deployment.db().pool, invitation_id).await?;
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound("Invitation not found".to_string()));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_cancelled",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "invitation_id": invitation_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+// ============================================================================
+// User Invitations Routes (for the invitee)
+// ============================================================================
+
+/// Get my pending invitations (by email - for now, we'll use a query param)
+pub async fn get_my_invitations(
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Query(params): axum::extract::Query<MyInvitationsQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<TeamInvitationWithTeam>>>, ApiError> {
+    let invitations = TeamInvitation::find_pending_by_email(&deployment.db().pool, &params.email).await?;
+    Ok(ResponseJson(ApiResponse::success(invitations)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MyInvitationsQuery {
+    pub email: String,
+}
+
+/// Accept an invitation
+pub async fn accept_invitation(
+    State(deployment): State<DeploymentImpl>,
+    Path(invitation_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
+    let member = TeamInvitation::accept(&deployment.db().pool, invitation_id)
+        .await
+        .map_err(|_| ApiError::BadRequest("Invitation not found, already accepted, or expired".to_string()))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_accepted",
+            serde_json::json!({
+                "invitation_id": invitation_id.to_string(),
+                "team_id": member.team_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(member)))
+}
+
+/// Decline an invitation
+pub async fn decline_invitation(
+    State(deployment): State<DeploymentImpl>,
+    Path(invitation_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    TeamInvitation::decline(&deployment.db().pool, invitation_id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_invitation_declined",
+            serde_json::json!({
+                "invitation_id": invitation_id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let team_router = Router::new()
         .route("/", get(get_team).put(update_team).delete(delete_team))
@@ -1250,6 +1491,18 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/migrate-tasks", post(migrate_tasks_to_team))
         .route("/projects", get(get_team_projects).post(assign_project_to_team))
         .route("/projects/{project_id}", delete(remove_project_from_team))
+        // Team members routes
+        .route("/members", get(get_team_members).post(add_team_member))
+        .route(
+            "/members/{member_id}",
+            axum::routing::patch(update_team_member_role).delete(remove_team_member),
+        )
+        // Team invitations routes
+        .route(
+            "/invitations",
+            get(get_team_invitations).post(create_team_invitation),
+        )
+        .route("/invitations/{invitation_id}", delete(delete_team_invitation))
         // GitHub connection routes
         .route(
             "/github",
@@ -1288,5 +1541,13 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/validate-storage-path", post(validate_storage_path))
         .nest("/{team_id}", team_router);
 
-    Router::new().nest("/teams", inner)
+    // User invitation routes (not under a specific team)
+    let invitations_router = Router::new()
+        .route("/", get(get_my_invitations))
+        .route("/{invitation_id}/accept", post(accept_invitation))
+        .route("/{invitation_id}/decline", post(decline_invitation));
+
+    Router::new()
+        .nest("/teams", inner)
+        .nest("/invitations", invitations_router)
 }

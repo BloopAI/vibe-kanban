@@ -62,6 +62,22 @@ export type UpdateTeam = { name: string | null, identifier: string | null, icon:
 
 export type TeamProjectAssignment = { project_id: string, };
 
+export type TeamMemberRole = "viewer" | "contributor" | "maintainer" | "owner";
+
+export type TeamInvitationStatus = "pending" | "accepted" | "declined" | "expired";
+
+export type TeamMember = { id: string, team_id: string, email: string, display_name: string | null, role: TeamMemberRole, invited_by: string | null, joined_at: Date, created_at: Date, updated_at: Date, };
+
+export type CreateTeamMember = { email: string, display_name: string | null, role: TeamMemberRole | null, };
+
+export type UpdateTeamMemberRole = { role: TeamMemberRole, };
+
+export type TeamInvitation = { id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, expires_at: Date, created_at: Date, };
+
+export type TeamInvitationWithTeam = { team_name: string, id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, expires_at: Date, created_at: Date, };
+
+export type CreateTeamInvitation = { email: string, role: TeamMemberRole | null, };
+
 export type GitHubConnection = { id: string, 
 /**
  * Team ID - NULL for workspace-level connection

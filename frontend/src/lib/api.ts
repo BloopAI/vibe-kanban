@@ -122,7 +122,14 @@ import {
   DocumentContentResponse,
   GitHubRepoSyncConfig,
   ConfigureMultiFolderSync,
+  TeamMember,
+  CreateTeamMember,
+  UpdateTeamMemberRole,
+  TeamInvitation,
+  TeamInvitationWithTeam,
+  CreateTeamInvitation,
 } from 'shared/types';
+export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
@@ -1654,6 +1661,88 @@ export const teamsApi = {
         method: 'DELETE',
       }
     );
+    return handleApiResponse<void>(response);
+  },
+
+  // Team Members API
+  getMembers: async (teamId: string): Promise<TeamMember[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members`);
+    return handleApiResponse<TeamMember[]>(response);
+  },
+
+  addMember: async (teamId: string, data: CreateTeamMember): Promise<TeamMember> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TeamMember>(response);
+  },
+
+  updateMemberRole: async (
+    teamId: string,
+    memberId: string,
+    data: UpdateTeamMemberRole
+  ): Promise<TeamMember> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TeamMember>(response);
+  },
+
+  removeMember: async (teamId: string, memberId: string): Promise<void> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Team Invitations API
+  getInvitations: async (teamId: string): Promise<TeamInvitation[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/invitations`);
+    return handleApiResponse<TeamInvitation[]>(response);
+  },
+
+  createInvitation: async (
+    teamId: string,
+    data: CreateTeamInvitation
+  ): Promise<TeamInvitation> => {
+    const response = await makeRequest(`/api/teams/${teamId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TeamInvitation>(response);
+  },
+
+  cancelInvitation: async (teamId: string, invitationId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/invitations/${invitationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+};
+
+// User Invitations API (for users to manage their own invitations)
+export const userInvitationsApi = {
+  getMyInvitations: async (): Promise<TeamInvitationWithTeam[]> => {
+    const response = await makeRequest('/api/invitations');
+    return handleApiResponse<TeamInvitationWithTeam[]>(response);
+  },
+
+  acceptInvitation: async (invitationId: string): Promise<TeamMember> => {
+    const response = await makeRequest(`/api/invitations/${invitationId}/accept`, {
+      method: 'POST',
+    });
+    return handleApiResponse<TeamMember>(response);
+  },
+
+  declineInvitation: async (invitationId: string): Promise<void> => {
+    const response = await makeRequest(`/api/invitations/${invitationId}/decline`, {
+      method: 'POST',
+    });
     return handleApiResponse<void>(response);
   },
 };

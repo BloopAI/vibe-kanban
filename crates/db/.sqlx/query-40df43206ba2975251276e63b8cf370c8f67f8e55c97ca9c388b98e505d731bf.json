@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ti.id as \"id!: Uuid\",\n                      ti.team_id as \"team_id!: Uuid\",\n                      ti.email,\n                      ti.role,\n                      ti.status,\n                      ti.invited_by as \"invited_by: Uuid\",\n                      ti.expires_at as \"expires_at!: DateTime<Utc>\",\n                      ti.created_at as \"created_at!: DateTime<Utc>\",\n                      t.name as team_name\n               FROM team_invitations ti\n               INNER JOIN teams t ON ti.team_id = t.id\n               WHERE ti.email = $1 AND ti.status = 'pending'\n               ORDER BY ti.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "role",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "invited_by: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "expires_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "team_name",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "40df43206ba2975251276e63b8cf370c8f67f8e55c97ca9c388b98e505d731bf"
+}
