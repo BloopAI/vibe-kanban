@@ -34,6 +34,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Send,
 } from 'lucide-react';
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
@@ -180,13 +181,14 @@ function MemberRow({ member, onRoleChange, onRemove, isUpdating }: MemberRowProp
 
 interface InvitationRowProps {
   invitation: TeamInvitation;
+  teamName: string;
   onRoleChange: (invitationId: string, role: TeamMemberRole) => Promise<void>;
   onCancel: (invitationId: string) => Promise<void>;
   onResend?: (invitation: TeamInvitation) => Promise<void>;
   isUpdating?: boolean;
 }
 
-function InvitationRow({ invitation, onRoleChange, onCancel, onResend, isUpdating }: InvitationRowProps) {
+function InvitationRow({ invitation, teamName, onRoleChange, onCancel, onResend, isUpdating }: InvitationRowProps) {
   const [isCanceling, setIsCanceling] = useState(false);
   const [isChangingRole, setIsChangingRole] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -230,6 +232,27 @@ function InvitationRow({ invitation, onRoleChange, onCancel, onResend, isUpdatin
     if (onResend) {
       await onResend(invitation);
     }
+  };
+
+  const handleSendEmail = () => {
+    if (!invitation.token) return;
+    const inviteUrl = `${window.location.origin}/join?token=${invitation.token}`;
+    const daysUntilExpiry = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+    const subject = encodeURIComponent(`You're invited to join ${teamName} on Vibe Kanban`);
+    const body = encodeURIComponent(
+`Hi,
+
+You've been invited to join the team "${teamName}" as a ${invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}.
+
+Click here to accept: ${inviteUrl}
+
+This invitation expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}.
+
+Best regards`
+    );
+
+    window.open(`mailto:${invitation.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   // Determine effective status (check if expired even if status is pending)
@@ -295,6 +318,19 @@ function InvitationRow({ invitation, onRoleChange, onCancel, onResend, isUpdatin
           <Badge variant={getRoleBadgeVariant(invitation.role)} className="capitalize">
             {invitation.role}
           </Badge>
+        )}
+
+        {/* Send Email button - only for pending invitations with token */}
+        {isPending && invitation.token && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleSendEmail}
+            title="Send invite email"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
         )}
 
         {/* Copy Link button - only for pending invitations with token */}
@@ -495,6 +531,7 @@ export function TeamMembers() {
                       <InvitationRow
                         key={invitation.id}
                         invitation={invitation}
+                        teamName={team.name}
                         onRoleChange={handleInvitationRoleChange}
                         onCancel={handleCancelInvitation}
                         isUpdating={isUpdating}
