@@ -159,6 +159,18 @@ pub async fn delete_folder(
         return Err(ApiError::Database(sqlx::Error::RowNotFound));
     }
 
+    // Delete from filesystem if team has document_storage_path
+    if let Some(ref base_path) = team.document_storage_path {
+        let folder_path = std::path::PathBuf::from(base_path).join(&existing.name);
+        if folder_path.exists() {
+            if let Err(e) = tokio::fs::remove_dir_all(&folder_path).await {
+                tracing::warn!("Failed to delete folder from filesystem: {}", e);
+            } else {
+                tracing::info!("Deleted folder from filesystem: {:?}", folder_path);
+            }
+        }
+    }
+
     let rows_affected = DocumentFolder::delete(&deployment.db().pool, folder_id).await?;
     if rows_affected == 0 {
         return Err(ApiError::Database(sqlx::Error::RowNotFound));
