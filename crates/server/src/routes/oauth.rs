@@ -378,7 +378,7 @@ fn close_window_response(message: String) -> Response<String> {
 
 #[derive(Debug, Deserialize)]
 struct GitHubAuthorizeQuery {
-    team_id: Uuid,
+    team_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -400,8 +400,9 @@ async fn github_authorize(
         format!("http://localhost:{}/api/oauth/github/callback", port)
     });
 
-    // Generate state with team_id encoded
-    let state = format!("{}:{}", query.team_id, generate_secret());
+    // Generate state with optional team_id encoded
+    let team_id_str = query.team_id.map(|id| id.to_string()).unwrap_or_else(|| "workspace".to_string());
+    let state = format!("{}:{}", team_id_str, generate_secret());
 
     // Store the state for verification
     deployment
@@ -445,8 +446,8 @@ async fn github_callback(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<GitHubCallbackQuery>,
 ) -> Result<Response<String>, ApiError> {
-    // Verify state and get team_id
-    let team_id = match deployment.take_github_oauth_state(&query.state).await {
+    // Verify state and get optional team_id (None = workspace-level connection)
+    let team_id: Option<Uuid> = match deployment.take_github_oauth_state(&query.state).await {
         Some(id) => id,
         None => {
             return Ok(simple_html_response(
@@ -506,8 +507,12 @@ async fn github_callback(
         None
     };
 
-    // Store or update the connection
-    let existing = GitHubConnection::find_by_team_id(&deployment.db().pool, team_id).await?;
+    // Store or update the connection based on whether it's workspace or team level
+    let existing = if let Some(tid) = team_id {
+        GitHubConnection::find_by_team_id(&deployment.db().pool, tid).await?
+    } else {
+        GitHubConnection::find_workspace_connection(&deployment.db().pool).await?
+    };
 
     if let Some(conn) = existing {
         // Update existing connection
@@ -521,7 +526,11 @@ async fn github_callback(
         let create = CreateGitHubConnection {
             access_token: token_data.access_token,
         };
-        let conn = GitHubConnection::create(&deployment.db().pool, team_id, &create).await?;
+        let conn = if let Some(tid) = team_id {
+            GitHubConnection::create(&deployment.db().pool, tid, &create).await?
+        } else {
+            GitHubConnection::create_workspace_connection(&deployment.db().pool, &create).await?
+        };
 
         // Update with username if available
         if github_username.is_some() {

@@ -56,7 +56,7 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
-    github_oauth_states: Arc<RwLock<HashMap<String, Uuid>>>,
+    github_oauth_states: Arc<RwLock<HashMap<String, Option<Uuid>>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -340,14 +340,14 @@ impl LocalDeployment {
             .map(|state| (state.provider, state.app_verifier))
     }
 
-    pub async fn store_github_oauth_state(&self, state: String, team_id: Uuid) {
+    pub async fn store_github_oauth_state(&self, state: String, team_id: Option<Uuid>) {
         self.github_oauth_states
             .write()
             .await
             .insert(state, team_id);
     }
 
-    pub async fn take_github_oauth_state(&self, state: &str) -> Option<Uuid> {
+    pub async fn take_github_oauth_state(&self, state: &str) -> Option<Option<Uuid>> {
         self.github_oauth_states.write().await.remove(state)
     }
 
