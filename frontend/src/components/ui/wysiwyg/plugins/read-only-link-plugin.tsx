@@ -37,7 +37,7 @@ function isExternalHref(href?: string): boolean {
  * Plugin that handles link sanitization and security attributes in read-only mode.
  * - Blocks dangerous protocols (javascript:, vbscript:, data:)
  * - External HTTPS links: clickable with target="_blank" and rel="noopener noreferrer"
- * - Internal/relative links: rendered but not clickable
+ * - Internal/relative links: clickable, navigates within the app
  */
 export function ReadOnlyLinkPlugin() {
   const [editor] = useLexicalComposerContext();
@@ -72,13 +72,14 @@ export function ReadOnlyLinkPlugin() {
             dom.setAttribute('rel', 'noopener noreferrer');
             dom.onclick = (e) => e.stopPropagation();
           } else {
-            // Internal/relative link - disable clicking
-            dom.removeAttribute('href');
-            dom.style.cursor = 'not-allowed';
-            dom.style.pointerEvents = 'none';
-            dom.setAttribute('role', 'link');
-            dom.setAttribute('aria-disabled', 'true');
-            dom.title = href ?? '';
+            // Internal/relative link - navigate within the app
+            dom.style.cursor = 'pointer';
+            dom.onclick = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Use window.location for internal navigation
+              window.location.href = safeHref;
+            };
           }
         }
       }
@@ -108,12 +109,14 @@ export function ReadOnlyLinkPlugin() {
           link.setAttribute('rel', 'noopener noreferrer');
           link.onclick = (e) => e.stopPropagation();
         } else {
-          link.removeAttribute('href');
-          link.style.cursor = 'not-allowed';
-          link.style.pointerEvents = 'none';
-          link.setAttribute('role', 'link');
-          link.setAttribute('aria-disabled', 'true');
-          link.title = href ?? '';
+          // Internal/relative link - navigate within the app
+          link.style.cursor = 'pointer';
+          link.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Use window.location for internal navigation
+            window.location.href = safeHref;
+          };
         }
       });
     });
