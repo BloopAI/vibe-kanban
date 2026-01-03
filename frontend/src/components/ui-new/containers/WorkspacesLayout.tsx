@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Allotment, LayoutPriority } from 'allotment';
@@ -281,6 +281,13 @@ export function WorkspacesLayout() {
   const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
   const [isChangesMode, setIsChangesMode] = useState(false);
   const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
+
+  // Reset changes mode when entering create mode
+  useEffect(() => {
+    if (isCreateMode) {
+      setIsChangesMode(false);
+    }
+  }, [isCreateMode]);
 
   // Persisted pane sizes
   const [sidebarWidth, setSidebarWidth] = usePaneSize(
