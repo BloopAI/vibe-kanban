@@ -95,7 +95,9 @@ function WYSIWYGEditor({
   const handleCopy = useCallback(async () => {
     if (!value) return;
     try {
-      await writeClipboardViaBridge(value);
+      // Unescape markdown-escaped underscores for cleaner clipboard output
+      const unescaped = value.replace(/\\_/g, '_');
+      await writeClipboardViaBridge(unescaped);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 400);
     } catch {
