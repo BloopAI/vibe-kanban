@@ -7,9 +7,13 @@ import {
   ArrowUpIcon,
   CrosshairIcon,
   ArrowRightIcon,
+  CodeIcon,
+  ArrowSquareOutIcon,
+  CopyIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,6 +45,8 @@ interface RepoCardProps {
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
+  onOpenInEditor?: () => void;
+  onCopyPath?: () => void;
 }
 
 export function RepoCard({
@@ -55,6 +61,8 @@ export function RepoCard({
   onChangeTarget,
   onRebase,
   onActionsClick,
+  onOpenInEditor,
+  onCopyPath,
 }: RepoCardProps) {
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
@@ -135,13 +143,33 @@ export function RepoCard({
         </span>
       </div>
 
-      {/* Actions split button */}
-      <SplitButton
-        options={repoActionOptions}
-        selectedValue={selectedAction}
-        onSelectionChange={setSelectedAction}
-        onAction={(action) => onActionsClick?.(action)}
-      />
+      {/* Actions row */}
+      <div className="flex items-center gap-half">
+        <SplitButton
+          options={repoActionOptions}
+          selectedValue={selectedAction}
+          onSelectionChange={setSelectedAction}
+          onAction={(action) => onActionsClick?.(action)}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
+              title="Repo actions"
+            >
+              <ArrowSquareOutIcon className="size-icon-base" weight="bold" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
+              Copy path
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
+              Open in IDE
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </CollapsibleSection>
   );
 }

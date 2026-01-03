@@ -25,6 +25,8 @@ interface GitPanelProps {
   workingBranchName: string;
   onWorkingBranchNameChange: (name: string) => void;
   onActionsClick?: (repoId: string, action: RepoAction) => void;
+  onOpenInEditor?: (repoId: string) => void;
+  onCopyPath?: (repoId: string) => void;
   onAddRepo?: () => void;
   className?: string;
   error?: string | null;
@@ -35,6 +37,8 @@ export function GitPanel({
   workingBranchName,
   onWorkingBranchNameChange,
   onActionsClick,
+  onOpenInEditor,
+  onCopyPath,
   className,
   error,
 }: GitPanelProps) {
@@ -62,6 +66,8 @@ export function GitPanel({
               onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
               onRebase={() => onActionsClick?.(repo.id, 'rebase')}
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+              onOpenInEditor={() => onOpenInEditor?.(repo.id)}
+              onCopyPath={() => onCopyPath?.(repo.id)}
             />
           ))}
         </div>

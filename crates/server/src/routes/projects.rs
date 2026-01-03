@@ -313,8 +313,8 @@ pub async fn delete_project(
 
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
-    editor_type: Option<String>,
-    git_repo_path: Option<PathBuf>,
+    pub editor_type: Option<String>,
+    pub git_repo_path: Option<PathBuf>,
 }
 
 #[derive(Debug, serde::Serialize, ts_rs::TS)]

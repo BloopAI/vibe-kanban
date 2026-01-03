@@ -854,6 +854,17 @@ export const repoApi = {
     });
     return handleApiResponse<Repo[]>(response);
   },
+
+  openEditor: async (
+    repoId: string,
+    data: OpenEditorRequest
+  ): Promise<OpenEditorResponse> => {
+    const response = await makeRequest(`/api/repos/${repoId}/open-editor`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<OpenEditorResponse>(response);
+  },
 };
 
 // Config APIs (backwards compatible)
