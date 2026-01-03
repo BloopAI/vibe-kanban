@@ -928,8 +928,19 @@ pub async fn pull_documents_from_github(
                                 .join(" ");
 
                             // Check if document already exists in this folder
+                            // Use normalized comparison to match regardless of case/spacing
                             let existing_docs = Document::find_by_folder(&deployment.db().pool, team.id, folder_id).await?;
-                            let existing = existing_docs.into_iter().find(|d| d.title == title);
+                            let normalize_title = |t: &str| -> String {
+                                t.to_lowercase()
+                                    .chars()
+                                    .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+                                    .collect::<String>()
+                                    .split_whitespace()
+                                    .collect::<Vec<_>>()
+                                    .join(" ")
+                            };
+                            let normalized_title = normalize_title(&title);
+                            let existing = existing_docs.into_iter().find(|d| normalize_title(&d.title) == normalized_title);
 
                             if let Some(doc) = existing {
                                 // Update existing document
