@@ -129,8 +129,8 @@ impl TaskDocumentLink {
             let id = Uuid::new_v4();
             let row = sqlx::query_as!(
                 TaskDocumentLinkRow,
-                r#"INSERT INTO task_document_links (id, task_id, document_id)
-                   VALUES ($1, $2, $3)
+                r#"INSERT INTO task_document_links (id, task_id, document_id, created_at)
+                   VALUES ($1, $2, $3, datetime('now', 'subsec'))
                    RETURNING id as "id!: Uuid",
                              task_id as "task_id!: Uuid",
                              document_id as "document_id!: Uuid",

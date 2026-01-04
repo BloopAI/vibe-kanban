@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO task_document_links (id, task_id, document_id)\n                   VALUES ($1, $2, $3)\n                   RETURNING id as \"id!: Uuid\",\n                             task_id as \"task_id!: Uuid\",\n                             document_id as \"document_id!: Uuid\",\n                             created_at as \"created_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO task_document_links (id, task_id, document_id, created_at)\n                   VALUES ($1, $2, $3, datetime('now', 'subsec'))\n                   RETURNING id as \"id!: Uuid\",\n                             task_id as \"task_id!: Uuid\",\n                             document_id as \"document_id!: Uuid\",\n                             created_at as \"created_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "bafd96ce99f38c81f17b6a5cd696e1febc34d265c0a1ba1c038e42f136d9e93b"
+  "hash": "1005a3e3a79f043efc82a5471fdf4823433175054805634fb51c8c694ae6acfc"
 }
