@@ -357,13 +357,43 @@ impl LocalContainerService {
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
         tokio::spawn(async move {
+            // Load execution process to get time limit and start time
+            let (time_limit_seconds, started_at) = match ExecutionProcess::find_by_id(&db.pool, exec_id).await {
+                Ok(Some(ep)) => (ep.time_limit_seconds, ep.started_at),
+                _ => (None, chrono::Utc::now()),
+            };
+
             let mut exit_signal_future = exit_signal
                 .map(|rx| rx.boxed()) // wait for result
                 .unwrap_or_else(|| std::future::pending().boxed()); // no signal, stall forever
 
             let status_result: std::io::Result<std::process::ExitStatus>;
+            let timed_out = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-            // Wait for process to exit, or exit signal from executor
+            // Create timeout future if time limit is set
+            let timeout_future = if let Some(limit_secs) = time_limit_seconds {
+                let started_at = started_at;
+                let timed_out_clone = timed_out.clone();
+                async move {
+                    let elapsed = chrono::Utc::now() - started_at;
+                    let remaining = std::time::Duration::from_secs(limit_secs as u64)
+                        .saturating_sub(elapsed.to_std().unwrap_or_default());
+                    
+                    if remaining.is_zero() {
+                        // Already exceeded
+                        timed_out_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+                        return;
+                    }
+                    
+                    tokio::time::sleep(remaining).await;
+                    timed_out_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                .boxed()
+            } else {
+                std::future::pending().boxed()
+            };
+
+            // Wait for process to exit, exit signal from executor, or timeout
             tokio::select! {
                 // Exit signal with result.
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
@@ -388,19 +418,72 @@ impl LocalContainerService {
                 exit_status_result = &mut process_exit_rx => {
                     status_result = exit_status_result.unwrap_or_else(|e| Err(std::io::Error::other(e)));
                 }
+                // Time limit exceeded
+                _ = timeout_future => {
+                    tracing::info!(
+                        "Execution process {} exceeded time limit of {} seconds, initiating graceful shutdown",
+                        exec_id,
+                        time_limit_seconds.unwrap_or(0)
+                    );
+                    
+                    // Try graceful interrupt first
+                    if let Some(interrupt_sender) = container.take_interrupt_sender(&exec_id).await {
+                        let _ = interrupt_sender.send(());
+                        
+                        // Wait briefly for graceful shutdown
+                        if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                            let graceful_exit = {
+                                let mut child_guard = child_lock.write().await;
+                                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
+                            };
+                            
+                            match graceful_exit {
+                                Ok(Ok(status)) => {
+                                    tracing::debug!("Process {} exited gracefully after timeout interrupt", exec_id);
+                                    status_result = Ok(status);
+                                }
+                                _ => {
+                                    tracing::debug!("Graceful shutdown timed out for process {}, force killing", exec_id);
+                                    // Force kill
+                                    let mut child_guard = child_lock.write().await;
+                                    if let Err(e) = command::kill_process_group(&mut child_guard).await {
+                                        tracing::error!("Failed to kill process group after timeout: {} {}", exec_id, e);
+                                    }
+                                    status_result = Ok(failure_exit_status());
+                                }
+                            }
+                        } else {
+                            status_result = Ok(failure_exit_status());
+                        }
+                    } else {
+                        // No interrupt sender, force kill
+                        if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
+                            let mut child_guard = child_lock.write().await;
+                            if let Err(e) = command::kill_process_group(&mut child_guard).await {
+                                tracing::error!("Failed to kill process group after timeout: {} {}", exec_id, e);
+                            }
+                        }
+                        status_result = Ok(failure_exit_status());
+                    }
+                }
             }
 
-            let (exit_code, status) = match status_result {
-                Ok(exit_status) => {
-                    let code = exit_status.code().unwrap_or(-1) as i64;
-                    let status = if exit_status.success() {
-                        ExecutionProcessStatus::Completed
-                    } else {
-                        ExecutionProcessStatus::Failed
-                    };
-                    (Some(code), status)
+            let (exit_code, status) = if timed_out.load(std::sync::atomic::Ordering::Relaxed) {
+                // Time limit exceeded - mark as TimeBounded
+                (None, ExecutionProcessStatus::TimeBounded)
+            } else {
+                match status_result {
+                    Ok(exit_status) => {
+                        let code = exit_status.code().unwrap_or(-1) as i64;
+                        let status = if exit_status.success() {
+                            ExecutionProcessStatus::Completed
+                        } else {
+                            ExecutionProcessStatus::Failed
+                        };
+                        (Some(code), status)
+                    }
+                    Err(_) => (None, ExecutionProcessStatus::Failed),
                 }
-                Err(_) => (None, ExecutionProcessStatus::Failed),
             };
 
             if !ExecutionProcess::was_stopped(&db.pool, exec_id).await
@@ -467,10 +550,10 @@ impl LocalContainerService {
 
                 if container.should_finalize(&ctx) {
                     // Only execute queued messages if the execution succeeded
-                    // If it failed or was killed, just clear the queue and finalize
+                    // If it failed, was killed, or timed out, just clear the queue and finalize
                     let should_execute_queued = !matches!(
                         ctx.execution_process.status,
-                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed | ExecutionProcessStatus::TimeBounded
                     );
 
                     if let Some(queued_msg) =

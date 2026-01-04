@@ -45,6 +45,7 @@ pub enum ExecutionProcessStatus {
     Completed,
     Failed,
     Killed,
+    TimeBounded,
 }
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
@@ -70,6 +71,8 @@ pub struct ExecutionProcess {
     /// history view (due to restore/trimming). Hidden from logs/timeline;
     /// still listed in the Processes tab.
     pub dropped: bool,
+    /// time_limit_seconds: Maximum execution time in seconds. None means no limit.
+    pub time_limit_seconds: Option<i64>,
     pub started_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -81,6 +84,9 @@ pub struct CreateExecutionProcess {
     pub session_id: Uuid,
     pub executor_action: ExecutorAction,
     pub run_reason: ExecutionProcessRunReason,
+    /// time_limit_seconds: Maximum execution time in seconds. None means no limit (default: 120 seconds for CodingAgent).
+    #[serde(default)]
+    pub time_limit_seconds: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -132,6 +138,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
@@ -206,6 +213,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
@@ -233,6 +241,7 @@ impl ExecutionProcess {
                       ep.status          as "status!: ExecutionProcessStatus",
                       ep.exit_code,
                       ep.dropped as "dropped!: bool",
+                      ep.time_limit_seconds,
                       ep.started_at      as "started_at!: DateTime<Utc>",
                       ep.completed_at    as "completed_at?: DateTime<Utc>",
                       ep.created_at      as "created_at!: DateTime<Utc>",
@@ -260,6 +269,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
@@ -279,7 +289,7 @@ impl ExecutionProcess {
             ExecutionProcess,
             r#"SELECT ep.id as "id!: Uuid", ep.session_id as "session_id!: Uuid", ep.run_reason as "run_reason!: ExecutionProcessRunReason", ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
                       ep.status as "status!: ExecutionProcessStatus", ep.exit_code,
-                      ep.dropped as "dropped!: bool", ep.started_at as "started_at!: DateTime<Utc>", ep.completed_at as "completed_at?: DateTime<Utc>", ep.created_at as "created_at!: DateTime<Utc>", ep.updated_at as "updated_at!: DateTime<Utc>"
+                      ep.dropped as "dropped!: bool", ep.time_limit_seconds, ep.started_at as "started_at!: DateTime<Utc>", ep.completed_at as "completed_at?: DateTime<Utc>", ep.created_at as "created_at!: DateTime<Utc>", ep.updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes ep
                JOIN sessions s ON ep.session_id = s.id
                JOIN workspaces w ON s.workspace_id = w.id
@@ -327,6 +337,7 @@ impl ExecutionProcess {
             ep.status as "status!: ExecutionProcessStatus",
             ep.exit_code,
             ep.dropped as "dropped!: bool",
+            ep.time_limit_seconds,
             ep.started_at as "started_at!: DateTime<Utc>",
             ep.completed_at as "completed_at?: DateTime<Utc>",
             ep.created_at as "created_at!: DateTime<Utc>",
@@ -389,6 +400,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
@@ -419,6 +431,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
@@ -453,14 +466,15 @@ impl ExecutionProcess {
         sqlx::query!(
             r#"INSERT INTO execution_processes (
                     id, session_id, run_reason, executor_action,
-                    status, exit_code, started_at, completed_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+                    status, exit_code, time_limit_seconds, started_at, completed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
             process_id,
             data.session_id,
             data.run_reason,
             executor_action_json,
             ExecutionProcessStatus::Running,
             None::<i64>,
+            data.time_limit_seconds,
             now,
             None::<DateTime<Utc>>,
             now,
@@ -481,6 +495,7 @@ impl ExecutionProcess {
             && exp_process.is_some_and(|ep| {
                 ep.status == ExecutionProcessStatus::Killed
                     || ep.status == ExecutionProcessStatus::Completed
+                    || ep.status == ExecutionProcessStatus::TimeBounded
             })
         {
             return true;
@@ -645,6 +660,7 @@ impl ExecutionProcess {
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
+                    ep.time_limit_seconds,
                     ep.started_at as "started_at!: DateTime<Utc>",
                     ep.completed_at as "completed_at?: DateTime<Utc>",
                     ep.created_at as "created_at!: DateTime<Utc>",
