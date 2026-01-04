@@ -93,14 +93,16 @@ export function PreviewPanel() {
   }, [previewState.status, previewState.url, addElement]);
 
   // Timeout before showing the "trouble previewing" help message
-  // 30 seconds gives dev servers time to install dependencies and start
-  const DEV_SERVER_TIMEOUT_MS = 30000;
+  // Uses project setting if configured, otherwise defaults to 30 seconds
+  const DEFAULT_DEV_SERVER_TIMEOUT_SECONDS = 30;
+  const devServerTimeoutMs =
+    (project?.dev_server_timeout ?? DEFAULT_DEV_SERVER_TIMEOUT_SECONDS) * 1000;
 
   function startTimer() {
     setLoadingTimeFinished(false);
     setTimeout(() => {
       setLoadingTimeFinished(true);
-    }, DEV_SERVER_TIMEOUT_MS);
+    }, devServerTimeoutMs);
   }
 
   useEffect(() => {
