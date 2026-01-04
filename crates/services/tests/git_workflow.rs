@@ -327,6 +327,149 @@ fn get_all_branches_lists_current_and_others() {
     assert!(main_entry.is_current);
 }
 
+fn setup_remote(local_path: &Path, remote_path: &Path) {
+    // Initialize a bare remote repository
+    let _ = git2::Repository::init_bare(remote_path).unwrap();
+
+    // Add remote to local repo
+    let local_repo = git2::Repository::open(local_path).unwrap();
+    local_repo
+        .remote("origin", remote_path.to_str().unwrap())
+        .unwrap();
+
+    // Push main to origin
+    let git = GitCli::new();
+    git.git(local_path, ["push", "-u", "origin", "main"])
+        .unwrap();
+}
+
+#[test]
+fn get_all_branches_marks_remote_head() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let remote_path = td.path().join("remote.git");
+
+    // Create initial commit so we can push
+    write_file(&repo_path, "init.txt", "init\n");
+    let s = GitService::new();
+    let _ = s.commit(&repo_path, "initial").unwrap();
+
+    // Set up remote and push
+    setup_remote(&repo_path, &remote_path);
+
+    // Fetch to get remote tracking branches
+    let git = GitCli::new();
+    git.git(&repo_path, ["fetch", "origin"]).unwrap();
+
+    // Set origin/HEAD to point to origin/main
+    git.git(&repo_path, ["remote", "set-head", "origin", "main"])
+        .unwrap();
+
+    let branches = s.get_all_branches(&repo_path).unwrap();
+
+    // Find origin/main - it should be marked as is_remote_head
+    let origin_main = branches
+        .iter()
+        .find(|b| b.name == "origin/main")
+        .expect("origin/main should exist");
+    assert!(origin_main.is_remote, "origin/main should be remote");
+    assert!(
+        origin_main.is_remote_head,
+        "origin/main should be marked as remote HEAD"
+    );
+
+    // Local branches should NOT be marked as remote_head
+    let local_main = branches.iter().find(|b| b.name == "main").unwrap();
+    assert!(!local_main.is_remote_head);
+}
+
+#[test]
+fn get_all_branches_remote_head_with_master() {
+    let td = TempDir::new().unwrap();
+    let repo_path = td.path().join("repo");
+
+    // Initialize repo with master as default (old-style)
+    let s = GitService::new();
+    let git = GitCli::new();
+
+    // Use git init directly to get master as default
+    fs::create_dir_all(&repo_path).unwrap();
+    git.git(&repo_path, ["init"]).unwrap();
+    configure_user(&repo_path, "Test", "test@test.com");
+
+    // Create initial commit on master
+    write_file(&repo_path, "init.txt", "init\n");
+    let _ = s.commit(&repo_path, "initial").unwrap();
+
+    // Rename to master if on main
+    let current = s.get_current_branch(&repo_path).unwrap();
+    if current == "main" {
+        git.git(&repo_path, ["branch", "-m", "main", "master"])
+            .unwrap();
+    }
+
+    let remote_path = td.path().join("remote.git");
+    let _ = git2::Repository::init_bare(&remote_path).unwrap();
+
+    let local_repo = git2::Repository::open(&repo_path).unwrap();
+    local_repo
+        .remote("origin", remote_path.to_str().unwrap())
+        .unwrap();
+
+    git.git(&repo_path, ["push", "-u", "origin", "master"])
+        .unwrap();
+    git.git(&repo_path, ["fetch", "origin"]).unwrap();
+    git.git(&repo_path, ["remote", "set-head", "origin", "master"])
+        .unwrap();
+
+    let branches = s.get_all_branches(&repo_path).unwrap();
+
+    // origin/master should be marked as remote HEAD
+    let origin_master = branches
+        .iter()
+        .find(|b| b.name == "origin/master")
+        .expect("origin/master should exist");
+    assert!(
+        origin_master.is_remote_head,
+        "origin/master should be marked as remote HEAD"
+    );
+
+    // origin/main should not exist in this case
+    assert!(
+        !branches.iter().any(|b| b.name == "origin/main"),
+        "origin/main should not exist"
+    );
+}
+
+#[test]
+fn get_all_branches_no_remote_head_when_not_set() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let remote_path = td.path().join("remote.git");
+
+    write_file(&repo_path, "init.txt", "init\n");
+    let s = GitService::new();
+    let _ = s.commit(&repo_path, "initial").unwrap();
+
+    setup_remote(&repo_path, &remote_path);
+
+    let git = GitCli::new();
+    git.git(&repo_path, ["fetch", "origin"]).unwrap();
+
+    // Delete the remote HEAD reference (simulates repos where it's not set)
+    git.git(&repo_path, ["remote", "set-head", "origin", "-d"])
+        .unwrap();
+
+    let branches = s.get_all_branches(&repo_path).unwrap();
+
+    // No branch should be marked as remote_head
+    let any_remote_head = branches.iter().any(|b| b.is_remote_head);
+    assert!(
+        !any_remote_head,
+        "No branch should be marked as remote HEAD when origin/HEAD is not set"
+    );
+}
+
 #[test]
 fn get_branch_diffs_between_branches() {
     let td = TempDir::new().unwrap();

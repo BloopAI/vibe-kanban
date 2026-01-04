@@ -36,8 +36,10 @@ type UseRepoBranchSelectionReturn = {
  * 1. Look for exact match (e.g., main -> origin/main)
  * 2. Look for main/master equivalents (e.g., if on main but remote uses master)
  * 3. Fall back to the remote's default branch (origin/HEAD target)
+ *
+ * Exported for testing purposes.
  */
-function findRemoteTrackingBranch(
+export function findRemoteTrackingBranch(
   localBranchName: string,
   branches: GitBranch[]
 ): GitBranch | undefined {
