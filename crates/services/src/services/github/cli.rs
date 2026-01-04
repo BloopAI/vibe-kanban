@@ -58,6 +58,43 @@ pub struct PrReviewComment {
     pub author_association: String,
 }
 
+/// CI check status for a PR
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PrCheckStatus {
+    /// All checks passed
+    Success,
+    /// Some checks failed
+    Failure,
+    /// Checks are still running
+    Pending,
+    /// No checks configured
+    None,
+}
+
+/// Mergeability status for a PR
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PrMergeableStatus {
+    /// PR can be merged
+    Mergeable,
+    /// PR has conflicts
+    Conflicting,
+    /// Mergeability unknown (still being computed)
+    Unknown,
+}
+
+/// Detailed PR status including checks and mergeability
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct PrStatusDetails {
+    pub check_status: PrCheckStatus,
+    pub mergeable_status: PrMergeableStatus,
+    /// Failed check names (if any)
+    pub failed_checks: Vec<String>,
+    /// Pending check names (if any)
+    pub pending_checks: Vec<String>,
+}
+
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
 pub enum GhCliError {
@@ -245,6 +282,26 @@ impl GhCli {
         ])?;
         Self::parse_pr_review_comments(&raw)
     }
+
+    /// Get detailed PR status including CI checks and mergeability.
+    pub fn get_pr_status_details(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+    ) -> Result<PrStatusDetails, GhCliError> {
+        // Use gh pr view with statusCheckRollup and mergeable fields
+        let raw = self.run([
+            "pr",
+            "view",
+            &pr_number.to_string(),
+            "--repo",
+            &format!("{owner}/{repo}"),
+            "--json",
+            "statusCheckRollup,mergeable",
+        ])?;
+        Self::parse_pr_status_details(&raw)
+    }
 }
 
 impl GhCli {
@@ -386,6 +443,83 @@ impl GhCli {
             },
             merged_at,
             merge_commit_sha,
+        })
+    }
+
+    fn parse_pr_status_details(raw: &str) -> Result<PrStatusDetails, GhCliError> {
+        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh pr view status response: {err}; raw: {raw}"
+            ))
+        })?;
+
+        // Parse mergeable status
+        let mergeable_status = match value.get("mergeable").and_then(Value::as_str) {
+            Some("MERGEABLE") => PrMergeableStatus::Mergeable,
+            Some("CONFLICTING") => PrMergeableStatus::Conflicting,
+            _ => PrMergeableStatus::Unknown,
+        };
+
+        // Parse status check rollup
+        let status_check_rollup = value
+            .get("statusCheckRollup")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+
+        let mut failed_checks = Vec::new();
+        let mut pending_checks = Vec::new();
+        let mut has_success = false;
+        let mut has_failure = false;
+        let mut has_pending = false;
+
+        for check in &status_check_rollup {
+            let name = check
+                .get("name")
+                .or_else(|| check.get("context"))
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_string();
+
+            // Handle both check runs (conclusion) and status contexts (state)
+            let status = check
+                .get("conclusion")
+                .or_else(|| check.get("state"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+
+            match status.to_ascii_uppercase().as_str() {
+                "SUCCESS" => has_success = true,
+                "FAILURE" | "ERROR" | "CANCELLED" | "TIMED_OUT" | "ACTION_REQUIRED" => {
+                    has_failure = true;
+                    failed_checks.push(name);
+                }
+                "PENDING" | "" | "NEUTRAL" | "SKIPPED" => {
+                    // Empty conclusion means still running
+                    if status.is_empty() || status.to_ascii_uppercase() == "PENDING" {
+                        has_pending = true;
+                        pending_checks.push(name);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let check_status = if has_failure {
+            PrCheckStatus::Failure
+        } else if has_pending {
+            PrCheckStatus::Pending
+        } else if has_success || !status_check_rollup.is_empty() {
+            PrCheckStatus::Success
+        } else {
+            PrCheckStatus::None
+        };
+
+        Ok(PrStatusDetails {
+            check_status,
+            mergeable_status,
+            failed_checks,
+            pending_checks,
         })
     }
 }

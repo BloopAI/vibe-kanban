@@ -38,6 +38,7 @@ interface ProjectFormState {
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  pr_auto_fix_enabled: boolean;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +54,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    pr_auto_fix_enabled: project.pr_auto_fix_enabled ?? false,
   };
 }
 
@@ -397,6 +399,7 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        pr_auto_fix_enabled: draft.pr_auto_fix_enabled,
       };
 
       updateProject.mutate({
@@ -627,6 +630,28 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.agentWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pr-auto-fix"
+                    checked={draft.pr_auto_fix_enabled}
+                    onCheckedChange={(checked) =>
+                      updateDraft({ pr_auto_fix_enabled: checked === true })
+                    }
+                  />
+                  <Label
+                    htmlFor="pr-auto-fix"
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    Auto-fix PR issues
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground pl-6">
+                  When enabled, automatically prompt the agent to fix CI
+                  failures or merge conflicts when detected on open PRs.
                 </p>
               </div>
 
