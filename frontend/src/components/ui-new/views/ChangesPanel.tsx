@@ -1,11 +1,12 @@
+import { memo } from 'react';
 import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
 import { DiffViewCard } from '../primitives/conversation/DiffViewCard';
 import type { DiffInput } from '../primitives/conversation/DiffViewCard';
+import type { Diff } from 'shared/types';
 
 interface DiffItemData {
-  path: string;
-  input: DiffInput;
+  diff: Diff;
   initialExpanded?: boolean;
 }
 
@@ -14,6 +15,39 @@ interface ChangesPanelProps {
   diffItems: DiffItemData[];
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
 }
+
+// Memoized DiffItem - only re-renders when its specific diff reference changes
+const DiffItem = memo(function DiffItem({
+  diff,
+  initialExpanded = true,
+  onRef,
+}: {
+  diff: Diff;
+  initialExpanded?: boolean;
+  onRef?: (path: string, el: HTMLDivElement | null) => void;
+}) {
+  const path = diff.newPath || diff.oldPath || '';
+  const [expanded, toggle] = usePersistedExpanded(
+    `diff:${path}`,
+    initialExpanded
+  );
+
+  // Compute input inside the component - this is fine because
+  // React.memo compares the diff reference, not the input object
+  const input: DiffInput = {
+    type: 'content',
+    oldContent: diff.oldContent || '',
+    newContent: diff.newContent || '',
+    oldPath: diff.oldPath || undefined,
+    newPath: diff.newPath || '',
+  };
+
+  return (
+    <div ref={(el) => onRef?.(path, el)}>
+      <DiffViewCard input={input} expanded={expanded} onToggle={toggle} />
+    </div>
+  );
+});
 
 export function ChangesPanel({
   className,
@@ -28,11 +62,10 @@ export function ChangesPanel({
       )}
     >
       <div className="space-y-base">
-        {diffItems.map(({ path, input, initialExpanded }) => (
+        {diffItems.map(({ diff, initialExpanded }) => (
           <DiffItem
-            key={path}
-            path={path}
-            input={input}
+            key={diff.newPath || diff.oldPath || ''}
+            diff={diff}
             initialExpanded={initialExpanded}
             onRef={onDiffRef}
           />
@@ -43,29 +76,6 @@ export function ChangesPanel({
           <p className="text-sm">No changes to display</p>
         </div>
       )}
-    </div>
-  );
-}
-
-function DiffItem({
-  path,
-  input,
-  initialExpanded = true,
-  onRef,
-}: {
-  path: string;
-  input: DiffInput;
-  initialExpanded?: boolean;
-  onRef?: (path: string, el: HTMLDivElement | null) => void;
-}) {
-  const [expanded, toggle] = usePersistedExpanded(
-    `diff:${path}`,
-    initialExpanded
-  );
-
-  return (
-    <div ref={(el) => onRef?.(path, el)}>
-      <DiffViewCard input={input} expanded={expanded} onToggle={toggle} />
     </div>
   );
 }

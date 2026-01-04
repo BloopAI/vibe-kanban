@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { produce } from 'immer';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
@@ -124,11 +125,10 @@ export const useJsonPatchWsStream = <T extends object>(
             const current = dataRef.current;
             if (!filtered.length || !current) return;
 
-            // Deep clone the current state before mutating it
-            const next = structuredClone(current);
-
-            // Apply patch (mutates the clone in place)
-            applyPatch(next, filtered);
+            // Use Immer for structural sharing - only modified parts get new references
+            const next = produce(current, (draft) => {
+              applyPatch(draft, filtered);
+            });
 
             dataRef.current = next;
             setData(next);
