@@ -2,7 +2,7 @@ import {
   SidebarSimpleIcon,
   ArchiveIcon,
   ArrowSquareOutIcon,
-  FilesIcon,
+  GitDiffIcon,
   ChatsTeardropIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
@@ -201,7 +201,7 @@ export function Navbar({
           }
         />
         <NavbarIconButton
-          icon={FilesIcon}
+          icon={GitDiffIcon}
           isActive={isChangesMode}
           onClick={onToggleChangesMode}
           aria-label="Toggle changes mode"
