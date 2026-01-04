@@ -474,6 +474,40 @@ export function GeneralSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
+              id="pr-auto-create"
+              checked={draft?.pr_auto_create_on_completion ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ pr_auto_create_on_completion: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="pr-auto-create" className="cursor-pointer">
+                {t('settings.general.pullRequests.autoCreate.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.pullRequests.autoCreate.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="open-pr-in-browser"
+              checked={draft?.open_pr_in_browser ?? true}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ open_pr_in_browser: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="open-pr-in-browser" className="cursor-pointer">
+                {t('settings.general.pullRequests.openInBrowser.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.pullRequests.openInBrowser.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
               id="pr-auto-description"
               checked={draft?.pr_auto_description_enabled ?? false}
               onCheckedChange={(checked: boolean) =>

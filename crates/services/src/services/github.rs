@@ -13,7 +13,7 @@ use ts_rs::TS;
 mod cli;
 
 use cli::{GhCli, GhCliError, PrComment, PrReviewComment};
-pub use cli::{PrCommentAuthor, ReviewCommentUser};
+pub use cli::{PrCheckStatus, PrCommentAuthor, PrMergeableStatus, PrStatusDetails, ReviewCommentUser};
 
 /// Unified PR comment that can be either a general comment or review comment
 #[derive(Debug, Clone, Serialize, TS)]
@@ -432,6 +432,47 @@ impl GitHubService {
                 ))
             })?;
             comments.map_err(GitHubServiceError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// Get detailed PR status including CI checks and mergeability
+    pub async fn get_pr_status_details(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<PrStatusDetails, GitHubServiceError> {
+        (|| async {
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let cli = self.gh_cli.clone();
+            let status = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                move || cli.get_pr_status_details(&owner, &repo, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for PR #{pr_number} status details: {err}"
+                ))
+            })?;
+            status.map_err(GitHubServiceError::from)
         })
         .retry(
             &ExponentialBuilder::default()
