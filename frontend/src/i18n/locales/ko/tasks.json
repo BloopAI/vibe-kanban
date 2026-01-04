@@ -1,6 +1,7 @@
 {
   "actions": {
-    "addTask": "작업 추가"
+    "addTask": "작업 추가",
+    "clearColumn": "완료된 작업 삭제"
   },
   "filters": {
     "sharedToggleAria": "공유 작업 전환",

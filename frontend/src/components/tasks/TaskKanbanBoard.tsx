@@ -1,4 +1,5 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks';
 import {
   type DragEndEvent,
@@ -12,6 +13,9 @@ import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
+import { BulkDeleteTasksDialog } from '@/components/dialogs/tasks/BulkDeleteTasksDialog';
+import { taskKeys } from '@/hooks/useTask';
+import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
 
 export type KanbanColumnItem =
   | {
@@ -48,17 +52,39 @@ function TaskKanbanBoard({
   projectId,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
+  const queryClient = useQueryClient();
+
+  const handleClearDone = useCallback(async () => {
+    const doneCount = columns.done?.filter((item) => item.type === 'task').length ?? 0;
+    if (doneCount === 0) return;
+
+    try {
+      await BulkDeleteTasksDialog.show({
+        projectId,
+        status: 'done',
+        count: doneCount,
+      });
+      // Dialog resolved successfully (API already called), invalidate queries
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
+      queryClient.invalidateQueries({ queryKey: taskRelationshipsKeys.all });
+    } catch {
+      // User cancelled
+    }
+  }, [columns.done, projectId, queryClient]);
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(columns).map(([status, items]) => {
         const statusKey = status as TaskStatus;
+        const isDoneColumn = statusKey === 'done';
+        const hasOwnTasks = items.some((item) => item.type === 'task');
         return (
           <KanbanBoard key={status} id={statusKey}>
             <KanbanHeader
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              onClearColumn={isDoneColumn && hasOwnTasks ? handleClearDone : undefined}
             />
             <KanbanCards>
               {items.map((item, index) => {

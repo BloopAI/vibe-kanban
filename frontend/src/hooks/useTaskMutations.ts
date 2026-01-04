@@ -4,6 +4,8 @@ import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
 import type {
+  BulkDeleteTasksRequest,
+  BulkDeleteTasksResponse,
   CreateTask,
   CreateAndStartTaskRequest,
   Task,
@@ -92,6 +94,17 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const bulkDeleteTasks = useMutation({
+    mutationFn: (data: BulkDeleteTasksRequest) => tasksApi.bulkDelete(data),
+    onSuccess: (_: BulkDeleteTasksResponse) => {
+      invalidateQueries();
+      queryClient.invalidateQueries({ queryKey: taskRelationshipsKeys.all });
+    },
+    onError: (err) => {
+      console.error('Failed to bulk delete tasks:', err);
+    },
+  });
+
   const shareTask = useMutation({
     mutationFn: (taskId: string) => tasksApi.share(taskId),
     onError: (err) => {
@@ -127,6 +140,7 @@ export function useTaskMutations(projectId?: string) {
     createAndStart,
     updateTask,
     deleteTask,
+    bulkDeleteTasks,
     shareTask,
     stopShareTask: unshareSharedTask,
     linkSharedTaskToLocal,
