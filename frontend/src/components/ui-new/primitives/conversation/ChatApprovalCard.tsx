@@ -2,7 +2,7 @@ import { ChatMarkdown } from './ChatMarkdown';
 import { ChatEntryContainer } from './ChatEntryContainer';
 import { ToolStatus } from 'shared/types';
 
-interface ChatPlanProps {
+interface ChatApprovalCardProps {
   title: string;
   content: string;
   expanded?: boolean;
@@ -12,7 +12,7 @@ interface ChatPlanProps {
   status: ToolStatus;
 }
 
-export function ChatPlan({
+export function ChatApprovalCard({
   title,
   content,
   expanded = false,
@@ -20,7 +20,7 @@ export function ChatPlan({
   className,
   workspaceId,
   status,
-}: ChatPlanProps) {
+}: ChatApprovalCardProps) {
   return (
     <ChatEntryContainer
       variant="plan"
