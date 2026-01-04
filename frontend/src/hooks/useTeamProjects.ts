@@ -7,7 +7,7 @@ import type { Project } from 'shared/types';
 export function useTeamProjects(teamId: string | undefined) {
   const { projectsById, isLoading: projectsLoading } = useProjects();
 
-  const { data: projectIds, isLoading: idsLoading, error } = useQuery<string[]>({
+  const { data: projectIds, isLoading: idsLoading, error, refetch, isFetching } = useQuery<string[]>({
     queryKey: ['teams', teamId, 'projects'],
     queryFn: async () => {
       if (!teamId) return [];
@@ -31,6 +31,8 @@ export function useTeamProjects(teamId: string | undefined) {
     projects,
     projectIds: projectIds ?? [],
     isLoading: idsLoading || projectsLoading,
+    isFetching,
+    refetch,
     error: error ? new Error(String(error)) : null,
   };
 }

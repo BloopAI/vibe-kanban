@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
-import { Plus, Loader2, AlertCircle, Circle, ChevronDown } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, Circle, ChevronDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -112,7 +112,7 @@ export function TeamProjects() {
   const team = teamId ? resolveTeam(teamId) : undefined;
   const actualTeamId = team?.id;
 
-  const { projects, isLoading, error } = useTeamProjects(actualTeamId);
+  const { projects, isLoading, error, refetch, isFetching } = useTeamProjects(actualTeamId);
   const { issues } = useTeamIssues(actualTeamId);
 
   // Calculate issue stats per project
@@ -187,10 +187,20 @@ export function TeamProjects() {
             {projects.length}
           </Badge>
         </div>
-        <Button size="sm" onClick={handleCreateProject}>
-          <Plus className="h-4 w-4 mr-1" />
-          New project
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button size="sm" onClick={handleCreateProject}>
+            <Plus className="h-4 w-4 mr-1" />
+            New project
+          </Button>
+        </div>
       </div>
 
       {error && (
