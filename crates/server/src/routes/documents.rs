@@ -38,6 +38,8 @@ pub struct ListDocumentsQuery {
     pub include_archived: Option<bool>,
     /// Search query
     pub search: Option<String>,
+    /// If true, return all documents across all folders
+    pub all: Option<bool>,
 }
 
 // ===== Document Folder Endpoints =====
@@ -204,11 +206,13 @@ pub async fn get_documents(
 
     let mut documents = if let Some(search) = query.search {
         Document::search(&deployment.db().pool, team.id, &search).await?
-    } else if query.folder_id.is_some() || query.folder_id.is_none() {
-        Document::find_by_folder(&deployment.db().pool, team.id, query.folder_id).await?
-    } else {
+    } else if query.all.unwrap_or(false) {
+        // Fetch all documents across all folders
         let include_archived = query.include_archived.unwrap_or(false);
         Document::find_all_by_team(&deployment.db().pool, team.id, include_archived).await?
+    } else {
+        // Fetch documents for a specific folder (or root if folder_id is None)
+        Document::find_by_folder(&deployment.db().pool, team.id, query.folder_id).await?
     };
 
     // Load content from filesystem for each document

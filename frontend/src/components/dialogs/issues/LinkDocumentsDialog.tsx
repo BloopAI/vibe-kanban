@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search, FileText, Folder } from 'lucide-react';
-import { useDocuments } from '@/hooks/useDocuments';
+import { useQuery } from '@tanstack/react-query';
+import { documentsApi } from '@/lib/api';
 import type { Document, LinkedDocument } from 'shared/types';
 import { cn } from '@/lib/utils';
 
@@ -32,9 +33,24 @@ export function LinkDocumentsDialog({
   onLink,
   isLinking = false,
 }: LinkDocumentsDialogProps) {
-  const { documents, folders, isLoading } = useDocuments(teamId);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Fetch ALL documents for the team (across all folders)
+  const { data: allDocuments = [], isLoading: documentsLoading } = useQuery({
+    queryKey: ['all-documents', teamId],
+    queryFn: () => documentsApi.list(teamId, { all: true }),
+    enabled: open && !!teamId,
+  });
+
+  // Fetch folders for grouping
+  const { data: folders = [], isLoading: foldersLoading } = useQuery({
+    queryKey: ['document-folders', teamId],
+    queryFn: () => documentsApi.listFolders(teamId),
+    enabled: open && !!teamId,
+  });
+
+  const isLoading = documentsLoading || foldersLoading;
 
   // Reset selections when dialog opens
   useEffect(() => {
@@ -43,15 +59,6 @@ export function LinkDocumentsDialog({
       setSearchQuery('');
     }
   }, [open]);
-
-  // Get all documents across all folders for searching
-  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
-
-  useEffect(() => {
-    // For now, just use documents from the hook (currently loaded folder)
-    // In a more complete implementation, you could fetch all documents
-    setAllDocuments(documents);
-  }, [documents]);
 
   // Filter documents based on search and exclude already linked
   const filteredDocuments = useMemo(() => {

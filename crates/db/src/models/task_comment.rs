@@ -135,8 +135,8 @@ impl TaskComment {
 
         let row = sqlx::query_as!(
             TaskCommentRow,
-            r#"INSERT INTO task_comments (id, task_id, author_id, author_name, author_email, content, is_internal)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+            r#"INSERT INTO task_comments (id, task_id, author_id, author_name, author_email, content, is_internal, created_at, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, datetime('now', 'subsec'), datetime('now', 'subsec'))
                RETURNING id as "id!: Uuid",
                          task_id as "task_id!: Uuid",
                          author_id as "author_id: Uuid",

@@ -1956,12 +1956,13 @@ export const documentsApi = {
   // Documents
   list: async (
     teamId: string,
-    options?: { folderId?: string; includeArchived?: boolean; search?: string }
+    options?: { folderId?: string; includeArchived?: boolean; search?: string; all?: boolean }
   ): Promise<Document[]> => {
     const params = new URLSearchParams();
     if (options?.folderId) params.append('folder_id', options.folderId);
     if (options?.includeArchived) params.append('include_archived', 'true');
     if (options?.search) params.append('search', options.search);
+    if (options?.all) params.append('all', 'true');
     const queryString = params.toString();
     const url = `/api/teams/${teamId}/documents${queryString ? `?${queryString}` : ''}`;
     const response = await makeRequest(url);

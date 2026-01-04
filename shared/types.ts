@@ -302,7 +302,11 @@ include_archived: boolean | null,
 /**
  * Search query
  */
-search: string | null, };
+search: string | null, 
+/**
+ * If true, return all documents across all folders
+ */
+all: boolean | null, };
 
 export type InboxNotificationType = "task_assigned" | "task_mentioned" | "task_comment" | "task_status_changed" | "task_completed" | "workspace_created" | "system_notification";
 
