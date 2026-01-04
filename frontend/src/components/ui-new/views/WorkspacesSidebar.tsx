@@ -14,6 +14,9 @@ interface WorkspacesSidebarProps {
   onAddWorkspace?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  onDeleteWorkspace?: (taskId: string) => void;
+  onArchiveWorkspace?: (workspaceId: string, isArchived: boolean) => void;
+  onDuplicateWorkspace?: (workspaceId: string) => void;
 }
 
 export function WorkspacesSidebar({
@@ -24,6 +27,9 @@ export function WorkspacesSidebar({
   onAddWorkspace,
   searchQuery,
   onSearchChange,
+  onDeleteWorkspace,
+  onArchiveWorkspace,
+  onDuplicateWorkspace,
 }: WorkspacesSidebarProps) {
   const searchLower = searchQuery.toLowerCase();
 
@@ -69,7 +75,23 @@ export function WorkspacesSidebar({
               isActive={selectedWorkspaceId === workspace.id}
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
+              isArchived={false}
               onClick={() => onSelectWorkspace(workspace.id)}
+              onDelete={
+                onDeleteWorkspace
+                  ? () => onDeleteWorkspace(workspace.taskId)
+                  : undefined
+              }
+              onArchive={
+                onArchiveWorkspace
+                  ? () => onArchiveWorkspace(workspace.id, false)
+                  : undefined
+              }
+              onDuplicate={
+                onDuplicateWorkspace
+                  ? () => onDuplicateWorkspace(workspace.id)
+                  : undefined
+              }
             />
           ))}
         </CollapsibleSection>
@@ -90,7 +112,23 @@ export function WorkspacesSidebar({
               isActive={selectedWorkspaceId === workspace.id}
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
+              isArchived={true}
               onClick={() => onSelectWorkspace(workspace.id)}
+              onDelete={
+                onDeleteWorkspace
+                  ? () => onDeleteWorkspace(workspace.taskId)
+                  : undefined
+              }
+              onArchive={
+                onArchiveWorkspace
+                  ? () => onArchiveWorkspace(workspace.id, true)
+                  : undefined
+              }
+              onDuplicate={
+                onDuplicateWorkspace
+                  ? () => onDuplicateWorkspace(workspace.id)
+                  : undefined
+              }
             />
           ))}
         </CollapsibleSection>

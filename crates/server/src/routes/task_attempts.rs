@@ -1568,6 +1568,17 @@ pub async fn get_task_attempt_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+pub async fn get_first_user_message(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Option<String>>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let message = Workspace::get_first_user_message(pool, workspace.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(message)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
@@ -1592,6 +1603,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
+        .route("/first-message", get(get_first_user_message))
         .route("/", put(update_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),

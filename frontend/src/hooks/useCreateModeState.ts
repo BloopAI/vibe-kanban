@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type {
   Repo,
   ExecutorProfileId,
@@ -11,6 +12,10 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { repoApi } from '@/lib/api';
+
+interface LocationState {
+  duplicatePrompt?: string | null;
+}
 
 // Fixed UUID for the universal workspace draft
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
@@ -43,6 +48,11 @@ export function useCreateModeState({
   initialProjectId,
   initialRepos,
 }: UseCreateModeStateParams): UseCreateModeStateResult {
+  // Router hooks for duplicate prompt handling
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as LocationState | null;
+
   // Fetch validation data
   const { projectsById } = useProjects();
   const { profiles } = useUserSystem();
@@ -51,6 +61,7 @@ export function useCreateModeState({
   const hasInitializedFromScratch = useRef(false);
   const hasInitializedRepos = useRef(false);
   const hasInitializedProject = useRef(false);
+  const hasAppliedDuplicatePrompt = useRef(false);
 
   // Validation helper for executor profiles
   const isValidProfile = useMemo(() => {
@@ -211,6 +222,18 @@ export function useCreateModeState({
       setSelectedProjectId(initialProjectId);
     }
   }, [initialProjectId]);
+
+  // Handle duplicate prompt from navigation state
+  useEffect(() => {
+    if (hasAppliedDuplicatePrompt.current) return;
+    if (!locationState?.duplicatePrompt) return;
+
+    hasAppliedDuplicatePrompt.current = true;
+    setMessage(locationState.duplicatePrompt);
+
+    // Clear the navigation state to prevent re-applying on subsequent renders
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [locationState, location.pathname, navigate]);
 
   // Debounced save to scratch
   const { debounced: debouncedSave } = useDebouncedCallback(

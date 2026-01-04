@@ -604,6 +604,13 @@ export const attemptsApi = {
     return handleApiResponse<RepoWithTargetBranch[]>(response);
   },
 
+  getFirstUserMessage: async (attemptId: string): Promise<string | null> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/first-message`
+    );
+    return handleApiResponse<string | null>(response);
+  },
+
   merge: async (
     attemptId: string,
     data: MergeTaskAttemptRequest
