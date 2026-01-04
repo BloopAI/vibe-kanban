@@ -77,9 +77,12 @@ export function ProjectList() {
       ) : projects.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+            <button
+              onClick={handleCreateProject}
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
+            >
               <Plus className="h-6 w-6" />
-            </div>
+            </button>
             <h3 className="mt-4 text-lg font-semibold">{t('empty.title')}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {t('empty.description')}
