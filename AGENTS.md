@@ -37,6 +37,85 @@ Vibe Kanban is a task management tool for orchestrating AI coding agents (Claude
 
 
 
+## SQLx Migrations - CRITICAL RULES
+
+> **See `.claude/lessons-learned.md` for the full incident report from VIB-70**
+
+### Database Locations (IMPORTANT!)
+
+| Build Mode | Database Location |
+|------------|-------------------|
+| **Debug** (`cargo build`, `make start`) | `dev_assets/db.sqlite` |
+| **Release** | `~/Library/Application Support/ai.bloop.vibe-kanban/db.sqlite` |
+
+**In development, you are ALWAYS using `dev_assets/db.sqlite`!**
+
+### Migration Rules - NO EXCEPTIONS
+
+1. **NEVER modify an existing migration file** - SQLx embeds checksums at compile time
+2. **NEVER rename a migration file** - Creates VersionMissing errors
+3. **NEVER delete a migration file** that has been applied to any database
+4. **ALWAYS create a NEW migration file** to alter existing tables
+
+### DATABASE PROTECTION - STRICT POLICY
+
+> **VIOLATION OF THESE RULES WILL RESULT IN IMMEDIATE SESSION TERMINATION**
+
+**ABSOLUTELY FORBIDDEN actions without EXPLICIT user approval:**
+
+| Forbidden Action | Why |
+|------------------|-----|
+| `rm db.sqlite` or `rm dev_assets/db.sqlite` | Destroys all application data |
+| `DROP TABLE` on any table | Causes data loss and application failure |
+| `DELETE FROM _sqlx_migrations` | Corrupts migration state |
+| `DELETE FROM <any_table>` without WHERE clause | Mass data deletion |
+| Any `sqlite3` command that modifies data | Potential data corruption |
+
+**Penalties for violations:**
+- First offense: Session terminated, must wait for user to restart
+- Repeated offense: User will add you to blocklist and refuse to work with you
+- Data loss: Unrecoverable - user loses hours/days of work
+
+**If you encounter database errors:**
+1. **STOP** - Do not attempt to "fix" by deleting anything
+2. **REPORT** - Tell the user exactly what error you see
+3. **ASK** - Request permission before ANY database modification
+4. **WAIT** - Let the user decide how to proceed
+
+**The ONLY exception:** User explicitly says "delete the database" or "drop the table"
+
+```bash
+# WRONG - modifying existing file
+# Edit: crates/db/migrations/20260104300000_create_foo.sql
+
+# CORRECT - create new migration
+# Create: crates/db/migrations/20260105000000_alter_foo.sql
+```
+
+### Before Switching Git Branches
+
+The database persists across branch switches. If Branch A has migrations that Branch B doesn't:
+
+```bash
+# Check current migrations in database
+sqlite3 dev_assets/db.sqlite "SELECT version FROM _sqlx_migrations ORDER BY version DESC LIMIT 5;"
+
+# Compare with migration files
+ls crates/db/migrations/ | tail -5
+```
+
+### Fixing Migration Errors
+
+```bash
+# VersionMismatch or VersionMissing error for migration XXXXXX:
+sqlite3 dev_assets/db.sqlite "DELETE FROM _sqlx_migrations WHERE version = XXXXXX;"
+sqlite3 dev_assets/db.sqlite "DROP TABLE IF EXISTS <table_name>;"
+
+# Then rebuild
+cargo clean -p db -p server && pnpm run prepare-db && cargo build --bin server
+make restart
+```
+
 ## Managing Shared Types Between Rust and TypeScript
 
 ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with `#[derive(TS)]` and related macros.
@@ -101,9 +180,17 @@ Use the Vibe Kanban MCP tools to manage tasks for this project.
 
 ### Document Folders
 
-Store planning documents and specs under **Team > Documents** in the appropriate folder:
-- **planning/** - Feature plans, implementation specs
-- Use markdown format for all documents
+**External Documentation Path**: `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/`
+
+Planning documents are stored OUTSIDE the project repository:
+
+| Task Type | Path |
+|-----------|------|
+| **frontend** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/frontend/` |
+| **backend** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/` |
+| **integration** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/integration/` |
+
+Use markdown format for all documents.
 
 ### 🚨 MANDATORY REQUIREMENTS - NO EXCEPTIONS 🚨
 
@@ -113,12 +200,18 @@ Store planning documents and specs under **Team > Documents** in the appropriate
 
 #### 1. Planning Documents (REQUIRED for EVERY task)
 
-**BEFORE writing ANY code**, create BOTH documents in `planning/` folder:
+**BEFORE writing ANY code**, create BOTH documents in the external docs folder:
+
+**Base Path**: `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/{task_type}/`
 
 | Document | Filename | Purpose |
 |----------|----------|---------|
 | **Flow Diagram** | `VIB-XX-feature-flow.md` | ASCII diagram showing data flow, component relationships |
 | **Implementation Plan** | `VIB-XX-feature-plan.md` | Step-by-step plan with affected files, changes needed |
+
+**Example for backend task**:
+- `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-flow.md`
+- `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-plan.md`
 
 **Penalty for skipping:**
 - Task will be marked as INCOMPLETE regardless of code status
@@ -162,31 +255,49 @@ vk_update_task(task_id="<uuid>", description="## Planning Documents\n- Flow: pla
 
 #### 1. Create Task First (Before Starting Work)
 
-Use the **MCP tools** or **CLI** to create team issues:
+Use the **API directly** to create team issues (MCP tools have issues with team linking):
 
-**MCP (preferred in Claude Code):**
-```
-vk_create_issue(title="Task title", project="frontend", team="vibe-kanban", status="inprogress")
+**API (RECOMMENDED - ensures team_id is set):**
+```bash
+# Team ID for vibe-kanban: c1a926de-0683-407d-81de-124e0d161ec5
+TEAM_ID="c1a926de-0683-407d-81de-124e0d161ec5"
+PROJECT_ID="de246043-3b27-45e4-bd7a-f0d685b317d0"  # backend
+
+curl -s -X POST "http://localhost:3003/api/tasks" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"title\": \"VIB-XX: Task title\",
+    \"project_id\": \"$PROJECT_ID\",
+    \"team_id\": \"$TEAM_ID\",
+    \"status\": \"inprogress\",
+    \"description\": \"Task description\"
+  }" | jq .
 ```
 
-**CLI:**
+**Project IDs:**
+| Project | ID |
+|---------|-----|
+| frontend | `ba7fe592-42d0-43f5-add8-f653054c2944` |
+| backend | `de246043-3b27-45e4-bd7a-f0d685b317d0` |
+| integration | `bde6ec12-2cf1-4784-9a0e-d03308ade450` |
+| database | `731d6e37-9223-4595-93a0-412a38af4540` |
+
+**CLI Alternative:**
 ```bash
 ./mcp/cli.py create <project> "Task title" --team vibe-kanban --status inprogress -d "Description"
 ```
 
 #### 2. 🚨 Create Planning Documents (MANDATORY - DO NOT SKIP)
 
-**BEFORE writing ANY code**, create both documents:
+**BEFORE writing ANY code**, create both documents in the external docs folder:
 
 ```bash
-# Create in the team's document storage path (planning/ folder)
-# Flow diagram: VIB-XX-feature-flow.md
-# Implementation plan: VIB-XX-feature-plan.md
-```
+# Base path: /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/{task_type}/
+# Where {task_type} is: frontend, backend, or integration
 
-Then sync to app:
-```bash
-curl -s -X POST "http://localhost:3003/api/teams/$TEAM_ID/folders/$FOLDER_ID/scan"
+# Example for backend task VIB-71:
+# /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-flow.md
+# /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-plan.md
 ```
 
 #### 3. Create Feature Branch
