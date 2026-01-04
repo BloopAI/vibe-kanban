@@ -74,7 +74,7 @@ export function WorkspacesMain({
               </div>
             </div>
             {/* Chat box centered at bottom */}
-            <div className="flex justify-center @container">
+            <div className="flex justify-center @container pl-px">
               <SessionChatBoxContainer
                 session={session}
                 sessions={sessions}
