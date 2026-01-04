@@ -21,6 +21,10 @@ fn default_pr_auto_create_on_completion() -> bool {
     false
 }
 
+fn default_open_pr_in_browser() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -47,6 +51,8 @@ pub struct Config {
     pub pr_auto_description_prompt: Option<String>,
     #[serde(default = "default_pr_auto_create_on_completion")]
     pub pr_auto_create_on_completion: bool,
+    #[serde(default = "default_open_pr_in_browser")]
+    pub open_pr_in_browser: bool,
 }
 
 impl Config {
@@ -73,6 +79,7 @@ impl Config {
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
             pr_auto_create_on_completion: false,
+            open_pr_in_browser: true,
         }
     }
 
@@ -124,6 +131,7 @@ impl Default for Config {
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
             pr_auto_create_on_completion: false,
+            open_pr_in_browser: true,
         }
     }
 }

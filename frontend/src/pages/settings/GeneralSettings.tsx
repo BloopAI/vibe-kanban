@@ -491,6 +491,23 @@ export function GeneralSettings() {
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox
+              id="open-pr-in-browser"
+              checked={draft?.open_pr_in_browser ?? true}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ open_pr_in_browser: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="open-pr-in-browser" className="cursor-pointer">
+                {t('settings.general.pullRequests.openInBrowser.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.pullRequests.openInBrowser.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
               id="pr-auto-description"
               checked={draft?.pr_auto_description_enabled ?? false}
               onCheckedChange={(checked: boolean) =>
