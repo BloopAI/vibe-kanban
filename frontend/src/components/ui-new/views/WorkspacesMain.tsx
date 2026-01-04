@@ -57,16 +57,16 @@ export function WorkspacesMain({
           }
         >
           {/* Conversation content - conditional based on loading/workspace state */}
-          {isLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-low">Loading...</p>
-            </div>
-          ) : !workspaceWithSession ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-low">Select a workspace to get started</p>
-            </div>
-          ) : (
-            <MessageEditProvider>
+          <MessageEditProvider>
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-low">Loading...</p>
+              </div>
+            ) : !workspaceWithSession ? (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-low">Select a workspace to get started</p>
+              </div>
+            ) : (
               <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                 <div className="w-chat max-w-full h-full">
                   <RetryUiProvider attemptId={workspaceWithSession.id}>
@@ -74,23 +74,23 @@ export function WorkspacesMain({
                   </RetryUiProvider>
                 </div>
               </div>
-            </MessageEditProvider>
-          )}
-          {/* Chat box - always rendered to prevent flash during workspace switch */}
-          <div className="flex justify-center @container pl-px">
-            <SessionChatBoxContainer
-              session={session}
-              sessions={sessions}
-              onSelectSession={onSelectSession}
-              filesChanged={19}
-              linesAdded={10}
-              linesRemoved={3}
-              projectId={projectId}
-              isNewSessionMode={isNewSessionMode}
-              onStartNewSession={onStartNewSession}
-              workspaceId={workspaceWithSession?.id}
-            />
-          </div>
+            )}
+            {/* Chat box - always rendered to prevent flash during workspace switch */}
+            <div className="flex justify-center @container pl-px">
+              <SessionChatBoxContainer
+                session={session}
+                sessions={sessions}
+                onSelectSession={onSelectSession}
+                filesChanged={19}
+                linesAdded={10}
+                linesRemoved={3}
+                projectId={projectId}
+                isNewSessionMode={isNewSessionMode}
+                onStartNewSession={onStartNewSession}
+                workspaceId={workspaceWithSession?.id}
+              />
+            </div>
+          </MessageEditProvider>
         </EntriesProvider>
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
