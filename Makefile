@@ -110,7 +110,7 @@ sync-to-turso:
 		echo "Error: TURSO_DATABASE_URL not set. Run: source .env"; \
 		exit 1; \
 	fi
-	@./mcp/cli.py sync push 2>/dev/null || echo "Use MCP tool: vk_sync_to_turso"
+	@python3 ./mcp/turso_sync.py push
 
 # Sync from Turso to local SQLite (pull)
 sync-from-turso:
@@ -119,7 +119,11 @@ sync-from-turso:
 		echo "Error: TURSO_DATABASE_URL not set. Run: source .env"; \
 		exit 1; \
 	fi
-	@./mcp/cli.py sync pull 2>/dev/null || echo "Use MCP tool: vk_sync_from_turso"
+	@python3 ./mcp/turso_sync.py pull
+
+# Check Turso sync status
+sync-status:
+	@python3 ./mcp/turso_sync.py status
 
 # Help
 help:
@@ -139,6 +143,7 @@ help:
 	@echo "Database Sync (Local <-> Turso):"
 	@echo "  make sync-to-turso   - Push local changes to Turso cloud"
 	@echo "  make sync-from-turso - Pull Turso changes to local"
+	@echo "  make sync-status     - Check sync status"
 	@echo ""
 	@echo "Environment Variables:"
 	@echo "  FRONTEND_PORT   - Frontend port (default: 3000)"

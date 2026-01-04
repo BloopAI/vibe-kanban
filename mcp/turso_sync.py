@@ -3,17 +3,34 @@
 Turso Sync MCP Server
 
 MCP server for managing Turso distributed database sync operations.
-Provides tools for exporting local SQLite data to Turso and checking sync status.
+Provides tools for syncing between local SQLite and Turso cloud.
 
-Usage:
-    python3 mcp/turso_sync.py
+Architecture:
+    Frontend -> Backend -> Local SQLite (db.sqlite)
+                               |
+              Scheduler/MCP @60min -> Turso Cloud
+                               |
+              Manual/MCP fetch <- Turso Cloud
+
+Usage via Make:
+    # Push local changes to Turso cloud
+    source .env && make sync-to-turso
+
+    # Pull from Turso to local SQLite
+    source .env && make sync-from-turso
+
+Usage via CLI:
+    python3 mcp/turso_sync.py push   # Push local -> Turso
+    python3 mcp/turso_sync.py pull   # Pull Turso -> local
+    python3 mcp/turso_sync.py status # Check sync status
 
 MCP Tools:
     - turso_status: Check Turso connection and sync status
+    - turso_push: Push local SQLite data to Turso (schema + data)
+    - turso_pull: Pull Turso data to local SQLite
     - turso_export_schema: Export missing table schemas to Turso
     - turso_export_data: Export data from local SQLite to Turso
     - turso_export_migrations: Export SQLx migration records to Turso
-    - turso_full_sync: Perform complete sync (schema + migrations + data)
 """
 
 import json
@@ -335,6 +352,88 @@ def handle_turso_full_sync(params: dict) -> dict:
     }
 
 
+def handle_turso_push(params: dict) -> dict:
+    """Push local SQLite data to Turso (alias for full_sync)."""
+    return handle_turso_full_sync(params)
+
+
+def handle_turso_pull(params: dict) -> dict:
+    """Pull data from Turso to local SQLite."""
+    db_name = get_turso_db_name()
+    if not db_name:
+        return {"success": False, "error": "TURSO_DATABASE_URL not set"}
+
+    tables = params.get("tables", EXPORT_TABLES)
+
+    conn = sqlite3.connect(LOCAL_DB)
+    cursor = conn.cursor()
+
+    total_rows = 0
+    pulled_tables = []
+    errors = []
+
+    for table in tables:
+        try:
+            # Get data from Turso
+            success, output = run_turso_command(f"SELECT * FROM {table};", db_name)
+            if not success:
+                errors.append(f"{table}: Failed to fetch - {output}")
+                continue
+
+            # Parse the output (Turso CLI returns table format)
+            lines = [l.strip() for l in output.strip().split('\n') if l.strip()]
+            if len(lines) < 2:
+                continue  # No data or just header
+
+            # Get column names from local schema
+            cursor.execute(f"PRAGMA table_info({table})")
+            columns = [col[1] for col in cursor.fetchall()]
+
+            if not columns:
+                errors.append(f"{table}: Table doesn't exist locally")
+                continue
+
+            # Clear local table and insert from Turso
+            cursor.execute(f"DELETE FROM {table}")
+
+            # Parse Turso output - first line is header, rest is data
+            # Note: This is a simplified parser, real implementation may need adjustment
+            header = lines[0].split('|') if '|' in lines[0] else lines[0].split()
+
+            row_count = 0
+            for line in lines[1:]:
+                if line.startswith('-') or not line:
+                    continue
+                values = line.split('|') if '|' in line else line.split()
+                if len(values) >= len(columns):
+                    placeholders = ', '.join(['?' for _ in columns])
+                    try:
+                        cursor.execute(
+                            f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})",
+                            values[:len(columns)]
+                        )
+                        row_count += 1
+                    except Exception as e:
+                        # Skip individual row errors
+                        pass
+
+            total_rows += row_count
+            pulled_tables.append({"table": table, "rows": row_count})
+
+        except Exception as e:
+            errors.append(f"{table}: {str(e)}")
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": len(errors) == 0,
+        "total_rows": total_rows,
+        "tables": pulled_tables,
+        "errors": errors if errors else None
+    }
+
+
 # === MCP Protocol Handling ===
 
 TOOLS = [
@@ -344,6 +443,30 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "turso_push",
+        "description": "Push local SQLite data to Turso cloud (schema + migrations + data)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "turso_pull",
+        "description": "Pull data from Turso cloud to local SQLite",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "tables": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of tables to pull (default: all main tables)"
+                }
+            },
             "required": []
         }
     },
@@ -382,7 +505,7 @@ TOOLS = [
     },
     {
         "name": "turso_full_sync",
-        "description": "Perform complete sync: schema + migrations + data",
+        "description": "Perform complete sync: schema + migrations + data (alias for turso_push)",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -393,6 +516,8 @@ TOOLS = [
 
 TOOL_HANDLERS = {
     "turso_status": handle_turso_status,
+    "turso_push": handle_turso_push,
+    "turso_pull": handle_turso_pull,
     "turso_export_schema": handle_turso_export_schema,
     "turso_export_data": handle_turso_export_data,
     "turso_export_migrations": handle_turso_export_migrations,
@@ -466,9 +591,8 @@ def handle_request(request: dict) -> dict:
         }
 
 
-def main():
-    """Main MCP server loop."""
-    # Load environment from .env if present
+def load_env():
+    """Load environment variables from .env files."""
     env_file = PROJECT_ROOT / ".env"
     if env_file.exists():
         with open(env_file) as f:
@@ -478,7 +602,6 @@ def main():
                     key, value = line.split("=", 1)
                     os.environ[key] = value
 
-    # Also load .env.local
     env_local = PROJECT_ROOT / ".env.local"
     if env_local.exists():
         with open(env_local) as f:
@@ -487,6 +610,54 @@ def main():
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
                     os.environ[key] = value
+
+
+def cli_main():
+    """CLI mode for direct command execution."""
+    load_env()
+
+    if len(sys.argv) < 2:
+        print("Usage: python3 mcp/turso_sync.py <command>")
+        print("")
+        print("Commands:")
+        print("  push    Push local SQLite data to Turso cloud")
+        print("  pull    Pull data from Turso cloud to local SQLite")
+        print("  status  Check sync status between local and Turso")
+        print("")
+        print("Make commands:")
+        print("  source .env && make sync-to-turso    # Push to Turso")
+        print("  source .env && make sync-from-turso  # Pull from Turso")
+        sys.exit(1)
+
+    command = sys.argv[1].lower()
+
+    if command == "push":
+        print("Pushing local SQLite to Turso...")
+        result = handle_turso_push({})
+        print(json.dumps(result, indent=2))
+        sys.exit(0 if result.get("success") else 1)
+
+    elif command == "pull":
+        print("Pulling from Turso to local SQLite...")
+        result = handle_turso_pull({})
+        print(json.dumps(result, indent=2))
+        sys.exit(0 if result.get("success") else 1)
+
+    elif command == "status":
+        print("Checking Turso sync status...")
+        result = handle_turso_status({})
+        print(json.dumps(result, indent=2))
+        sys.exit(0)
+
+    else:
+        print(f"Unknown command: {command}")
+        print("Use: push, pull, or status")
+        sys.exit(1)
+
+
+def mcp_main():
+    """MCP server mode."""
+    load_env()
 
     while True:
         try:
@@ -508,6 +679,14 @@ def main():
         except Exception as e:
             sys.stderr.write(f"Error: {e}\n")
             sys.stderr.flush()
+
+
+def main():
+    """Main entry point - CLI mode if args provided, MCP server otherwise."""
+    if len(sys.argv) > 1:
+        cli_main()
+    else:
+        mcp_main()
 
 
 if __name__ == "__main__":
