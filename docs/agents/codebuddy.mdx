@@ -1,0 +1,31 @@
+---
+title: "CodeBuddy Code"
+description: "Set up CodeBuddy Code agent"
+icon: https://www.vibekanban.com/images/logos/codebuddy-logo.png#"
+---
+
+<Steps>
+<Step title="Install CodeBuddy Code globally">
+  ```bash
+  npm install -g @tencent-ai/codebuddy-code
+  ```
+</Step>
+
+<Step title="Run CodeBuddy Code with ACP">
+  ```bash
+  codebuddy --acp
+  ```
+  
+  Follow the login instructions and complete the authentication flow as prompted.
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select CodeBuddy when creating task attempts.
+</Step>
+</Steps>
