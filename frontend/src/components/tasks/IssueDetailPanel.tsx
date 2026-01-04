@@ -17,6 +17,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useTaskComments } from '@/hooks/useTaskComments';
 import { useTaskDocumentLinks } from '@/hooks/useTaskDocumentLinks';
 import { tasksApi } from '@/lib/api';
@@ -51,12 +53,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-// Get current user info (mock for now - in real app, get from auth context)
-const getCurrentUser = () => ({
-  id: null, // Will be set when we have real auth
-  name: 'Current User',
-  email: 'user@example.com',
-});
 
 export function IssueDetailPanel({
   issue,
@@ -68,6 +64,29 @@ export function IssueDetailPanel({
   const navigate = useNavigate();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
+
+  // Get current user from auth and team members
+  const { data: authUser } = useCurrentUser();
+  const { members } = useTeamMembers(teamId);
+
+  // Find the current user's member record by matching user_id to email
+  const currentMember = useMemo(() => {
+    if (!members || members.length === 0 || !authUser?.user_id) return null;
+    // The user_id from auth might be the email or a username
+    // Try to find by email match (user_id could be email prefix or full email)
+    return members.find(m =>
+      m.email === authUser.user_id ||
+      m.email?.split('@')[0] === authUser.user_id ||
+      m.id === authUser.user_id
+    ) ?? null;
+  }, [members, authUser?.user_id]);
+
+  // Get current user info from member record or fallback
+  const currentUser = useMemo(() => ({
+    id: currentMember?.id ?? null,
+    name: currentMember?.display_name ?? currentMember?.email?.split('@')[0] ?? 'Unknown',
+    email: currentMember?.email ?? '',
+  }), [currentMember]);
 
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description || '');
@@ -98,8 +117,6 @@ export function IssueDetailPanel({
     isUpdating,
     isDeleting,
   } = useTaskComments(issue.id);
-
-  const currentUser = useMemo(() => getCurrentUser(), []);
 
   const handleSaveTitle = async () => {
     if (!title.trim() || title === issue.title) {

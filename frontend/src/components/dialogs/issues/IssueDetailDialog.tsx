@@ -19,6 +19,8 @@ import {
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useTaskComments } from '@/hooks/useTaskComments';
 import { tasksApi } from '@/lib/api';
 import { CommentEditor, CommentList } from '@/components/comments';
@@ -52,18 +54,34 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-// Get current user info (mock for now - in real app, get from auth context)
-const getCurrentUser = () => ({
-  id: null, // Will be set when we have real auth
-  name: 'Current User',
-  email: 'user@example.com',
-});
-
 const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
   ({ issue, teamId, issueKey, onUpdate }) => {
     const modal = useModal();
     const { teamsById } = useTeams();
     const team = teamId ? teamsById[teamId] : null;
+
+    // Get current user from auth and team members
+    const { data: authUser } = useCurrentUser();
+    const { members } = useTeamMembers(teamId);
+
+    // Find the current user's member record by matching user_id to email
+    const currentMember = useMemo(() => {
+      if (!members || members.length === 0 || !authUser?.user_id) return null;
+      // The user_id from auth might be the email or a username
+      // Try to find by email match (user_id could be email prefix or full email)
+      return members.find(m =>
+        m.email === authUser.user_id ||
+        m.email?.split('@')[0] === authUser.user_id ||
+        m.id === authUser.user_id
+      ) ?? null;
+    }, [members, authUser?.user_id]);
+
+    // Get current user info from member record or fallback
+    const currentUser = useMemo(() => ({
+      id: currentMember?.id ?? null,
+      name: currentMember?.display_name ?? currentMember?.email?.split('@')[0] ?? 'Unknown',
+      email: currentMember?.email ?? '',
+    }), [currentMember]);
 
     const [title, setTitle] = useState(issue.title);
     const [description, setDescription] = useState(issue.description || '');
@@ -82,8 +100,6 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
       isUpdating,
       isDeleting,
     } = useTaskComments(issue.id);
-
-    const currentUser = useMemo(() => getCurrentUser(), []);
 
     const handleClose = () => {
       modal.resolve('closed' as IssueDetailDialogResult);
