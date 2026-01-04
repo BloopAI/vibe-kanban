@@ -64,6 +64,11 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
+/// Maximum number of times the agent will be automatically triggered to fix cleanup script failures.
+/// After this many failed attempts, the task will be finalized without further retries.
+/// This prevents infinite loops when the cleanup script has a persistent issue.
+const MAX_CLEANUP_RETRY_ATTEMPTS: i64 = 3;
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -438,14 +443,34 @@ impl LocalContainerService {
                 );
 
                 if cleanup_failed {
-                    // Cleanup script failed - trigger agent to fix the issue
-                    tracing::info!(
-                        "Cleanup script failed for workspace {} - triggering agent to fix",
-                        ctx.workspace.id
-                    );
-                    if let Err(e) = container.start_agent_on_cleanup_failure(&ctx).await {
-                        tracing::error!("Failed to start agent on cleanup failure: {}", e);
-                        // Fall back to finalization if we can't start the agent
+                    // Check how many times we've already retried
+                    let failed_count = ExecutionProcess::count_failed_cleanup_scripts_in_session(
+                        &db.pool,
+                        ctx.session.id,
+                    )
+                    .await
+                    .unwrap_or(0);
+
+                    if failed_count < MAX_CLEANUP_RETRY_ATTEMPTS {
+                        // Cleanup script failed - trigger agent to fix the issue
+                        tracing::info!(
+                            "Cleanup script failed for workspace {} (attempt {}/{}) - triggering agent to fix",
+                            ctx.workspace.id,
+                            failed_count,
+                            MAX_CLEANUP_RETRY_ATTEMPTS
+                        );
+                        if let Err(e) = container.start_agent_on_cleanup_failure(&ctx).await {
+                            tracing::error!("Failed to start agent on cleanup failure: {}", e);
+                            // Fall back to finalization if we can't start the agent
+                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        }
+                    } else {
+                        // Max retries exceeded - finalize and let the user know
+                        tracing::warn!(
+                            "Cleanup script failed {} times for workspace {} - max retries exceeded, finalizing task",
+                            failed_count,
+                            ctx.workspace.id
+                        );
                         container.finalize_task(publisher.as_ref().ok(), &ctx).await;
                     }
                 } else if success || cleanup_done {
