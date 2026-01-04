@@ -65,7 +65,8 @@ export function WorkspacesSidebar({
           persistKey={PERSIST_KEYS.workspacesSidebarActive}
           title="Active"
           defaultExpanded
-          className="gap-base p-base"
+          className="p-base"
+          contentClassName="flex flex-col gap-base min-h-[50vh]"
         >
           {filteredWorkspaces.map((workspace) => (
             <WorkspaceSummary

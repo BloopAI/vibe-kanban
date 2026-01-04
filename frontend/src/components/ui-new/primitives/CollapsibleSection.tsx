@@ -11,6 +11,7 @@ interface CollapsibleSectionProps {
   defaultExpanded?: boolean;
   children?: React.ReactNode;
   className?: string;
+  contentClassName?: string;
 }
 
 export function CollapsibleSection({
@@ -19,6 +20,7 @@ export function CollapsibleSection({
   defaultExpanded = true,
   children,
   className,
+  contentClassName,
 }: CollapsibleSectionProps) {
   const [expanded, toggle] = usePersistedExpanded(persistKey, defaultExpanded);
 
@@ -38,7 +40,7 @@ export function CollapsibleSection({
           )}
         />
       </button>
-      {expanded && children}
+      {expanded && <div className={contentClassName}>{children}</div>}
     </div>
   );
 }
