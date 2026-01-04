@@ -334,6 +334,13 @@ export const projectsApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
+  getRepositoryConfigs: async (projectId: string): Promise<ProjectRepo[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repository-configs`
+    );
+    return handleApiResponse<ProjectRepo[]>(response);
+  },
+
   addRepository: async (
     projectId: string,
     data: CreateProjectRepo

@@ -434,6 +434,8 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
+          // Preserve the existing default_branch setting
+          default_branch: selectedProjectRepo?.default_branch ?? null,
         }
       );
       setSelectedProjectRepo(updatedRepo);
