@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import {
   CheckIcon,
   CopyIcon,
-  CodeIcon,
+  GitDiffIcon,
   PlayIcon,
   PauseIcon,
   SpinnerIcon,
@@ -177,7 +177,7 @@ export function ContextBar({
               />
             )}
             <ContextBarButton
-              icon={CodeIcon}
+              icon={GitDiffIcon}
               label="View Code"
               onClick={onViewCode}
             />
