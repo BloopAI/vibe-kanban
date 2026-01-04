@@ -4,6 +4,7 @@ pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
 pub mod util;
+pub mod workspace_summary;
 
 use std::{
     collections::HashMap,
@@ -1618,6 +1619,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
         .route("/stream/ws", get(stream_workspaces_ws))
+        .route("/summary", post(workspace_summary::get_workspace_summaries))
         .nest("/{id}", task_attempt_id_router)
         .nest("/{id}/images", images::router(deployment));
 

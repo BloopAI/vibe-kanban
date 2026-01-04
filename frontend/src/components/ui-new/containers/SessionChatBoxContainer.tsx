@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { type Session, type ToolStatus } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -15,6 +16,7 @@ import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
+import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -84,6 +86,7 @@ export function SessionChatBoxContainer({
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const scratchId = isNewSessionMode ? workspaceId : sessionId;
+  const queryClient = useQueryClient();
 
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
@@ -368,7 +371,10 @@ export function SessionChatBoxContainer({
       approvalId: pendingApproval.approvalId,
       executionProcessId: pendingApproval.executionProcessId,
     });
-  }, [pendingApproval, feedbackContext, approve]);
+
+    // Invalidate workspace summary cache to update sidebar
+    queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+  }, [pendingApproval, feedbackContext, approve, queryClient]);
 
   // Handle request changes (deny with feedback)
   const handleRequestChanges = useCallback(async () => {
@@ -383,6 +389,9 @@ export function SessionChatBoxContainer({
       cancelDebouncedSave();
       setLocalMessage('');
       await clearDraft();
+
+      // Invalidate workspace summary cache to update sidebar
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
     } catch {
       // Error is handled by mutation
     }
@@ -393,6 +402,7 @@ export function SessionChatBoxContainer({
     cancelDebouncedSave,
     setLocalMessage,
     clearDraft,
+    queryClient,
   ]);
 
   // Check if approval is timed out

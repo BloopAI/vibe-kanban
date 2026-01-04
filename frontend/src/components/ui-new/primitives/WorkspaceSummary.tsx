@@ -4,6 +4,10 @@ import {
   CopyIcon,
   ArchiveIcon,
   TrashIcon,
+  HandIcon,
+  TriangleIcon,
+  PlayPauseIcon,
+  FileIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import {
@@ -24,6 +28,21 @@ function RunningDots() {
   );
 }
 
+function formatTimeElapsed(dateString?: string): string | null {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays}d ago`;
+  if (diffHours > 0) return `${diffHours}h ago`;
+  if (diffMins > 0) return `${diffMins}m ago`;
+  return 'just now';
+}
+
 interface WorkspaceSummaryProps {
   name: string;
   filesChanged?: number;
@@ -33,6 +52,10 @@ interface WorkspaceSummaryProps {
   isRunning?: boolean;
   isPinned?: boolean;
   isArchived?: boolean;
+  hasPendingApproval?: boolean;
+  hasRunningDevServer?: boolean;
+  latestProcessCompletedAt?: string;
+  latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   onClick?: () => void;
   onDelete?: () => void;
   onArchive?: () => void;
@@ -51,6 +74,10 @@ export function WorkspaceSummary({
   isRunning = false,
   isPinned = false,
   isArchived = false,
+  hasPendingApproval = false,
+  hasRunningDevServer = false,
+  latestProcessCompletedAt,
+  latestProcessStatus,
   onClick,
   onDelete,
   onArchive,
@@ -59,7 +86,9 @@ export function WorkspaceSummary({
   className,
   summary = false,
 }: WorkspaceSummaryProps) {
-  const hasStats = filesChanged !== undefined;
+  const hasChanges = filesChanged !== undefined && filesChanged > 0;
+  const isFailed =
+    latestProcessStatus === 'failed' || latestProcessStatus === 'killed';
   const hasActions = onDelete || onArchive || onPin || onDuplicate;
 
   return (
@@ -79,29 +108,71 @@ export function WorkspaceSummary({
         >
           {name}
         </div>
-        {hasStats && (!summary || isActive) && (
-          <div className="flex w-full items-center gap-base text-sm">
-            {isRunning && <RunningDots />}
+        {(!summary || isActive) && (
+          <div className="flex w-full items-center gap-base text-sm h-5">
+            {/* Dev server running - leftmost */}
+            {hasRunningDevServer && (
+              <PlayPauseIcon
+                className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {/* Failed/killed status (only when not running) */}
+            {!isRunning && isFailed && (
+              <TriangleIcon
+                className="size-icon-xs text-error shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {/* Running dots OR hand icon for pending approval */}
+            {isRunning &&
+              (hasPendingApproval ? (
+                <HandIcon
+                  className="size-icon-xs text-brand shrink-0"
+                  weight="fill"
+                />
+              ) : (
+                <RunningDots />
+              ))}
+
+            {/* Pin icon */}
             {isPinned && (
               <PushPinIcon
                 className="size-icon-xs text-brand shrink-0"
                 weight="fill"
               />
             )}
-            <span className="min-w-0 flex-1 truncate">
-              {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
-            </span>
-            <span className="shrink-0 text-right space-x-half">
-              {linesAdded !== undefined && (
-                <span className="text-success">+{linesAdded}</span>
-              )}
-              {linesRemoved !== undefined && (
-                <>
-                  {linesAdded !== undefined && ' '}
+
+            {/* Time elapsed (when not running) */}
+            {!isRunning && latestProcessCompletedAt && (
+              <span className="min-w-0 flex-1 truncate">
+                {formatTimeElapsed(latestProcessCompletedAt)}
+              </span>
+            )}
+
+            {/* Spacer when running (no elapsed time shown) */}
+            {isRunning && <span className="flex-1" />}
+
+            {/* Spacer when not running and no elapsed time */}
+            {!isRunning && !latestProcessCompletedAt && (
+              <span className="flex-1" />
+            )}
+
+            {/* File count + lines changed on the right */}
+            {hasChanges && (
+              <span className="shrink-0 text-right flex items-center gap-half">
+                <FileIcon className="size-icon-xs" weight="fill" />
+                <span>{filesChanged}</span>
+                {linesAdded !== undefined && (
+                  <span className="text-success">+{linesAdded}</span>
+                )}
+                {linesRemoved !== undefined && (
                   <span className="text-error">-{linesRemoved}</span>
-                </>
-              )}
-            </span>
+                )}
+              </span>
+            )}
           </div>
         )}
       </button>
