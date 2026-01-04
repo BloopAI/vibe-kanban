@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
+import { openIssueDetail } from '@/lib/openIssueDetail';
 
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
@@ -35,7 +36,6 @@ const normalizeStatus = (status: string): TaskStatus =>
 export function TeamIssues() {
   const { t } = useTranslation(['tasks', 'common']);
   const { teamId } = useParams<{ teamId: string }>();
-  const navigate = useNavigate();
 
   const { resolveTeam, isLoading: teamsLoading } = useTeams();
   const team = teamId ? resolveTeam(teamId) : null;
@@ -163,11 +163,22 @@ export function TeamIssues() {
 
   const handleViewIssueDetails = useCallback(
     (issue: TaskWithAttemptStatus) => {
-      // Navigate to project task view for now
-      // In the future, this could be a team-specific view
-      navigate(`/projects/${issue.project_id}/tasks/${issue.id}/attempts/latest`);
+      // Generate issue key
+      let issueKey: string | undefined;
+      if (team && issue.issue_number != null) {
+        const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
+        issueKey = `${prefix}-${issue.issue_number}`;
+      }
+
+      // Open issue detail dialog with comments
+      openIssueDetail({
+        issue,
+        teamId: actualTeamId,
+        issueKey,
+        onUpdate: refresh,
+      });
     },
-    [navigate]
+    [team, actualTeamId, refresh]
   );
 
   // Handler for assignee changes

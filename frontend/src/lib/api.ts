@@ -131,6 +131,9 @@ import {
   CreateTeamInvitation,
   UpdateTeamInvitation,
   InvitationByTokenResponse,
+  TaskComment,
+  CreateTaskComment,
+  UpdateTaskComment,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -515,6 +518,48 @@ export const tasksApi = {
       body: JSON.stringify({ project_id: newProjectId }),
     });
     return handleApiResponse<Task>(response);
+  },
+
+  // Task comments
+  getComments: async (taskId: string): Promise<TaskComment[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/comments`);
+    return handleApiResponse<TaskComment[]>(response);
+  },
+
+  createComment: async (
+    taskId: string,
+    data: CreateTaskComment
+  ): Promise<TaskComment> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TaskComment>(response);
+  },
+
+  updateComment: async (
+    taskId: string,
+    commentId: string,
+    data: UpdateTaskComment
+  ): Promise<TaskComment> => {
+    const response = await makeRequest(
+      `/api/tasks/${taskId}/comments/${commentId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<TaskComment>(response);
+  },
+
+  deleteComment: async (taskId: string, commentId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/tasks/${taskId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 };
 

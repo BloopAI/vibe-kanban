@@ -17,6 +17,7 @@ use db::models::{
     project::{Project, ProjectError},
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task_comment::{CreateTaskComment, TaskComment, UpdateTaskComment},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -501,12 +502,84 @@ pub async fn share_task(
     })))
 }
 
+// ============ COMMENT HANDLERS ============
+
+/// Get all comments for a task
+pub async fn get_task_comments(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskComment>>>, ApiError> {
+    let comments = TaskComment::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(comments)))
+}
+
+/// Create a new comment on a task
+pub async fn create_task_comment(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateTaskComment>,
+) -> Result<ResponseJson<ApiResponse<TaskComment>>, ApiError> {
+    let comment = TaskComment::create(&deployment.db().pool, task.id, &payload).await?;
+    Ok(ResponseJson(ApiResponse::success(comment)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CommentPath {
+    pub comment_id: Uuid,
+}
+
+/// Update a comment
+pub async fn update_task_comment(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(path): axum::extract::Path<CommentPath>,
+    Json(payload): Json<UpdateTaskComment>,
+) -> Result<ResponseJson<ApiResponse<TaskComment>>, ApiError> {
+    // Verify comment belongs to this task
+    let existing = TaskComment::find_by_id(&deployment.db().pool, path.comment_id)
+        .await?
+        .ok_or(ApiError::NotFound("Comment not found".to_string()))?;
+
+    if existing.task_id != task.id {
+        return Err(ApiError::NotFound("Comment not found".to_string()));
+    }
+
+    let comment = TaskComment::update(&deployment.db().pool, path.comment_id, &payload).await?;
+    Ok(ResponseJson(ApiResponse::success(comment)))
+}
+
+/// Delete a comment
+pub async fn delete_task_comment(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(path): axum::extract::Path<CommentPath>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    // Verify comment belongs to this task
+    let existing = TaskComment::find_by_id(&deployment.db().pool, path.comment_id)
+        .await?
+        .ok_or(ApiError::NotFound("Comment not found".to_string()))?;
+
+    if existing.task_id != task.id {
+        return Err(ApiError::NotFound("Comment not found".to_string()));
+    }
+
+    let rows = TaskComment::delete(&deployment.db().pool, path.comment_id).await?;
+    if rows == 0 {
+        return Err(ApiError::NotFound("Comment not found".to_string()));
+    }
+
+    Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
         .route("/share", post(share_task))
-        .route("/move", post(move_task));
+        .route("/move", post(move_task))
+        // Comment routes
+        .route("/comments", get(get_task_comments).post(create_task_comment))
+        .route("/comments/{comment_id}", put(update_task_comment).delete(delete_task_comment));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
