@@ -203,10 +203,13 @@ export function LinkDocumentsDialog({
                           )}
                           onClick={() => handleToggle(doc.id)}
                         >
-                          <Checkbox
-                            checked={selectedIds.has(doc.id)}
-                            onCheckedChange={() => handleToggle(doc.id)}
-                          />
+                          {/* Wrap checkbox to stop propagation and prevent double-toggle */}
+                          <span onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.has(doc.id)}
+                              onCheckedChange={() => handleToggle(doc.id)}
+                            />
+                          </span>
                           <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm truncate">{doc.title}</span>
                         </div>
