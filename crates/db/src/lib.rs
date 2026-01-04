@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
@@ -7,6 +7,20 @@ use sqlx::{
 use utils::assets::asset_dir;
 
 pub mod models;
+pub mod turso;
+
+pub use turso::{TursoConfig, TursoSync};
+
+/// Get the database path, using Turso replica if configured
+pub fn get_database_path() -> PathBuf {
+    if TursoConfig::is_configured() {
+        // Use Turso replica file (synced with cloud)
+        asset_dir().join("db.turso.sqlite")
+    } else {
+        // Use local SQLite
+        asset_dir().join("db.sqlite")
+    }
+}
 
 #[derive(Clone)]
 pub struct DBService {
@@ -15,10 +29,14 @@ pub struct DBService {
 
 impl DBService {
     pub async fn new() -> Result<DBService, Error> {
-        let database_url = format!(
-            "sqlite://{}",
-            asset_dir().join("db.sqlite").to_string_lossy()
-        );
+        let db_path = get_database_path();
+        Self::new_with_path(db_path).await
+    }
+
+    pub async fn new_with_path(db_path: PathBuf) -> Result<DBService, Error> {
+        let database_url = format!("sqlite://{}", db_path.to_string_lossy());
+        tracing::info!("Connecting to database: {}", db_path.display());
+
         let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
         let pool = SqlitePool::connect_with(options).await?;
         sqlx::migrate!("./migrations").run(&pool).await?;
@@ -35,11 +53,12 @@ impl DBService {
             + Sync
             + 'static,
     {
-        let pool = Self::create_pool(Some(Arc::new(after_connect))).await?;
+        let db_path = get_database_path();
+        let pool = Self::create_pool(db_path, Some(Arc::new(after_connect))).await?;
         Ok(DBService { pool })
     }
 
-    async fn create_pool<F>(after_connect: Option<Arc<F>>) -> Result<Pool<Sqlite>, Error>
+    async fn create_pool<F>(db_path: PathBuf, after_connect: Option<Arc<F>>) -> Result<Pool<Sqlite>, Error>
     where
         F: for<'a> Fn(
                 &'a mut SqliteConnection,
@@ -49,10 +68,9 @@ impl DBService {
             + Sync
             + 'static,
     {
-        let database_url = format!(
-            "sqlite://{}",
-            asset_dir().join("db.sqlite").to_string_lossy()
-        );
+        let database_url = format!("sqlite://{}", db_path.to_string_lossy());
+        tracing::info!("Creating pool for database: {}", db_path.display());
+
         let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
 
         let pool = if let Some(hook) = after_connect {

@@ -3,6 +3,10 @@ name = "local-deployment"
 version = "0.0.142"
 edition = "2024"
 
+[features]
+default = []
+turso = ["db/turso"]
+
 [dependencies]
 db = { path = "../db" }
 executors = { path="../executors" }

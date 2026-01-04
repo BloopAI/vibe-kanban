@@ -3,6 +3,10 @@ name = "db"
 version = "0.0.142"
 edition = "2024"
 
+[features]
+default = []
+turso = ["libsql"]
+
 [dependencies]
 utils = { path = "../utils" }
 executors = { path = "../executors" }
@@ -17,4 +21,8 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 strum = "0.27.2"
 strum_macros = "0.27.2"
+tokio = { workspace = true }
+
+# Turso support (optional)
+libsql = { version = "0.6", optional = true }
 
