@@ -330,6 +330,18 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "QODER": {
+      "DEFAULT": {
+        "QODER": {
+          "yolo": true
+        }
+      },
+      "APPROVALS": {
+        "QODER": {
+          "yolo": false
+        }
+      }
     }
   }
 }
