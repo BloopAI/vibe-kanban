@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,6 +142,9 @@ export function TaskFollowUpSection({
       ? scratch.payload.data
       : undefined;
 
+  // Time limit input (seconds). Blank means "use default", 0 means "no limit".
+  const [timeLimitInput, setTimeLimitInput] = useState('');
+
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
@@ -206,23 +210,33 @@ export function TaskFollowUpSection({
   // Save scratch helper (used for both message and variant changes)
   // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
-    async (message: string, variant: string | null) => {
+    async (message: string, variant: string | null, timeLimitOverride?: string) => {
       if (!workspaceId) return;
       // Don't create empty scratch entries - only save if there's actual content,
       // a variant is selected, or scratch already exists (to allow clearing a draft)
       if (!message.trim() && !variant && !scratchRef.current) return;
       try {
+        const trimmed = (timeLimitOverride ?? timeLimitInput).trim();
+        const parsed =
+          trimmed === '' ? undefined : Math.max(0, Math.floor(Number(trimmed)));
+        const time_limit_seconds =
+          parsed === undefined || Number.isNaN(parsed) ? undefined : parsed;
+
         await updateScratch({
           payload: {
             type: 'DRAFT_FOLLOW_UP',
-            data: { message, variant },
+            data: {
+              message,
+              variant,
+              ...(time_limit_seconds !== undefined && { time_limit_seconds }),
+            },
           },
         });
       } catch (e) {
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [workspaceId, updateScratch]
+    [workspaceId, updateScratch, timeLimitInput]
   );
 
   // Wrapper to update variant and save to scratch immediately
@@ -234,6 +248,18 @@ export function TaskFollowUpSection({
     },
     [setVariantFromHook, saveToScratch, localMessage]
   );
+
+  // Sync time limit input from scratch when it loads (but not while user is typing)
+  useEffect(() => {
+    if (isScratchLoading) return;
+    if (isTextareaFocused) return;
+    const v = (scratchData as DraftFollowUpData | undefined)?.time_limit_seconds;
+    if (v === null || v === undefined) {
+      setTimeLimitInput('');
+    } else {
+      setTimeLimitInput(String(v));
+    }
+  }, [isScratchLoading, scratchData?.time_limit_seconds, isTextareaFocused]);
 
   // Debounced save for message changes (uses current variant from ref)
   const { debounced: setFollowUpMessage, cancel: cancelDebouncedSave } =
@@ -324,6 +350,10 @@ export function TaskFollowUpSection({
       reviewMarkdown,
       clickedMarkdown,
       selectedVariant,
+      timeLimitSeconds:
+        timeLimitInput.trim() === ''
+          ? undefined
+          : Math.max(0, Math.floor(Number(timeLimitInput))),
       clearComments,
       clearClickedElements,
       onAfterSendCleanup: () => {
@@ -416,7 +446,12 @@ export function TaskFollowUpSection({
       localMessage,
     ].filter(Boolean);
     const combinedMessage = parts.join('\n\n');
-    await queueMessage(combinedMessage, selectedVariant);
+    const trimmed = timeLimitInput.trim();
+    const parsed =
+      trimmed === '' ? undefined : Math.max(0, Math.floor(Number(trimmed)));
+    const timeLimitSeconds =
+      parsed === undefined || Number.isNaN(parsed) ? undefined : parsed;
+    await queueMessage(combinedMessage, selectedVariant, timeLimitSeconds);
   }, [
     localMessage,
     conflictResolutionInstructions,
@@ -426,6 +461,7 @@ export function TaskFollowUpSection({
     queueMessage,
     cancelDebouncedSave,
     saveToScratch,
+    timeLimitInput,
   ]);
 
   // Keyboard shortcut handler - send follow-up or queue depending on state
@@ -757,6 +793,35 @@ export function TaskFollowUpSection({
               disabled={!isEditable}
             />
           </div>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-[120px]">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={10}
+                    placeholder="120"
+                    value={timeLimitInput}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setTimeLimitInput(next);
+                      // Save immediately so queued messages carry the same limit
+                      saveToScratch(localMessage, variantRef.current, next);
+                    }}
+                    disabled={!isEditable}
+                    aria-label="Time limit seconds (blank=default, 0=no limit)"
+                    className="h-9"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Time limit (seconds). Blank = default (120s). 0 = no limit.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Hidden file input for attachment - always present */}
           <input

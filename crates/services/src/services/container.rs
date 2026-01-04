@@ -942,6 +942,7 @@ pub trait ContainerService {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                time_limit_seconds: None,
             }),
             cleanup_action.map(Box::new),
         );
@@ -1038,15 +1039,23 @@ pub trait ContainerService {
                 merge_commit: None,
             });
         }
-        // Extract time_limit_seconds from executor_action if it's a coding agent request
-        // Default: 120 seconds (2 minutes) for coding agents
+        // Extract time_limit_seconds from executor_action if it's a coding agent request.
+        //
+        // Semantics:
+        // - None: default 120 seconds (2 minutes) for coding agents
+        // - Some(0): no time limit
+        // - Some(n>0): explicit limit in seconds
         let time_limit_seconds = match executor_action.typ() {
-            ExecutorActionType::CodingAgentInitialRequest(req) => {
-                req.time_limit_seconds.or(Some(120))
-            }
-            ExecutorActionType::CodingAgentFollowUpRequest(req) => {
-                req.time_limit_seconds.or(Some(120))
-            }
+            ExecutorActionType::CodingAgentInitialRequest(req) => match req.time_limit_seconds {
+                None => Some(120),
+                Some(0) => None,
+                Some(n) => Some(n),
+            },
+            ExecutorActionType::CodingAgentFollowUpRequest(req) => match req.time_limit_seconds {
+                None => Some(120),
+                Some(0) => None,
+                Some(n) => Some(n),
+            },
             _ => None, // No time limit for other execution types
         };
 

@@ -16,6 +16,14 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware
 pub struct QueueMessageRequest {
     pub message: String,
     pub variant: Option<String>,
+    /// Optional time limit (seconds) for the queued follow-up execution.
+    /// - None: use default (currently 120s for coding agent runs)
+    /// - Some(0): no time limit
+    /// - Some(n>0): explicit limit in seconds
+    #[serde(default)]
+    #[ts(optional)]
+    #[ts(type = "number")]
+    pub time_limit_seconds: Option<i64>,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
@@ -27,6 +35,7 @@ pub async fn queue_message(
     let data = DraftFollowUpData {
         message: payload.message,
         variant: payload.variant,
+        time_limit_seconds: payload.time_limit_seconds,
     };
 
     let queued = deployment

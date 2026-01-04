@@ -38,6 +38,7 @@ use executors::{
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
     profile::ExecutorProfileId,
 };
+use sqlx::types::chrono::Utc;
 use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
@@ -360,7 +361,7 @@ impl LocalContainerService {
             // Load execution process to get time limit and start time
             let (time_limit_seconds, started_at) = match ExecutionProcess::find_by_id(&db.pool, exec_id).await {
                 Ok(Some(ep)) => (ep.time_limit_seconds, ep.started_at),
-                _ => (None, chrono::Utc::now()),
+                _ => (None, Utc::now()),
             };
 
             let mut exit_signal_future = exit_signal
@@ -375,7 +376,7 @@ impl LocalContainerService {
                 let started_at = started_at;
                 let timed_out_clone = timed_out.clone();
                 async move {
-                    let elapsed = chrono::Utc::now() - started_at;
+                    let elapsed = Utc::now() - started_at;
                     let remaining = std::time::Duration::from_secs(limit_secs as u64)
                         .saturating_sub(elapsed.to_std().unwrap_or_default());
                     
@@ -916,12 +917,14 @@ impl LocalContainerService {
                 session_id: agent_session_id,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
+                time_limit_seconds: queued_data.time_limit_seconds,
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: queued_data.message.clone(),
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                time_limit_seconds: queued_data.time_limit_seconds,
             })
         };
 

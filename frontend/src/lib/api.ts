@@ -1263,7 +1263,7 @@ export const queueApi = {
    */
   queue: async (
     sessionId: string,
-    data: { message: string; variant: string | null }
+    data: { message: string; variant: string | null; time_limit_seconds?: number | null }
   ): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
       method: 'POST',

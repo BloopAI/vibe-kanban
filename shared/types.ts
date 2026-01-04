@@ -54,7 +54,16 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
-export type DraftFollowUpData = { message: string, variant: string | null, };
+export type DraftFollowUpData = { message: string, variant: string | null, 
+/**
+ * Optional time limit (seconds) for a follow-up execution.
+ *
+ * Semantics:
+ * - None: use default (currently 120s for coding agent runs)
+ * - Some(0): no time limit
+ * - Some(n>0): explicit limit in seconds
+ */
+time_limit_seconds?: number, };
 
 export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };
 
@@ -80,9 +89,13 @@ export type ExecutionProcess = { id: string, session_id: string, run_reason: Exe
  * history view (due to restore/trimming). Hidden from logs/timeline;
  * still listed in the Processes tab.
  */
-dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
+dropped: boolean, 
+/**
+ * time_limit_seconds: Maximum execution time in seconds. None means no limit.
+ */
+time_limit_seconds: bigint | null, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
-export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed" }
+export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed", timebounded = "timebounded" }
 
 export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
 
@@ -208,7 +221,16 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type CurrentUserResponse = { user_id: string, };
 
-export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
+export type CreateFollowUpAttempt = { prompt: string, variant: string | null, 
+/**
+ * Optional time limit (seconds) for this execution.
+ *
+ * Semantics:
+ * - None: use default (currently 120s for coding agent runs)
+ * - Some(0): no time limit
+ * - Some(n>0): explicit limit in seconds
+ */
+time_limit_seconds?: number, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
 
@@ -442,7 +464,11 @@ executor_profile_id: ExecutorProfileId,
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * Maximum execution time in seconds. None means no limit. Default: 120 seconds (2 minutes).
+ */
+time_limit_seconds: bigint | null, };
 
 export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
 /**
@@ -453,7 +479,11 @@ executor_profile_id: ExecutorProfileId,
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * Maximum execution time in seconds. None means no limit. Default: 120 seconds (2 minutes).
+ */
+time_limit_seconds: bigint | null, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

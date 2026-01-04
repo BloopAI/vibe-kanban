@@ -22,6 +22,16 @@ pub struct DraftFollowUpData {
     pub message: String,
     #[serde(default)]
     pub variant: Option<String>,
+    /// Optional time limit (seconds) for a follow-up execution.
+    ///
+    /// Semantics:
+    /// - None: use default (currently 120s for coding agent runs)
+    /// - Some(0): no time limit
+    /// - Some(n>0): explicit limit in seconds
+    #[serde(default)]
+    #[ts(optional)]
+    #[ts(type = "number")]
+    pub time_limit_seconds: Option<i64>,
 }
 
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.

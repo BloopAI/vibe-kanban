@@ -1,10 +1,14 @@
 -- Add time limit configuration to execution_processes
 -- time_limit_seconds: NULL means no limit, otherwise specifies max execution time in seconds
-ALTER TABLE execution_processes ADD COLUMN time_limit_seconds INTEGER;
-
 -- Add timebounded status to execution_process_status constraint
 -- First, we need to drop and recreate the constraint since SQLite doesn't support ALTER COLUMN
 -- We'll use a workaround: create a new table, copy data, drop old, rename new
+--
+-- sqlx-sqlite runs migrations inside a transaction by default. SQLite can't start a transaction
+-- within a transaction, so we explicitly end sqlx's auto-transaction first.
+-- https://github.com/launchbadge/sqlx/issues/2085#issuecomment-1499859906
+COMMIT;
+
 PRAGMA foreign_keys = OFF;
 
 BEGIN TRANSACTION;
@@ -29,8 +33,34 @@ CREATE TABLE execution_processes_new (
 );
 
 -- Copy data from old table
-INSERT INTO execution_processes_new 
-SELECT * FROM execution_processes;
+INSERT INTO execution_processes_new (
+    id,
+    session_id,
+    run_reason,
+    executor_action,
+    status,
+    exit_code,
+    dropped,
+    time_limit_seconds,
+    started_at,
+    completed_at,
+    created_at,
+    updated_at
+)
+SELECT
+    id,
+    session_id,
+    run_reason,
+    executor_action,
+    status,
+    exit_code,
+    dropped,
+    NULL as time_limit_seconds,
+    started_at,
+    completed_at,
+    created_at,
+    updated_at
+FROM execution_processes;
 
 -- Drop old table and rename new one
 DROP TABLE execution_processes;
@@ -48,3 +78,6 @@ ON execution_processes (session_id, run_reason, created_at DESC);
 COMMIT;
 
 PRAGMA foreign_keys = ON;
+
+-- sqlx workaround: start empty transaction for sqlx to close gracefully
+BEGIN TRANSACTION;

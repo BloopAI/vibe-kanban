@@ -89,6 +89,16 @@ pub async fn create_session(
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
     pub variant: Option<String>,
+    /// Optional time limit (seconds) for this execution.
+    ///
+    /// Semantics:
+    /// - None: use default (currently 120s for coding agent runs)
+    /// - Some(0): no time limit
+    /// - Some(n>0): explicit limit in seconds
+    #[serde(default)]
+    #[ts(optional)]
+    #[ts(type = "number")]
+    pub time_limit_seconds: Option<i64>,
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
@@ -193,6 +203,7 @@ pub async fn follow_up(
             session_id: agent_session_id,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
+            time_limit_seconds: payload.time_limit_seconds,
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
@@ -200,6 +211,7 @@ pub async fn follow_up(
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                time_limit_seconds: payload.time_limit_seconds,
             },
         )
     };
