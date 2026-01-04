@@ -33,6 +33,8 @@ interface UseCreateModeStateResult {
   selectedProfile: ExecutorProfileId | null;
   message: string;
   isLoading: boolean;
+  /** Whether the initial value has been applied from scratch */
+  hasInitialValue: boolean;
 
   // Actions
   setSelectedProjectId: (id: string | null) => void;
@@ -85,6 +87,7 @@ export function useCreateModeState({
   const [selectedProfile, setSelectedProfile] =
     useState<ExecutorProfileId | null>(null);
   const [message, setMessage] = useState('');
+  const [hasInitialValue, setHasInitialValue] = useState(false);
 
   // Scratch persistence
   const {
@@ -108,6 +111,7 @@ export function useCreateModeState({
     if (!profiles) return; // Wait for profiles to validate
 
     hasInitializedFromScratch.current = true;
+    setHasInitialValue(true);
 
     if (!scratchData) return;
 
@@ -317,6 +321,7 @@ export function useCreateModeState({
     selectedProfile,
     message,
     isLoading: isScratchLoading,
+    hasInitialValue,
     setSelectedProjectId,
     setMessage,
     setSelectedProfile,

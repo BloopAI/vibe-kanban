@@ -144,6 +144,7 @@ export function SessionChatBoxContainer({
     setLocalMessage,
     scratchData,
     isScratchLoading,
+    hasInitialValue,
     saveToScratch,
     clearDraft,
     cancelDebouncedSave,
@@ -416,7 +417,9 @@ export function SessionChatBoxContainer({
   }
 
   // Loading state (only applies when we have a session)
-  if (isScratchLoading && !isNewSessionMode) {
+  // Wait for both scratch loading to complete AND initial value to be applied
+  // This ensures the editor doesn't mount until content is ready, so autoFocus works correctly
+  if ((isScratchLoading || !hasInitialValue) && !isNewSessionMode) {
     return null;
   }
 

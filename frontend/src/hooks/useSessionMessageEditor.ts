@@ -17,6 +17,8 @@ interface UseSessionMessageEditorResult {
   scratchData: DraftFollowUpData | undefined;
   /** Whether scratch is loading */
   isScratchLoading: boolean;
+  /** Whether the initial value has been applied from scratch */
+  hasInitialValue: boolean;
   /** Save message and variant to scratch */
   saveToScratch: (message: string, variant: string | null) => Promise<void>;
   /** Delete the draft scratch */
@@ -47,6 +49,7 @@ export function useSessionMessageEditor({
       : undefined;
 
   const [localMessage, setLocalMessage] = useState('');
+  const [hasInitialValue, setHasInitialValue] = useState(false);
 
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
@@ -77,6 +80,7 @@ export function useSessionMessageEditor({
     if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
     setLocalMessage(scratchData?.message ?? '');
+    setHasInitialValue(true);
   }, [isScratchLoading, scratchData?.message]);
 
   // Handle message change with debounced save
@@ -94,6 +98,7 @@ export function useSessionMessageEditor({
     setLocalMessage,
     scratchData,
     isScratchLoading,
+    hasInitialValue,
     saveToScratch,
     clearDraft: deleteScratch,
     cancelDebouncedSave,

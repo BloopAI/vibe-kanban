@@ -19,6 +19,7 @@ export function CreateChatBoxContainer() {
     setMessage,
     selectedProjectId,
     clearDraft,
+    hasInitialValue,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -145,6 +146,12 @@ export function CreateChatBoxContainer() {
           ? createWorkspace.error.message
           : 'Failed to create workspace'
         : null;
+
+  // Wait for initial value to be applied before rendering
+  // This ensures the editor mounts with content ready, so autoFocus works correctly
+  if (!hasInitialValue) {
+    return null;
+  }
 
   // Handle case where no project exists
   if (!projectId) {
