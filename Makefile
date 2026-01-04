@@ -5,8 +5,9 @@ FRONTEND_PORT ?= 3000
 BACKEND_PORT ?= 3003
 LOG_DIR = .logs
 
-# Turso feature flag - auto-enabled if TURSO_DATABASE_URL is set in .env or .env.local
-TURSO_ENABLED ?= $(shell grep -q "^TURSO_DATABASE_URL=" .env .env.local 2>/dev/null && echo "1" || echo "")
+# Turso feature flag - DISABLED by default for local-first stability
+# To enable Turso sync: make TURSO_ENABLED=1 start
+TURSO_ENABLED ?=
 CARGO_FEATURES := $(if $(TURSO_ENABLED),--features turso,)
 
 .PHONY: all start stop restart status frontend backend logs clean help
@@ -37,12 +38,14 @@ backend: $(LOG_DIR)
 		echo "Backend already running on port $(BACKEND_PORT)"; \
 	else \
 		echo "Starting backend on port $(BACKEND_PORT)..."; \
-		if [ -f .env ]; then set -a && . ./.env && set +a; fi && \
-		if [ -f .env.local ]; then set -a && . ./.env.local && set +a; fi && \
-		DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=info PORT=$(BACKEND_PORT) \
-			nohup cargo run $(CARGO_FEATURES) --bin server > $(LOG_DIR)/backend.log 2>&1 & \
-		echo "Backend starting... (PID: $$!)"; \
-		sleep 2; \
+		echo "Using pure local SQLite (db.sqlite)"; \
+		bash -c 'set -a; \
+			[ -f .env ] && export $$(grep "^GITHUB_" .env | xargs); \
+			set +a; \
+			DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=info PORT=$(BACKEND_PORT) \
+			nohup cargo run $(CARGO_FEATURES) --bin server > $(LOG_DIR)/backend.log 2>&1 &'; \
+		echo "Backend starting..."; \
+		sleep 3; \
 	fi
 
 # Start frontend in background
@@ -100,12 +103,30 @@ clean:
 	@rm -rf $(LOG_DIR)
 	@echo "Logs cleaned."
 
+# Sync local SQLite to Turso (push)
+sync-to-turso:
+	@echo "Syncing local db.sqlite to Turso..."
+	@if [ -z "$(TURSO_DATABASE_URL)" ]; then \
+		echo "Error: TURSO_DATABASE_URL not set. Run: source .env"; \
+		exit 1; \
+	fi
+	@./mcp/cli.py sync push 2>/dev/null || echo "Use MCP tool: vk_sync_to_turso"
+
+# Sync from Turso to local SQLite (pull)
+sync-from-turso:
+	@echo "Syncing from Turso to local db.sqlite..."
+	@if [ -z "$(TURSO_DATABASE_URL)" ]; then \
+		echo "Error: TURSO_DATABASE_URL not set. Run: source .env"; \
+		exit 1; \
+	fi
+	@./mcp/cli.py sync pull 2>/dev/null || echo "Use MCP tool: vk_sync_from_turso"
+
 # Help
 help:
 	@echo "Vibe Kanban Development Commands"
 	@echo "================================="
 	@echo ""
-	@echo "  make start      - Start frontend and backend in background"
+	@echo "  make start      - Start frontend and backend (local SQLite)"
 	@echo "  make stop       - Stop all services"
 	@echo "  make restart    - Restart all services"
 	@echo "  make status     - Show service status"
@@ -115,14 +136,17 @@ help:
 	@echo "  make logs-follow - Follow logs in real-time"
 	@echo "  make clean      - Remove log files"
 	@echo ""
+	@echo "Database Sync (Local <-> Turso):"
+	@echo "  make sync-to-turso   - Push local changes to Turso cloud"
+	@echo "  make sync-from-turso - Pull Turso changes to local"
+	@echo ""
 	@echo "Environment Variables:"
 	@echo "  FRONTEND_PORT   - Frontend port (default: 3000)"
 	@echo "  BACKEND_PORT    - Backend port (default: 3003)"
 	@echo ""
-	@echo "Turso Distributed Database:"
-	@echo "  Auto-enabled when TURSO_DATABASE_URL is set in .env or .env.local"
-	@echo "  Required vars: TURSO_DATABASE_URL, TURSO_AUTH_TOKEN"
+	@echo "Architecture: Frontend -> Backend -> Local SQLite (db.sqlite)"
+	@echo "              Sync to Turso via 'make sync-to-turso' or MCP"
 	@echo ""
-	@echo "Examples:"
+	@echo "Examples:
 	@echo "  make start                         # Start with defaults"
 	@echo "  BACKEND_PORT=4000 make start       # Custom backend port"
