@@ -12,6 +12,7 @@ import { getFileIcon } from '@/utils/fileTypeIcon';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
 import '@/styles/diff-style-overrides.css';
@@ -260,6 +261,10 @@ export function DiffViewBody({
   hideLineNumbers?: boolean;
   theme: 'light' | 'dark';
 }) {
+  const globalMode = useDiffViewMode();
+  const diffMode =
+    globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
+
   if (!isValid) {
     return (
       <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
@@ -279,7 +284,7 @@ export function DiffViewBody({
           diffViewWrap={false}
           diffViewTheme={theme}
           diffViewHighlight
-          diffViewMode={DiffModeEnum.Unified}
+          diffViewMode={diffMode}
           diffViewFontSize={12}
         />
       </div>
@@ -295,7 +300,7 @@ export function DiffViewBody({
           diffViewWrap={false}
           diffViewTheme={theme}
           diffViewHighlight
-          diffViewMode={DiffModeEnum.Unified}
+          diffViewMode={diffMode}
           diffViewFontSize={12}
         />
       </div>

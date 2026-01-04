@@ -8,7 +8,10 @@ import {
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { DiffLineType, parseInstance } from '@git-diff-view/react';
-import { useExpandable } from '@/stores/useExpandableStore';
+import {
+  usePersistedExpanded,
+  type PersistKey,
+} from '@/stores/useUiPreferencesStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
@@ -276,7 +279,10 @@ function FileEditEntry({
   expansionKey: string;
   status: ToolStatus;
 }) {
-  const [expanded, toggle] = useExpandable(expansionKey, false);
+  const [expanded, toggle] = usePersistedExpanded(
+    expansionKey as PersistKey,
+    false
+  );
 
   // Calculate diff stats for edit changes
   const { additions, deletions } = useMemo(() => {
@@ -340,7 +346,7 @@ function PlanEntry({
   const feedbackContext = useApprovalFeedbackOptional();
   const { approve, isApproving } = useApprovalMutation();
   const pendingApproval = status.status === 'pending_approval';
-  const [expanded, toggle] = useExpandable(
+  const [expanded, toggle] = usePersistedExpanded(
     `plan:${expansionKey}`,
     pendingApproval
   );
@@ -421,7 +427,7 @@ function UserMessageEntry({
   workspaceId?: string;
   executionProcessId?: string;
 }) {
-  const [expanded, toggle] = useExpandable(`user:${expansionKey}`, true);
+  const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
   const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
 
   const isGreyed = isEntryGreyed(expansionKey);
@@ -472,7 +478,10 @@ function ToolSummaryEntry({
   expansionKey: string;
   status: ToolStatus;
 }) {
-  const [expanded, toggle] = useExpandable(`tool:${expansionKey}`, false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `tool:${expansionKey}`,
+    false
+  );
 
   return (
     <ChatToolSummary
@@ -494,7 +503,10 @@ function TodoManagementEntry({
   todos: TodoItem[];
   expansionKey: string;
 }) {
-  const [expanded, toggle] = useExpandable(`todo:${expansionKey}`, false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `todo:${expansionKey}`,
+    false
+  );
 
   return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
 }
@@ -509,7 +521,10 @@ function SystemMessageEntry({
   content: string;
   expansionKey: string;
 }) {
-  const [expanded, toggle] = useExpandable(`system:${expansionKey}`, false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `system:${expansionKey}`,
+    false
+  );
 
   return (
     <ChatSystemMessage
@@ -530,7 +545,10 @@ function ErrorMessageEntry({
   content: string;
   expansionKey: string;
 }) {
-  const [expanded, toggle] = useExpandable(`error:${expansionKey}`, false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `error:${expansionKey}`,
+    false
+  );
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />

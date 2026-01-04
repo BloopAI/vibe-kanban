@@ -24,7 +24,12 @@ import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useMerge } from '@/hooks/useMerge';
-import { usePaneSize, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
+import {
+  usePaneSize,
+  useExpandedAll,
+  PERSIST_KEYS,
+} from '@/stores/useUiPreferencesStore';
+import { useDiffViewMode, useDiffViewStore } from '@/stores/useDiffViewStore';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -289,6 +294,26 @@ export function WorkspacesLayout() {
       setIsChangesMode(false);
     }
   }, [isCreateMode]);
+
+  // Diff view controls
+  const diffViewMode = useDiffViewMode();
+  const toggleDiffViewMode = useDiffViewStore((s) => s.toggle);
+  const { expanded, setExpandedAll } = useExpandedAll();
+
+  // Compute diff keys and expansion state
+  const diffKeys = useMemo(
+    () => realDiffs.map((d) => `diff:${d.newPath || d.oldPath || ''}`),
+    [realDiffs]
+  );
+  const isAllDiffsExpanded = useMemo(
+    () => diffKeys.length > 0 && diffKeys.every((k) => expanded[k] !== false),
+    [diffKeys, expanded]
+  );
+
+  // Toggle all diffs expanded/collapsed
+  const handleToggleAllDiffs = useCallback(() => {
+    setExpandedAll(diffKeys, !isAllDiffsExpanded);
+  }, [diffKeys, isAllDiffsExpanded, setExpandedAll]);
 
   // Persisted pane sizes
   const [sidebarWidth, setSidebarWidth] = usePaneSize(
@@ -595,11 +620,16 @@ export function WorkspacesLayout() {
         isChangesMode={isChangesMode}
         isCreateMode={isCreateMode}
         isArchived={selectedWorkspace?.archived}
+        hasDiffs={realDiffs.length > 0}
+        isAllDiffsExpanded={isAllDiffsExpanded}
+        diffViewMode={diffViewMode}
         onToggleSidebar={handleToggleSidebar}
         onToggleMainPanel={handleToggleMainPanel}
         onToggleGitPanel={handleToggleGitPanel}
         onToggleChangesMode={handleToggleChangesMode}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
+        onToggleAllDiffs={handleToggleAllDiffs}
+        onToggleDiffViewMode={toggleDiffViewMode}
         onNavigateToOldUI={
           selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id
             ? handleNavigateToOldUI
