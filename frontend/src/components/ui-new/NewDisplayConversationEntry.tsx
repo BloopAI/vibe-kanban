@@ -20,7 +20,7 @@ import {
   ChatToolSummary,
   ChatTodoList,
   ChatFileEntry,
-  ChatPlan,
+  ChatApprovalCard,
   ChatUserMessage,
   ChatAssistantMessage,
   ChatSystemMessage,
@@ -124,7 +124,7 @@ function renderToolUseEntry(
     );
   }
 
-  // Plan presentation - use ChatPlan
+  // Plan presentation - use ChatApprovalCard
   if (action_type.action === 'plan_presentation') {
     return (
       <PlanEntry
@@ -166,6 +166,19 @@ function renderToolUseEntry(
         title={entryType.tool_name}
         processId={executionProcessId ?? ''}
         exitCode={exitCode}
+        status={status}
+      />
+    );
+  }
+
+  // Generic tool pending approval - use plan-style card
+  if (status.status === 'pending_approval') {
+    return (
+      <GenericToolApprovalEntry
+        toolName={entryType.tool_name}
+        content={props.entry.content}
+        expansionKey={expansionKey}
+        workspaceId={taskAttempt?.id}
         status={status}
       />
     );
@@ -270,9 +283,11 @@ function FileEditEntry({
   expansionKey: string;
   status: ToolStatus;
 }) {
+  // Auto-expand when pending approval
+  const pendingApproval = status.status === 'pending_approval';
   const [expanded, toggle] = usePersistedExpanded(
     expansionKey as PersistKey,
-    false
+    pendingApproval
   );
   const { viewFileInChanges, diffPaths } = useFileNavigation();
 
@@ -296,6 +311,15 @@ function FileEditEntry({
         path,
         unifiedDiff: change.unified_diff,
         hasLineNumbers: change.has_line_numbers ?? true,
+      };
+    }
+    // For write actions, use content-based diff (empty old, new content)
+    if (change.action === 'write' && change.content) {
+      return {
+        type: 'content',
+        oldContent: '',
+        newContent: change.content,
+        newPath: path,
       };
     }
     return undefined;
@@ -352,9 +376,42 @@ function PlanEntry({
   }, [plan]);
 
   return (
-    <ChatPlan
+    <ChatApprovalCard
       title={title}
       content={plan}
+      expanded={expanded}
+      onToggle={toggle}
+      workspaceId={workspaceId}
+      status={status}
+    />
+  );
+}
+
+/**
+ * Generic tool approval entry - renders with plan-style card when pending approval
+ */
+function GenericToolApprovalEntry({
+  toolName,
+  content,
+  expansionKey,
+  workspaceId,
+  status,
+}: {
+  toolName: string;
+  content: string;
+  expansionKey: string;
+  workspaceId?: string;
+  status: ToolStatus;
+}) {
+  const [expanded, toggle] = usePersistedExpanded(
+    `tool:${expansionKey}`,
+    true // auto-expand for pending approval
+  );
+
+  return (
+    <ChatApprovalCard
+      title={toolName}
+      content={content}
       expanded={expanded}
       onToggle={toggle}
       workspaceId={workspaceId}

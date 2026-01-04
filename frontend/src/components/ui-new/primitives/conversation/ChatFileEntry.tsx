@@ -36,6 +36,7 @@ export function ChatFileEntry({
   const actualTheme = getActualTheme(theme);
   const hasStats = additions !== undefined || deletions !== undefined;
   const FileIcon = getFileIcon(filename, actualTheme);
+  const isDenied = status?.status === 'denied';
 
   // Process diff content if provided
   const diffData = useDiffData(
@@ -46,11 +47,18 @@ export function ChatFileEntry({
   // If we have diff content, wrap in a container with the diff body
   if (hasDiffContent) {
     return (
-      <div className={cn('rounded-sm border overflow-hidden', className)}>
+      <div
+        className={cn(
+          'rounded-sm border overflow-hidden',
+          isDenied && 'border-error bg-error/10',
+          className
+        )}
+      >
         {/* Header */}
         <div
           className={cn(
-            'flex items-center bg-panel p-base w-full',
+            'flex items-center p-base w-full',
+            isDenied ? 'bg-error/20' : 'bg-panel',
             onToggle && 'cursor-pointer'
           )}
           onClick={onToggle}
@@ -119,7 +127,8 @@ export function ChatFileEntry({
   return (
     <div
       className={cn(
-        'flex items-center bg-panel border rounded-sm p-base w-full',
+        'flex items-center border rounded-sm p-base w-full',
+        isDenied ? 'bg-error/20 border-error' : 'bg-panel',
         onToggle && 'cursor-pointer',
         className
       )}
