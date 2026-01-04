@@ -94,163 +94,172 @@ function getToolSummary(
   }
 }
 
-function NewDisplayConversationEntry({
-  entry,
-  expansionKey,
-  executionProcessId,
-  taskAttempt,
-  task,
-}: Props) {
-  const entryType = entry.entry_type;
+/**
+ * Render tool_use entry types with appropriate components
+ */
+function renderToolUseEntry(
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  props: Props
+): React.ReactNode {
+  const { expansionKey, executionProcessId, taskAttempt } = props;
+  const { action_type, status } = entryType;
 
-  // Handle tool_use entries with new components
-  if (entryType.type === 'tool_use') {
-    const { action_type, status } = entryType;
-
-    // File edit - use ChatFileEntry
-    if (action_type.action === 'file_edit') {
-      const fileEditAction = action_type as FileEditAction;
-      return (
-        <>
-          {fileEditAction.changes.map((change, idx) => (
-            <FileEditEntry
-              key={idx}
-              path={fileEditAction.path}
-              change={change}
-              expansionKey={`edit:${expansionKey}:${idx}`}
-              status={status}
-            />
-          ))}
-        </>
-      );
-    }
-
-    // Plan presentation - use ChatPlan
-    if (action_type.action === 'plan_presentation') {
-      const isPendingApproval = status.status === 'pending_approval';
-      const pendingStatus = isPendingApproval
-        ? (status as Extract<ToolStatus, { status: 'pending_approval' }>)
-        : undefined;
-
-      return (
-        <PlanEntry
-          plan={action_type.plan}
-          expansionKey={expansionKey}
-          showActions={isPendingApproval}
-          workspaceId={taskAttempt?.id}
-          approvalStatus={pendingStatus}
-          executionProcessId={executionProcessId}
-          status={status}
-        />
-      );
-    }
-
-    // Todo management - use ChatTodoList
-    if (action_type.action === 'todo_management') {
-      return (
-        <TodoManagementEntry
-          todos={action_type.todos}
-          expansionKey={expansionKey}
-        />
-      );
-    }
-
-    // Script entries (Setup Script, Cleanup Script, Tool Install Script)
-    const scriptToolNames = [
-      'Setup Script',
-      'Cleanup Script',
-      'Tool Install Script',
-    ];
-    if (
-      action_type.action === 'command_run' &&
-      scriptToolNames.includes(entryType.tool_name)
-    ) {
-      const exitCode =
-        action_type.result?.exit_status?.type === 'exit_code'
-          ? action_type.result.exit_status.code
-          : null;
-
-      return (
-        <ChatScriptEntry
-          title={entryType.tool_name}
-          processId={executionProcessId ?? ''}
-          exitCode={exitCode}
-          status={status}
-        />
-      );
-    }
-
-    // Other tool uses - use ChatToolSummary
+  // File edit - use ChatFileEntry
+  if (action_type.action === 'file_edit') {
+    const fileEditAction = action_type as FileEditAction;
     return (
-      <ToolSummaryEntry
-        summary={getToolSummary(entryType)}
+      <>
+        {fileEditAction.changes.map((change, idx) => (
+          <FileEditEntry
+            key={idx}
+            path={fileEditAction.path}
+            change={change}
+            expansionKey={`edit:${expansionKey}:${idx}`}
+            status={status}
+          />
+        ))}
+      </>
+    );
+  }
+
+  // Plan presentation - use ChatPlan
+  if (action_type.action === 'plan_presentation') {
+    const isPendingApproval = status.status === 'pending_approval';
+    const pendingStatus = isPendingApproval
+      ? (status as Extract<ToolStatus, { status: 'pending_approval' }>)
+      : undefined;
+
+    return (
+      <PlanEntry
+        plan={action_type.plan}
         expansionKey={expansionKey}
+        showActions={isPendingApproval}
+        workspaceId={taskAttempt?.id}
+        approvalStatus={pendingStatus}
+        executionProcessId={executionProcessId}
         status={status}
       />
     );
   }
 
-  // User message - use ChatUserMessage
-  if (entryType.type === 'user_message') {
+  // Todo management - use ChatTodoList
+  if (action_type.action === 'todo_management') {
     return (
-      <UserMessageEntry
-        content={entry.content}
+      <TodoManagementEntry
+        todos={action_type.todos}
         expansionKey={expansionKey}
-        workspaceId={taskAttempt?.id}
-        executionProcessId={executionProcessId}
       />
     );
   }
 
-  // Assistant message - use ChatAssistantMessage
-  if (entryType.type === 'assistant_message') {
+  // Script entries (Setup Script, Cleanup Script, Tool Install Script)
+  const scriptToolNames = [
+    'Setup Script',
+    'Cleanup Script',
+    'Tool Install Script',
+  ];
+  if (
+    action_type.action === 'command_run' &&
+    scriptToolNames.includes(entryType.tool_name)
+  ) {
+    const exitCode =
+      action_type.result?.exit_status?.type === 'exit_code'
+        ? action_type.result.exit_status.code
+        : null;
+
     return (
-      <AssistantMessageEntry
-        content={entry.content}
-        workspaceId={taskAttempt?.id}
+      <ChatScriptEntry
+        title={entryType.tool_name}
+        processId={executionProcessId ?? ''}
+        exitCode={exitCode}
+        status={status}
       />
     );
   }
 
-  // System message - use ChatSystemMessage
-  if (entryType.type === 'system_message') {
-    return (
-      <SystemMessageEntry content={entry.content} expansionKey={expansionKey} />
-    );
-  }
-
-  // Thinking message - use ChatThinkingMessage
-  if (entryType.type === 'thinking') {
-    return (
-      <ChatThinkingMessage
-        content={entry.content}
-        taskAttemptId={taskAttempt?.id}
-      />
-    );
-  }
-
-  // Error message - use ChatErrorMessage
-  if (entryType.type === 'error_message') {
-    return (
-      <ErrorMessageEntry content={entry.content} expansionKey={expansionKey} />
-    );
-  }
-
-  // The new design doesn't need the next action bar
-  if (entryType.type === 'next_action') {
-    return null;
-  }
-
-  // Fallback to old component for all other entry types
+  // Other tool uses - use ChatToolSummary
   return (
-    <DisplayConversationEntry
-      entry={entry}
+    <ToolSummaryEntry
+      summary={getToolSummary(entryType)}
       expansionKey={expansionKey}
-      executionProcessId={executionProcessId}
-      taskAttempt={taskAttempt}
-      task={task}
+      status={status}
     />
   );
+}
+
+function NewDisplayConversationEntry(props: Props) {
+  const { entry, expansionKey, executionProcessId, taskAttempt, task } = props;
+  const entryType = entry.entry_type;
+
+  switch (entryType.type) {
+    case 'tool_use':
+      return renderToolUseEntry(entryType, props);
+
+    case 'user_message':
+      return (
+        <UserMessageEntry
+          content={entry.content}
+          expansionKey={expansionKey}
+          workspaceId={taskAttempt?.id}
+          executionProcessId={executionProcessId}
+        />
+      );
+
+    case 'assistant_message':
+      return (
+        <AssistantMessageEntry
+          content={entry.content}
+          workspaceId={taskAttempt?.id}
+        />
+      );
+
+    case 'system_message':
+      return (
+        <SystemMessageEntry
+          content={entry.content}
+          expansionKey={expansionKey}
+        />
+      );
+
+    case 'thinking':
+      return (
+        <ChatThinkingMessage
+          content={entry.content}
+          taskAttemptId={taskAttempt?.id}
+        />
+      );
+
+    case 'error_message':
+      return (
+        <ErrorMessageEntry
+          content={entry.content}
+          expansionKey={expansionKey}
+        />
+      );
+
+    case 'next_action':
+      // The new design doesn't need the next action bar
+      return null;
+
+    case 'user_feedback':
+    case 'loading':
+      // Fallback to legacy component for these entry types
+      return (
+        <DisplayConversationEntry
+          entry={entry}
+          expansionKey={expansionKey}
+          executionProcessId={executionProcessId}
+          taskAttempt={taskAttempt}
+          task={task}
+        />
+      );
+
+    default: {
+      // Exhaustive check - TypeScript will error if a case is missing
+      const _exhaustiveCheck: never = entryType;
+      return _exhaustiveCheck;
+    }
+  }
 }
 
 /**
