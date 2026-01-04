@@ -164,7 +164,7 @@ impl AuthorizationProvider for GitHubOAuthProvider {
     }
 
     fn scopes(&self) -> &[&str] {
-        &["read:user", "user:email"]
+        &["read:user", "user:email", "read:org"]
     }
 
     fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url> {
