@@ -18,13 +18,15 @@ DEFAULT_PORT = 3003
 DEFAULT_HOST = "127.0.0.1"
 
 KNOWN_PROJECTS = {
-    "frontend": "5b8810bc-b52f-464f-b87c-4a10542c14d3",
-    "backend": "270d5829-6691-44b8-af81-594e70e88f15",
-    "integration": "45da934b-60f3-4ecd-8795-acbd9b454a22",
+    "frontend": "ba7fe592-42d0-43f5-add8-f653054c2944",
+    "backend": "de246043-3b27-45e4-bd7a-f0d685b317d0",
+    "integration": "bde6ec12-2cf1-4784-9a0e-d03308ade450",
+    "database": "731d6e37-9223-4595-93a0-412a38af4540",
+    "ai": "ffa3f7db-bf84-4e88-b04d-59f5f98a0522",
 }
 
 KNOWN_TEAMS = {
-    "vibe-kanban": "ea68ef91-e9b7-4c28-9f53-077cf6a08fd3",
+    "vibe-kanban": "c1a926de-0683-407d-81de-124e0d161ec5",
 }
 
 
