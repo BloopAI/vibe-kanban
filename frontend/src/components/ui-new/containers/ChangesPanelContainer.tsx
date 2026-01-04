@@ -1,7 +1,6 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { ChangesPanel } from '../views/ChangesPanel';
 import type { Diff, DiffChangeKind } from 'shared/types';
-import type { DiffInput } from '../primitives/conversation/DiffViewCard';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
 const COLLAPSE_BY_CHANGE_TYPE: Record<DiffChangeKind, boolean> = {
@@ -71,28 +70,21 @@ export function ChangesPanelContainer({
     []
   );
 
-  const diffItems = diffs.map((diff) => {
-    const path = diff.newPath || diff.oldPath || '';
+  // Compute initial expanded state, but pass the Diff directly for stable references
+  const diffItems = useMemo(() => {
+    return diffs.map((diff) => {
+      const path = diff.newPath || diff.oldPath || '';
 
-    // Determine initial expanded state for new diffs
-    let initialExpanded = true;
-    if (!processedPaths.has(path)) {
-      processedPaths.add(path);
-      initialExpanded = !shouldAutoCollapse(diff);
-    }
+      // Determine initial expanded state for new diffs
+      let initialExpanded = true;
+      if (!processedPaths.has(path)) {
+        processedPaths.add(path);
+        initialExpanded = !shouldAutoCollapse(diff);
+      }
 
-    return {
-      path,
-      initialExpanded,
-      input: {
-        type: 'content' as const,
-        oldContent: diff.oldContent || '',
-        newContent: diff.newContent || '',
-        oldPath: diff.oldPath || undefined,
-        newPath: diff.newPath || '',
-      } satisfies DiffInput,
-    };
-  });
+      return { diff, initialExpanded };
+    });
+  }, [diffs]);
 
   return (
     <ChangesPanel
