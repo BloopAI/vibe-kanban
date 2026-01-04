@@ -66,8 +66,9 @@ export function TeamDocuments() {
   const [searchParams, setSearchParams] = useSearchParams();
   const docIdFromUrl = searchParams.get('doc');
 
-  const { teamsById, isLoading: teamsLoading } = useTeams();
-  const team = teamId ? teamsById[teamId] : null;
+  const { resolveTeam, isLoading: teamsLoading } = useTeams();
+  const team = teamId ? resolveTeam(teamId) : null;
+  const actualTeamId = team?.id || '';
 
   const {
     documents,
@@ -83,7 +84,7 @@ export function TeamDocuments() {
     deleteFolder,
     scanFilesystem,
     discoverFolders,
-  } = useDocuments(teamId || '');
+  } = useDocuments(actualTeamId);
 
   // Dialog states
   const [isCreateDocOpen, setIsCreateDocOpen] = useState(false);

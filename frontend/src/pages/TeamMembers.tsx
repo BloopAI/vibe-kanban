@@ -437,7 +437,10 @@ Best regards`
 
 export function TeamMembers() {
   const { teamId } = useParams<{ teamId: string }>();
-  const { teamsById } = useTeams();
+  const { resolveTeam } = useTeams();
+  const team = teamId ? resolveTeam(teamId) : undefined;
+  const actualTeamId = team?.id;
+
   const {
     members,
     invitations,
@@ -447,9 +450,7 @@ export function TeamMembers() {
     removeMember,
     updateInvitationRole,
     cancelInvitation,
-  } = useTeamMembers(teamId);
-
-  const team = teamId ? teamsById[teamId] : undefined;
+  } = useTeamMembers(actualTeamId);
   const [isUpdating, setIsUpdating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('account');

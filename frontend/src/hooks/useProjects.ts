@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
+import { resolveProjectFromParam } from '@/lib/url-utils';
 
 type ProjectsState = {
   projects: Record<string, Project>;
@@ -12,6 +13,7 @@ export interface UseProjectsResult {
   isLoading: boolean;
   isConnected: boolean;
   error: Error | null;
+  resolveProject: (param: string) => Project | undefined;
 }
 
 export function useProjects(): UseProjectsResult {
@@ -38,11 +40,17 @@ export function useProjects(): UseProjectsResult {
   const projectsData = data ? projects : undefined;
   const errorObj = useMemo(() => (error ? new Error(error) : null), [error]);
 
+  const resolveProject = useMemo(
+    () => (param: string) => resolveProjectFromParam(param, projects, projectsById),
+    [projects, projectsById]
+  );
+
   return {
     projects: projectsData ?? [],
     projectsById,
     isLoading: !data && !error,
     isConnected,
     error: errorObj,
+    resolveProject,
   };
 }

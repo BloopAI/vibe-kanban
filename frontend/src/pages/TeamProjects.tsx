@@ -23,6 +23,7 @@ import { useTeamProjects } from '@/hooks/useTeamProjects';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
 import { useKeyCreate, Scope } from '@/keyboard';
+import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
 import type { Project } from 'shared/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -107,11 +108,12 @@ function ProgressCircle({ percentage }: { percentage: number }) {
 export function TeamProjects() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
-  const { projects, isLoading, error } = useTeamProjects(teamId);
-  const { issues } = useTeamIssues(teamId);
-  const { teams } = useTeams();
+  const { resolveTeam } = useTeams();
+  const team = teamId ? resolveTeam(teamId) : undefined;
+  const actualTeamId = team?.id;
 
-  const team = teams.find(t => t.id === teamId);
+  const { projects, isLoading, error } = useTeamProjects(actualTeamId);
+  const { issues } = useTeamIssues(actualTeamId);
 
   // Calculate issue stats per project
   const projectStats = useMemo(() => {
@@ -143,7 +145,7 @@ export function TeamProjects() {
 
   const handleCreateProject = async () => {
     try {
-      const result = await ProjectFormDialog.show({ teamId });
+      const result = await ProjectFormDialog.show({ teamId: actualTeamId });
       if (result === 'saved') return;
     } catch {
       // User cancelled
@@ -152,14 +154,15 @@ export function TeamProjects() {
 
   const handleEditProject = async (project: Project) => {
     try {
-      await ProjectFormDialog.show({ editProject: project, teamId });
+      await ProjectFormDialog.show({ editProject: project, teamId: actualTeamId });
     } catch {
       // User cancelled
     }
   };
 
   const handleProjectClick = (project: Project) => {
-    navigate(`/teams/${teamId}/projects/${project.id}`);
+    const teamSlug = team ? getTeamSlug(team) : teamId;
+    navigate(`/teams/${teamSlug}/projects/${getProjectSlug(project)}`);
   };
 
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });

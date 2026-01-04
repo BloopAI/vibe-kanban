@@ -61,8 +61,9 @@ interface FolderSyncConfig {
 
 export default function TeamGitHub() {
   const { teamId } = useParams<{ teamId: string }>();
-  const { teamsById } = useTeams();
-  const team = teamId ? teamsById[teamId] : null;
+  const { resolveTeam } = useTeams();
+  const team = teamId ? resolveTeam(teamId) : null;
+  const actualTeamId = team?.id || '';
 
   // Use workspace-level GitHub connection
   const {
@@ -77,7 +78,7 @@ export default function TeamGitHub() {
     getSyncConfigs,
     configureMultiFolderSync,
     clearMultiFolderSync,
-  } = useGitHubConnection(teamId || '');
+  } = useGitHubConnection(actualTeamId);
 
   const { folders } = useDocuments(teamId || '');
 

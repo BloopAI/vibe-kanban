@@ -4,6 +4,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useTeams } from '@/hooks/useTeams';
 import { Button } from '@/components/ui/button';
+import { getTeamSlug, getProjectSlug } from '@/lib/url-utils';
 import {
   Tooltip,
   TooltipContent,
@@ -201,8 +202,10 @@ function SidebarTeamItem({
   onEdit,
   onInvite,
 }: SidebarTeamItemProps) {
-  const teamBasePath = `/teams/${team.id}`;
-  const isTeamActive = pathname.startsWith(teamBasePath);
+  const teamSlug = getTeamSlug(team);
+  const teamBasePath = `/teams/${teamSlug}`;
+  // Check both slug-based and ID-based paths for active state
+  const isTeamActive = pathname.startsWith(teamBasePath) || pathname.startsWith(`/teams/${team.id}`);
 
   if (isCollapsed) {
     return (
@@ -293,35 +296,35 @@ function SidebarTeamItem({
             icon={CircleDot}
             label="Issues"
             to={`${teamBasePath}/issues`}
-            isActive={pathname === `${teamBasePath}/issues` || pathname === teamBasePath}
+            isActive={pathname.includes('/issues') && isTeamActive}
             indent
           />
           <SidebarItem
             icon={FolderKanban}
             label="Projects"
             to={`${teamBasePath}/projects`}
-            isActive={pathname === `${teamBasePath}/projects`}
+            isActive={pathname.includes('/projects') && isTeamActive}
             indent
           />
           <SidebarItem
             icon={Layers}
             label="Views"
             to={`${teamBasePath}/views`}
-            isActive={pathname === `${teamBasePath}/views`}
+            isActive={pathname.includes('/views') && isTeamActive}
             indent
           />
           <SidebarItem
             icon={FileText}
             label="Documents"
             to={`${teamBasePath}/documents`}
-            isActive={pathname === `${teamBasePath}/documents`}
+            isActive={pathname.includes('/documents') && isTeamActive}
             indent
           />
           <SidebarItem
             icon={Users}
             label="Members"
             to={`${teamBasePath}/members`}
-            isActive={pathname === `${teamBasePath}/members`}
+            isActive={pathname.includes('/members') && isTeamActive}
             indent
           />
         </div>
@@ -474,7 +477,7 @@ export function Sidebar() {
                   key={project.id}
                   icon={Hash}
                   label={project.name}
-                  to={`/projects/${project.id}/tasks`}
+                  to={`/projects/${getProjectSlug(project)}/tasks`}
                   isActive={isProjectActive(project.id)}
                   isCollapsed={isCollapsed}
                 />

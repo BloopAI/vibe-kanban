@@ -36,8 +36,8 @@ export function TeamIssues() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
 
-  const { teamsById, isLoading: teamsLoading } = useTeams();
-  const team = teamId ? teamsById[teamId] : null;
+  const { resolveTeam, isLoading: teamsLoading } = useTeams();
+  const team = teamId ? resolveTeam(teamId) : null;
   const { projects } = useProjects();
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
@@ -51,11 +51,14 @@ export function TeamIssues() {
     { id: '00000000-0000-0000-0000-000000000004', name: 'David Brown', email: 'david@example.com' },
   ], []);
 
-  // Fetch team projects when teamId changes
+  // Use actual team ID for API calls
+  const actualTeamId = team?.id;
+
+  // Fetch team projects when team changes
   useEffect(() => {
-    if (!teamId) return;
-    teamsApi.getProjects(teamId).then(setTeamProjectIds).catch(console.error);
-  }, [teamId]);
+    if (!actualTeamId) return;
+    teamsApi.getProjects(actualTeamId).then(setTeamProjectIds).catch(console.error);
+  }, [actualTeamId]);
 
   // Get the first project that belongs to this team (for issue creation)
   const teamProjects = useMemo(() => {
@@ -68,16 +71,16 @@ export function TeamIssues() {
     isLoading,
     error,
     refresh,
-  } = useTeamIssues(teamId);
+  } = useTeamIssues(actualTeamId);
 
   const handleCreateIssue = useCallback(() => {
     // Open Linear-style issue form dialog
     // If no team projects, user can select any project from the dialog
     openIssueForm({
-      teamId,
+      teamId: actualTeamId,
       projectId: teamProjects.length > 0 ? teamProjects[0].id : undefined,
     });
-  }, [teamId, teamProjects]);
+  }, [actualTeamId, teamProjects]);
 
   // Map project IDs to names for display
   const projectNamesById = useMemo(() => {

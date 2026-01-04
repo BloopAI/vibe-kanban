@@ -293,19 +293,21 @@ function StatusGroup({ status, issues, teamIdentifier, teamMembers, issueCountPe
 export function TeamProjectDetail() {
   const { teamId, projectId } = useParams<{ teamId: string; projectId: string }>();
   const navigate = useNavigate();
-  const { teamsById } = useTeams();
-  const { projectsById, isLoading: projectsLoading } = useProjects();
-  const { issues, isLoading: issuesLoading, refresh: refreshIssues } = useTeamIssues(teamId);
+  const { resolveTeam } = useTeams();
+  const { resolveProject, isLoading: projectsLoading } = useProjects();
+  const team = teamId ? resolveTeam(teamId) : null;
+  const project = projectId ? resolveProject(projectId) : null;
+  const actualTeamId = team?.id;
+
+  const { issues, isLoading: issuesLoading, refresh: refreshIssues } = useTeamIssues(actualTeamId);
   const [activeTab, setActiveTab] = useState('issues');
   const [activityExpanded, setActivityExpanded] = useState(true);
 
-  const team = teamId ? teamsById[teamId] : null;
-  const project = projectId ? projectsById[projectId] : null;
-
-  // Filter issues for this project only
+  // Filter issues for this project only (use resolved project's actual ID)
   const projectIssues = useMemo(() => {
-    return issues.filter((issue) => issue.project_id === projectId);
-  }, [issues, projectId]);
+    if (!project) return [];
+    return issues.filter((issue) => issue.project_id === project.id);
+  }, [issues, project]);
 
   // Group issues by status
   const issuesByStatus = useMemo(() => {

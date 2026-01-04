@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { teamsApi } from '@/lib/api';
 import type { Team, CreateTeam, UpdateTeam } from 'shared/types';
+import { resolveTeamFromParam } from '@/lib/url-utils';
 
 export interface UseTeamsResult {
   teams: Team[];
@@ -11,6 +12,7 @@ export interface UseTeamsResult {
   createTeam: (data: CreateTeam) => Promise<Team>;
   updateTeam: (teamId: string, data: UpdateTeam) => Promise<Team>;
   deleteTeam: (teamId: string) => Promise<void>;
+  resolveTeam: (param: string) => Team | undefined;
 }
 
 export function useTeams(): UseTeamsResult {
@@ -68,6 +70,11 @@ export function useTeams(): UseTeamsResult {
     setTeams((prev) => prev.filter((t) => t.id !== teamId));
   }, []);
 
+  const resolveTeam = useMemo(
+    () => (param: string) => resolveTeamFromParam(param, teams, teamsById),
+    [teams, teamsById]
+  );
+
   return {
     teams,
     teamsById,
@@ -77,5 +84,6 @@ export function useTeams(): UseTeamsResult {
     createTeam,
     updateTeam,
     deleteTeam,
+    resolveTeam,
   };
 }
