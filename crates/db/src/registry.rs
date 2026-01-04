@@ -170,6 +170,27 @@ impl RegistryService {
         Ok(())
     }
 
+    /// Update Turso database name for a team
+    pub async fn update_turso_db(&self, id: &str, turso_db: &str) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE team_registry SET turso_db = ? WHERE id = ?",
+        )
+        .bind(turso_db)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Get all teams with Turso configured
+    pub async fn find_with_turso(&self) -> Result<Vec<TeamRegistry>, sqlx::Error> {
+        sqlx::query_as::<_, TeamRegistry>(
+            "SELECT * FROM team_registry WHERE turso_db IS NOT NULL ORDER BY created_at DESC",
+        )
+        .fetch_all(&self.pool)
+        .await
+    }
+
     /// Delete a team from registry (does not delete database file)
     pub async fn delete(&self, id: &str) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM team_registry WHERE id = ?")

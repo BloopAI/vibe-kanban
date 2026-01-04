@@ -92,3 +92,6 @@ backups/
 # Local development
 .logs/
 .mcp.json
+
+# Team-specific Turso config files (contain auth tokens)
+.env.*

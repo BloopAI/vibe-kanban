@@ -125,6 +125,63 @@ sync-from-turso:
 sync-status:
 	@python3 ./mcp/turso_sync.py status
 
+# =============================================
+# Per-Team Turso Sync (Multi-Tenant)
+# =============================================
+# Each team has its own .env.{slug} file with Turso credentials
+# Example: .env.schild for team with slug "schild"
+
+# Sync a specific team's database to/from Turso
+# Usage: make sync-team TEAM=schild
+sync-team:
+ifndef TEAM
+	@echo "Error: TEAM not specified"
+	@echo "Usage: make sync-team TEAM=<team-slug>"
+	@echo ""
+	@echo "Available teams:"
+	@sqlite3 dev_assets/registry.sqlite "SELECT slug, name FROM team_registry;" 2>/dev/null || echo "  No teams in registry"
+	@exit 1
+endif
+	@echo "Syncing team: $(TEAM)"
+	@if [ ! -f ".env.$(TEAM)" ]; then \
+		echo "Error: .env.$(TEAM) not found"; \
+		echo "Create .env.$(TEAM) with TURSO_DATABASE_URL and TURSO_AUTH_TOKEN"; \
+		exit 1; \
+	fi
+	@echo "Loading config from .env.$(TEAM)..."
+	@set -a && . ./.env.$(TEAM) && set +a && python3 ./mcp/turso_sync.py sync --team $(TEAM)
+
+# Sync all teams that have Turso config
+sync-all-teams:
+	@echo "Syncing all teams with Turso config..."
+	@for slug in $$(sqlite3 dev_assets/registry.sqlite "SELECT slug FROM team_registry;" 2>/dev/null); do \
+		if [ -f ".env.$$slug" ]; then \
+			echo "Syncing team: $$slug"; \
+			set -a && . ./.env.$$slug && set +a && python3 ./mcp/turso_sync.py sync --team $$slug || true; \
+		else \
+			echo "Skipping $$slug (no .env.$$slug file)"; \
+		fi; \
+	done
+	@echo "Done."
+
+# Show sync status for all teams
+team-sync-status:
+	@echo "Team Sync Status"
+	@echo "================"
+	@echo ""
+	@sqlite3 -header -column dev_assets/registry.sqlite \
+		"SELECT slug, name, turso_db, COALESCE(last_synced_at, 'Never') as last_sync FROM team_registry;" 2>/dev/null \
+		|| echo "No teams in registry"
+	@echo ""
+	@echo "Teams with Turso config (.env.{slug}):"
+	@for slug in $$(sqlite3 dev_assets/registry.sqlite "SELECT slug FROM team_registry;" 2>/dev/null); do \
+		if [ -f ".env.$$slug" ]; then \
+			echo "  ✓ $$slug (.env.$$slug exists)"; \
+		else \
+			echo "  ✗ $$slug (no .env.$$slug)"; \
+		fi; \
+	done
+
 # Help
 help:
 	@echo "Vibe Kanban Development Commands"
@@ -141,9 +198,14 @@ help:
 	@echo "  make clean      - Remove log files"
 	@echo ""
 	@echo "Database Sync (Local <-> Turso):"
-	@echo "  make sync-to-turso   - Push local changes to Turso cloud"
-	@echo "  make sync-from-turso - Pull Turso changes to local"
-	@echo "  make sync-status     - Check sync status"
+	@echo "  make sync-to-turso      - Push local changes to Turso cloud"
+	@echo "  make sync-from-turso    - Pull Turso changes to local"
+	@echo "  make sync-status        - Check sync status"
+	@echo ""
+	@echo "Per-Team Turso Sync (Multi-Tenant):"
+	@echo "  make sync-team TEAM=<slug> - Sync a specific team to Turso"
+	@echo "  make sync-all-teams        - Sync all teams with Turso config"
+	@echo "  make team-sync-status      - Show sync status for all teams"
 	@echo ""
 	@echo "Environment Variables:"
 	@echo "  FRONTEND_PORT   - Frontend port (default: 3000)"

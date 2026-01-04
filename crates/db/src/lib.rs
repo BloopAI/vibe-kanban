@@ -13,7 +13,7 @@ pub mod turso;
 
 pub use pool_manager::{DBPoolManager, PoolManagerError};
 pub use registry::{CreateTeamRegistry, RegistryService, TeamRegistry};
-pub use turso::{TursoConfig, TursoSync};
+pub use turso::{TeamTursoError, TeamTursoManager, TursoConfig, TursoSync};
 
 /// Get the database path, using Turso replica if configured
 pub fn get_database_path() -> PathBuf {

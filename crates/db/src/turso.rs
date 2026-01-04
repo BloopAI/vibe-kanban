@@ -6,7 +6,6 @@
 #[cfg(feature = "turso")]
 use libsql::{Builder, Database};
 use std::path::PathBuf;
-#[cfg(feature = "turso")]
 use std::sync::Arc;
 #[cfg(feature = "turso")]
 use std::time::Duration;
@@ -43,10 +42,101 @@ impl TursoConfig {
         })
     }
 
+    /// Create config from a team-specific .env file
+    ///
+    /// Looks for `.env.{slug}` in the project root directory.
+    /// Example: `.env.schild` for team with slug "schild"
+    pub fn from_env_file(slug: &str, replica_path: PathBuf) -> Option<Self> {
+        // Look for .env.{slug} file in current directory or project root
+        let env_file_name = format!(".env.{}", slug);
+
+        // Try current directory first
+        let mut env_path = std::env::current_dir().ok()?.join(&env_file_name);
+
+        // If not found, try the project root (for development)
+        if !env_path.exists() {
+            if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+                // Go up from crates/db to project root
+                let project_root = PathBuf::from(manifest_dir)
+                    .parent()?
+                    .parent()?
+                    .to_path_buf();
+                env_path = project_root.join(&env_file_name);
+            }
+        }
+
+        if !env_path.exists() {
+            tracing::debug!("Team env file not found: {}", env_path.display());
+            return None;
+        }
+
+        tracing::info!("Loading Turso config from: {}", env_path.display());
+
+        // Parse the .env file
+        let contents = std::fs::read_to_string(&env_path).ok()?;
+        let mut database_url = None;
+        let mut auth_token = None;
+        let mut sync_interval_secs = 60u64;
+
+        for line in contents.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            if let Some((key, value)) = line.split_once('=') {
+                let key = key.trim();
+                let value = value.trim();
+
+                match key {
+                    "TURSO_DATABASE_URL" => database_url = Some(value.to_string()),
+                    "TURSO_AUTH_TOKEN" => auth_token = Some(value.to_string()),
+                    "TURSO_SYNC_INTERVAL" => {
+                        sync_interval_secs = value.parse().unwrap_or(60);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let database_url = database_url?;
+        let auth_token = auth_token?;
+
+        Some(Self {
+            database_url,
+            auth_token,
+            replica_path,
+            sync_interval_secs,
+        })
+    }
+
     /// Check if Turso is configured
     pub fn is_configured() -> bool {
         std::env::var("TURSO_DATABASE_URL").is_ok()
             && std::env::var("TURSO_AUTH_TOKEN").is_ok()
+    }
+
+    /// Check if a team-specific Turso config exists
+    pub fn team_config_exists(slug: &str) -> bool {
+        let env_file_name = format!(".env.{}", slug);
+
+        // Check current directory
+        if let Ok(cwd) = std::env::current_dir() {
+            if cwd.join(&env_file_name).exists() {
+                return true;
+            }
+        }
+
+        // Check project root (for development)
+        if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
+            if let Some(project_root) = PathBuf::from(manifest_dir).parent().and_then(|p| p.parent()) {
+                if project_root.join(&env_file_name).exists() {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }
 
@@ -154,6 +244,194 @@ impl TursoSync {
             std::io::ErrorKind::Other,
             "Turso feature not enabled. Compile with --features turso",
         ))
+    }
+}
+
+/// Manager for per-team Turso sync connections
+#[cfg(feature = "turso")]
+pub struct TeamTursoManager {
+    syncs: Arc<RwLock<std::collections::HashMap<String, Arc<TursoSync>>>>,
+    registry: Arc<crate::RegistryService>,
+}
+
+#[cfg(feature = "turso")]
+impl TeamTursoManager {
+    /// Create a new TeamTursoManager
+    pub fn new(registry: Arc<crate::RegistryService>) -> Self {
+        Self {
+            syncs: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            registry,
+        }
+    }
+
+    /// Get or create a TursoSync for a team by slug
+    pub async fn get_or_create_sync(&self, slug: &str) -> Result<Arc<TursoSync>, TeamTursoError> {
+        // Check if we already have a sync for this team
+        {
+            let syncs = self.syncs.read().await;
+            if let Some(sync) = syncs.get(slug) {
+                return Ok(sync.clone());
+            }
+        }
+
+        // Look up team in registry
+        let team = self.registry.find_by_slug(slug).await
+            .map_err(|e| TeamTursoError::RegistryError(e.to_string()))?
+            .ok_or_else(|| TeamTursoError::TeamNotFound(slug.to_string()))?;
+
+        // Load config from .env.{slug}
+        let replica_path = PathBuf::from(&team.db_path);
+        let config = TursoConfig::from_env_file(slug, replica_path)
+            .ok_or_else(|| TeamTursoError::ConfigNotFound(slug.to_string()))?;
+
+        // Create new TursoSync
+        let sync = TursoSync::new(config).await
+            .map_err(|e| TeamTursoError::SyncError(e.to_string()))?;
+        let sync = Arc::new(sync);
+
+        // Store in cache
+        {
+            let mut syncs = self.syncs.write().await;
+            syncs.insert(slug.to_string(), sync.clone());
+        }
+
+        // Update registry with turso_db name (extract from URL)
+        if let Some(db_name) = self.extract_db_name_from_url(slug) {
+            if let Err(e) = self.registry.update_turso_db(&team.id, &db_name).await {
+                tracing::warn!("Failed to update turso_db in registry: {}", e);
+            }
+        }
+
+        Ok(sync)
+    }
+
+    /// Extract Turso database name from the config URL
+    fn extract_db_name_from_url(&self, slug: &str) -> Option<String> {
+        // Load config just to get the URL
+        let config = TursoConfig::from_env_file(slug, PathBuf::new())?;
+        // URL format: libsql://db-name-user.region.turso.io
+        let url = config.database_url;
+        if let Some(start) = url.strip_prefix("libsql://") {
+            if let Some(end) = start.find('.') {
+                return Some(start[..end].to_string());
+            }
+        }
+        None
+    }
+
+    /// Sync a specific team's database
+    pub async fn sync_team(&self, slug: &str) -> Result<(), TeamTursoError> {
+        let sync = self.get_or_create_sync(slug).await?;
+        sync.sync().await
+            .map_err(|e| TeamTursoError::SyncError(e.to_string()))?;
+
+        // Update last_synced_at in registry
+        if let Ok(Some(team)) = self.registry.find_by_slug(slug).await {
+            if let Err(e) = self.registry.update_last_synced(&team.id).await {
+                tracing::warn!("Failed to update last_synced_at: {}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sync all teams that have Turso configured
+    pub async fn sync_all_teams(&self) -> Result<Vec<(String, Result<(), TeamTursoError>)>, TeamTursoError> {
+        let teams = self.registry.find_all().await
+            .map_err(|e| TeamTursoError::RegistryError(e.to_string()))?;
+
+        let mut results = Vec::new();
+
+        for team in teams {
+            // Only sync teams that have a .env.{slug} file
+            if TursoConfig::team_config_exists(&team.slug) {
+                tracing::info!("Syncing team: {}", team.slug);
+                let result = self.sync_team(&team.slug).await;
+                results.push((team.slug, result));
+            } else {
+                tracing::debug!("Skipping team {} - no Turso config found", team.slug);
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Get sync status for all teams
+    pub async fn get_sync_status(&self) -> Vec<TeamSyncStatus> {
+        let mut status = Vec::new();
+
+        if let Ok(teams) = self.registry.find_all().await {
+            for team in teams {
+                let has_config = TursoConfig::team_config_exists(&team.slug);
+                let is_synced = {
+                    let syncs = self.syncs.read().await;
+                    syncs.contains_key(&team.slug)
+                };
+
+                status.push(TeamSyncStatus {
+                    slug: team.slug,
+                    name: team.name,
+                    has_turso_config: has_config,
+                    turso_db: team.turso_db,
+                    last_synced_at: team.last_synced_at,
+                    is_active: is_synced,
+                });
+            }
+        }
+
+        status
+    }
+}
+
+/// Sync status for a team
+#[derive(Debug, Clone)]
+pub struct TeamSyncStatus {
+    pub slug: String,
+    pub name: String,
+    pub has_turso_config: bool,
+    pub turso_db: Option<String>,
+    pub last_synced_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub is_active: bool,
+}
+
+/// Errors that can occur during team Turso operations
+#[derive(Debug, Clone)]
+pub enum TeamTursoError {
+    TeamNotFound(String),
+    ConfigNotFound(String),
+    RegistryError(String),
+    SyncError(String),
+}
+
+impl std::fmt::Display for TeamTursoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TeamNotFound(slug) => write!(f, "Team not found: {}", slug),
+            Self::ConfigNotFound(slug) => write!(f, "Turso config not found for team: {} (missing .env.{})", slug, slug),
+            Self::RegistryError(msg) => write!(f, "Registry error: {}", msg),
+            Self::SyncError(msg) => write!(f, "Sync error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for TeamTursoError {}
+
+/// Stub implementation when turso feature is disabled
+#[cfg(not(feature = "turso"))]
+pub struct TeamTursoManager;
+
+#[cfg(not(feature = "turso"))]
+impl TeamTursoManager {
+    pub fn new(_registry: Arc<crate::RegistryService>) -> Self {
+        Self
+    }
+
+    pub async fn sync_team(&self, _slug: &str) -> Result<(), TeamTursoError> {
+        Err(TeamTursoError::SyncError("Turso feature not enabled".to_string()))
+    }
+
+    pub async fn sync_all_teams(&self) -> Result<Vec<(String, Result<(), TeamTursoError>)>, TeamTursoError> {
+        Err(TeamTursoError::SyncError("Turso feature not enabled".to_string()))
     }
 }
 

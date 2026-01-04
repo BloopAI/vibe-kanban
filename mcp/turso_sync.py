@@ -74,11 +74,24 @@ EXPORT_TABLES = [
 
 
 def get_turso_db_name() -> str | None:
-    """Get Turso database name from environment."""
+    """Get Turso database name from environment.
+
+    Checks TURSO_DB_NAME first (explicit name), then falls back to extracting
+    from TURSO_DATABASE_URL.
+
+    Note: URL format is libsql://<db>-<org>.region.turso.io but CLI expects just <db>.
+    Set TURSO_DB_NAME explicitly to avoid parsing issues with db names containing hyphens.
+    """
+    # Check explicit db name first
+    explicit_name = os.environ.get("TURSO_DB_NAME", "")
+    if explicit_name:
+        return explicit_name
+
+    # Fall back to URL parsing
     url = os.environ.get("TURSO_DATABASE_URL", "")
     if not url:
         return None
-    # Extract db name from libsql://db-name.turso.io
+    # Extract db name from libsql://db-name-org.region.turso.io
     if url.startswith("libsql://"):
         parts = url[9:].split(".")
         if parts:
@@ -592,7 +605,11 @@ def handle_request(request: dict) -> dict:
 
 
 def load_env():
-    """Load environment variables from .env files."""
+    """Load environment variables from .env files.
+
+    Uses setdefault() to preserve env vars that were already set (e.g., from
+    team-specific .env.{slug} files sourced before running this script).
+    """
     env_file = PROJECT_ROOT / ".env"
     if env_file.exists():
         with open(env_file) as f:
@@ -600,7 +617,8 @@ def load_env():
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
-                    os.environ[key] = value
+                    # Don't overwrite existing env vars (preserve team-specific configs)
+                    os.environ.setdefault(key, value)
 
     env_local = PROJECT_ROOT / ".env.local"
     if env_local.exists():
@@ -609,7 +627,51 @@ def load_env():
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     key, value = line.split("=", 1)
-                    os.environ[key] = value
+                    # Don't overwrite existing env vars (preserve team-specific configs)
+                    os.environ.setdefault(key, value)
+
+
+def get_team_db_path(team_slug: str) -> Path:
+    """Get the database path for a specific team."""
+    return DEV_ASSETS / f"team-{team_slug}.sqlite"
+
+
+def handle_team_sync(team_slug: str, direction: str = "push") -> dict:
+    """Sync a specific team's database to/from Turso.
+
+    Args:
+        team_slug: The team's slug (e.g., 'schild')
+        direction: 'push' to upload to Turso, 'pull' to download from Turso
+
+    The function expects TURSO_DATABASE_URL and TURSO_AUTH_TOKEN to be set
+    in the environment (from .env.{slug} file).
+    """
+    team_db = get_team_db_path(team_slug)
+
+    if not team_db.exists():
+        return {"success": False, "error": f"Team database not found: {team_db}"}
+
+    db_name = get_turso_db_name()
+    if not db_name:
+        return {"success": False, "error": f"TURSO_DATABASE_URL not set for team {team_slug}"}
+
+    # Temporarily override LOCAL_DB for this operation
+    global LOCAL_DB
+    original_db = LOCAL_DB
+    LOCAL_DB = team_db
+
+    try:
+        if direction == "push":
+            result = handle_turso_push({})
+        else:
+            result = handle_turso_pull({})
+
+        result["team"] = team_slug
+        result["database"] = str(team_db)
+        result["turso_db"] = db_name
+        return result
+    finally:
+        LOCAL_DB = original_db
 
 
 def cli_main():
@@ -617,16 +679,22 @@ def cli_main():
     load_env()
 
     if len(sys.argv) < 2:
-        print("Usage: python3 mcp/turso_sync.py <command>")
+        print("Usage: python3 mcp/turso_sync.py <command> [options]")
         print("")
         print("Commands:")
-        print("  push    Push local SQLite data to Turso cloud")
-        print("  pull    Pull data from Turso cloud to local SQLite")
-        print("  status  Check sync status between local and Turso")
+        print("  push              Push local SQLite data to Turso cloud")
+        print("  pull              Pull data from Turso cloud to local SQLite")
+        print("  status            Check sync status between local and Turso")
+        print("  sync --team SLUG  Sync a specific team's database (push+pull)")
+        print("")
+        print("Per-Team Sync (Multi-Tenant):")
+        print("  sync --team schild   Sync team 'schild' (requires .env.schild)")
         print("")
         print("Make commands:")
-        print("  source .env && make sync-to-turso    # Push to Turso")
-        print("  source .env && make sync-from-turso  # Pull from Turso")
+        print("  source .env && make sync-to-turso         # Push to Turso")
+        print("  source .env && make sync-from-turso       # Pull from Turso")
+        print("  make sync-team TEAM=schild                # Sync specific team")
+        print("  make sync-all-teams                       # Sync all teams")
         sys.exit(1)
 
     command = sys.argv[1].lower()
@@ -649,9 +717,41 @@ def cli_main():
         print(json.dumps(result, indent=2))
         sys.exit(0)
 
+    elif command == "sync":
+        # Parse --team flag
+        team_slug = None
+        for i, arg in enumerate(sys.argv[2:], start=2):
+            if arg == "--team" and i + 1 < len(sys.argv):
+                team_slug = sys.argv[i + 1]
+                break
+            elif arg.startswith("--team="):
+                team_slug = arg.split("=", 1)[1]
+                break
+
+        if not team_slug:
+            print("Error: --team flag required for sync command")
+            print("Usage: python3 mcp/turso_sync.py sync --team <team-slug>")
+            sys.exit(1)
+
+        print(f"Syncing team '{team_slug}' to Turso...")
+        print(f"Using database: {get_team_db_path(team_slug)}")
+
+        # Push first, then pull to get any remote changes
+        print("\n[1/2] Pushing local changes to Turso...")
+        push_result = handle_team_sync(team_slug, "push")
+        print(json.dumps(push_result, indent=2))
+
+        if push_result.get("success"):
+            print("\n[2/2] Pulling remote changes from Turso...")
+            pull_result = handle_team_sync(team_slug, "pull")
+            print(json.dumps(pull_result, indent=2))
+            sys.exit(0 if pull_result.get("success") else 1)
+        else:
+            sys.exit(1)
+
     else:
         print(f"Unknown command: {command}")
-        print("Use: push, pull, or status")
+        print("Use: push, pull, status, or sync --team <slug>")
         sys.exit(1)
 
 
