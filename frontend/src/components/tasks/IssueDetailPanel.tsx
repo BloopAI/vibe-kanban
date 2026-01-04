@@ -1,4 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -64,6 +65,7 @@ export function IssueDetailPanel({
   onClose,
   onUpdate,
 }: IssueDetailPanelProps) {
+  const navigate = useNavigate();
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
@@ -396,12 +398,15 @@ export function IssueDetailPanel({
                 {linkedDocuments.map((link) => (
                   <div
                     key={link.id}
-                    className="flex items-center justify-between p-2 rounded-md border bg-muted/10 hover:bg-muted/30 group"
+                    className="flex items-center justify-between p-2 rounded-md border bg-muted/10 hover:bg-muted/30 group cursor-pointer"
+                    onClick={() => teamId && navigate(`/teams/${teamId}/documents?doc=${link.document_id}`)}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <FileText className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm truncate">{link.document_title}</p>
+                        <p className="text-sm truncate text-indigo-600 dark:text-indigo-400 hover:underline">
+                          {link.document_title}
+                        </p>
                         {link.folder_name && (
                           <p className="text-xs text-muted-foreground truncate">
                             {link.folder_name}
@@ -413,7 +418,10 @@ export function IssueDetailPanel({
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      onClick={() => unlinkDocument(link.document_id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        unlinkDocument(link.document_id);
+                      }}
                       disabled={isUnlinking}
                     >
                       <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
