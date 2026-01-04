@@ -12,6 +12,7 @@ import { openIssueForm } from '@/lib/openIssueForm';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
 import { useProjects } from '@/hooks/useProjects';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
@@ -42,17 +43,20 @@ export function TeamIssues() {
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
 
-  // Mock team members - in real app, this would come from API
-  // Note: IDs must be valid UUIDs as the backend expects UUID for assignee_id
-  const teamMembers: TeamMember[] = useMemo(() => [
-    { id: '00000000-0000-0000-0000-000000000001', name: 'Alice Johnson', email: 'alice@example.com' },
-    { id: '00000000-0000-0000-0000-000000000002', name: 'Bob Smith', email: 'bob@example.com' },
-    { id: '00000000-0000-0000-0000-000000000003', name: 'Carol Williams', email: 'carol@example.com' },
-    { id: '00000000-0000-0000-0000-000000000004', name: 'David Brown', email: 'david@example.com' },
-  ], []);
-
   // Use actual team ID for API calls
   const actualTeamId = team?.id;
+
+  // Fetch real team members from database
+  const { members } = useTeamMembers(actualTeamId);
+
+  // Transform team members to AssigneeSelector format
+  const teamMembers: TeamMember[] = useMemo(() => {
+    return members.map((m) => ({
+      id: m.id,
+      name: m.display_name || m.email.split('@')[0],
+      email: m.email,
+    }));
+  }, [members]);
 
   // Fetch team projects when team changes
   useEffect(() => {
