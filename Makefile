@@ -23,12 +23,17 @@ start: $(LOG_DIR) backend frontend
 	@echo "Use 'make logs' to view logs"
 	@echo "Use 'make stop' to stop services"
 
+# Load .env.local if it exists
+-include .env.local
+export
+
 # Start backend in background
 backend: $(LOG_DIR)
 	@if lsof -i :$(BACKEND_PORT) > /dev/null 2>&1; then \
 		echo "Backend already running on port $(BACKEND_PORT)"; \
 	else \
 		echo "Starting backend on port $(BACKEND_PORT)..."; \
+		if [ -f .env.local ]; then set -a && . ./.env.local && set +a; fi && \
 		DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=info PORT=$(BACKEND_PORT) \
 			nohup cargo run --bin server > $(LOG_DIR)/backend.log 2>&1 & \
 		echo "Backend starting... (PID: $$!)"; \
