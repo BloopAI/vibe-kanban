@@ -290,10 +290,10 @@ pub async fn create_github_pr(
     let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
 
     // Use GitHubService to create the PR
-    // Pass repo_path for compatibility with older gh CLI versions that require being in a git repo
+    // Pass worktree_path for compatibility with older gh CLI versions that require being in a git repo
     let github_service = GitHubService::new()?;
     match github_service
-        .create_pr(&repo_info, &pr_request, Some(repo_path.clone()))
+        .create_pr(&repo_info, &pr_request, Some(worktree_path.clone()))
         .await
     {
         Ok(pr_info) => {

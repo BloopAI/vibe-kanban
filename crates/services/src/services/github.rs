@@ -196,8 +196,7 @@ impl GitHubService {
         request: &CreatePrRequest,
         repo_path: Option<PathBuf>,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        let repo_path_clone = repo_path.clone();
-        (|| async { self.create_pr_via_cli(repo_info, request, repo_path_clone.clone()).await })
+        (|| async { self.create_pr_via_cli(repo_info, request, repo_path.clone()).await })
             .retry(
                 &ExponentialBuilder::default()
                     .with_min_delay(Duration::from_secs(1))
