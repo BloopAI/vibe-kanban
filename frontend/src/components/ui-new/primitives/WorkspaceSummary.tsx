@@ -36,6 +36,7 @@ interface WorkspaceSummaryProps {
   onClick?: () => void;
   onDelete?: () => void;
   onArchive?: () => void;
+  onPin?: () => void;
   onDuplicate?: () => void;
   className?: string;
   summary?: boolean;
@@ -53,12 +54,13 @@ export function WorkspaceSummary({
   onClick,
   onDelete,
   onArchive,
+  onPin,
   onDuplicate,
   className,
   summary = false,
 }: WorkspaceSummaryProps) {
   const hasStats = filesChanged !== undefined;
-  const hasActions = onDelete || onArchive || onDuplicate;
+  const hasActions = onDelete || onArchive || onPin || onDuplicate;
 
   return (
     <div className={cn('group relative', className)}>
@@ -126,6 +128,17 @@ export function WorkspaceSummary({
                   }}
                 >
                   Duplicate
+                </DropdownMenuItem>
+              )}
+              {onPin && (
+                <DropdownMenuItem
+                  icon={PushPinIcon}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPin();
+                  }}
+                >
+                  {isPinned ? 'Unpin' : 'Pin'}
                 </DropdownMenuItem>
               )}
               {onArchive && (

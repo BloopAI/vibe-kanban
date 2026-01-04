@@ -16,6 +16,7 @@ interface WorkspacesSidebarProps {
   onSearchChange: (value: string) => void;
   onDeleteWorkspace?: (taskId: string) => void;
   onArchiveWorkspace?: (workspaceId: string, isArchived: boolean) => void;
+  onPinWorkspace?: (workspaceId: string, isPinned: boolean) => void;
   onDuplicateWorkspace?: (workspaceId: string) => void;
 }
 
@@ -29,6 +30,7 @@ export function WorkspacesSidebar({
   onSearchChange,
   onDeleteWorkspace,
   onArchiveWorkspace,
+  onPinWorkspace,
   onDuplicateWorkspace,
 }: WorkspacesSidebarProps) {
   const searchLower = searchQuery.toLowerCase();
@@ -87,6 +89,12 @@ export function WorkspacesSidebar({
                   ? () => onArchiveWorkspace(workspace.id, false)
                   : undefined
               }
+              onPin={
+                onPinWorkspace
+                  ? () =>
+                      onPinWorkspace(workspace.id, workspace.isPinned ?? false)
+                  : undefined
+              }
               onDuplicate={
                 onDuplicateWorkspace
                   ? () => onDuplicateWorkspace(workspace.id)
@@ -122,6 +130,12 @@ export function WorkspacesSidebar({
               onArchive={
                 onArchiveWorkspace
                   ? () => onArchiveWorkspace(workspace.id, true)
+                  : undefined
+              }
+              onPin={
+                onPinWorkspace
+                  ? () =>
+                      onPinWorkspace(workspace.id, workspace.isPinned ?? false)
                   : undefined
               }
               onDuplicate={

@@ -98,20 +98,32 @@ export function useWorkspaces(): UseWorkspacesResult {
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];
     return Object.values(activeData.workspaces)
-      .sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      )
+      .sort((a, b) => {
+        // First sort by pinned (pinned first)
+        if (a.pinned !== b.pinned) {
+          return a.pinned ? -1 : 1;
+        }
+        // Then by created_at (newest first)
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      })
       .map(toSidebarWorkspace);
   }, [activeData]);
 
   const archivedWorkspaces = useMemo(() => {
     if (!archivedData?.workspaces) return [];
     return Object.values(archivedData.workspaces)
-      .sort(
-        (a, b) =>
-          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      )
+      .sort((a, b) => {
+        // First sort by pinned (pinned first)
+        if (a.pinned !== b.pinned) {
+          return a.pinned ? -1 : 1;
+        }
+        // Then by created_at (newest first)
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      })
       .map(toSidebarWorkspace);
   }, [archivedData]);
 
