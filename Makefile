@@ -37,6 +37,7 @@ backend: $(LOG_DIR)
 		echo "Backend already running on port $(BACKEND_PORT)"; \
 	else \
 		echo "Starting backend on port $(BACKEND_PORT)..."; \
+		if [ -f .env ]; then set -a && . ./.env && set +a; fi && \
 		if [ -f .env.local ]; then set -a && . ./.env.local && set +a; fi && \
 		DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=info PORT=$(BACKEND_PORT) \
 			nohup cargo run $(CARGO_FEATURES) --bin server > $(LOG_DIR)/backend.log 2>&1 & \
