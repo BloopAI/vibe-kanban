@@ -145,7 +145,8 @@ export function ChatBoxBase({
           <Toolbar className="flex-1 gap-double">
             {(visualVariant === VisualVariant.NORMAL ||
               visualVariant === VisualVariant.EDIT) &&
-              variant && (
+              variant &&
+              variantOptions.length > 0 && (
                 <ToolbarDropdown label={variantLabel} disabled={disabled}>
                   <DropdownMenuLabel>Variants</DropdownMenuLabel>
                   {variantOptions.map((variantName) => (

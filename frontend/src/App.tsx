@@ -183,27 +183,15 @@ function AppContent() {
               path="/workspaces"
               element={
                 <NewDesignScope>
-                  <NewDesignLayout />
+                  <WorkspaceProvider>
+                    <NewDesignLayout />
+                  </WorkspaceProvider>
                 </NewDesignScope>
               }
             >
               <Route index element={<WorkspacesLanding />} />
-              <Route
-                path="create"
-                element={
-                  <WorkspaceProvider isCreateMode>
-                    <Workspaces />
-                  </WorkspaceProvider>
-                }
-              />
-              <Route
-                path=":workspaceId"
-                element={
-                  <WorkspaceProvider>
-                    <Workspaces />
-                  </WorkspaceProvider>
-                }
-              />
+              <Route path="create" element={<Workspaces />} />
+              <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
           </SentryRoutes>
         </SearchProvider>

@@ -1,6 +1,5 @@
 import { BaseCodingAgent, ThemeMode } from 'shared/types';
 import { useTheme } from '@/components/ThemeProvider';
-import { VibeKanbanLogo } from '@/components/ui-new/primitives/VibeKanbanLogo';
 
 type AgentIconProps = {
   agent: BaseCodingAgent | null | undefined;
@@ -49,7 +48,7 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
   const suffix = isDark ? '-dark' : '-light';
 
   if (!agent) {
-    return <VibeKanbanLogo className={className} />;
+    return null;
   }
 
   const agentName = getAgentName(agent);
@@ -84,7 +83,7 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       iconPath = `/agents/droid${suffix}.svg`;
       break;
     default:
-      return <VibeKanbanLogo className={className} />;
+      return null;
   }
 
   return <img src={iconPath} alt={agentName} className={className} />;

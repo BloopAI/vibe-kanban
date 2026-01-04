@@ -171,7 +171,7 @@ export function ChangesPanelContainer({
 
       return { diff, initialExpanded };
     });
-  }, [diffs]);
+  }, [diffs, processedPaths]);
 
   return (
     <ChangesPanel

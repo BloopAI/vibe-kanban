@@ -426,19 +426,16 @@ export function SessionChatBoxContainer({
     return null;
   }
 
-  // Loading state (only applies when we have a session)
-  // Wait for both scratch loading to complete AND initial value to be applied
-  // This ensures the editor doesn't mount until content is ready, so autoFocus works correctly
-  if ((isScratchLoading || !hasInitialValue) && !isNewSessionMode) {
-    return null;
-  }
+  // During loading, render with empty editor to preserve container UI
+  const editorValue =
+    isScratchLoading || !hasInitialValue ? '' : (queuedMessage ?? localMessage);
 
   return (
     <SessionChatBox
       status={status}
       projectId={projectId}
       editor={{
-        value: queuedMessage ?? localMessage,
+        value: editorValue,
         onChange: handleEditorChange,
       }}
       actions={{
