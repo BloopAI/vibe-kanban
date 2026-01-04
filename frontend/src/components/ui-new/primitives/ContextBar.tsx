@@ -9,6 +9,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { Tooltip } from './Tooltip';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
@@ -19,6 +20,7 @@ interface ContextBarButtonProps
   icon: Icon;
   label: string;
   iconClassName?: string;
+  tooltip?: string;
 }
 
 function ContextBarButton({
@@ -26,9 +28,10 @@ function ContextBarButton({
   label,
   className,
   iconClassName,
+  tooltip,
   ...props
 }: ContextBarButtonProps) {
-  return (
+  const button = (
     <button
       className={cn(
         'flex items-center justify-center transition-colors',
@@ -37,7 +40,6 @@ function ContextBarButton({
         className
       )}
       aria-label={label}
-      title={label}
       {...props}
     >
       <IconComponent
@@ -45,6 +47,14 @@ function ContextBarButton({
         weight="bold"
       />
     </button>
+  );
+
+  return tooltip ? (
+    <Tooltip content={tooltip} side="left">
+      {button}
+    </Tooltip>
+  ) : (
+    button
   );
 }
 
@@ -114,20 +124,22 @@ export function ContextBar({
         <div className="flex flex-col py-base">
           {/* Primary Icons */}
           <div className="flex flex-col gap-base">
-            <button
-              className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
-              aria-label={ideLabel}
-              title={ideLabel}
-              onClick={onOpen}
-            >
-              <IdeIcon
-                editorType={editorType}
-                className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
-              />
-            </button>
+            <Tooltip content={ideLabel} side="left">
+              <button
+                className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
+                aria-label={ideLabel}
+                onClick={onOpen}
+              >
+                <IdeIcon
+                  editorType={editorType}
+                  className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
+                />
+              </button>
+            </Tooltip>
             <ContextBarButton
               icon={copied ? CheckIcon : CopyIcon}
               label={copied ? 'Copied!' : 'Copy path'}
+              tooltip={copied ? 'Copied!' : 'Copy path'}
               onClick={onCopy}
               iconClassName={
                 copied
@@ -160,6 +172,15 @@ export function ContextBar({
                         ? 'Stop dev server'
                         : 'Start dev server'
                 }
+                tooltip={
+                  isStarting
+                    ? 'Starting dev server...'
+                    : isStopping
+                      ? 'Stopping dev server...'
+                      : runningDevServer
+                        ? 'Stop dev server'
+                        : 'Start dev server'
+                }
                 onClick={() => {
                   if (runningDevServer) {
                     stop();
@@ -179,6 +200,7 @@ export function ContextBar({
             <ContextBarButton
               icon={GitDiffIcon}
               label="View Code"
+              tooltip="View Code"
               onClick={onViewCode}
             />
           </div>
