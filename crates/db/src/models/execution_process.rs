@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use chrono::{DateTime, Utc};
 use executors::{
     actions::{ExecutorAction, ExecutorActionType},
@@ -99,6 +101,15 @@ pub struct ExecutionContext {
     pub task: Task,
     pub project: Project,
     pub repos: Vec<Repo>,
+}
+
+/// Summary info about the latest execution process for a workspace
+#[derive(Debug, Clone)]
+pub struct LatestProcessInfo {
+    pub execution_process_id: Uuid,
+    pub session_id: Uuid,
+    pub status: ExecutionProcessStatus,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -678,5 +689,112 @@ impl ExecutionProcess {
                 "Couldn't find profile from initial request".to_string(),
             )),
         }
+    }
+
+    /// Batch fetch latest execution process info for multiple workspaces.
+    /// Returns a map of workspace_id -> LatestProcessInfo for the most recent
+    /// non-dropped execution process (excluding dev servers).
+    pub async fn find_latest_by_workspace_ids(
+        pool: &SqlitePool,
+        workspace_ids: &[Uuid],
+    ) -> Result<HashMap<Uuid, LatestProcessInfo>, sqlx::Error> {
+        if workspace_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        // Build placeholders for the IN clause
+        let placeholders: Vec<_> = workspace_ids.iter().map(|_| "?").collect();
+        let placeholders_str = placeholders.join(",");
+
+        let query = format!(
+            r#"
+            SELECT
+                s.workspace_id,
+                ep.id as execution_process_id,
+                ep.session_id,
+                ep.status,
+                ep.completed_at
+            FROM execution_processes ep
+            JOIN sessions s ON ep.session_id = s.id
+            WHERE s.workspace_id IN ({})
+              AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+              AND ep.dropped = FALSE
+              AND ep.created_at = (
+                  SELECT MAX(ep2.created_at)
+                  FROM execution_processes ep2
+                  JOIN sessions s2 ON ep2.session_id = s2.id
+                  WHERE s2.workspace_id = s.workspace_id
+                    AND ep2.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+                    AND ep2.dropped = FALSE
+              )
+            "#,
+            placeholders_str
+        );
+
+        let mut query_builder = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                Uuid,
+                ExecutionProcessStatus,
+                Option<DateTime<Utc>>,
+            ),
+        >(&query);
+        for id in workspace_ids {
+            query_builder = query_builder.bind(id);
+        }
+
+        let rows = query_builder.fetch_all(pool).await?;
+
+        let mut result = HashMap::new();
+        for (workspace_id, execution_process_id, session_id, status, completed_at) in rows {
+            result.insert(
+                workspace_id,
+                LatestProcessInfo {
+                    execution_process_id,
+                    session_id,
+                    status,
+                    completed_at,
+                },
+            );
+        }
+
+        Ok(result)
+    }
+
+    /// Batch check which workspaces have running dev servers.
+    /// Returns a set of workspace IDs that have at least one running dev server.
+    pub async fn find_workspaces_with_running_dev_servers(
+        pool: &SqlitePool,
+        workspace_ids: &[Uuid],
+    ) -> Result<HashSet<Uuid>, sqlx::Error> {
+        if workspace_ids.is_empty() {
+            return Ok(HashSet::new());
+        }
+
+        // Build placeholders for the IN clause
+        let placeholders: Vec<_> = workspace_ids.iter().map(|_| "?").collect();
+        let placeholders_str = placeholders.join(",");
+
+        let query = format!(
+            r#"
+            SELECT DISTINCT s.workspace_id
+            FROM execution_processes ep
+            JOIN sessions s ON ep.session_id = s.id
+            WHERE s.workspace_id IN ({})
+              AND ep.status = 'running'
+              AND ep.run_reason = 'devserver'
+            "#,
+            placeholders_str
+        );
+
+        let mut query_builder = sqlx::query_scalar::<_, Uuid>(&query);
+        for id in workspace_ids {
+            query_builder = query_builder.bind(id);
+        }
+
+        let rows = query_builder.fetch_all(pool).await?;
+        Ok(rows.into_iter().collect())
     }
 }

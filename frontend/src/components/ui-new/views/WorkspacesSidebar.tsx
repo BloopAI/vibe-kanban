@@ -79,6 +79,10 @@ export function WorkspacesSidebar({
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
               isArchived={false}
+              hasPendingApproval={workspace.hasPendingApproval}
+              hasRunningDevServer={workspace.hasRunningDevServer}
+              latestProcessCompletedAt={workspace.latestProcessCompletedAt}
+              latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
               onDelete={
                 onDeleteWorkspace
@@ -122,6 +126,10 @@ export function WorkspacesSidebar({
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
               isArchived={true}
+              hasPendingApproval={workspace.hasPendingApproval}
+              hasRunningDevServer={workspace.hasRunningDevServer}
+              latestProcessCompletedAt={workspace.latestProcessCompletedAt}
+              latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
               onDelete={
                 onDeleteWorkspace

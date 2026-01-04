@@ -312,6 +312,44 @@ conflicted_files: Array<string>, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
 
+export type WorkspaceSummaryRequest = { workspace_ids: Array<string>, };
+
+export type WorkspaceSummary = { workspace_id: string, 
+/**
+ * Session ID of the latest execution process
+ */
+latest_session_id: string | null, 
+/**
+ * Is a tool approval currently pending?
+ */
+has_pending_approval: boolean, 
+/**
+ * Number of files with changes
+ */
+files_changed: number | null, 
+/**
+ * Total lines added across all files
+ */
+lines_added: number | null, 
+/**
+ * Total lines removed across all files
+ */
+lines_removed: number | null, 
+/**
+ * When the latest execution process completed
+ */
+latest_process_completed_at?: string, 
+/**
+ * Status of the latest execution process
+ */
+latest_process_status: ExecutionProcessStatus | null, 
+/**
+ * Is a dev server currently running?
+ */
+has_running_dev_server: boolean, };
+
+export type WorkspaceSummaryResponse = { summaries: Array<WorkspaceSummary>, };
+
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
