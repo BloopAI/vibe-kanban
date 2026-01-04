@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "textarea",
+      "default": null
+    },
+    "provider": {
+      "title": "Provider",
+      "description": "LLM provider to use (e.g., anthropic, openai)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model": {
+      "title": "Model",
+      "description": "Model to use (e.g., claude-sonnet-4-20250514)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "thinking": {
+      "title": "Thinking Mode",
+      "description": "Thinking/reasoning mode: off, low, high, etc.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "title": "Output Mode",
+      "description": "Output mode (default: json for structured parsing)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "use_npx": {
+      "title": "Use NPX",
+      "description": "Toggle between local binary and npx execution",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "title": "Environment Variables",
+      "description": "Environment variables to set when running the executor",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "description": "Pi executor configuration",
+  "type": "object"
+}
