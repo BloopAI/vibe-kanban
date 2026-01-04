@@ -77,6 +77,21 @@ impl EventService {
         Ok(())
     }
 
+    async fn push_workspace_update_for_session(
+        pool: &SqlitePool,
+        msg_store: Arc<MsgStore>,
+        session_id: Uuid,
+    ) -> Result<(), SqlxError> {
+        use db::models::session::Session;
+        if let Some(session) = Session::find_by_id(pool, session_id).await?
+            && let Some(workspace_with_status) =
+                Workspace::find_by_id_with_status(pool, session.workspace_id).await?
+        {
+            msg_store.push_patch(workspace_patch::replace(&workspace_with_status));
+        }
+        Ok(())
+    }
+
     /// Creates the hook function that should be used with DBService::new_with_after_connect
     pub fn create_hook(
         msg_store: Arc<MsgStore>,
@@ -317,7 +332,21 @@ impl EventService {
                                     return;
                                 }
                                 RecordTypes::Workspace(workspace) => {
-                                    // Workspaces should update the parent task with fresh data
+                                    // Emit workspace patch with status
+                                    if let Ok(Some(workspace_with_status)) =
+                                        Workspace::find_by_id_with_status(&db.pool, workspace.id)
+                                            .await
+                                    {
+                                        let patch = match hook.operation {
+                                            SqliteOperation::Insert => {
+                                                workspace_patch::add(&workspace_with_status)
+                                            }
+                                            _ => workspace_patch::replace(&workspace_with_status),
+                                        };
+                                        msg_store_for_hook.push_patch(patch);
+                                    }
+
+                                    // Also update parent task
                                     if let Ok(Some(task)) =
                                         Task::find_by_id(&db.pool, workspace.task_id).await
                                         && let Ok(task_list) =
@@ -331,14 +360,14 @@ impl EventService {
                                     {
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
-                                        return;
                                     }
+                                    return;
                                 }
                                 RecordTypes::DeletedWorkspace {
                                     task_id: Some(task_id),
                                     ..
                                 } => {
-                                    // Workspace deletion should update the parent task with fresh data
+                                    // Update parent task
                                     if let Ok(Some(task)) =
                                         Task::find_by_id(&db.pool, *task_id).await
                                         && let Ok(task_list) =
@@ -352,8 +381,8 @@ impl EventService {
                                     {
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
-                                        return;
                                     }
+                                    return;
                                 }
                                 RecordTypes::ExecutionProcess(process) => {
                                     let patch = match hook.operation {
@@ -380,6 +409,19 @@ impl EventService {
                                         );
                                     }
 
+                                    if let Err(err) = EventService::push_workspace_update_for_session(
+                                        &db.pool,
+                                        msg_store_for_hook.clone(),
+                                        process.session_id,
+                                    )
+                                    .await
+                                    {
+                                        tracing::error!(
+                                            "Failed to push workspace update after execution process change: {:?}",
+                                            err
+                                        );
+                                    }
+
                                     return;
                                 }
                                 RecordTypes::DeletedExecutionProcess {
@@ -390,8 +432,8 @@ impl EventService {
                                     let patch = execution_process_patch::remove(*process_id);
                                     msg_store_for_hook.push_patch(patch);
 
-                                    if let Some(session_id) = session_id
-                                        && let Err(err) =
+                                    if let Some(session_id) = session_id {
+                                        if let Err(err) =
                                             EventService::push_task_update_for_session(
                                                 &db.pool,
                                                 msg_store_for_hook.clone(),
@@ -404,6 +446,21 @@ impl EventService {
                                                 err
                                             );
                                         }
+
+                                        if let Err(err) =
+                                            EventService::push_workspace_update_for_session(
+                                                &db.pool,
+                                                msg_store_for_hook.clone(),
+                                                *session_id,
+                                            )
+                                            .await
+                                        {
+                                            tracing::error!(
+                                                "Failed to push workspace update after execution process removal: {:?}",
+                                                err
+                                            );
+                                        }
+                                    }
 
                                     return;
                                 }

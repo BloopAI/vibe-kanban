@@ -518,8 +518,25 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
+  /** Get all workspaces across all tasks (newest first) */
+  getAllWorkspaces: async (): Promise<Workspace[]> => {
+    const response = await makeRequest('/api/task-attempts');
+    return handleApiResponse<Workspace[]>(response);
+  },
+
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
+    return handleApiResponse<Workspace>(response);
+  },
+
+  update: async (
+    attemptId: string,
+    data: { archived?: boolean; pinned?: boolean; name?: string }
+  ): Promise<Workspace> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<Workspace>(response);
   },
 
@@ -585,6 +602,13 @@ export const attemptsApi = {
   getRepos: async (attemptId: string): Promise<RepoWithTargetBranch[]> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/repos`);
     return handleApiResponse<RepoWithTargetBranch[]>(response);
+  },
+
+  getFirstUserMessage: async (attemptId: string): Promise<string | null> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/first-message`
+    );
+    return handleApiResponse<string | null>(response);
   },
 
   merge: async (
@@ -828,6 +852,25 @@ export const repoApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Repo>(response);
+  },
+
+  getBatch: async (ids: string[]): Promise<Repo[]> => {
+    const response = await makeRequest('/api/repos/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    return handleApiResponse<Repo[]>(response);
+  },
+
+  openEditor: async (
+    repoId: string,
+    data: OpenEditorRequest
+  ): Promise<OpenEditorResponse> => {
+    const response = await makeRequest(`/api/repos/${repoId}/open-editor`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<OpenEditorResponse>(response);
   },
 };
 

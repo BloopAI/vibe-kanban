@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
+import { produce } from 'immer';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
+type WsReadyMsg = { Ready: true };
 type WsFinishedMsg = { finished: boolean };
-type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
+type WsMsg = WsJsonPatchMsg | WsReadyMsg | WsFinishedMsg;
 
 interface UseJsonPatchStreamOptions<T> {
   /**
@@ -20,6 +22,7 @@ interface UseJsonPatchStreamOptions<T> {
 interface UseJsonPatchStreamResult<T> {
   data: T | undefined;
   isConnected: boolean;
+  isInitialized: boolean;
   error: string | null;
 }
 
@@ -34,6 +37,7 @@ export const useJsonPatchWsStream = <T extends object>(
 ): UseJsonPatchStreamResult<T> => {
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
@@ -71,6 +75,7 @@ export const useJsonPatchWsStream = <T extends object>(
       finishedRef.current = false;
       setData(undefined);
       setIsConnected(false);
+      setIsInitialized(false);
       setError(null);
       dataRef.current = undefined;
       return;
@@ -120,14 +125,18 @@ export const useJsonPatchWsStream = <T extends object>(
             const current = dataRef.current;
             if (!filtered.length || !current) return;
 
-            // Deep clone the current state before mutating it
-            const next = structuredClone(current);
-
-            // Apply patch (mutates the clone in place)
-            applyPatch(next, filtered);
+            // Use Immer for structural sharing - only modified parts get new references
+            const next = produce(current, (draft) => {
+              applyPatch(draft, filtered);
+            });
 
             dataRef.current = next;
             setData(next);
+          }
+
+          // Handle Ready messages (initial data has been sent)
+          if ('Ready' in msg) {
+            setIsInitialized(true);
           }
 
           // Handle finished messages ({finished: true})
@@ -186,6 +195,7 @@ export const useJsonPatchWsStream = <T extends object>(
       finishedRef.current = false;
       dataRef.current = undefined;
       setData(undefined);
+      setIsInitialized(false);
     };
   }, [
     endpoint,
@@ -196,5 +206,5 @@ export const useJsonPatchWsStream = <T extends object>(
     retryNonce,
   ]);
 
-  return { data, isConnected, error };
+  return { data, isConnected, isInitialized, error };
 };

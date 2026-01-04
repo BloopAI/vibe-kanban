@@ -48,7 +48,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
-  const { data, isConnected, error } = useJsonPatchWsStream(
+  const { data, isConnected, isInitialized, error } = useJsonPatchWsStream(
     endpoint,
     !!projectId,
     initialData
@@ -177,7 +177,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     return grouped;
   }, [localTasksById, sharedTasksById, referencedSharedIds]);
 
-  const isLoading = !data && !error; // until first snapshot
+  const isLoading = !isInitialized && !error; // until first snapshot
 
   // Auto-link shared tasks assigned to current user
   useAutoLinkSharedTasks({

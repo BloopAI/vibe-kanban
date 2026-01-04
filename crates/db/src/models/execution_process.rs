@@ -629,11 +629,12 @@ impl ExecutionProcess {
         })
     }
 
-    /// Fetch the latest CodingAgent executor profile for a session
+    /// Fetch the latest CodingAgent executor profile for a session.
+    /// Returns None if no CodingAgent execution process exists for this session.
     pub async fn latest_executor_profile_for_session(
         pool: &SqlitePool,
         session_id: Uuid,
-    ) -> Result<ExecutorProfileId, ExecutionProcessError> {
+    ) -> Result<Option<ExecutorProfileId>, ExecutionProcessError> {
         // Find the latest CodingAgent execution process for this session
         let latest_execution_process = sqlx::query_as!(
             ExecutionProcess,
@@ -656,12 +657,11 @@ impl ExecutionProcess {
             ExecutionProcessRunReason::CodingAgent
         )
         .fetch_optional(pool)
-        .await?
-        .ok_or_else(|| {
-            ExecutionProcessError::ValidationError(
-                "Couldn't find initial coding agent process, has it run yet?".to_string(),
-            )
-        })?;
+        .await?;
+
+        let Some(latest_execution_process) = latest_execution_process else {
+            return Ok(None);
+        };
 
         let action = latest_execution_process
             .executor_action()
@@ -669,10 +669,10 @@ impl ExecutionProcess {
 
         match &action.typ {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
-                Ok(request.executor_profile_id.clone())
+                Ok(Some(request.executor_profile_id.clone()))
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                Ok(request.executor_profile_id.clone())
+                Ok(Some(request.executor_profile_id.clone()))
             }
             _ => Err(ExecutionProcessError::ValidationError(
                 "Couldn't find profile from initial request".to_string(),

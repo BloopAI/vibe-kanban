@@ -1,6 +1,7 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { projectsApi } from '@/lib/api';
 
 import type { SearchResult } from 'shared/types';
@@ -45,6 +46,7 @@ export function MultiFileSearchTextarea({
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchCacheRef = useRef<Map<string, FileSearchResult[]>>(new Map());
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const portalContainer = usePortalContainer();
 
   // Search for files when query changes
   useEffect(() => {
@@ -379,7 +381,7 @@ export function MultiFileSearchTextarea({
               </div>
             )}
           </div>,
-          document.body
+          portalContainer ?? document.body
         )}
     </div>
   );

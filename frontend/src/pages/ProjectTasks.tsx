@@ -957,7 +957,7 @@ export function ProjectTasks() {
   ) : null;
 
   const attemptContent = selectedTask ? (
-    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
+    <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       {isTaskView ? (
         <TaskPanel task={selectedTask} />
       ) : (
@@ -986,7 +986,7 @@ export function ProjectTasks() {
       )}
     </NewCard>
   ) : selectedSharedTask ? (
-    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
+    <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       <SharedTaskPanel task={selectedSharedTask} />
     </NewCard>
   ) : null;
@@ -1030,7 +1030,7 @@ export function ProjectTasks() {
   );
 
   return (
-    <div className="min-h-full h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {streamError && (
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">

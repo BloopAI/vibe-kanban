@@ -80,6 +80,21 @@ impl Repo {
         .await
     }
 
+    pub async fn find_by_ids(pool: &SqlitePool, ids: &[Uuid]) -> Result<Vec<Self>, sqlx::Error> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Fetch each repo individually since SQLite doesn't support array parameters
+        let mut repos = Vec::with_capacity(ids.len());
+        for id in ids {
+            if let Some(repo) = Self::find_by_id(pool, *id).await? {
+                repos.push(repo);
+            }
+        }
+        Ok(repos)
+    }
+
     pub async fn find_or_create<'e, E>(
         executor: E,
         path: &Path,

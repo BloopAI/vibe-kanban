@@ -133,7 +133,8 @@
   "attemptHeaderActions": {
     "diffs": "Diffs",
     "preview": "Preview",
-    "relatedTasks": "Related tasks"
+    "relatedTasks": "Related tasks",
+    "tryNewUI": "新しいUIを試す"
   },
   "branches": {
     "changeTarget": {

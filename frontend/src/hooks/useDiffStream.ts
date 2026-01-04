@@ -17,6 +17,7 @@ export interface UseDiffStreamOptions {
 interface UseDiffStreamResult {
   diffs: Diff[];
   error: string | null;
+  isInitialized: boolean;
 }
 
 export const useDiffStream = (
@@ -43,7 +44,7 @@ export const useDiffStream = (
     []
   );
 
-  const { data, error } = useJsonPatchWsStream<DiffStreamEvent>(
+  const { data, error, isInitialized } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
     enabled && !!attemptId,
     initialData
@@ -56,5 +57,5 @@ export const useDiffStream = (
       .map((entry) => entry.content);
   }, [data?.entries]);
 
-  return { diffs, error };
+  return { diffs, error, isInitialized };
 };

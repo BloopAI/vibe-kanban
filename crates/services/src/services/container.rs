@@ -871,7 +871,7 @@ pub trait ContainerService {
                         LogMsg::Finished => {
                             break;
                         }
-                        LogMsg::JsonPatch(_) => continue,
+                        LogMsg::JsonPatch(_) | LogMsg::Ready => continue,
                     }
                 }
             }
@@ -1047,6 +1047,8 @@ pub trait ContainerService {
             &repo_states,
         )
         .await?;
+
+        Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
 
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {

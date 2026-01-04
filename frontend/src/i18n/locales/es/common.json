@@ -74,6 +74,9 @@
     "selectPlaceholder": "Seleccionar una organización",
     "currentBadge": " (actual)"
   },
+  "navbar": {
+    "tryNewUI": "prueba la nueva interfaz"
+  },
   "signOut": "Cerrar sesión",
   "devMode": {
     "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"

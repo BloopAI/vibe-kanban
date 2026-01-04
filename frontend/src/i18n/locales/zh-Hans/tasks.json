@@ -311,7 +311,8 @@
   "attemptHeaderActions": {
     "preview": "预览",
     "diffs": "差异",
-    "relatedTasks": "相关任务"
+    "relatedTasks": "相关任务",
+    "tryNewUI": "试用新界面"
   },
   "actionsMenu": {
     "attempt": "尝试",

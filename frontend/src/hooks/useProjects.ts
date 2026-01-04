@@ -19,11 +19,8 @@ export function useProjects(): UseProjectsResult {
 
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 
-  const { data, isConnected, error } = useJsonPatchWsStream<ProjectsState>(
-    endpoint,
-    true,
-    initialData
-  );
+  const { data, isConnected, isInitialized, error } =
+    useJsonPatchWsStream<ProjectsState>(endpoint, true, initialData);
 
   const projectsById = useMemo(() => data?.projects ?? {}, [data]);
 
@@ -41,7 +38,7 @@ export function useProjects(): UseProjectsResult {
   return {
     projects: projectsData ?? [],
     projectsById,
-    isLoading: !data && !error,
+    isLoading: !isInitialized && !error,
     isConnected,
     error: errorObj,
   };

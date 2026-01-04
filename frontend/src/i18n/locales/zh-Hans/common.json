@@ -74,6 +74,9 @@
     "selectPlaceholder": "选择组织",
     "currentBadge": "（当前）"
   },
+  "navbar": {
+    "tryNewUI": "试用新界面"
+  },
   "signOut": "退出登录",
   "devMode": {
     "banner": "开发模式 - 这是开发版本"

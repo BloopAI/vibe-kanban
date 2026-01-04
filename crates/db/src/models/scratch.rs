@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use executors::profile::ExecutorProfileId;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use strum_macros::{Display, EnumDiscriminants, EnumString};
@@ -24,6 +25,25 @@ pub struct DraftFollowUpData {
     pub variant: Option<String>,
 }
 
+/// Data for a draft workspace scratch (new workspace creation)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceData {
+    pub message: String,
+    #[serde(default)]
+    pub project_id: Option<Uuid>,
+    #[serde(default)]
+    pub repos: Vec<DraftWorkspaceRepo>,
+    #[serde(default)]
+    pub selected_profile: Option<ExecutorProfileId>,
+}
+
+/// Repository entry in a draft workspace
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceRepo {
+    pub repo_id: Uuid,
+    pub target_branch: String,
+}
+
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
@@ -36,6 +56,7 @@ pub struct DraftFollowUpData {
 pub enum ScratchPayload {
     DraftTask(String),
     DraftFollowUp(DraftFollowUpData),
+    DraftWorkspace(DraftWorkspaceData),
 }
 
 impl ScratchPayload {

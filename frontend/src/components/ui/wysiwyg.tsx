@@ -13,6 +13,7 @@ import {
   GITHUB_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/github-comment-node';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
+import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
   TaskAttemptContext,
   TaskContext,
@@ -34,6 +35,8 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
 import { CODE_HIGHLIGHT_CLASSES } from './wysiwyg/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
+import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState } from 'lexical';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -92,7 +95,9 @@ function WYSIWYGEditor({
   const handleCopy = useCallback(async () => {
     if (!value) return;
     try {
-      await writeClipboardViaBridge(value);
+      // Unescape markdown-escaped underscores for cleaner clipboard output
+      const unescaped = value.replace(/\\_/g, '_');
+      await writeClipboardViaBridge(unescaped);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 400);
     } catch {
@@ -134,6 +139,11 @@ function WYSIWYGEditor({
         },
         code: 'block font-mono bg-secondary rounded-md px-3 py-2 my-2 whitespace-pre overflow-x-auto',
         codeHighlight: CODE_HIGHLIGHT_CLASSES,
+        table: 'border-collapse my-2 w-full text-sm',
+        tableRow: '',
+        tableCell: 'border border-low px-3 py-2 text-left align-top',
+        tableCellHeader:
+          'bg-muted font-semibold border border-low px-3 py-2 text-left align-top',
       },
       nodes: [
         HeadingNode,
@@ -145,6 +155,9 @@ function WYSIWYGEditor({
         LinkNode,
         ImageNode,
         GitHubCommentNode,
+        TableNode,
+        TableRowNode,
+        TableCellNode,
       ],
     }),
     []
@@ -153,6 +166,7 @@ function WYSIWYGEditor({
   // Extended transformers with image, GitHub comment, and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
+      TABLE_TRANSFORMER,
       IMAGE_TRANSFORMER,
       GITHUB_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
       GITHUB_COMMENT_TRANSFORMER, // Import transformer for fenced code block
@@ -185,7 +199,7 @@ function WYSIWYGEditor({
   const placeholderElement = useMemo(
     () =>
       !disabled ? (
-        <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
+        <div className="absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate">
           {placeholder}
         </div>
       ) : null,
@@ -193,7 +207,7 @@ function WYSIWYGEditor({
   );
 
   const editorContent = (
-    <div className="wysiwyg text-sm">
+    <div className="wysiwyg text-base">
       <TaskAttemptContext.Provider value={taskAttemptId}>
         <TaskContext.Provider value={taskId}>
           <LocalImagesContext.Provider value={localImages ?? []}>
@@ -210,11 +224,7 @@ function WYSIWYGEditor({
                 <RichTextPlugin
                   contentEditable={
                     <ContentEditable
-                      className={cn(
-                        'outline-none',
-                        !disabled && 'min-h-[200px]',
-                        className
-                      )}
+                      className={cn('outline-none', className)}
                       aria-label={
                         disabled ? 'Markdown content' : 'Markdown editor'
                       }
@@ -227,6 +237,7 @@ function WYSIWYGEditor({
               </div>
 
               <ListPlugin />
+              <TablePlugin />
               <CodeHighlightPlugin />
               {/* Only include editing plugins when not in read-only mode */}
               {!disabled && (

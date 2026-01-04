@@ -40,7 +40,7 @@ export const useExecutionProcesses = (
     []
   );
 
-  const { data, isConnected, error } =
+  const { data, isConnected, isInitialized, error } =
     useJsonPatchWsStream<ExecutionProcessState>(
       endpoint,
       !!taskAttemptId,
@@ -60,7 +60,7 @@ export const useExecutionProcesses = (
         process.run_reason === 'cleanupscript') &&
       process.status === 'running'
   );
-  const isLoading = !!taskAttemptId && !data && !error; // until first snapshot
+  const isLoading = !!taskAttemptId && !isInitialized && !error; // until first snapshot
 
   return {
     executionProcesses,

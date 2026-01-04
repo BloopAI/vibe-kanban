@@ -74,6 +74,9 @@
     "selectPlaceholder": "조직 선택",
     "currentBadge": " (현재)"
   },
+  "navbar": {
+    "tryNewUI": "새로운 UI 사용해보기"
+  },
   "signOut": "로그아웃",
   "devMode": {
     "banner": "개발 모드 - 개발 빌드입니다"
