@@ -21,6 +21,7 @@ export enum VisualVariant {
   NORMAL = 'NORMAL',
   FEEDBACK = 'FEEDBACK',
   EDIT = 'EDIT',
+  PLAN = 'PLAN',
 }
 
 interface ChatBoxBaseProps {
@@ -98,7 +99,8 @@ export function ChatBoxBase({
         'flex w-chat max-w-full flex-col border-t',
         '@chat:border-x @chat:rounded-t-md',
         (visualVariant === VisualVariant.FEEDBACK ||
-          visualVariant === VisualVariant.EDIT) &&
+          visualVariant === VisualVariant.EDIT ||
+          visualVariant === VisualVariant.PLAN) &&
           'border-brand bg-brand/10',
         isRunning && 'chat-box-running'
       )}

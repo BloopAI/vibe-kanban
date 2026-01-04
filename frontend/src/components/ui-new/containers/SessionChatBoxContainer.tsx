@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { type Session } from 'shared/types';
+import { type Session, type ToolStatus } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
@@ -14,6 +14,7 @@ import { useSessionSend } from '@/hooks/useSessionSend';
 import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -99,16 +100,33 @@ export function SessionChatBoxContainer({
   // Detect pending approval and todos from entries
   const { entries } = useEntries();
   const { inProgressTodo } = useTodos(entries);
-  const hasPendingApproval = useMemo(() => {
-    return entries.some((entry) => {
-      if (entry.type !== 'NORMALIZED_ENTRY') return false;
+
+  // Extract pending approval metadata from entries
+  const pendingApproval = useMemo(() => {
+    for (const entry of entries) {
+      if (entry.type !== 'NORMALIZED_ENTRY') continue;
       const entryType = entry.content.entry_type;
-      return (
+      if (
         entryType.type === 'tool_use' &&
         entryType.status.status === 'pending_approval'
-      );
-    });
+      ) {
+        const status = entryType.status as Extract<
+          ToolStatus,
+          { status: 'pending_approval' }
+        >;
+        return {
+          approvalId: status.approval_id,
+          timeoutAt: status.timeout_at,
+          executionProcessId: entry.executionProcessId,
+        };
+      }
+    }
+    return null;
   }, [entries]);
+
+  // Approval mutation for approve/deny actions
+  const { approve, denyAsync, isApproving, isDenying, denyError } =
+    useApprovalMutation();
 
   // Branch status for edit retry
   const { data: branchStatus } = useBranchStatus(attemptId);
@@ -338,6 +356,49 @@ export function SessionChatBoxContainer({
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
+  // Handle approve action
+  const handleApprove = useCallback(() => {
+    if (!pendingApproval) return;
+
+    // Exit feedback mode if active
+    feedbackContext?.exitFeedbackMode();
+
+    approve({
+      approvalId: pendingApproval.approvalId,
+      executionProcessId: pendingApproval.executionProcessId,
+    });
+  }, [pendingApproval, feedbackContext, approve]);
+
+  // Handle request changes (deny with feedback)
+  const handleRequestChanges = useCallback(async () => {
+    if (!pendingApproval || !localMessage.trim()) return;
+
+    try {
+      await denyAsync({
+        approvalId: pendingApproval.approvalId,
+        executionProcessId: pendingApproval.executionProcessId,
+        reason: localMessage.trim(),
+      });
+      cancelDebouncedSave();
+      setLocalMessage('');
+      await clearDraft();
+    } catch {
+      // Error is handled by mutation
+    }
+  }, [
+    pendingApproval,
+    localMessage,
+    denyAsync,
+    cancelDebouncedSave,
+    setLocalMessage,
+    clearDraft,
+  ]);
+
+  // Check if approval is timed out
+  const isApprovalTimedOut = pendingApproval
+    ? new Date() > new Date(pendingApproval.timeoutAt)
+    : false;
+
   // Compute execution status
   const status = computeExecutionStatus({
     isInFeedbackMode,
@@ -393,7 +454,6 @@ export function SessionChatBoxContainer({
       }}
       error={sendError}
       agent={latestProfileId?.executor}
-      hasPendingApproval={hasPendingApproval}
       inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode
@@ -413,6 +473,18 @@ export function SessionChatBoxContainer({
               isSubmitting: feedbackContext.isSubmitting,
               error: feedbackContext.error,
               isTimedOut: feedbackContext.isTimedOut,
+            }
+          : undefined
+      }
+      approvalMode={
+        pendingApproval
+          ? {
+              isActive: true,
+              onApprove: handleApprove,
+              onRequestChanges: handleRequestChanges,
+              isSubmitting: isApproving || isDenying,
+              isTimedOut: isApprovalTimedOut,
+              error: denyError?.message ?? null,
             }
           : undefined
       }

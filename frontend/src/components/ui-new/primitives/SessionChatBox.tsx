@@ -80,6 +80,15 @@ interface EditModeProps {
   isSubmitting: boolean;
 }
 
+interface ApprovalModeProps {
+  isActive: boolean;
+  onApprove: () => void;
+  onRequestChanges: () => void;
+  isSubmitting: boolean;
+  isTimedOut: boolean;
+  error?: string | null;
+}
+
 interface SessionChatBoxProps {
   status: ExecutionStatus;
   editor: EditorProps;
@@ -89,13 +98,13 @@ interface SessionChatBoxProps {
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
+  /** Approval mode for pending plan approvals */
+  approvalMode?: ApprovalModeProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
   /** Executor selection for new session mode */
   executor?: ExecutorProps;
-  /** Whether there's a pending approval (suppresses running animation) */
-  hasPendingApproval?: boolean;
   /** Currently in-progress todo item (shown when agent is running) */
   inProgressTodo?: TodoItem | null;
 }
@@ -113,32 +122,36 @@ export function SessionChatBox({
   variant,
   feedbackMode,
   editMode,
+  approvalMode,
   error,
   projectId,
   agent,
   executor,
-  hasPendingApproval,
   inProgressTodo,
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Determine if in feedback mode or edit mode
+  // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
   const isInEditMode = editMode?.isActive ?? false;
+  const isInApprovalMode = approvalMode?.isActive ?? false;
 
-  // Key to force editor remount when entering feedback/edit mode (triggers auto-focus)
+  // Key to force editor remount when entering feedback/edit/approval mode (triggers auto-focus)
   const focusKey = isInFeedbackMode
     ? 'feedback'
     : isInEditMode
       ? 'edit'
-      : 'normal';
+      : isInApprovalMode
+        ? 'approval'
+        : 'normal';
 
   // Derived state from status
   const isDisabled =
     status === 'sending' ||
     status === 'stopping' ||
     feedbackMode?.isSubmitting ||
-    editMode?.isSubmitting;
+    editMode?.isSubmitting ||
+    approvalMode?.isSubmitting;
   const canSend =
     editor.value.trim().length > 0 &&
     !['sending', 'stopping', 'queue-loading'].includes(status);
@@ -146,7 +159,7 @@ export function SessionChatBox({
   const isRunning = status === 'running' || status === 'queued';
   const showRunningAnimation =
     (status === 'running' || status === 'queued' || status === 'sending') &&
-    !hasPendingApproval &&
+    !isInApprovalMode &&
     editor.value.trim().length === 0;
 
   // Placeholder
@@ -154,12 +167,23 @@ export function SessionChatBox({
     ? 'Provide feedback for the plan...'
     : isInEditMode
       ? 'Edit your message...'
-      : session.isNewSessionMode
-        ? 'Start a new conversation...'
-        : 'Continue working on this task...';
+      : isInApprovalMode
+        ? 'Provide feedback to request changes...'
+        : session.isNewSessionMode
+          ? 'Start a new conversation...'
+          : 'Continue working on this task...';
 
   // Cmd+Enter handler
   const handleCmdEnter = () => {
+    // Approval mode: Cmd+Enter triggers approve or request changes based on input
+    if (isInApprovalMode && !approvalMode?.isTimedOut) {
+      if (canSend) {
+        approvalMode?.onRequestChanges();
+      } else {
+        approvalMode?.onApprove();
+      }
+      return;
+    }
     if (isInFeedbackMode && canSend && !feedbackMode?.isTimedOut) {
       feedbackMode?.onSubmitFeedback();
     } else if (isInEditMode && canSend) {
@@ -256,6 +280,46 @@ export function SessionChatBox({
       );
     }
 
+    // Approval mode
+    if (isInApprovalMode) {
+      if (approvalMode?.isTimedOut) {
+        return (
+          <PrimaryButton
+            variant="secondary"
+            onClick={actions.onStop}
+            value="Stop"
+          />
+        );
+      }
+
+      const hasMessage = editor.value.trim().length > 0;
+
+      return (
+        <>
+          <PrimaryButton
+            variant="secondary"
+            onClick={actions.onStop}
+            value="Stop"
+          />
+          {hasMessage ? (
+            <PrimaryButton
+              onClick={approvalMode?.onRequestChanges}
+              disabled={approvalMode?.isSubmitting}
+              actionIcon={approvalMode?.isSubmitting ? 'spinner' : undefined}
+              value="Request Changes"
+            />
+          ) : (
+            <PrimaryButton
+              onClick={approvalMode?.onApprove}
+              disabled={approvalMode?.isSubmitting}
+              actionIcon={approvalMode?.isSubmitting ? 'spinner' : undefined}
+              value="Approve"
+            />
+          )}
+        </>
+      );
+    }
+
     switch (status) {
       case 'idle':
         return (
@@ -336,7 +400,15 @@ export function SessionChatBox({
   };
 
   // Combine errors
-  const displayError = feedbackMode?.error ?? error;
+  const displayError = feedbackMode?.error ?? approvalMode?.error ?? error;
+
+  // Determine visual variant
+  const getVisualVariant = () => {
+    if (isInFeedbackMode) return VisualVariant.FEEDBACK;
+    if (isInEditMode) return VisualVariant.EDIT;
+    if (isInApprovalMode) return VisualVariant.PLAN;
+    return VisualVariant.NORMAL;
+  };
 
   return (
     <ChatBoxBase
@@ -350,13 +422,7 @@ export function SessionChatBox({
       variant={variant}
       error={displayError}
       banner={renderBanner()}
-      visualVariant={
-        isInFeedbackMode
-          ? VisualVariant.FEEDBACK
-          : isInEditMode
-            ? VisualVariant.EDIT
-            : VisualVariant.NORMAL
-      }
+      visualVariant={getVisualVariant()}
       isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
       headerLeft={
@@ -425,7 +491,7 @@ export function SessionChatBox({
           )}
           <ToolbarDropdown
             label={sessionLabel}
-            disabled={isInFeedbackMode || isInEditMode}
+            disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}
           >
             {/* New Session option */}
             <DropdownMenuItem
