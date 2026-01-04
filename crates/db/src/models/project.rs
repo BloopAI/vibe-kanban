@@ -50,6 +50,9 @@ pub struct SearchResult {
     pub path: String,
     pub is_file: bool,
     pub match_type: SearchMatchType,
+    /// Ranking score based on git history (higher = more recently/frequently edited)
+    #[serde(default)]
+    pub score: i64,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
