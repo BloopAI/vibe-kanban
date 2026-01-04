@@ -290,10 +290,11 @@ def handle_turso_export_data(params: dict) -> dict:
                 stmt = f"INSERT OR REPLACE INTO {table} ({', '.join(columns)}) VALUES ({', '.join(values)});"
                 statements.append(stmt)
 
-            # Push to Turso in batches
+            # Push to Turso in batches with FK checks disabled per batch
             batch_size = 50
             for i in range(0, len(statements), batch_size):
-                batch = "\n".join(statements[i:i+batch_size])
+                # Each CLI call is a new connection, so disable FK checks in each batch
+                batch = "PRAGMA foreign_keys = OFF;\n" + "\n".join(statements[i:i+batch_size])
                 success, output = run_turso_command(batch, db_name)
                 if not success:
                     errors.append(f"{table}: {output}")
