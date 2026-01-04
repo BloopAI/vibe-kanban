@@ -6,7 +6,7 @@ import {
   TrashIcon,
   HandIcon,
   TriangleIcon,
-  PlayPauseIcon,
+  PlayIcon,
   FileIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -112,7 +112,7 @@ export function WorkspaceSummary({
           <div className="flex w-full items-center gap-base text-sm h-5">
             {/* Dev server running - leftmost */}
             {hasRunningDevServer && (
-              <PlayPauseIcon
+              <PlayIcon
                 className="size-icon-xs text-brand shrink-0"
                 weight="fill"
               />
