@@ -19,6 +19,8 @@ interface CreateModeContextValue {
   message: string;
   setMessage: (message: string) => void;
   clearDraft: () => Promise<void>;
+  /** Whether the initial value has been applied from scratch */
+  hasInitialValue: boolean;
 }
 
 const CreateModeContext = createContext<CreateModeContextValue | null>(null);
@@ -50,6 +52,7 @@ export function CreateModeProvider({
       message: state.message,
       setMessage: state.setMessage,
       clearDraft: state.clearDraft,
+      hasInitialValue: state.hasInitialValue,
     }),
     [
       state.selectedProjectId,
@@ -64,6 +67,7 @@ export function CreateModeProvider({
       state.message,
       state.setMessage,
       state.clearDraft,
+      state.hasInitialValue,
     ]
   );
 
