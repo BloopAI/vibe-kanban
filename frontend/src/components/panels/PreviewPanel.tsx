@@ -92,11 +92,15 @@ export function PreviewPanel() {
     };
   }, [previewState.status, previewState.url, addElement]);
 
+  // Timeout before showing the "trouble previewing" help message
+  // 30 seconds gives dev servers time to install dependencies and start
+  const DEV_SERVER_TIMEOUT_MS = 30000;
+
   function startTimer() {
     setLoadingTimeFinished(false);
     setTimeout(() => {
       setLoadingTimeFinished(true);
-    }, 5000);
+    }, DEV_SERVER_TIMEOUT_MS);
   }
 
   useEffect(() => {
