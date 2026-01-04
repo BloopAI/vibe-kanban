@@ -15,6 +15,7 @@ import {
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
+import { useFileNavigation } from '@/contexts/FileNavigationContext';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { cn } from '@/lib/utils';
 import {
@@ -283,6 +284,7 @@ function FileEditEntry({
     expansionKey as PersistKey,
     false
   );
+  const { viewFileInChanges, diffPaths } = useFileNavigation();
 
   // Calculate diff stats for edit changes
   const { additions, deletions } = useMemo(() => {
@@ -309,6 +311,13 @@ function FileEditEntry({
     return undefined;
   }, [change, path]);
 
+  // Only show "open in changes" button if the file exists in current diffs
+  const handleOpenInChanges = useCallback(() => {
+    viewFileInChanges(path);
+  }, [viewFileInChanges, path]);
+
+  const canOpenInChanges = diffPaths.has(path);
+
   return (
     <ChatFileEntry
       filename={path}
@@ -318,6 +327,7 @@ function FileEditEntry({
       onToggle={toggle}
       status={status}
       diffContent={diffContent}
+      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : undefined}
     />
   );
 }

@@ -1,5 +1,6 @@
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { cn } from '@/lib/utils';
+import { useFileNavigation } from '@/contexts/FileNavigationContext';
 
 interface ChatMarkdownProps {
   content: string;
@@ -14,6 +15,8 @@ export function ChatMarkdown({
   className,
   workspaceId,
 }: ChatMarkdownProps) {
+  const { viewFileInChanges, findMatchingDiffPath } = useFileNavigation();
+
   return (
     <div className={cn('text-sm', className)} style={{ maxWidth }}>
       <WYSIWYGEditor
@@ -21,6 +24,8 @@ export function ChatMarkdown({
         disabled
         className="whitespace-pre-wrap break-words"
         taskAttemptId={workspaceId}
+        findMatchingDiffPath={findMatchingDiffPath}
+        onCodeClick={viewFileInChanges}
       />
     </div>
   );

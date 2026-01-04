@@ -6,6 +6,7 @@ import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
+import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
@@ -357,6 +358,20 @@ export function WorkspacesLayout() {
     });
   }, []);
 
+  // Navigate to changes panel and scroll to a specific file
+  const handleViewFileInChanges = useCallback((filePath: string) => {
+    setIsChangesMode(true);
+    setIsSidebarVisible(false);
+    setSelectedFilePath(filePath);
+  }, []);
+
+  // Compute diffPaths for FileNavigationContext
+  const diffPaths = useMemo(() => {
+    return new Set(
+      realDiffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)
+    );
+  }, [realDiffs]);
+
   const handleToggleMainPanel = useCallback(() => {
     // At least one of Main or Changes must be visible
     if (isMainPanelVisible && !isChangesMode) return;
@@ -549,21 +564,26 @@ export function WorkspacesLayout() {
             {isCreateMode ? (
               <CreateChatBoxContainer />
             ) : (
-              <ExecutionProcessesProvider
-                attemptId={selectedWorkspace?.id}
-                sessionId={selectedSessionId}
+              <FileNavigationProvider
+                viewFileInChanges={handleViewFileInChanges}
+                diffPaths={diffPaths}
               >
-                <WorkspacesMainContainer
-                  selectedWorkspace={selectedWorkspace ?? null}
-                  selectedSession={selectedSession}
-                  sessions={sessions}
-                  onSelectSession={selectSession}
-                  isLoading={isLoading}
-                  isNewSessionMode={isNewSessionMode}
-                  onStartNewSession={startNewSession}
-                  onViewCode={handleToggleChangesMode}
-                />
-              </ExecutionProcessesProvider>
+                <ExecutionProcessesProvider
+                  attemptId={selectedWorkspace?.id}
+                  sessionId={selectedSessionId}
+                >
+                  <WorkspacesMainContainer
+                    selectedWorkspace={selectedWorkspace ?? null}
+                    selectedSession={selectedSession}
+                    sessions={sessions}
+                    onSelectSession={selectSession}
+                    isLoading={isLoading}
+                    isNewSessionMode={isNewSessionMode}
+                    onStartNewSession={startNewSession}
+                    onViewCode={handleToggleChangesMode}
+                  />
+                </ExecutionProcessesProvider>
+              </FileNavigationProvider>
             )}
           </div>
         </Allotment.Pane>

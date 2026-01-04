@@ -1,4 +1,4 @@
-import { CaretDownIcon } from '@phosphor-icons/react';
+import { CaretDownIcon, ArrowSquareUpRightIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useTheme } from '@/components/ThemeProvider';
@@ -17,6 +17,8 @@ interface ChatFileEntryProps {
   status?: ToolStatus;
   /** Optional diff content for expanded view */
   diffContent?: DiffInput;
+  /** Optional callback to open file in changes panel */
+  onOpenInChanges?: () => void;
 }
 
 export function ChatFileEntry({
@@ -28,6 +30,7 @@ export function ChatFileEntry({
   className,
   status,
   diffContent,
+  onOpenInChanges,
 }: ChatFileEntryProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
@@ -63,6 +66,19 @@ export function ChatFileEntry({
               )}
             </span>
             <span className="text-sm text-normal truncate">{filename}</span>
+            {onOpenInChanges && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenInChanges();
+                }}
+                className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
+                title="View in changes panel"
+              >
+                <ArrowSquareUpRightIcon className="size-icon-xs" />
+              </button>
+            )}
             {hasStats && (
               <span className="text-sm shrink-0">
                 {additions !== undefined && additions > 0 && (
@@ -120,6 +136,19 @@ export function ChatFileEntry({
           )}
         </span>
         <span className="text-sm text-normal truncate">{filename}</span>
+        {onOpenInChanges && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenInChanges();
+            }}
+            className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
+            title="View in changes panel"
+          >
+            <ArrowSquareUpRightIcon className="size-icon-xs" />
+          </button>
+        )}
         {hasStats && (
           <span className="text-sm shrink-0">
             {additions !== undefined && additions > 0 && (

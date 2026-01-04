@@ -24,6 +24,7 @@ import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plu
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
+import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
@@ -70,6 +71,10 @@ type WysiwygProps = {
   onDelete?: () => void;
   /** Auto-focus the editor on mount */
   autoFocus?: boolean;
+  /** Function to find a matching diff path for clickable inline code (only in read-only mode) */
+  findMatchingDiffPath?: (text: string) => string | null;
+  /** Callback when clickable inline code is clicked (only in read-only mode) */
+  onCodeClick?: (fullPath: string) => void;
 };
 
 function WYSIWYGEditor({
@@ -89,6 +94,8 @@ function WYSIWYGEditor({
   onEdit,
   onDelete,
   autoFocus = false,
+  findMatchingDiffPath,
+  onCodeClick,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -258,6 +265,13 @@ function WYSIWYGEditor({
               )}
               {/* Link sanitization for read-only mode */}
               {disabled && <ReadOnlyLinkPlugin />}
+              {/* Clickable code for file paths in read-only mode */}
+              {disabled && findMatchingDiffPath && onCodeClick && (
+                <ClickableCodePlugin
+                  findMatchingDiffPath={findMatchingDiffPath}
+                  onCodeClick={onCodeClick}
+                />
+              )}
             </LexicalComposer>
           </LocalImagesContext.Provider>
         </TaskContext.Provider>
