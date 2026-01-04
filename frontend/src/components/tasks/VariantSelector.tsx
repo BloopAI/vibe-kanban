@@ -45,9 +45,7 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
             className
           )}
           disabled
-        >
-          <span className="text-xs truncate flex-1 text-left">Default</span>
-        </Button>
+        />
       );
     }
 

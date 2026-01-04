@@ -204,13 +204,12 @@ function WYSIWYGEditor({
 
   // Memoized placeholder element
   const placeholderElement = useMemo(
-    () =>
-      !disabled ? (
-        <div className="absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate">
-          {placeholder}
-        </div>
-      ) : null,
-    [disabled, placeholder]
+    () => (
+      <div className="absolute top-0 left-0 text-base text-secondary-foreground text-low pointer-events-none truncate">
+        {placeholder}
+      </div>
+    ),
+    [placeholder]
   );
 
   const editorContent = (

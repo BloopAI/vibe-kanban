@@ -142,7 +142,7 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
           Footer={() => <div className="h-2" />}
         />
       </VirtuosoMessageListLicense>
-      {loading && (
+      {loading && !channelData?.data?.length && (
         <div className="absolute inset-0 bg-primary flex flex-col gap-2 justify-center items-center">
           <SpinnerGapIcon className="h-8 w-8 animate-spin" />
           <p>Loading History</p>

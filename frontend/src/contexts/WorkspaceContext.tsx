@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   useWorkspaces,
   type SidebarWorkspace,
@@ -45,15 +45,15 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 interface WorkspaceProviderProps {
   children: ReactNode;
-  isCreateMode?: boolean;
 }
 
-export function WorkspaceProvider({
-  children,
-  isCreateMode = false,
-}: WorkspaceProviderProps) {
+export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
+  const isCreateMode = location.pathname === '/workspaces/create';
 
   // Fetch sidebar workspaces (real IDs with mock display fields)
   const {
