@@ -249,6 +249,8 @@ function WYSIWYGEditor({
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}
                     onShiftCmdEnter={onShiftCmdEnter}
+                    onChange={onChange}
+                    transformers={extendedTransformers}
                   />
                   <ImageKeyboardPlugin />
                   <CodeBlockShortcutPlugin />

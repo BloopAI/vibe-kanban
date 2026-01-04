@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   KEY_MODIFIER_COMMAND,
@@ -6,13 +7,21 @@ import {
   COMMAND_PRIORITY_NORMAL,
   COMMAND_PRIORITY_HIGH,
 } from 'lexical';
+import { $convertToMarkdownString, type Transformer } from '@lexical/markdown';
 
 type Props = {
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
+  onChange?: (markdown: string) => void;
+  transformers?: Transformer[];
 };
 
-export function KeyboardCommandsPlugin({ onCmdEnter, onShiftCmdEnter }: Props) {
+export function KeyboardCommandsPlugin({
+  onCmdEnter,
+  onShiftCmdEnter,
+  onChange,
+  transformers,
+}: Props) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -35,6 +44,16 @@ export function KeyboardCommandsPlugin({ onCmdEnter, onShiftCmdEnter }: Props) {
         }
 
         if (!event.shiftKey && onCmdEnter) {
+          // Flush current state synchronously to ensure onChange has latest content
+          // This fixes race condition where Cmd+Enter fires before Lexical's update listener
+          if (onChange && transformers) {
+            const markdown = editor
+              .getEditorState()
+              .read(() => $convertToMarkdownString(transformers));
+            flushSync(() => {
+              onChange(markdown);
+            });
+          }
           onCmdEnter();
           return true;
         }
@@ -61,7 +80,7 @@ export function KeyboardCommandsPlugin({ onCmdEnter, onShiftCmdEnter }: Props) {
       unregisterModifier();
       unregisterEnter();
     };
-  }, [editor, onCmdEnter, onShiftCmdEnter]);
+  }, [editor, onCmdEnter, onShiftCmdEnter, onChange, transformers]);
 
   return null;
 }
