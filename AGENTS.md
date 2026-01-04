@@ -105,6 +105,59 @@ Store planning documents and specs under **Team > Documents** in the appropriate
 - **planning/** - Feature plans, implementation specs
 - Use markdown format for all documents
 
+### 🚨 MANDATORY REQUIREMENTS - NO EXCEPTIONS 🚨
+
+> **⚠️ VIOLATIONS WILL RESULT IN TASK REJECTION AND REWORK ⚠️**
+>
+> These requirements are NON-NEGOTIABLE. Tasks missing these steps are INCOMPLETE.
+
+#### 1. Planning Documents (REQUIRED for EVERY task)
+
+**BEFORE writing ANY code**, create BOTH documents in `planning/` folder:
+
+| Document | Filename | Purpose |
+|----------|----------|---------|
+| **Flow Diagram** | `VIB-XX-feature-flow.md` | ASCII diagram showing data flow, component relationships |
+| **Implementation Plan** | `VIB-XX-feature-plan.md` | Step-by-step plan with affected files, changes needed |
+
+**Penalty for skipping:**
+- Task will be marked as INCOMPLETE regardless of code status
+- Must create planning documents retroactively before task closure
+- Repeated violations will result in workflow audit
+
+**Past violations:** VIB-64, VIB-65, VIB-66 were completed WITHOUT planning documents - this is UNACCEPTABLE.
+
+#### 2. End-to-End Testing (REQUIRED before commit)
+
+**BEFORE committing code**, you MUST:
+
+1. **Restart server**: `make restart && sleep 5 && make status`
+2. **Test API with curl**: Verify endpoints return expected responses
+   ```bash
+   curl -s -X POST 'http://localhost:3003/api/<endpoint>' \
+     -H 'Content-Type: application/json' \
+     -d '{"field": "value"}' | jq .
+   ```
+3. **Test UI flow**: Open browser, perform action, verify result
+4. **Check for errors**: Browser console (F12), server logs (`make logs`)
+
+**Common issues to catch:**
+- `NOT NULL constraint failed` - Missing columns in INSERT statements
+- `UNIQUE constraint failed` - Duplicate entries
+- `FOREIGN KEY constraint failed` - Invalid references
+- HTTP 500 errors - Server-side exceptions
+
+**Penalty for skipping:** Task is INCOMPLETE. VIB-64, VIB-66 bugs were caused by skipping E2E testing.
+
+#### 3. Link Planning Documents to Task (REQUIRED at completion)
+
+Before marking task as `done`, update task description with document links:
+```
+vk_update_task(task_id="<uuid>", description="## Planning Documents\n- Flow: planning/VIB-XX-flow.md\n- Plan: planning/VIB-XX-plan.md")
+```
+
+---
+
 ### Complete Workflow for Every Task
 
 #### 1. Create Task First (Before Starting Work)
@@ -121,16 +174,19 @@ vk_create_issue(title="Task title", project="frontend", team="vibe-kanban", stat
 ./mcp/cli.py create <project> "Task title" --team vibe-kanban --status inprogress -d "Description"
 ```
 
-#### 2. Update Task Status
+#### 2. 🚨 Create Planning Documents (MANDATORY - DO NOT SKIP)
 
-**MCP:**
-```
-vk_update_task(task_id="<uuid>", status="done")
-```
+**BEFORE writing ANY code**, create both documents:
 
-**CLI:**
 ```bash
-./mcp/cli.py update <task_id> --status done
+# Create in the team's document storage path (planning/ folder)
+# Flow diagram: VIB-XX-feature-flow.md
+# Implementation plan: VIB-XX-feature-plan.md
+```
+
+Then sync to app:
+```bash
+curl -s -X POST "http://localhost:3003/api/teams/$TEAM_ID/folders/$FOLDER_ID/scan"
 ```
 
 #### 3. Create Feature Branch
@@ -146,15 +202,33 @@ git checkout -b feature/<task-id>-<task-name-kebab-case>
 
 - Make commits on the feature branch
 - Run type checks: `pnpm run frontend:check` and `pnpm run backend:check`
-- Test changes locally
 
-#### 5. Push Feature Branch
+#### 5. 🚨 End-to-End Testing (MANDATORY - DO NOT SKIP)
+
+**BEFORE committing**, test the full flow:
+
+```bash
+# 1. Restart server
+make restart && sleep 5 && make status
+
+# 2. Test API endpoints with curl
+curl -s -X POST 'http://localhost:3003/api/<endpoint>' \
+  -H 'Content-Type: application/json' \
+  -d '{"field": "value"}' | jq .
+
+# 3. Test UI flow in browser
+# 4. Check browser console (F12) and server logs (make logs)
+```
+
+**Only proceed if ALL tests pass.**
+
+#### 6. Push Feature Branch
 
 ```bash
 git push -u origin feature/<task-id>-<task-name-kebab-case>
 ```
 
-#### 6. Merge to Main
+#### 7. Merge to Main
 
 ```bash
 git checkout main
@@ -163,17 +237,25 @@ git merge feature/<task-id>-<task-name-kebab-case>
 git push origin main
 ```
 
-#### 7. Clean Up Feature Branch
+#### 8. Clean Up Feature Branch
 
 ```bash
 git branch -d feature/<task-id>-<task-name-kebab-case>
 git push origin --delete feature/<task-id>-<task-name-kebab-case>
 ```
 
-#### 8. Update Task Status to Done
+#### 9. 🚨 Link Planning Documents to Task (MANDATORY)
+
+**DO NOT SKIP!** Update task description with document links:
+
+```
+vk_update_task(task_id="<uuid>", description="## Planning Documents\n- Flow: planning/VIB-XX-flow.md\n- Plan: planning/VIB-XX-plan.md")
+```
+
+#### 10. Update Task Status to Done
 
 ```bash
-./scripts/vk-cli.py update <task_id> --status done
+./mcp/cli.py update <task_id> --status done
 ```
 
 ### Task Status Values
