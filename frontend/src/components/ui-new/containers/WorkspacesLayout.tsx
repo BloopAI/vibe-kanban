@@ -19,6 +19,7 @@ import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { attemptsApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
+import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -383,6 +384,56 @@ export function WorkspacesLayout() {
     }
   }, [selectedWorkspaceTask?.project_id, selectedWorkspace?.task_id, navigate]);
 
+  // Task mutations for delete
+  const { deleteTask } = useTaskMutations();
+
+  // Workspace action handlers
+  const handleDeleteWorkspace = useCallback(
+    async (taskId: string) => {
+      if (
+        window.confirm(
+          'Are you sure you want to delete this workspace? This action cannot be undone.'
+        )
+      ) {
+        try {
+          await deleteTask.mutateAsync(taskId);
+        } catch (error) {
+          console.error('Failed to delete workspace:', error);
+        }
+      }
+    },
+    [deleteTask]
+  );
+
+  const handleArchiveWorkspace = useCallback(
+    async (workspaceId: string, isCurrentlyArchived: boolean) => {
+      try {
+        await attemptsApi.update(workspaceId, {
+          archived: !isCurrentlyArchived,
+        });
+      } catch (error) {
+        console.error('Failed to update workspace archive status:', error);
+      }
+    },
+    []
+  );
+
+  const handleDuplicateWorkspace = useCallback(
+    async (workspaceId: string) => {
+      try {
+        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
+        navigate('/workspaces/create', {
+          state: { duplicatePrompt: firstMessage },
+        });
+      } catch (error) {
+        console.error('Failed to get workspace prompt for duplication:', error);
+        // Navigate to create anyway, just without the pre-filled prompt
+        navigate('/workspaces/create');
+      }
+    },
+    [navigate]
+  );
+
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
     : selectedWorkspace?.branch;
@@ -459,6 +510,9 @@ export function WorkspacesLayout() {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               onAddWorkspace={navigateToCreate}
+              onDeleteWorkspace={handleDeleteWorkspace}
+              onArchiveWorkspace={handleArchiveWorkspace}
+              onDuplicateWorkspace={handleDuplicateWorkspace}
             />
           </div>
         </Allotment.Pane>
