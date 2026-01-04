@@ -15,7 +15,6 @@ interface SidebarSections {
   workspace: boolean;
   teams: boolean;
   yourTeams: boolean;
-  trySection: boolean;
 }
 
 interface SidebarContextType {
@@ -32,7 +31,6 @@ const defaultSections: SidebarSections = {
   workspace: true,
   teams: true,
   yourTeams: true,
-  trySection: false,
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);

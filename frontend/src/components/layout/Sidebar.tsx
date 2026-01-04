@@ -21,10 +21,7 @@ import {
   FolderKanban,
   Layers,
   Users,
-  Import,
   UserPlus,
-  Target,
-  RotateCcw,
   Hash,
   Plus,
   CircleDot,
@@ -522,42 +519,6 @@ export function Sidebar() {
           </SidebarSection>
         </div>
 
-        {/* Try Section */}
-        <div className="mt-2 px-2">
-          <SidebarSection
-            title="Try"
-            isExpanded={sections.trySection}
-            onToggle={() => toggleSection('trySection')}
-            isCollapsed={isCollapsed}
-          >
-            <div className="space-y-0.5">
-              <SidebarItem
-                icon={Import}
-                label="Import issues"
-                onClick={() => {}}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
-                icon={UserPlus}
-                label="Invite people"
-                to="/settings/organizations"
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
-                icon={Target}
-                label="Initiatives"
-                onClick={() => {}}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarItem
-                icon={RotateCcw}
-                label="Cycles"
-                onClick={() => {}}
-                isCollapsed={isCollapsed}
-              />
-            </div>
-          </SidebarSection>
-        </div>
       </div>
 
       {/* Footer */}
