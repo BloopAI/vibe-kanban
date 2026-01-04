@@ -258,12 +258,18 @@ impl FileSearchCache {
                     path: indexed_file.path.clone(),
                     is_file: indexed_file.is_file,
                     match_type: indexed_file.match_type.clone(),
+                    score: 0,
                 });
             }
         }
 
         // Apply git history-based ranking
         self.file_ranker.rerank(&mut results, &cached.stats);
+
+        // Populate scores for sorted results
+        for result in &mut results {
+            result.score = self.file_ranker.calculate_score(result, &cached.stats);
+        }
 
         // Limit to top 10 results
         results.truncate(10);

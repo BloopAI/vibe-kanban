@@ -92,7 +92,7 @@ impl FileRanker {
     }
 
     /// Calculate relevance score for a search result
-    fn calculate_score(&self, result: &SearchResult, stats: &FileStats) -> i64 {
+    pub fn calculate_score(&self, result: &SearchResult, stats: &FileStats) -> i64 {
         let base_score = match result.match_type {
             SearchMatchType::FileName => BASE_MATCH_SCORE_FILENAME,
             SearchMatchType::DirectoryName => BASE_MATCH_SCORE_DIRNAME,

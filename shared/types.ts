@@ -18,7 +18,11 @@ export type CreateProject = { name: string, repositories: Array<CreateProjectRep
 
 export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, };
 
-export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
+export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
+/**
+ * Ranking score based on git history (higher = more recently/frequently edited)
+ */
+score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
