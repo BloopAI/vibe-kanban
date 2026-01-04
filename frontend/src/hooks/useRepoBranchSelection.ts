@@ -32,7 +32,10 @@ type UseRepoBranchSelectionReturn = {
 
 /**
  * Find the remote tracking branch for a given local branch.
- * E.g., for "main", look for "origin/main" in the branch list.
+ * Uses a smart fallback strategy:
+ * 1. Look for exact match (e.g., main -> origin/main)
+ * 2. Look for main/master equivalents (e.g., if on main but remote uses master)
+ * 3. Fall back to the remote's default branch (origin/HEAD target)
  */
 function findRemoteTrackingBranch(
   localBranchName: string,
@@ -41,6 +44,7 @@ function findRemoteTrackingBranch(
   // Common remote prefixes, try origin first as it's most common
   const remotePrefixes = ['origin/', 'upstream/'];
 
+  // Step 1: Try exact match first
   for (const prefix of remotePrefixes) {
     const remoteName = `${prefix}${localBranchName}`;
     const remoteBranch = branches.find(
@@ -48,6 +52,46 @@ function findRemoteTrackingBranch(
     );
     if (remoteBranch) {
       return remoteBranch;
+    }
+  }
+
+  // Step 2: If on a default-like branch (main/master/trunk/develop),
+  // try the equivalent names
+  const defaultBranchAliases: Record<string, string[]> = {
+    main: ['master', 'trunk', 'develop'],
+    master: ['main', 'trunk', 'develop'],
+    trunk: ['main', 'master'],
+    develop: ['main', 'master', 'development'],
+    development: ['develop', 'main', 'master'],
+  };
+
+  const aliases = defaultBranchAliases[localBranchName];
+  if (aliases) {
+    for (const prefix of remotePrefixes) {
+      for (const alias of aliases) {
+        const remoteName = `${prefix}${alias}`;
+        const remoteBranch = branches.find(
+          (b) => b.is_remote && b.name === remoteName
+        );
+        if (remoteBranch) {
+          return remoteBranch;
+        }
+      }
+    }
+  }
+
+  // Step 3: Fall back to the remote's default branch (what origin/HEAD points to)
+  // This handles cases where the user is on any default-like local branch
+  // and we want to use the remote's configured default
+  const isDefaultLikeBranch =
+    localBranchName in defaultBranchAliases ||
+    ['main', 'master'].includes(localBranchName);
+
+  if (isDefaultLikeBranch) {
+    // Find the branch marked as is_remote_head (the remote's default)
+    const remoteHead = branches.find((b) => b.is_remote && b.is_remote_head);
+    if (remoteHead) {
+      return remoteHead;
     }
   }
 

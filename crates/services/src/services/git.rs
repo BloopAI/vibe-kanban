@@ -62,6 +62,8 @@ pub struct GitBranch {
     pub name: String,
     pub is_current: bool,
     pub is_remote: bool,
+    /// True if this is the default branch for a remote (what origin/HEAD points to)
+    pub is_remote_head: bool,
     #[ts(type = "Date")]
     pub last_commit_date: DateTime<Utc>,
 }
@@ -1224,6 +1226,25 @@ impl GitService {
             Ok(Utc::now()) // Default to now if we can't get the commit date
         };
 
+        // Collect remote HEAD targets (e.g., origin/HEAD -> origin/main)
+        // This tells us which branch is the default for each remote
+        let mut remote_head_targets: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
+        for remote_name in repo.remotes()?.iter().flatten() {
+            let head_ref_name = format!("refs/remotes/{}/HEAD", remote_name);
+            if let Ok(reference) = repo.find_reference(&head_ref_name) {
+                if let Ok(resolved) = reference.resolve() {
+                    if let Some(target_name) = resolved.name() {
+                        // Convert refs/remotes/origin/main -> origin/main
+                        let short_name = target_name
+                            .strip_prefix("refs/remotes/")
+                            .unwrap_or(target_name);
+                        remote_head_targets.insert(short_name.to_string());
+                    }
+                }
+            }
+        }
+
         // Get local branches
         let local_branches = repo.branches(Some(BranchType::Local))?;
         for branch_result in local_branches {
@@ -1234,6 +1255,7 @@ impl GitService {
                     name: name.to_string(),
                     is_current: name == current_branch,
                     is_remote: false,
+                    is_remote_head: false,
                     last_commit_date,
                 });
             }
@@ -1247,10 +1269,12 @@ impl GitService {
                 // Skip remote HEAD references
                 if !name.ends_with("/HEAD") {
                     let last_commit_date = get_last_commit_date(&branch)?;
+                    let is_remote_head = remote_head_targets.contains(name);
                     branches.push(GitBranch {
                         name: name.to_string(),
                         is_current: false,
                         is_remote: true,
+                        is_remote_head,
                         last_commit_date,
                     });
                 }

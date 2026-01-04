@@ -100,6 +100,16 @@ Set a prefix for auto-generated branch names (e.g., `vk` results in `vk/task-nam
 
 When enabled, new tasks will default to using the remote tracking branch (e.g., `origin/main`) instead of the local branch. This ensures tasks always start from the latest remote state without requiring you to manually sync your local branches.
 
+#### Smart Branch Detection
+
+Vibe Kanban uses intelligent matching to find the correct remote branch:
+
+1. **Exact match**: First looks for `origin/{branch}` (e.g., `main` → `origin/main`)
+2. **Alias matching**: If you're on `main` but the remote uses `master` (or vice versa), it will find the equivalent branch
+3. **Remote default**: Falls back to the remote's configured default branch (what `origin/HEAD` points to)
+
+This means you don't need to worry about whether a project uses `main`, `master`, `trunk`, or another default branch name - Vibe Kanban will automatically detect the right remote branch.
+
 <Tip>
 Enable this option if you don't frequently pull changes to your local branches. It prevents starting tasks from stale code and reduces merge conflicts.
 </Tip>

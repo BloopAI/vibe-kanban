@@ -330,7 +330,11 @@ export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS";
 
 export type ShowcaseState = { seen_features: Array<string>, };
 
-export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
+export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, 
+/**
+ * True if this is the default branch for a remote (what origin/HEAD points to)
+ */
+is_remote_head: boolean, last_commit_date: Date, };
 
 export type SharedTaskDetails = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, };
 
