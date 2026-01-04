@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct Team {
     pub id: Uuid,
     pub name: String,
+    pub slug: Option<String>,       // Unique slug for database naming (e.g., "acme-corp")
     pub identifier: Option<String>, // Team prefix for issue IDs (e.g., "VIB")
     pub icon: Option<String>,
     pub color: Option<String>,
@@ -29,6 +30,7 @@ pub struct TeamProject {
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateTeam {
     pub name: String,
+    pub slug: String,               // Required: unique slug for database naming
     pub identifier: Option<String>, // If not provided, auto-generated from name
     pub icon: Option<String>,
     pub color: Option<String>,
@@ -73,6 +75,7 @@ impl Team {
             Team,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      slug,
                       identifier,
                       icon,
                       color,
@@ -91,6 +94,7 @@ impl Team {
             Team,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      slug,
                       identifier,
                       icon,
                       color,
@@ -100,6 +104,26 @@ impl Team {
                FROM teams
                WHERE id = $1"#,
             id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_by_slug(pool: &SqlitePool, slug: &str) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      slug,
+                      identifier,
+                      icon,
+                      color,
+                      document_storage_path,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM teams
+               WHERE slug = $1"#,
+            slug
         )
         .fetch_optional(pool)
         .await
@@ -115,10 +139,11 @@ impl Team {
 
         sqlx::query_as!(
             Team,
-            r#"INSERT INTO teams (id, name, identifier, icon, color)
-               VALUES ($1, $2, $3, $4, $5)
+            r#"INSERT INTO teams (id, name, slug, identifier, icon, color)
+               VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid",
                          name,
+                         slug,
                          identifier,
                          icon,
                          color,
@@ -127,6 +152,7 @@ impl Team {
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             data.name,
+            data.slug,
             identifier,
             data.icon,
             data.color
@@ -160,6 +186,7 @@ impl Team {
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
+                         slug,
                          identifier,
                          icon,
                          color,
@@ -243,6 +270,7 @@ impl Team {
             Team,
             r#"SELECT t.id as "id!: Uuid",
                       t.name,
+                      t.slug,
                       t.identifier,
                       t.icon,
                       t.color,

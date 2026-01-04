@@ -7,8 +7,12 @@ use sqlx::{
 use utils::assets::asset_dir;
 
 pub mod models;
+pub mod pool_manager;
+pub mod registry;
 pub mod turso;
 
+pub use pool_manager::{DBPoolManager, PoolManagerError};
+pub use registry::{CreateTeamRegistry, RegistryService, TeamRegistry};
 pub use turso::{TursoConfig, TursoSync};
 
 /// Get the database path, using Turso replica if configured

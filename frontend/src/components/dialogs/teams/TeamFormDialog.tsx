@@ -66,6 +66,18 @@ function generateIdentifier(name: string): string {
     .toUpperCase();
 }
 
+// Generate slug from team name (e.g., "Acme Corp" -> "acme-corp")
+function generateSlug(name: string): string {
+  if (!name.trim()) return '';
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')         // Replace spaces with dashes
+    .replace(/-+/g, '-')          // Replace multiple dashes with single dash
+    .slice(0, 50);                // Limit length
+}
+
 const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) => {
   const modal = useModal();
   const { createTeam, updateTeam, deleteTeam, teams } = useTeams();
@@ -75,6 +87,8 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
   const [icon, setIcon] = useState<string | null>(editTeam?.icon || null);
   const [identifier, setIdentifier] = useState('');
   const [identifierManuallySet, setIdentifierManuallySet] = useState(false);
+  const [slug, setSlug] = useState(editTeam?.slug || '');
+  const [slugManuallySet, setSlugManuallySet] = useState(!!editTeam?.slug);
   const [parentTeamId, setParentTeamId] = useState<string>('none');
   const [timezone, setTimezone] = useState<string>('UTC');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -94,6 +108,20 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
       setIdentifier(generateIdentifier(name));
     }
   }, [name, identifierManuallySet, isEditing]);
+
+  // Auto-generate slug from name (only for new teams)
+  useEffect(() => {
+    if (!slugManuallySet && !isEditing) {
+      setSlug(generateSlug(name));
+    }
+  }, [name, slugManuallySet, isEditing]);
+
+  const handleSlugChange = (value: string) => {
+    // Allow only lowercase alphanumeric and dashes
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50);
+    setSlug(sanitized);
+    setSlugManuallySet(true);
+  };
 
   const handleIdentifierChange = (value: string) => {
     setIdentifier(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
@@ -136,6 +164,11 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
       return;
     }
 
+    if (!isEditing && !slug.trim()) {
+      setError('Database slug is required');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
@@ -151,6 +184,7 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
       } else {
         await createTeam({
           name: name.trim(),
+          slug: slug.trim(),
           identifier: null, // Auto-generated from name on backend
           icon: icon,
           color: null
@@ -241,6 +275,30 @@ const TeamFormDialogImpl = NiceModal.create<TeamFormDialogProps>(({ editTeam }) 
                 className="h-10 w-32 font-mono uppercase"
               />
             </div>
+
+            {/* Database Slug (only for new teams) */}
+            {!isEditing && (
+              <div className="space-y-2">
+                <Label htmlFor="slug">
+                  Database slug
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    (unique identifier for database: team-{slug || 'acme-corp'}.sqlite)
+                  </span>
+                </Label>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  placeholder="acme-corp"
+                  disabled={isSubmitting}
+                  maxLength={50}
+                  className="h-10 font-mono lowercase"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Lowercase letters, numbers, and dashes only. Cannot be changed after creation.
+                </p>
+              </div>
+            )}
 
             {/* Parent Team */}
             <div className="space-y-2">

@@ -52,11 +52,11 @@ export type CreateTag = { tag_name: string, content: string, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
-export type Team = { id: string, name: string, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, created_at: Date, updated_at: Date, };
+export type Team = { id: string, name: string, slug: string | null, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, created_at: Date, updated_at: Date, };
 
 export type TeamProject = { team_id: string, project_id: string, created_at: Date, };
 
-export type CreateTeam = { name: string, identifier: string | null, icon: string | null, color: string | null, };
+export type CreateTeam = { name: string, slug: string, identifier: string | null, icon: string | null, color: string | null, };
 
 export type UpdateTeam = { name: string | null, identifier: string | null, icon: string | null, color: string | null, document_storage_path: string | null, };
 

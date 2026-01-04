@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use db::DBService;
+use db::{DBPoolManager, DBService, RegistryService};
 #[cfg(feature = "turso")]
 use db::{TursoConfig, TursoSync, get_database_path};
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
@@ -42,6 +42,10 @@ pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
     user_id: String,
     db: DBService,
+    /// Registry service for tracking team databases
+    registry: Arc<RegistryService>,
+    /// Pool manager for multi-tenant database connections
+    pool_manager: Arc<DBPoolManager>,
     #[cfg(feature = "turso")]
     turso_sync: Option<Arc<TursoSync>>,
     analytics: Option<AnalyticsService>,
@@ -145,6 +149,11 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
+        // Initialize registry and pool manager for multi-tenant database support
+        let registry = Arc::new(RegistryService::new().await?);
+        let pool_manager = Arc::new(DBPoolManager::new(registry.clone()));
+        tracing::info!("Multi-tenant database registry initialized");
+
         let image = ImageService::new(db.clone().pool)?;
         {
             let image_service = image.clone();
@@ -225,6 +234,8 @@ impl Deployment for LocalDeployment {
             config,
             user_id,
             db,
+            registry,
+            pool_manager,
             #[cfg(feature = "turso")]
             turso_sync,
             analytics,
@@ -317,6 +328,16 @@ impl Deployment for LocalDeployment {
 impl LocalDeployment {
     pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         self.remote_client.clone()
+    }
+
+    /// Get the registry service for team database tracking
+    pub fn registry(&self) -> &Arc<RegistryService> {
+        &self.registry
+    }
+
+    /// Get the pool manager for multi-tenant database connections
+    pub fn pool_manager(&self) -> &Arc<DBPoolManager> {
+        &self.pool_manager
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {

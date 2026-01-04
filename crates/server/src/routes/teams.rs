@@ -13,6 +13,7 @@ use db::models::github_connection::{
 };
 use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
+use db::CreateTeamRegistry;
 use db::models::team_member::{
     CreateTeamInvitation, CreateTeamMember, TeamInvitation, TeamInvitationWithTeam,
     TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
@@ -121,7 +122,43 @@ pub async fn create_team(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTeam>,
 ) -> Result<ResponseJson<ApiResponse<Team>>, ApiError> {
+    // Create team in main database
     let team = Team::create(&deployment.db().pool, &payload).await?;
+
+    // Register team in the multi-tenant registry and create its database
+    let registry_entry = CreateTeamRegistry {
+        id: team.id.to_string(),
+        slug: payload.slug.clone(),
+        name: team.name.clone(),
+        turso_db: None, // Will be configured separately if Turso is enabled
+    };
+
+    if let Err(e) = deployment.registry().create(&registry_entry).await {
+        tracing::warn!(
+            "Failed to register team {} in registry: {}. Team created in main DB only.",
+            team.id,
+            e
+        );
+    } else {
+        // Create the team's database pool (initializes the database file)
+        if let Err(e) = deployment
+            .pool_manager()
+            .create_pool_for_team(&team.id.to_string(), &payload.slug)
+            .await
+        {
+            tracing::warn!(
+                "Failed to create database for team {}: {}. Team will use main DB.",
+                team.id,
+                e
+            );
+        } else {
+            tracing::info!(
+                "Created team {} with dedicated database: team-{}.sqlite",
+                team.name,
+                payload.slug
+            );
+        }
+    }
 
     deployment
         .track_if_analytics_allowed(
