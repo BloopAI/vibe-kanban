@@ -1,5 +1,13 @@
-import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  useMemo,
+  MutableRefObject,
+} from 'react';
 import { ChangesPanel } from '../views/ChangesPanel';
+import { sortDiffs } from '@/utils/fileTreeUtils';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -30,20 +38,96 @@ function shouldAutoCollapse(diff: Diff): boolean {
   return false;
 }
 
+// Hook to observe which diff is currently in view and report it
+function useInViewObserver(
+  diffRefs: MutableRefObject<Map<string, HTMLDivElement>>,
+  onFileInViewChange?: (path: string) => void
+) {
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const visiblePathsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!onFileInViewChange) return;
+
+    // Create observer that tracks which diffs are in the top portion of viewport
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const path = entry.target.getAttribute('data-diff-path');
+          if (!path) return;
+
+          if (entry.isIntersecting) {
+            visiblePathsRef.current.add(path);
+          } else {
+            visiblePathsRef.current.delete(path);
+          }
+        });
+
+        // Report the first visible path (topmost in the list)
+        if (visiblePathsRef.current.size > 0) {
+          // Get all visible paths and find the one that appears first in the DOM
+          const allRefs = diffRefs.current;
+          for (const [path] of allRefs) {
+            if (visiblePathsRef.current.has(path)) {
+              onFileInViewChange(path);
+              break;
+            }
+          }
+        }
+      },
+      {
+        // Observe intersection with the top 20% of the container
+        rootMargin: '0px 0px -80% 0px',
+        threshold: 0,
+      }
+    );
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, [onFileInViewChange, diffRefs]);
+
+  // Callback to observe/unobserve elements
+  const observeElement = useCallback(
+    (el: HTMLDivElement | null, path: string) => {
+      if (!observerRef.current) return;
+
+      // Unobserve previous element with this path if it exists
+      const existingEl = diffRefs.current.get(path);
+      if (existingEl) {
+        observerRef.current.unobserve(existingEl);
+      }
+
+      if (el) {
+        el.setAttribute('data-diff-path', path);
+        observerRef.current.observe(el);
+      }
+    },
+    [diffRefs]
+  );
+
+  return observeElement;
+}
+
 interface ChangesPanelContainerProps {
   diffs: Diff[];
   selectedFilePath?: string | null;
+  onFileInViewChange?: (path: string) => void;
   className?: string;
 }
 
 export function ChangesPanelContainer({
   diffs,
   selectedFilePath,
+  onFileInViewChange,
   className,
 }: ChangesPanelContainerProps) {
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // Track which diffs we've processed for auto-collapse
   const [processedPaths] = useState(() => new Set<string>());
+
+  // Set up intersection observer to track which file is in view
+  const observeElement = useInViewObserver(diffRefs, onFileInViewChange);
 
   useEffect(() => {
     if (!selectedFilePath) return;
@@ -66,13 +150,16 @@ export function ChangesPanelContainer({
       } else {
         diffRefs.current.delete(path);
       }
+      // Also observe/unobserve for intersection tracking
+      observeElement(el, path);
     },
-    []
+    [observeElement]
   );
 
   // Compute initial expanded state, but pass the Diff directly for stable references
+  // Sort diffs to match FileTree ordering
   const diffItems = useMemo(() => {
-    return diffs.map((diff) => {
+    return sortDiffs(diffs).map((diff) => {
       const path = diff.newPath || diff.oldPath || '';
 
       // Determine initial expanded state for new diffs
