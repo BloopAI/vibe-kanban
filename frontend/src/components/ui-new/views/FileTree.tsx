@@ -10,6 +10,7 @@ interface FileTreeProps {
   onToggleExpand: (path: string) => void;
   selectedPath?: string | null;
   onSelectFile?: (path: string) => void;
+  onNodeRef?: (path: string, el: HTMLDivElement | null) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   isAllExpanded: boolean;
@@ -23,6 +24,7 @@ export function FileTree({
   onToggleExpand,
   selectedPath,
   onSelectFile,
+  onNodeRef,
   searchQuery,
   onSearchChange,
   isAllExpanded,
@@ -33,6 +35,11 @@ export function FileTree({
     return nodeList.map((node) => (
       <div key={node.id}>
         <FileTreeNode
+          ref={
+            node.type === 'file' && onNodeRef
+              ? (el) => onNodeRef(node.path, el)
+              : undefined
+          }
           node={node}
           depth={depth}
           isExpanded={expandedPaths.has(node.path)}

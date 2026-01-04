@@ -210,8 +210,10 @@ export function WorkspacesLayout() {
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Selected file path for scroll-to in changes mode
+  // Selected file path for scroll-to in changes mode (user clicked in FileTree)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  // File currently in view from scrolling (for FileTree highlighting)
+  const [fileInView, setFileInView] = useState<string | null>(null);
 
   // Fetch task for current workspace (used for old UI navigation)
   const { data: selectedWorkspaceTask } = useTask(selectedWorkspace?.task_id, {
@@ -503,7 +505,11 @@ export function WorkspacesLayout() {
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
             <FileTreeContainer
               diffs={realDiffs}
-              onSelectFile={(path) => setSelectedFilePath(path)}
+              selectedFilePath={fileInView}
+              onSelectFile={(path) => {
+                setSelectedFilePath(path);
+                setFileInView(path);
+              }}
             />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
@@ -597,6 +603,7 @@ export function WorkspacesLayout() {
             <ChangesPanelContainer
               diffs={realDiffs}
               selectedFilePath={selectedFilePath}
+              onFileInViewChange={setFileInView}
             />
           </div>
         </Allotment.Pane>

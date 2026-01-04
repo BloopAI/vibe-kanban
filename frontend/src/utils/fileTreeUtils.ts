@@ -184,3 +184,14 @@ export function getAllFolderPaths(nodes: TreeNode[]): string[] {
   nodes.forEach(traverse);
   return paths;
 }
+
+/**
+ * Sort diffs alphabetically by path to match FileTree ordering
+ */
+export function sortDiffs(diffs: Diff[]): Diff[] {
+  return [...diffs].sort((a, b) => {
+    const pathA = a.newPath || a.oldPath || '';
+    const pathB = b.newPath || b.oldPath || '';
+    return pathA.localeCompare(pathB);
+  });
+}

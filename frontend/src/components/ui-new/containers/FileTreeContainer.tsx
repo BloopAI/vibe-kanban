@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { FileTree } from '../views/FileTree';
 import {
   buildFileTree,
@@ -10,18 +10,46 @@ import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
   diffs: Diff[];
+  selectedFilePath?: string | null;
   onSelectFile?: (path: string, diff: Diff) => void;
   className?: string;
 }
 
 export function FileTreeContainer({
   diffs,
+  selectedFilePath,
   onSelectFile,
   className,
 }: FileTreeContainerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedPaths, setExpandedPaths] = useState<Set<string> | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Sync selectedPath with external selectedFilePath prop and scroll into view
+  useEffect(() => {
+    if (selectedFilePath !== undefined) {
+      setSelectedPath(selectedFilePath);
+      // Scroll the selected node into view if needed
+      if (selectedFilePath) {
+        const el = nodeRefs.current.get(selectedFilePath);
+        if (el) {
+          el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      }
+    }
+  }, [selectedFilePath]);
+
+  const handleNodeRef = useCallback(
+    (path: string, el: HTMLDivElement | null) => {
+      if (el) {
+        nodeRefs.current.set(path, el);
+      } else {
+        nodeRefs.current.delete(path);
+      }
+    },
+    []
+  );
 
   // Build tree from diffs
   const fullTree = useMemo(() => buildFileTree(diffs), [diffs]);
@@ -103,6 +131,7 @@ export function FileTreeContainer({
       onToggleExpand={handleToggleExpand}
       selectedPath={selectedPath}
       onSelectFile={handleSelectFile}
+      onNodeRef={handleNodeRef}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       isAllExpanded={isAllExpanded}
