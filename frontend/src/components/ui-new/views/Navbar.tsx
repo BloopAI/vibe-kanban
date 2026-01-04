@@ -4,8 +4,13 @@ import {
   ArrowSquareOutIcon,
   FilesIcon,
   ChatsTeardropIcon,
+  CaretDoubleUpIcon,
+  CaretDoubleDownIcon,
+  ColumnsIcon,
+  RowsIcon,
   type Icon,
 } from '@phosphor-icons/react';
+import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import { cn } from '@/lib/utils';
 
 // NavbarIconButton - inlined from primitives
@@ -59,12 +64,19 @@ export interface NavbarProps {
   isCreateMode?: boolean;
   // Archive state
   isArchived?: boolean;
+  // Diff controls
+  hasDiffs?: boolean; // Show view mode toggle when there are diffs
+  isAllDiffsExpanded?: boolean;
+  diffViewMode?: DiffViewMode;
   // Panel toggle handlers
   onToggleSidebar?: () => void;
   onToggleMainPanel?: () => void;
   onToggleGitPanel?: () => void;
   onToggleChangesMode?: () => void;
   onToggleArchive?: () => void;
+  // Diff control handlers
+  onToggleAllDiffs?: () => void;
+  onToggleDiffViewMode?: () => void;
   // Navigation to old UI
   onNavigateToOldUI?: () => void;
   className?: string;
@@ -78,11 +90,16 @@ export function Navbar({
   isChangesMode,
   isCreateMode,
   isArchived,
+  hasDiffs,
+  isAllDiffsExpanded,
+  diffViewMode,
   onToggleSidebar,
   onToggleMainPanel,
   onToggleGitPanel,
   onToggleChangesMode,
   onToggleArchive,
+  onToggleAllDiffs,
+  onToggleDiffViewMode,
   onNavigateToOldUI,
   className,
 }: NavbarProps) {
@@ -125,8 +142,31 @@ export function Navbar({
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
-      {/* Right - All Panel Toggles */}
+      {/* Right - Diff Controls + Panel Toggles */}
       <div className="flex-1 flex items-center justify-end gap-base">
+        {/* View mode toggle - visible when there are diffs (in or out of changes mode) */}
+        {(isChangesMode || hasDiffs) && (
+          <NavbarIconButton
+            icon={diffViewMode === 'split' ? ColumnsIcon : RowsIcon}
+            isActive={diffViewMode === 'split'}
+            onClick={onToggleDiffViewMode}
+            aria-label={
+              diffViewMode === 'split' ? 'Side-by-side view' : 'Inline view'
+            }
+          />
+        )}
+        {/* Expand/collapse all - only in changes mode */}
+        {isChangesMode && (
+          <NavbarIconButton
+            icon={isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon}
+            onClick={onToggleAllDiffs}
+            aria-label={
+              isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs'
+            }
+          />
+        )}
+        {/* Separator - show when any diff controls are visible */}
+        {(isChangesMode || hasDiffs) && <div className="h-4 w-px bg-border" />}
         <NavbarIconButton
           icon={SidebarSimpleIcon}
           isActive={isSidebarVisible}

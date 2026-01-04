@@ -1,4 +1,4 @@
-import { useExpandable } from '@/stores/useExpandableStore';
+import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
 import { DiffViewCard } from '../primitives/conversation/DiffViewCard';
 import type { DiffInput } from '../primitives/conversation/DiffViewCard';
@@ -58,7 +58,10 @@ function DiffItem({
   initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
 }) {
-  const [expanded, toggle] = useExpandable(`diff:${path}`, initialExpanded);
+  const [expanded, toggle] = usePersistedExpanded(
+    `diff:${path}`,
+    initialExpanded
+  );
 
   return (
     <div ref={(el) => onRef?.(path, el)}>

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type DiffViewMode = 'unified' | 'split';
 
@@ -12,16 +13,21 @@ type State = {
   setWrapText: (value: boolean) => void;
 };
 
-export const useDiffViewStore = create<State>((set) => ({
-  mode: 'unified',
-  setMode: (mode) => set({ mode }),
-  toggle: () =>
-    set((s) => ({ mode: s.mode === 'unified' ? 'split' : 'unified' })),
-  ignoreWhitespace: true,
-  setIgnoreWhitespace: (value) => set({ ignoreWhitespace: value }),
-  wrapText: false,
-  setWrapText: (value) => set({ wrapText: value }),
-}));
+export const useDiffViewStore = create<State>()(
+  persist(
+    (set) => ({
+      mode: 'unified',
+      setMode: (mode) => set({ mode }),
+      toggle: () =>
+        set((s) => ({ mode: s.mode === 'unified' ? 'split' : 'unified' })),
+      ignoreWhitespace: true,
+      setIgnoreWhitespace: (value) => set({ ignoreWhitespace: value }),
+      wrapText: false,
+      setWrapText: (value) => set({ wrapText: value }),
+    }),
+    { name: 'diff-view-preferences' }
+  )
+);
 
 export const useDiffViewMode = () => useDiffViewStore((s) => s.mode);
 export const useIgnoreWhitespaceDiff = () =>
