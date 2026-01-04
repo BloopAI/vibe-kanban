@@ -15,6 +15,7 @@ pub mod session;
 pub mod tag;
 pub mod task;
 pub mod task_comment;
+pub mod task_document_link;
 pub mod team;
 pub mod team_member;
 pub mod workspace;

@@ -332,6 +332,12 @@ export type CreateTaskComment = { content: string, is_internal: boolean, author_
 
 export type UpdateTaskComment = { content: string | null, is_internal: boolean | null, };
 
+export type TaskDocumentLink = { id: string, task_id: string, document_id: string, created_at: Date, };
+
+export type LinkDocumentsRequest = { document_ids: Array<string>, };
+
+export type LinkedDocument = { id: string, document_id: string, document_title: string, folder_name: string | null, linked_at: Date, };
+
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
 export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };

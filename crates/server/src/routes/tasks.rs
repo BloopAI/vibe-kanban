@@ -18,6 +18,7 @@ use db::models::{
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_comment::{CreateTaskComment, TaskComment, UpdateTaskComment},
+    task_document_link::{LinkDocumentsRequest, LinkedDocument, TaskDocumentLink},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -571,6 +572,54 @@ pub async fn delete_task_comment(
     Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
 }
 
+// ============ DOCUMENT LINK HANDLERS ============
+
+/// Get all linked documents for a task
+pub async fn get_task_links(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<LinkedDocument>>>, ApiError> {
+    let links =
+        TaskDocumentLink::find_by_task_id_with_details(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(links)))
+}
+
+/// Link documents to a task
+pub async fn link_documents_to_task(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkDocumentsRequest>,
+) -> Result<ResponseJson<ApiResponse<Vec<LinkedDocument>>>, ApiError> {
+    // Link the documents
+    TaskDocumentLink::link_documents(&deployment.db().pool, task.id, &payload.document_ids).await?;
+
+    // Return updated list with details
+    let links =
+        TaskDocumentLink::find_by_task_id_with_details(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(links)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DocumentLinkPath {
+    pub document_id: Uuid,
+}
+
+/// Unlink a document from a task
+pub async fn unlink_document_from_task(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(path): axum::extract::Path<DocumentLinkPath>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    let rows =
+        TaskDocumentLink::unlink_document(&deployment.db().pool, task.id, path.document_id).await?;
+
+    if rows == 0 {
+        return Err(ApiError::NotFound("Document link not found".to_string()));
+    }
+
+    Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
@@ -579,7 +628,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/move", post(move_task))
         // Comment routes
         .route("/comments", get(get_task_comments).post(create_task_comment))
-        .route("/comments/{comment_id}", put(update_task_comment).delete(delete_task_comment));
+        .route("/comments/{comment_id}", put(update_task_comment).delete(delete_task_comment))
+        // Document link routes
+        .route("/links", get(get_task_links).post(link_documents_to_task))
+        .route("/links/{document_id}", delete(unlink_document_from_task));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

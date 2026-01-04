@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { tasksApi } from "../lib/api";
 import type {
   CreateTaskComment,
@@ -15,6 +15,12 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.getComments(taskId);
     },
     enabled: !!taskId,
+    // Cache comments for 30 seconds - show stale data immediately
+    staleTime: 30 * 1000,
+    // Keep in cache for 5 minutes
+    gcTime: 5 * 60 * 1000,
+    // Keep previous data while fetching new task's comments
+    placeholderData: keepPreviousData,
   });
 
   const createCommentMutation = useMutation({
@@ -56,6 +62,7 @@ export function useTaskComments(taskId: string | null) {
   return {
     comments: commentsQuery.data ?? [],
     isLoading: commentsQuery.isLoading,
+    isFetching: commentsQuery.isFetching,
     error: commentsQuery.error,
     createComment: createCommentMutation.mutateAsync,
     updateComment: updateCommentMutation.mutateAsync,

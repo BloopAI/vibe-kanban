@@ -8,7 +8,6 @@ import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { openIssueForm } from '@/lib/openIssueForm';
-import { openIssueDetail } from '@/lib/openIssueDetail';
 
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeams } from '@/hooks/useTeams';
@@ -17,6 +16,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
+import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
@@ -42,6 +42,7 @@ export function TeamIssues() {
   const { projects } = useProjects();
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
   // Use actual team ID for API calls
   const actualTeamId = team?.id;
@@ -163,23 +164,34 @@ export function TeamIssues() {
 
   const handleViewIssueDetails = useCallback(
     (issue: TaskWithAttemptStatus) => {
-      // Generate issue key
-      let issueKey: string | undefined;
-      if (team && issue.issue_number != null) {
-        const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
-        issueKey = `${prefix}-${issue.issue_number}`;
-      }
-
-      // Open issue detail dialog with comments
-      openIssueDetail({
-        issue,
-        teamId: actualTeamId,
-        issueKey,
-        onUpdate: refresh,
-      });
+      // Open inline side panel instead of modal
+      setSelectedIssueId(issue.id);
+      // Close insights panel when opening issue detail
+      setShowInsights(false);
     },
-    [team, actualTeamId, refresh]
+    []
   );
+
+  // Get the selected issue from state
+  const selectedIssue = selectedIssueId ? issuesById[selectedIssueId] : null;
+
+  // Generate issue key for selected issue
+  const selectedIssueKey = useMemo(() => {
+    if (!selectedIssue || !team || selectedIssue.issue_number == null) return undefined;
+    const prefix = team.identifier || team.name.slice(0, 3).toUpperCase();
+    return `${prefix}-${selectedIssue.issue_number}`;
+  }, [selectedIssue, team]);
+
+  // Handle ESC key to close panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedIssueId) {
+        setSelectedIssueId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIssueId]);
 
   // Handler for assignee changes
   const handleAssigneeChange = useCallback(
@@ -410,6 +422,17 @@ export function TeamIssues() {
           <InsightsPanel
             issues={issues}
             onClose={() => setShowInsights(false)}
+          />
+        )}
+
+        {/* Issue Detail Panel */}
+        {selectedIssue && (
+          <IssueDetailPanel
+            issue={selectedIssue}
+            teamId={actualTeamId}
+            issueKey={selectedIssueKey}
+            onClose={() => setSelectedIssueId(null)}
+            onUpdate={refresh}
           />
         )}
       </div>

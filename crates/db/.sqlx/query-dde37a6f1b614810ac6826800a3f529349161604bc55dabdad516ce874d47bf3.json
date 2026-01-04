@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id: Uuid\" FROM task_document_links\n                   WHERE task_id = $1 AND document_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "id: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dde37a6f1b614810ac6826800a3f529349161604bc55dabdad516ce874d47bf3"
+}

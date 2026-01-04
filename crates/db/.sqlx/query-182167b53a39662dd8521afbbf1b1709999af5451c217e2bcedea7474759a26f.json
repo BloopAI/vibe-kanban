@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                  tdl.id as \"id!: Uuid\",\n                  tdl.document_id as \"document_id!: Uuid\",\n                  d.title as \"document_title!\",\n                  df.name as \"folder_name\",\n                  tdl.created_at as \"linked_at!: DateTime<Utc>\"\n               FROM task_document_links tdl\n               JOIN documents d ON d.id = tdl.document_id\n               LEFT JOIN document_folders df ON df.id = d.folder_id\n               WHERE tdl.task_id = $1\n               ORDER BY tdl.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "document_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "document_title!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "folder_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "linked_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "182167b53a39662dd8521afbbf1b1709999af5451c217e2bcedea7474759a26f"
+}

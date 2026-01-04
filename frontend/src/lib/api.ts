@@ -134,6 +134,8 @@ import {
   TaskComment,
   CreateTaskComment,
   UpdateTaskComment,
+  LinkedDocument,
+  LinkDocumentsRequest,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -555,6 +557,33 @@ export const tasksApi = {
   deleteComment: async (taskId: string, commentId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/tasks/${taskId}/comments/${commentId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  // Task document links
+  getLinks: async (taskId: string): Promise<LinkedDocument[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/links`);
+    return handleApiResponse<LinkedDocument[]>(response);
+  },
+
+  linkDocuments: async (
+    taskId: string,
+    data: LinkDocumentsRequest
+  ): Promise<LinkedDocument[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/links`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<LinkedDocument[]>(response);
+  },
+
+  unlinkDocument: async (taskId: string, documentId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/tasks/${taskId}/links/${documentId}`,
       {
         method: 'DELETE',
       }

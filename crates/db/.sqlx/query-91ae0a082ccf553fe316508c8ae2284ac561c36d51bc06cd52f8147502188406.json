@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM task_document_links WHERE task_id = $1 AND document_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "91ae0a082ccf553fe316508c8ae2284ac561c36d51bc06cd52f8147502188406"
+}
