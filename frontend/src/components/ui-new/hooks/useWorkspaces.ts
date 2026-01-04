@@ -68,9 +68,9 @@ export const workspaceKeys = {
 
 export function useWorkspaces(): UseWorkspacesResult {
   // Two separate WebSocket connections: one for active, one for archived
-  const activeEndpoint = '/api/task-attempts/stream/ws?archived=false&limit=10';
-  const archivedEndpoint =
-    '/api/task-attempts/stream/ws?archived=true&limit=10';
+  // No limit param - we fetch all and slice on frontend so backfill works when archiving
+  const activeEndpoint = '/api/task-attempts/stream/ws?archived=false';
+  const archivedEndpoint = '/api/task-attempts/stream/ws?archived=true';
 
   const initialData = useCallback(
     (): WorkspacesState => ({ workspaces: {} }),
@@ -108,7 +108,8 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map(toSidebarWorkspace);
+      .map(toSidebarWorkspace)
+      .slice(0, 10);
   }, [activeData]);
 
   const archivedWorkspaces = useMemo(() => {
@@ -124,7 +125,8 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map(toSidebarWorkspace);
+      .map(toSidebarWorkspace)
+      .slice(0, 10);
   }, [archivedData]);
 
   // isLoading is true when we haven't received initial data from either stream
