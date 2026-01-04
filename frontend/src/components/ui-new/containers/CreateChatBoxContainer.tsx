@@ -4,6 +4,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { getVariantOptions } from '@/utils/executor';
+import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 
@@ -100,12 +101,13 @@ export function CreateChatBoxContainer() {
     setHasAttemptedSubmit(true);
     if (!canSubmit || !effectiveProfile || !projectId) return;
 
+    const { title, description } = splitMessageToTitleDescription(message);
+
     await createWorkspace.mutateAsync({
       task: {
         project_id: projectId,
-        title: message.trim().split('\n')[0].substring(0, 100),
-        description:
-          message.trim().split('\n').slice(1).join('\n').trim() || null,
+        title,
+        description,
         status: null,
         parent_workspace_id: null,
         image_ids: getImageIds(),
