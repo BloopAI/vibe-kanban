@@ -725,7 +725,11 @@ impl LocalContainerService {
 
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(workspace_dir, workspace.task_id)
+            .copy_images_by_task_to_worktree(
+                workspace_dir,
+                workspace.task_id,
+                workspace.agent_working_dir.as_deref(),
+            )
             .await
         {
             tracing::warn!("Failed to copy task images to workspace: {}", e);
