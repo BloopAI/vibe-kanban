@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Allotment, LayoutPriority } from 'allotment';
 import 'allotment/dist/style.css';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
@@ -17,9 +16,9 @@ import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateCha
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { attemptsApi, repoApi } from '@/lib/api';
-import { attemptKeys } from '@/hooks/useAttempt';
 import { useRepoBranches } from '@/hooks';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { useWorkspaceMutations } from '@/hooks/useWorkspaceMutations';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -191,7 +190,6 @@ function GitPanelContainer({
 
 export function WorkspacesLayout() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const {
     workspace: selectedWorkspace,
     workspaceId: selectedWorkspaceId,
@@ -225,27 +223,16 @@ export function WorkspacesLayout() {
     !isCreateMode && !!selectedWorkspace?.id
   );
 
-  // Archive/unarchive mutation
-  const toggleArchiveMutation = useMutation({
-    mutationFn: ({
-      workspaceId,
-      archived,
-    }: {
-      workspaceId: string;
-      archived: boolean;
-      nextWorkspaceId: string | null;
-    }) => attemptsApi.update(workspaceId, { archived: !archived }),
-    onSuccess: (_, { workspaceId, archived, nextWorkspaceId }) => {
-      queryClient.invalidateQueries({
-        queryKey: attemptKeys.byId(workspaceId),
-      });
-
-      // When archiving, navigate to the next workspace
-      if (!archived && nextWorkspaceId) {
-        selectWorkspace(nextWorkspaceId);
-      }
-    },
-  });
+  // Workspace mutations (archive/pin)
+  const { toggleArchive: toggleArchiveMutation, togglePin: togglePinMutation } =
+    useWorkspaceMutations({
+      onArchiveSuccess: ({ archived, nextWorkspaceId }) => {
+        // When archiving, navigate to the next workspace
+        if (!archived && nextWorkspaceId) {
+          selectWorkspace(nextWorkspaceId);
+        }
+      },
+    });
 
   // Hook to rename branch via API
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
@@ -443,6 +430,16 @@ export function WorkspacesLayout() {
     []
   );
 
+  const handlePinWorkspace = useCallback(
+    (workspaceId: string, isCurrentlyPinned: boolean) => {
+      togglePinMutation.mutate({
+        workspaceId,
+        pinned: isCurrentlyPinned,
+      });
+    },
+    [togglePinMutation]
+  );
+
   const handleDuplicateWorkspace = useCallback(
     async (workspaceId: string) => {
       try {
@@ -537,6 +534,7 @@ export function WorkspacesLayout() {
               onAddWorkspace={navigateToCreate}
               onDeleteWorkspace={handleDeleteWorkspace}
               onArchiveWorkspace={handleArchiveWorkspace}
+              onPinWorkspace={handlePinWorkspace}
               onDuplicateWorkspace={handleDuplicateWorkspace}
             />
           </div>
