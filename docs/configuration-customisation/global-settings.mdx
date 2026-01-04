@@ -96,6 +96,14 @@ Configure git branch naming preferences.
 
 Set a prefix for auto-generated branch names (e.g., `vk` results in `vk/task-name`). Leave empty for no prefix.
 
+### Prefer Remote Base Branch
+
+When enabled, new tasks will default to using the remote tracking branch (e.g., `origin/main`) instead of the local branch. This ensures tasks always start from the latest remote state without requiring you to manually sync your local branches.
+
+<Tip>
+Enable this option if you don't frequently pull changes to your local branches. It prevents starting tasks from stale code and reduces merge conflicts.
+</Tip>
+
 ## Notifications
 
 Toggle sound effects and push notifications to stay informed about task status changes.

@@ -80,6 +80,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       repos: projectRepos,
       initialBranch: parentAttempt?.branch,
       enabled: modal.visible && projectRepos.length > 0,
+      preferRemoteBaseBranch: config?.prefer_remote_base_branch ?? false,
     });
 
     const latestAttempt = useMemo(() => {

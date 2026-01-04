@@ -115,6 +115,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       repos: projectRepos,
       initialBranch,
       enabled: modal.visible && projectRepos.length > 0,
+      preferRemoteBaseBranch: system.config?.prefer_remote_base_branch ?? false,
     });
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {

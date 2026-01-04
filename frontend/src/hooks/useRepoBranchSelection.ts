@@ -15,6 +15,8 @@ type UseRepoBranchSelectionOptions = {
   repos: Repo[];
   initialBranch?: string | null;
   enabled?: boolean;
+  /** When true, prefer remote tracking branch (e.g., origin/main) over local branch */
+  preferRemoteBaseBranch?: boolean;
 };
 
 type UseRepoBranchSelectionReturn = {
@@ -28,10 +30,35 @@ type UseRepoBranchSelectionReturn = {
   reset: () => void;
 };
 
+/**
+ * Find the remote tracking branch for a given local branch.
+ * E.g., for "main", look for "origin/main" in the branch list.
+ */
+function findRemoteTrackingBranch(
+  localBranchName: string,
+  branches: GitBranch[]
+): GitBranch | undefined {
+  // Common remote prefixes, try origin first as it's most common
+  const remotePrefixes = ['origin/', 'upstream/'];
+
+  for (const prefix of remotePrefixes) {
+    const remoteName = `${prefix}${localBranchName}`;
+    const remoteBranch = branches.find(
+      (b) => b.is_remote && b.name === remoteName
+    );
+    if (remoteBranch) {
+      return remoteBranch;
+    }
+  }
+
+  return undefined;
+}
+
 export function useRepoBranchSelection({
   repos,
   initialBranch,
   enabled = true,
+  preferRemoteBaseBranch = false,
 }: UseRepoBranchSelectionOptions): UseRepoBranchSelectionReturn {
   const [userOverrides, setUserOverrides] = useState<
     Record<string, string | null>
@@ -59,7 +86,18 @@ export function useRepoBranchSelection({
           targetBranch = initialBranch;
         } else {
           const currentBranch = branches.find((b) => b.is_current);
-          targetBranch = currentBranch?.name ?? branches[0]?.name ?? null;
+          let baseBranch = currentBranch?.name ?? branches[0]?.name ?? null;
+
+          // If preferRemoteBaseBranch is enabled and we have a local branch,
+          // try to find and use the remote tracking branch instead
+          if (preferRemoteBaseBranch && baseBranch && currentBranch && !currentBranch.is_remote) {
+            const remoteBranch = findRemoteTrackingBranch(baseBranch, branches);
+            if (remoteBranch) {
+              baseBranch = remoteBranch.name;
+            }
+          }
+
+          targetBranch = baseBranch;
         }
       }
 
@@ -70,7 +108,7 @@ export function useRepoBranchSelection({
         branches,
       };
     });
-  }, [repos, queries, userOverrides, initialBranch]);
+  }, [repos, queries, userOverrides, initialBranch, preferRemoteBaseBranch]);
 
   const setRepoBranch = useCallback((repoId: string, branch: string) => {
     setUserOverrides((prev) => ({

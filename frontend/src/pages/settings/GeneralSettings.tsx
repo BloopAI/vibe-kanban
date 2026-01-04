@@ -461,6 +461,29 @@ export function GeneralSettings() {
               )}
             </p>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="prefer-remote-base-branch"
+              checked={draft?.prefer_remote_base_branch ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ prefer_remote_base_branch: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="prefer-remote-base-branch" className="cursor-pointer">
+                {t('settings.general.git.preferRemoteBaseBranch.label', {
+                  defaultValue: 'Prefer remote base branch',
+                })}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.git.preferRemoteBaseBranch.helper', {
+                  defaultValue:
+                    'When enabled, new tasks will default to using the remote tracking branch (e.g., origin/main) instead of the local branch. This ensures tasks start from the latest remote state.',
+                })}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
