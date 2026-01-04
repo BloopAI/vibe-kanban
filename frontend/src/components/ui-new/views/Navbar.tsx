@@ -12,6 +12,7 @@ import {
 } from '@phosphor-icons/react';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import { cn } from '@/lib/utils';
+import { Tooltip } from '../primitives/Tooltip';
 
 // NavbarIconButton - inlined from primitives
 interface NavbarIconButtonProps
@@ -19,6 +20,7 @@ interface NavbarIconButtonProps
   icon: Icon;
   isActive?: boolean;
   rotation?: 0 | 90 | 180 | 270;
+  tooltip?: string;
 }
 
 const rotationClasses = {
@@ -32,10 +34,11 @@ function NavbarIconButton({
   icon: IconComponent,
   isActive = false,
   rotation = 0,
+  tooltip,
   className,
   ...props
 }: NavbarIconButtonProps) {
-  return (
+  const button = (
     <button
       type="button"
       className={cn(
@@ -52,6 +55,8 @@ function NavbarIconButton({
       />
     </button>
   );
+
+  return tooltip ? <Tooltip content={tooltip}>{button}</Tooltip> : button;
 }
 
 export interface NavbarProps {
@@ -124,6 +129,9 @@ export function Navbar({
                 aria-label={
                   isArchived ? 'Unarchive workspace' : 'Archive workspace'
                 }
+                tooltip={
+                  isArchived ? 'Unarchive workspace' : 'Archive workspace'
+                }
               />
             )}
             {onNavigateToOldUI && (
@@ -131,6 +139,7 @@ export function Navbar({
                 icon={ArrowSquareOutIcon}
                 onClick={onNavigateToOldUI}
                 aria-label="Open in old UI"
+                tooltip="Open in old UI"
               />
             )}
           </>
@@ -153,6 +162,9 @@ export function Navbar({
             aria-label={
               diffViewMode === 'split' ? 'Side-by-side view' : 'Inline view'
             }
+            tooltip={
+              diffViewMode === 'split' ? 'Inline view' : 'Side-by-side view'
+            }
           />
         )}
         {/* Expand/collapse all - only in changes mode */}
@@ -161,6 +173,9 @@ export function Navbar({
             icon={isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon}
             onClick={onToggleAllDiffs}
             aria-label={
+              isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs'
+            }
+            tooltip={
               isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs'
             }
           />
@@ -172,12 +187,14 @@ export function Navbar({
           isActive={isSidebarVisible}
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
+          tooltip="Toggle sidebar"
         />
         <NavbarIconButton
           icon={ChatsTeardropIcon}
           isActive={isMainPanelVisible}
           onClick={onToggleMainPanel}
           aria-label="Toggle main panel"
+          tooltip="Toggle main panel"
           disabled={isMainToggleDisabled}
           className={
             isMainToggleDisabled ? 'opacity-40 cursor-not-allowed' : ''
@@ -188,6 +205,7 @@ export function Navbar({
           isActive={isChangesMode}
           onClick={onToggleChangesMode}
           aria-label="Toggle changes mode"
+          tooltip="Toggle changes mode"
           disabled={isCreateMode}
           className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
         />
@@ -197,6 +215,7 @@ export function Navbar({
           isActive={isGitPanelVisible}
           onClick={onToggleGitPanel}
           aria-label="Toggle git panel"
+          tooltip="Toggle git panel"
         />
       </div>
     </nav>
