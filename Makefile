@@ -5,6 +5,10 @@ FRONTEND_PORT ?= 3000
 BACKEND_PORT ?= 3003
 LOG_DIR = .logs
 
+# Turso feature flag - auto-enabled if TURSO_DATABASE_URL is set in .env or .env.local
+TURSO_ENABLED ?= $(shell grep -q "^TURSO_DATABASE_URL=" .env .env.local 2>/dev/null && echo "1" || echo "")
+CARGO_FEATURES := $(if $(TURSO_ENABLED),--features turso,)
+
 .PHONY: all start stop restart status frontend backend logs clean help
 
 # Default target
@@ -35,7 +39,7 @@ backend: $(LOG_DIR)
 		echo "Starting backend on port $(BACKEND_PORT)..."; \
 		if [ -f .env.local ]; then set -a && . ./.env.local && set +a; fi && \
 		DISABLE_WORKTREE_ORPHAN_CLEANUP=1 RUST_LOG=info PORT=$(BACKEND_PORT) \
-			nohup cargo run --bin server > $(LOG_DIR)/backend.log 2>&1 & \
+			nohup cargo run $(CARGO_FEATURES) --bin server > $(LOG_DIR)/backend.log 2>&1 & \
 		echo "Backend starting... (PID: $$!)"; \
 		sleep 2; \
 	fi
@@ -113,6 +117,10 @@ help:
 	@echo "Environment Variables:"
 	@echo "  FRONTEND_PORT   - Frontend port (default: 3000)"
 	@echo "  BACKEND_PORT    - Backend port (default: 3003)"
+	@echo ""
+	@echo "Turso Distributed Database:"
+	@echo "  Auto-enabled when TURSO_DATABASE_URL is set in .env or .env.local"
+	@echo "  Required vars: TURSO_DATABASE_URL, TURSO_AUTH_TOKEN"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make start                         # Start with defaults"
