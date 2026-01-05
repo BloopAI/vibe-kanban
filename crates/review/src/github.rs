@@ -17,13 +17,11 @@ pub struct PrInfo {
     pub head_ref_name: String,
 }
 
-/// Repository owner info from `gh pr view --json`
 #[derive(Debug, Deserialize)]
 struct GhRepoOwner {
     login: String,
 }
 
-/// Repository info from `gh pr view --json`
 #[derive(Debug, Deserialize)]
 struct GhRepo {
     owner: GhRepoOwner,
@@ -56,10 +54,6 @@ fn ensure_gh_available() -> Result<(), ReviewError> {
     Ok(())
 }
 
-/// Get PR information using `gh pr view` with the raw URL
-///
-/// This accepts any GitHub PR URL (including GitHub Enterprise) and lets `gh`
-/// handle the hostname resolution and authentication.
 pub fn get_pr_info(pr_url: &str) -> Result<PrInfo, ReviewError> {
     ensure_gh_available()?;
 
