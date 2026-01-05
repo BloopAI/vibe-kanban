@@ -43,6 +43,8 @@ pub struct TaskWithAttemptStatus {
     pub has_in_progress_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
+    pub pr_number: Option<i64>,
+    pub pr_url: Option<String>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -179,7 +181,27 @@ impl Task {
       WHERE w.task_id = t.id
      ORDER BY s.created_at DESC
       LIMIT 1
-    )                               AS "executor!: String"
+    )                               AS "executor!: String",
+
+  ( SELECT m.pr_number
+      FROM workspaces w
+      JOIN merges m ON m.workspace_id = w.id
+     WHERE w.task_id = t.id
+       AND m.merge_type = 'pr'
+       AND m.pr_status = 'open'
+     ORDER BY m.created_at DESC
+     LIMIT 1
+    )                               AS "pr_number: i64",
+
+  ( SELECT m.pr_url
+      FROM workspaces w
+      JOIN merges m ON m.workspace_id = w.id
+     WHERE w.task_id = t.id
+       AND m.merge_type = 'pr'
+       AND m.pr_status = 'open'
+     ORDER BY m.created_at DESC
+     LIMIT 1
+    )                               AS "pr_url: String"
 
 FROM tasks t
 WHERE t.project_id = $1
@@ -206,6 +228,8 @@ ORDER BY t.created_at DESC"#,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 last_attempt_failed: rec.last_attempt_failed != 0,
                 executor: rec.executor,
+                pr_number: rec.pr_number,
+                pr_url: rec.pr_url,
             })
             .collect();
 
