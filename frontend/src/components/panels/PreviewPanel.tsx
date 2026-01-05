@@ -20,12 +20,14 @@ import { PwaWarningContent } from '@/components/tasks/TaskDetails/preview/PwaWar
 
 export function PreviewPanel() {
   const [iframeError, setIframeError] = useState(false);
+  const [pwaIframeBlocked, setPwaIframeBlocked] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
+  const pwaTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { t } = useTranslation('tasks');
   const { project, projectId } = useProject();
@@ -54,13 +56,51 @@ export function PreviewPanel() {
     lastKnownUrl,
   });
 
+  const iframeLoadedRef = useRef(false);
+
   const handleRefresh = () => {
     setIframeError(false);
+    setPwaIframeBlocked(false);
+    iframeLoadedRef.current = false;
     setRefreshKey((prev) => prev + 1);
   };
   const handleIframeError = () => {
     setIframeError(true);
   };
+
+  const handleIframeLoad = () => {
+    iframeLoadedRef.current = true;
+    // Clear the PWA timeout since iframe loaded successfully
+    if (pwaTimeoutRef.current) {
+      clearTimeout(pwaTimeoutRef.current);
+      pwaTimeoutRef.current = null;
+    }
+  };
+
+  // In PWA mode, detect if iframe is blocked by checking if it loads within a timeout
+  useEffect(() => {
+    if (!isPwa || previewState.status !== 'ready' || !previewState.url) {
+      return;
+    }
+
+    // Reset states when URL changes
+    iframeLoadedRef.current = false;
+    setPwaIframeBlocked(false);
+
+    // Give the iframe 3 seconds to load before showing PWA warning
+    pwaTimeoutRef.current = setTimeout(() => {
+      if (!iframeLoadedRef.current) {
+        setPwaIframeBlocked(true);
+      }
+    }, 3000);
+
+    return () => {
+      if (pwaTimeoutRef.current) {
+        clearTimeout(pwaTimeoutRef.current);
+        pwaTimeoutRef.current = null;
+      }
+    };
+  }, [isPwa, previewState.status, previewState.url, refreshKey]);
 
   const { addElement } = useClickedElements();
 
@@ -174,13 +214,14 @@ export function PreviewPanel() {
               onStop={stopDevServer}
               isStopping={isStoppingDevServer}
             />
-            {isPwa && previewState.url ? (
+            {pwaIframeBlocked && previewState.url ? (
               <PwaWarningContent url={previewState.url} />
             ) : (
               <ReadyContent
                 url={previewState.url}
                 iframeKey={`${previewState.url}-${refreshKey}`}
                 onIframeError={handleIframeError}
+                onIframeLoad={handleIframeLoad}
               />
             )}
           </>
