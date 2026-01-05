@@ -2,7 +2,7 @@ import { Circle, Check, CircleDot, ChevronUp } from 'lucide-react';
 import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import { Card } from '../ui/card';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const TODO_PANEL_OPEN_KEY = 'todo-panel-open';
@@ -22,11 +22,20 @@ function TodoPanel() {
   const { t } = useTranslation('tasks');
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const [isOpen, setIsOpen] = useState(() => {
     const stored = localStorage.getItem(TODO_PANEL_OPEN_KEY);
     return stored === null ? true : stored === 'true';
   });
 
+  // sincroniza el estado inicial del elemento details con localStorage
+  useEffect(() => {
+    if (detailsRef.current && detailsRef.current.open !== isOpen) {
+      detailsRef.current.open = isOpen;
+    }
+  }, []);
+
+  // persiste el estado en localStorage cuando cambia
   useEffect(() => {
     localStorage.setItem(TODO_PANEL_OPEN_KEY, String(isOpen));
   }, [isOpen]);
@@ -35,6 +44,7 @@ function TodoPanel() {
 
   return (
     <details
+      ref={detailsRef}
       className="group"
       open={isOpen}
       onToggle={(e) => setIsOpen(e.currentTarget.open)}
