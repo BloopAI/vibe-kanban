@@ -247,6 +247,105 @@ impl TursoSync {
     }
 }
 
+/// Configuration for direct remote Turso connection (no local replica)
+/// Used for stateless deployments like Fly.io
+#[derive(Clone, Debug)]
+pub struct TursoRemoteConfig {
+    /// Turso database URL (libsql://your-db.turso.io)
+    pub database_url: String,
+    /// Auth token for Turso
+    pub auth_token: String,
+}
+
+impl TursoRemoteConfig {
+    /// Create config from environment variables
+    pub fn from_env() -> Option<Self> {
+        let database_url = std::env::var("TURSO_DATABASE_URL").ok()?;
+        let auth_token = std::env::var("TURSO_AUTH_TOKEN").ok()?;
+
+        Some(Self {
+            database_url,
+            auth_token,
+        })
+    }
+}
+
+/// Direct remote connection to Turso (no local file)
+/// For stateless deployments like Fly.io, serverless, etc.
+#[cfg(feature = "turso")]
+pub struct TursoRemote {
+    db: Database,
+}
+
+#[cfg(feature = "turso")]
+impl TursoRemote {
+    /// Create a new direct remote connection to Turso
+    pub async fn new(config: TursoRemoteConfig) -> Result<Self, libsql::Error> {
+        tracing::info!("Connecting directly to Turso (remote mode, no local file)");
+
+        let db = Builder::new_remote(
+            config.database_url.clone(),
+            config.auth_token.clone(),
+        )
+        .build()
+        .await?;
+
+        tracing::info!("Connected to Turso cloud");
+
+        Ok(Self { db })
+    }
+
+    /// Get a connection from the database
+    pub fn connect(&self) -> Result<libsql::Connection, libsql::Error> {
+        self.db.connect()
+    }
+
+    /// Get the underlying database
+    pub fn database(&self) -> &Database {
+        &self.db
+    }
+
+    /// Execute a query and return rows affected
+    pub async fn execute(&self, sql: &str) -> Result<u64, libsql::Error> {
+        let conn = self.db.connect()?;
+        conn.execute(sql, ()).await
+    }
+
+    /// Execute a query with parameters
+    pub async fn execute_with_params(
+        &self,
+        sql: &str,
+        params: impl libsql::params::IntoParams,
+    ) -> Result<u64, libsql::Error> {
+        let conn = self.db.connect()?;
+        conn.execute(sql, params).await
+    }
+
+    /// Query and return rows
+    pub async fn query(
+        &self,
+        sql: &str,
+        params: impl libsql::params::IntoParams,
+    ) -> Result<libsql::Rows, libsql::Error> {
+        let conn = self.db.connect()?;
+        conn.query(sql, params).await
+    }
+}
+
+/// Stub implementation when turso feature is disabled
+#[cfg(not(feature = "turso"))]
+pub struct TursoRemote;
+
+#[cfg(not(feature = "turso"))]
+impl TursoRemote {
+    pub async fn new(_config: TursoRemoteConfig) -> Result<Self, std::io::Error> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Turso feature not enabled. Compile with --features turso",
+        ))
+    }
+}
+
 /// Manager for per-team Turso sync connections
 #[cfg(feature = "turso")]
 pub struct TeamTursoManager {

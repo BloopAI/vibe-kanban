@@ -6,14 +6,51 @@ use sqlx::{
 };
 use utils::assets::asset_dir;
 
+pub mod libsql_db;
 pub mod models;
 pub mod pool_manager;
 pub mod registry;
 pub mod turso;
 
+pub use libsql_db::{LibsqlDatabase, LibsqlDbError, LibsqlMode};
+#[cfg(feature = "turso")]
+pub use libsql_db::{FromLibsqlRow, row_helpers};
 pub use pool_manager::{DBPoolManager, PoolManagerError};
 pub use registry::{CreateTeamRegistry, RegistryService, TeamRegistry};
-pub use turso::{TeamTursoError, TeamTursoManager, TursoConfig, TursoSync};
+pub use turso::{TeamTursoError, TeamTursoManager, TursoConfig, TursoRemote, TursoRemoteConfig, TursoSync};
+
+/// Database connection mode
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DatabaseMode {
+    /// Local SQLite file (default for development)
+    Local,
+    /// Direct remote connection to Turso (for Fly.io/serverless)
+    Remote,
+    /// Embedded replica with Turso sync (for edge with offline support)
+    Replica,
+}
+
+impl DatabaseMode {
+    /// Get the database mode from environment variable
+    /// DATABASE_MODE: "local" (default), "remote", or "replica"
+    pub fn from_env() -> Self {
+        match std::env::var("DATABASE_MODE").as_deref() {
+            Ok("remote") => Self::Remote,
+            Ok("replica") => Self::Replica,
+            _ => Self::Local,
+        }
+    }
+
+    /// Check if running in remote mode (stateless deployment)
+    pub fn is_remote() -> bool {
+        matches!(Self::from_env(), Self::Remote)
+    }
+
+    /// Check if running in local mode (development)
+    pub fn is_local() -> bool {
+        matches!(Self::from_env(), Self::Local)
+    }
+}
 
 /// Get the database path, using Turso replica if configured
 pub fn get_database_path() -> PathBuf {

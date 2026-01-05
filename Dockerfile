@@ -90,7 +90,8 @@ COPY . .
 # Generate TypeScript types from Rust
 RUN npm run generate-types
 
-# Build frontend
+# Build frontend (increase Node.js memory limit for large bundles)
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN cd frontend && pnpm run build
 
 # Build the server binary (dependencies already cached from deps-builder)

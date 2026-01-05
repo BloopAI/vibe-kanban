@@ -1,17 +1,42 @@
-# Node modules
-**/node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+# ===========================================
+# Docker Build Context Optimization
+# Reduces context from ~20GB to ~50MB
+# ===========================================
 
-# Build artifacts
+# Rust build artifacts (19GB+)
 target/
+**/target/
+
+# Node modules (800MB+)
+node_modules/
+**/node_modules/
+
+# Build outputs (not needed - rebuilt in Docker)
 dist/
+**/dist/
 build/
+**/build/
 *.tgz
 *.tar.gz
-remote-frontend/dist/
+
+# Git repository (58MB)
+.git/
+.gitignore
+.gitattributes
+
+# Development assets (not needed in production)
+dev_assets/
+dev_assets_seed/
+backups/
+
+# Documentation (not needed in build)
+docs/
+
+# MCP server (Python - not needed in Docker)
+mcp/
+
+# Remote frontend (separate deployment)
+remote-frontend/
 
 # IDE and editor files
 .vscode/
@@ -22,41 +47,50 @@ remote-frontend/dist/
 
 # OS generated files
 .DS_Store
-.DS_Store?
+**/.DS_Store
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
 Thumbs.db
 
-# Git
-.git/
-.gitignore
-
-# Docker
+# Docker files (prevent recursion)
 Dockerfile*
 .dockerignore
+docker-compose*.yml
 
-# Environment files
+# Environment files (secrets - use flyctl secrets)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+frontend/.env.local
 
 # Logs
-logs/
 *.log
+.logs/
+logs/
 
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
+# Claude/AI config
+.claude/
 
-# Coverage directory used by tools like istanbul
+# GitHub workflows
+.github/
+
+# npm/pnpm debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage and test artifacts
 coverage/
+.nyc_output/
 
-# Temporary folders
+# Temporary files
 tmp/
 temp/
+*.tmp
+
+# Makefile and scripts (dev only)
+Makefile
+scripts/

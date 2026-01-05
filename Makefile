@@ -182,6 +182,32 @@ team-sync-status:
 		fi; \
 	done
 
+# =============================================
+# Production Deployment
+# =============================================
+
+# Deploy using local Docker build (faster than remote Depot builds)
+deploy-local:
+	@./scripts/deploy-local-build.sh
+
+# Deploy with fresh build (no cache)
+deploy-local-fresh:
+	@./scripts/deploy-local-build.sh --no-cache
+
+# Deploy using Fly.io remote builder (slower but no local Docker needed)
+deploy-remote:
+	@flyctl deploy --wait-timeout=1200
+
+# Check deployment status
+deploy-status:
+	@flyctl status
+	@echo ""
+	@flyctl releases -n 5
+
+# View production logs
+deploy-logs:
+	@flyctl logs
+
 # Help
 help:
 	@echo "Vibe Kanban Development Commands"
@@ -211,9 +237,17 @@ help:
 	@echo "  FRONTEND_PORT   - Frontend port (default: 3000)"
 	@echo "  BACKEND_PORT    - Backend port (default: 3003)"
 	@echo ""
+	@echo "Production Deployment:"
+	@echo "  make deploy-local        - Build locally & deploy to Fly.io (faster)"
+	@echo "  make deploy-local-fresh  - Fresh build without cache"
+	@echo "  make deploy-remote       - Use Fly.io remote builder (slower)"
+	@echo "  make deploy-status       - Check deployment status"
+	@echo "  make deploy-logs         - View production logs"
+	@echo ""
 	@echo "Architecture: Frontend -> Backend -> Local SQLite (db.sqlite)"
 	@echo "              Sync to Turso via 'make sync-to-turso' or MCP"
 	@echo ""
-	@echo "Examples:
+	@echo "Examples:"
 	@echo "  make start                         # Start with defaults"
+	@echo "  make deploy-local                  # Deploy to Fly.io"
 	@echo "  BACKEND_PORT=4000 make start       # Custom backend port"

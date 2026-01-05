@@ -4,7 +4,10 @@ use rust_embed::RustEmbed;
 const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 pub fn asset_dir() -> std::path::PathBuf {
-    let path = if cfg!(debug_assertions) {
+    // Check for DATA_DIR env var first (for Fly.io/Docker deployments)
+    let path = if let Ok(data_dir) = std::env::var("DATA_DIR") {
+        std::path::PathBuf::from(data_dir)
+    } else if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../../dev_assets")
     } else {
         ProjectDirs::from("ai", "bloop", "vibe-kanban")
@@ -19,6 +22,7 @@ pub fn asset_dir() -> std::path::PathBuf {
     }
 
     path
+    // ✔ Fly.io/Docker → $DATA_DIR (e.g., /data)
     // ✔ macOS → ~/Library/Application Support/MyApp
     // ✔ Linux → ~/.local/share/myapp   (respects XDG_DATA_HOME)
     // ✔ Windows → %APPDATA%\Example\MyApp
