@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO member_project_access (id, member_id, project_id)\n                   VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "a6c0f26b13cbcf4041db733f3b2cfca99b241caae58587cb5e73d6066a94e627"
+}

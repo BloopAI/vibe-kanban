@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT project_id as \"project_id!: Uuid\"\n               FROM member_project_access\n               WHERE member_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "376055a269072d9e4bfa1f1810d28a1c18da8a765780814245cccb54fedd8770"
+}

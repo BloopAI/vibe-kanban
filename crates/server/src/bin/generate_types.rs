@@ -46,6 +46,8 @@ fn generate_types_content() -> String {
         db::models::team_member::TeamInvitationWithTeam::decl(),
         db::models::team_member::CreateTeamInvitation::decl(),
         db::models::team_member::UpdateTeamInvitation::decl(),
+        db::models::member_project_access::MemberProjectAccess::decl(),
+        db::models::member_project_access::SetMemberProjectAccess::decl(),
         db::models::github_connection::GitHubConnection::decl(),
         db::models::github_connection::GitHubRepository::decl(),
         db::models::github_connection::CreateGitHubConnection::decl(),

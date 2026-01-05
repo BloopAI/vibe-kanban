@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM member_project_access WHERE member_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9d259f615b48c0b558ce31ca3d49a809106e9ec718d3253a9cf027ebd08ac340"
+}

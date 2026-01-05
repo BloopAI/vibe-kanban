@@ -1783,6 +1783,27 @@ export const teamsApi = {
     return handleApiResponse<TeamMember>(response);
   },
 
+  // Member Project Access API
+  getMemberProjects: async (teamId: string, memberId: string): Promise<string[]> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members/${memberId}/projects`);
+    return handleApiResponse<string[]>(response);
+  },
+
+  setMemberProjects: async (
+    teamId: string,
+    memberId: string,
+    projectIds: string[]
+  ): Promise<string[]> => {
+    const response = await makeRequest(
+      `/api/teams/${teamId}/members/${memberId}/projects`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ project_ids: projectIds }),
+      }
+    );
+    return handleApiResponse<string[]>(response);
+  },
+
   // Team Invitations API
   getInvitations: async (teamId: string): Promise<TeamInvitation[]> => {
     const response = await makeRequest(`/api/teams/${teamId}/invitations`);

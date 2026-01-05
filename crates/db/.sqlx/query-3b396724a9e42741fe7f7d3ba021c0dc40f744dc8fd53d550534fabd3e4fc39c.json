@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM member_project_access\n               WHERE member_id = $1 AND project_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3b396724a9e42741fe7f7d3ba021c0dc40f744dc8fd53d550534fabd3e4fc39c"
+}

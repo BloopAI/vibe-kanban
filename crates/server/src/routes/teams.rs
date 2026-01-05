@@ -18,6 +18,7 @@ use db::models::team_member::{
     CreateTeamInvitation, CreateTeamMember, SyncClerkMember, TeamInvitation, TeamInvitationWithTeam,
     TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
 };
+use db::models::member_project_access::{MemberProjectAccess, SetMemberProjectAccess};
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
 use ts_rs::TS;
@@ -1412,6 +1413,66 @@ pub async fn sync_clerk_member(
 }
 
 // ============================================================================
+// Member Project Access Routes
+// ============================================================================
+
+/// Get all project IDs that a member has access to
+pub async fn get_member_projects(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, member_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    // Verify the member belongs to this team
+    let existing = TeamMember::find_by_id(&deployment.db().pool, member_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+    }
+
+    let project_ids = MemberProjectAccess::get_project_ids_for_member(&deployment.db().pool, member_id).await?;
+    Ok(ResponseJson(ApiResponse::success(project_ids)))
+}
+
+/// Set member's project access (replaces all existing)
+pub async fn set_member_projects(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_team_id, member_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<SetMemberProjectAccess>,
+) -> Result<ResponseJson<ApiResponse<Vec<Uuid>>>, ApiError> {
+    // Verify the member belongs to this team
+    let existing = TeamMember::find_by_id(&deployment.db().pool, member_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("Team member not found".to_string()))?;
+
+    if existing.team_id != team.id {
+        return Err(ApiError::BadRequest("Member does not belong to this team".to_string()));
+    }
+
+    let project_ids = MemberProjectAccess::set_for_member(
+        &deployment.db().pool,
+        member_id,
+        &payload.project_ids,
+    )
+    .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "member_projects_updated",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "member_id": member_id.to_string(),
+                "project_count": project_ids.len(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(project_ids)))
+}
+
+// ============================================================================
 // Team Invitations Routes
 // ============================================================================
 
@@ -1674,6 +1735,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route(
             "/members/{member_id}",
             axum::routing::patch(update_team_member_role).delete(remove_team_member),
+        )
+        .route(
+            "/members/{member_id}/projects",
+            get(get_member_projects).put(set_member_projects),
         )
         // Team invitations routes
         .route(

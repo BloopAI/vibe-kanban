@@ -38,8 +38,10 @@ import {
   UserPlus2,
   CheckCircle2,
   Hourglass,
+  FolderKanban,
 } from 'lucide-react';
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
+import { MemberProjectsDialog } from '@/components/dialogs/teams/MemberProjectsDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 import type { TeamMember, TeamMemberRole, TeamInvitation } from 'shared/types';
 import { format } from 'date-fns';
@@ -85,6 +87,7 @@ function getAvatarPattern(str: string): string {
 }
 
 interface MemberTableRowProps {
+  teamId: string;
   member: TeamMember;
   isCurrentUser: boolean;
   onRoleChange: (memberId: string, role: TeamMemberRole) => Promise<void>;
@@ -92,7 +95,7 @@ interface MemberTableRowProps {
   isUpdating: boolean;
 }
 
-function MemberTableRow({ member, isCurrentUser, onRoleChange, onRemove, isUpdating }: MemberTableRowProps) {
+function MemberTableRow({ teamId, member, isCurrentUser, onRoleChange, onRemove, isUpdating }: MemberTableRowProps) {
   const [isChangingRole, setIsChangingRole] = useState(false);
 
   const handleRoleChange = async (newRole: TeamMemberRole) => {
@@ -115,6 +118,14 @@ function MemberTableRow({ member, isCurrentUser, onRoleChange, onRemove, isUpdat
     if (confirmed === 'confirmed') {
       await onRemove(member.id);
     }
+  };
+
+  const handleConfigureProjects = async () => {
+    await MemberProjectsDialog.show({
+      teamId,
+      memberId: member.id,
+      memberName: member.display_name || member.email,
+    });
   };
 
   const displayName = member.display_name || member.email.split('@')[0];
@@ -230,6 +241,10 @@ function MemberTableRow({ member, isCurrentUser, onRoleChange, onRemove, isUpdat
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleConfigureProjects}>
+                <FolderKanban className="h-4 w-4 mr-2" />
+                Configure Projects
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleRemove}
                 className="text-destructive focus:text-destructive"
@@ -670,6 +685,7 @@ export function TeamMembers() {
               {filteredMembers.map((member) => (
                 <MemberTableRow
                   key={member.id}
+                  teamId={team.id}
                   member={member}
                   isCurrentUser={currentMember?.id === member.id}
                   onRoleChange={handleRoleChange}

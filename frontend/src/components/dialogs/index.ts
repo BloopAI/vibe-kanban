@@ -122,6 +122,11 @@ export {
   type InvitePeopleDialogProps,
   type InvitePeopleDialogResult,
 } from './teams/InvitePeopleDialog';
+export {
+  MemberProjectsDialog,
+  type MemberProjectsDialogProps,
+  type MemberProjectsDialogResult,
+} from './teams/MemberProjectsDialog';
 
 // Issue dialogs
 export {

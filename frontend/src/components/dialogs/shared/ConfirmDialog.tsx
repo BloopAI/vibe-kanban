@@ -33,10 +33,12 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
 
   const handleConfirm = () => {
     modal.resolve('confirmed' as ConfirmResult);
+    modal.hide();
   };
 
   const handleCancel = () => {
     modal.resolve('canceled' as ConfirmResult);
+    modal.hide();
   };
 
   const getIcon = () => {

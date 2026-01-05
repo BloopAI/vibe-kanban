@@ -102,6 +102,10 @@ export type CreateTeamInvitation = { email: string, role: TeamMemberRole | null,
 
 export type UpdateTeamInvitation = { role: TeamMemberRole, };
 
+export type MemberProjectAccess = { id: string, member_id: string, project_id: string, created_at: string, };
+
+export type SetMemberProjectAccess = { project_ids: Array<string>, };
+
 export type GitHubConnection = { id: string, 
 /**
  * Team ID - NULL for workspace-level connection
