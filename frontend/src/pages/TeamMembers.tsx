@@ -122,23 +122,37 @@ function MemberTableRow({ member, isCurrentUser, onRoleChange, onRemove, isUpdat
   const avatarColor = getAvatarPattern(member.email);
   const joinedDate = new Date(member.joined_at);
   const updatedDate = new Date(member.updated_at);
+  const taskCount = member.assigned_task_count || 0;
 
   return (
     <tr className="border-b hover:bg-muted/50">
       {/* Account */}
       <td className="py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
-            <span className="text-sm font-medium text-white">
-              {displayName.slice(0, 2).toUpperCase()}
-            </span>
-          </div>
+          {member.avatar_url ? (
+            <img
+              src={member.avatar_url}
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
+              <span className="text-sm font-medium text-white">
+                {displayName.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium">{displayName}</span>
               {isCurrentUser && (
                 <Badge variant="outline" className="text-xs border-green-500 text-green-600 dark:text-green-400">
                   It's you
+                </Badge>
+              )}
+              {taskCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {taskCount} task{taskCount !== 1 ? 's' : ''}
                 </Badge>
               )}
             </div>
@@ -444,6 +458,7 @@ export function TeamMembers() {
   const {
     members,
     invitations,
+    currentMember,
     isLoading,
     error,
     updateMemberRole,
@@ -455,9 +470,6 @@ export function TeamMembers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('account');
   const [sortAsc, setSortAsc] = useState(true);
-
-  // TODO: Get current user email from auth context
-  const currentUserEmail = 'rupeshpanwar43@gmail.com';
 
   const totalCount = members.length + invitations.filter(i => i.status === 'pending').length;
 
@@ -659,7 +671,7 @@ export function TeamMembers() {
                 <MemberTableRow
                   key={member.id}
                   member={member}
-                  isCurrentUser={member.email === currentUserEmail}
+                  isCurrentUser={currentMember?.id === member.id}
                   onRoleChange={handleRoleChange}
                   onRemove={handleRemoveMember}
                   isUpdating={isUpdating}

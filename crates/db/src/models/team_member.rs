@@ -100,6 +100,13 @@ pub struct TeamMember {
     pub display_name: Option<String>,
     pub role: TeamMemberRole,
     pub invited_by: Option<Uuid>,
+    /// Clerk user ID for integration
+    pub clerk_user_id: Option<String>,
+    /// Avatar URL from Clerk
+    pub avatar_url: Option<String>,
+    /// Number of tasks assigned to this member
+    #[serde(default)]
+    pub assigned_task_count: i32,
     #[ts(type = "Date")]
     pub joined_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -114,6 +121,17 @@ pub struct CreateTeamMember {
     pub email: String,
     pub display_name: Option<String>,
     pub role: Option<TeamMemberRole>,
+    pub clerk_user_id: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
+/// Request to sync a Clerk user as team member
+#[derive(Debug, Deserialize, TS)]
+pub struct SyncClerkMember {
+    pub clerk_user_id: String,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
 }
 
 /// Request to update a team member's role
@@ -169,6 +187,25 @@ struct TeamMemberRow {
     display_name: Option<String>,
     role: String,
     invited_by: Option<Uuid>,
+    clerk_user_id: Option<String>,
+    avatar_url: Option<String>,
+    joined_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+// Helper struct for rows with task count
+#[derive(FromRow)]
+struct TeamMemberWithCountRow {
+    id: Uuid,
+    team_id: Uuid,
+    email: String,
+    display_name: Option<String>,
+    role: String,
+    invited_by: Option<Uuid>,
+    clerk_user_id: Option<String>,
+    avatar_url: Option<String>,
+    assigned_task_count: i32,
     joined_at: DateTime<Utc>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -183,6 +220,28 @@ impl From<TeamMemberRow> for TeamMember {
             display_name: row.display_name,
             role: TeamMemberRole::from_str(&row.role).unwrap_or_default(),
             invited_by: row.invited_by,
+            clerk_user_id: row.clerk_user_id,
+            avatar_url: row.avatar_url,
+            assigned_task_count: 0,
+            joined_at: row.joined_at,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+impl From<TeamMemberWithCountRow> for TeamMember {
+    fn from(row: TeamMemberWithCountRow) -> Self {
+        Self {
+            id: row.id,
+            team_id: row.team_id,
+            email: row.email,
+            display_name: row.display_name,
+            role: TeamMemberRole::from_str(&row.role).unwrap_or_default(),
+            invited_by: row.invited_by,
+            clerk_user_id: row.clerk_user_id,
+            avatar_url: row.avatar_url,
+            assigned_task_count: row.assigned_task_count,
             joined_at: row.joined_at,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -220,29 +279,34 @@ impl From<TeamInvitationRow> for TeamInvitation {
 }
 
 impl TeamMember {
-    /// Get all members of a team
+    /// Get all members of a team with task counts
     pub async fn find_by_team(pool: &SqlitePool, team_id: Uuid) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(
-            TeamMemberRow,
-            r#"SELECT id as "id!: Uuid",
-                      team_id as "team_id!: Uuid",
-                      email,
-                      display_name,
-                      role,
-                      invited_by as "invited_by: Uuid",
-                      joined_at as "joined_at!: DateTime<Utc>",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM team_members
-               WHERE team_id = $1
+            TeamMemberWithCountRow,
+            r#"SELECT m.id as "id!: Uuid",
+                      m.team_id as "team_id!: Uuid",
+                      m.email,
+                      m.display_name,
+                      m.role,
+                      m.invited_by as "invited_by: Uuid",
+                      m.clerk_user_id,
+                      m.avatar_url,
+                      COALESCE(COUNT(t.id), 0) as "assigned_task_count!: i32",
+                      m.joined_at as "joined_at!: DateTime<Utc>",
+                      m.created_at as "created_at!: DateTime<Utc>",
+                      m.updated_at as "updated_at!: DateTime<Utc>"
+               FROM team_members m
+               LEFT JOIN tasks t ON t.assignee_id = m.id
+               WHERE m.team_id = $1
+               GROUP BY m.id
                ORDER BY
-                   CASE role
+                   CASE m.role
                        WHEN 'owner' THEN 1
                        WHEN 'maintainer' THEN 2
                        WHEN 'contributor' THEN 3
                        WHEN 'viewer' THEN 4
                    END,
-                   display_name ASC, email ASC"#,
+                   m.display_name ASC, m.email ASC"#,
             team_id
         )
         .fetch_all(pool)
@@ -261,6 +325,8 @@ impl TeamMember {
                       display_name,
                       role,
                       invited_by as "invited_by: Uuid",
+                      clerk_user_id,
+                      avatar_url,
                       joined_at as "joined_at!: DateTime<Utc>",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -288,6 +354,8 @@ impl TeamMember {
                       display_name,
                       role,
                       invited_by as "invited_by: Uuid",
+                      clerk_user_id,
+                      avatar_url,
                       joined_at as "joined_at!: DateTime<Utc>",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -314,14 +382,16 @@ impl TeamMember {
 
         let row = sqlx::query_as!(
             TeamMemberRow,
-            r#"INSERT INTO team_members (id, team_id, email, display_name, role, invited_by)
-               VALUES ($1, $2, $3, $4, $5, $6)
+            r#"INSERT INTO team_members (id, team_id, email, display_name, role, invited_by, clerk_user_id, avatar_url)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          email,
                          display_name,
                          role,
                          invited_by as "invited_by: Uuid",
+                         clerk_user_id,
+                         avatar_url,
                          joined_at as "joined_at!: DateTime<Utc>",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -330,7 +400,9 @@ impl TeamMember {
             data.email,
             data.display_name,
             role,
-            invited_by
+            invited_by,
+            data.clerk_user_id,
+            data.avatar_url
         )
         .fetch_one(pool)
         .await?;
@@ -357,6 +429,8 @@ impl TeamMember {
                          display_name,
                          role,
                          invited_by as "invited_by: Uuid",
+                         clerk_user_id,
+                         avatar_url,
                          joined_at as "joined_at!: DateTime<Utc>",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -367,6 +441,113 @@ impl TeamMember {
         .await?;
 
         Ok(row.into())
+    }
+
+    /// Find a member by Clerk user ID
+    pub async fn find_by_clerk_id(
+        pool: &SqlitePool,
+        team_id: Uuid,
+        clerk_user_id: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        let row = sqlx::query_as!(
+            TeamMemberRow,
+            r#"SELECT id as "id!: Uuid",
+                      team_id as "team_id!: Uuid",
+                      email,
+                      display_name,
+                      role,
+                      invited_by as "invited_by: Uuid",
+                      clerk_user_id,
+                      avatar_url,
+                      joined_at as "joined_at!: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM team_members
+               WHERE team_id = $1 AND clerk_user_id = $2"#,
+            team_id,
+            clerk_user_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row.map(|r| r.into()))
+    }
+
+    /// Upsert a member from Clerk user data
+    /// If member exists (by clerk_user_id or email), update their data
+    /// If not, create a new member
+    pub async fn upsert_from_clerk(
+        pool: &SqlitePool,
+        team_id: Uuid,
+        data: &SyncClerkMember,
+    ) -> Result<Self, sqlx::Error> {
+        // First try to find by clerk_user_id
+        if let Some(existing) = Self::find_by_clerk_id(pool, team_id, &data.clerk_user_id).await? {
+            // Update existing member with latest Clerk data
+            let row = sqlx::query_as!(
+                TeamMemberRow,
+                r#"UPDATE team_members
+                   SET display_name = $2, avatar_url = $3, email = $4, updated_at = datetime('now', 'subsec')
+                   WHERE id = $1
+                   RETURNING id as "id!: Uuid",
+                             team_id as "team_id!: Uuid",
+                             email,
+                             display_name,
+                             role,
+                             invited_by as "invited_by: Uuid",
+                             clerk_user_id,
+                             avatar_url,
+                             joined_at as "joined_at!: DateTime<Utc>",
+                             created_at as "created_at!: DateTime<Utc>",
+                             updated_at as "updated_at!: DateTime<Utc>""#,
+                existing.id,
+                data.display_name,
+                data.avatar_url,
+                data.email
+            )
+            .fetch_one(pool)
+            .await?;
+            return Ok(row.into());
+        }
+
+        // Try to find by email (user might have been invited before signing up)
+        if let Some(existing) = Self::find_by_team_and_email(pool, team_id, &data.email).await? {
+            // Link existing member to Clerk account
+            let row = sqlx::query_as!(
+                TeamMemberRow,
+                r#"UPDATE team_members
+                   SET clerk_user_id = $2, display_name = $3, avatar_url = $4, updated_at = datetime('now', 'subsec')
+                   WHERE id = $1
+                   RETURNING id as "id!: Uuid",
+                             team_id as "team_id!: Uuid",
+                             email,
+                             display_name,
+                             role,
+                             invited_by as "invited_by: Uuid",
+                             clerk_user_id,
+                             avatar_url,
+                             joined_at as "joined_at!: DateTime<Utc>",
+                             created_at as "created_at!: DateTime<Utc>",
+                             updated_at as "updated_at!: DateTime<Utc>""#,
+                existing.id,
+                data.clerk_user_id,
+                data.display_name,
+                data.avatar_url
+            )
+            .fetch_one(pool)
+            .await?;
+            return Ok(row.into());
+        }
+
+        // Create new member
+        let create_data = CreateTeamMember {
+            email: data.email.clone(),
+            display_name: data.display_name.clone(),
+            role: Some(TeamMemberRole::Contributor), // Default role for new members
+            clerk_user_id: Some(data.clerk_user_id.clone()),
+            avatar_url: data.avatar_url.clone(),
+        };
+        Self::create(pool, team_id, &create_data, None).await
     }
 
     /// Delete a team member
@@ -620,6 +801,8 @@ impl TeamInvitation {
                 email: invitation.email.clone(),
                 display_name: None,
                 role: Some(invitation.role),
+                clerk_user_id: None,
+                avatar_url: None,
             },
             invitation.invited_by,
         )

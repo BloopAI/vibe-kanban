@@ -96,10 +96,11 @@ function LinearIssueCardComponent({
     onProjectChange?.(task.id, newProjectId);
   }, [task.id, onProjectChange]);
 
-  // Get assignee initials (first letter of first name + first letter of last name)
+  // Get assigned member info
   const selectedMember = task.assignee_id
     ? teamMembers.find((m) => m.id === task.assignee_id)
     : undefined;
+  const hasAssigneeAvatar = !!selectedMember?.avatar;
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
@@ -153,15 +154,18 @@ function LinearIssueCardComponent({
               <DropdownMenuTrigger asChild disabled={!onAssigneeChange}>
                 <button
                   className={cn(
-                    'h-6 w-6 rounded-full flex items-center justify-center',
+                    'h-6 w-6 rounded-full flex items-center justify-center overflow-hidden',
                     'border border-dashed border-muted-foreground/40',
                     'text-muted-foreground hover:border-primary hover:text-primary',
                     'transition-colors text-xs font-medium',
-                    hasAssignee && 'border-solid bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                    hasAssignee && !hasAssigneeAvatar && 'border-solid bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700',
+                    hasAssigneeAvatar && 'border-none p-0'
                   )}
                   title={selectedMember ? selectedMember.name : hasAssignee ? `Assigned: ${task.assignee_id}` : 'Assign'}
                 >
-                  {assigneeInitials ? (
+                  {hasAssigneeAvatar ? (
+                    <img src={selectedMember!.avatar} alt={selectedMember!.name} className="h-6 w-6 rounded-full object-cover" />
+                  ) : assigneeInitials ? (
                     assigneeInitials
                   ) : (
                     <User className="h-3.5 w-3.5" />

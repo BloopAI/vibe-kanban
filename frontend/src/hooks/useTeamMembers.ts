@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { teamsApi, userInvitationsApi } from '@/lib/api';
+import { useUser } from '@clerk/clerk-react';
 import type {
   TeamMember,
   TeamMemberRole,
   CreateTeamMember,
+  SyncClerkMember,
   TeamInvitation,
   TeamInvitationWithTeam,
   CreateTeamInvitation,
@@ -12,9 +14,11 @@ import type {
 export interface UseTeamMembersResult {
   members: TeamMember[];
   invitations: TeamInvitation[];
+  currentMember: TeamMember | null;
   isLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
+  syncClerkMember: () => Promise<TeamMember | null>;
   addMember: (data: CreateTeamMember) => Promise<TeamMember>;
   updateMemberRole: (memberId: string, role: TeamMemberRole) => Promise<TeamMember>;
   removeMember: (memberId: string) => Promise<void>;
@@ -27,15 +31,47 @@ export interface UseTeamMembersResult {
  * Hook for managing team members and invitations (for team owners/maintainers)
  */
 export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult {
+  const { user, isLoaded: isClerkLoaded } = useUser();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [currentMember, setCurrentMember] = useState<TeamMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const hasSyncedRef = useRef<string | null>(null);
+
+  // Sync current Clerk user to team members
+  const syncClerkMember = useCallback(async (): Promise<TeamMember | null> => {
+    if (!teamId || !user) return null;
+
+    try {
+      const syncData: SyncClerkMember = {
+        clerk_user_id: user.id,
+        email: user.primaryEmailAddress?.emailAddress || '',
+        display_name: user.fullName || user.firstName || null,
+        avatar_url: user.imageUrl || null,
+      };
+      const member = await teamsApi.syncClerkMember(teamId, syncData);
+      setCurrentMember(member);
+      // Update member in list if exists, otherwise add
+      setMembers((prev) => {
+        const exists = prev.some((m) => m.id === member.id);
+        if (exists) {
+          return prev.map((m) => (m.id === member.id ? member : m));
+        }
+        return [...prev, member];
+      });
+      return member;
+    } catch (err) {
+      console.error('Failed to sync Clerk member:', err);
+      return null;
+    }
+  }, [teamId, user]);
 
   const refresh = useCallback(async () => {
     if (!teamId) {
       setMembers([]);
       setInvitations([]);
+      setCurrentMember(null);
       setIsLoading(false);
       return;
     }
@@ -49,16 +85,31 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
       ]);
       setMembers(membersData);
       setInvitations(invitationsData);
+
+      // Find current member by clerk_user_id
+      if (user) {
+        const current = membersData.find((m) => m.clerk_user_id === user.id);
+        setCurrentMember(current || null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch team members'));
     } finally {
       setIsLoading(false);
     }
-  }, [teamId]);
+  }, [teamId, user]);
 
+  // Initial fetch
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Auto-sync Clerk user on first load per team
+  useEffect(() => {
+    if (isClerkLoaded && user && teamId && hasSyncedRef.current !== teamId) {
+      hasSyncedRef.current = teamId;
+      syncClerkMember();
+    }
+  }, [isClerkLoaded, user, teamId, syncClerkMember]);
 
   const addMember = useCallback(
     async (data: CreateTeamMember) => {
@@ -125,9 +176,11 @@ export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult
   return {
     members,
     invitations,
+    currentMember,
     isLoading,
     error,
     refresh,
+    syncClerkMember,
     addMember,
     updateMemberRole,
     removeMember,

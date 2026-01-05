@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      email,\n                      display_name,\n                      role,\n                      invited_by as \"invited_by: Uuid\",\n                      joined_at as \"joined_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM team_members\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      email,\n                      display_name,\n                      role,\n                      invited_by as \"invited_by: Uuid\",\n                      clerk_user_id,\n                      avatar_url,\n                      joined_at as \"joined_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM team_members\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,28 @@
         "type_info": "Blob"
       },
       {
-        "name": "joined_at!: DateTime<Utc>",
+        "name": "clerk_user_id",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "avatar_url",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "joined_at!: DateTime<Utc>",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
@@ -59,10 +69,12 @@
       true,
       false,
       true,
+      true,
+      true,
       false,
       false,
       false
     ]
   },
-  "hash": "15948e9fb8f4a566fba70ce86841386566e84bb4f9321fcda5dc8c2eed858ef5"
+  "hash": "62efdfd3e2d2f26c0c6e635f8e079b7f4a356388e03e822a3e5a784f23cfabf7"
 }

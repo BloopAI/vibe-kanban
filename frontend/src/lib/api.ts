@@ -126,6 +126,7 @@ import {
   TeamMember,
   CreateTeamMember,
   UpdateTeamMemberRole,
+  SyncClerkMember,
   TeamInvitation,
   TeamInvitationWithTeam,
   CreateTeamInvitation,
@@ -1772,6 +1773,14 @@ export const teamsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  syncClerkMember: async (teamId: string, data: SyncClerkMember): Promise<TeamMember> => {
+    const response = await makeRequest(`/api/teams/${teamId}/members/sync`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<TeamMember>(response);
   },
 
   // Team Invitations API

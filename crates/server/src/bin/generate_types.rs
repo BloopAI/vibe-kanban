@@ -41,6 +41,7 @@ fn generate_types_content() -> String {
         db::models::team_member::TeamMember::decl(),
         db::models::team_member::CreateTeamMember::decl(),
         db::models::team_member::UpdateTeamMemberRole::decl(),
+        db::models::team_member::SyncClerkMember::decl(),
         db::models::team_member::TeamInvitation::decl(),
         db::models::team_member::TeamInvitationWithTeam::decl(),
         db::models::team_member::CreateTeamInvitation::decl(),

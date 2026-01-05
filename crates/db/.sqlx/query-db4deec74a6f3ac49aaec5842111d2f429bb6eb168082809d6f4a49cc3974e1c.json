@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.id as \"id!: Uuid\",\n                      m.team_id as \"team_id!: Uuid\",\n                      m.email,\n                      m.display_name,\n                      m.role,\n                      m.invited_by as \"invited_by: Uuid\",\n                      m.clerk_user_id,\n                      m.avatar_url,\n                      COALESCE(COUNT(t.id), 0) as \"assigned_task_count!: i32\",\n                      m.joined_at as \"joined_at!: DateTime<Utc>\",\n                      m.created_at as \"created_at!: DateTime<Utc>\",\n                      m.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM team_members m\n               LEFT JOIN tasks t ON t.assignee_id = m.id\n               WHERE m.team_id = $1\n               GROUP BY m.id\n               ORDER BY\n                   CASE m.role\n                       WHEN 'owner' THEN 1\n                       WHEN 'maintainer' THEN 2\n                       WHEN 'contributor' THEN 3\n                       WHEN 'viewer' THEN 4\n                   END,\n                   m.display_name ASC, m.email ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "email",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "role",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "invited_by: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "clerk_user_id",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "avatar_url",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "assigned_task_count!: i32",
+        "ordinal": 8,
+        "type_info": "Null"
+      },
+      {
+        "name": "joined_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "db4deec74a6f3ac49aaec5842111d2f429bb6eb168082809d6f4a49cc3974e1c"
+}

@@ -56,6 +56,7 @@ export function TeamIssues() {
       id: m.id,
       name: m.display_name || m.email.split('@')[0],
       email: m.email,
+      avatar: m.avatar_url || undefined,
     }));
   }, [members]);
 

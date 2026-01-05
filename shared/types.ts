@@ -66,11 +66,25 @@ export type TeamMemberRole = "viewer" | "contributor" | "maintainer" | "owner";
 
 export type TeamInvitationStatus = "pending" | "accepted" | "declined" | "expired";
 
-export type TeamMember = { id: string, team_id: string, email: string, display_name: string | null, role: TeamMemberRole, invited_by: string | null, joined_at: Date, created_at: Date, updated_at: Date, };
+export type TeamMember = { id: string, team_id: string, email: string, display_name: string | null, role: TeamMemberRole, invited_by: string | null, 
+/**
+ * Clerk user ID for integration
+ */
+clerk_user_id: string | null, 
+/**
+ * Avatar URL from Clerk
+ */
+avatar_url: string | null, 
+/**
+ * Number of tasks assigned to this member
+ */
+assigned_task_count: number, joined_at: Date, created_at: Date, updated_at: Date, };
 
-export type CreateTeamMember = { email: string, display_name: string | null, role: TeamMemberRole | null, };
+export type CreateTeamMember = { email: string, display_name: string | null, role: TeamMemberRole | null, clerk_user_id: string | null, avatar_url: string | null, };
 
 export type UpdateTeamMemberRole = { role: TeamMemberRole, };
+
+export type SyncClerkMember = { clerk_user_id: string, email: string, display_name: string | null, avatar_url: string | null, };
 
 export type TeamInvitation = { id: string, team_id: string, email: string, role: TeamMemberRole, status: TeamInvitationStatus, invited_by: string | null, 
 /**

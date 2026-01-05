@@ -15,7 +15,7 @@ use db::models::task::{Task, TaskWithAttemptStatus};
 use db::models::team::{CreateTeam, Team, TeamProject, TeamProjectAssignment, UpdateTeam};
 use db::CreateTeamRegistry;
 use db::models::team_member::{
-    CreateTeamInvitation, CreateTeamMember, TeamInvitation, TeamInvitationWithTeam,
+    CreateTeamInvitation, CreateTeamMember, SyncClerkMember, TeamInvitation, TeamInvitationWithTeam,
     TeamMember, UpdateTeamInvitation, UpdateTeamMemberRole,
 };
 use serde::{Deserialize, Serialize};
@@ -1389,6 +1389,28 @@ pub async fn remove_team_member(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+/// Sync a Clerk user to the team members table
+/// Creates or updates a team member with Clerk user data
+pub async fn sync_clerk_member(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<SyncClerkMember>,
+) -> Result<ResponseJson<ApiResponse<TeamMember>>, ApiError> {
+    let member = TeamMember::upsert_from_clerk(&deployment.db().pool, team.id, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "clerk_member_synced",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "clerk_user_id": payload.clerk_user_id,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(member)))
+}
+
 // ============================================================================
 // Team Invitations Routes
 // ============================================================================
@@ -1648,6 +1670,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/projects/{project_id}", delete(remove_project_from_team))
         // Team members routes
         .route("/members", get(get_team_members).post(add_team_member))
+        .route("/members/sync", post(sync_clerk_member))
         .route(
             "/members/{member_id}",
             axum::routing::patch(update_team_member_role).delete(remove_team_member),
