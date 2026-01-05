@@ -102,7 +102,9 @@
       "refresh": "Refresh preview",
       "copyUrl": "Copy URL",
       "openInTab": "Open in new tab",
-      "stopDevServer": "Stop dev server"
+      "stopDevServer": "Stop dev server",
+      "clickToEdit": "Click to edit URL",
+      "resetUrl": "Reset to detected URL"
     }
   },
   "diff": {
