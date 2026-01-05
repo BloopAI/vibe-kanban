@@ -369,7 +369,8 @@
         "error": "Failed to save project settings",
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
-        "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+        "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost.",
+        "saving": "Saving..."
       },
       "editor": {
         "title": "Editor Override",

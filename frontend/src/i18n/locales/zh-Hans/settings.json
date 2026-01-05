@@ -369,7 +369,27 @@
         "error": "保存项目设置失败",
         "unsavedChanges": "• 您有未保存的更改",
         "discard": "放弃",
-        "confirmSwitch": "您有未保存的更改。您确定要切换项目吗？您的更改将丢失。"
+        "confirmSwitch": "您有未保存的更改。您确定要切换项目吗？您的更改将丢失。",
+        "saving": "保存中..."
+      },
+      "editor": {
+        "title": "编辑器覆盖",
+        "description": "覆盖此项目的默认编辑器。设置后，此项目将在指定的编辑器中打开，而不是全局默认编辑器。",
+        "toggle": {
+          "label": "为此项目使用自定义编辑器",
+          "helper": "启用以覆盖此项目的全局编辑器设置。"
+        },
+        "type": {
+          "label": "编辑器类型",
+          "placeholder": "选择编辑器",
+          "helper": "选择打开此项目文件时使用的编辑器。"
+        },
+        "customCommand": {
+          "label": "自定义编辑器命令",
+          "placeholder": "例如：code、subl、vim",
+          "helper": "输入启动自定义编辑器的命令。"
+        },
+        "useGlobalFallback": "使用全局默认"
       }
     }
   },
