@@ -7,6 +7,7 @@ import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
+import { useIsPwa } from '@/hooks/useIsPwa';
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
@@ -15,6 +16,7 @@ import { DevServerLogsView } from '@/components/tasks/TaskDetails/preview/DevSer
 import { PreviewToolbar } from '@/components/tasks/TaskDetails/preview/PreviewToolbar';
 import { NoServerContent } from '@/components/tasks/TaskDetails/preview/NoServerContent';
 import { ReadyContent } from '@/components/tasks/TaskDetails/preview/ReadyContent';
+import { PwaWarningContent } from '@/components/tasks/TaskDetails/preview/PwaWarningContent';
 
 export function PreviewPanel() {
   const [iframeError, setIframeError] = useState(false);
@@ -27,6 +29,7 @@ export function PreviewPanel() {
 
   const { t } = useTranslation('tasks');
   const { project, projectId } = useProject();
+  const isPwa = useIsPwa();
   const { attemptId: rawAttemptId } = useParams<{ attemptId?: string }>();
 
   const attemptId =
@@ -171,11 +174,15 @@ export function PreviewPanel() {
               onStop={stopDevServer}
               isStopping={isStoppingDevServer}
             />
-            <ReadyContent
-              url={previewState.url}
-              iframeKey={`${previewState.url}-${refreshKey}`}
-              onIframeError={handleIframeError}
-            />
+            {isPwa && previewState.url ? (
+              <PwaWarningContent url={previewState.url} />
+            ) : (
+              <ReadyContent
+                url={previewState.url}
+                iframeKey={`${previewState.url}-${refreshKey}`}
+                onIframeError={handleIframeError}
+              />
+            )}
           </>
         ) : (
           <NoServerContent
