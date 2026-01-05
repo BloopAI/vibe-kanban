@@ -38,6 +38,7 @@ interface ProjectFormState {
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  git_auto_commit_enabled: boolean | null;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +54,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    git_auto_commit_enabled: project.git_auto_commit_enabled ?? null,
   };
 }
 
@@ -397,6 +399,7 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        git_auto_commit_enabled: draft.git_auto_commit_enabled,
       };
 
       updateProject.mutate({
@@ -627,6 +630,69 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.agentWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.git.autoCommit.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-default"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === null}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: null })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-enabled"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === true}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: true })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-enabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.enabled')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-disabled"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === false}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: false })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-disabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.disabled')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.git.autoCommit.helper')}
                 </p>
               </div>
 

@@ -1297,6 +1297,17 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
+        // verifica si auto-commit está habilitado (proyecto override o config global)
+        let auto_commit_enabled = match ctx.project.git_auto_commit_enabled {
+            Some(project_setting) => project_setting,
+            None => self.config.read().await.git_auto_commit_enabled,
+        };
+
+        if !auto_commit_enabled {
+            tracing::debug!("Auto-commit disabled, skipping commit");
+            return Ok(false);
+        }
+
         let message = self.get_commit_message(ctx).await;
 
         let container_ref = ctx

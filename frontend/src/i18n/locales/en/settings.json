@@ -133,6 +133,10 @@
             "invalidChars": "Contains invalid characters.",
             "controlChars": "Contains control characters."
           }
+        },
+        "autoCommit": {
+          "label": "Auto-commit changes",
+          "helper": "When enabled, the agent will automatically commit changes after successful task execution."
         }
       },
       "pullRequests": {
@@ -361,6 +365,15 @@
         "copyFiles": {
           "label": "Copy Files",
           "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+        }
+      },
+      "git": {
+        "autoCommit": {
+          "label": "Auto-commit Changes",
+          "helper": "Control whether the agent automatically commits changes after task execution.",
+          "useGlobal": "Use global setting",
+          "enabled": "Always auto-commit",
+          "disabled": "Never auto-commit"
         }
       },
       "save": {
