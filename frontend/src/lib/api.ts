@@ -16,6 +16,7 @@ import {
   ExecutionProcess,
   ExecutionProcessRepoState,
   GitBranch,
+  GitRemote,
   Project,
   ProjectRepo,
   Repo,
@@ -337,6 +338,11 @@ export const projectsApi = {
       `/api/projects/${projectId}/repositories`
     );
     return handleApiResponse<Repo[]>(response);
+  },
+
+  getRemotes: async (projectId: string): Promise<GitRemote[]> => {
+    const response = await makeRequest(`/api/projects/${projectId}/remotes`);
+    return handleApiResponse<GitRemote[]>(response);
   },
 
   addRepository: async (

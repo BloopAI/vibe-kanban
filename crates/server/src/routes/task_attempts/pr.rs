@@ -41,6 +41,7 @@ pub struct CreateGitHubPrRequest {
     pub repo_id: Uuid,
     #[serde(default)]
     pub auto_generate_description: bool,
+    pub remote_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
