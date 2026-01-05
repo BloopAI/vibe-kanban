@@ -123,7 +123,30 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        'chivo-mono': ['Chivo Mono', 'Noto Emoji', 'monospace'],
+        'chivo-mono': [
+          // google fonts (default)
+          'Chivo Mono',
+          'Noto Emoji',
+          // system monospace fonts fallback
+          'ui-monospace',
+          'SF Mono',
+          'Cascadia Code',
+          'Cascadia Mono',
+          'Segoe UI Mono',
+          'Roboto Mono',
+          'Oxygen Mono',
+          'Ubuntu Monospace',
+          'Source Code Pro',
+          'Fira Mono',
+          'Droid Sans Mono',
+          'Courier New',
+          'monospace',
+          // emoji support
+          'Apple Color Emoji',
+          'Segoe UI Emoji',
+          'Segoe UI Symbol',
+          'Noto Color Emoji',
+        ],
       },
       keyframes: {
         "accordion-down": {

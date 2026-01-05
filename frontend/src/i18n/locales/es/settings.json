@@ -37,6 +37,15 @@
           "label": "Idioma",
           "placeholder": "Selecciona tu idioma",
           "helper": "Elige tu idioma preferido. El predeterminado del navegador sigue el idioma de tu sistema."
+        },
+        "useGoogleFonts": {
+          "label": "Usar Google Fonts",
+          "helper": "Cargar fuentes de Google Fonts (Chivo Mono). Cuando está deshabilitado, se usarán las fuentes del sistema."
+        },
+        "fontFamily": {
+          "label": "Sobrescribir Fuente",
+          "placeholder": "ej. 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "Sobrescribe completamente las fuentes con un valor personalizado. Déjalo vacío para usar las fuentes predeterminadas (Google o sistema)."
         }
       },
       "taskExecution": {

@@ -37,6 +37,15 @@
           "label": "Language",
           "placeholder": "Select language",
           "helper": "Choose your preferred language. Browser Default follows your system language."
+        },
+        "useGoogleFonts": {
+          "label": "Use Google Fonts",
+          "helper": "Load fonts from Google Fonts (Chivo Mono). When disabled, system fonts will be used."
+        },
+        "fontFamily": {
+          "label": "Custom Font Override",
+          "placeholder": "e.g., 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "Override fonts entirely with a custom value. Leave empty to use default fonts (Google or system)."
         }
       },
       "taskExecution": {

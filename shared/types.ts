@@ -320,7 +320,15 @@ export type Config = { config_version: string, theme: ThemeMode, executor_profil
 /**
  * cuando está habilitado, el agente hará commit automático después de cambios exitosos
  */
-git_auto_commit_enabled: boolean, };
+git_auto_commit_enabled: boolean, 
+/**
+ * custom font family override (system fonts will be used if None)
+ */
+font_family: string | null, 
+/**
+ * cuando está habilitado, se cargarán las fuentes de Google (Chivo Mono, Inter, JetBrains Mono)
+ */
+use_google_fonts: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
