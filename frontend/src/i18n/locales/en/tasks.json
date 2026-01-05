@@ -62,6 +62,11 @@
   "preview": {
     "title": "Preview",
     "selectAttempt": "Select an attempt to see preview",
+    "pwaWarning": {
+      "title": "Preview unavailable in app mode",
+      "description": "Previewing localhost content in an iframe doesn't work when Vibe Kanban is installed as an app due to browser security restrictions.",
+      "openInBrowser": "Open preview in browser"
+    },
     "troubleAlert": {
       "title": "We're having trouble previewing your application:",
       "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
