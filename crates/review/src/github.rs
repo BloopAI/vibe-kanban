@@ -24,11 +24,9 @@ struct GhRepoOwner {
 
 #[derive(Debug, Deserialize)]
 struct GhRepo {
-    owner: GhRepoOwner,
     name: String,
 }
 
-/// Response from `gh pr view --json`
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhPrView {
@@ -38,6 +36,7 @@ struct GhPrView {
     head_ref_oid: String,
     head_ref_name: String,
     head_repository: GhRepo,
+    head_repository_owner: GhRepoOwner,
 }
 
 /// Check if the GitHub CLI is installed
@@ -65,7 +64,7 @@ pub fn get_pr_info(pr_url: &str) -> Result<PrInfo, ReviewError> {
             "view",
             pr_url,
             "--json",
-            "title,body,baseRefOid,headRefOid,headRefName,headRepository",
+            "title,body,baseRefOid,headRefOid,headRefName,headRepository,headRepositoryOwner",
         ])
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
@@ -89,7 +88,7 @@ pub fn get_pr_info(pr_url: &str) -> Result<PrInfo, ReviewError> {
         serde_json::from_str(&stdout).map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
 
     Ok(PrInfo {
-        owner: pr_view.head_repository.owner.login,
+        owner: pr_view.head_repository_owner.login,
         repo: pr_view.head_repository.name,
         title: pr_view.title,
         description: pr_view.body,
