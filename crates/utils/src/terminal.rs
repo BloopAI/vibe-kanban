@@ -74,11 +74,14 @@ pub async fn open_terminal(
                     "xterm" | "alacritty" | "kitty" | "wezterm" => {
                         // estos terminales no tienen un flag directo para working directory
                         // usamos un comando shell para cd al directorio
+                        // escapamos el path para evitar problemas con caracteres especiales
+                        let escaped_path = shlex::try_quote(&path_str)
+                            .map_err(|_| "Failed to escape path")?;
                         // fish usa sintaxis diferente a POSIX shells
-                        let cd_command = if user_shell == UnixShell::Fish {
-                            format!("cd '{}'; exec {}", path_str, shell_path_str)
+                        let cd_command = if matches!(user_shell, UnixShell::Fish(_)) {
+                            format!("cd {}; exec {}", escaped_path, shell_path_str)
                         } else {
-                            format!("cd '{}' && exec {}", path_str, shell_path_str)
+                            format!("cd {} && exec {}", escaped_path, shell_path_str)
                         };
                         tokio::process::Command::new(terminal)
                             .arg("-e")
