@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Eye, FileDiff, X } from 'lucide-react';
+import { ExternalLink, Eye, FileDiff, GitPullRequest, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -104,6 +104,29 @@ export const AttemptHeaderActions = ({
             </Tooltip>
           </ToggleGroup>
         </TooltipProvider>
+      )}
+      {task.open_pr && (
+        <>
+          <div className="h-4 w-px bg-border" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => window.open(task.open_pr!.url, '_blank')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs hover:underline"
+                  aria-label={t('git.pr.open', { number: task.open_pr.number })}
+                >
+                  <GitPullRequest className="h-3.5 w-3.5" />
+                  {t('git.pr.number', { number: task.open_pr.number })}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t('git.pr.open', { number: task.open_pr.number })}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </>
       )}
       {typeof mode !== 'undefined' && onModeChange && (
         <div className="h-4 w-px bg-border" />
