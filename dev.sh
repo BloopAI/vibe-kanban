@@ -3,6 +3,34 @@
 
 cd "$(dirname "$0")"
 
+# production data location (XDG standard)
+PROD_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/vibe-kanban"
+DEV_ASSETS_DIR="./dev_assets"
+
+# set up symlinks to share data between dev and production builds
+setup_symlinks() {
+    mkdir -p "$PROD_DATA_DIR"
+    mkdir -p "$DEV_ASSETS_DIR"
+
+    # config.json symlink
+    if [ ! -L "$DEV_ASSETS_DIR/config.json" ]; then
+        # create prod config if it doesn't exist
+        [ ! -f "$PROD_DATA_DIR/config.json" ] && echo '{}' > "$PROD_DATA_DIR/config.json"
+        rm -f "$DEV_ASSETS_DIR/config.json"
+        ln -s "$PROD_DATA_DIR/config.json" "$DEV_ASSETS_DIR/config.json"
+        echo "Created symlink: dev_assets/config.json -> $PROD_DATA_DIR/config.json"
+    fi
+
+    # db.sqlite symlink
+    if [ ! -L "$DEV_ASSETS_DIR/db.sqlite" ]; then
+        rm -f "$DEV_ASSETS_DIR/db.sqlite"
+        ln -s "$PROD_DATA_DIR/db.sqlite" "$DEV_ASSETS_DIR/db.sqlite"
+        echo "Created symlink: dev_assets/db.sqlite -> $PROD_DATA_DIR/db.sqlite"
+    fi
+}
+
+setup_symlinks
+
 # kill any existing dev processes on common ports
 pkill -f "cargo.*run.*server" 2>/dev/null
 pkill -f "vite.*--port" 2>/dev/null
