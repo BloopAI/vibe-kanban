@@ -134,11 +134,28 @@ export function ProjectSettings() {
     draft?.editor_config?.editor_type as EditorType | undefined
   );
 
-  // Check for unsaved changes (project name)
-  const hasUnsavedProjectChanges = useMemo(() => {
+  // Check for unsaved changes in general settings (name, scripts, working dirs)
+  const hasUnsavedGeneralChanges = useMemo(() => {
     if (!draft || !selectedProject) return false;
-    return !isEqual(draft, projectToFormState(selectedProject));
+    const original = projectToFormState(selectedProject);
+    return (
+      draft.name !== original.name ||
+      draft.dev_script !== original.dev_script ||
+      draft.dev_script_working_dir !== original.dev_script_working_dir ||
+      draft.default_agent_working_dir !== original.default_agent_working_dir
+    );
   }, [draft, selectedProject]);
+
+  // Check for unsaved changes in editor override
+  const hasUnsavedEditorChanges = useMemo(() => {
+    if (!draft || !selectedProject) return false;
+    const original = projectToFormState(selectedProject);
+    return !isEqual(draft.editor_config, original.editor_config);
+  }, [draft, selectedProject]);
+
+  // Combined check for any unsaved project changes
+  const hasUnsavedProjectChanges =
+    hasUnsavedGeneralChanges || hasUnsavedEditorChanges;
 
   // Check for unsaved script changes
   const hasUnsavedScriptsChanges = useMemo(() => {
@@ -652,7 +669,7 @@ export function ProjectSettings() {
 
               {/* Save Button */}
               <div className="flex items-center justify-between pt-4 border-t">
-                {hasUnsavedProjectChanges ? (
+                {hasUnsavedGeneralChanges ? (
                   <span className="text-sm text-muted-foreground">
                     {t('settings.projects.save.unsavedChanges')}
                   </span>
@@ -663,13 +680,13 @@ export function ProjectSettings() {
                   <Button
                     variant="outline"
                     onClick={handleDiscard}
-                    disabled={saving || !hasUnsavedProjectChanges}
+                    disabled={saving || !hasUnsavedGeneralChanges}
                   >
                     {t('settings.projects.save.discard')}
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={saving || !hasUnsavedProjectChanges}
+                    disabled={saving || !hasUnsavedGeneralChanges}
                   >
                     {saving ? (
                       <>
@@ -682,18 +699,6 @@ export function ProjectSettings() {
                   </Button>
                 </div>
               </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              {success && (
-                <Alert>
-                  <AlertDescription>
-                    {t('settings.projects.save.success')}
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
 
@@ -787,6 +792,39 @@ export function ProjectSettings() {
                   </p>
                 </div>
               )}
+
+              {/* Save Button for Editor Override */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                {hasUnsavedEditorChanges ? (
+                  <span className="text-sm text-muted-foreground">
+                    {t('settings.projects.save.unsavedChanges')}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscard}
+                    disabled={saving || !hasUnsavedEditorChanges}
+                  >
+                    {t('settings.projects.save.discard')}
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !hasUnsavedEditorChanges}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('settings.projects.save.saving')}
+                      </>
+                    ) : (
+                      t('settings.projects.save.button')
+                    )}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
