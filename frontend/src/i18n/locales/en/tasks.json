@@ -470,7 +470,17 @@
       "description": "You have unsaved changes. Are you sure you want to discard them?",
       "continueEditing": "Continue Editing",
       "discardChanges": "Discard Changes"
-    }
+    },
+    "githubIssueCreated": "Created GitHub issue",
+    "githubIssueError": "Task created but GitHub issue creation failed",
+    "githubIssueWillBeCreated": "A GitHub issue will be created for this task",
+    "creatingGitHubIssue": "Creating issue...",
+    "willCreateIssue": "Will create issue"
+  },
+  "githubIssue": {
+    "viewOnGitHub": "View on GitHub",
+    "assignedToYou": "Assigned to you",
+    "assignedTo": "Assigned to {{user}}"
   },
   "restoreLogsDialog": {
     "title": "Confirm Retry",

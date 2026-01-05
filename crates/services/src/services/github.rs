@@ -10,10 +10,10 @@ use tokio::task;
 use tracing::info;
 use ts_rs::TS;
 
-mod cli;
+pub mod cli;
 
-use cli::{GhCli, GhCliError, PrComment, PrReviewComment};
-pub use cli::{PrCommentAuthor, ReviewCommentUser};
+use cli::{GhCli, GhCliError, GitHubIssue, PrComment, PrReviewComment};
+pub use cli::{GitHubUser, PrCommentAuthor, ReviewCommentUser};
 
 /// Unified PR comment that can be either a general comment or review comment
 #[derive(Debug, Clone, Serialize, TS)]
@@ -140,6 +140,31 @@ impl GitHubRepoInfo {
             .to_string();
 
         Ok(Self { owner, repo_name })
+    }
+
+    /// Extract GitHub repo info from a local repo path by reading its remote URL
+    pub fn from_repo_path(repo_path: &str) -> Result<Self, GitHubServiceError> {
+        use std::process::Command;
+
+        // Get the remote URL from the repo
+        let output = Command::new("git")
+            .args(["config", "--get", "remote.origin.url"])
+            .current_dir(repo_path)
+            .output()
+            .map_err(|e| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to get remote URL for repo at {repo_path}: {e}"
+                ))
+            })?;
+
+        if !output.status.success() {
+            return Err(GitHubServiceError::Repository(format!(
+                "No remote.origin.url found for repo at {repo_path}"
+            )));
+        }
+
+        let remote_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Self::from_remote_url(&remote_url)
     }
 }
 
@@ -449,5 +474,131 @@ impl GitHubService {
             );
         })
         .await
+    }
+
+    // ========================================================================
+    // GitHub Issue Operations
+    // ========================================================================
+
+    /// List issues from a GitHub repository
+    pub async fn list_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+    ) -> Result<Vec<GitHubIssue>, GitHubServiceError> {
+        (|| async {
+            let owner = owner.to_string();
+            let repo = repo.to_string();
+            let state = state.to_string();
+            let cli = self.gh_cli.clone();
+            let issues = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                let state = state.clone();
+                move || cli.list_issues(&owner, &repo, &state)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for listing issues: {err}"
+                ))
+            })?;
+            issues.map_err(GitHubServiceError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// Create a new issue in a GitHub repository
+    pub async fn create_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        title: &str,
+        body: Option<&str>,
+    ) -> Result<GitHubIssue, GitHubServiceError> {
+        let owner = owner.to_string();
+        let repo = repo.to_string();
+        let title = title.to_string();
+        let body = body.map(|s| s.to_string());
+        let cli = self.gh_cli.clone();
+
+        let owner_clone = owner.clone();
+        let repo_clone = repo.clone();
+        let issue = task::spawn_blocking(move || {
+            cli.create_issue(&owner_clone, &repo_clone, &title, body.as_deref())
+        })
+        .await
+        .map_err(|err| {
+            GitHubServiceError::Repository(format!(
+                "Failed to execute GitHub CLI for creating issue: {err}"
+            ))
+        })?
+        .map_err(GitHubServiceError::from)?;
+
+        info!(
+            "Created GitHub issue #{} in {}/{}",
+            issue.number, owner, repo
+        );
+
+        Ok(issue)
+    }
+
+    /// Close an issue in a GitHub repository
+    pub async fn close_issue(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: i64,
+    ) -> Result<(), GitHubServiceError> {
+        let owner = owner.to_string();
+        let repo = repo.to_string();
+        let cli = self.gh_cli.clone();
+
+        let owner_clone = owner.clone();
+        let repo_clone = repo.clone();
+        task::spawn_blocking(move || cli.close_issue(&owner_clone, &repo_clone, issue_number))
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for closing issue #{issue_number}: {err}"
+                ))
+            })?
+            .map_err(GitHubServiceError::from)?;
+
+        info!("Closed GitHub issue #{} in {}/{}", issue_number, owner, repo);
+
+        Ok(())
+    }
+
+    /// Get the currently authenticated GitHub user
+    pub async fn get_current_user(&self) -> Result<String, GitHubServiceError> {
+        let cli = self.gh_cli.clone();
+
+        let username = task::spawn_blocking(move || cli.get_current_user())
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for getting current user: {err}"
+                ))
+            })?
+            .map_err(GitHubServiceError::from)?;
+
+        Ok(username)
     }
 }

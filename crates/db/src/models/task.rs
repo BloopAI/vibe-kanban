@@ -33,6 +33,13 @@ pub struct Task {
     pub shared_task_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // GitHub issue sync fields
+    pub github_issue_number: Option<i64>,
+    pub github_issue_url: Option<String>,
+    pub github_issue_state: Option<String>, // "open" or "closed"
+    pub github_issue_repo_id: Option<Uuid>,
+    pub github_issue_assignee: Option<String>,
+    pub github_issue_synced_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -149,6 +156,12 @@ impl Task {
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
+  t.github_issue_number           AS "github_issue_number: i64",
+  t.github_issue_url,
+  t.github_issue_state,
+  t.github_issue_repo_id          AS "github_issue_repo_id: Uuid",
+  t.github_issue_assignee,
+  t.github_issue_synced_at        AS "github_issue_synced_at: DateTime<Utc>",
 
   CASE WHEN EXISTS (
     SELECT 1
@@ -202,6 +215,12 @@ ORDER BY t.created_at DESC"#,
                     shared_task_id: rec.shared_task_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
+                    github_issue_number: rec.github_issue_number,
+                    github_issue_url: rec.github_issue_url,
+                    github_issue_state: rec.github_issue_state,
+                    github_issue_repo_id: rec.github_issue_repo_id,
+                    github_issue_assignee: rec.github_issue_assignee,
+                    github_issue_synced_at: rec.github_issue_synced_at,
                 },
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 last_attempt_failed: rec.last_attempt_failed != 0,
@@ -215,7 +234,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
@@ -227,7 +246,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
@@ -245,7 +264,7 @@ ORDER BY t.created_at DESC"#,
     {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
@@ -258,7 +277,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id IS NOT NULL"#
         )
@@ -276,7 +295,7 @@ ORDER BY t.created_at DESC"#,
             Task,
             r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
@@ -303,7 +322,7 @@ ORDER BY t.created_at DESC"#,
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -446,7 +465,7 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,
@@ -488,5 +507,120 @@ ORDER BY t.created_at DESC"#,
             current_workspace: workspace.clone(),
             children,
         })
+    }
+
+    /// Find a task by its linked GitHub issue number and repo
+    pub async fn find_by_github_issue(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+        issue_number: i64,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
+               FROM tasks
+               WHERE github_issue_repo_id = $1 AND github_issue_number = $2"#,
+            repo_id,
+            issue_number
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    /// Find all tasks linked to GitHub issues for a specific repo
+    pub async fn find_by_github_repo(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", github_issue_number as "github_issue_number: i64", github_issue_url, github_issue_state, github_issue_repo_id as "github_issue_repo_id: Uuid", github_issue_assignee, github_issue_synced_at as "github_issue_synced_at: DateTime<Utc>"
+               FROM tasks
+               WHERE github_issue_repo_id = $1 AND github_issue_number IS NOT NULL"#,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Link a task to a GitHub issue
+    pub async fn link_github_issue(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        repo_id: Uuid,
+        issue_number: i64,
+        issue_url: &str,
+        issue_state: &str,
+        assignee: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE tasks
+               SET github_issue_repo_id = $2,
+                   github_issue_number = $3,
+                   github_issue_url = $4,
+                   github_issue_state = $5,
+                   github_issue_assignee = $6,
+                   github_issue_synced_at = CURRENT_TIMESTAMP,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $1"#,
+            task_id,
+            repo_id,
+            issue_number,
+            issue_url,
+            issue_state,
+            assignee
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Update GitHub issue sync fields (state, assignee, synced_at)
+    pub async fn update_github_issue_sync(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        title: &str,
+        description: Option<&str>,
+        issue_state: &str,
+        assignee: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE tasks
+               SET title = $2,
+                   description = $3,
+                   github_issue_state = $4,
+                   github_issue_assignee = $5,
+                   github_issue_synced_at = CURRENT_TIMESTAMP,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $1"#,
+            task_id,
+            title,
+            description,
+            issue_state,
+            assignee
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Update only the GitHub issue state (for when we close an issue)
+    pub async fn update_github_issue_state(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        issue_state: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE tasks
+               SET github_issue_state = $2,
+                   github_issue_synced_at = CURRENT_TIMESTAMP,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $1"#,
+            task_id,
+            issue_state
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }

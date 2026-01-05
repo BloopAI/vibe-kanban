@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
-use services::services::container::ContainerService;
+use services::services::{container::ContainerService, issue_monitor::IssueMonitorService};
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
@@ -63,6 +63,10 @@ async fn main() -> Result<(), VibeKanbanError> {
         .await
         .map_err(DeploymentError::from)?;
     deployment.spawn_pr_monitor_service().await;
+
+    // Spawn the GitHub issue monitor service
+    IssueMonitorService::spawn(deployment.db().clone()).await;
+
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;

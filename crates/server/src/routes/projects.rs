@@ -21,7 +21,9 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery, project::ProjectServiceError,
+    file_search_cache::SearchQuery,
+    issue_monitor::IssueMonitorService,
+    project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -582,6 +584,29 @@ pub async fn update_project_repository(
     }
 }
 
+/// Manually trigger a sync of GitHub issues for a specific repository
+pub async fn sync_project_repo_issues(
+    State(deployment): State<DeploymentImpl>,
+    Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let project_repo =
+        ProjectRepo::find_by_project_and_repo(&deployment.db().pool, project_id, repo_id)
+            .await?
+            .ok_or_else(|| ApiError::BadRequest("Repository not found in project".to_string()))?;
+
+    if !project_repo.github_issue_sync_enabled {
+        return Err(ApiError::BadRequest(
+            "GitHub issue sync is not enabled for this repository".to_string(),
+        ));
+    }
+
+    IssueMonitorService::sync_project_repo(&deployment.db(), &project_repo)
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to sync issues: {}", e)))?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -612,6 +637,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project_repository)
                 .put(update_project_repository)
                 .delete(delete_project_repository),
+        )
+        .route(
+            "/{project_id}/repositories/{repo_id}/sync-issues",
+            post(sync_project_repo_issues),
         )
         .route("/stream/ws", get(stream_projects_ws))
         .nest("/{id}", project_id_router);
