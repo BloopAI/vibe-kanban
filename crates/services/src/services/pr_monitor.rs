@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    github::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    github::{GitHubService, GitHubServiceError},
     share::SharePublisher,
 };
 
@@ -97,10 +97,9 @@ impl PrMonitorService {
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
         // GitHubService now uses gh CLI, no token needed
         let github_service = GitHubService::new()?;
-        let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
 
         let pr_status = github_service
-            .update_pr_status(&repo_info, pr_merge.pr_info.number)
+            .update_pr_status(&pr_merge.pr_info.url)
             .await?;
 
         debug!(

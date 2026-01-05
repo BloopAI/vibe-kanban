@@ -5,10 +5,7 @@ use std::{
 };
 
 use git2::{Repository, build::CheckoutBuilder};
-use services::services::{
-    git::{DiffTarget, GitCli, GitService},
-    github::{GitHubRepoInfo, GitHubServiceError},
-};
+use services::services::git::{DiffTarget, GitCli, GitService};
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
 
@@ -464,27 +461,6 @@ fn worktree_diff_permission_only_change() {
         .expect("p.sh diff present");
     assert!(matches!(d.change, DiffChangeKind::PermissionChange));
     assert_eq!(d.old_content, d.new_content);
-}
-
-#[test]
-fn github_repo_info_parses_https_and_ssh_urls() {
-    let info = GitHubRepoInfo::from_remote_url("https://github.com/owner/repo.git").unwrap();
-    assert_eq!(info.owner, "owner");
-    assert_eq!(info.repo_name, "repo");
-
-    let info = GitHubRepoInfo::from_remote_url("git@github.com:owner/repo.git").unwrap();
-    assert_eq!(info.owner, "owner");
-    assert_eq!(info.repo_name, "repo");
-
-    let info = GitHubRepoInfo::from_remote_url("https://github.com/owner/repo/pull/123").unwrap();
-    assert_eq!(info.owner, "owner");
-    assert_eq!(info.repo_name, "repo");
-
-    let err = GitHubRepoInfo::from_remote_url("https://example.com/not/github").unwrap_err();
-    match err {
-        GitHubServiceError::Repository(msg) => assert!(msg.contains("Invalid GitHub URL")),
-        other => panic!("unexpected error variant: {other:?}"),
-    }
 }
 
 #[test]

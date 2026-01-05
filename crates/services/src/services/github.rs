@@ -3,7 +3,6 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use chrono::{DateTime, Utc};
 use db::models::merge::PullRequestInfo;
-use regex::Regex;
 use serde::Serialize;
 use thiserror::Error;
 use tokio::task;
@@ -12,8 +11,8 @@ use ts_rs::TS;
 
 mod cli;
 
-use cli::{GhCli, GhCliError, PrComment, PrReviewComment};
-pub use cli::{PrCommentAuthor, ReviewCommentUser};
+pub use cli::{GhCli, GhCliError, PrCommentAuthor, ReviewCommentUser};
+use cli::{PrComment, PrReviewComment};
 
 /// Unified PR comment that can be either a general comment or review comment
 #[derive(Debug, Clone, Serialize, TS)]
@@ -106,41 +105,6 @@ impl GitHubServiceError {
 pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
-}
-impl GitHubRepoInfo {
-    pub fn from_remote_url(remote_url: &str) -> Result<Self, GitHubServiceError> {
-        // Supports SSH, HTTPS and PR GitHub URLs. See tests for examples.
-        let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
-            .map_err(|e| {
-            GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
-        })?;
-
-        let caps = re.captures(remote_url).ok_or_else(|| {
-            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))
-        })?;
-
-        let owner = caps
-            .name("owner")
-            .ok_or_else(|| {
-                GitHubServiceError::Repository(format!(
-                    "Failed to extract owner from GitHub URL: {remote_url}"
-                ))
-            })?
-            .as_str()
-            .to_string();
-
-        let repo_name = caps
-            .name("repo")
-            .ok_or_else(|| {
-                GitHubServiceError::Repository(format!(
-                    "Failed to extract repo name from GitHub URL: {remote_url}"
-                ))
-            })?
-            .as_str()
-            .to_string();
-
-        Ok(Self { owner, repo_name })
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -236,27 +200,20 @@ impl GitHubService {
         Ok(cli_result)
     }
 
-    /// Update and get the status of a pull request
     pub async fn update_pr_status(
         &self,
-        repo_info: &GitHubRepoInfo,
-        pr_number: i64,
+        pr_url: &str,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
         (|| async {
-            let owner = repo_info.owner.clone();
-            let repo = repo_info.repo_name.clone();
             let cli = self.gh_cli.clone();
-            let pr = task::spawn_blocking({
-                let owner = owner.clone();
-                let repo = repo.clone();
-                move || cli.view_pr(&owner, &repo, pr_number)
-            })
-            .await
-            .map_err(|err| {
-                GitHubServiceError::PullRequest(format!(
-                    "Failed to execute GitHub CLI for viewing PR #{pr_number}: {err}"
-                ))
-            })?;
+            let url = pr_url.to_string();
+            let pr = task::spawn_blocking(move || cli.view_pr(&url))
+                .await
+                .map_err(|err| {
+                    GitHubServiceError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for viewing PR at {pr_url}: {err}"
+                    ))
+                })?;
             let pr = pr.map_err(GitHubServiceError::from)?;
             Ok(pr)
         })
