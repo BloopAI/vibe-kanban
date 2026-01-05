@@ -123,7 +123,9 @@ export function TaskCard({
                 <GitPullRequest className="h-3 w-3" />
                 <span>#{String(task.open_pr.number)}</span>
               </button>
-            ) : undefined
+            ) : (
+              <span className="text-[10px] text-muted-foreground">[no PR]</span>
+            )
           }
           right={
             <>
