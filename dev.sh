@@ -39,21 +39,43 @@ pkill -f "vite.*--port" 2>/dev/null
 export DISABLE_WORKTREE_ORPHAN_CLEANUP=1
 export RUST_LOG=debug
 
+PORT_FILE="/tmp/vibe-kanban/vibe-kanban.port"
+
+# remove stale port file
+rm -f "$PORT_FILE"
+
 # start backend
 cargo watch -w crates -x 'run --bin server' &
 BACKEND_PID=$!
 
-# start frontend
+# wait for backend to write its port (max 60s)
+echo "Waiting for backend to start..."
+for i in {1..60}; do
+    if [ -f "$PORT_FILE" ]; then
+        export BACKEND_PORT=$(cat "$PORT_FILE")
+        echo "Backend running on port $BACKEND_PORT"
+        break
+    fi
+    sleep 1
+done
+
+if [ -z "$BACKEND_PORT" ]; then
+    echo "ERROR: Backend failed to start within 60s"
+    kill $BACKEND_PID 2>/dev/null
+    exit 1
+fi
+
+# start frontend with backend port
 cd frontend
-pnpm run dev -- --host &
+BACKEND_PORT=$BACKEND_PORT pnpm run dev -- --host &
 FRONTEND_PID=$!
 
 cd ..
 
 echo ""
-echo "Dev environment starting..."
-echo "  Backend PID:  $BACKEND_PID"
-echo "  Frontend PID: $FRONTEND_PID"
+echo "Dev environment started!"
+echo "  Backend:  http://localhost:$BACKEND_PORT (PID: $BACKEND_PID)"
+echo "  Frontend: http://localhost:3000 (PID: $FRONTEND_PID)"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 

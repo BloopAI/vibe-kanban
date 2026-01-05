@@ -19,7 +19,7 @@ env:
 
 jobs:
   test:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +55,7 @@ jobs:
           RUST_CACHE_DEBUG: true
         with:
           workspaces: "."
-          cache-provider: "buildjet"
+          cache-provider: "github"
           cache-on-failure: true
           shared-key: "shared"
           cache-all-crates: true
@@ -75,4 +75,4 @@ jobs:
           npm run prepare-db:check
           npm run remote:prepare-db:check
           cargo test --workspace
-          cargo clippy --all --all-targets -- -D warnings  
+          cargo clippy --all --all-targets -- -D warnings
