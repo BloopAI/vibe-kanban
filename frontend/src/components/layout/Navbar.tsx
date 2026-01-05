@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Menu,
   Plus,
+  Target,
   LogOut,
   LogIn,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
+import { GoalFormDialog } from '@/components/dialogs/goals/GoalFormDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
@@ -112,6 +114,12 @@ export function Navbar() {
   const handleCreateTask = () => {
     if (projectId) {
       openTaskForm({ mode: 'create', projectId });
+    }
+  };
+
+  const handleCreateGoal = () => {
+    if (projectId) {
+      GoalFormDialog.show({ projectId });
     }
   };
 
@@ -219,6 +227,15 @@ export function Navbar() {
                       className="h-9 w-9"
                     />
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={handleCreateGoal}
+                    aria-label="Create new goal"
+                  >
+                    <Target className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

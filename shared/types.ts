@@ -230,7 +230,12 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>,
+/**
+ * If true, inject the vibe_kanban MCP server into the workspace before spawning.
+ * This allows the agent to use task management tools (create_task, list_tasks, etc.).
+ */
+include_vibe_kanban_mcp?: boolean, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
@@ -433,16 +438,21 @@ export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium"
 
 export type AppendPrompt = string | null;
 
-export type CodingAgentInitialRequest = { prompt: string, 
+export type CodingAgentInitialRequest = { prompt: string,
 /**
  * Executor profile specification
  */
-executor_profile_id: ExecutorProfileId, 
+executor_profile_id: ExecutorProfileId,
 /**
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null,
+/**
+ * If true, inject the vibe_kanban MCP server into the workspace before spawning.
+ * This allows the agent to use task management tools (create_task, list_tasks, etc.).
+ */
+include_vibe_kanban_mcp?: boolean, };
 
 export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
 /**

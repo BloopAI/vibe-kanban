@@ -37,6 +37,11 @@ export {
   TaskFormDialog,
   type TaskFormDialogProps,
 } from './tasks/TaskFormDialog';
+export {
+  GoalFormDialog,
+  type GoalFormDialogProps,
+  type GoalFormDialogResult,
+} from './goals/GoalFormDialog';
 
 export { CreatePRDialog } from './tasks/CreatePRDialog';
 export {

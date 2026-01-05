@@ -145,6 +145,10 @@ pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
     pub repos: Vec<WorkspaceRepoInput>,
+    /// If true, inject the vibe_kanban MCP server into the workspace before spawning.
+    /// This allows the agent to use task management tools (create_task, list_tasks, etc.).
+    #[serde(default)]
+    pub include_vibe_kanban_mcp: bool,
 }
 
 pub async fn create_task_and_start(
@@ -217,7 +221,7 @@ pub async fn create_task_and_start(
 
     let is_attempt_running = deployment
         .container()
-        .start_workspace(&workspace, payload.executor_profile_id.clone())
+        .start_workspace(&workspace, payload.executor_profile_id.clone(), payload.include_vibe_kanban_mcp)
         .await
         .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
         .is_ok();
