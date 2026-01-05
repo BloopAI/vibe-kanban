@@ -43,7 +43,16 @@ export function PreviewPanel() {
   } = useDevServer(attemptId);
 
   const logStream = useLogStream(latestDevServerProcess?.id ?? '');
-  const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
+  const autoDetectedUrl = useDevserverUrlFromLogs(logStream.logs);
+
+  // Use configured port if set, otherwise use auto-detected URL
+  const lastKnownUrl = autoDetectedUrl ?? (project?.dev_server_port
+    ? {
+        url: `http://${window.location.hostname}:${project.dev_server_port}`,
+        port: project.dev_server_port,
+        scheme: 'http' as const,
+      }
+    : undefined);
 
   const previewState = useDevserverPreview(attemptId, {
     projectHasDevScript,

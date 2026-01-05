@@ -1,1 +1,2 @@
 ALTER TABLE projects ADD COLUMN dev_server_timeout INTEGER DEFAULT NULL;
+ALTER TABLE projects ADD COLUMN dev_server_port INTEGER DEFAULT NULL;

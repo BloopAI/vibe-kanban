@@ -27,6 +27,8 @@ pub struct Project {
     /// Timeout in seconds before showing the "trouble previewing" help message.
     /// Defaults to 30 seconds if not set.
     pub dev_server_timeout: Option<i64>,
+    /// Optional port for the dev server. If set, this port will be used instead of auto-detection.
+    pub dev_server_port: Option<i64>,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -48,6 +50,8 @@ pub struct UpdateProject {
     pub default_agent_working_dir: Option<String>,
     /// Timeout in seconds before showing the "trouble previewing" help message.
     pub dev_server_timeout: Option<i64>,
+    /// Optional port for the dev server.
+    pub dev_server_port: Option<i64>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -80,6 +84,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       dev_server_timeout,
+                      dev_server_port,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -96,7 +101,7 @@ impl Project {
             Project,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
-                   p.default_agent_working_dir, p.dev_server_timeout,
+                   p.default_agent_working_dir, p.dev_server_timeout, p.dev_server_port,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -123,6 +128,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       dev_server_timeout,
+                      dev_server_port,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -143,6 +149,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       dev_server_timeout,
+                      dev_server_port,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -166,6 +173,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       dev_server_timeout,
+                      dev_server_port,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -197,6 +205,7 @@ impl Project {
                           dev_script_working_dir,
                           default_agent_working_dir,
                           dev_server_timeout,
+                          dev_server_port,
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
@@ -221,11 +230,12 @@ impl Project {
         let dev_script_working_dir = payload.dev_script_working_dir.clone();
         let default_agent_working_dir = payload.default_agent_working_dir.clone();
         let dev_server_timeout = payload.dev_server_timeout;
+        let dev_server_port = payload.dev_server_port;
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, dev_server_timeout = $6
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, dev_server_timeout = $6, dev_server_port = $7
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -233,6 +243,7 @@ impl Project {
                          dev_script_working_dir,
                          default_agent_working_dir,
                          dev_server_timeout,
+                         dev_server_port,
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -242,6 +253,7 @@ impl Project {
             dev_script_working_dir,
             default_agent_working_dir,
             dev_server_timeout,
+            dev_server_port,
         )
         .fetch_one(pool)
         .await
