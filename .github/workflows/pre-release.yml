@@ -179,9 +179,9 @@ jobs:
           # - target: aarch64-unknown-linux-musl
           #   os: ubuntu-latest-arm64-l
           #   name: linux-arm64
-          - target: x86_64-pc-windows-msvc
-            os: ubuntu-latest-x64-l
-            name: windows-x64
+          # - target: x86_64-pc-windows-msvc
+          #   os: ubuntu-latest-x64-l
+          #   name: windows-x64
           # - target: x86_64-apple-darwin
           #   os: macos-15-xlarge
           #   name: macos-x64
