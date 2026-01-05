@@ -317,6 +317,11 @@ jobs:
       - name: Build backend (macOS)
         if: runner.os == 'macOS'
         run: |
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=10.12
+          elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+          fi
           cargo build --release --target ${{ matrix.target }} -p server
           cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
           cargo build --release --target ${{ matrix.target }} -p review
