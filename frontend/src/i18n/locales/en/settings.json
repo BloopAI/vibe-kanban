@@ -388,7 +388,7 @@
           "placeholder": "e.g., code, subl, vim",
           "helper": "Enter the command to launch your custom editor."
         },
-        "useGlobalFallback": "Using global editor setting"
+        "useGlobalFallback": "Use global default"
       }
     }
   },
