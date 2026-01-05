@@ -370,6 +370,25 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      },
+      "editor": {
+        "title": "Editor Override",
+        "description": "Override the default editor for this project. When set, this project will open in the specified editor instead of the global default.",
+        "toggle": {
+          "label": "Use custom editor for this project",
+          "helper": "Enable to override the global editor setting for this project."
+        },
+        "type": {
+          "label": "Editor Type",
+          "placeholder": "Select editor",
+          "helper": "Choose the editor to use when opening files from this project."
+        },
+        "customCommand": {
+          "label": "Custom Editor Command",
+          "placeholder": "e.g., code, subl, vim",
+          "helper": "Enter the command to launch your custom editor."
+        },
+        "useGlobalFallback": "Using global editor setting"
       }
     }
   },

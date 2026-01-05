@@ -24,6 +24,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
+    project::Project,
     project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
@@ -516,6 +517,8 @@ pub async fn open_task_attempt_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<OpenEditorRequest>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+
     let container_ref = deployment
         .container()
         .ensure_container_exists(&workspace)
@@ -523,8 +526,7 @@ pub async fn open_task_attempt_in_editor(
     let workspace_path = Path::new(&container_ref);
 
     // For single-repo projects, open from the repo directory
-    let workspace_repos =
-        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
+    let workspace_repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let workspace_path = if workspace_repos.len() == 1 && payload.file_path.is_none() {
         workspace_path.join(&workspace_repos[0].name)
     } else {
@@ -538,10 +540,35 @@ pub async fn open_task_attempt_in_editor(
         workspace_path
     };
 
+    // Look up the project to check for editor override
+    let project_editor_config = if let Some(task) = Task::find_by_id(pool, workspace.task_id).await?
+    {
+        if let Some(project) = Project::find_by_id(pool, task.project_id).await? {
+            project.editor_config
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Determine editor config: request override > project override > global config
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.editor_type.as_deref();
-        config.editor.with_override(editor_type_str)
+        let request_editor_type = payload.editor_type.as_deref();
+
+        if let Some(editor_type_str) = request_editor_type {
+            // Request explicitly specifies an editor type - use it
+            config.editor.with_override(Some(editor_type_str))
+        } else if let Some(ref project_editor) = project_editor_config {
+            // Project has an editor override configured - use it
+            config
+                .editor
+                .with_override(Some(&project_editor.editor_type))
+        } else {
+            // No overrides - use global config
+            config.editor.clone()
+        }
     };
 
     match editor_config.open_file(path.as_path()).await {

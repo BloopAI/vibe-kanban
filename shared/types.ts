@@ -12,11 +12,23 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, 
+/**
+ * Per-project editor configuration override
+ */
+editor_config?: ProjectEditorConfig, created_at: Date, updated_at: Date, };
+
+export type ProjectEditorConfig = { editor_type: string, custom_command: string | null, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, };
+export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, 
+/**
+ * Per-project editor configuration override.
+ * Set to Some(config) to use a specific editor for this project.
+ * Set to None to clear the override and use global settings.
+ */
+editor_config?: ProjectEditorConfig | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 

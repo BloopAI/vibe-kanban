@@ -343,10 +343,23 @@ pub async fn open_project_in_editor(
             .ok_or_else(|| ApiError::BadRequest("Project has no repositories".to_string()))?
     };
 
+    // Determine editor config: request override > project override > global config
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
-        config.editor.with_override(editor_type_str)
+        let request_editor_type = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+
+        if let Some(editor_type_str) = request_editor_type {
+            // Request explicitly specifies an editor type - use it
+            config.editor.with_override(Some(editor_type_str))
+        } else if let Some(ref project_editor) = project.editor_config {
+            // Project has an editor override configured - use it
+            config
+                .editor
+                .with_override(Some(&project_editor.editor_type))
+        } else {
+            // No overrides - use global config
+            config.editor.clone()
+        }
     };
 
     match editor_config.open_file(&path).await {

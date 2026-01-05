@@ -17,7 +17,48 @@ pub enum ProjectError {
     CreateFailed(String),
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+/// Per-project editor configuration override.
+/// When set, this overrides the global editor settings for this project.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectEditorConfig {
+    pub editor_type: String,
+    pub custom_command: Option<String>,
+}
+
+/// Internal representation for SQLx that stores editor_config as JSON string
+#[derive(Debug, Clone, FromRow)]
+struct ProjectRow {
+    pub id: Uuid,
+    pub name: String,
+    pub dev_script: Option<String>,
+    pub dev_script_working_dir: Option<String>,
+    pub default_agent_working_dir: Option<String>,
+    pub remote_project_id: Option<Uuid>,
+    pub editor_config: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<ProjectRow> for Project {
+    fn from(row: ProjectRow) -> Self {
+        let editor_config = row
+            .editor_config
+            .and_then(|s| serde_json::from_str(&s).ok());
+        Project {
+            id: row.id,
+            name: row.name,
+            dev_script: row.dev_script,
+            dev_script_working_dir: row.dev_script_working_dir,
+            default_agent_working_dir: row.default_agent_working_dir,
+            remote_project_id: row.remote_project_id,
+            editor_config,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct Project {
     pub id: Uuid,
     pub name: String,
@@ -25,6 +66,9 @@ pub struct Project {
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    /// Per-project editor configuration override
+    #[ts(optional)]
+    pub editor_config: Option<ProjectEditorConfig>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -43,6 +87,11 @@ pub struct UpdateProject {
     pub dev_script: Option<String>,
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
+    /// Per-project editor configuration override.
+    /// Set to Some(config) to use a specific editor for this project.
+    /// Set to None to clear the override and use global settings.
+    #[ts(optional)]
+    pub editor_config: Option<Option<ProjectEditorConfig>>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -67,31 +116,34 @@ impl Project {
     }
 
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let rows = sqlx::query_as!(
+            ProjectRow,
             r#"SELECT id as "id!: Uuid",
                       name,
                       dev_script,
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      editor_config,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
                ORDER BY created_at DESC"#
         )
         .fetch_all(pool)
-        .await
+        .await?;
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 
     /// Find the most actively used projects based on recent task activity
     pub async fn find_most_active(pool: &SqlitePool, limit: i32) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let rows = sqlx::query_as!(
+            ProjectRow,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.editor_config,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -105,18 +157,20 @@ impl Project {
             limit
         )
         .fetch_all(pool)
-        .await
+        .await?;
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let row = sqlx::query_as!(
+            ProjectRow,
             r#"SELECT id as "id!: Uuid",
                       name,
                       dev_script,
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      editor_config,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -124,18 +178,20 @@ impl Project {
             id
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+        Ok(row.map(Into::into))
     }
 
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let row = sqlx::query_as!(
+            ProjectRow,
             r#"SELECT id as "id!: Uuid",
                       name,
                       dev_script,
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      editor_config,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -143,21 +199,23 @@ impl Project {
             rowid
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+        Ok(row.map(Into::into))
     }
 
     pub async fn find_by_remote_project_id(
         pool: &SqlitePool,
         remote_project_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let row = sqlx::query_as!(
+            ProjectRow,
             r#"SELECT id as "id!: Uuid",
                       name,
                       dev_script,
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      editor_config,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -166,7 +224,8 @@ impl Project {
             remote_project_id
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+        Ok(row.map(Into::into))
     }
 
     pub async fn create(
@@ -174,8 +233,8 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
+        let row = sqlx::query_as!(
+            ProjectRow,
             r#"INSERT INTO projects (
                     id,
                     name
@@ -188,13 +247,15 @@ impl Project {
                           dev_script_working_dir,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          editor_config,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
         )
         .fetch_one(executor)
-        .await
+        .await?;
+        Ok(row.into())
     }
 
     pub async fn update(
@@ -211,10 +272,20 @@ impl Project {
         let dev_script_working_dir = payload.dev_script_working_dir.clone();
         let default_agent_working_dir = payload.default_agent_working_dir.clone();
 
-        sqlx::query_as!(
-            Project,
+        // Handle editor_config: if Some(value) is provided, update it; if not provided, keep existing
+        let editor_config_json = match &payload.editor_config {
+            Some(config) => config
+                .as_ref()
+                .and_then(|c| serde_json::to_string(c).ok()),
+            None => existing
+                .editor_config
+                .and_then(|c| serde_json::to_string(&c).ok()),
+        };
+
+        let row = sqlx::query_as!(
+            ProjectRow,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, editor_config = $6
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -222,6 +293,7 @@ impl Project {
                          dev_script_working_dir,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         editor_config,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -229,9 +301,11 @@ impl Project {
             dev_script,
             dev_script_working_dir,
             default_agent_working_dir,
+            editor_config_json,
         )
         .fetch_one(pool)
-        .await
+        .await?;
+        Ok(row.into())
     }
 
     pub async fn clear_default_agent_working_dir(

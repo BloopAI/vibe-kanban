@@ -31,13 +31,25 @@ import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
+import type {
+  Project,
+  ProjectEditorConfig,
+  ProjectRepo,
+  Repo,
+  UpdateProject,
+} from 'shared/types';
+import { EditorType } from 'shared/types';
+import { toPrettyCase } from '@/utils/string';
+import { useEditorAvailability } from '@/hooks/useEditorAvailability';
+import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 
 interface ProjectFormState {
   name: string;
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  // Editor override: null = use global, undefined = not set, object = override
+  editor_config: ProjectEditorConfig | null;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +65,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    editor_config: project.editor_config ?? null,
   };
 }
 
@@ -115,6 +128,11 @@ export function ProjectSettings() {
 
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
+
+  // Check editor availability when project editor override is set
+  const editorAvailability = useEditorAvailability(
+    draft?.editor_config?.editor_type as EditorType | undefined
+  );
 
   // Check for unsaved changes (project name)
   const hasUnsavedProjectChanges = useMemo(() => {
@@ -397,6 +415,8 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        // Explicitly set editor_config - null clears override, object sets it
+        editor_config: draft.editor_config,
       };
 
       updateProject.mutate({
@@ -673,6 +693,127 @@ export function ProjectSettings() {
                     {t('settings.projects.save.success')}
                   </AlertDescription>
                 </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Editor Override Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.projects.editor.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.editor.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="editor-override-toggle"
+                  checked={draft.editor_config !== null}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      // Enable override with default VS Code
+                      updateDraft({
+                        editor_config: {
+                          editor_type: EditorType.VS_CODE,
+                          custom_command: null,
+                        },
+                      });
+                    } else {
+                      // Disable override, use global setting
+                      updateDraft({ editor_config: null });
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="editor-override-toggle"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {t('settings.projects.editor.toggle.label')}
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {draft.editor_config
+                  ? t('settings.projects.editor.toggle.helper')
+                  : t('settings.projects.editor.useGlobalFallback')}
+              </p>
+
+              {draft.editor_config && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="project-editor-type">
+                      {t('settings.projects.editor.type.label')}
+                    </Label>
+                    <Select
+                      value={draft.editor_config.editor_type}
+                      onValueChange={(value: string) =>
+                        updateDraft({
+                          editor_config: {
+                            ...draft.editor_config!,
+                            editor_type: value,
+                            // Clear custom command when switching away from custom
+                            custom_command:
+                              value === EditorType.CUSTOM
+                                ? draft.editor_config!.custom_command
+                                : null,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger id="project-editor-type">
+                        <SelectValue
+                          placeholder={t(
+                            'settings.projects.editor.type.placeholder'
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(EditorType).map((editor) => (
+                          <SelectItem key={editor} value={editor}>
+                            {toPrettyCase(editor)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Editor availability status indicator */}
+                    {draft.editor_config.editor_type !== EditorType.CUSTOM && (
+                      <EditorAvailabilityIndicator
+                        availability={editorAvailability}
+                      />
+                    )}
+
+                    <p className="text-sm text-muted-foreground">
+                      {t('settings.projects.editor.type.helper')}
+                    </p>
+                  </div>
+
+                  {draft.editor_config.editor_type === EditorType.CUSTOM && (
+                    <div className="space-y-2">
+                      <Label htmlFor="project-custom-command">
+                        {t('settings.projects.editor.customCommand.label')}
+                      </Label>
+                      <Input
+                        id="project-custom-command"
+                        placeholder={t(
+                          'settings.projects.editor.customCommand.placeholder'
+                        )}
+                        value={draft.editor_config.custom_command || ''}
+                        onChange={(e) =>
+                          updateDraft({
+                            editor_config: {
+                              ...draft.editor_config!,
+                              custom_command: e.target.value || null,
+                            },
+                          })
+                        }
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t('settings.projects.editor.customCommand.helper')}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
