@@ -288,7 +288,7 @@ pub async fn create_github_pr(
         draft: request.draft,
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo_path, request.remote_name.as_deref())?;
 
     // Use GitHubService to create the PR
     let github_service = GitHubService::new()?;
@@ -392,7 +392,7 @@ pub async fn attach_existing_pr(
     }
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo.path, None)?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -491,7 +491,7 @@ pub async fn get_pr_comments(
     };
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo.path, None)?;
 
     // Fetch comments from GitHub
     match github_service

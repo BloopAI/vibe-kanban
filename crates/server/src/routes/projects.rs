@@ -221,7 +221,15 @@ pub async fn get_project_remotes(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitRemote>>>, ApiError> {
-    let remotes = deployment.git().get_all_remotes(&project.git_repo_path)?;
+    // Get the first repo for this project to read remotes from
+    let repos = deployment
+        .project()
+        .get_repositories(&deployment.db().pool, project.id)
+        .await?;
+    let repo = repos.first().ok_or(ApiError::BadRequest(
+        "Project has no repositories".to_string(),
+    ))?;
+    let remotes = deployment.git().get_all_remotes(&repo.path)?;
     Ok(ResponseJson(ApiResponse::success(remotes)))
 }
 
@@ -393,10 +401,18 @@ pub async fn open_project_in_editor(
 pub async fn open_project_in_terminal(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    let path = project.git_repo_path;
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Get the first repo for this project
+    let repos = deployment
+        .project()
+        .get_repositories(&deployment.db().pool, project.id)
+        .await?;
+    let repo = repos.first().ok_or(ApiError::BadRequest(
+        "Project has no repositories".to_string(),
+    ))?;
+    let path = &repo.path;
 
-    match utils::terminal::open_terminal(&path).await {
+    match utils::terminal::open_terminal(path).await {
         Ok(()) => {
             tracing::info!(
                 "Opened terminal for project {} at path: {}",
@@ -417,7 +433,7 @@ pub async fn open_project_in_terminal(
         }
         Err(e) => {
             tracing::error!("Failed to open terminal for project {}: {}", project.id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ApiError::BadRequest(format!("Failed to open terminal: {}", e)))
         }
     }
 }
