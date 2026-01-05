@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttemptsWithSessions } from '@/hooks/useTaskAttempts';
@@ -8,10 +9,13 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon, ListIcon, Lightbulb } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
+import DiscoveryTab from './DiscoveryTab';
+
+type TaskPanelTab = 'attempts' | 'discovery';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -21,6 +25,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const { projectId } = useProject();
+  const [activeTab, setActiveTab] = useState<TaskPanelTab>('attempts');
 
   const {
     data: attempts = [],
@@ -97,10 +102,25 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
     },
   ];
 
+  const TabButton = ({ tab, icon, label }: { tab: TaskPanelTab; icon: React.ReactNode; label: string }) => (
+    <button
+      onClick={() => setActiveTab(tab)}
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+        activeTab === tab
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:bg-muted'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+
   return (
     <>
       <NewCardContent>
         <div className="p-6 flex flex-col h-full max-h-[calc(100vh-8rem)]">
+          {/* Title and description */}
           <div className="space-y-3 overflow-y-auto flex-shrink min-h-0">
             <WYSIWYGEditor value={titleContent} disabled />
             {descriptionContent && (
@@ -108,67 +128,78 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             )}
           </div>
 
-          <div className="mt-6 flex-shrink-0 space-y-4">
-            {task.parent_workspace_id && (
-              <DataTable
-                data={parentAttempt ? [parentAttempt] : []}
-                columns={attemptColumns}
-                keyExtractor={(attempt) => attempt.id}
-                onRowClick={(attempt) => {
-                  if (projectId) {
-                    navigate(
-                      paths.attempt(projectId, attempt.task_id, attempt.id)
-                    );
-                  }
-                }}
-                isLoading={isParentLoading}
-                headerContent="Parent Attempt"
-              />
-            )}
-
-            {isAttemptsLoading ? (
-              <div className="text-muted-foreground">
-                {t('taskPanel.loadingAttempts')}
-              </div>
-            ) : isAttemptsError ? (
-              <div className="text-destructive">
-                {t('taskPanel.errorLoadingAttempts')}
-              </div>
-            ) : (
-              <DataTable
-                data={displayedAttempts}
-                columns={attemptColumns}
-                keyExtractor={(attempt) => attempt.id}
-                onRowClick={(attempt) => {
-                  if (projectId && task.id) {
-                    navigate(paths.attempt(projectId, task.id, attempt.id));
-                  }
-                }}
-                emptyState={t('taskPanel.noAttempts')}
-                headerContent={
-                  <div className="w-full flex text-left">
-                    <span className="flex-1">
-                      {t('taskPanel.attemptsCount', {
-                        count: displayedAttempts.length,
-                      })}
-                    </span>
-                    <span>
-                      <Button
-                        variant="icon"
-                        onClick={() =>
-                          CreateAttemptDialog.show({
-                            taskId: task.id,
-                          })
-                        }
-                      >
-                        <PlusIcon size={16} />
-                      </Button>
-                    </span>
-                  </div>
-                }
-              />
-            )}
+          {/* Tab switcher */}
+          <div className="mt-4 mb-2 flex gap-1 border-b pb-2">
+            <TabButton tab="attempts" icon={<ListIcon size={14} />} label="Attempts" />
+            <TabButton tab="discovery" icon={<Lightbulb size={14} />} label="Discovery" />
           </div>
+
+          {/* Tab content */}
+          {activeTab === 'attempts' ? (
+            <div className="flex-shrink-0 space-y-4">
+              {task.parent_workspace_id && (
+                <DataTable
+                  data={parentAttempt ? [parentAttempt] : []}
+                  columns={attemptColumns}
+                  keyExtractor={(attempt) => attempt.id}
+                  onRowClick={(attempt) => {
+                    if (projectId) {
+                      navigate(
+                        paths.attempt(projectId, attempt.task_id, attempt.id)
+                      );
+                    }
+                  }}
+                  isLoading={isParentLoading}
+                  headerContent="Parent Attempt"
+                />
+              )}
+
+              {isAttemptsLoading ? (
+                <div className="text-muted-foreground">
+                  {t('taskPanel.loadingAttempts')}
+                </div>
+              ) : isAttemptsError ? (
+                <div className="text-destructive">
+                  {t('taskPanel.errorLoadingAttempts')}
+                </div>
+              ) : (
+                <DataTable
+                  data={displayedAttempts}
+                  columns={attemptColumns}
+                  keyExtractor={(attempt) => attempt.id}
+                  onRowClick={(attempt) => {
+                    if (projectId && task.id) {
+                      navigate(paths.attempt(projectId, task.id, attempt.id));
+                    }
+                  }}
+                  emptyState={t('taskPanel.noAttempts')}
+                  headerContent={
+                    <div className="w-full flex text-left">
+                      <span className="flex-1">
+                        {t('taskPanel.attemptsCount', {
+                          count: displayedAttempts.length,
+                        })}
+                      </span>
+                      <span>
+                        <Button
+                          variant="icon"
+                          onClick={() =>
+                            CreateAttemptDialog.show({
+                              taskId: task.id,
+                            })
+                          }
+                        >
+                          <PlusIcon size={16} />
+                        </Button>
+                      </span>
+                    </div>
+                  }
+                />
+              )}
+            </div>
+          ) : (
+            <DiscoveryTab task={task} />
+          )}
         </div>
       </NewCardContent>
     </>

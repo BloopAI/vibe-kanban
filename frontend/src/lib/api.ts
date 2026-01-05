@@ -89,6 +89,12 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  DiscoveryItem,
+  DiscoveryStatus,
+  CreateDiscoveryItem,
+  UpdateDiscoveryItem,
+  FeedbackEntry,
+  CreateFeedbackEntry,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1288,5 +1294,114 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Discovery API
+export const discoveryApi = {
+  /**
+   * Get all discovery items for a project
+   */
+  getByProject: async (projectId: string): Promise<DiscoveryItem[]> => {
+    const response = await makeRequest(`/api/discovery/project/${projectId}`);
+    return handleApiResponse<DiscoveryItem[]>(response);
+  },
+
+  /**
+   * Get a discovery item by ID
+   */
+  getById: async (id: string): Promise<DiscoveryItem> => {
+    const response = await makeRequest(`/api/discovery/${id}`);
+    return handleApiResponse<DiscoveryItem>(response);
+  },
+
+  /**
+   * Create a new discovery item
+   */
+  create: async (data: CreateDiscoveryItem): Promise<DiscoveryItem> => {
+    const response = await makeRequest('/api/discovery', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<DiscoveryItem>(response);
+  },
+
+  /**
+   * Update a discovery item
+   */
+  update: async (id: string, data: UpdateDiscoveryItem): Promise<DiscoveryItem> => {
+    const response = await makeRequest(`/api/discovery/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<DiscoveryItem>(response);
+  },
+
+  /**
+   * Delete a discovery item
+   */
+  delete: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/discovery/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  /**
+   * Promote a discovery item to a task
+   */
+  promoteToTask: async (id: string): Promise<{ task: Task; discovery_item: DiscoveryItem }> => {
+    const response = await makeRequest(`/api/discovery/${id}/promote`, {
+      method: 'POST',
+    });
+    return handleApiResponse<{ task: Task; discovery_item: DiscoveryItem }>(response);
+  },
+
+  /**
+   * Get the discovery item linked to a task
+   */
+  getForTask: async (taskId: string): Promise<DiscoveryItem | null> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/discovery`);
+    return handleApiResponse<DiscoveryItem | null>(response);
+  },
+};
+
+// Feedback API
+export const feedbackApi = {
+  /**
+   * Get feedback entries for a task (including from linked discovery item)
+   */
+  getForTask: async (taskId: string): Promise<FeedbackEntry[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/feedback`);
+    return handleApiResponse<FeedbackEntry[]>(response);
+  },
+
+  /**
+   * Get feedback entries for a discovery item
+   */
+  getForDiscoveryItem: async (discoveryItemId: string): Promise<FeedbackEntry[]> => {
+    const response = await makeRequest(`/api/discovery/${discoveryItemId}/feedback`);
+    return handleApiResponse<FeedbackEntry[]>(response);
+  },
+
+  /**
+   * Create a feedback entry
+   */
+  create: async (data: CreateFeedbackEntry): Promise<FeedbackEntry> => {
+    const response = await makeRequest('/api/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<FeedbackEntry>(response);
+  },
+
+  /**
+   * Delete a feedback entry
+   */
+  delete: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/feedback/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
