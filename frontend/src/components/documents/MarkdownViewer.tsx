@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github-dark.css';
+import 'highlight.js/styles/github.css';
 
 interface HeadingItem {
   id: string;
@@ -101,7 +101,7 @@ export function MarkdownViewer({ content, className, showOutline = true }: Markd
       );
     },
     pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
-      <pre className="my-4 p-4 rounded-lg bg-[#0d1117] overflow-x-auto" {...props}>{children}</pre>
+      <pre className="my-4 p-4 rounded-lg bg-muted overflow-x-auto" {...props}>{children}</pre>
     ),
     table: ({ children, ...props }: React.HTMLAttributes<HTMLTableElement>) => (
       <div className="my-4 overflow-x-auto">
