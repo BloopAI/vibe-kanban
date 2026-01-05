@@ -170,4 +170,3 @@ pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewEr
 
     Ok(())
 }
-

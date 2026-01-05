@@ -133,7 +133,10 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     // 2. Get PR info (also extracts owner/repo from the URL via gh CLI)
     let spinner = create_spinner("Fetching PR information...");
     let pr_info = get_pr_info(&args.pr_url)?;
-    spinner.finish_with_message(format!("PR: {}/{} - {}", pr_info.owner, pr_info.repo, pr_info.title));
+    spinner.finish_with_message(format!(
+        "PR: {}/{} - {}",
+        pr_info.owner, pr_info.repo, pr_info.title
+    ));
 
     // 3. Select Claude Code session (optional)
     let session_files = match session_selector::select_session(&pr_info.head_ref_name) {
