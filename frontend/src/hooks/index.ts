@@ -17,9 +17,12 @@ export { useGitOperations } from './useGitOperations';
 export { useTask } from './useTask';
 export { useAttempt } from './useAttempt';
 export { useRepoBranches } from './useRepoBranches';
-export { useProjectRepos } from './useProjectRepos';
+export { useProjectRepos, useProjectReposWithDefaults } from './useProjectRepos';
 export { useRepoBranchSelection } from './useRepoBranchSelection';
-export type { RepoBranchConfig } from './useRepoBranchSelection';
+export type {
+  RepoBranchConfig,
+  RepoWithDefaultBranch,
+} from './useRepoBranchSelection';
 export { useTaskAttempts } from './useTaskAttempts';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';

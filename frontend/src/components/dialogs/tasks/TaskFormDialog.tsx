@@ -34,7 +34,7 @@ import {
   useTaskImages,
   useImageUpload,
   useTaskMutations,
-  useProjectRepos,
+  useProjectReposWithDefaults,
   useRepoBranchSelection,
 } from '@/hooks';
 import {
@@ -105,7 +105,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
-  const { data: projectRepos = [] } = useProjectRepos(projectId, {
+  const { data: projectRepos = [] } = useProjectReposWithDefaults(projectId, {
     enabled: modal.visible,
   });
   const initialBranch =
