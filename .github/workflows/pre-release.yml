@@ -303,9 +303,7 @@ jobs:
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
-          cargo zigbuild --release --target ${{ matrix.target }} -p server
-          cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo zigbuild --release --target ${{ matrix.target }} -p review
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -319,9 +317,7 @@ jobs:
           elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
             export MACOSX_DEPLOYMENT_TARGET=11.0
           fi
-          cargo build --release --target ${{ matrix.target }} -p server
-          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo build --release --target ${{ matrix.target }} -p review
+          cargo build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -330,9 +326,7 @@ jobs:
       - name: Build backend (Windows)
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: |
-          cargo xwin build --release --target ${{ matrix.target }} -p server
-          cargo xwin build --release --target ${{ matrix.target }} --bin mcp_task_server
-          cargo xwin build --release --target ${{ matrix.target }} -p review
+          cargo xwin build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
