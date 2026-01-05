@@ -1,4 +1,5 @@
 use crate::is_wsl2;
+use crate::shell::UnixShell;
 use std::path::Path;
 
 /// Open terminal at the given path with cross-platform support
@@ -28,7 +29,11 @@ pub async fn open_terminal(
 
         #[cfg(target_os = "linux")]
         {
-            // Linux: Try common terminal emulators in order of preference
+            // Linux: detectamos el shell del usuario y lo usamos explícitamente
+            let user_shell = UnixShell::current_shell();
+            let shell_path = user_shell.path();
+            let shell_path_str = shell_path.to_string_lossy();
+
             let terminals = [
                 "gnome-terminal",
                 "konsole",
@@ -42,31 +47,47 @@ pub async fn open_terminal(
             for terminal in &terminals {
                 let result = match *terminal {
                     "gnome-terminal" => {
+                        // gnome-terminal usa -- para separar sus args del comando a ejecutar
                         tokio::process::Command::new(terminal)
                             .arg("--working-directory")
                             .arg(path)
+                            .arg("--")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "konsole" => {
                         tokio::process::Command::new(terminal)
                             .arg("--workdir")
                             .arg(path)
+                            .arg("-e")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "xfce4-terminal" => {
                         tokio::process::Command::new(terminal)
                             .arg("--working-directory")
                             .arg(path)
+                            .arg("-e")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "xterm" | "alacritty" | "kitty" | "wezterm" => {
-                        // These terminals don't have a direct working directory flag
-                        // We use a shell command to cd into the directory
+                        // estos terminales no tienen un flag directo para working directory
+                        // usamos un comando shell para cd al directorio
+                        // escapamos el path para evitar problemas con caracteres especiales
+                        let escaped_path = shlex::try_quote(&path_str)
+                            .map_err(|_| "Failed to escape path")?;
+                        // fish usa sintaxis diferente a POSIX shells
+                        let cd_command = if matches!(user_shell, UnixShell::Fish(_)) {
+                            format!("cd {}; exec {}", escaped_path, shell_path_str)
+                        } else {
+                            format!("cd {} && exec {}", escaped_path, shell_path_str)
+                        };
                         tokio::process::Command::new(terminal)
                             .arg("-e")
-                            .arg("bash")
+                            .arg(shell_path_str.as_ref())
                             .arg("-c")
-                            .arg(format!("cd '{}' && exec bash", path_str))
+                            .arg(cd_command)
                             .spawn()
                     }
                     _ => continue,
@@ -77,7 +98,7 @@ pub async fn open_terminal(
                 }
             }
 
-            // If no terminal worked, return an error
+            // si no encontramos ningún terminal, retornamos error
             Err("No supported terminal emulator found".into())
         }
 
