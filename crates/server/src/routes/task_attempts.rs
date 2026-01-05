@@ -47,6 +47,7 @@ use services::services::{
     container::ContainerService,
     git::{ConflictOp, GitCliError, GitServiceError},
     github::GitHubService,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -1585,6 +1586,115 @@ pub async fn get_first_user_message(
     Ok(ResponseJson(ApiResponse::success(message)))
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum DeleteWorkspaceError {
+    HasRunningProcesses,
+}
+
+pub async fn delete_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<(), DeleteWorkspaceError>>), ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check for running execution processes
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Ok((
+            StatusCode::CONFLICT,
+            ResponseJson(ApiResponse::error_with_data(
+                DeleteWorkspaceError::HasRunningProcesses,
+            )),
+        ));
+    }
+
+    // Stop any running dev servers for this workspace
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} before deleting workspace {}",
+            dev_server.id,
+            workspace.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for workspace {}: {}",
+                dev_server.id,
+                workspace.id,
+                e
+            );
+        }
+    }
+
+    // Gather data needed for background cleanup
+    let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
+    let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+
+    // Nullify parent_workspace_id for any child tasks before deletion
+    let children_affected = Task::nullify_children_by_workspace_id(pool, workspace.id).await?;
+    if children_affected > 0 {
+        tracing::info!(
+            "Nullified {} child task references before deleting workspace {}",
+            children_affected,
+            workspace.id
+        );
+    }
+
+    // Delete workspace from database (FK CASCADE will handle sessions, execution_processes, etc.)
+    let rows_affected = Workspace::delete(pool, workspace.id).await?;
+
+    if rows_affected == 0 {
+        return Err(ApiError::Database(SqlxError::RowNotFound));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "workspace_deleted",
+            serde_json::json!({
+                "workspace_id": workspace.id.to_string(),
+                "task_id": workspace.task_id.to_string(),
+            }),
+        )
+        .await;
+
+    // Spawn background cleanup task for filesystem resources
+    if let Some(workspace_dir) = workspace_dir {
+        let workspace_id = workspace.id;
+        tokio::spawn(async move {
+            tracing::info!(
+                "Starting background cleanup for workspace {} at {}",
+                workspace_id,
+                workspace_dir.display()
+            );
+
+            if let Err(e) = WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+            {
+                tracing::error!(
+                    "Background workspace cleanup failed for {} at {}: {}",
+                    workspace_id,
+                    workspace_dir.display(),
+                    e
+                );
+            } else {
+                tracing::info!("Background cleanup completed for workspace {}", workspace_id);
+            }
+        });
+    }
+
+    // Return 202 Accepted to indicate deletion was scheduled
+    Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
@@ -1610,7 +1720,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
         .route("/first-message", get(get_first_user_message))
-        .route("/", put(update_workspace))
+        .route("/", put(update_workspace).delete(delete_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,

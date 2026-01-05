@@ -601,6 +601,14 @@ impl Workspace {
         Ok(workspaces)
     }
 
+    /// Delete a workspace by ID
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM workspaces WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
+
     pub async fn find_by_id_with_status(
         pool: &SqlitePool,
         id: Uuid,
