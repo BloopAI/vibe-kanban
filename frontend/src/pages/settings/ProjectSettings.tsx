@@ -706,114 +706,86 @@ export function ProjectSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="editor-override-toggle"
-                  checked={draft.editor_config !== null}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      // Enable override with default VS Code
+              <div className="space-y-2">
+                <Label htmlFor="project-editor-type">
+                  {t('settings.projects.editor.type.label')}
+                </Label>
+                <Select
+                  value={draft.editor_config?.editor_type ?? 'DEFAULT'}
+                  onValueChange={(value: string) => {
+                    if (value === 'DEFAULT') {
+                      // Use global setting
+                      updateDraft({ editor_config: null });
+                    } else {
+                      // Set project-specific editor
                       updateDraft({
                         editor_config: {
-                          editor_type: EditorType.VS_CODE,
-                          custom_command: null,
+                          editor_type: value,
+                          custom_command:
+                            value === EditorType.CUSTOM
+                              ? (draft.editor_config?.custom_command ?? null)
+                              : null,
                         },
                       });
-                    } else {
-                      // Disable override, use global setting
-                      updateDraft({ editor_config: null });
                     }
                   }}
-                />
-                <Label
-                  htmlFor="editor-override-toggle"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  {t('settings.projects.editor.toggle.label')}
-                </Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {draft.editor_config
-                  ? t('settings.projects.editor.toggle.helper')
-                  : t('settings.projects.editor.useGlobalFallback')}
-              </p>
+                  <SelectTrigger id="project-editor-type">
+                    <SelectValue
+                      placeholder={t(
+                        'settings.projects.editor.type.placeholder'
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEFAULT">
+                      {t('settings.projects.editor.useGlobalFallback')}
+                    </SelectItem>
+                    {Object.values(EditorType).map((editor) => (
+                      <SelectItem key={editor} value={editor}>
+                        {toPrettyCase(editor)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              {draft.editor_config && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="project-editor-type">
-                      {t('settings.projects.editor.type.label')}
-                    </Label>
-                    <Select
-                      value={draft.editor_config.editor_type}
-                      onValueChange={(value: string) =>
-                        updateDraft({
-                          editor_config: {
-                            ...draft.editor_config!,
-                            editor_type: value,
-                            // Clear custom command when switching away from custom
-                            custom_command:
-                              value === EditorType.CUSTOM
-                                ? draft.editor_config!.custom_command
-                                : null,
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger id="project-editor-type">
-                        <SelectValue
-                          placeholder={t(
-                            'settings.projects.editor.type.placeholder'
-                          )}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(EditorType).map((editor) => (
-                          <SelectItem key={editor} value={editor}>
-                            {toPrettyCase(editor)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Editor availability status indicator */}
-                    {draft.editor_config.editor_type !== EditorType.CUSTOM && (
-                      <EditorAvailabilityIndicator
-                        availability={editorAvailability}
-                      />
-                    )}
-
-                    <p className="text-sm text-muted-foreground">
-                      {t('settings.projects.editor.type.helper')}
-                    </p>
-                  </div>
-
-                  {draft.editor_config.editor_type === EditorType.CUSTOM && (
-                    <div className="space-y-2">
-                      <Label htmlFor="project-custom-command">
-                        {t('settings.projects.editor.customCommand.label')}
-                      </Label>
-                      <Input
-                        id="project-custom-command"
-                        placeholder={t(
-                          'settings.projects.editor.customCommand.placeholder'
-                        )}
-                        value={draft.editor_config.custom_command || ''}
-                        onChange={(e) =>
-                          updateDraft({
-                            editor_config: {
-                              ...draft.editor_config!,
-                              custom_command: e.target.value || null,
-                            },
-                          })
-                        }
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t('settings.projects.editor.customCommand.helper')}
-                      </p>
-                    </div>
+                {/* Editor availability status indicator */}
+                {draft.editor_config &&
+                  draft.editor_config.editor_type !== EditorType.CUSTOM && (
+                    <EditorAvailabilityIndicator
+                      availability={editorAvailability}
+                    />
                   )}
-                </>
+
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.editor.type.helper')}
+                </p>
+              </div>
+
+              {draft.editor_config?.editor_type === EditorType.CUSTOM && (
+                <div className="space-y-2">
+                  <Label htmlFor="project-custom-command">
+                    {t('settings.projects.editor.customCommand.label')}
+                  </Label>
+                  <Input
+                    id="project-custom-command"
+                    placeholder={t(
+                      'settings.projects.editor.customCommand.placeholder'
+                    )}
+                    value={draft.editor_config.custom_command || ''}
+                    onChange={(e) =>
+                      updateDraft({
+                        editor_config: {
+                          ...draft.editor_config!,
+                          custom_command: e.target.value || null,
+                        },
+                      })
+                    }
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.projects.editor.customCommand.helper')}
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
