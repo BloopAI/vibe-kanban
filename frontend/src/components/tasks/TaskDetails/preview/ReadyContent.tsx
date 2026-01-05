@@ -16,6 +16,8 @@ export function ReadyContent({
 }: ReadyContentProps) {
   const { t } = useTranslation('tasks');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const onIframeLoadRef = useRef(onIframeLoad);
+  onIframeLoadRef.current = onIframeLoad;
 
   // Detect if iframe content actually loaded or is blocked
   useEffect(() => {
@@ -29,18 +31,18 @@ export function ReadyContent({
         // This will throw if cross-origin and blocked
         const hasContent = iframe.contentWindow?.document;
         if (hasContent) {
-          onIframeLoad?.();
+          onIframeLoadRef.current?.();
         }
       } catch {
         // Cross-origin access denied is expected for localhost dev servers
         // If we get here, the iframe loaded something (even if cross-origin)
-        onIframeLoad?.();
+        onIframeLoadRef.current?.();
       }
     };
 
     iframe.addEventListener('load', handleLoad);
     return () => iframe.removeEventListener('load', handleLoad);
-  }, [iframeKey, onIframeLoad]);
+  }, [iframeKey]);
 
   return (
     <div className="flex-1">

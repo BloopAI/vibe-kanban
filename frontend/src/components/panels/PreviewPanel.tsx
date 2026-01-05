@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
@@ -68,14 +68,14 @@ export function PreviewPanel() {
     setIframeError(true);
   };
 
-  const handleIframeLoad = () => {
+  const handleIframeLoad = useCallback(() => {
     iframeLoadedRef.current = true;
     // Clear the PWA timeout since iframe loaded successfully
     if (pwaTimeoutRef.current) {
       clearTimeout(pwaTimeoutRef.current);
       pwaTimeoutRef.current = null;
     }
-  };
+  }, []);
 
   // In PWA mode, detect if iframe is blocked by checking if it loads within a timeout
   useEffect(() => {
