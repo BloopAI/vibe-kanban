@@ -48,7 +48,7 @@ pub struct DiscoveryItem {
     pub acceptance_criteria: Option<String>,
     #[sqlx(json)]
     pub effort_estimate: Option<String>, // JSON string, parsed client-side
-    pub priority: Option<i32>,
+    pub priority: Option<i64>,
     pub promoted_task_id: Option<Uuid>,
     pub parent_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
@@ -63,7 +63,7 @@ pub struct CreateDiscoveryItem {
     pub content: Option<String>,
     pub acceptance_criteria: Option<String>,
     pub effort_estimate: Option<String>,
-    pub priority: Option<i32>,
+    pub priority: Option<i64>,
     pub parent_id: Option<Uuid>,
 }
 
@@ -75,7 +75,7 @@ pub struct UpdateDiscoveryItem {
     pub content: Option<String>,
     pub acceptance_criteria: Option<String>,
     pub effort_estimate: Option<String>,
-    pub priority: Option<i32>,
+    pub priority: Option<i64>,
     pub parent_id: Option<Uuid>,
 }
 

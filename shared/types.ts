@@ -44,9 +44,9 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, discovery_item_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, discovery_item_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
@@ -65,6 +65,22 @@ export type Scratch = { id: string, payload: ScratchPayload, created_at: string,
 export type CreateScratch = { payload: ScratchPayload, };
 
 export type UpdateScratch = { payload: ScratchPayload, };
+
+export type DiscoveryItem = { id: string, project_id: string, title: string, item_type: DiscoveryItemType, status: DiscoveryStatus, content: string, acceptance_criteria: string | null, effort_estimate: string | null, priority: bigint | null, promoted_task_id: string | null, parent_id: string | null, created_at: string, updated_at: string, };
+
+export type DiscoveryItemType = "scenario" | "spec" | "story" | "spike";
+
+export type DiscoveryStatus = "draft" | "refining" | "ready" | "promoted" | "archived";
+
+export type CreateDiscoveryItem = { project_id: string, title: string, item_type: DiscoveryItemType | null, content: string | null, acceptance_criteria: string | null, effort_estimate: string | null, priority: bigint | null, parent_id: string | null, };
+
+export type UpdateDiscoveryItem = { title: string | null, item_type: DiscoveryItemType | null, status: DiscoveryStatus | null, content: string | null, acceptance_criteria: string | null, effort_estimate: string | null, priority: bigint | null, parent_id: string | null, };
+
+export type FeedbackEntry = { id: string, task_id: string | null, discovery_item_id: string | null, feedback_type: FeedbackType, content: string, summary: string | null, source_execution_id: string | null, created_at: string, };
+
+export type FeedbackType = "execution" | "deploy" | "user" | "system";
+
+export type CreateFeedbackEntry = { task_id: string | null, discovery_item_id: string | null, feedback_type: FeedbackType, content: string, summary: string | null, source_execution_id: string | null, };
 
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 

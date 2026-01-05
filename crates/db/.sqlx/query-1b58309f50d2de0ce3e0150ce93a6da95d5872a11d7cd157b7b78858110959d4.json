@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                item_type as \"item_type!: DiscoveryItemType\",\n                status as \"status!: DiscoveryStatus\",\n                content,\n                acceptance_criteria,\n                effort_estimate,\n                priority,\n                promoted_task_id as \"promoted_task_id: Uuid\",\n                parent_id as \"parent_id: Uuid\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM discovery_items\n            WHERE project_id = $1\n            ORDER BY\n                CASE status\n                    WHEN 'ready' THEN 1\n                    WHEN 'refining' THEN 2\n                    WHEN 'draft' THEN 3\n                    WHEN 'promoted' THEN 4\n                    WHEN 'archived' THEN 5\n                END,\n                priority DESC NULLS LAST,\n                created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "item_type!: DiscoveryItemType",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: DiscoveryStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "acceptance_criteria",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "effort_estimate",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "priority",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "promoted_task_id: Uuid",
+        "ordinal": 9,
+        "type_info": "Blob"
+      },
+      {
+        "name": "parent_id: Uuid",
+        "ordinal": 10,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1b58309f50d2de0ce3e0150ce93a6da95d5872a11d7cd157b7b78858110959d4"
+}
