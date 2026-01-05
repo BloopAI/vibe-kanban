@@ -36,6 +36,7 @@ use crate::{
     DeploymentImpl, error::ApiError, middleware::load_task_middleware,
     routes::task_attempts::WorkspaceRepoInput,
 };
+use utils::text::git_branch_id;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
@@ -145,6 +146,8 @@ pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
     pub repos: Vec<WorkspaceRepoInput>,
+    /// Optional custom branch name. If not provided, auto-generated from task title.
+    pub custom_branch_name: Option<String>,
 }
 
 pub async fn create_task_and_start(
@@ -183,10 +186,27 @@ pub async fn create_task_and_start(
         .ok_or(ProjectError::ProjectNotFound)?;
 
     let attempt_id = Uuid::new_v4();
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&attempt_id, &task.title)
-        .await;
+    let git_branch_name = match &payload.custom_branch_name {
+        Some(name) if !name.trim().is_empty() => {
+            // sanitize custom branch name to ensure it's git-safe
+            let sanitized = git_branch_id(name.trim());
+            if !sanitized.is_empty() {
+                sanitized
+            } else {
+                // if sanitization results in empty string, fall back to auto-generation
+                deployment
+                    .container()
+                    .git_branch_from_workspace(&attempt_id, &task.title)
+                    .await
+            }
+        }
+        _ => {
+            deployment
+                .container()
+                .git_branch_from_workspace(&attempt_id, &task.title)
+                .await
+        }
+    };
 
     let agent_working_dir = project
         .default_agent_working_dir

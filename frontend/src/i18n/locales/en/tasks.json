@@ -452,6 +452,8 @@
     "editTitle": "Edit Task",
     "titlePlaceholder": "Task title...",
     "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
+    "branchNameLabel": "Branch name",
+    "branchNamePlaceholder": "Auto-generated from title",
     "statusLabel": "Status",
     "statusOptions": {
       "todo": "To Do",
