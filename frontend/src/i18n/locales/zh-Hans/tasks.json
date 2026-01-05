@@ -226,6 +226,8 @@
     "diffs": "差异",
     "gitActions": "Git 操作",
     "tryAgain": "重试",
+    "keepGoing": "继续",
+    "keepGoingInProgress": "继续中...",
     "runSetup": "运行设置",
     "setupHelpText": "{{agent}} 未正确设置。点击运行设置以安装并登录。",
     "devScriptMissingTooltip": "要启动开发服务器，请为此项目添加开发脚本"

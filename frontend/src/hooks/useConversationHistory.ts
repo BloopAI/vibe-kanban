@@ -398,8 +398,19 @@ export const useConversationHistory = ({
           return entries;
         });
 
-      // Emit the next action bar if no process running
+      // Emit the next action bar if no process running OR if the last process failed
+      // This ensures the action buttons remain visible even during conversation calculation
       if (!hasRunningProcess && !hasPendingApproval) {
+        allEntries.push(
+          nextActionPatch(
+            lastProcessFailedOrKilled,
+            Object.keys(executionProcessState).length,
+            needsSetup,
+            setupHelpText
+          )
+        );
+      } else if (lastProcessFailedOrKilled && !hasPendingApproval) {
+        // Show action buttons even when a new process is running, if the previous one failed
         allEntries.push(
           nextActionPatch(
             lastProcessFailedOrKilled,

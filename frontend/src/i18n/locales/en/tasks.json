@@ -213,6 +213,8 @@
     "diffs": "Diffs",
     "gitActions": "Git Actions",
     "tryAgain": "Try Again",
+    "keepGoing": "Keep Going",
+    "keepGoingInProgress": "Continuing...",
     "runSetup": "Run Setup",
     "setupHelpText": "{{agent}} isn't setup correctly. Click 'Run Setup' to install it and login.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
