@@ -41,11 +41,19 @@ export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
 export type Repo = { id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
 
-export type ProjectRepo = { id: string, project_id: string, repo_id: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, default_branch: string | null, };
+export type ProjectRepo = { id: string, project_id: string, repo_id: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, 
+/**
+ * The default branch to use for new task attempts. When None, auto-detects from remote HEAD.
+ */
+default_branch: string | null, };
 
 export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
 
-export type UpdateProjectRepo = { setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, default_branch: string | null, };
+export type UpdateProjectRepo = { setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, 
+/**
+ * The default branch to use for new task attempts. Use null to auto-detect from remote.
+ */
+default_branch: string | null, };
 
 export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 
@@ -345,7 +353,11 @@ export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS";
 
 export type ShowcaseState = { seen_features: Array<string>, };
 
-export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, is_default: boolean, last_commit_date: Date, };
+export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, 
+/**
+ * True if this is the default branch (detected from origin/HEAD)
+ */
+is_default: boolean, last_commit_date: Date, };
 
 export type SharedTaskDetails = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, };
 
