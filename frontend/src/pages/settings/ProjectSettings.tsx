@@ -47,6 +47,7 @@ interface RepoScriptsFormState {
   parallel_setup_script: boolean;
   cleanup_script: string;
   copy_files: string;
+  default_branch: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -68,6 +69,7 @@ function projectRepoToScriptsFormState(
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
+    default_branch: projectRepo?.default_branch ?? '',
   };
 }
 
@@ -434,8 +436,7 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
-          // Preserve the existing default_branch setting
-          default_branch: selectedProjectRepo?.default_branch ?? null,
+          default_branch: scriptsDraft.default_branch.trim() || null,
         }
       );
       setSelectedProjectRepo(updatedRepo);
@@ -864,6 +865,23 @@ export function ProjectSettings() {
                     </div>
                   ) : scriptsDraft ? (
                     <>
+                      <div className="space-y-2">
+                        <Label htmlFor="default-branch">Default Branch</Label>
+                        <Input
+                          id="default-branch"
+                          value={scriptsDraft.default_branch}
+                          onChange={(e) =>
+                            updateScriptsDraft({ default_branch: e.target.value })
+                          }
+                          placeholder="origin/main or origin/master"
+                          className="font-mono"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Branch to use as default when creating new task
+                          attempts. Leave empty to auto-detect from origin/HEAD.
+                        </p>
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="setup-script">
                           {t('settings.projects.scripts.setup.label')}
