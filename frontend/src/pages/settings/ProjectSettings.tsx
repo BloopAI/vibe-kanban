@@ -38,6 +38,7 @@ interface ProjectFormState {
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  git_auto_commit_enabled: boolean | null;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +54,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    git_auto_commit_enabled: project.git_auto_commit_enabled ?? null,
   };
 }
 
@@ -397,6 +399,7 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        git_auto_commit_enabled: draft.git_auto_commit_enabled,
       };
 
       updateProject.mutate({
@@ -573,6 +576,126 @@ export function ProjectSettings() {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="dev-script">
+                  {t('settings.projects.scripts.dev.label')}
+                </Label>
+                <AutoExpandingTextarea
+                  id="dev-script"
+                  value={draft.dev_script}
+                  onChange={(e) => updateDraft({ dev_script: e.target.value })}
+                  placeholder={placeholders.dev}
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.scripts.dev.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dev-script-working-dir">
+                  {t('settings.projects.scripts.devWorkingDir.label')}
+                </Label>
+                <Input
+                  id="dev-script-working-dir"
+                  value={draft.dev_script_working_dir}
+                  onChange={(e) =>
+                    updateDraft({ dev_script_working_dir: e.target.value })
+                  }
+                  placeholder={t(
+                    'settings.projects.scripts.devWorkingDir.placeholder'
+                  )}
+                  className="font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.scripts.devWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="agent-working-dir">
+                  {t('settings.projects.scripts.agentWorkingDir.label')}
+                </Label>
+                <Input
+                  id="agent-working-dir"
+                  value={draft.default_agent_working_dir}
+                  onChange={(e) =>
+                    updateDraft({ default_agent_working_dir: e.target.value })
+                  }
+                  placeholder={t(
+                    'settings.projects.scripts.agentWorkingDir.placeholder'
+                  )}
+                  className="font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.scripts.agentWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.git.autoCommit.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-default"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === null}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: null })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-enabled"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === true}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: true })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-enabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.enabled')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="git-auto-commit-disabled"
+                      name="git-auto-commit"
+                      checked={draft.git_auto_commit_enabled === false}
+                      onChange={() =>
+                        updateDraft({ git_auto_commit_enabled: false })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="git-auto-commit-disabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.autoCommit.disabled')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.git.autoCommit.helper')}
+                </p>
+              </div>
+
               {/* Save Button */}
               <div className="flex items-center justify-between pt-4 border-t">
                 {hasUnsavedProjectChanges ? (
@@ -703,152 +826,49 @@ export function ProjectSettings() {
                 {t('settings.projects.scripts.description')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Project-level Scripts */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {t('settings.projects.scripts.projectLevel.title')}
-                </h4>
+            <CardContent className="space-y-4">
+              {scriptsError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{scriptsError}</AlertDescription>
+                </Alert>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="dev-script">
-                    {t('settings.projects.scripts.dev.label')}
-                  </Label>
-                  <AutoExpandingTextarea
-                    id="dev-script"
-                    value={draft.dev_script}
-                    onChange={(e) => updateDraft({ dev_script: e.target.value })}
-                    placeholder={placeholders.dev}
-                    maxRows={12}
-                    className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.projects.scripts.dev.helper')}
-                  </p>
+              {scriptsSuccess && (
+                <Alert variant="success">
+                  <AlertDescription className="font-medium">
+                    Scripts saved successfully
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {repositories.length === 0 ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  Add a repository above to configure scripts
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dev-script-working-dir">
-                    {t('settings.projects.scripts.devWorkingDir.label')}
-                  </Label>
-                  <Input
-                    id="dev-script-working-dir"
-                    value={draft.dev_script_working_dir}
-                    onChange={(e) =>
-                      updateDraft({ dev_script_working_dir: e.target.value })
-                    }
-                    placeholder={t(
-                      'settings.projects.scripts.devWorkingDir.placeholder'
-                    )}
-                    className="font-mono"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.projects.scripts.devWorkingDir.helper')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="agent-working-dir">
-                    {t('settings.projects.scripts.agentWorkingDir.label')}
-                  </Label>
-                  <Input
-                    id="agent-working-dir"
-                    value={draft.default_agent_working_dir}
-                    onChange={(e) =>
-                      updateDraft({ default_agent_working_dir: e.target.value })
-                    }
-                    placeholder={t(
-                      'settings.projects.scripts.agentWorkingDir.placeholder'
-                    )}
-                    className="font-mono"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.projects.scripts.agentWorkingDir.helper')}
-                  </p>
-                </div>
-
-                {/* Save Button for Project-level scripts */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  {hasUnsavedProjectChanges ? (
-                    <span className="text-sm text-muted-foreground">
-                      {t('settings.projects.save.unsavedChanges')}
-                    </span>
-                  ) : (
-                    <span />
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleDiscard}
-                      disabled={saving || !hasUnsavedProjectChanges}
+              ) : (
+                <>
+                  {/* Repository Selector for Scripts */}
+                  <div className="space-y-2">
+                    <Label htmlFor="scripts-repo-selector">Repository</Label>
+                    <Select
+                      value={selectedScriptsRepoId ?? ''}
+                      onValueChange={setSelectedScriptsRepoId}
                     >
-                      {t('settings.projects.save.discard')}
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      disabled={saving || !hasUnsavedProjectChanges}
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {t('settings.projects.save.saving')}
-                        </>
-                      ) : (
-                        t('settings.projects.save.button')
-                      )}
-                    </Button>
+                      <SelectTrigger id="scripts-repo-selector">
+                        <SelectValue placeholder="Select a repository" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {repositories.map((repo) => (
+                          <SelectItem key={repo.id} value={repo.id}>
+                            {repo.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Configure scripts for each repository separately
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              {/* Repository-level Scripts */}
-              <div className="space-y-4 pt-4 border-t">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {t('settings.projects.scripts.repoLevel.title')}
-                </h4>
-
-                {scriptsError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{scriptsError}</AlertDescription>
-                  </Alert>
-                )}
-
-                {scriptsSuccess && (
-                  <Alert variant="success">
-                    <AlertDescription className="font-medium">
-                      Scripts saved successfully
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {repositories.length === 0 ? (
-                  <div className="text-center py-4 text-sm text-muted-foreground">
-                    Add a repository above to configure scripts
-                  </div>
-                ) : (
-                  <>
-                    {/* Repository Selector for Scripts */}
-                    <div className="space-y-2">
-                      <Label htmlFor="scripts-repo-selector">Repository</Label>
-                      <Select
-                        value={selectedScriptsRepoId ?? ''}
-                        onValueChange={setSelectedScriptsRepoId}
-                      >
-                        <SelectTrigger id="scripts-repo-selector">
-                          <SelectValue placeholder="Select a repository" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {repositories.map((repo) => (
-                            <SelectItem key={repo.id} value={repo.id}>
-                              {repo.display_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-sm text-muted-foreground">
-                        Configure scripts for each repository separately
-                      </p>
-                    </div>
 
                   {loadingProjectRepo ? (
                     <div className="flex items-center justify-center py-4">
@@ -971,9 +991,8 @@ export function ProjectSettings() {
                       </div>
                     </>
                   ) : null}
-                  </>
-                )}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

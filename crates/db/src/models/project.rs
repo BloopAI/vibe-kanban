@@ -25,6 +25,8 @@ pub struct Project {
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    /// None = usa config global, Some(true/false) = override por proyecto
+    pub git_auto_commit_enabled: Option<bool>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -43,6 +45,20 @@ pub struct UpdateProject {
     pub dev_script: Option<String>,
     pub dev_script_working_dir: Option<String>,
     pub default_agent_working_dir: Option<String>,
+    /// None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    #[ts(optional, type = "boolean | null")]
+    pub git_auto_commit_enabled: Option<Option<bool>>,
+}
+
+/// deserializa campos que pueden ser undefined (ausente), null, o un valor
+fn deserialize_optional_nullable<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    // si el campo está presente, deserializa Option<T>
+    Option::<Option<T>>::deserialize(deserializer)
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -75,6 +91,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -92,6 +109,7 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -117,6 +135,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -136,6 +155,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -158,6 +178,7 @@ impl Project {
                       dev_script_working_dir,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -188,6 +209,7 @@ impl Project {
                           dev_script_working_dir,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -210,11 +232,15 @@ impl Project {
         let dev_script = payload.dev_script.clone();
         let dev_script_working_dir = payload.dev_script_working_dir.clone();
         let default_agent_working_dir = payload.default_agent_working_dir.clone();
+        // si el campo está ausente (None externo), mantener el valor existente
+        let git_auto_commit_enabled = payload
+            .git_auto_commit_enabled
+            .unwrap_or(existing.git_auto_commit_enabled);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -222,6 +248,7 @@ impl Project {
                          dev_script_working_dir,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -229,6 +256,7 @@ impl Project {
             dev_script,
             dev_script_working_dir,
             default_agent_working_dir,
+            git_auto_commit_enabled,
         )
         .fetch_one(pool)
         .await
