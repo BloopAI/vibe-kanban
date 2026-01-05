@@ -12,7 +12,7 @@ use anyhow::Result;
 use api::{ReviewApiClient, ReviewStatus, StartRequest};
 use clap::Parser;
 use error::ReviewError;
-use github::{checkout_commit, clone_repo, get_pr_info, parse_pr_url};
+use github::{checkout_commit, clone_repo, get_pr_info};
 use indicatif::{ProgressBar, ProgressStyle};
 use tempfile::TempDir;
 use tracing::debug;
@@ -130,17 +130,12 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     let mut config = config::Config::load();
     let email = prompt_email(&mut config);
 
-    // 2. Parse PR URL
-    let spinner = create_spinner("Parsing PR URL...");
-    let (owner, repo, pr_number) = parse_pr_url(&args.pr_url)?;
-    spinner.finish_with_message(format!("PR: {owner}/{repo}#{pr_number}"));
-
-    // 3. Get PR info
+    // 2. Get PR info (also extracts owner/repo from the URL via gh CLI)
     let spinner = create_spinner("Fetching PR information...");
-    let pr_info = get_pr_info(&owner, &repo, pr_number)?;
-    spinner.finish_with_message(format!("PR: {}", pr_info.title));
+    let pr_info = get_pr_info(&args.pr_url)?;
+    spinner.finish_with_message(format!("PR: {}/{} - {}", pr_info.owner, pr_info.repo, pr_info.title));
 
-    // 4. Select Claude Code session (optional)
+    // 3. Select Claude Code session (optional)
     let session_files = match session_selector::select_session(&pr_info.head_ref_name) {
         Ok(session_selector::SessionSelection::Selected(files)) => {
             println!("  Selected {} session file(s)", files.len());
@@ -157,20 +152,20 @@ async fn run(args: Args) -> Result<(), ReviewError> {
         }
     };
 
-    // 5. Clone repository to temp directory
+    // 4. Clone repository to temp directory
     let temp_dir = TempDir::new().map_err(|e| ReviewError::CloneFailed(e.to_string()))?;
-    let repo_dir = temp_dir.path().join(&repo);
+    let repo_dir = temp_dir.path().join(&pr_info.repo);
 
     let spinner = create_spinner("Cloning repository...");
-    clone_repo(&owner, &repo, &repo_dir)?;
+    clone_repo(&pr_info.owner, &pr_info.repo, &repo_dir)?;
     spinner.finish_with_message("Repository cloned");
 
-    // 6. Checkout PR head commit
+    // 5. Checkout PR head commit
     let spinner = create_spinner("Checking out PR...");
     checkout_commit(&pr_info.head_commit, &repo_dir)?;
     spinner.finish_with_message("PR checked out");
 
-    // 7. Create tarball (with optional session data)
+    // 6. Create tarball (with optional session data)
     let spinner = create_spinner("Creating archive...");
 
     // If sessions were selected, write .agent-messages.json to repo root
@@ -185,18 +180,18 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     let size_mb = payload.len() as f64 / 1_048_576.0;
     spinner.finish_with_message(format!("Archive created ({size_mb:.2} MB)"));
 
-    // 8. Initialize review
+    // 7. Initialize review
     let client = ReviewApiClient::new(args.api_url.clone());
     let spinner = create_spinner("Initializing review...");
     let init_response = client.init(&args.pr_url, &email, &pr_info.title).await?;
     spinner.finish_with_message(format!("Review ID: {}", init_response.review_id));
 
-    // 9. Upload archive
+    // 8. Upload archive
     let spinner = create_spinner("Uploading archive...");
     client.upload(&init_response.upload_url, payload).await?;
     spinner.finish_with_message("Upload complete");
 
-    // 10. Start review
+    // 9. Start review
     let spinner = create_spinner("Starting review...");
     let codebase_url = format!("r2://{}", init_response.object_key);
     client
@@ -212,7 +207,7 @@ async fn run(args: Args) -> Result<(), ReviewError> {
         .await?;
     spinner.finish_with_message(format!("Review started, we'll send you an email at {} when the review is ready. This can take a few minutes, you may now close the terminal", email));
 
-    // 11. Poll for completion
+    // 10. Poll for completion
     let spinner = create_spinner("Review in progress...");
     let start_time = std::time::Instant::now();
 
@@ -246,7 +241,7 @@ async fn run(args: Args) -> Result<(), ReviewError> {
         }
     }
 
-    // 12. Print result URL
+    // 11. Print result URL
     let review_url = client.review_url(&init_response.review_id.to_string());
     println!("\nReview available at:");
     println!("  {review_url}");
