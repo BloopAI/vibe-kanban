@@ -49,7 +49,7 @@ export function PreviewPanel() {
   const lastKnownUrl = project?.dev_server_port
     ? {
         url: `http://${window.location.hostname}:${project.dev_server_port}`,
-        port: project.dev_server_port,
+        port: Number(project.dev_server_port),
         scheme: 'http' as const,
       }
     : autoDetectedUrl;
@@ -105,7 +105,7 @@ export function PreviewPanel() {
   // Uses project setting if configured, otherwise defaults to 30 seconds
   const DEFAULT_DEV_SERVER_TIMEOUT_SECONDS = 30;
   const devServerTimeoutMs =
-    (project?.dev_server_timeout ?? DEFAULT_DEV_SERVER_TIMEOUT_SECONDS) * 1000;
+    Number(project?.dev_server_timeout ?? DEFAULT_DEV_SERVER_TIMEOUT_SECONDS) * 1000;
 
   function startTimer() {
     setLoadingTimeFinished(false);

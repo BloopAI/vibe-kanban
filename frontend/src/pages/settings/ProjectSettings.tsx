@@ -405,8 +405,8 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
-        dev_server_timeout: timeoutValue ? parseInt(timeoutValue, 10) : null,
-        dev_server_port: portValue ? parseInt(portValue, 10) : null,
+        dev_server_timeout: timeoutValue ? BigInt(timeoutValue) : null,
+        dev_server_port: portValue ? BigInt(portValue) : null,
       };
 
       updateProject.mutate({
