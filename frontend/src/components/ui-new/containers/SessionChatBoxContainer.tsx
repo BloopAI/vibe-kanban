@@ -55,6 +55,8 @@ interface SessionChatBoxContainerProps {
   linesAdded?: number;
   /** Number of lines removed */
   linesRemoved?: number;
+  /** Callback to view code changes (toggle ChangesPanel) */
+  onViewCode?: () => void;
   /** Available sessions for this workspace */
   sessions?: Session[];
   /** Called when a session is selected */
@@ -76,6 +78,7 @@ export function SessionChatBoxContainer({
   filesChanged,
   linesAdded,
   linesRemoved,
+  onViewCode,
   sessions = [],
   onSelectSession,
   projectId,
@@ -461,6 +464,7 @@ export function SessionChatBoxContainer({
         filesChanged,
         linesAdded,
         linesRemoved,
+        onViewCode,
       }}
       error={sendError}
       agent={latestProfileId?.executor}

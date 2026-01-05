@@ -5,6 +5,12 @@ import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 
+interface DiffStats {
+  filesChanged: number;
+  linesAdded: number;
+  linesRemoved: number;
+}
+
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
   selectedSession: Session | undefined;
@@ -17,6 +23,8 @@ interface WorkspacesMainContainerProps {
   onStartNewSession?: () => void;
   /** Callback to toggle changes panel */
   onViewCode?: () => void;
+  /** Diff statistics from the workspace */
+  diffStats?: DiffStats;
 }
 
 export function WorkspacesMainContainer({
@@ -28,6 +36,7 @@ export function WorkspacesMainContainer({
   isNewSessionMode,
   onStartNewSession,
   onViewCode,
+  diffStats,
 }: WorkspacesMainContainerProps) {
   const containerRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);
@@ -81,6 +90,7 @@ export function WorkspacesMainContainer({
       onViewCode={onViewCode}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
+      diffStats={diffStats}
     />
   );
 }

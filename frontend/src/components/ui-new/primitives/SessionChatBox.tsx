@@ -62,6 +62,7 @@ interface StatsProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
+  onViewCode?: () => void;
 }
 
 interface FeedbackModeProps {
@@ -453,7 +454,7 @@ export function SessionChatBox({
           )}
           {/* Existing session mode: show in-progress todo when running, otherwise file stats */}
           {!isNewSessionMode && (
-            <PrimaryButton variant="tertiary">
+            <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
               {isRunning && inProgressTodo ? (
                 <span className="text-sm flex items-center gap-1">
                   <SpinnerIcon className="size-icon-sm animate-spin flex-shrink-0" />
