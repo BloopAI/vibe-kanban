@@ -81,7 +81,11 @@ const RebaseDialogImpl = NiceModal.create<RebaseDialogProps>(
     };
 
     return (
-      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={handleOpenChange}
+        zIndex="z-[10000]"
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('rebase.dialog.title')}</DialogTitle>
