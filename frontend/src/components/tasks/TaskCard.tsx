@@ -117,11 +117,11 @@ export function TaskCard({
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs hover:underline"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs hover:underline"
                 aria-label={t('git.pr.open', { number: task.open_pr.number })}
               >
                 <GitPullRequest className="h-3 w-3" />
-                <span>#{task.open_pr.number}</span>
+                <span>#{String(task.open_pr.number)}</span>
               </button>
             ) : undefined
           }
