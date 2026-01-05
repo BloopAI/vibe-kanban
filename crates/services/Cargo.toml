@@ -25,7 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 dirs = "5.0"
-git2 = "0.18"
+git2 = "0.19"
 tempfile = "3.21"
 async-trait = { workspace = true } 
 rust-embed = "8.2"
