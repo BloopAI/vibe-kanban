@@ -279,5 +279,11 @@
   "search": {
     "matchCount": "{{current}} / {{total}}",
     "noMatches": "無匹配項"
+  },
+  "contextUsage": {
+    "label": "上下文使用量",
+    "emptyTooltip": "上下文使用量將在下一次回覆後顯示",
+    "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "上下文使用量：{{percentage}}%"
   }
 }

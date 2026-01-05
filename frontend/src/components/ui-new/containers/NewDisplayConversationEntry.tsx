@@ -313,6 +313,10 @@ function NewDisplayConversationEntry(props: Props) {
       // The new design doesn't need the next action bar
       return null;
 
+    case 'token_usage_info':
+      // Displayed in the chat header as the context-usage gauge
+      return null;
+
     case 'user_feedback':
     case 'loading':
       // Fallback to legacy component for these entry types

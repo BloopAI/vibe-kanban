@@ -17,7 +17,7 @@ use codex_protocol::{
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
         ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
         McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent, WarningEvent,
+        PatchApplyEndEvent, StreamErrorEvent, ViewImageToolCallEvent, WarningEvent,
         WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
@@ -215,7 +215,6 @@ struct LogState {
     mcp_tools: HashMap<String, McpToolState>,
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
-    token_usage_info: Option<TokenUsageInfo>,
 }
 
 enum StreamingTextKind {
@@ -233,7 +232,6 @@ impl LogState {
             mcp_tools: HashMap::new(),
             patches: HashMap::new(),
             web_searches: HashMap::new(),
-            token_usage_info: None,
         }
     }
 
@@ -971,7 +969,26 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::TokenCount(payload) => {
                     if let Some(info) = payload.info {
-                        state.token_usage_info = Some(info);
+                        add_normalized_entry(
+                            &msg_store,
+                            &entry_index,
+                            NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::TokenUsageInfo {
+                                    total_tokens: info.last_token_usage.total_tokens as u32,
+                                    model_context_window: info
+                                        .model_context_window
+                                        .unwrap_or_default()
+                                        as u32,
+                                },
+                                content: format!(
+                                    "Tokens used: {} / Context window: {}",
+                                    info.last_token_usage.total_tokens,
+                                    info.model_context_window.unwrap_or_default()
+                                ),
+                                metadata: None,
+                            },
+                        );
                     }
                 }
                 EventMsg::ContextCompacted(..) => {

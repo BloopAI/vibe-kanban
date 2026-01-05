@@ -10,7 +10,7 @@ import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
-import { useEntries } from '@/contexts/EntriesContext';
+import { useEntries, useTokenUsage } from '@/contexts/EntriesContext';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
@@ -115,6 +115,7 @@ export function SessionChatBoxContainer({
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
+  const tokenUsageInfo = useTokenUsage();
 
   // Extract pending approval metadata from entries (needed for scratchId)
   const pendingApproval = useMemo(() => {
@@ -567,6 +568,7 @@ export function SessionChatBoxContainer({
         status="idle"
         workspaceId={workspaceId}
         projectId={projectId}
+        tokenUsageInfo={tokenUsageInfo}
         editor={{
           value: '',
           onChange: () => {},
@@ -601,6 +603,7 @@ export function SessionChatBoxContainer({
       onViewCode={handleViewCode}
       workspaceId={workspaceId}
       projectId={projectId}
+      tokenUsageInfo={tokenUsageInfo}
       editor={{
         value: editorValue,
         onChange: handleEditorChange,

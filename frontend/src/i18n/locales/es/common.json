@@ -279,5 +279,11 @@
   "search": {
     "matchCount": "{{current}} de {{total}}",
     "noMatches": "Sin coincidencias"
+  },
+  "contextUsage": {
+    "label": "Uso del contexto",
+    "emptyTooltip": "El uso del contexto aparece después de la próxima respuesta",
+    "tooltip": "Contexto: {{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "Uso del contexto: {{percentage}}%"
   }
 }
