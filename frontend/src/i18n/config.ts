@@ -95,13 +95,7 @@ i18n
     defaultNS: 'common',
     debug: import.meta.env.DEV,
     // Include 'zh' + Traditional Chinese locales for browser detection
-    supportedLngs: [
-      ...SUPPORTED_I18N_CODES,
-      'zh',
-      'zh-TW',
-      'zh-HK',
-      'zh-MO',
-    ],
+    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh', 'zh-TW', 'zh-HK', 'zh-MO'],
     nonExplicitSupportedLngs: true, // Accept zh -> zh-Hans mapping
     load: 'currentOnly', // Load exact language code
 
