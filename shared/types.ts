@@ -320,7 +320,11 @@ git_auto_commit_enabled: boolean,
 /**
  * custom font family override (system fonts will be used if None)
  */
-font_family: string | null, };
+font_family: string | null, 
+/**
+ * cuando está habilitado, se cargarán las fuentes de Google (Chivo Mono, Inter, JetBrains Mono)
+ */
+use_google_fonts: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 

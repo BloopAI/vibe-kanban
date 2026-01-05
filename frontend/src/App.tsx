@@ -120,6 +120,7 @@ function AppContent() {
       <ThemeProvider
         initialTheme={config?.theme || ThemeMode.SYSTEM}
         initialFontFamily={config?.font_family || null}
+        initialUseGoogleFonts={config?.use_google_fonts ?? true}
       >
         <SearchProvider>
           <div className="h-screen flex flex-col bg-background">

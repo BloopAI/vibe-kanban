@@ -124,7 +124,10 @@ module.exports = {
       },
       fontFamily: {
         'chivo-mono': [
-          // monospace fonts optimized for coding and readability
+          // google fonts (default)
+          'Chivo Mono',
+          'Noto Emoji',
+          // system monospace fonts fallback
           'ui-monospace',
           'SF Mono',
           'Cascadia Code',

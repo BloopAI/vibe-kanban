@@ -62,7 +62,7 @@ export function GeneralSettings() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
-  const { setTheme, setFontFamily } = useTheme();
+  const { setTheme, setFontFamily, setUseGoogleFonts } = useTheme();
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
@@ -153,6 +153,7 @@ export function GeneralSettings() {
       await updateAndSaveConfig(draft); // Atomically apply + persist
       setTheme(draft.theme);
       setFontFamily(draft.font_family);
+      setUseGoogleFonts(draft.use_google_fonts);
       setDirty(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -280,6 +281,29 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="use-google-fonts"
+                checked={draft?.use_google_fonts ?? true}
+                onCheckedChange={(checked) =>
+                  updateDraft({
+                    use_google_fonts: checked === true,
+                  })
+                }
+              />
+              <Label
+                htmlFor="use-google-fonts"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {t('settings.general.appearance.useGoogleFonts.label')}
+              </Label>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.useGoogleFonts.helper')}
             </p>
           </div>
 

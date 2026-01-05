@@ -47,7 +47,10 @@ export default {
       },
       fontFamily: {
         'mono': [
-          // monospace fonts optimized for coding
+          // google fonts (default)
+          'JetBrains Mono',
+          'Noto Emoji',
+          // system monospace fonts fallback
           'ui-monospace',
           'SF Mono',
           'Cascadia Code',
@@ -68,7 +71,10 @@ export default {
           'Noto Color Emoji',
         ],
         'sans': [
-          // modern system UI fonts
+          // google fonts (default)
+          'Inter',
+          'Noto Emoji',
+          // system UI fonts fallback
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
