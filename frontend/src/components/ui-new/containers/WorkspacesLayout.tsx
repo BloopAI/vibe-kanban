@@ -587,6 +587,7 @@ export function WorkspacesLayout() {
                     isNewSessionMode={isNewSessionMode}
                     onStartNewSession={startNewSession}
                     onViewCode={handleToggleChangesMode}
+                    diffStats={diffStats}
                   />
                 </ExecutionProcessesProvider>
               </FileNavigationProvider>

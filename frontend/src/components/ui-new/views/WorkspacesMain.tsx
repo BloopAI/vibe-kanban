@@ -9,6 +9,12 @@ import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 
+interface DiffStats {
+  filesChanged: number;
+  linesAdded: number;
+  linesRemoved: number;
+}
+
 interface WorkspacesMainProps {
   workspaceWithSession: WorkspaceWithSession | undefined;
   sessions: Session[];
@@ -24,6 +30,8 @@ interface WorkspacesMainProps {
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
   onStartNewSession?: () => void;
+  /** Diff statistics from the workspace */
+  diffStats?: DiffStats;
 }
 
 export function WorkspacesMain({
@@ -39,6 +47,7 @@ export function WorkspacesMain({
   onViewCode,
   isNewSessionMode,
   onStartNewSession,
+  diffStats,
 }: WorkspacesMainProps) {
   const { session } = workspaceWithSession ?? {};
 
@@ -81,9 +90,10 @@ export function WorkspacesMain({
                 session={session}
                 sessions={sessions}
                 onSelectSession={onSelectSession}
-                filesChanged={19}
-                linesAdded={10}
-                linesRemoved={3}
+                filesChanged={diffStats?.filesChanged}
+                linesAdded={diffStats?.linesAdded}
+                linesRemoved={diffStats?.linesRemoved}
+                onViewCode={onViewCode}
                 projectId={projectId}
                 isNewSessionMode={isNewSessionMode}
                 onStartNewSession={onStartNewSession}
