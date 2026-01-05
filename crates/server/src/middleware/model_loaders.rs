@@ -5,6 +5,7 @@ use axum::{
     response::Response,
 };
 use db::models::{
+    discovery_item::DiscoveryItem,
     execution_process::ExecutionProcess, project::Project, session::Session, tag::Tag, task::Task,
     workspace::Workspace,
 };
@@ -167,5 +168,27 @@ pub async fn load_session_middleware(
     };
 
     request.extensions_mut().insert(session);
+    Ok(next.run(request).await)
+}
+
+pub async fn load_discovery_item_middleware(
+    State(deployment): State<DeploymentImpl>,
+    Path(discovery_item_id): Path<Uuid>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let discovery_item = match DiscoveryItem::find_by_id(&deployment.db().pool, discovery_item_id).await {
+        Ok(Some(item)) => item,
+        Ok(None) => {
+            tracing::warn!("DiscoveryItem {} not found", discovery_item_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch discovery item {}: {}", discovery_item_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    request.extensions_mut().insert(discovery_item);
     Ok(next.run(request).await)
 }

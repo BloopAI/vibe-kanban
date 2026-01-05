@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks SET parent_workspace_id = NULL WHERE parent_workspace_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "3d8b99f27ed12c313c11188e8fa3bb9a8a73f718e1afbd906e61e4f61714b346"
+}

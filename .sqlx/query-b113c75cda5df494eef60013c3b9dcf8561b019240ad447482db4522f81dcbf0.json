@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                f.id as \"id!: Uuid\",\n                f.task_id as \"task_id: Uuid\",\n                f.discovery_item_id as \"discovery_item_id: Uuid\",\n                f.feedback_type as \"feedback_type!: FeedbackType\",\n                f.content,\n                f.summary,\n                f.source_execution_id as \"source_execution_id: Uuid\",\n                f.created_at as \"created_at!: DateTime<Utc>\"\n            FROM feedback_entries f\n            LEFT JOIN discovery_items d ON f.discovery_item_id = d.id\n            WHERE f.task_id = $1\n               OR d.promoted_task_id = $1\n            ORDER BY f.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "discovery_item_id: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "feedback_type!: FeedbackType",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_execution_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "b113c75cda5df494eef60013c3b9dcf8561b019240ad447482db4522f81dcbf0"
+}

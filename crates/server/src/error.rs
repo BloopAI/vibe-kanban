@@ -15,6 +15,7 @@ use git2::Error as Git2Error;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
+    discovery::DiscoveryServiceError,
     git::GitServiceError,
     github::GitHubServiceError,
     image::ImageError,
@@ -76,6 +77,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error(transparent)]
+    Discovery(#[from] DiscoveryServiceError),
 }
 
 impl From<&'static str> for ApiError {
@@ -177,6 +180,12 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::Discovery(err) => match err {
+                DiscoveryServiceError::NotFound => (StatusCode::NOT_FOUND, "DiscoveryError"),
+                DiscoveryServiceError::NotReadyForPromotion => (StatusCode::BAD_REQUEST, "DiscoveryError"),
+                DiscoveryServiceError::AlreadyPromoted => (StatusCode::CONFLICT, "DiscoveryError"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "DiscoveryError"),
+            },
         };
 
         let error_message = match &self {

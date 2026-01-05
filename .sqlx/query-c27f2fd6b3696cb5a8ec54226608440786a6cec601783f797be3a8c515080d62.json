@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM repos\n               WHERE id NOT IN (SELECT repo_id FROM project_repos)\n                 AND id NOT IN (SELECT repo_id FROM workspace_repos)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "c27f2fd6b3696cb5a8ec54226608440786a6cec601783f797be3a8c515080d62"
+}
