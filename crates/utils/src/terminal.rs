@@ -29,7 +29,11 @@ pub async fn open_terminal(
 
         #[cfg(target_os = "linux")]
         {
-            // Linux: Try common terminal emulators in order of preference
+            // Linux: detectamos el shell del usuario y lo usamos explícitamente
+            let user_shell = UnixShell::current_shell();
+            let shell_path = user_shell.path();
+            let shell_path_str = shell_path.to_string_lossy();
+
             let terminals = [
                 "gnome-terminal",
                 "konsole",
@@ -43,29 +47,33 @@ pub async fn open_terminal(
             for terminal in &terminals {
                 let result = match *terminal {
                     "gnome-terminal" => {
+                        // gnome-terminal usa -- para separar sus args del comando a ejecutar
                         tokio::process::Command::new(terminal)
                             .arg("--working-directory")
                             .arg(path)
+                            .arg("--")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "konsole" => {
                         tokio::process::Command::new(terminal)
                             .arg("--workdir")
                             .arg(path)
+                            .arg("-e")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "xfce4-terminal" => {
                         tokio::process::Command::new(terminal)
                             .arg("--working-directory")
                             .arg(path)
+                            .arg("-e")
+                            .arg(shell_path_str.as_ref())
                             .spawn()
                     }
                     "xterm" | "alacritty" | "kitty" | "wezterm" => {
                         // estos terminales no tienen un flag directo para working directory
-                        // usamos un comando shell para cd al directorio, respetando el shell del usuario
-                        let user_shell = UnixShell::current_shell();
-                        let shell_path = user_shell.path();
-                        let shell_path_str = shell_path.to_string_lossy();
+                        // usamos un comando shell para cd al directorio
                         // fish usa sintaxis diferente a POSIX shells
                         let cd_command = if user_shell == UnixShell::Fish {
                             format!("cd '{}'; exec {}", path_str, shell_path_str)
@@ -87,7 +95,7 @@ pub async fn open_terminal(
                 }
             }
 
-            // If no terminal worked, return an error
+            // si no encontramos ningún terminal, retornamos error
             Err("No supported terminal emulator found".into())
         }
 
