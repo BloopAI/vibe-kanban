@@ -413,6 +413,8 @@ pub trait ContainerService {
                                 } else {
                                     project.default_agent_working_dir.clone()
                                 },
+                                dev_server_timeout: project.dev_server_timeout,
+                                dev_server_port: project.dev_server_port,
                             },
                         )
                         .await?;

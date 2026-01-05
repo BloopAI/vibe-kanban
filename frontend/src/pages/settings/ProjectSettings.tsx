@@ -38,6 +38,8 @@ interface ProjectFormState {
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  dev_server_timeout: string;
+  dev_server_port: string;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +55,8 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    dev_server_timeout: project.dev_server_timeout?.toString() ?? '',
+    dev_server_port: project.dev_server_port?.toString() ?? '',
   };
 }
 
@@ -391,12 +395,16 @@ export function ProjectSettings() {
     setSuccess(false);
 
     try {
+      const timeoutValue = draft.dev_server_timeout.trim();
+      const portValue = draft.dev_server_port.trim();
       const updateData: UpdateProject = {
         name: draft.name.trim(),
         dev_script: draft.dev_script.trim() || null,
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        dev_server_timeout: timeoutValue ? parseInt(timeoutValue, 10) : null,
+        dev_server_port: portValue ? parseInt(portValue, 10) : null,
       };
 
       updateProject.mutate({
@@ -607,6 +615,47 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.devWorkingDir.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dev-server-port">Dev Server Port</Label>
+                <Input
+                  id="dev-server-port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value={draft.dev_server_port}
+                  onChange={(e) =>
+                    updateDraft({ dev_server_port: e.target.value })
+                  }
+                  placeholder="Auto-detect"
+                  className="font-mono w-32"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Port for the dev server preview. Leave empty to auto-detect
+                  from dev server logs.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dev-server-timeout">
+                  Dev Server Timeout (seconds)
+                </Label>
+                <Input
+                  id="dev-server-timeout"
+                  type="number"
+                  min="1"
+                  value={draft.dev_server_timeout}
+                  onChange={(e) =>
+                    updateDraft({ dev_server_timeout: e.target.value })
+                  }
+                  placeholder="30"
+                  className="font-mono w-32"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Time to wait before showing the &quot;trouble previewing&quot;
+                  help message. Default is 30 seconds.
                 </p>
               </div>
 

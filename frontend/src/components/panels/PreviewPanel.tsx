@@ -43,7 +43,16 @@ export function PreviewPanel() {
   } = useDevServer(attemptId);
 
   const logStream = useLogStream(latestDevServerProcess?.id ?? '');
-  const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
+  const autoDetectedUrl = useDevserverUrlFromLogs(logStream.logs);
+
+  // Use configured port if set (takes priority), otherwise use auto-detected URL
+  const lastKnownUrl = project?.dev_server_port
+    ? {
+        url: `http://${window.location.hostname}:${project.dev_server_port}`,
+        port: project.dev_server_port,
+        scheme: 'http' as const,
+      }
+    : autoDetectedUrl;
 
   const previewState = useDevserverPreview(attemptId, {
     projectHasDevScript,
@@ -92,21 +101,33 @@ export function PreviewPanel() {
     };
   }, [previewState.status, previewState.url, addElement]);
 
+  // Timeout before showing the "trouble previewing" help message
+  // Uses project setting if configured, otherwise defaults to 30 seconds
+  const DEFAULT_DEV_SERVER_TIMEOUT_SECONDS = 30;
+  const devServerTimeoutMs =
+    (project?.dev_server_timeout ?? DEFAULT_DEV_SERVER_TIMEOUT_SECONDS) * 1000;
+
   function startTimer() {
     setLoadingTimeFinished(false);
     setTimeout(() => {
       setLoadingTimeFinished(true);
-    }, 5000);
+    }, devServerTimeoutMs);
   }
 
   useEffect(() => {
     startTimer();
   }, []);
 
+  const isPreviewReady =
+    previewState.status === 'ready' &&
+    Boolean(previewState.url) &&
+    !iframeError;
+
   useEffect(() => {
     if (
       loadingTimeFinished &&
       !isReady &&
+      !isPreviewReady &&
       latestDevServerProcess &&
       runningDevServer
     ) {
@@ -114,12 +135,14 @@ export function PreviewPanel() {
       setShowLogs(true);
       setLoadingTimeFinished(false);
     }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
+  }, [
+    loadingTimeFinished,
+    isReady,
+    isPreviewReady,
+    latestDevServerProcess,
+    runningDevServer,
+  ]);
 
-  const isPreviewReady =
-    previewState.status === 'ready' &&
-    Boolean(previewState.url) &&
-    !iframeError;
   const mode = iframeError
     ? 'error'
     : isPreviewReady
