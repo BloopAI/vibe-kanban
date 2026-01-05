@@ -71,6 +71,7 @@ pub struct Document {
     pub team_id: Uuid,
     pub folder_id: Option<Uuid>,
     pub title: String,
+    pub slug: Option<String>,
     pub content: Option<String>,
     pub file_path: Option<String>,
     pub file_type: String,
@@ -85,6 +86,31 @@ pub struct Document {
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
     pub updated_at: DateTime<Utc>,
+}
+
+/// Generate a URL-friendly slug from a title
+pub fn generate_slug(title: &str) -> String {
+    title
+        .to_lowercase()
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c
+            } else if c == ' ' || c == '_' || c == '/' {
+                '-'
+            } else {
+                ' ' // Will be filtered out
+            }
+        })
+        .filter(|c| *c != ' ')
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+        .chars()
+        .take(100) // Max 100 chars
+        .collect()
 }
 
 /// Request to create a new folder
@@ -420,6 +446,7 @@ impl Document {
                           team_id as "team_id!: Uuid",
                           folder_id as "folder_id: Uuid",
                           title,
+                          slug,
                           content,
                           file_path,
                           file_type,
@@ -446,6 +473,7 @@ impl Document {
                           team_id as "team_id!: Uuid",
                           folder_id as "folder_id: Uuid",
                           title,
+                          slug,
                           content,
                           file_path,
                           file_type,
@@ -480,6 +508,7 @@ impl Document {
                           team_id as "team_id!: Uuid",
                           folder_id as "folder_id: Uuid",
                           title,
+                          slug,
                           content,
                           file_path,
                           file_type,
@@ -507,6 +536,7 @@ impl Document {
                           team_id as "team_id!: Uuid",
                           folder_id as "folder_id: Uuid",
                           title,
+                          slug,
                           content,
                           file_path,
                           file_type,
@@ -536,6 +566,7 @@ impl Document {
                       team_id as "team_id!: Uuid",
                       folder_id as "folder_id: Uuid",
                       title,
+                      slug,
                       content,
                       file_path,
                       file_type,
@@ -556,6 +587,40 @@ impl Document {
         .await
     }
 
+    /// Find a document by slug within a team
+    pub async fn find_by_slug(
+        pool: &SqlitePool,
+        team_id: Uuid,
+        slug: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Document,
+            r#"SELECT id as "id!: Uuid",
+                      team_id as "team_id!: Uuid",
+                      folder_id as "folder_id: Uuid",
+                      title,
+                      slug,
+                      content,
+                      file_path,
+                      file_type,
+                      file_size as "file_size: i64",
+                      mime_type,
+                      icon,
+                      is_pinned as "is_pinned!: bool",
+                      is_archived as "is_archived!: bool",
+                      position as "position!: i32",
+                      created_by,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM documents
+               WHERE team_id = $1 AND slug = $2"#,
+            team_id,
+            slug
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn search(
         pool: &SqlitePool,
         team_id: Uuid,
@@ -568,6 +633,7 @@ impl Document {
                       team_id as "team_id!: Uuid",
                       folder_id as "folder_id: Uuid",
                       title,
+                      slug,
                       content,
                       file_path,
                       file_type,
@@ -594,6 +660,7 @@ impl Document {
     pub async fn create(pool: &SqlitePool, data: &CreateDocument) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         let file_type = data.file_type.clone().unwrap_or_else(|| "markdown".to_string());
+        let slug = generate_slug(&data.title);
 
         // Get max position for ordering
         let max_position: i32 = if let Some(folder_id) = data.folder_id {
@@ -619,12 +686,13 @@ impl Document {
 
         sqlx::query_as!(
             Document,
-            r#"INSERT INTO documents (id, team_id, folder_id, title, content, file_type, icon, position)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          folder_id as "folder_id: Uuid",
                          title,
+                         slug,
                          content,
                          file_path,
                          file_type,
@@ -641,6 +709,7 @@ impl Document {
             data.team_id,
             data.folder_id,
             data.title,
+            slug,
             data.content,
             file_type,
             data.icon,
@@ -665,6 +734,12 @@ impl Document {
             existing.folder_id
         };
         let title = data.title.as_ref().unwrap_or(&existing.title);
+        // Regenerate slug if title changed
+        let slug = if data.title.is_some() {
+            Some(generate_slug(title))
+        } else {
+            existing.slug
+        };
         let content = data.content.clone().or(existing.content);
         let icon = data.icon.clone().or(existing.icon);
         let is_pinned = data.is_pinned.unwrap_or(existing.is_pinned);
@@ -674,13 +749,14 @@ impl Document {
         sqlx::query_as!(
             Document,
             r#"UPDATE documents
-               SET folder_id = $2, title = $3, content = $4, icon = $5, is_pinned = $6,
-                   is_archived = $7, position = $8, updated_at = datetime('now', 'subsec')
+               SET folder_id = $2, title = $3, slug = $4, content = $5, icon = $6, is_pinned = $7,
+                   is_archived = $8, position = $9, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          folder_id as "folder_id: Uuid",
                          title,
+                         slug,
                          content,
                          file_path,
                          file_type,
@@ -696,6 +772,7 @@ impl Document {
             id,
             folder_id,
             title,
+            slug,
             content,
             icon,
             is_pinned,
@@ -733,6 +810,7 @@ impl Document {
                          team_id as "team_id!: Uuid",
                          folder_id as "folder_id: Uuid",
                          title,
+                         slug,
                          content,
                          file_path,
                          file_type,

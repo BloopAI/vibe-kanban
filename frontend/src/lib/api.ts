@@ -2005,6 +2005,11 @@ export const documentsApi = {
     return handleApiResponse<Document>(response);
   },
 
+  getBySlug: async (teamId: string, slug: string): Promise<Document> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/by-slug/${slug}`);
+    return handleApiResponse<Document>(response);
+  },
+
   create: async (teamId: string, data: CreateDocument): Promise<Document> => {
     const response = await makeRequest(`/api/teams/${teamId}/documents`, {
       method: 'POST',

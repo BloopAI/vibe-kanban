@@ -110,8 +110,15 @@ export function TeamDocuments() {
   // Handle URL query param for direct document linking
   useEffect(() => {
     if (docIdFromUrl && teamId && !editingDoc && !isLoading) {
-      // Fetch and open the document from URL param
-      documentsApi.get(teamId, docIdFromUrl)
+      // Detect if param is UUID or slug (UUID has format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(docIdFromUrl);
+
+      // Fetch document by ID or slug
+      const fetchPromise = isUUID
+        ? documentsApi.get(teamId, docIdFromUrl)
+        : documentsApi.getBySlug(teamId, docIdFromUrl);
+
+      fetchPromise
         .then(async (doc) => {
           // Navigate to the document's folder if needed
           if (doc.folder_id && doc.folder_id !== currentFolderId) {
@@ -288,8 +295,8 @@ export function TeamDocuments() {
     setIsLoadingContent(true);
     setIsMarkdownEditMode(false); // Reset to view mode when opening a new document
 
-    // Update URL with document ID for direct linking
-    setSearchParams({ doc: doc.id }, { replace: true });
+    // Update URL with document slug (or ID fallback) for direct linking
+    setSearchParams({ doc: doc.slug || doc.id }, { replace: true });
 
     try {
       // Fetch content using the new API that handles different file types

@@ -1,0 +1,116 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      folder_id as \"folder_id: Uuid\",\n                      title,\n                      slug,\n                      content,\n                      file_path,\n                      file_type,\n                      file_size as \"file_size: i64\",\n                      mime_type,\n                      icon,\n                      is_pinned as \"is_pinned!: bool\",\n                      is_archived as \"is_archived!: bool\",\n                      position as \"position!: i32\",\n                      created_by,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM documents\n               WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "team_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "folder_id: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "slug",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "content",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_type",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_size: i64",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "icon",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_pinned!: bool",
+        "ordinal": 11,
+        "type_info": "Bool"
+      },
+      {
+        "name": "is_archived!: bool",
+        "ordinal": 12,
+        "type_info": "Bool"
+      },
+      {
+        "name": "position!: i32",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 15,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 16,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ff60e0ba86a29086d69306db228d80cafc8320e7167f74c68f78c06e56e4a42c"
+}

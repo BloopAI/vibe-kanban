@@ -268,6 +268,33 @@ pub async fn get_document(
     Ok(ResponseJson(ApiResponse::success(document)))
 }
 
+/// Get a single document by slug within a team
+pub async fn get_document_by_slug(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_, slug)): Path<(Uuid, String)>,  // team_id extracted by middleware, just need slug
+) -> Result<ResponseJson<ApiResponse<Document>>, ApiError> {
+    let storage = get_document_storage();
+
+    let mut document = Document::find_by_slug(&deployment.db().pool, team.id, &slug)
+        .await?
+        .ok_or(ApiError::NotFound(format!("Document with slug '{}' not found", slug)))?;
+
+    // Load content from filesystem if we have a file_path
+    if let Some(ref file_path) = document.file_path {
+        if document.content.is_none() {
+            match storage.read_document(file_path).await {
+                Ok(content) => document.content = Some(content),
+                Err(e) => {
+                    tracing::warn!("Failed to read document content from {}: {}", file_path, e);
+                }
+            }
+        }
+    }
+
+    Ok(ResponseJson(ApiResponse::success(document)))
+}
+
 /// Create a new document
 pub async fn create_document(
     Extension(team): Extension<Team>,
@@ -1232,6 +1259,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         get(get_folder).put(update_folder).delete(delete_folder),
     );
 
+    // Route for looking up document by slug (requires team middleware)
+    let by_slug_router = Router::new()
+        .route("/documents/by-slug/{slug}", get(get_document_by_slug))
+        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
+
     // Combine documents routes
     let documents_router = Router::new()
         .merge(documents_list_router)
@@ -1248,7 +1280,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .nest("/folders", folders_router)
         .merge(scan_router)
         .merge(discover_router)
-        .merge(scan_all_router);
+        .merge(scan_all_router)
+        .merge(by_slug_router);
 
     // Match teams router pattern: /teams + /{team_id}
     let inner = Router::new().nest("/{team_id}", team_documents_router);
