@@ -87,6 +87,7 @@ export function NoServerContent({
           dev_script: script,
           dev_script_working_dir: project.dev_script_working_dir ?? null,
           default_agent_working_dir: project.default_agent_working_dir ?? null,
+          pr_auto_fix_enabled: project.pr_auto_fix_enabled ?? null,
         },
       },
       {
