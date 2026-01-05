@@ -49,6 +49,9 @@ export default schemas;
   };
 }
 
+const backendPort = process.env.BACKEND_PORT || "3001";
+console.log(`[vite] Proxying /api to http://localhost:${backendPort}`);
+
 export default defineConfig({
   plugins: [
     react(),
@@ -65,9 +68,19 @@ export default defineConfig({
     port: parseInt(process.env.FRONTEND_PORT || "3000"),
     proxy: {
       "/api": {
-        target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
         ws: true,
+        configure: (proxy) => {
+          proxy.on("error", (err) => {
+            console.log("proxy error", err);
+          });
+          proxy.on("proxyReqWs", (_proxyReq, _req, socket) => {
+            socket.on("error", (err) => {
+              console.log("WebSocket proxy socket error (ignored):", err.message);
+            });
+          });
+        },
       }
     },
     fs: {
