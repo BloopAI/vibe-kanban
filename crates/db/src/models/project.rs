@@ -286,9 +286,7 @@ impl Project {
 
         // Handle editor_config: if Some(value) is provided, update it; if not provided, keep existing
         let editor_config_json = match &payload.editor_config {
-            Some(config) => config
-                .as_ref()
-                .and_then(|c| serde_json::to_string(c).ok()),
+            Some(config) => config.as_ref().and_then(|c| serde_json::to_string(c).ok()),
             None => existing
                 .editor_config
                 .and_then(|c| serde_json::to_string(&c).ok()),

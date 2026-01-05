@@ -541,16 +541,16 @@ pub async fn open_task_attempt_in_editor(
     };
 
     // Look up the project to check for editor override
-    let project_editor_config = if let Some(task) = Task::find_by_id(pool, workspace.task_id).await?
-    {
-        if let Some(project) = Project::find_by_id(pool, task.project_id).await? {
-            project.editor_config
+    let project_editor_config =
+        if let Some(task) = Task::find_by_id(pool, workspace.task_id).await? {
+            if let Some(project) = Project::find_by_id(pool, task.project_id).await? {
+                project.editor_config
+            } else {
+                None
+            }
         } else {
             None
-        }
-    } else {
-        None
-    };
+        };
 
     // Determine editor config: request override > project override > global config
     let editor_config = {
