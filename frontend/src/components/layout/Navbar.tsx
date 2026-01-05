@@ -33,6 +33,13 @@ import {
   Loader2,
   ChevronDown,
 } from 'lucide-react';
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from '@clerk/clerk-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
@@ -363,6 +370,35 @@ export function Navbar() {
                   <NavDivider />
                 </>
               )}
+            </div>
+
+            {/* Clerk Authentication */}
+            <div className="hidden sm:flex items-center">
+              <SignedOut>
+                <div className="flex items-center gap-1">
+                  <SignInButton mode="modal">
+                    <Button variant="ghost" size="sm" className="h-8 text-xs">
+                      <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <Button variant="default" size="sm" className="h-8 text-xs">
+                      Sign Up
+                    </Button>
+                  </SignUpButton>
+                </div>
+              </SignedOut>
+              <SignedIn>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: 'h-8 w-8',
+                    },
+                  }}
+                />
+              </SignedIn>
+              <NavDivider />
             </div>
 
             <div className="flex items-center gap-1">

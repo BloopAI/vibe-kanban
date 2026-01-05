@@ -9,8 +9,18 @@ import * as Sentry from '@sentry/react';
 import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
+import { ClerkProvider } from '@clerk/clerk-react';
 // Import modal type definitions
 import './types/modals';
+
+// Clerk publishable key from environment
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!CLERK_PUBLISHABLE_KEY) {
+  console.warn(
+    'Clerk publishable key not set. Authentication will be disabled. ' +
+      'To enable, copy frontend/.env.local.example to frontend/.env.local and add your key.'
+  );
+}
 
 import {
   useLocation,
@@ -62,7 +72,8 @@ const queryClient = new QueryClient({
   },
 });
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Render app with optional ClerkProvider wrapper
+const AppWithProviders = () => (
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <PostHogProvider client={posthog}>
@@ -79,4 +90,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       </PostHogProvider>
     </QueryClientProvider>
   </React.StrictMode>
+);
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  CLERK_PUBLISHABLE_KEY ? (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <AppWithProviders />
+    </ClerkProvider>
+  ) : (
+    <AppWithProviders />
+  )
 );
