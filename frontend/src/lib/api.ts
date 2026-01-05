@@ -52,6 +52,8 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   RunScriptError,
+  RunUserCommandRequest,
+  RunUserCommandError,
   StatusResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
@@ -740,6 +742,28 @@ export const attemptsApi = {
       }
     );
     return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
+      response
+    );
+  },
+
+  runCommand: async (
+    attemptId: string,
+    command: string,
+    timeoutSeconds?: number
+  ): Promise<Result<ExecutionProcess, RunUserCommandError>> => {
+    const body: RunUserCommandRequest = {
+      command,
+      timeout_seconds: timeoutSeconds ?? null,
+    };
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/run-command`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+    return handleApiResponseAsResult<ExecutionProcess, RunUserCommandError>(
       response
     );
   },
