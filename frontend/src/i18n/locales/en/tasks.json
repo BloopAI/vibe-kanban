@@ -6,7 +6,8 @@
     "noSearchResults": "No tasks match your search."
   },
   "actions": {
-    "addTask": "Add task"
+    "addTask": "Add task",
+    "clearColumn": "Clear done tasks"
   },
   "filters": {
     "sharedToggleAria": "Toggle shared tasks",

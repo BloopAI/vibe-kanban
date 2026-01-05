@@ -116,6 +116,8 @@ fn generate_types_content() -> String {
         server::routes::shared_tasks::AssignSharedTaskRequest::decl(),
         server::routes::tasks::ShareTaskResponse::decl(),
         server::routes::tasks::CreateAndStartTaskRequest::decl(),
+        server::routes::tasks::BulkDeleteTasksRequest::decl(),
+        server::routes::tasks::BulkDeleteTasksResponse::decl(),
         server::routes::task_attempts::pr::CreateGitHubPrRequest::decl(),
         server::routes::images::ImageResponse::decl(),
         server::routes::images::ImageMetadata::decl(),

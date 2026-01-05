@@ -21,7 +21,7 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
@@ -153,6 +153,7 @@ export type KanbanHeaderProps =
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      onClearColumn?: () => void;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -181,6 +182,23 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
 
         <p className="m-0 text-sm">{props.name}</p>
       </span>
+      {props.onClearColumn && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className="m-0 p-0 h-0 text-foreground/50 hover:text-destructive"
+                onClick={props.onClearColumn}
+                aria-label={t('actions.clearColumn')}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t('actions.clearColumn')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>

@@ -1,6 +1,7 @@
 {
   "actions": {
-    "addTask": "Agregar tarea"
+    "addTask": "Agregar tarea",
+    "clearColumn": "Limpiar tareas completadas"
   },
   "filters": {
     "sharedToggleAria": "Alternar tareas compartidas",
