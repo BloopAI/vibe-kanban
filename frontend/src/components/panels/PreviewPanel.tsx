@@ -109,10 +109,16 @@ export function PreviewPanel() {
     startTimer();
   }, []);
 
+  const isPreviewReady =
+    previewState.status === 'ready' &&
+    Boolean(previewState.url) &&
+    !iframeError;
+
   useEffect(() => {
     if (
       loadingTimeFinished &&
       !isReady &&
+      !isPreviewReady &&
       latestDevServerProcess &&
       runningDevServer
     ) {
@@ -120,12 +126,14 @@ export function PreviewPanel() {
       setShowLogs(true);
       setLoadingTimeFinished(false);
     }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
+  }, [
+    loadingTimeFinished,
+    isReady,
+    isPreviewReady,
+    latestDevServerProcess,
+    runningDevServer,
+  ]);
 
-  const isPreviewReady =
-    previewState.status === 'ready' &&
-    Boolean(previewState.url) &&
-    !iframeError;
   const mode = iframeError
     ? 'error'
     : isPreviewReady
