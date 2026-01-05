@@ -5,7 +5,12 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import { $createTextNode } from 'lexical';
+import {
+  $createTextNode,
+  $getRoot,
+  $createParagraphNode,
+  $isParagraphNode,
+} from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {
@@ -109,21 +114,61 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       onQueryChange={onQueryChange}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
-          const textToInsert =
-            option.item.type === 'tag'
-              ? (option.item.tag?.content ?? '')
-              : (option.item.file?.path ?? '');
-
           if (!nodeToReplace) return;
 
-          // Create the node we want to insert
-          const textNode = $createTextNode(textToInsert);
+          if (option.item.type === 'tag') {
+            // For tags, keep the existing behavior (insert tag content as plain text)
+            const textToInsert = option.item.tag?.content ?? '';
+            const textNode = $createTextNode(textToInsert);
+            nodeToReplace.replace(textNode);
+            textNode.select(textToInsert.length, textToInsert.length);
+          } else {
+            // For files, insert filename as inline code at cursor,
+            // and append full path as inline code at the bottom
+            const fileName = option.item.file?.name ?? '';
+            const fullPath = option.item.file?.path ?? '';
 
-          // Replace the trigger text (e.g., "@test") with selected content
-          nodeToReplace.replace(textNode);
+            // Step 1: Insert filename as inline code at cursor position
+            const fileNameNode = $createTextNode(fileName);
+            fileNameNode.toggleFormat('code');
+            nodeToReplace.replace(fileNameNode);
 
-          // Move the cursor to the end of the inserted text
-          textNode.select(textToInsert.length, textToInsert.length);
+            // Add a space after the inline code for better UX
+            const spaceNode = $createTextNode(' ');
+            fileNameNode.insertAfter(spaceNode);
+            spaceNode.select(1, 1); // Position cursor after the space
+
+            // Step 2: Check if full path already exists at the bottom
+            const root = $getRoot();
+            const children = root.getChildren();
+            let pathAlreadyExists = false;
+
+            // Scan all paragraphs to find if this path already exists as inline code
+            for (const child of children) {
+              if (!$isParagraphNode(child)) continue;
+
+              const textNodes = child.getAllTextNodes();
+              for (const textNode of textNodes) {
+                if (
+                  textNode.hasFormat('code') &&
+                  textNode.getTextContent() === fullPath
+                ) {
+                  pathAlreadyExists = true;
+                  break;
+                }
+              }
+              if (pathAlreadyExists) break;
+            }
+
+            // Step 3: If path doesn't exist, append it at the bottom
+            if (!pathAlreadyExists && fullPath) {
+              const pathParagraph = $createParagraphNode();
+              const pathNode = $createTextNode(fullPath);
+              pathNode.toggleFormat('code');
+              pathParagraph.append(pathNode);
+              root.append(pathParagraph);
+            }
+          }
         });
 
         closeMenu();
