@@ -18,6 +18,12 @@ interface WorkspacesSidebarProps {
   onArchiveWorkspace?: (workspaceId: string, isArchived: boolean) => void;
   onPinWorkspace?: (workspaceId: string, isPinned: boolean) => void;
   onDuplicateWorkspace?: (workspaceId: string) => void;
+  /** Whether we're in create mode */
+  isCreateMode?: boolean;
+  /** Title extracted from draft message (only shown when isCreateMode and non-empty) */
+  draftTitle?: string;
+  /** Handler to navigate back to create mode */
+  onSelectCreate?: () => void;
 }
 
 export function WorkspacesSidebar({
@@ -32,6 +38,9 @@ export function WorkspacesSidebar({
   onArchiveWorkspace,
   onPinWorkspace,
   onDuplicateWorkspace,
+  isCreateMode = false,
+  draftTitle,
+  onSelectCreate,
 }: WorkspacesSidebarProps) {
   const searchLower = searchQuery.toLowerCase();
 
@@ -68,6 +77,14 @@ export function WorkspacesSidebar({
           className="p-base"
           contentClassName="flex flex-col gap-base min-h-[50vh]"
         >
+          {draftTitle && (
+            <WorkspaceSummary
+              name={draftTitle}
+              isActive={isCreateMode}
+              isDraft={true}
+              onClick={onSelectCreate}
+            />
+          )}
           {filteredWorkspaces.map((workspace) => (
             <WorkspaceSummary
               key={workspace.id}
