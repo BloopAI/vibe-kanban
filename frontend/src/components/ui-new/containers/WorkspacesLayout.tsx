@@ -6,6 +6,9 @@ import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
+import { splitMessageToTitleDescription } from '@/utils/string';
+import { useScratch } from '@/hooks/useScratch';
+import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
@@ -189,6 +192,9 @@ function GitPanelContainer({
   );
 }
 
+// Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
+const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+
 export function WorkspacesLayout() {
   const navigate = useNavigate();
   const {
@@ -209,6 +215,26 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
+  const { scratch: draftScratch } = useScratch(
+    ScratchType.DRAFT_WORKSPACE,
+    DRAFT_WORKSPACE_ID
+  );
+
+  // Extract draft title from persisted scratch
+  const persistedDraftTitle = useMemo(() => {
+    const scratchData: DraftWorkspaceData | undefined =
+      draftScratch?.payload?.type === 'DRAFT_WORKSPACE'
+        ? draftScratch.payload.data
+        : undefined;
+
+    if (!scratchData?.message?.trim()) return undefined;
+    const { title } = splitMessageToTitleDescription(
+      scratchData.message.trim()
+    );
+    return title || 'New Workspace';
+  }, [draftScratch]);
 
   // Selected file path for scroll-to in changes mode (user clicked in FileTree)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
@@ -534,6 +560,26 @@ export function WorkspacesLayout() {
     );
   };
 
+  // Render sidebar with persisted draft title
+  const renderSidebar = () => (
+    <WorkspacesSidebar
+      workspaces={sidebarWorkspaces}
+      archivedWorkspaces={archivedSidebarWorkspaces}
+      selectedWorkspaceId={selectedWorkspaceId ?? null}
+      onSelectWorkspace={selectWorkspace}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onAddWorkspace={navigateToCreate}
+      onDeleteWorkspace={handleDeleteWorkspace}
+      onArchiveWorkspace={handleArchiveWorkspace}
+      onPinWorkspace={handlePinWorkspace}
+      onDuplicateWorkspace={handleDuplicateWorkspace}
+      isCreateMode={isCreateMode}
+      draftTitle={persistedDraftTitle}
+      onSelectCreate={navigateToCreate}
+    />
+  );
+
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
     const content = (
@@ -544,21 +590,7 @@ export function WorkspacesLayout() {
           maxSize={600}
           visible={isSidebarVisible}
         >
-          <div className="h-full overflow-hidden">
-            <WorkspacesSidebar
-              workspaces={sidebarWorkspaces}
-              archivedWorkspaces={archivedSidebarWorkspaces}
-              selectedWorkspaceId={selectedWorkspaceId ?? null}
-              onSelectWorkspace={selectWorkspace}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onAddWorkspace={navigateToCreate}
-              onDeleteWorkspace={handleDeleteWorkspace}
-              onArchiveWorkspace={handleArchiveWorkspace}
-              onPinWorkspace={handlePinWorkspace}
-              onDuplicateWorkspace={handleDuplicateWorkspace}
-            />
-          </div>
+          <div className="h-full overflow-hidden">{renderSidebar()}</div>
         </Allotment.Pane>
 
         <Allotment.Pane

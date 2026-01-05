@@ -63,6 +63,8 @@ interface WorkspaceSummaryProps {
   onDuplicate?: () => void;
   className?: string;
   summary?: boolean;
+  /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
+  isDraft?: boolean;
 }
 
 export function WorkspaceSummary({
@@ -85,6 +87,7 @@ export function WorkspaceSummary({
   onDuplicate,
   className,
   summary = false,
+  isDraft = false,
 }: WorkspaceSummaryProps) {
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
   const isFailed =
@@ -145,20 +148,20 @@ export function WorkspaceSummary({
               />
             )}
 
-            {/* Time elapsed (when not running) */}
-            {!isRunning && latestProcessCompletedAt && (
-              <span className="min-w-0 flex-1 truncate">
-                {formatTimeElapsed(latestProcessCompletedAt)}
-              </span>
-            )}
+            {/* Time elapsed OR "Draft" label (when not running) */}
+            {!isRunning &&
+              (isDraft ? (
+                <span className="min-w-0 flex-1 truncate">Draft</span>
+              ) : latestProcessCompletedAt ? (
+                <span className="min-w-0 flex-1 truncate">
+                  {formatTimeElapsed(latestProcessCompletedAt)}
+                </span>
+              ) : (
+                <span className="flex-1" />
+              ))}
 
             {/* Spacer when running (no elapsed time shown) */}
             {isRunning && <span className="flex-1" />}
-
-            {/* Spacer when not running and no elapsed time */}
-            {!isRunning && !latestProcessCompletedAt && (
-              <span className="flex-1" />
-            )}
 
             {/* File count + lines changed on the right */}
             {hasChanges && (
