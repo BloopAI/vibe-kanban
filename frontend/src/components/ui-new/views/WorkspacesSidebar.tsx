@@ -14,7 +14,7 @@ interface WorkspacesSidebarProps {
   onAddWorkspace?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  onDeleteWorkspace?: (taskId: string) => void;
+  onDeleteWorkspace?: (workspaceId: string) => void;
   onArchiveWorkspace?: (workspaceId: string, isArchived: boolean) => void;
   onPinWorkspace?: (workspaceId: string, isPinned: boolean) => void;
   onDuplicateWorkspace?: (workspaceId: string) => void;
@@ -103,7 +103,7 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
               onDelete={
                 onDeleteWorkspace
-                  ? () => onDeleteWorkspace(workspace.taskId)
+                  ? () => onDeleteWorkspace(workspace.id)
                   : undefined
               }
               onArchive={
@@ -150,7 +150,7 @@ export function WorkspacesSidebar({
               onClick={() => onSelectWorkspace(workspace.id)}
               onDelete={
                 onDeleteWorkspace
-                  ? () => onDeleteWorkspace(workspace.taskId)
+                  ? () => onDeleteWorkspace(workspace.id)
                   : undefined
               }
               onArchive={

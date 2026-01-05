@@ -564,6 +564,13 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  delete: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
   runAgentSetup: async (
     attemptId: string,
     data: RunAgentSetupRequest

@@ -134,6 +134,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::CreatePrError::decl(),
         server::routes::task_attempts::BranchStatus::decl(),
         server::routes::task_attempts::RunScriptError::decl(),
+        server::routes::task_attempts::DeleteWorkspaceError::decl(),
         server::routes::task_attempts::pr::AttachPrResponse::decl(),
         server::routes::task_attempts::pr::AttachExistingPrRequest::decl(),
         server::routes::task_attempts::pr::PrCommentsResponse::decl(),

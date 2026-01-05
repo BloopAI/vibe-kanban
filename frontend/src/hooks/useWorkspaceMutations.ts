@@ -14,8 +14,14 @@ interface TogglePinParams {
   pinned: boolean;
 }
 
+interface DeleteWorkspaceParams {
+  workspaceId: string;
+  nextWorkspaceId?: string | null;
+}
+
 interface UseWorkspaceMutationsOptions {
   onArchiveSuccess?: (params: ToggleArchiveParams) => void;
+  onDeleteSuccess?: (params: DeleteWorkspaceParams) => void;
 }
 
 export function useWorkspaceMutations(options?: UseWorkspaceMutationsOptions) {
@@ -54,8 +60,26 @@ export function useWorkspaceMutations(options?: UseWorkspaceMutationsOptions) {
     },
   });
 
+  const deleteWorkspace = useMutation({
+    mutationFn: ({ workspaceId }: DeleteWorkspaceParams) =>
+      attemptsApi.delete(workspaceId),
+    onSuccess: (_, params) => {
+      // Remove the deleted workspace from cache
+      queryClient.removeQueries({
+        queryKey: attemptKeys.byId(params.workspaceId),
+      });
+      // Invalidate workspace summaries so list is refreshed
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      options?.onDeleteSuccess?.(params);
+    },
+    onError: (err) => {
+      console.error('Failed to delete workspace:', err);
+    },
+  });
+
   return {
     toggleArchive,
     togglePin,
+    deleteWorkspace,
   };
 }
