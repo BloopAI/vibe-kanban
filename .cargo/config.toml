@@ -1,8 +1,3 @@
-# macOS deployment targets should be set via environment variables:
-# - x86_64-apple-darwin: MACOSX_DEPLOYMENT_TARGET=10.12
-# - aarch64-apple-darwin: MACOSX_DEPLOYMENT_TARGET=11.0
-# Note: [target.*.env] sections are not supported by cargo-xwin's config parser
-
 [target.x86_64-apple-darwin]
 rustflags = [
     "-C", "link-arg=-framework",
