@@ -1,4 +1,5 @@
 use crate::is_wsl2;
+use crate::shell::UnixShell;
 use std::path::Path;
 
 /// Open terminal at the given path with cross-platform support
@@ -60,13 +61,22 @@ pub async fn open_terminal(
                             .spawn()
                     }
                     "xterm" | "alacritty" | "kitty" | "wezterm" => {
-                        // These terminals don't have a direct working directory flag
-                        // We use a shell command to cd into the directory
+                        // estos terminales no tienen un flag directo para working directory
+                        // usamos un comando shell para cd al directorio, respetando el shell del usuario
+                        let user_shell = UnixShell::current_shell();
+                        let shell_path = user_shell.path();
+                        let shell_path_str = shell_path.to_string_lossy();
+                        // fish usa sintaxis diferente a POSIX shells
+                        let cd_command = if user_shell == UnixShell::Fish {
+                            format!("cd '{}'; exec {}", path_str, shell_path_str)
+                        } else {
+                            format!("cd '{}' && exec {}", path_str, shell_path_str)
+                        };
                         tokio::process::Command::new(terminal)
                             .arg("-e")
-                            .arg("bash")
+                            .arg(shell_path_str.as_ref())
                             .arg("-c")
-                            .arg(format!("cd '{}' && exec bash", path_str))
+                            .arg(cd_command)
                             .spawn()
                     }
                     _ => continue,

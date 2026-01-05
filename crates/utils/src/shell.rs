@@ -104,6 +104,7 @@ async fn which(executable: &str) -> Option<PathBuf> {
 pub enum UnixShell {
     Zsh,
     Bash,
+    Fish,
     Sh,
     Other(String),
 }
@@ -113,6 +114,7 @@ impl UnixShell {
         match self {
             UnixShell::Zsh => PathBuf::from("/bin/zsh"),
             UnixShell::Bash => PathBuf::from("/bin/bash"),
+            UnixShell::Fish => PathBuf::from("/usr/bin/fish"),
             UnixShell::Sh => PathBuf::from("/bin/sh"),
             UnixShell::Other(path) => PathBuf::from(path),
         }
@@ -121,6 +123,7 @@ impl UnixShell {
         match self {
             UnixShell::Zsh => true,
             UnixShell::Bash => true,
+            UnixShell::Fish => true,
             UnixShell::Sh => false,
             UnixShell::Other(_) => false,
         }
@@ -130,6 +133,7 @@ impl UnixShell {
         let config_file = match self {
             UnixShell::Zsh => Some(home.join(".zshrc")),
             UnixShell::Bash => Some(home.join(".bashrc")),
+            UnixShell::Fish => Some(home.join(".config/fish/config.fish")),
             UnixShell::Sh => None,
             UnixShell::Other(_) => None,
         };
@@ -166,6 +170,8 @@ impl UnixShell {
                 Some(UnixShell::Zsh)
             } else if path.file_name() == Some(OsStr::new("bash")) {
                 Some(UnixShell::Bash)
+            } else if path.file_name() == Some(OsStr::new("fish")) {
+                Some(UnixShell::Fish)
             } else if path.file_name() == Some(OsStr::new("sh")) {
                 Some(UnixShell::Sh)
             } else {
@@ -244,7 +250,7 @@ async fn get_fresh_path() -> Option<String> {
         paths.push(path);
     }
 
-    let shells = vec![UnixShell::Zsh, UnixShell::Bash, UnixShell::Sh];
+    let shells = vec![UnixShell::Zsh, UnixShell::Bash, UnixShell::Fish, UnixShell::Sh];
     for shell in shells {
         if !(shell == current_shell)
             && let Some(path) = run(&shell).await
