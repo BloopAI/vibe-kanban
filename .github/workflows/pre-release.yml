@@ -187,7 +187,7 @@ jobs:
             os: macos-15-xlarge
             name: macos-x64
           - target: aarch64-apple-darwin
-            os: macos-14-xlarge
+            os: macos-15-xlarge
             name: macos-arm64
           - target: aarch64-pc-windows-msvc
             os: ubuntu-latest-x64-l
