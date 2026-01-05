@@ -22,8 +22,8 @@ import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { useProject } from '@/contexts/ProjectContext';
-import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { attemptsApi, sessionsApi } from '@/lib/api';
 import {
   BaseAgentCapability,
   type BaseCodingAgent,
@@ -35,6 +35,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 
 type NextActionCardProps = {
   attemptId?: string;
@@ -110,12 +111,47 @@ export function NextActionCard({
     navigate({ search: '?view=diffs' });
   }, [navigate]);
 
-  const handleTryAgain = useCallback(() => {
+  const handleNewAttempt = useCallback(() => {
     if (!attempt?.task_id) return;
     CreateAttemptDialog.show({
       taskId: attempt.task_id,
     });
   }, [attempt?.task_id]);
+
+  const { executionProcessesVisible } = useExecutionProcessesContext();
+
+  const keepGoingMutation = useMutation({
+    mutationFn: async () => {
+      if (!attempt?.session?.id) return;
+
+      // obtener el último proceso de ejecución fallido
+      const lastFailedProcess = executionProcessesVisible
+        .filter(
+          (p) =>
+            p.run_reason === 'codingagent' &&
+            (p.status === 'failed' || p.status === 'killed')
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+
+      if (!lastFailedProcess) return;
+
+      // enviar un follow-up sin mensaje que continúa desde el proceso fallido
+      await sessionsApi.followUp(attempt.session.id, {
+        prompt: '',
+        variant: null,
+        retry_process_id: undefined,
+        force_when_dirty: false,
+        perform_git_reset: false,
+      });
+    },
+  });
+
+  const handleKeepGoing = useCallback(() => {
+    keepGoingMutation.mutate();
+  }, [keepGoingMutation]);
 
   const handleGitActions = useCallback(() => {
     if (!attemptId) return;
@@ -153,12 +189,13 @@ export function NextActionCard({
   const editorName = getIdeName(config?.editor?.editor_type);
 
   // Necessary to prevent this component being displayed beyond fold within Virtualised List
-  if (
-    (!failed || (execution_processes > 2 && !needsSetup)) &&
-    fileCount === 0
-  ) {
+  // Always show when failed, regardless of fileCount
+  if (!failed && fileCount === 0) {
     return <div className="h-24"></div>;
   }
+
+  // Don't show "New Attempt" button if too many processes (but still show other buttons)
+  const showNewAttemptButton = execution_processes <= 2 && !needsSetup;
 
   return (
     <TooltipProvider>
@@ -201,7 +238,7 @@ export function NextActionCard({
             </button>
           )}
 
-          {/* Run Setup or Try Again button */}
+          {/* Run Setup, Keep Going, or New Attempt buttons */}
           {failed &&
             (needsSetup ? (
               <Button
@@ -215,18 +252,32 @@ export function NextActionCard({
                 {t('attempt.runSetup')}
               </Button>
             ) : (
-              execution_processes <= 2 && (
+              <div className="flex gap-2 flex-wrap">
                 <Button
-                  variant="destructive"
+                  variant="default"
                   size="sm"
-                  onClick={handleTryAgain}
-                  disabled={!attempt?.task_id}
+                  onClick={handleKeepGoing}
+                  disabled={!attempt?.session?.id || keepGoingMutation.isPending}
                   className="text-sm w-full sm:w-auto"
-                  aria-label={t('attempt.tryAgain')}
+                  aria-label={t('attempt.keepGoing')}
                 >
-                  {t('attempt.tryAgain')}
+                  {keepGoingMutation.isPending
+                    ? t('attempt.keepGoingInProgress')
+                    : t('attempt.keepGoing')}
                 </Button>
-              )
+                {showNewAttemptButton && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNewAttempt}
+                    disabled={!attempt?.task_id}
+                    className="text-sm w-full sm:w-auto"
+                    aria-label={t('attempt.newAttempt')}
+                  >
+                    {t('attempt.newAttempt')}
+                  </Button>
+                )}
+              </div>
             ))}
 
           {/* Right: Icon buttons */}
