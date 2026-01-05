@@ -117,7 +117,10 @@ function AppContent() {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
+      <ThemeProvider
+        initialTheme={config?.theme || ThemeMode.SYSTEM}
+        initialFontFamily={config?.font_family || null}
+      >
         <SearchProvider>
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>

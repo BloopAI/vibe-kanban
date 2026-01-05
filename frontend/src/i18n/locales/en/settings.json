@@ -37,6 +37,11 @@
           "label": "Language",
           "placeholder": "Select language",
           "helper": "Choose your preferred language. Browser Default follows your system language."
+        },
+        "fontFamily": {
+          "label": "Custom Font",
+          "placeholder": "e.g., 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "Override the default system font. Leave empty to use system fonts. Multiple fonts can be separated by commas."
         }
       },
       "taskExecution": {

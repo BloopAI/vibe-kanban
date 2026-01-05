@@ -62,7 +62,7 @@ export function GeneralSettings() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
-  const { setTheme } = useTheme();
+  const { setTheme, setFontFamily } = useTheme();
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
@@ -152,6 +152,7 @@ export function GeneralSettings() {
     try {
       await updateAndSaveConfig(draft); // Atomically apply + persist
       setTheme(draft.theme);
+      setFontFamily(draft.font_family);
       setDirty(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -279,6 +280,28 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="font-family">
+              {t('settings.general.appearance.fontFamily.label')}
+            </Label>
+            <Input
+              id="font-family"
+              type="text"
+              value={draft?.font_family ?? ''}
+              onChange={(e) =>
+                updateDraft({
+                  font_family: e.target.value.trim() || null,
+                })
+              }
+              placeholder={t(
+                'settings.general.appearance.fontFamily.placeholder'
+              )}
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.fontFamily.helper')}
             </p>
           </div>
         </CardContent>

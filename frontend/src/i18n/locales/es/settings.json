@@ -37,6 +37,11 @@
           "label": "Idioma",
           "placeholder": "Selecciona tu idioma",
           "helper": "Elige tu idioma preferido. El predeterminado del navegador sigue el idioma de tu sistema."
+        },
+        "fontFamily": {
+          "label": "Fuente Personalizada",
+          "placeholder": "ej. 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "Sobrescribe la fuente del sistema. Déjalo vacío para usar las fuentes del sistema. Varias fuentes se pueden separar por comas."
         }
       },
       "taskExecution": {
