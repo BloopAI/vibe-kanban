@@ -12,11 +12,28 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, dev_server_timeout: number | null, dev_server_port: number | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, 
+/**
+ * Timeout in seconds before showing the "trouble previewing" help message.
+ * Defaults to 30 seconds if not set.
+ */
+dev_server_timeout: bigint | null, 
+/**
+ * Optional port for the dev server. If set, this port will be used instead of auto-detection.
+ */
+dev_server_port: bigint | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, dev_server_timeout: number | null, dev_server_port: number | null, };
+export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, 
+/**
+ * Timeout in seconds before showing the "trouble previewing" help message.
+ */
+dev_server_timeout: bigint | null, 
+/**
+ * Optional port for the dev server.
+ */
+dev_server_port: bigint | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
@@ -231,6 +248,10 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+
+export type BulkDeleteTasksRequest = { project_id: string, status: TaskStatus, };
+
+export type BulkDeleteTasksResponse = { deleted_count: bigint, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
