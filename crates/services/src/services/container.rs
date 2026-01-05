@@ -413,6 +413,7 @@ pub trait ContainerService {
                                 } else {
                                     project.default_agent_working_dir.clone()
                                 },
+                                pr_auto_fix_enabled: Some(project.pr_auto_fix_enabled),
                             },
                         )
                         .await?;

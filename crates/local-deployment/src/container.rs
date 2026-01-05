@@ -17,6 +17,7 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
+        merge::Merge,
         project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
@@ -47,6 +48,7 @@ use services::services::{
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, GitCli, GitService},
+    github::{CreatePrRequest, GitHubService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
@@ -519,6 +521,15 @@ impl LocalContainerService {
                     }
                 }
 
+                // Try auto-creating PR if enabled in config
+                if let Err(e) = container.try_auto_create_pr(&ctx).await {
+                    tracing::warn!(
+                        "Failed to auto-create PR for workspace {}: {}",
+                        ctx.workspace.id,
+                        e
+                    );
+                }
+
                 // Fire analytics event when CodingAgent execution has finished
                 if config.read().await.analytics_enabled
                     && matches!(
@@ -851,6 +862,161 @@ impl LocalContainerService {
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await
+    }
+
+    /// Attempt to automatically create a PR for the workspace if enabled in config.
+    /// This is called after task finalization when pr_auto_create_on_completion is enabled.
+    async fn try_auto_create_pr(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
+        // Only proceed for coding agent executions that completed successfully
+        if !matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::CodingAgent
+        ) || !matches!(
+            ctx.execution_process.status,
+            ExecutionProcessStatus::Completed
+        ) {
+            return Ok(());
+        }
+
+        // Check if auto-PR creation is enabled
+        let config = self.config.read().await;
+        if !config.pr_auto_create_on_completion {
+            return Ok(());
+        }
+        drop(config);
+
+        let pool = &self.db.pool;
+
+        // Get workspace repos
+        let workspace_repos =
+            WorkspaceRepo::find_repos_for_workspace(pool, ctx.workspace.id).await?;
+
+        if workspace_repos.is_empty() {
+            tracing::debug!("No repos found for workspace {}, skipping auto-PR", ctx.workspace.id);
+            return Ok(());
+        }
+
+        // For each repo, check if a PR already exists
+        for repo in &workspace_repos {
+            let existing_merges =
+                Merge::find_by_workspace_and_repo_id(pool, ctx.workspace.id, repo.id).await?;
+
+            if !existing_merges.is_empty() {
+                tracing::debug!(
+                    "PR already exists for workspace {} repo {}, skipping auto-PR",
+                    ctx.workspace.id,
+                    repo.name
+                );
+                continue;
+            }
+
+            // Get workspace repo for target branch info
+            let workspace_repo = match WorkspaceRepo::find_by_workspace_and_repo_id(
+                pool,
+                ctx.workspace.id,
+                repo.id,
+            )
+            .await?
+            {
+                Some(wr) => wr,
+                None => continue,
+            };
+
+            // Get the worktree path
+            let Some(container_ref) = &ctx.workspace.container_ref else {
+                continue;
+            };
+            let workspace_path = PathBuf::from(container_ref);
+            let worktree_path = workspace_path.join(&repo.name);
+
+            // Push the branch to GitHub
+            if let Err(e) = self
+                .git
+                .push_to_github(&worktree_path, &ctx.workspace.branch, false)
+            {
+                tracing::warn!(
+                    "Failed to push branch for auto-PR in workspace {}: {}",
+                    ctx.workspace.id,
+                    e
+                );
+                continue;
+            }
+
+            // Get repo info for GitHub API
+            let repo_info = match self.git.get_github_repo_info(&repo.path) {
+                Ok(info) => info,
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to get GitHub repo info for auto-PR in workspace {}: {}",
+                        ctx.workspace.id,
+                        e
+                    );
+                    continue;
+                }
+            };
+
+            // Create PR using GitHub service
+            let github_service = match GitHubService::new() {
+                Ok(svc) => svc,
+                Err(e) => {
+                    tracing::warn!("Failed to create GitHub service for auto-PR: {}", e);
+                    continue;
+                }
+            };
+
+            let pr_request = CreatePrRequest {
+                title: ctx.task.title.clone(),
+                body: ctx.task.description.clone(),
+                head_branch: ctx.workspace.branch.clone(),
+                base_branch: workspace_repo.target_branch.clone(),
+                draft: Some(false),
+            };
+
+            match github_service.create_pr(&repo_info, &pr_request).await {
+                Ok(pr_info) => {
+                    // Save PR info to database
+                    if let Err(e) = Merge::create_pr(
+                        pool,
+                        ctx.workspace.id,
+                        repo.id,
+                        &workspace_repo.target_branch,
+                        pr_info.number,
+                        &pr_info.url,
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Failed to save auto-PR info for workspace {}: {}",
+                            ctx.workspace.id,
+                            e
+                        );
+                    }
+
+                    tracing::info!(
+                        "Auto-created PR #{} for workspace {} repo {}: {}",
+                        pr_info.number,
+                        ctx.workspace.id,
+                        repo.name,
+                        pr_info.url
+                    );
+
+                    // Open PR in browser
+                    if let Err(e) = utils::browser::open_browser(&pr_info.url).await {
+                        tracing::debug!("Failed to open auto-PR in browser: {}", e);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to create auto-PR for workspace {} repo {}: {}",
+                        ctx.workspace.id,
+                        repo.name,
+                        e
+                    );
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
