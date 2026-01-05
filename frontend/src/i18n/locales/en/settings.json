@@ -333,7 +333,13 @@
       },
       "scripts": {
         "title": "Scripts & Configuration",
-        "description": "Configure setup, cleanup, and copy files for this project.",
+        "description": "Configure scripts and working directories for this project.",
+        "projectLevel": {
+          "title": "Project Scripts"
+        },
+        "repoLevel": {
+          "title": "Per-Repository Scripts"
+        },
         "setup": {
           "label": "Setup Script",
           "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
