@@ -873,7 +873,7 @@ export function ProjectSettings() {
                           onChange={(e) =>
                             updateScriptsDraft({ default_branch: e.target.value })
                           }
-                          placeholder="main or master"
+                          placeholder="e.g. origin/main"
                           className="font-mono"
                         />
                         <p className="text-sm text-muted-foreground">

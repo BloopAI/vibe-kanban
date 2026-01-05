@@ -69,12 +69,27 @@ export function useRepoBranchSelection({
         // 5. First branch in the list
         if (initialBranch && branches.some((b) => b.name === initialBranch)) {
           targetBranch = initialBranch;
-        } else if (
-          repo.configuredDefaultBranch &&
-          branches.some((b) => b.name === repo.configuredDefaultBranch)
-        ) {
-          targetBranch = repo.configuredDefaultBranch;
-        } else {
+        } else if (repo.configuredDefaultBranch) {
+          // Check for exact match first
+          const exactMatch = branches.find(
+            (b) => b.name === repo.configuredDefaultBranch
+          );
+          if (exactMatch) {
+            targetBranch = exactMatch.name;
+          } else {
+            // Try matching without origin/ prefix (e.g., "origin/main" -> "main")
+            const withoutPrefix = repo.configuredDefaultBranch.replace(
+              /^origin\//,
+              ''
+            );
+            const prefixMatch = branches.find((b) => b.name === withoutPrefix);
+            if (prefixMatch) {
+              targetBranch = prefixMatch.name;
+            }
+          }
+        }
+
+        if (targetBranch === null) {
           const defaultBranch = branches.find((b) => b.is_default && !b.is_remote);
           const currentBranch = branches.find((b) => b.is_current);
           targetBranch =
