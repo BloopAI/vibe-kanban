@@ -90,8 +90,20 @@ pub struct UpdateProject {
     /// Per-project editor configuration override.
     /// Set to Some(config) to use a specific editor for this project.
     /// Set to None to clear the override and use global settings.
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     #[ts(optional)]
     pub editor_config: Option<Option<ProjectEditorConfig>>,
+}
+
+/// Custom deserializer that distinguishes between missing field (None) and null value (Some(None))
+fn deserialize_optional_field<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    // This will be called only when the field is present in JSON
+    // null -> Some(None), value -> Some(Some(value))
+    Option::<T>::deserialize(deserializer).map(Some)
 }
 
 #[derive(Debug, Serialize, TS)]
