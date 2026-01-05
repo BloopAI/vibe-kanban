@@ -137,6 +137,7 @@ export function NoServerContent({
       },
       executor_profile_id: config.executor_profile,
       repos,
+      custom_branch_name: null,
     });
   };
 

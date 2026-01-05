@@ -230,7 +230,11 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, 
+/**
+ * Optional custom branch name. If not provided, auto-generated from task title.
+ */
+custom_branch_name: string | null, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, remote_name: string | null, };
 
@@ -493,6 +497,10 @@ export type ToolStatus = { "status": "created" } | { "status": "success" } | { "
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 
+export type SlashCommand = { id: string, name: string, description: string, category: CommandCategory, examples: Array<string> | null, namespace: string | null, };
+
+export type CommandCategory = "global" | "project";
+
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
 export const DEFAULT_PR_DESCRIPTION_PROMPT = `Update the GitHub PR that was just created with a better title and description.
@@ -507,7 +515,3 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
-
-export type SlashCommand = { id: string, name: string, description: string, category: CommandCategory, examples: Array<string> | null, source: string, namespace: string | null, };
-
-export type CommandCategory = "global" | "project";

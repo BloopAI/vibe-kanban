@@ -4,7 +4,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon, GitBranch } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -81,7 +81,20 @@ type TaskFormValues = {
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
+  customBranchName: string;
 };
+
+// mimic the backend git_branch_id function (crates/utils/src/text.rs)
+function gitBranchId(input: string): string {
+  // 1. lowercase
+  const lower = input.toLowerCase();
+  // 2. replace non-alphanumerics with hyphens
+  const slug = lower.replace(/[^a-z0-9]+/g, '-');
+  // 3. trim extra hyphens
+  const trimmed = slug.replace(/^-+|-+$/g, '');
+  // 4. take up to 16 chars, then trim trailing hyphens
+  return trimmed.slice(0, 16).replace(/-+$/, '');
+}
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { mode, projectId } = props;
@@ -136,6 +149,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
+          customBranchName: '',
         };
 
       case 'duplicate':
@@ -146,6 +160,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          customBranchName: '',
         };
 
       case 'subtask':
@@ -158,6 +173,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          customBranchName: '',
         };
     }
   }, [mode, props, system.config?.executor_profile, defaultRepoBranches]);
@@ -197,11 +213,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           repo_id: rb.repoId,
           target_branch: rb.branch,
         }));
+        const customBranch = value.customBranchName.trim() || null;
         await createAndStart.mutateAsync(
           {
             task,
             executor_profile_id: value.executorProfileId!,
             repos,
+            custom_branch_name: customBranch,
           },
           { onSuccess: () => modal.remove() }
         );
@@ -606,6 +624,40 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                         }}
                       </form.Field>
                     )}
+                    {/* Branch name input */}
+                    <form.Subscribe selector={(state) => state.values.title}>
+                      {(title) => (
+                        <form.Field name="customBranchName">
+                          {(field) => {
+                            const previewBranch = gitBranchId(title);
+                            return (
+                              <div className="flex items-center gap-2 pt-1">
+                                <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <Input
+                                  id="custom-branch-name"
+                                  value={field.state.value}
+                                  onChange={(e) =>
+                                    field.handleChange(e.target.value)
+                                  }
+                                  placeholder={previewBranch || 'branch-name'}
+                                  className={cn(
+                                    'h-8 text-sm font-mono border-dashed',
+                                    !field.state.value &&
+                                      'text-muted-foreground'
+                                  )}
+                                  disabled={
+                                    isSubmitting || !autoStartField.state.value
+                                  }
+                                  aria-label={t(
+                                    'taskFormDialog.branchNameLabel'
+                                  )}
+                                />
+                              </div>
+                            );
+                          }}
+                        </form.Field>
+                      )}
+                    </form.Subscribe>
                   </div>
                 );
               }}
