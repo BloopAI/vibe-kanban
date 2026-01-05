@@ -202,6 +202,8 @@ jobs:
       SCCACHE_CACHE_SIZE: "10G"
       CARGO_HOME: ${{ github.workspace }}/.cargo
       RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      # Keep cargo-xwin/xwin downloads in-workspace so we can cache them.
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
       - uses: actions/checkout@v4
         # with:
@@ -272,6 +274,13 @@ jobs:
       - name: Install cargo xwin
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: cargo install --locked cargo-xwin --version 0.20.2
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-0.20.2
 
       - name: Cache target
         uses: actions/cache@v5
