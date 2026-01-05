@@ -237,15 +237,13 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          SUDO=$(id -u | grep -q '^0$' && echo "" || echo "sudo ")
-          $SUDO apt-get update
-          DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y clang libclang-dev lld llvm nasm cmake ninja-build lsb-release software-properties-common wget gnupg curl
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang libclang-dev lld llvm nasm cmake ninja-build lsb-release software-properties-common wget gnupg curl
 
-      - name: Install LLVM 19 (Linux, Windows)
+      - name: Install LLVM 19
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: |
-          SUDO=$(id -u | grep -q '^0$' && echo "" || echo "sudo ")
-          curl -fsSL https://apt.llvm.org/llvm.sh | $SUDO bash -s -- 19
+          curl -fsSL https://apt.llvm.org/llvm.sh | sudo bash -s -- 19
           echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
 
       - name: Cache Cargo registry
