@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { ExecutionProcess } from 'shared/types';
 
 interface UseDevServerOptions {
@@ -47,6 +48,7 @@ export function useDevServer(
       await queryClient.invalidateQueries({
         queryKey: ['executionProcesses', attemptId],
       });
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStartSuccess?.();
     },
     onError: (err) => {
@@ -73,6 +75,7 @@ export function useDevServer(
             })
           : Promise.resolve(),
       ]);
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStopSuccess?.();
     },
     onError: (err) => {
