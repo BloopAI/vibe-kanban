@@ -8,6 +8,7 @@ import type {
   CreateDocumentFolder,
   UpdateDocumentFolder,
   ScanFilesystemResponse,
+  ScanAllResponse,
   DiscoverFoldersResponse,
 } from 'shared/types';
 
@@ -31,6 +32,8 @@ export interface UseDocumentsResult {
   searchDocuments: (query: string) => Promise<Document[]>;
   // Filesystem scan
   scanFilesystem: (folderId: string) => Promise<ScanFilesystemResponse>;
+  // Recursive scan: create all nested folders and documents
+  scanAll: () => Promise<ScanAllResponse>;
   // Discover folders from filesystem
   discoverFolders: () => Promise<DiscoverFoldersResponse>;
 }
@@ -153,6 +156,14 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     [teamId, refresh]
   );
 
+  // Recursive scan: create all nested folders and documents
+  const scanAll = useCallback(async () => {
+    const result = await documentsApi.scanAll(teamId);
+    // Refresh after full scan
+    await refresh();
+    return result;
+  }, [teamId, refresh]);
+
   // Discover folders from filesystem
   const discoverFolders = useCallback(async () => {
     const result = await documentsApi.discoverFolders(teamId);
@@ -177,6 +188,7 @@ export function useDocuments(teamId: string): UseDocumentsResult {
     deleteFolder,
     searchDocuments,
     scanFilesystem,
+    scanAll,
     discoverFolders,
   };
 }

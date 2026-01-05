@@ -339,6 +339,72 @@ impl DocumentFolder {
             .await?;
         Ok(result.rows_affected())
     }
+
+    /// Find a folder by name and parent_id within a team, or create it if it doesn't exist
+    pub async fn find_or_create_by_name(
+        pool: &SqlitePool,
+        team_id: Uuid,
+        parent_id: Option<Uuid>,
+        name: &str,
+    ) -> Result<Self, sqlx::Error> {
+        // Try to find existing folder
+        let existing = if let Some(pid) = parent_id {
+            sqlx::query_as!(
+                DocumentFolder,
+                r#"SELECT id as "id!: Uuid",
+                          team_id as "team_id!: Uuid",
+                          parent_id as "parent_id: Uuid",
+                          name,
+                          icon,
+                          color,
+                          local_path,
+                          position as "position!: i32",
+                          created_at as "created_at!: DateTime<Utc>",
+                          updated_at as "updated_at!: DateTime<Utc>"
+                   FROM document_folders
+                   WHERE team_id = $1 AND parent_id = $2 AND name = $3"#,
+                team_id,
+                pid,
+                name
+            )
+            .fetch_optional(pool)
+            .await?
+        } else {
+            sqlx::query_as!(
+                DocumentFolder,
+                r#"SELECT id as "id!: Uuid",
+                          team_id as "team_id!: Uuid",
+                          parent_id as "parent_id: Uuid",
+                          name,
+                          icon,
+                          color,
+                          local_path,
+                          position as "position!: i32",
+                          created_at as "created_at!: DateTime<Utc>",
+                          updated_at as "updated_at!: DateTime<Utc>"
+                   FROM document_folders
+                   WHERE team_id = $1 AND parent_id IS NULL AND name = $2"#,
+                team_id,
+                name
+            )
+            .fetch_optional(pool)
+            .await?
+        };
+
+        if let Some(folder) = existing {
+            return Ok(folder);
+        }
+
+        // Create new folder
+        Self::create(pool, &CreateDocumentFolder {
+            team_id,
+            parent_id,
+            name: name.to_string(),
+            icon: None,
+            color: None,
+            local_path: None,
+        }).await
+    }
 }
 
 impl Document {

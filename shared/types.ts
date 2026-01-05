@@ -228,6 +228,28 @@ added_titles: Array<string>,
  */
 files_scanned: number, };
 
+export type ScanAllResponse = { 
+/**
+ * Number of folders created
+ */
+folders_created: number, 
+/**
+ * Number of documents created
+ */
+documents_created: number, 
+/**
+ * Total items scanned (folders + files)
+ */
+total_scanned: number, 
+/**
+ * Names of folders created
+ */
+folder_names: Array<string>, 
+/**
+ * Names of documents created
+ */
+document_names: Array<string>, };
+
 export type DiscoverFoldersResponse = { 
 /**
  * Names of folders that were created in the database

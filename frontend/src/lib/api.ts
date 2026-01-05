@@ -119,6 +119,7 @@ import {
   PushDocumentsRequest,
   SyncOperationResponse,
   ScanFilesystemResponse,
+  ScanAllResponse,
   DiscoverFoldersResponse,
   DocumentContentResponse,
   GitHubRepoSyncConfig,
@@ -2048,6 +2049,14 @@ export const documentsApi = {
       method: 'POST',
     });
     return handleApiResponse<DiscoverFoldersResponse>(response);
+  },
+
+  // Recursive scan: create all nested folders and documents from filesystem
+  scanAll: async (teamId: string): Promise<ScanAllResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/scan-all`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ScanAllResponse>(response);
   },
 
   // Get document content with type-specific handling

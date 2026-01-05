@@ -83,7 +83,7 @@ export function TeamDocuments() {
     createFolder,
     deleteFolder,
     scanFilesystem,
-    discoverFolders,
+    scanAll,
   } = useDocuments(actualTeamId);
 
   // Dialog states
@@ -98,7 +98,7 @@ export function TeamDocuments() {
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<{ added: number; scanned: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ added: number; scanned: number; foldersCreated?: number } | null>(null);
   const [isMarkdownEditMode, setIsMarkdownEditMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -267,28 +267,12 @@ export function TeamDocuments() {
           scanned: result.files_scanned,
         });
       } else {
-        // Root level: first discover folders from filesystem, then scan all
-        await discoverFolders();
-
-        // Re-fetch folders to get the updated list (including newly created ones)
-        const updatedFolders = await documentsApi.listFolders(teamId || '');
-
-        // Scan all folders
-        let totalAdded = 0;
-        let totalScanned = 0;
-        for (const folder of updatedFolders) {
-          try {
-            const result = await scanFilesystem(folder.id);
-            totalAdded += result.documents_added;
-            totalScanned += result.files_scanned;
-          } catch (err) {
-            // Continue scanning other folders even if one fails
-            console.warn(`Failed to scan folder ${folder.name}:`, err);
-          }
-        }
+        // Root level: use recursive scan-all endpoint
+        const result = await scanAll();
         setScanResult({
-          added: totalAdded,
-          scanned: totalScanned,
+          added: result.documents_created,
+          scanned: result.total_scanned,
+          foldersCreated: result.folders_created,
         });
       }
     } catch (err) {
@@ -296,7 +280,7 @@ export function TeamDocuments() {
     } finally {
       setIsScanning(false);
     }
-  }, [currentFolderId, teamId, scanFilesystem, discoverFolders]);
+  }, [currentFolderId, scanFilesystem, scanAll]);
 
   const handleOpenDocument = useCallback(async (doc: Document) => {
     setEditingDoc(doc);
@@ -851,7 +835,9 @@ export function TeamDocuments() {
         {/* Scan Result */}
         {scanResult && (
           <div className="mt-2 text-sm text-muted-foreground">
-            Scanned {scanResult.scanned} files, added {scanResult.added} new documents
+            Scanned {scanResult.scanned} items
+            {scanResult.foldersCreated !== undefined && `, ${scanResult.foldersCreated} folders`}
+            , added {scanResult.added} new documents
           </div>
         )}
 
