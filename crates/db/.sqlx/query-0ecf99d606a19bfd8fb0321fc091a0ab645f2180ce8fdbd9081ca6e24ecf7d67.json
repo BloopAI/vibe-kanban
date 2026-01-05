@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.dev_script, p.dev_script_working_dir,\n                   p.default_agent_working_dir,\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN workspaces w ON w.task_id = t.id\n                ORDER BY w.updated_at DESC\n            )\n            LIMIT $1\n            ",
+  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.dev_script, p.dev_script_working_dir,\n                   p.default_agent_working_dir, p.dev_server_timeout,\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN workspaces w ON w.task_id = t.id\n                ORDER BY w.updated_at DESC\n            )\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -29,18 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "dev_server_timeout",
         "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 6,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -54,9 +59,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "368d9be9608fea5002627625bf8abd3e9073e06bb72fc75f11c2af13f1d43a10"
+  "hash": "0ecf99d606a19bfd8fb0321fc091a0ab645f2180ce8fdbd9081ca6e24ecf7d67"
 }

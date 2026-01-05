@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO projects (\n                    id,\n                    name\n                ) VALUES (\n                    $1, $2\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO projects (\n                    id,\n                    name\n                ) VALUES (\n                    $1, $2\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          dev_server_timeout,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -29,18 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "dev_server_timeout",
         "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 6,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -54,9 +59,10 @@
       false,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "ff1ddf3ed4bed81adf8e1d3b8e3c3c8f0fcb9dc51511250f3c32501d8d60f0f0"
+  "hash": "a316cc59b804f907fda53f3a2e49e0342a4a978342500f7b33372558f5f65743"
 }
