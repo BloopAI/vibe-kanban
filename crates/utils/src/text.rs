@@ -1,13 +1,16 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 use uuid::Uuid;
+
+// compile regex once at first use, not on every call
+static BRANCH_SANITIZER: Lazy<Regex> = Lazy::new(|| Regex::new(r"[^a-z0-9]+").unwrap());
 
 pub fn git_branch_id(input: &str) -> String {
     // 1. lowercase
     let lower = input.to_lowercase();
 
     // 2. replace non-alphanumerics with hyphens
-    let re = Regex::new(r"[^a-z0-9]+").unwrap();
-    let slug = re.replace_all(&lower, "-");
+    let slug = BRANCH_SANITIZER.replace_all(&lower, "-");
 
     // 3. trim extra hyphens
     let trimmed = slug.trim_matches('-');

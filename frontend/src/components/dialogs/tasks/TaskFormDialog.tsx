@@ -85,15 +85,20 @@ type TaskFormValues = {
 };
 
 // mimic the backend git_branch_id function (crates/utils/src/text.rs)
+// extract regex to avoid recompilation on every keystroke
+const BRANCH_SANITIZER = /[^a-z0-9]+/g;
+const TRIM_HYPHENS = /^-+|-+$/g;
+const TRIM_TRAILING_HYPHENS = /-+$/;
+
 function gitBranchId(input: string): string {
   // 1. lowercase
   const lower = input.toLowerCase();
   // 2. replace non-alphanumerics with hyphens
-  const slug = lower.replace(/[^a-z0-9]+/g, '-');
+  const slug = lower.replace(BRANCH_SANITIZER, '-');
   // 3. trim extra hyphens
-  const trimmed = slug.replace(/^-+|-+$/g, '');
+  const trimmed = slug.replace(TRIM_HYPHENS, '');
   // 4. take up to 16 chars, then trim trailing hyphens
-  return trimmed.slice(0, 16).replace(/-+$/, '');
+  return trimmed.slice(0, 16).replace(TRIM_TRAILING_HYPHENS, '');
 }
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
@@ -629,7 +634,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       {(title) => (
                         <form.Field name="customBranchName">
                           {(field) => {
-                            const previewBranch = gitBranchId(title);
+                            // trim title to match backend behavior exactly
+                            const previewBranch = gitBranchId(title.trim());
                             return (
                               <div className="flex items-center gap-2 pt-1">
                                 <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
