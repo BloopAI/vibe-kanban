@@ -139,6 +139,19 @@ export function TaskCard({
               : task.description}
           </p>
         )}
+        {task.pr_number != null && task.pr_url && (
+          <a
+            href={task.pr_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            #{task.pr_number.toString()}
+          </a>
+        )}
       </div>
     </KanbanCard>
   );

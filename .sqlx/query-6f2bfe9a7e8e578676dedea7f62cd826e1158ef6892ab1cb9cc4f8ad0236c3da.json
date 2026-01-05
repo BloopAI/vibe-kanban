@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT EXISTS(\n                SELECT 1\n                FROM task_images\n                WHERE task_id = $1 AND image_id = $2\n               ) AS \"exists!: bool\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6f2bfe9a7e8e578676dedea7f62cd826e1158ef6892ab1cb9cc4f8ad0236c3da"
+}
