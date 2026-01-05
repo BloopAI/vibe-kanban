@@ -1,6 +1,6 @@
 [package]
 name = "executors"
-version = "0.0.143"
+version = "0.0.144"
 edition = "2024"
 
 [dependencies]
