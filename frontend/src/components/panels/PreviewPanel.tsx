@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
@@ -53,9 +53,7 @@ export function PreviewPanel() {
   });
 
   // Compute effective URL - custom URL overrides auto-detected
-  const effectiveUrl = useMemo(() => {
-    return customUrl ?? previewState.url;
-  }, [customUrl, previewState.url]);
+  const effectiveUrl = customUrl ?? previewState.url;
 
   const handleRefresh = () => {
     setIframeError(false);

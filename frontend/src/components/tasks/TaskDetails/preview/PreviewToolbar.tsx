@@ -53,11 +53,11 @@ export function PreviewToolbar({
 
   const handleSubmit = () => {
     const trimmed = urlInput.trim();
-    if (trimmed && trimmed !== detectedUrl) {
-      onUrlChange(trimmed);
-    } else if (trimmed === detectedUrl) {
-      // If user entered the detected URL, clear custom
+    if (!trimmed || trimmed === detectedUrl) {
+      // Empty input or detected URL: reset to detected
       onUrlChange(null);
+    } else {
+      onUrlChange(trimmed);
     }
     setIsEditing(false);
   };
