@@ -31,6 +31,12 @@
       "EXA_API_KEY": "YOUR_API_KEY"
     }
   },
+  "chrome_devtools": {
+    "command": "npx",
+    "args": [
+      "chrome-devtools-mcp@latest"
+    ]
+  },
   "meta": {
     "vibe_kanban": {
       "name": "Vibe Kanban",
@@ -55,6 +61,12 @@
       "description": "Web search and code context retrieval powered by Exa AI",
       "url": "https://docs.exa.ai/reference/exa-mcp",
       "icon": "mcp/exa_logo.svg"
+    },
+    "chrome_devtools": {
+      "name": "Chrome DevTools",
+      "description": "Browser automation, debugging and performance analysis with Chrome DevTools",
+      "url": "https://github.com/ChromeDevTools/chrome-devtools-mcp",
+      "icon": "mcp/chrome_devtools_logo.svg"
     }
   }
 }
