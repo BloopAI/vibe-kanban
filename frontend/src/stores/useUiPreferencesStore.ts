@@ -53,13 +53,13 @@ type State = {
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
-  paneSizes: Record<string, number>;
+  paneSizes: Record<string, number | string>;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
   setExpandedAll: (keys: string[], value: boolean) => void;
   setContextBarPosition: (position: ContextBarPosition) => void;
-  setPaneSize: (key: string, size: number) => void;
+  setPaneSize: (key: string, size: number | string) => void;
 };
 
 const useUiPreferencesStore = create<State>()(
@@ -141,7 +141,7 @@ export function useContextBarPosition(): [
 export function usePaneSize(
   key: PersistKey,
   defaultSize: number | string
-): [number, (size: number) => void] {
+): [number | string, (size: number | string) => void] {
   const size = useUiPreferencesStore((s) => s.paneSizes[key] ?? defaultSize);
   const setSize = useUiPreferencesStore((s) => s.setPaneSize);
   return [size, (s) => setSize(key, s)];
