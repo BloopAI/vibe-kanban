@@ -53,9 +53,8 @@ export function PreviewPanel() {
   });
 
   // Compute effective URL - custom URL overrides auto-detected
-  const effectiveUrl = useMemo(() => {
-    return customUrl ?? previewState.url;
-  }, [customUrl, previewState.url]);
+  const effectiveUrl = customUrl ?? previewState.url;
+
 
   const handleRefresh = () => {
     setIframeError(false);

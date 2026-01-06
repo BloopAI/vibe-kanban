@@ -968,6 +968,7 @@ impl ContainerService for LocalContainerService {
         &self,
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
+        Workspace::touch(&self.db.pool, workspace.id).await?;
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 

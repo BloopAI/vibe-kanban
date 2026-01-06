@@ -153,6 +153,12 @@
           "force": true,
           "model": "grok"
         }
+      },
+      "COMPOSER_1": {
+        "CURSOR_AGENT": {
+          "force": true,
+          "model": "composer-1"
+        }
       }
     },
     "COPILOT": {

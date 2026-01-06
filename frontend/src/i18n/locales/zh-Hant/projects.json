@@ -1,0 +1,53 @@
+{
+  "title": "專案",
+  "subtitle": "管理您的專案並追蹤進度",
+  "createProject": "建立專案",
+  "linkToOrganization": "連結到遠端專案",
+  "loading": "載入專案中...",
+  "errors": {
+    "fetchFailed": "取得專案失敗",
+    "deleteFailed": "刪除專案失敗"
+  },
+  "empty": {
+    "title": "還沒有專案",
+    "description": "先建立您的第一個專案。",
+    "createFirst": "建立您的第一個專案"
+  },
+  "linkDialog": {
+    "title": "將專案連結到遠端專案",
+    "description": "將此本地專案連結到遠端專案以協作與同步。",
+    "projectLabel": "專案",
+    "organizationLabel": "組織",
+    "loadingOrganizations": "載入組織中...",
+    "noOrganizations": "沒有可用的組織。請先建立組織。",
+    "selectOrganization": "選擇組織",
+    "loginRequired": {
+      "title": "需要登入",
+      "description": "您需要登入才能連結專案。",
+      "action": "登入"
+    },
+    "linkModeLabel": "連結模式",
+    "linkToExisting": "連結到既有",
+    "createNew": "新建",
+    "remoteProjectLabel": "遠端專案",
+    "loadingRemoteProjects": "載入遠端專案中...",
+    "noRemoteProjects": "在此組織中找不到遠端專案。請嘗試建立新專案。",
+    "selectRemoteProject": "選擇遠端專案",
+    "newProjectNameLabel": "新遠端專案名稱",
+    "newProjectNamePlaceholder": "輸入專案名稱",
+    "linking": "連結中...",
+    "linkButton": "連結專案",
+    "errors": {
+      "selectOrganization": "請選擇組織",
+      "selectRemoteProject": "請選擇遠端專案",
+      "enterProjectName": "請輸入專案名稱",
+      "linkFailed": "連結專案失敗"
+    }
+  },
+  "unlinkFromOrganization": "取消連結遠端專案",
+  "projectNotFound": "您要查找的專案不存在或已被刪除。",
+  "viewProject": "查看專案",
+  "openInIDE": "在 IDE 中開啟",
+  "createdDate": "建立於 {{date}}",
+  "copyFilesPlaceholderWithSearch": "檔案路徑或 glob 模式（例如：.env、config/*.json）"
+}

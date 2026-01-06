@@ -1,0 +1,97 @@
+{
+  "buttons": {
+    "save": "儲存",
+    "cancel": "取消",
+    "send": "傳送",
+    "delete": "刪除",
+    "edit": "編輯",
+    "create": "建立",
+    "continue": "繼續",
+    "reset": "重設",
+    "manage": "管理",
+    "connect": "連線",
+    "disconnect": "中斷連線",
+    "close": "關閉",
+    "replay": "重播"
+  },
+  "states": {
+    "loading": "載入中...",
+    "saving": "儲存中...",
+    "error": "錯誤",
+    "success": "成功",
+    "reconnecting": "重新連線中"
+  },
+  "language": {
+    "browserDefault": "瀏覽器預設"
+  },
+  "conversation": {
+    "plan": "計畫",
+    "planToggle": {
+      "show": "顯示計畫",
+      "hide": "隱藏計畫"
+    },
+    "toolDetailsToggle": {
+      "show": "顯示詳細資訊",
+      "hide": "隱藏詳細資訊"
+    },
+    "args": "參數",
+    "output": "輸出",
+    "result": "結果",
+    "deniedByUser": "使用者拒絕了 {{toolName}}"
+  },
+  "folderPicker": {
+    "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",
+    "manualPathLabel": "手動輸入路徑:",
+    "go": "前往",
+    "searchLabel": "搜尋目前目錄:",
+    "selectCurrent": "選取目前",
+    "gitRepo": "Git 儲存庫",
+    "selectPath": "選取路徑"
+  },
+  "branchSelector": {
+    "placeholder": "選擇分支",
+    "searchPlaceholder": "搜尋分支...",
+    "empty": "找不到分支",
+    "badges": {
+      "current": "目前",
+      "remote": "遠端"
+    },
+    "currentDisabled": "無法選擇目前分支"
+  },
+  "breadcrumb": {
+    "more": "更多"
+  },
+  "orgMembers": {
+    "moreCount": "還有 {{count}} 位"
+  },
+  "orgSwitcher": {
+    "title": "切換組織",
+    "description": "選擇要切換到的組織。",
+    "loadError": "載入組織失敗。請重試。",
+    "noOrganizations": "您不是任何組織的成員。",
+    "menuItem": "組織",
+    "loadingPlaceholder": "載入組織中...",
+    "selectPlaceholder": "選擇組織",
+    "currentBadge": "（目前）"
+  },
+  "signOut": "登出",
+  "devMode": {
+    "banner": "開發模式 - 這是開發版本"
+  },
+  "oauth": {
+    "title": "登入 Vibe Kanban",
+    "description": "登入以加入組織並與團隊共享任務",
+    "continueWithGitHub": "使用 GitHub 繼續",
+    "continueWithGoogle": "使用 Google 繼續",
+    "waitingTitle": "完成身分驗證",
+    "waitingDescription": "已開啟彈出視窗進行驗證",
+    "waitingForAuth": "等待身分驗證...",
+    "popupInstructions": "如果彈出視窗未開啟，請檢查您的彈出視窗攔截器設定。",
+    "back": "返回",
+    "successTitle": "身分驗證成功！",
+    "welcomeBack": "歡迎回來，{{name}}",
+    "errorTitle": "身分驗證失敗",
+    "errorDescription": "驗證您的帳號時發生問題",
+    "tryAgain": "重試"
+  }
+}

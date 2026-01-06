@@ -16,7 +16,6 @@ use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
 use super::file_ranker::FileStat;
-use crate::services::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1599,56 +1598,6 @@ impl GitService {
                 }
             }
         }
-    }
-
-    /// Extract GitHub owner and repo name from git repo path
-    pub fn get_github_repo_info(
-        &self,
-        repo_path: &Path,
-        preferred_remote: Option<&str>,
-    ) -> Result<GitHubRepoInfo, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let default_remote_name = self.default_remote_name(&repo);
-
-        let remote = if let Some(preferred) = preferred_remote {
-            match repo.find_remote(preferred) {
-                Ok(remote) => remote,
-                Err(_) => repo.find_remote(&default_remote_name).map_err(|_| {
-                    GitServiceError::InvalidRepository(format!(
-                        "No '{preferred}' remote found and default remote '{default_remote_name}' missing"
-                    ))
-                })?,
-            }
-        } else {
-            repo.find_remote(&default_remote_name).map_err(|_| {
-                GitServiceError::InvalidRepository(format!(
-                    "No '{default_remote_name}' remote found"
-                ))
-            })?
-        };
-
-        let url = remote
-            .url()
-            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-        GitHubRepoInfo::from_remote_url(url).map_err(|e| {
-            GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
-        })
-    }
-
-    pub fn get_all_remotes(&self, repo_path: &Path) -> Result<Vec<GitRemote>, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let remote_names = repo.remotes()?;
-        let mut remotes = Vec::new();
-
-        for remote_name in remote_names.iter().flatten() {
-            let remote = repo.find_remote(remote_name)?;
-            remotes.push(GitRemote {
-                name: remote_name.to_string(),
-                url: remote.url().map(|u| u.to_string()),
-            });
-        }
-
-        Ok(remotes)
     }
 
     pub fn get_remote_name_from_branch_name(

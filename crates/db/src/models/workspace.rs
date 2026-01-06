@@ -223,6 +223,18 @@ impl Workspace {
         Ok(())
     }
 
+    /// Update the workspace's updated_at timestamp to prevent cleanup.
+    /// Call this when the workspace is accessed (e.g., opened in editor).
+    pub async fn touch(pool: &SqlitePool, workspace_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET updated_at = datetime('now', 'subsec') WHERE id = ?",
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Workspace,

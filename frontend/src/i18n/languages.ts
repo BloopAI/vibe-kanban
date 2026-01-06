@@ -12,6 +12,7 @@ export const UI_TO_I18N = {
   ES: 'es',
   KO: 'ko',
   ZH_HANS: 'zh-Hans',
+  ZH_HANT: 'zh-Hant',
 } as const;
 
 const SUPPORTED_UI_LANGUAGES = [
@@ -21,6 +22,7 @@ const SUPPORTED_UI_LANGUAGES = [
   'ES',
   'KO',
   'ZH_HANS',
+  'ZH_HANT',
 ] as const;
 export const SUPPORTED_I18N_CODES = Object.values(UI_TO_I18N);
 
@@ -30,6 +32,7 @@ const FALLBACK_ENDONYMS = {
   es: 'Español',
   ko: '한국어',
   'zh-Hans': '简体中文',
+  'zh-Hant': '繁體中文',
 } as const;
 
 /**
