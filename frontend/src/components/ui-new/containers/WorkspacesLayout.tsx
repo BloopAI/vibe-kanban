@@ -368,7 +368,7 @@ export function WorkspacesLayout() {
   // Diff view controls
   const diffViewMode = useDiffViewMode();
   const toggleDiffViewMode = useDiffViewStore((s) => s.toggle);
-  const { expanded, setExpandedAll } = useExpandedAll();
+  const { expanded, setExpanded, setExpandedAll } = useExpandedAll();
 
   // Compute diff keys and expansion state
   const diffKeys = useMemo(
@@ -631,6 +631,8 @@ export function WorkspacesLayout() {
               onSelectFile={(path) => {
                 setSelectedFilePath(path);
                 setFileInView(path);
+                // Expand the diff if it was collapsed
+                setExpanded(`diff:${path}`, true);
               }}
             />
           </Allotment.Pane>

@@ -156,8 +156,9 @@ export function usePaneSize(
 // Hook for bulk expanded state operations
 export function useExpandedAll() {
   const expanded = useUiPreferencesStore((s) => s.expanded);
+  const setExpanded = useUiPreferencesStore((s) => s.setExpanded);
   const setExpandedAll = useUiPreferencesStore((s) => s.setExpandedAll);
-  return { expanded, setExpandedAll };
+  return { expanded, setExpanded, setExpandedAll };
 }
 
 // Hook for persisted file tree collapsed paths (per workspace)
