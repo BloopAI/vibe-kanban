@@ -115,7 +115,9 @@
       "refresh": "重新整理預覽",
       "copyUrl": "複製 URL",
       "openInTab": "在新分頁開啟",
-      "stopDevServer": "停止開發伺服器"
+      "stopDevServer": "停止開發伺服器",
+      "clickToEdit": "點擊以編輯 URL",
+      "resetUrl": "重設為偵測到的 URL"
     }
   },
   "diff": {
