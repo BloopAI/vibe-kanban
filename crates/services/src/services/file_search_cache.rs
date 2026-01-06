@@ -353,7 +353,14 @@ impl FileSearchCache {
 
         // Now walk all files and determine their ignore status
         for result in walker {
-            let entry = result?;
+            let entry = match result {
+                Ok(e) => e,
+                Err(e) => {
+                    // Skip permission denied and other IO errors gracefully
+                    tracing::debug!("Skipping path due to error: {}", e);
+                    continue;
+                }
+            };
             let path = entry.path();
 
             if path == repo_path {

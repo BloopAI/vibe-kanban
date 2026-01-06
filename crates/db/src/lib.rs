@@ -1,8 +1,8 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
-    sqlite::{SqliteConnectOptions, SqliteConnection, SqlitePoolOptions},
+    sqlite::{SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
 };
 use utils::assets::asset_dir;
 
@@ -19,7 +19,14 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            // WAL mode allows concurrent reads during writes
+            .journal_mode(SqliteJournalMode::Wal)
+            // NORMAL sync is safe with WAL and faster than FULL
+            .synchronous(SqliteSynchronous::Normal)
+            // Wait up to 30 seconds for locks instead of failing immediately
+            .busy_timeout(Duration::from_secs(30));
         let pool = SqlitePool::connect_with(options).await?;
         sqlx::migrate!("./migrations").run(&pool).await?;
         Ok(DBService { pool })
@@ -53,7 +60,14 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            // WAL mode allows concurrent reads during writes
+            .journal_mode(SqliteJournalMode::Wal)
+            // NORMAL sync is safe with WAL and faster than FULL
+            .synchronous(SqliteSynchronous::Normal)
+            // Wait up to 30 seconds for locks instead of failing immediately
+            .busy_timeout(Duration::from_secs(30));
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()
