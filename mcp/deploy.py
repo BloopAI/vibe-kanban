@@ -1,32 +1,27 @@
 #!/usr/bin/env python3
 """
-Vibe Kanban Deployment Script
+Vibe Kanban Deployment Script (Railway)
 
-Deploy frontend and/or backend to Fly.io.
+Deploy frontend and/or backend to Railway.
 
 Usage:
     ./mcp/deploy.py                    # Deploy both frontend and backend
     ./mcp/deploy.py --backend          # Deploy backend only
     ./mcp/deploy.py --frontend         # Deploy frontend only
-    ./mcp/deploy.py --backend --build-only  # Only build backend, don't deploy
     ./mcp/deploy.py --check            # Check prerequisites
 
 Backend deployment:
-    1. Cross-compile Rust binary for Linux (cargo-zigbuild)
-    2. Build minimal Docker image with pre-built binary
-    3. Deploy to Fly.io (vibe-kanban-api.fly.dev)
+    1. Deploy to Railway (uses Dockerfile in project root)
+    2. Railway builds and deploys automatically
 
 Frontend deployment:
-    1. Build with Vite (includes VITE_API_URL pointing to backend)
-    2. Deploy to Fly.io (scho1ar.fly.dev)
+    1. Build with Vite
+    2. Deploy to Railway frontend service
 
 Prerequisites:
-    - Rust toolchain with x86_64-unknown-linux-musl target
-    - cargo-zigbuild (cargo install cargo-zigbuild)
-    - zig (brew install zig)
-    - flyctl (brew install flyctl)
-    - Docker (for local image build)
-    - Node.js/pnpm (for frontend)
+    - Railway CLI (brew install railway)
+    - Node.js/pnpm (for frontend build)
+    - Docker (optional, Railway can build remotely)
 """
 
 import subprocess
@@ -34,25 +29,20 @@ import sys
 import os
 import time
 import argparse
+import json
 from pathlib import Path
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
-TARGET = "x86_64-unknown-linux-musl"
-BINARY_NAME = "server"
-CARGO_BIN = Path.home() / ".cargo" / "bin"
 
-# Fly.io configs
-BACKEND_CONFIG = "fly.api.toml"
-BACKEND_DOCKERFILE = "Dockerfile.prebuilt"
-BACKEND_URL = "https://vibe-kanban-api.fly.dev"
+# Railway configs
+RAILWAY_PROJECT_ID = "9661a956-d8c2-4bd2-a16b-05e320b85965"
+BACKEND_SERVICE_ID = "db8a22cf-beb2-4d00-bc0e-0e80c1e1e661"
+FRONTEND_SERVICE_ID = None  # Set this if you have a frontend service
+RAILWAY_ENVIRONMENT = "production"
 
-FRONTEND_CONFIG = "fly.frontend.toml"
-FRONTEND_URL = "https://scho1ar.fly.dev"
-
-# Add cargo bin to PATH if not already there
-if str(CARGO_BIN) not in os.environ.get("PATH", ""):
-    os.environ["PATH"] = f"{CARGO_BIN}:{os.environ.get('PATH', '')}"
+BACKEND_URL = "https://vibe-kanban-api-production.up.railway.app"
+FRONTEND_URL = "https://vibe-kanban-frontend-production.up.railway.app"  # Update when frontend service exists
 
 
 class Colors:
@@ -87,9 +77,13 @@ def log_section(msg: str):
     print(f"{Colors.CYAN}{Colors.BOLD}{'─' * 50}{Colors.END}\n")
 
 
-def run_command(cmd: list[str], cwd: Path = None, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
+def run_command(cmd: list[str], cwd: Path = None, check: bool = True, capture: bool = False, env: dict = None) -> subprocess.CompletedProcess:
     """Run a command and handle errors."""
     cwd = cwd or PROJECT_ROOT
+    cmd_env = os.environ.copy()
+    if env:
+        cmd_env.update(env)
+
     log_step(f"Running: {' '.join(cmd)}")
 
     try:
@@ -98,7 +92,8 @@ def run_command(cmd: list[str], cwd: Path = None, check: bool = True, capture: b
             cwd=cwd,
             check=check,
             capture_output=capture,
-            text=True
+            text=True,
+            env=cmd_env
         )
         return result
     except subprocess.CalledProcessError as e:
@@ -116,16 +111,7 @@ def check_prerequisites(backend: bool = True, frontend: bool = True) -> bool:
 
     # Common checks
     common_checks = [
-        ("flyctl", ["flyctl", "version"]),
-        ("docker", ["docker", "--version"]),
-    ]
-
-    # Backend-specific checks
-    backend_checks = [
-        ("rustc", ["rustc", "--version"]),
-        ("cargo", ["cargo", "--version"]),
-        ("cargo-zigbuild", ["cargo-zigbuild", "--version"]),
-        ("zig", ["zig", "version"]),
+        ("railway", ["railway", "--version"]),
     ]
 
     # Frontend-specific checks
@@ -135,8 +121,6 @@ def check_prerequisites(backend: bool = True, frontend: bool = True) -> bool:
     ]
 
     checks = common_checks
-    if backend:
-        checks.extend(backend_checks)
     if frontend:
         checks.extend(frontend_checks)
 
@@ -149,18 +133,31 @@ def check_prerequisites(backend: bool = True, frontend: bool = True) -> bool:
             log_error(f"✗ {name} not found")
             all_ok = False
 
-    # Check musl target for backend
-    if backend:
-        log_step("Checking musl target...")
+    # Check Railway auth
+    log_step("Checking Railway authentication...")
+    try:
         result = subprocess.run(
-            ["rustup", "target", "list", "--installed"],
-            capture_output=True, text=True
+            ["railway", "whoami"],
+            capture_output=True, text=True, check=True
         )
-        if TARGET not in result.stdout:
-            log_warning(f"Target {TARGET} not installed. Installing...")
-            run_command(["rustup", "target", "add", TARGET])
+        log_step(f"✓ Logged in as: {result.stdout.strip()}")
+    except subprocess.CalledProcessError:
+        log_error("Not logged in to Railway. Run: railway login")
+        all_ok = False
+
+    # Check Railway project link
+    log_step("Checking Railway project link...")
+    try:
+        result = subprocess.run(
+            ["railway", "status"],
+            capture_output=True, text=True, check=True, cwd=PROJECT_ROOT
+        )
+        if "Project:" in result.stdout:
+            log_step(f"✓ Project linked")
         else:
-            log_step(f"✓ Target {TARGET} installed")
+            log_warning("No project linked. Run: railway link")
+    except subprocess.CalledProcessError:
+        log_warning("Could not check project status")
 
     return all_ok
 
@@ -169,81 +166,32 @@ def check_prerequisites(backend: bool = True, frontend: bool = True) -> bool:
 # Backend Deployment
 # ============================================================================
 
-def build_backend_binary() -> Path:
-    """Cross-compile the Rust binary for Linux."""
-    log("Building Linux binary with cargo-zigbuild...")
+def deploy_backend(detach: bool = False) -> bool:
+    """Deploy backend to Railway."""
+    log("Deploying backend to Railway...")
 
     start_time = time.time()
 
-    run_command([
-        "cargo", "zigbuild",
-        "--release",
-        "--bin", BINARY_NAME,
-        "--target", TARGET
-    ])
-
-    elapsed = time.time() - start_time
-    binary_path = PROJECT_ROOT / "target" / TARGET / "release" / BINARY_NAME
-
-    if not binary_path.exists():
-        log_error(f"Binary not found at {binary_path}")
-        sys.exit(1)
-
-    size_mb = binary_path.stat().st_size / (1024 * 1024)
-    log_step(f"✓ Binary built: {binary_path}")
-    log_step(f"✓ Size: {size_mb:.1f} MB")
-    log_step(f"✓ Build time: {elapsed:.1f}s")
-
-    return binary_path
-
-
-def verify_backend_binary(binary_path: Path) -> bool:
-    """Verify the binary is a valid Linux executable."""
-    log("Verifying binary...")
-
-    result = subprocess.run(
-        ["file", str(binary_path)],
-        capture_output=True, text=True
-    )
-
-    output = result.stdout
-    log_step(output.strip())
-
-    if "ELF 64-bit" not in output or "x86-64" not in output:
-        log_error("Binary is not a valid Linux x86_64 executable")
-        return False
-
-    if "statically linked" in output:
-        log_step("✓ Statically linked (good for Alpine)")
-
-    return True
-
-
-def deploy_backend() -> bool:
-    """Deploy backend to Fly.io."""
-    log("Deploying backend to Fly.io...")
-
-    config_path = PROJECT_ROOT / BACKEND_CONFIG
-    if not config_path.exists():
-        log_error(f"Fly config not found: {config_path}")
-        return False
-
-    dockerfile_path = PROJECT_ROOT / BACKEND_DOCKERFILE
-    if not dockerfile_path.exists():
-        log_error(f"Dockerfile not found: {dockerfile_path}")
-        return False
-
-    start_time = time.time()
+    # Set environment variables for Railway service linking
+    env = {
+        "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
+        "RAILWAY_SERVICE_ID": BACKEND_SERVICE_ID,
+        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"  # production
+    }
 
     try:
-        run_command([
-            "flyctl", "deploy",
-            "--config", BACKEND_CONFIG,
-            "--local-only"
-        ])
+        cmd = ["railway", "up"]
+        if detach:
+            cmd.append("--detach")
+
+        run_command(cmd, env=env)
 
         elapsed = time.time() - start_time
-        log_step(f"✓ Backend deployed in {elapsed:.1f}s")
+        log_step(f"✓ Backend deployment initiated in {elapsed:.1f}s")
+
+        if detach:
+            log_step("Deployment running in background. Check Railway dashboard for status.")
+
         return True
 
     except subprocess.CalledProcessError:
@@ -256,30 +204,25 @@ def verify_backend() -> bool:
     log("Verifying backend deployment...")
 
     import urllib.request
-    import json
 
     endpoints = [
-        (f"{BACKEND_URL}/", "Backend API Running"),
-        (f"{BACKEND_URL}/api/health", None),
+        (f"{BACKEND_URL}/api/teams", "teams"),
     ]
 
-    for url, expected in endpoints:
+    for url, name in endpoints:
         try:
             log_step(f"Testing {url}")
-            with urllib.request.urlopen(url, timeout=10) as response:
+            req = urllib.request.Request(url, headers={'User-Agent': 'deploy-verify'})
+            with urllib.request.urlopen(req, timeout=30) as response:
                 data = response.read().decode()
-
-                if expected and expected not in data:
-                    log_warning(f"Unexpected response: {data[:100]}")
-                else:
-                    try:
-                        parsed = json.loads(data)
-                        if parsed.get("success"):
-                            log_step(f"✓ {url} - OK")
-                        else:
-                            log_warning(f"Response: {data[:100]}")
-                    except json.JSONDecodeError:
-                        log_step(f"✓ {url} - {data[:50]}")
+                try:
+                    parsed = json.loads(data)
+                    if parsed.get("success"):
+                        log_step(f"✓ {name} endpoint - OK")
+                    else:
+                        log_warning(f"Response: {data[:100]}")
+                except json.JSONDecodeError:
+                    log_step(f"✓ {name} - {data[:50]}")
 
         except Exception as e:
             log_error(f"Failed to reach {url}: {e}")
@@ -292,25 +235,62 @@ def verify_backend() -> bool:
 # Frontend Deployment
 # ============================================================================
 
-def deploy_frontend() -> bool:
-    """Deploy frontend to Fly.io."""
-    log("Deploying frontend to Fly.io...")
+def build_frontend() -> bool:
+    """Build frontend for production."""
+    log("Building frontend...")
 
-    config_path = PROJECT_ROOT / FRONTEND_CONFIG
-    if not config_path.exists():
-        log_error(f"Fly config not found: {config_path}")
+    frontend_dir = PROJECT_ROOT / "frontend"
+
+    # Install dependencies
+    try:
+        run_command(["pnpm", "install"], cwd=PROJECT_ROOT)
+    except subprocess.CalledProcessError:
+        log_error("Failed to install dependencies")
         return False
+
+    # Build frontend with Railway backend URL
+    try:
+        env = {
+            "VITE_API_URL": BACKEND_URL
+        }
+        run_command(["pnpm", "run", "build"], cwd=frontend_dir, env=env)
+        log_step("✓ Frontend built successfully")
+        return True
+    except subprocess.CalledProcessError:
+        log_error("Frontend build failed")
+        return False
+
+
+def deploy_frontend(detach: bool = False) -> bool:
+    """Deploy frontend to Railway."""
+
+    if not FRONTEND_SERVICE_ID:
+        log_warning("No frontend service configured. Frontend deployment skipped.")
+        log_step("To deploy frontend, either:")
+        log_step("  1. Create a Railway frontend service and set FRONTEND_SERVICE_ID")
+        log_step("  2. Use a static hosting service (Vercel, Netlify, etc.)")
+        return True  # Not a failure, just not configured
+
+    log("Deploying frontend to Railway...")
 
     start_time = time.time()
 
+    # Set environment variables for Railway service linking
+    env = {
+        "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
+        "RAILWAY_SERVICE_ID": FRONTEND_SERVICE_ID,
+        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"  # production
+    }
+
     try:
-        run_command([
-            "flyctl", "deploy",
-            "--config", FRONTEND_CONFIG
-        ])
+        cmd = ["railway", "up"]
+        if detach:
+            cmd.append("--detach")
+
+        run_command(cmd, cwd=PROJECT_ROOT / "frontend", env=env)
 
         elapsed = time.time() - start_time
-        log_step(f"✓ Frontend deployed in {elapsed:.1f}s")
+        log_step(f"✓ Frontend deployment initiated in {elapsed:.1f}s")
         return True
 
     except subprocess.CalledProcessError:
@@ -320,13 +300,17 @@ def deploy_frontend() -> bool:
 
 def verify_frontend() -> bool:
     """Verify the frontend deployment."""
+    if not FRONTEND_SERVICE_ID:
+        return True  # Skip if not configured
+
     log("Verifying frontend deployment...")
 
     import urllib.request
 
     try:
         log_step(f"Testing {FRONTEND_URL}")
-        with urllib.request.urlopen(FRONTEND_URL, timeout=10) as response:
+        req = urllib.request.Request(FRONTEND_URL, headers={'User-Agent': 'deploy-verify'})
+        with urllib.request.urlopen(req, timeout=30) as response:
             if response.status == 200:
                 log_step(f"✓ {FRONTEND_URL} - OK")
                 return True
@@ -339,35 +323,62 @@ def verify_frontend() -> bool:
 
 
 # ============================================================================
+# Logs
+# ============================================================================
+
+def show_logs(service: str = "backend", lines: int = 50):
+    """Show Railway logs for a service."""
+    log(f"Fetching {service} logs...")
+
+    env = {
+        "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
+        "RAILWAY_SERVICE_ID": BACKEND_SERVICE_ID if service == "backend" else FRONTEND_SERVICE_ID,
+        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"
+    }
+
+    try:
+        run_command(["railway", "logs"], env=env)
+    except subprocess.CalledProcessError:
+        log_error("Failed to fetch logs")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Deploy Vibe Kanban to Fly.io",
+        description="Deploy Vibe Kanban to Railway",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
-    ./mcp/deploy.py                    # Deploy both
+    ./mcp/deploy.py                    # Deploy backend (and frontend if configured)
     ./mcp/deploy.py --backend          # Backend only
     ./mcp/deploy.py --frontend         # Frontend only
-    ./mcp/deploy.py --backend --build-only  # Build backend only
     ./mcp/deploy.py --check            # Check prerequisites
+    ./mcp/deploy.py --logs             # Show backend logs
+    ./mcp/deploy.py --detach           # Deploy and don't wait for completion
 
 URLs:
-    Backend:  https://vibe-kanban-api.fly.dev
-    Frontend: https://scho1ar.fly.dev
+    Backend:  {BACKEND_URL}
+    Frontend: {FRONTEND_URL if FRONTEND_SERVICE_ID else '(not configured)'}
 """
     )
 
     parser.add_argument("--backend", action="store_true", help="Deploy backend only")
     parser.add_argument("--frontend", action="store_true", help="Deploy frontend only")
-    parser.add_argument("--build-only", action="store_true", help="Only build backend, don't deploy")
-    parser.add_argument("--deploy-only", action="store_true", help="Only deploy backend (use existing binary)")
     parser.add_argument("--check", action="store_true", help="Only check prerequisites")
     parser.add_argument("--no-verify", action="store_true", help="Skip deployment verification")
+    parser.add_argument("--detach", action="store_true", help="Deploy in background (don't wait)")
+    parser.add_argument("--logs", action="store_true", help="Show backend logs")
 
     args = parser.parse_args()
+
+    # Handle logs command
+    if args.logs:
+        os.chdir(PROJECT_ROOT)
+        show_logs("backend")
+        return
 
     # Default: deploy both if neither specified
     deploy_backend_flag = args.backend or (not args.backend and not args.frontend)
@@ -375,7 +386,7 @@ URLs:
 
     os.chdir(PROJECT_ROOT)
 
-    print(f"\n{Colors.BOLD}Vibe Kanban Deployment{Colors.END}")
+    print(f"\n{Colors.BOLD}Vibe Kanban Railway Deployment{Colors.END}")
     print(f"{'=' * 40}")
 
     targets = []
@@ -398,56 +409,51 @@ URLs:
     if deploy_backend_flag:
         log_section("BACKEND DEPLOYMENT")
 
-        # Build binary
-        if not args.deploy_only:
-            binary_path = build_backend_binary()
-            if not verify_backend_binary(binary_path):
-                sys.exit(1)
-        else:
-            binary_path = PROJECT_ROOT / "target" / TARGET / "release" / BINARY_NAME
-            if not binary_path.exists():
-                log_error(f"Binary not found. Run without --deploy-only first.")
-                sys.exit(1)
-            log("Using existing binary...")
-            verify_backend_binary(binary_path)
-
-        if args.build_only:
-            log("Backend build complete! Use --deploy-only to deploy.")
-        else:
-            # Deploy
-            if not deploy_backend():
-                sys.exit(1)
-
-            # Verify
-            if not args.no_verify:
-                log("Waiting for backend to start...")
-                time.sleep(5)
-                if not verify_backend():
-                    log_warning("Backend verification had issues")
-
-    # ========== Frontend ==========
-    if deploy_frontend_flag and not args.build_only:
-        log_section("FRONTEND DEPLOYMENT")
-
-        if not deploy_frontend():
+        if not deploy_backend(detach=args.detach):
             sys.exit(1)
 
         # Verify
-        if not args.no_verify:
-            log("Waiting for frontend to start...")
-            time.sleep(3)
-            if not verify_frontend():
-                log_warning("Frontend verification had issues")
+        if not args.no_verify and not args.detach:
+            log("Waiting for backend to start...")
+            time.sleep(10)
+            if not verify_backend():
+                log_warning("Backend verification had issues")
+
+    # ========== Frontend ==========
+    if deploy_frontend_flag:
+        log_section("FRONTEND DEPLOYMENT")
+
+        if FRONTEND_SERVICE_ID:
+            # Build first
+            if not build_frontend():
+                sys.exit(1)
+
+            if not deploy_frontend(detach=args.detach):
+                sys.exit(1)
+
+            # Verify
+            if not args.no_verify and not args.detach:
+                log("Waiting for frontend to start...")
+                time.sleep(5)
+                if not verify_frontend():
+                    log_warning("Frontend verification had issues")
+        else:
+            log_warning("No frontend service configured on Railway")
+            log_step("Frontend is served by the backend (SPA mode)")
 
     # ========== Summary ==========
     print(f"\n{Colors.GREEN}{Colors.BOLD}{'=' * 40}{Colors.END}")
     print(f"{Colors.GREEN}{Colors.BOLD}✓ Deployment complete!{Colors.END}")
     print(f"{Colors.GREEN}{Colors.BOLD}{'=' * 40}{Colors.END}")
 
-    if deploy_backend_flag and not args.build_only:
+    if deploy_backend_flag:
         print(f"  Backend:  {BACKEND_URL}")
-    if deploy_frontend_flag and not args.build_only:
+    if deploy_frontend_flag and FRONTEND_SERVICE_ID:
         print(f"  Frontend: {FRONTEND_URL}")
+
+    if args.detach:
+        print(f"\n  Check status: railway status")
+        print(f"  View logs:    ./mcp/deploy.py --logs")
     print()
 
 
