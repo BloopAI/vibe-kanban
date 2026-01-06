@@ -26,6 +26,7 @@ import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useMerge } from '@/hooks/useMerge';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
 import {
   usePaneSize,
   useExpandedAll,
@@ -37,7 +38,7 @@ import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type { Workspace, RepoWithTargetBranch } from 'shared/types';
+import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 
 // Container component for GitPanel that uses hooks requiring GitOperationsProvider
 interface GitPanelContainerProps {
@@ -276,6 +277,9 @@ export function WorkspacesLayout() {
   // Hook to rename branch via API
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
 
+  // Fetch branch status (including PR/merge info)
+  const { data: branchStatus } = useBranchStatus(selectedWorkspace?.id);
+
   const handleBranchNameChange = useCallback(
     (newName: string) => {
       renameBranch.mutate(newName);
@@ -296,16 +300,45 @@ export function WorkspacesLayout() {
   // Transform repos to RepoInfo format for GitPanel
   const repoInfos: RepoInfo[] = useMemo(
     () =>
-      repos.map((repo) => ({
-        id: repo.id,
-        name: repo.display_name || repo.name,
-        targetBranch: repo.target_branch || 'main',
-        commitsAhead: 0, // TODO: compute from git
-        filesChanged: diffStats.filesChanged,
-        linesAdded: diffStats.linesAdded,
-        linesRemoved: diffStats.linesRemoved,
-      })),
-    [repos, diffStats]
+      repos.map((repo) => {
+        // Find branch status for this repo to get PR info
+        const repoStatus = branchStatus?.find((s) => s.repo_id === repo.id);
+
+        // Find the most relevant PR (prioritize open, then merged)
+        let prNumber: number | undefined;
+        let prUrl: string | undefined;
+        let prStatus: 'open' | 'merged' | 'closed' | 'unknown' | undefined;
+
+        if (repoStatus?.merges) {
+          const openPR = repoStatus.merges.find(
+            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+          );
+          const mergedPR = repoStatus.merges.find(
+            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
+          );
+
+          const relevantPR = openPR || mergedPR;
+          if (relevantPR && relevantPR.type === 'pr') {
+            prNumber = Number(relevantPR.pr_info.number);
+            prUrl = relevantPR.pr_info.url;
+            prStatus = relevantPR.pr_info.status;
+          }
+        }
+
+        return {
+          id: repo.id,
+          name: repo.display_name || repo.name,
+          targetBranch: repo.target_branch || 'main',
+          commitsAhead: repoStatus?.commits_ahead ?? 0,
+          filesChanged: diffStats.filesChanged,
+          linesAdded: diffStats.linesAdded,
+          linesRemoved: diffStats.linesRemoved,
+          prNumber,
+          prUrl,
+          prStatus,
+        };
+      }),
+    [repos, diffStats, branchStatus]
   );
 
   // Visibility state for sidebar panels

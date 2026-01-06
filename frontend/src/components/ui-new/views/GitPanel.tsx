@@ -18,6 +18,9 @@ export interface RepoInfo {
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
+  prNumber?: number;
+  prUrl?: string;
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
 }
 
 interface GitPanelProps {
@@ -63,6 +66,9 @@ export function GitPanel({
               filesChanged={repo.filesChanged}
               linesAdded={repo.linesAdded}
               linesRemoved={repo.linesRemoved}
+              prNumber={repo.prNumber}
+              prUrl={repo.prUrl}
+              prStatus={repo.prStatus}
               onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
               onRebase={() => onActionsClick?.(repo.id, 'rebase')}
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}
