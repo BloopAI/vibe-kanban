@@ -171,7 +171,7 @@ impl From<v1::Config> for NotificationConfig {
 impl Default for NotificationConfig {
     fn default() -> Self {
         Self {
-            sound_enabled: true,
+            sound_enabled: false,
             push_enabled: true,
             sound_file: SoundFile::CowMooing,
         }
