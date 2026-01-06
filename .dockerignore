@@ -12,8 +12,7 @@ node_modules/
 **/node_modules/
 
 # Build outputs (not needed - rebuilt in Docker)
-dist/
-**/dist/
+# NOTE: frontend/dist/ is allowed for nginx deployment
 build/
 **/build/
 *.tgz
