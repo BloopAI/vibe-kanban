@@ -59,40 +59,12 @@ RUN cargo chef cook --release --recipe-path recipe.json --features turso
 # ===========================================
 FROM deps-builder AS builder
 
-# Install Node.js for frontend build
-RUN apk add --no-cache nodejs npm
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Build args for frontend
-ARG POSTHOG_API_KEY
-ARG POSTHOG_API_ENDPOINT
-ARG VITE_CLERK_PUBLISHABLE_KEY
-
-ENV VITE_PUBLIC_POSTHOG_KEY=$POSTHOG_API_KEY
-ENV VITE_PUBLIC_POSTHOG_HOST=$POSTHOG_API_ENDPOINT
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+# Note: Node.js/Frontend build steps removed for backend-only deployment
 
 WORKDIR /app
 
-# Copy package files for Node dependency caching
-COPY package*.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY frontend/package*.json ./frontend/
-COPY npx-cli/package*.json ./npx-cli/
-
-# Install Node dependencies
-RUN pnpm install
-
 # Copy all source code
 COPY . .
-
-# Generate TypeScript types from Rust
-RUN npm run generate-types
-
-# Build frontend (increase Node.js memory limit for large bundles)
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN cd frontend && pnpm run build
 
 # Build the server binary (dependencies already cached from deps-builder)
 RUN cargo build --release --bin server --features turso

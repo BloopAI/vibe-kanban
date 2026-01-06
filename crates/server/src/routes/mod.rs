@@ -1,7 +1,9 @@
 use axum::{
     Router,
     routing::{IntoMakeService, get},
+    http::{Method, HeaderValue},
 };
+use tower_http::cors::{CorsLayer, Any};
 
 use crate::DeploymentImpl;
 
@@ -13,7 +15,7 @@ pub mod filesystem;
 pub mod github;
 pub mod events;
 pub mod execution_processes;
-pub mod frontend;
+// pub mod frontend;
 pub mod health;
 pub mod images;
 pub mod inbox;
@@ -56,9 +58,31 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .nest("/images", images::routes())
         .with_state(deployment);
 
+    let cors = CorsLayer::new()
+        .allow_origin([
+            "https://scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://www.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "http://localhost:3003".parse::<HeaderValue>().unwrap(),
+             // Allow backend domain itself if needed
+            "https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap(),
+        ])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+            Method::OPTIONS,
+        ])
+        .allow_headers(Any);
+
     Router::new()
-        .route("/", get(frontend::serve_frontend_root))
-        .route("/{*path}", get(frontend::serve_frontend))
+        // .route("/", get(frontend::serve_frontend_root))
+        // .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
+        .route("/", get(|| async { "Backend API Running" })) // Simple root response
+        .layer(cors)
         .into_make_service()
 }

@@ -11,7 +11,9 @@ import { TeamDocuments } from '@/pages/TeamDocuments';
 import { TeamMembers } from '@/pages/TeamMembers';
 import { JoinTeam } from '@/pages/JoinTeam';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { About } from '@/pages/About';
 import { NormalLayout } from '@/components/layout/NormalLayout';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -130,16 +132,29 @@ function AppContent() {
           <GlobalKeyboardShortcuts />
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
-              {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={<FullAttemptLogsPage />}
-              />
+              {/* Public routes - no authentication required */}
+              <Route path="/about" element={<About />} />
 
               {/* Join team via invite link (standalone page) */}
               <Route path="/join" element={<JoinTeam />} />
 
-              <Route element={<NormalLayout />}>
+              {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+                element={
+                  <ProtectedRoute>
+                    <FullAttemptLogsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <NormalLayout />
+                  </ProtectedRoute>
+                }
+              >
                 <Route path="/" element={<Projects />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />

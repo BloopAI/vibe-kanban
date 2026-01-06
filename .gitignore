@@ -97,3 +97,5 @@ backups/
 .env.*
 !.env.*.example
 .cargo-registry/
+logs/
+__pycache__/

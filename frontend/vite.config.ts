@@ -50,6 +50,7 @@ export default schemas;
 }
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react(),
     sentryVitePlugin({ org: "bloop-ai", project: "vibe-kanban" }),

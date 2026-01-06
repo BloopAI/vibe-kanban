@@ -52,6 +52,7 @@ regex = "1"
 urlencoding = "2.1"
 pdf-extract = "0.7"
 csv = "1.3"
+tower-http = { version = "0.5", features = ["cors"] }
 
 [build-dependencies]
 dotenv = "0.15"
