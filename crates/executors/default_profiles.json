@@ -180,6 +180,18 @@
         }
       }
     },
+    "CODEBUDDY": {
+      "DEFAULT": {
+        "CODEBUDDY": {
+          "yolo": true
+        }
+      },
+      "APPROVALS": {
+        "CODEBUDDY": {
+          "yolo": false
+        }
+      }
+    },
     "DROID": {
       "DEFAULT": {
         "DROID": {
