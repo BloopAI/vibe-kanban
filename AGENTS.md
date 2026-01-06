@@ -159,6 +159,30 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 - Use `.env` for local overrides; never commit secrets. Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST`
 - Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
 
+## Deployment
+
+### Railway Deployment
+
+The application is deployed to Railway with separate services for backend API and frontend static files.
+
+**Deploy script**: `./mcp/deploy-railway.py`
+
+```bash
+# Deploy both backend and frontend
+./mcp/deploy-railway.py --all
+
+# Deploy only backend
+./mcp/deploy-railway.py --backend
+
+# Deploy only frontend
+./mcp/deploy-railway.py --frontend
+```
+
+**Required environment variables** (set in Railway dashboard):
+- `GITHUB_CLIENT_ID` - GitHub OAuth client ID
+- `GITHUB_CLIENT_SECRET` - GitHub OAuth client secret
+- `CLERK_PUBLISHABLE_KEY` - Clerk authentication key
+
 ## Task Management Workflow (Vibe Kanban MCP)
 
 Use the Vibe Kanban MCP tools to manage tasks for this project.
@@ -166,10 +190,11 @@ Use the Vibe Kanban MCP tools to manage tasks for this project.
 ### Data Model
 
 **Team: vibe-kanban** - All work is tracked under this team
-- **Team ID**: `c1a926de-0683-407d-81de-124e0d161ec5`
 - **Issues/Tasks** - Created and mapped to projects
 - **Documents** - Stored in folders as markdown files
 - **Projects** - Categorize work by area (frontend, backend, integration)
+
+> **Note**: Team and Project IDs below are for current development database. Use `vk_list_teams` and `vk_list_projects` to get current IDs if they change.
 
 ### Available Projects (under vibe-kanban team)
 
@@ -183,15 +208,15 @@ Use the Vibe Kanban MCP tools to manage tasks for this project.
 
 ### Document Folders
 
-**External Documentation Path**: `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/`
+Planning documents are stored in the external docs folder configured via environment or Claude Code settings.
 
-Planning documents are stored OUTSIDE the project repository:
+**Default path**: `$DOCS_VIBE_KANBAN` (e.g., `/path/to/docs-vibe-kanban/`)
 
-| Task Type | Path |
-|-----------|------|
-| **frontend** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/frontend/` |
-| **backend** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/` |
-| **integration** | `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/integration/` |
+| Task Type | Subfolder |
+|-----------|-----------|
+| **frontend** | `planning/frontend/` |
+| **backend** | `planning/backend/` |
+| **integration** | `planning/integration/` |
 
 Use markdown format for all documents.
 
@@ -205,7 +230,7 @@ Use markdown format for all documents.
 
 **BEFORE writing ANY code**, create BOTH documents in the external docs folder:
 
-**Base Path**: `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/{task_type}/`
+**Base Path**: `$DOCS_VIBE_KANBAN/planning/{task_type}/`
 
 | Document | Filename | Purpose |
 |----------|----------|---------|
@@ -213,8 +238,8 @@ Use markdown format for all documents.
 | **Implementation Plan** | `VIB-XX-feature-plan.md` | Step-by-step plan with affected files, changes needed |
 
 **Example for backend task**:
-- `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-flow.md`
-- `/Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-plan.md`
+- `$DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-flow.md`
+- `$DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-plan.md`
 
 **Penalty for skipping:**
 - Task will be marked as INCOMPLETE regardless of code status
@@ -258,13 +283,18 @@ vk_update_task(task_id="<uuid>", description="## Planning Documents\n- Flow: pla
 
 #### 1. Create Task First (Before Starting Work)
 
-Use the **API directly** to create team issues (MCP tools have issues with team linking):
+Use the **MCP tools** or **API** to create team issues:
 
-**API (RECOMMENDED - ensures team_id is set):**
+**MCP (preferred):**
+```
+vk_create_issue(title="VIB-XX: Task title", project="backend", team="vibe-kanban", status="inprogress")
+```
+
+**API Alternative:**
 ```bash
-# Team ID for vibe-kanban: c1a926de-0683-407d-81de-124e0d161ec5
-TEAM_ID="c1a926de-0683-407d-81de-124e0d161ec5"
-PROJECT_ID="de246043-3b27-45e4-bd7a-f0d685b317d0"  # backend
+# Get current IDs: vk_list_teams, vk_list_projects
+TEAM_ID="<team-uuid>"
+PROJECT_ID="<project-uuid>"
 
 curl -s -X POST "http://localhost:3003/api/tasks" \
   -H "Content-Type: application/json" \
@@ -277,14 +307,6 @@ curl -s -X POST "http://localhost:3003/api/tasks" \
   }" | jq .
 ```
 
-**Project IDs:**
-| Project | ID |
-|---------|-----|
-| frontend | `ba7fe592-42d0-43f5-add8-f653054c2944` |
-| backend | `de246043-3b27-45e4-bd7a-f0d685b317d0` |
-| integration | `bde6ec12-2cf1-4784-9a0e-d03308ade450` |
-| database | `731d6e37-9223-4595-93a0-412a38af4540` |
-
 **CLI Alternative:**
 ```bash
 ./mcp/cli.py create <project> "Task title" --team vibe-kanban --status inprogress -d "Description"
@@ -295,12 +317,12 @@ curl -s -X POST "http://localhost:3003/api/tasks" \
 **BEFORE writing ANY code**, create both documents in the external docs folder:
 
 ```bash
-# Base path: /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/{task_type}/
+# Base path: $DOCS_VIBE_KANBAN/planning/{task_type}/
 # Where {task_type} is: frontend, backend, or integration
 
 # Example for backend task VIB-71:
-# /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-flow.md
-# /Users/rupeshpanwar/Documents/docs/docs-vibe-kanban/planning/backend/VIB-71-backup-plan.md
+# $DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-flow.md
+# $DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-plan.md
 ```
 
 #### 3. Create Feature Branch
