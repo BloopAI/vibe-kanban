@@ -112,7 +112,7 @@ impl LocalContainerService {
             notification_service,
         };
 
-        container.spawn_workspace_cleanup().await;
+        container.spawn_workspace_cleanup();
 
         container
     }
@@ -194,19 +194,20 @@ impl LocalContainerService {
         Ok(())
     }
 
-    pub async fn spawn_workspace_cleanup(&self) {
+    pub fn spawn_workspace_cleanup(&self) {
         let db = self.db.clone();
-        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
-        WorkspaceManager::cleanup_orphan_workspaces(&self.db.pool).await;
+        let cleanup_expired = Self::cleanup_expired_workspaces;
         tokio::spawn(async move {
+            WorkspaceManager::cleanup_orphan_workspaces(&db.pool).await;
+
+            let mut cleanup_interval =
+                tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic workspace cleanup...");
-                Self::cleanup_expired_workspaces(&db)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::error!("Failed to clean up expired workspaces: {}", e)
-                    });
+                cleanup_expired(&db).await.unwrap_or_else(|e| {
+                    tracing::error!("Failed to clean up expired workspaces: {}", e)
+                });
             }
         });
     }
