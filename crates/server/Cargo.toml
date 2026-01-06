@@ -7,6 +7,9 @@ default-run = "server"
 [lints.clippy]
 uninlined-format-args = "allow"
 
+[features]
+default = []
+
 [dependencies]
 deployment = { path = "../deployment" }
 executors = { path = "../executors" }

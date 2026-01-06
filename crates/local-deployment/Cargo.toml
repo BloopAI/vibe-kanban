@@ -5,7 +5,6 @@ edition = "2024"
 
 [features]
 default = []
-turso = ["db/turso"]
 
 [dependencies]
 db = { path = "../db" }

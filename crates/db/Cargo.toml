@@ -5,8 +5,6 @@ edition = "2024"
 
 [features]
 default = []
-# Turso mode: use libsql for cloud sync + unbundled SQLite to avoid linker conflicts
-turso = ["libsql", "sqlx/sqlite-unbundled"]
 
 [dependencies]
 utils = { path = "../utils" }
@@ -16,8 +14,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-# Note: sqlite-unbundled feature is added via turso feature flag to avoid
-# duplicate SQLite symbol conflicts with libsql-ffi
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
@@ -25,7 +21,3 @@ ts-rs = { workspace = true }
 strum = "0.27.2"
 strum_macros = "0.27.2"
 tokio = { workspace = true }
-
-# Turso support (optional)
-libsql = { version = "0.9", optional = true }
-
