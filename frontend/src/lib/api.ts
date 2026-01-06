@@ -138,6 +138,7 @@ import {
   UpdateTaskComment,
   LinkedDocument,
   LinkDocumentsRequest,
+  UploadResult,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -2088,5 +2089,16 @@ export const documentsApi = {
   // Get document file URL for direct file access (PDF viewer, images, etc.)
   getFileUrl: (teamId: string, documentId: string): string => {
     return `/api/teams/${teamId}/documents/${documentId}/file`;
+  },
+
+  // Upload documents via browser file picker
+  upload: async (teamId: string, formData: FormData): Promise<UploadResult> => {
+    // Use fetch directly since FormData needs special handling (no Content-Type header)
+    const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/documents/upload`, {
+      method: 'POST',
+      body: formData,
+      // Note: Don't set Content-Type header - browser sets it with boundary for multipart
+    });
+    return handleApiResponse<UploadResult>(response);
   },
 };

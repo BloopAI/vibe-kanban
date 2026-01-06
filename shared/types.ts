@@ -304,6 +304,24 @@ headers: Array<string>,
  */
 rows: Array<Array<string>>, };
 
+export type UploadResult = { 
+/**
+ * Number of files successfully uploaded
+ */
+uploaded: number, 
+/**
+ * Number of files skipped (already exist)
+ */
+skipped: number, 
+/**
+ * Error messages for failed files
+ */
+errors: Array<string>, 
+/**
+ * Titles of uploaded documents
+ */
+uploaded_titles: Array<string>, };
+
 export type DocumentFileType = "markdown" | "pdf" | "txt" | "csv" | "xlsx";
 
 export type DocumentFolder = { id: string, team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, 

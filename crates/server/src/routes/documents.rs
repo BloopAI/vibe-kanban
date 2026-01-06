@@ -1,7 +1,7 @@
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{Path, Query, State},
+    extract::{Multipart, Path, Query, State},
     http::{header, StatusCode},
     middleware::from_fn_with_state,
     response::{Json as ResponseJson, Response},
@@ -690,6 +690,20 @@ pub struct CsvDataResponse {
     pub rows: Vec<Vec<String>>,
 }
 
+/// Response for file upload operation
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct UploadResult {
+    /// Number of files successfully uploaded
+    pub uploaded: usize,
+    /// Number of files skipped (already exist)
+    pub skipped: usize,
+    /// Error messages for failed files
+    pub errors: Vec<String>,
+    /// Titles of uploaded documents
+    pub uploaded_titles: Vec<String>,
+}
+
 /// Get mime type from file extension
 fn get_mime_type(extension: &str) -> &'static str {
     match extension.to_lowercase().as_str() {
@@ -1220,6 +1234,176 @@ pub async fn scan_all_filesystem(
     })))
 }
 
+/// Upload documents via multipart form
+///
+/// Accepts files via browser file picker and stores them on Railway.
+/// Text files have content stored in database, binary files stored to /data/uploads/
+pub async fn upload_documents(
+    Extension(team): Extension<Team>,
+    State(deployment): State<DeploymentImpl>,
+    mut multipart: Multipart,
+) -> Result<ResponseJson<ApiResponse<UploadResult>>, ApiError> {
+    let mut uploaded = 0;
+    let mut skipped = 0;
+    let mut errors = Vec::new();
+    let mut uploaded_titles = Vec::new();
+    let mut folder_id: Option<Uuid> = None;
+
+    // Get existing documents to check for duplicates
+    let existing_docs = Document::find_all_by_team(&deployment.db().pool, team.id, false).await?;
+    let existing_titles: HashSet<String> = existing_docs
+        .iter()
+        .map(|d| d.title.to_lowercase())
+        .collect();
+
+    // Process multipart fields
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        ApiError::BadRequest(format!("Failed to read multipart field: {}", e))
+    })? {
+        let field_name = field.name().unwrap_or("").to_string();
+
+        // Handle folder_id field
+        if field_name == "folder_id" {
+            if let Ok(text) = field.text().await {
+                if !text.is_empty() {
+                    folder_id = Uuid::parse_str(&text).ok();
+                }
+            }
+            continue;
+        }
+
+        // Handle file fields
+        if field_name == "files[]" || field_name.starts_with("files") {
+            let filename = field.file_name().unwrap_or("unknown").to_string();
+
+            // Get extension
+            let extension = std::path::Path::new(&filename)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+
+            // Check if supported
+            if !is_supported_document(&extension) {
+                errors.push(format!("{}: unsupported format", filename));
+                continue;
+            }
+
+            // Read file bytes
+            let bytes = match field.bytes().await {
+                Ok(b) => b,
+                Err(e) => {
+                    errors.push(format!("{}: failed to read - {}", filename, e));
+                    continue;
+                }
+            };
+
+            // Extract title from filename
+            let file_stem = std::path::Path::new(&filename)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Untitled");
+
+            let title = file_stem
+                .split(|c| c == '-' || c == '_')
+                .map(|word| {
+                    let mut chars = word.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().chain(chars).collect(),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            // Check for duplicates
+            if existing_titles.contains(&title.to_lowercase()) {
+                skipped += 1;
+                continue;
+            }
+
+            let mime_type = get_mime_type(&extension);
+            let file_type = extension.clone();
+            let is_text = is_text_document(&extension);
+            let file_size = bytes.len() as i64;
+
+            // For text files, store content in database
+            // For binary files, store to /data/uploads/
+            let (content, file_path) = if is_text {
+                let text_content = String::from_utf8_lossy(&bytes).to_string();
+                (Some(text_content), None)
+            } else {
+                // Store binary file to uploads directory
+                let upload_dir = std::path::PathBuf::from("/data/uploads");
+                if let Err(e) = tokio::fs::create_dir_all(&upload_dir).await {
+                    tracing::warn!("Failed to create uploads directory: {}", e);
+                }
+
+                let doc_id = Uuid::new_v4();
+                let file_path = upload_dir.join(format!("{}.{}", doc_id, extension));
+
+                if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
+                    errors.push(format!("{}: failed to save - {}", filename, e));
+                    continue;
+                }
+
+                (None, Some(file_path.to_string_lossy().to_string()))
+            };
+
+            // Create document record
+            let create_payload = CreateDocument {
+                team_id: team.id,
+                folder_id,
+                title: title.clone(),
+                content,
+                file_type: Some(file_type.clone()),
+                icon: None,
+            };
+
+            match Document::create(&deployment.db().pool, &create_payload).await {
+                Ok(document) => {
+                    // Update file metadata if we have a file path
+                    if let Some(ref path) = file_path {
+                        let _ = Document::update_file_metadata(
+                            &deployment.db().pool,
+                            document.id,
+                            path,
+                            file_size,
+                            mime_type,
+                            &file_type,
+                        ).await;
+                    }
+
+                    uploaded += 1;
+                    uploaded_titles.push(title);
+                }
+                Err(e) => {
+                    errors.push(format!("{}: database error - {}", filename, e));
+                }
+            }
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "documents_uploaded",
+            serde_json::json!({
+                "team_id": team.id.to_string(),
+                "uploaded": uploaded,
+                "skipped": skipped,
+                "errors": errors.len(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(UploadResult {
+        uploaded,
+        skipped,
+        errors,
+        uploaded_titles,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // Routes with only team_id (can use middleware)
     let documents_list_router = Router::new()
@@ -1243,6 +1427,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // Scan all (recursive) route (requires team middleware)
     let scan_all_router = Router::new()
         .route("/documents/scan-all", post(scan_all_filesystem))
+        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
+
+    // Upload documents route (requires team middleware)
+    let upload_router = Router::new()
+        .route("/documents/upload", post(upload_documents))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     // Routes with additional path params (manually load team)
@@ -1281,6 +1470,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .merge(scan_router)
         .merge(discover_router)
         .merge(scan_all_router)
+        .merge(upload_router)
         .merge(by_slug_router);
 
     // Match teams router pattern: /teams + /{team_id}

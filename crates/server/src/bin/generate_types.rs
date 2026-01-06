@@ -71,6 +71,7 @@ fn generate_types_content() -> String {
         server::routes::documents::DiscoverFoldersResponse::decl(),
         server::routes::documents::DocumentContentResponse::decl(),
         server::routes::documents::CsvDataResponse::decl(),
+        server::routes::documents::UploadResult::decl(),
         db::models::document::DocumentFileType::decl(),
         db::models::document::DocumentFolder::decl(),
         db::models::document::Document::decl(),

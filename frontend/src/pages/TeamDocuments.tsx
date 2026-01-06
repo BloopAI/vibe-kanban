@@ -21,10 +21,10 @@ import {
   LayoutGrid,
   List,
   GripVertical,
-  RefreshCw,
   Loader2,
   Pencil,
   Eye,
+  Upload,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { PdfViewer } from '@/components/documents/PdfViewer';
@@ -49,7 +49,7 @@ import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
 import { documentsApi } from '@/lib/api';
 
-import type { Document, DocumentFolder, DocumentContentResponse } from 'shared/types';
+import type { Document, DocumentFolder, DocumentContentResponse, UploadResult } from 'shared/types';
 
 // File type icons
 const FILE_TYPE_ICONS: Record<string, string> = {
@@ -82,8 +82,7 @@ export function TeamDocuments() {
     deleteDocument,
     createFolder,
     deleteFolder,
-    scanFilesystem,
-    scanAll,
+    refresh,
   } = useDocuments(actualTeamId);
 
   // Dialog states
@@ -97,10 +96,12 @@ export function TeamDocuments() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ added: number; scanned: number; foldersCreated?: number } | null>(null);
   const [isMarkdownEditMode, setIsMarkdownEditMode] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [newDocTitle, setNewDocTitle] = useState('');
@@ -261,33 +262,51 @@ export function TeamDocuments() {
     [setCurrentFolderId]
   );
 
-  const handleScanFilesystem = useCallback(async () => {
-    setIsScanning(true);
+  // Handle file upload from browser file picker
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !teamId) return;
+
+    setIsUploading(true);
+    setUploadResult(null);
     setScanResult(null);
 
     try {
+      const formData = new FormData();
+
+      // Add folder_id if we're in a folder
       if (currentFolderId) {
-        // Scan single folder
-        const result = await scanFilesystem(currentFolderId);
-        setScanResult({
-          added: result.documents_added,
-          scanned: result.files_scanned,
-        });
-      } else {
-        // Root level: use recursive scan-all endpoint
-        const result = await scanAll();
-        setScanResult({
-          added: result.documents_created,
-          scanned: result.total_scanned,
-          foldersCreated: result.folders_created,
-        });
+        formData.append('folder_id', currentFolderId);
+      }
+
+      // Add all files
+      for (const file of files) {
+        formData.append('files[]', file);
+      }
+
+      const result = await documentsApi.upload(teamId, formData);
+      setUploadResult(result);
+
+      // Refresh document list after successful upload
+      if (result.uploaded > 0) {
+        refresh();
       }
     } catch (err) {
-      console.error('Failed to scan filesystem:', err);
+      console.error('Failed to upload files:', err);
+      setUploadResult({
+        uploaded: 0,
+        skipped: 0,
+        errors: ['Upload failed. Please try again.'],
+        uploaded_titles: [],
+      });
     } finally {
-      setIsScanning(false);
+      setIsUploading(false);
+      // Clear the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
-  }, [currentFolderId, scanFilesystem, scanAll]);
+  }, [teamId, currentFolderId, refresh]);
 
   const handleOpenDocument = useCallback(async (doc: Document) => {
     setEditingDoc(doc);
@@ -810,19 +829,28 @@ export function TeamDocuments() {
             <span className="text-muted-foreground">/ Documents</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Hidden file input for upload */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              multiple
+              accept=".md,.txt,.pdf,.csv,.json,.xml,.html,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg"
+              onChange={handleFileUpload}
+            />
             <Button
               variant="outline"
               size="sm"
-              onClick={handleScanFilesystem}
-              disabled={isScanning}
-              title={currentFolderId ? "Scan local filesystem for documents in this folder" : "Scan all folders for documents"}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              title={currentFolderId ? "Upload files to this folder" : "Upload files to root"}
             >
-              {isScanning ? (
+              {isUploading ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-1" />
+                <Upload className="h-4 w-4 mr-1" />
               )}
-              Local Scan
+              Upload
             </Button>
             <Button
               variant="outline"
@@ -845,6 +873,21 @@ export function TeamDocuments() {
             Scanned {scanResult.scanned} items
             {scanResult.foldersCreated !== undefined && `, ${scanResult.foldersCreated} folders`}
             , added {scanResult.added} new documents
+          </div>
+        )}
+
+        {/* Upload Result */}
+        {uploadResult && (
+          <div className={`mt-2 text-sm ${uploadResult.errors.length > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {uploadResult.uploaded > 0 && (
+              <span>Uploaded {uploadResult.uploaded} file{uploadResult.uploaded !== 1 ? 's' : ''}</span>
+            )}
+            {uploadResult.skipped > 0 && (
+              <span>{uploadResult.uploaded > 0 ? ', ' : ''}Skipped {uploadResult.skipped} duplicate{uploadResult.skipped !== 1 ? 's' : ''}</span>
+            )}
+            {uploadResult.errors.length > 0 && (
+              <span>{(uploadResult.uploaded > 0 || uploadResult.skipped > 0) ? '. ' : ''}Errors: {uploadResult.errors.join(', ')}</span>
+            )}
           </div>
         )}
 
