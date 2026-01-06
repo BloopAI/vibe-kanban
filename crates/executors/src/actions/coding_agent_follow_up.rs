@@ -32,6 +32,13 @@ impl CodingAgentFollowUpRequest {
         self.executor_profile_id.clone()
     }
 
+    pub fn effective_dir(&self, current_dir: &Path) -> std::path::PathBuf {
+        match &self.working_dir {
+            Some(rel_path) => current_dir.join(rel_path),
+            None => current_dir.to_path_buf(),
+        }
+    }
+
     pub fn base_executor(&self) -> BaseCodingAgent {
         self.executor_profile_id.executor
     }
@@ -45,10 +52,7 @@ impl Executable for CodingAgentFollowUpRequest {
         approvals: Arc<dyn ExecutorApprovalService>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let effective_dir = match &self.working_dir {
-            Some(rel_path) => current_dir.join(rel_path),
-            None => current_dir.to_path_buf(),
-        };
+        let effective_dir = self.effective_dir(current_dir);
 
         let executor_profile_id = self.get_executor_profile_id();
         let mut agent = ExecutorConfigs::get_cached()
