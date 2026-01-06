@@ -80,6 +80,12 @@
           "integrations/mcp-server-configuration",
           "integrations/vibe-kanban-mcp-server"
         ]
+      },
+      {
+        "group": "Help",
+        "pages": [
+          "troubleshooting"
+        ]
       }
     ]
   },
