@@ -63,6 +63,8 @@ import { oauthApi } from '@/lib/api';
 import { useWorkspaceGitHubConnection, useWorkspaceGitHubMutations } from '@/hooks/useWorkspaceGitHub';
 import { teamsApi } from '@/lib/api';
 
+const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
 const EXTERNAL_LINKS = [
@@ -372,34 +374,36 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Clerk Authentication */}
-            <div className="hidden sm:flex items-center">
-              <SignedOut>
-                <div className="flex items-center gap-1">
-                  <SignInButton mode="modal">
-                    <Button variant="ghost" size="sm" className="h-8 text-xs">
-                      <LogIn className="mr-1.5 h-3.5 w-3.5" />
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button variant="default" size="sm" className="h-8 text-xs">
-                      Sign Up
-                    </Button>
-                  </SignUpButton>
-                </div>
-              </SignedOut>
-              <SignedIn>
-                <UserButton
-                  appearance={{
-                    elements: {
-                      avatarBox: 'h-8 w-8',
-                    },
-                  }}
-                />
-              </SignedIn>
-              <NavDivider />
-            </div>
+            {/* Clerk Authentication - only render when Clerk is enabled */}
+            {CLERK_ENABLED && (
+              <div className="hidden sm:flex items-center">
+                <SignedOut>
+                  <div className="flex items-center gap-1">
+                    <SignInButton mode="modal">
+                      <Button variant="ghost" size="sm" className="h-8 text-xs">
+                        <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                        Sign In
+                      </Button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <Button variant="default" size="sm" className="h-8 text-xs">
+                        Sign Up
+                      </Button>
+                    </SignUpButton>
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  <UserButton
+                    appearance={{
+                      elements: {
+                        avatarBox: 'h-8 w-8',
+                      },
+                    }}
+                  />
+                </SignedIn>
+                <NavDivider />
+              </div>
+            )}
 
             <div className="flex items-center gap-1">
               <Button
