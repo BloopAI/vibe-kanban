@@ -170,7 +170,7 @@ async fn compute_workspace_diff_stats(
         // Get base commit (merge base) between workspace branch and target branch
         let base_commit_result = tokio::task::spawn_blocking({
             let git = deployment.git().clone();
-            let repo_path = repo_path;
+            let repo_path = repo_path.clone();
             let workspace_branch = workspace.branch.clone();
             let target_branch = repo_with_branch.target_branch.clone();
             move || git.get_base_commit(&repo_path, &workspace_branch, &target_branch)

@@ -1596,7 +1596,13 @@ pub enum DeleteWorkspaceError {
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<(StatusCode, ResponseJson<ApiResponse<(), DeleteWorkspaceError>>), ApiError> {
+) -> Result<
+    (
+        StatusCode,
+        ResponseJson<ApiResponse<(), DeleteWorkspaceError>>,
+    ),
+    ApiError,
+> {
     let pool = &deployment.db().pool;
 
     // Check for running execution processes
@@ -1686,7 +1692,10 @@ pub async fn delete_workspace(
                     e
                 );
             } else {
-                tracing::info!("Background cleanup completed for workspace {}", workspace_id);
+                tracing::info!(
+                    "Background cleanup completed for workspace {}",
+                    workspace_id
+                );
             }
         });
     }

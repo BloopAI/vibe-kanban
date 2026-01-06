@@ -506,8 +506,13 @@ export function WorkspacesLayout() {
 
       if (result === 'confirmed') {
         // Find next workspace to select after deletion
-        const allWorkspaces = [...sidebarWorkspaces, ...archivedSidebarWorkspaces];
-        const currentIndex = allWorkspaces.findIndex((ws) => ws.id === workspaceId);
+        const allWorkspaces = [
+          ...sidebarWorkspaces,
+          ...archivedSidebarWorkspaces,
+        ];
+        const currentIndex = allWorkspaces.findIndex(
+          (ws) => ws.id === workspaceId
+        );
         let nextWorkspaceId: string | null = null;
         if (currentIndex >= 0 && allWorkspaces.length > 1) {
           const nextWorkspace =
