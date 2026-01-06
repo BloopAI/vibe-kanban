@@ -1429,11 +1429,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/documents/scan-all", post(scan_all_filesystem))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
-    // Upload documents route (requires team middleware)
-    let upload_router = Router::new()
-        .route("/documents/upload", post(upload_documents))
-        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
-
     // Routes with additional path params (manually load team)
     let document_item_router = Router::new()
         .route(
@@ -1453,9 +1448,15 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/documents/by-slug/{slug}", get(get_document_by_slug))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
+    // Upload route (must be before wildcard to avoid /{document_id} matching "upload")
+    let upload_router = Router::new()
+        .route("/upload", post(upload_documents))
+        .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
+
     // Combine documents routes
     let documents_router = Router::new()
         .merge(documents_list_router)
+        .merge(upload_router) // Add before wildcard
         .nest("/{document_id}", document_item_router);
 
     // Combine folders routes
@@ -1470,7 +1471,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .merge(scan_router)
         .merge(discover_router)
         .merge(scan_all_router)
-        .merge(upload_router)
         .merge(by_slug_router);
 
     // Match teams router pattern: /teams + /{team_id}
