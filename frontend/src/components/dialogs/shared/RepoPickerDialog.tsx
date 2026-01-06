@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +39,7 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
     title = 'Select Repository',
     description = 'Choose or create a git repository',
   }) => {
+    const { t } = useTranslation('projects');
     const modal = useModal();
     const [stage, setStage] = useState<Stage>('options');
     const [error, setError] = useState('');
@@ -47,6 +49,8 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
     const [allRepos, setAllRepos] = useState<DirectoryEntry[]>([]);
     const [reposLoading, setReposLoading] = useState(false);
     const [showMoreRepos, setShowMoreRepos] = useState(false);
+    const [loadingDuration, setLoadingDuration] = useState(0);
+    const [hasSearched, setHasSearched] = useState(false);
 
     // Stage: new
     const [repoName, setRepoName] = useState('');
@@ -60,12 +64,15 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
         setShowMoreRepos(false);
         setRepoName('');
         setParentPath('');
+        setLoadingDuration(0);
+        setHasSearched(false);
       }
     }, [modal.visible]);
 
     const loadRecentRepos = useCallback(async () => {
       setReposLoading(true);
       setError('');
+      setLoadingDuration(0);
       try {
         const repos = await fileSystemApi.listGitRepos();
         setAllRepos(repos);
@@ -74,14 +81,33 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
         console.error('Failed to load repos:', err);
       } finally {
         setReposLoading(false);
+        setHasSearched(true);
       }
     }, []);
 
     useEffect(() => {
-      if (stage === 'existing' && allRepos.length === 0 && !reposLoading) {
+      if (
+        stage === 'existing' &&
+        allRepos.length === 0 &&
+        !reposLoading &&
+        !hasSearched
+      ) {
         loadRecentRepos();
       }
-    }, [stage, allRepos.length, reposLoading, loadRecentRepos]);
+    }, [stage, allRepos.length, reposLoading, hasSearched, loadRecentRepos]);
+
+    // Track loading duration to show timeout message
+    useEffect(() => {
+      if (!reposLoading) {
+        return;
+      }
+
+      const interval = setInterval(() => {
+        setLoadingDuration((prev) => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, [reposLoading]);
 
     const registerAndReturn = async (path: string) => {
       setIsWorking(true);
@@ -220,9 +246,18 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                       <div className="flex items-center gap-3">
                         <div className="animate-spin h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full" />
                         <div className="text-sm text-muted-foreground">
-                          Loading repositories...
+                          {loadingDuration < 2
+                            ? t('repoSearch.searching')
+                            : t('repoSearch.stillSearching', {
+                                seconds: loadingDuration,
+                              })}
                         </div>
                       </div>
+                      {loadingDuration >= 3 && (
+                        <div className="text-xs text-muted-foreground mt-2 ml-8">
+                          {t('repoSearch.takingLonger')}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -268,6 +303,26 @@ const RepoPickerDialogImpl = NiceModal.create<RepoPickerDialogProps>(
                       )}
                     </div>
                   )}
+
+                  {/* No repos found state */}
+                  {!reposLoading &&
+                    hasSearched &&
+                    allRepos.length === 0 &&
+                    !error && (
+                      <div className="p-4 border rounded-lg bg-card">
+                        <div className="flex items-start gap-3">
+                          <Folder className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                          <div>
+                            <div className="text-sm text-muted-foreground">
+                              {t('repoSearch.noReposFound')}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {t('repoSearch.browseHint')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                   <div
                     className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"

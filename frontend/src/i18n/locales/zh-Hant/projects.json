@@ -4,6 +4,13 @@
   "createProject": "建立專案",
   "linkToOrganization": "連結到遠端專案",
   "loading": "載入專案中...",
+  "repoSearch": {
+    "searching": "正在搜尋儲存庫...",
+    "stillSearching": "仍在搜尋... ({{seconds}}秒)",
+    "takingLonger": "搜尋時間比平時長。您可以在下方手動瀏覽。",
+    "noReposFound": "在常見位置未找到儲存庫。",
+    "browseHint": "使用下方選項瀏覽儲存庫。"
+  },
   "errors": {
     "fetchFailed": "取得專案失敗",
     "deleteFailed": "刪除專案失敗"
