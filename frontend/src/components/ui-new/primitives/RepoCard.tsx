@@ -9,6 +9,7 @@ import {
   CodeIcon,
   ArrowSquareOutIcon,
   CopyIcon,
+  GitMergeIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
 import {
@@ -21,9 +22,17 @@ import {
 import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
-import { useMemo } from 'react';
 
 export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
+
+const repoActionOptions: SplitButtonOption<RepoAction>[] = [
+  {
+    value: 'pull-request',
+    label: 'Open pull request',
+    icon: GitPullRequestIcon,
+  },
+  { value: 'merge', label: 'Merge', icon: GitMergeIcon },
+];
 
 interface RepoCardProps {
   repoId: string;
@@ -63,32 +72,6 @@ export function RepoCard({
   onCopyPath,
 }: RepoCardProps) {
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
-
-  // Hide "Open pull request" if a PR already exists (open or merged) or no files changed
-  const hasPR =
-    prNumber !== undefined && (prStatus === 'open' || prStatus === 'merged');
-  const hasChanges = filesChanged > 0;
-
-  const availableActions = useMemo((): SplitButtonOption<RepoAction>[] => {
-    const options: SplitButtonOption<RepoAction>[] = [];
-
-    if (!hasPR && hasChanges) {
-      options.push({
-        value: 'pull-request',
-        label: 'Open pull request',
-        icon: GitPullRequestIcon,
-      });
-    }
-
-    return options;
-  }, [hasPR, hasChanges]);
-
-  // If the selected action is no longer available, default to the first available
-  const effectiveSelectedAction = availableActions.some(
-    (opt) => opt.value === selectedAction
-  )
-    ? selectedAction
-    : (availableActions[0]?.value ?? 'merge');
 
   return (
     <CollapsibleSection
@@ -195,14 +178,12 @@ export function RepoCard({
 
       {/* Actions row */}
       <div className="flex items-center gap-half">
-        {availableActions.length > 0 && (
-          <SplitButton
-            options={availableActions}
-            selectedValue={effectiveSelectedAction}
-            onSelectionChange={setSelectedAction}
-            onAction={(action) => onActionsClick?.(action)}
-          />
-        )}
+        <SplitButton
+          options={repoActionOptions}
+          selectedValue={selectedAction}
+          onSelectionChange={setSelectedAction}
+          onAction={(action) => onActionsClick?.(action)}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
