@@ -283,12 +283,18 @@ vk_update_task(task_id="<uuid>", description="## Planning Documents\n- Flow: pla
 
 #### 1. Create Task First (Before Starting Work)
 
+> **IMPORTANT: Task Naming Convention**
+> - **DO NOT** include `VIB-XX:` prefix in the task title
+> - The app auto-generates issue numbers (VIB-1, VIB-2, VIB-3...)
+> - Use the returned `issue_number` for planning docs and branch names
+
 Use the **MCP tools** or **API** to create team issues:
 
 **MCP (preferred):**
 ```
-vk_create_issue(title="VIB-XX: Task title", project="backend", team="vibe-kanban", status="inprogress")
+vk_create_issue(title="Add user preferences page", project="backend", team="vibe-kanban", status="inprogress")
 ```
+Response includes `issue_number: 5` → Task displays as **VIB-5: Add user preferences page**
 
 **API Alternative:**
 ```bash
@@ -299,13 +305,14 @@ PROJECT_ID="<project-uuid>"
 curl -s -X POST "http://localhost:3003/api/tasks" \
   -H "Content-Type: application/json" \
   -d "{
-    \"title\": \"VIB-XX: Task title\",
+    \"title\": \"Add user preferences page\",
     \"project_id\": \"$PROJECT_ID\",
     \"team_id\": \"$TEAM_ID\",
     \"status\": \"inprogress\",
     \"description\": \"Task description\"
-  }" | jq .
+  }" | jq '.data.issue_number'
 ```
+Extract `issue_number` from response for use in planning docs.
 
 **CLI Alternative:**
 ```bash
@@ -314,24 +321,34 @@ curl -s -X POST "http://localhost:3003/api/tasks" \
 
 #### 2. 🚨 Create Planning Documents (MANDATORY - DO NOT SKIP)
 
-**BEFORE writing ANY code**, create both documents in the external docs folder:
+**AFTER creating the task** (to get the issue number), create both documents:
 
 ```bash
 # Base path: $DOCS_VIBE_KANBAN/planning/{task_type}/
 # Where {task_type} is: frontend, backend, or integration
 
-# Example for backend task VIB-71:
-# $DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-flow.md
-# $DOCS_VIBE_KANBAN/planning/backend/VIB-71-backup-plan.md
+# Use the ACTUAL issue_number from task creation response!
+# If task was created as VIB-5:
+# $DOCS_VIBE_KANBAN/planning/backend/VIB-5-user-preferences-flow.md
+# $DOCS_VIBE_KANBAN/planning/backend/VIB-5-user-preferences-plan.md
 ```
 
+**Wrong vs Correct Naming:**
+| Wrong | Correct |
+|-------|---------|
+| `title: "VIB-86: Add feature"` | `title: "Add feature"` |
+| Planning doc before task | Create task first, get issue_number |
+| `VIB-XX-feature.md` (guessed) | `VIB-5-feature.md` (actual number) |
+
 #### 3. Create Feature Branch
+
+Use the issue number from step 1 for the branch name:
 
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feature/<task-id>-<task-name-kebab-case>
-# Example: git checkout -b feature/a76b21a8-add-document-tree-view
+git checkout -b feature/VIB-<issue_number>-<task-name-kebab-case>
+# Example (if issue_number is 5): git checkout -b feature/VIB-5-user-preferences
 ```
 
 #### 4. Work on the Task
@@ -361,7 +378,8 @@ curl -s -X POST 'http://localhost:3003/api/<endpoint>' \
 #### 6. Push Feature Branch
 
 ```bash
-git push -u origin feature/<task-id>-<task-name-kebab-case>
+git push -u origin feature/VIB-<issue_number>-<task-name-kebab-case>
+# Example: git push -u origin feature/VIB-5-user-preferences
 ```
 
 #### 7. Merge to Main
@@ -369,15 +387,15 @@ git push -u origin feature/<task-id>-<task-name-kebab-case>
 ```bash
 git checkout main
 git pull origin main
-git merge feature/<task-id>-<task-name-kebab-case>
+git merge feature/VIB-<issue_number>-<task-name-kebab-case>
 git push origin main
 ```
 
 #### 8. Clean Up Feature Branch
 
 ```bash
-git branch -d feature/<task-id>-<task-name-kebab-case>
-git push origin --delete feature/<task-id>-<task-name-kebab-case>
+git branch -d feature/VIB-<issue_number>-<task-name-kebab-case>
+git push origin --delete feature/VIB-<issue_number>-<task-name-kebab-case>
 ```
 
 #### 9. 🚨 Link Planning Documents to Task (MANDATORY)
@@ -418,8 +436,9 @@ The `vk` MCP server provides these tools for task management:
 
 **Creating Issues:**
 ```
-vk_create_issue(title="My task", project="frontend", team="vibe-kanban", status="inprogress")
+vk_create_issue(title="Add dark mode toggle", project="frontend", team="vibe-kanban", status="inprogress")
 ```
+> **Remember:** Do NOT include `VIB-XX:` prefix. The app auto-generates the issue number.
 
 ### CLI Alternative (mcp/cli.py)
 
