@@ -328,6 +328,29 @@ export function GeneralSettings() {
               {t('settings.general.appearance.fontFamily.helper')}
             </p>
           </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="discord-counter-enabled"
+                checked={draft?.discord_counter_enabled ?? true}
+                onCheckedChange={(checked) =>
+                  updateDraft({
+                    discord_counter_enabled: checked === true,
+                  })
+                }
+              />
+              <Label
+                htmlFor="discord-counter-enabled"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {t('settings.general.appearance.discordCounter.label')}
+              </Label>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.discordCounter.helper')}
+            </p>
+          </div>
         </CardContent>
       </Card>
 

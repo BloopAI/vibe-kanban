@@ -46,6 +46,10 @@
           "label": "Sobrescribir Fuente",
           "placeholder": "ej. 'Fira Code', 'JetBrains Mono', monospace",
           "helper": "Sobrescribe completamente las fuentes con un valor personalizado. Déjalo vacío para usar las fuentes predeterminadas (Google o sistema)."
+        },
+        "discordCounter": {
+          "label": "Mostrar Contador de Discord",
+          "helper": "Muestra el contador de usuarios en línea de Discord en la barra de navegación. Cuando está deshabilitado, no se hacen peticiones a Discord."
         }
       },
       "taskExecution": {

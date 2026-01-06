@@ -29,6 +29,10 @@ fn default_use_google_fonts() -> bool {
     true
 }
 
+fn default_discord_counter_enabled() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -62,6 +66,9 @@ pub struct Config {
     /// cuando está habilitado, se cargarán las fuentes de Google (Chivo Mono, Inter, JetBrains Mono)
     #[serde(default = "default_use_google_fonts")]
     pub use_google_fonts: bool,
+    /// cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
+    #[serde(default = "default_discord_counter_enabled")]
+    pub discord_counter_enabled: bool,
 }
 
 impl Config {
@@ -87,6 +94,7 @@ impl Config {
             git_auto_commit_enabled: old_config.git_auto_commit_enabled,
             font_family: old_config.font_family,
             use_google_fonts: true, // default to true para mantener el comportamiento original
+            discord_counter_enabled: true, // default to true para mantener el comportamiento original
         }
     }
 
@@ -140,6 +148,7 @@ impl Default for Config {
             git_auto_commit_enabled: true,
             font_family: None,
             use_google_fonts: true,
+            discord_counter_enabled: true,
         }
     }
 }

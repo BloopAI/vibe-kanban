@@ -328,7 +328,11 @@ font_family: string | null,
 /**
  * cuando está habilitado, se cargarán las fuentes de Google (Chivo Mono, Inter, JetBrains Mono)
  */
-use_google_fonts: boolean, };
+use_google_fonts: boolean, 
+/**
+ * cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
+ */
+discord_counter_enabled: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 

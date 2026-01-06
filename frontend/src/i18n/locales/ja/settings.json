@@ -37,6 +37,10 @@
           "label": "言語",
           "placeholder": "言語を選択",
           "helper": "お好みの言語を選択してください。ブラウザ設定では、システム言語に従います。"
+        },
+        "discordCounter": {
+          "label": "Discordカウンターを表示",
+          "helper": "ナビゲーションバーにDiscordのオンラインユーザー数を表示します。無効にするとDiscordへのリクエストは行われません。"
         }
       },
       "taskExecution": {

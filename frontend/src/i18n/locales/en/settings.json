@@ -46,6 +46,10 @@
           "label": "Custom Font Override",
           "placeholder": "e.g., 'Fira Code', 'JetBrains Mono', monospace",
           "helper": "Override fonts entirely with a custom value. Leave empty to use default fonts (Google or system)."
+        },
+        "discordCounter": {
+          "label": "Show Discord Counter",
+          "helper": "Display the Discord online users counter in the navigation bar. When disabled, no requests are made to Discord."
         }
       },
       "taskExecution": {

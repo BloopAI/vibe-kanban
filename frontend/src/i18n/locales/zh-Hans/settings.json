@@ -37,6 +37,10 @@
           "label": "语言",
           "placeholder": "选择语言",
           "helper": "选择您喜欢的语言。浏览器默认将跟随您的系统语言。"
+        },
+        "discordCounter": {
+          "label": "显示 Discord 计数器",
+          "helper": "在导航栏中显示 Discord 在线用户数。禁用时不会向 Discord 发送请求。"
         }
       },
       "taskExecution": {
