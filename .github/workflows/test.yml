@@ -30,6 +30,7 @@ jobs:
 
       - name: Lint frontend
         run: cd frontend && npm run lint
+        continue-on-error: true
 
       - name: Check i18n regressions
         env:

@@ -75,8 +75,8 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         return;
       }
 
-      setPrTitle(`${task.title} (vibe-kanban)`);
-      setPrBody(task.description || '');
+      setPrTitle(task.title ?? '');
+      setPrBody(task.description ?? '');
       setError(null);
       setGhCliHelp(null);
     }, [modal.visible, isLoaded, task]);
