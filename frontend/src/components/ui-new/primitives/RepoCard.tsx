@@ -1,6 +1,5 @@
 import {
   GitBranchIcon,
-  GitMergeIcon,
   GitPullRequestIcon,
   ArrowsClockwiseIcon,
   FileTextIcon,
@@ -10,6 +9,8 @@ import {
   CodeIcon,
   ArrowSquareOutIcon,
   CopyIcon,
+  ArrowSquareOut,
+  CheckCircle,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -21,17 +22,9 @@ import {
 import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
+import { useMemo } from 'react';
 
 export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
-
-const repoActionOptions: SplitButtonOption<RepoAction>[] = [
-  {
-    value: 'pull-request',
-    label: 'Open pull request',
-    icon: GitPullRequestIcon,
-  },
-  { value: 'merge', label: 'Merge', icon: GitMergeIcon },
-];
 
 interface RepoCardProps {
   repoId: string;
@@ -41,6 +34,9 @@ interface RepoCardProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
+  prNumber?: number;
+  prUrl?: string;
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
@@ -57,6 +53,9 @@ export function RepoCard({
   filesChanged = 0,
   linesAdded,
   linesRemoved,
+  prNumber,
+  prUrl,
+  prStatus,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
@@ -65,6 +64,30 @@ export function RepoCard({
   onCopyPath,
 }: RepoCardProps) {
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
+
+  // Hide "Open pull request" if a PR already exists (open or merged) or no files changed
+  const hasPR = prNumber !== undefined && (prStatus === 'open' || prStatus === 'merged');
+  const hasChanges = filesChanged > 0;
+
+  const availableActions = useMemo((): SplitButtonOption<RepoAction>[] => {
+    const options: SplitButtonOption<RepoAction>[] = [];
+
+    if (!hasPR && hasChanges) {
+      options.push({
+        value: 'pull-request',
+        label: 'Open pull request',
+        icon: GitPullRequestIcon,
+      });
+    }
+
+    return options;
+  }, [hasPR, hasChanges]);
+
+  // If the selected action is no longer available, default to the first available
+  const effectiveSelectedAction =
+    availableActions.some((opt) => opt.value === selectedAction)
+      ? selectedAction
+      : availableActions[0]?.value ?? 'merge';
 
   return (
     <CollapsibleSection
@@ -143,14 +166,42 @@ export function RepoCard({
         </span>
       </div>
 
+      {/* PR status row */}
+      {prNumber && (
+        <div className="flex items-center gap-half">
+          {prStatus === 'merged' ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+              <CheckCircle className="size-icon-xs" weight="fill" />
+              Merged PR #{prNumber}
+            </span>
+          ) : prUrl ? (
+            <button
+              onClick={() => window.open(prUrl, '_blank')}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline text-sm font-medium"
+            >
+              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+              PR #{prNumber}
+              <ArrowSquareOut className="size-icon-xs" weight="bold" />
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
+              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+              PR #{prNumber}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Actions row */}
       <div className="flex items-center gap-half">
-        <SplitButton
-          options={repoActionOptions}
-          selectedValue={selectedAction}
-          onSelectionChange={setSelectedAction}
-          onAction={(action) => onActionsClick?.(action)}
-        />
+        {availableActions.length > 0 && (
+          <SplitButton
+            options={availableActions}
+            selectedValue={effectiveSelectedAction}
+            onSelectionChange={setSelectedAction}
+            onAction={(action) => onActionsClick?.(action)}
+          />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
