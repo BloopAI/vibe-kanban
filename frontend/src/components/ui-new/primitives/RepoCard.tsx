@@ -9,8 +9,7 @@ import {
   CodeIcon,
   ArrowSquareOutIcon,
   CopyIcon,
-  ArrowSquareOut,
-  CheckCircle,
+  CheckCircleIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -66,7 +65,8 @@ export function RepoCard({
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
   // Hide "Open pull request" if a PR already exists (open or merged) or no files changed
-  const hasPR = prNumber !== undefined && (prStatus === 'open' || prStatus === 'merged');
+  const hasPR =
+    prNumber !== undefined && (prStatus === 'open' || prStatus === 'merged');
   const hasChanges = filesChanged > 0;
 
   const availableActions = useMemo((): SplitButtonOption<RepoAction>[] => {
@@ -84,10 +84,11 @@ export function RepoCard({
   }, [hasPR, hasChanges]);
 
   // If the selected action is no longer available, default to the first available
-  const effectiveSelectedAction =
-    availableActions.some((opt) => opt.value === selectedAction)
-      ? selectedAction
-      : availableActions[0]?.value ?? 'merge';
+  const effectiveSelectedAction = availableActions.some(
+    (opt) => opt.value === selectedAction
+  )
+    ? selectedAction
+    : (availableActions[0]?.value ?? 'merge');
 
   return (
     <CollapsibleSection
@@ -171,7 +172,7 @@ export function RepoCard({
         <div className="flex items-center gap-half">
           {prStatus === 'merged' ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
-              <CheckCircle className="size-icon-xs" weight="fill" />
+              <CheckCircleIcon className="size-icon-xs" weight="fill" />
               Merged PR #{prNumber}
             </span>
           ) : prUrl ? (
@@ -181,7 +182,7 @@ export function RepoCard({
             >
               <GitPullRequestIcon className="size-icon-xs" weight="fill" />
               PR #{prNumber}
-              <ArrowSquareOut className="size-icon-xs" weight="bold" />
+              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
             </button>
           ) : (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
