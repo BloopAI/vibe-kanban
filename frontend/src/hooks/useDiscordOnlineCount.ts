@@ -26,14 +26,15 @@ async function fetchDiscordOnlineCount(): Promise<number | null> {
   }
 }
 
-export function useDiscordOnlineCount() {
+export function useDiscordOnlineCount(enabled: boolean = true) {
   return useQuery({
     queryKey: ['discord-online-count'],
     queryFn: fetchDiscordOnlineCount,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: enabled ? 10 * 60 * 1000 : false,
     staleTime: 10 * 60 * 1000,
     retry: false,
     refetchOnMount: false,
     placeholderData: (previousData) => previousData,
+    enabled, // no se ejecuta el query si enabled es false
   });
 }

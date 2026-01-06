@@ -37,6 +37,10 @@
           "label": "語言",
           "placeholder": "選擇語言",
           "helper": "選擇您偏好的語言。瀏覽器預設將跟隨系統語言。"
+        },
+        "discordCounter": {
+          "label": "顯示 Discord 計數器",
+          "helper": "在導覽列中顯示 Discord 線上使用者數。停用時不會向 Discord 發送請求。"
         }
       },
       "taskExecution": {
