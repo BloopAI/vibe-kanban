@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { type Session, type ToolStatus } from 'shared/types';
+import {
+  type Session,
+  type ToolStatus,
+  type BaseCodingAgent,
+} from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
@@ -137,12 +141,33 @@ export function SessionChatBoxContainer({
   // Branch status for edit retry
   const { data: branchStatus } = useBranchStatus(attemptId);
 
-  // User profiles and latest executor from processes
-  const { profiles } = useUserSystem();
-  const latestProfileId = useMemo(
-    () => getLatestProfileFromProcesses(processes),
-    [processes]
-  );
+  // User profiles, config preference, and latest executor from processes
+  const { profiles, config } = useUserSystem();
+
+  // Get last used executor from the most recent session in this workspace
+  const lastSessionExecutor = useMemo(() => {
+    if (!sessions?.length) return null;
+    // Sessions are sorted by created_at, last one is most recent
+    const lastSession = sessions[sessions.length - 1];
+    return lastSession?.executor ?? null;
+  }, [sessions]);
+
+  // Compute latestProfileId: from processes, or fall back to last session's executor
+  const latestProfileId = useMemo(() => {
+    // If we have processes (existing session), use them
+    const fromProcesses = getLatestProfileFromProcesses(processes);
+    if (fromProcesses) return fromProcesses;
+
+    // Fall back to last session's executor (useful for new session mode)
+    if (lastSessionExecutor) {
+      return {
+        executor: lastSessionExecutor as BaseCodingAgent,
+        variant: null,
+      };
+    }
+
+    return null;
+  }, [processes, lastSessionExecutor]);
 
   // Message editor state
   const {
@@ -193,6 +218,7 @@ export function SessionChatBoxContainer({
     latestProfileId,
     isNewSessionMode,
     scratchVariant: scratchData?.variant,
+    configExecutorProfile: config?.executor_profile,
   });
 
   // Wrap variant change to also save to scratch
