@@ -13,6 +13,8 @@ interface UseExecutorSelectionOptions {
   latestProfileId: ExecutorProfileId | null;
   isNewSessionMode: boolean;
   scratchVariant: string | null | undefined;
+  /** User's saved executor preference from config */
+  configExecutorProfile?: ExecutorProfileId | null;
 }
 
 interface UseExecutorSelectionResult {
@@ -32,7 +34,7 @@ interface UseExecutorSelectionResult {
 
 /**
  * Hook to manage executor and variant selection with priority:
- * - Executor: user selection > latest from processes > first available
+ * - Executor: user selection > latest from processes > config preference > first available
  * - Variant: user selection > scratch > process
  */
 export function useExecutorSelection({
@@ -40,6 +42,7 @@ export function useExecutorSelection({
   latestProfileId,
   isNewSessionMode,
   scratchVariant,
+  configExecutorProfile,
 }: UseExecutorSelectionOptions): UseExecutorSelectionResult {
   const [selectedExecutor, setSelectedExecutor] =
     useState<BaseCodingAgent | null>(null);
@@ -53,9 +56,15 @@ export function useExecutorSelection({
     () =>
       selectedExecutor ??
       latestProfileId?.executor ??
+      configExecutorProfile?.executor ??
       executorOptions[0] ??
       null,
-    [selectedExecutor, latestProfileId?.executor, executorOptions]
+    [
+      selectedExecutor,
+      latestProfileId?.executor,
+      configExecutorProfile?.executor,
+      executorOptions,
+    ]
   );
 
   const variantOptions = useMemo(

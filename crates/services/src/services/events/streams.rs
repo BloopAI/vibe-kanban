@@ -2,7 +2,6 @@ use db::models::{
     execution_process::ExecutionProcess,
     project::Project,
     scratch::Scratch,
-    session::Session,
     task::{Task, TaskWithAttemptStatus},
     workspace::Workspace,
 };
@@ -227,28 +226,17 @@ impl EventService {
         Ok(combined_stream)
     }
 
-    /// Stream execution processes for a specific workspace with initial snapshot (raw LogMsg format for WebSocket)
-    pub async fn stream_execution_processes_for_workspace_raw(
+    /// Stream execution processes for a specific session with initial snapshot (raw LogMsg format for WebSocket)
+    pub async fn stream_execution_processes_for_session_raw(
         &self,
-        workspace_id: Uuid,
+        session_id: Uuid,
         show_soft_deleted: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        // Get all sessions for this workspace
-        let sessions = Session::find_by_workspace_id(&self.db.pool, workspace_id).await?;
-
-        // Collect all execution processes across all sessions
-        let mut all_processes = Vec::new();
-        for session in &sessions {
-            let processes =
-                ExecutionProcess::find_by_session_id(&self.db.pool, session.id, show_soft_deleted)
-                    .await?;
-            all_processes.extend(processes);
-        }
-        let processes = all_processes;
-
-        // Collect session IDs for filtering
-        let session_ids: Vec<Uuid> = sessions.iter().map(|s| s.id).collect();
+        // Get execution processes for this session
+        let processes =
+            ExecutionProcess::find_by_session_id(&self.db.pool, session_id, show_soft_deleted)
+                .await?;
 
         // Convert processes array to object keyed by process ID
         let processes_map: serde_json::Map<String, serde_json::Value> = processes
@@ -271,11 +259,10 @@ impl EventService {
         // Get filtered event stream
         let filtered_stream =
             BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
-                let session_ids = session_ids.clone();
                 async move {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
-                            // Filter events based on session_id (must belong to one of the workspace's sessions)
+                            // Filter events based on session_id
                             if let Some(patch_op) = patch.0.first() {
                                 // Check if this is a modern execution process patch
                                 if patch_op.path().starts_with("/execution_processes/") {
@@ -286,7 +273,7 @@ impl EventService {
                                                 serde_json::from_value::<ExecutionProcess>(
                                                     op.value.clone(),
                                                 )
-                                                && session_ids.contains(&process.session_id)
+                                                && process.session_id == session_id
                                             {
                                                 if !show_soft_deleted && process.dropped {
                                                     let remove_patch =
@@ -304,7 +291,7 @@ impl EventService {
                                                 serde_json::from_value::<ExecutionProcess>(
                                                     op.value.clone(),
                                                 )
-                                                && session_ids.contains(&process.session_id)
+                                                && process.session_id == session_id
                                             {
                                                 if !show_soft_deleted && process.dropped {
                                                     let remove_patch =
@@ -331,7 +318,7 @@ impl EventService {
                                 {
                                     match &event_patch.value.record {
                                         RecordTypes::ExecutionProcess(process) => {
-                                            if session_ids.contains(&process.session_id) {
+                                            if process.session_id == session_id {
                                                 if !show_soft_deleted && process.dropped {
                                                     let remove_patch =
                                                         execution_process_patch::remove(process.id);
@@ -346,7 +333,7 @@ impl EventService {
                                             session_id: Some(deleted_session_id),
                                             ..
                                         } => {
-                                            if session_ids.contains(deleted_session_id) {
+                                            if *deleted_session_id == session_id {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
                                         }
