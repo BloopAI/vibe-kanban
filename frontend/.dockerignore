@@ -1,0 +1,22 @@
+# Frontend Docker build context
+# Only include files needed for nginx deployment
+
+# Exclude source files (not needed - we copy pre-built dist/)
+src/
+public/
+*.ts
+*.tsx
+tsconfig*.json
+vite.config.ts
+index.html
+
+# Exclude node_modules
+node_modules/
+
+# Exclude dev files
+.env*
+*.log
+
+# ALLOW dist/ and nginx.conf (needed for deployment)
+!dist/
+!nginx.conf
