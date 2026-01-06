@@ -6,7 +6,7 @@ import { SectionHeader } from '../primitives/SectionHeader';
 
 interface FileTreeProps {
   nodes: TreeNode[];
-  expandedPaths: Set<string>;
+  collapsedPaths: Set<string>;
   onToggleExpand: (path: string) => void;
   selectedPath?: string | null;
   onSelectFile?: (path: string) => void;
@@ -20,7 +20,7 @@ interface FileTreeProps {
 
 export function FileTree({
   nodes,
-  expandedPaths,
+  collapsedPaths,
   onToggleExpand,
   selectedPath,
   onSelectFile,
@@ -42,7 +42,7 @@ export function FileTree({
           }
           node={node}
           depth={depth}
-          isExpanded={expandedPaths.has(node.path)}
+          isExpanded={!collapsedPaths.has(node.path)}
           isSelected={selectedPath === node.path}
           onToggle={
             node.type === 'folder' ? () => onToggleExpand(node.path) : undefined
@@ -55,7 +55,7 @@ export function FileTree({
         />
         {node.type === 'folder' &&
           node.children &&
-          expandedPaths.has(node.path) &&
+          !collapsedPaths.has(node.path) &&
           renderNodes(node.children, depth + 1)}
       </div>
     ));

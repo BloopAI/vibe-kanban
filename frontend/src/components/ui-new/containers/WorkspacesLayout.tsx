@@ -624,6 +624,8 @@ export function WorkspacesLayout() {
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
             <FileTreeContainer
+              key={selectedWorkspace?.id}
+              workspaceId={selectedWorkspace?.id}
               diffs={realDiffs}
               selectedFilePath={fileInView}
               onSelectFile={(path) => {
