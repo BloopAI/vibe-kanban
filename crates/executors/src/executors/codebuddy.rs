@@ -34,14 +34,12 @@ pub struct CodeBuddy {
 
 impl CodeBuddy {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("codebuddy");
-        
-        builder = builder.extend_params(["--acp"]);
-        
+        let mut builder = CommandBuilder::new("npx -y @tencent-ai/codebuddy-code");
+
         if self.yolo.unwrap_or(false) {
-            builder = builder.extend_params(["--yolo"]);
+            builder = builder.extend_params(["-y"]);
         }
-        
+        builder = builder.extend_params(["--acp"]);
         apply_overrides(builder, &self.cmd)
     }
 }
@@ -122,7 +120,7 @@ impl StandardCodingAgentExecutor for CodeBuddy {
             .unwrap_or(false);
 
         let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codebuddy").join("installation_id").exists())
+            .map(|home| home.join(".codebuddy").join("settings.json").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {

@@ -101,6 +101,9 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    #[serde(rename = "CODEBUDDY", alias = "CODE_BUDDY")]
+    #[strum_discriminants(strum(serialize = "CODEBUDDY"))]
+    #[strum_discriminants(serde(rename = "CODEBUDDY", alias = "CODE_BUDDY"))]
     CodeBuddy,
 }
 
