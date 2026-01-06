@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { tasksApi, attemptsApi } from '@/lib/api';
 import { taskKeys } from './useTask';
 import { taskRelationshipsKeys } from './useTaskRelationships';
+import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { CreateAndStartTaskRequest } from 'shared/types';
 
 export function useCreateWorkspace() {
@@ -18,6 +19,9 @@ export function useCreateWorkspace() {
     onSuccess: ({ task, workspaceId }) => {
       // Invalidate task queries
       queryClient.invalidateQueries({ queryKey: taskKeys.all });
+
+      // Invalidate workspace summaries so they refresh with the new workspace included
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
 
       // Invalidate parent's relationships cache if this is a subtask
       if (task.parent_workspace_id) {

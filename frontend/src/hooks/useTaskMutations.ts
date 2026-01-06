@@ -3,6 +3,7 @@ import { useNavigateWithSearch } from '@/hooks';
 import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
+import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -86,6 +87,8 @@ export function useTaskMutations(projectId?: string) {
       queryClient.removeQueries({ queryKey: ['task', taskId], exact: true });
       // Invalidate all task relationships caches (safe approach since we don't know parent)
       queryClient.invalidateQueries({ queryKey: taskRelationshipsKeys.all });
+      // Invalidate workspace summaries so they refresh with the deleted workspace removed
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
     },
     onError: (err) => {
       console.error('Failed to delete task:', err);
