@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi, tagsApi } from '@/lib/api';
 import type { CreateFollowUpAttempt } from 'shared/types';
+import { expandTagCommands } from '@/lib/tagExpansion';
 
 type Args = {
   sessionId?: string;
@@ -12,6 +13,7 @@ type Args = {
   clearComments: () => void;
   clearClickedElements?: () => void;
   onAfterSendCleanup: () => void;
+  expandTags?: boolean; // Enable tag command expansion
 };
 
 export function useFollowUpSend({
@@ -24,18 +26,31 @@ export function useFollowUpSend({
   clearComments,
   clearClickedElements,
   onAfterSendCleanup,
+  expandTags = false,
 }: Args) {
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
 
   const onSendFollowUp = useCallback(async () => {
     if (!sessionId) return;
-    const extraMessage = message.trim();
+    
+    // Expand tag commands if enabled
+    let processedMessage = message.trim();
+    if (expandTags && processedMessage) {
+      try {
+        const tags = await tagsApi.list();
+        processedMessage = await expandTagCommands(processedMessage, tags);
+      } catch (error) {
+        console.error('Failed to expand tag commands:', error);
+        // Continue with unexpanded message if expansion fails
+      }
+    }
+    
     const finalPrompt = [
       conflictMarkdown,
       clickedMarkdown?.trim(),
       reviewMarkdown?.trim(),
-      extraMessage,
+      processedMessage,
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -73,6 +88,7 @@ export function useFollowUpSend({
     clearComments,
     clearClickedElements,
     onAfterSendCleanup,
+    expandTags,
   ]);
 
   return {

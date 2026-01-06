@@ -52,12 +52,13 @@ import type {
   ExecutorAction,
   ExecutorProfileId,
 } from 'shared/types';
+import { expandTagCommands } from '@/lib/tagExpansion';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useQueueStatus } from '@/hooks/useQueueStatus';
-import { imagesApi, attemptsApi } from '@/lib/api';
+import { imagesApi, attemptsApi, tagsApi } from '@/lib/api';
 import { GitHubCommentsDialog } from '@/components/dialogs/tasks/GitHubCommentsDialog';
 import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/github-comment-node';
 import type { Session } from 'shared/types';
@@ -315,7 +316,7 @@ export function TaskFollowUpSection({
     });
   }, [entries]);
 
-  // Send follow-up action
+  // Send follow-up action with tag expansion
   const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
     useFollowUpSend({
       sessionId,
@@ -331,6 +332,7 @@ export function TaskFollowUpSection({
         setLocalMessage(''); // Clear local state immediately
         // Scratch deletion is handled by the backend when the queued message is consumed
       },
+      expandTags: true, // Enable tag expansion for follow-up messages
     });
 
   // Separate logic for when textarea should be disabled vs when send button should be disabled
@@ -408,12 +410,16 @@ export function TaskFollowUpSection({
     cancelDebouncedSave();
     await saveToScratch(localMessage, selectedVariant);
 
+    // Expand tag commands before combining
+    const tags = await tagsApi.list();
+    const expandedMessage = await expandTagCommands(localMessage, tags);
+    
     // Combine all the content that would be sent (same as follow-up send)
     const parts = [
       conflictResolutionInstructions,
       clickedMarkdown,
       reviewMarkdown,
-      localMessage,
+      expandedMessage,
     ].filter(Boolean);
     const combinedMessage = parts.join('\n\n');
     await queueMessage(combinedMessage, selectedVariant);

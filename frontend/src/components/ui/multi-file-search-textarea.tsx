@@ -1,13 +1,9 @@
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { projectsApi } from '@/lib/api';
+import { searchTagsAndFiles, type SearchResultItem } from '@/lib/searchTagsAndFiles';
 
-import type { SearchResult } from 'shared/types';
-
-interface FileSearchResult extends SearchResult {
-  name: string;
-}
+type SearchItem = SearchResultItem;
 
 interface MultiFileSearchTextareaProps {
   value: string;
@@ -19,6 +15,7 @@ interface MultiFileSearchTextareaProps {
   projectId: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
+  enableTagCompletion?: boolean;
 }
 
 export function MultiFileSearchTextarea({
@@ -31,9 +28,10 @@ export function MultiFileSearchTextarea({
   projectId,
   onKeyDown,
   maxRows = 10,
+  enableTagCompletion = true,
 }: MultiFileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [currentTokenStart, setCurrentTokenStart] = useState(-1);
@@ -43,7 +41,7 @@ export function MultiFileSearchTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const searchCacheRef = useRef<Map<string, FileSearchResult[]>>(new Map());
+  const searchCacheRef = useRef<Map<string, SearchItem[]>>(new Map());
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Search for files when query changes
@@ -63,7 +61,7 @@ export function MultiFileSearchTextarea({
       return;
     }
 
-    const searchFiles = async () => {
+    const searchItems = async () => {
       setIsLoading(true);
 
       // Cancel previous request
@@ -75,32 +73,20 @@ export function MultiFileSearchTextarea({
       abortControllerRef.current = abortController;
 
       try {
-        const result = await projectsApi.searchFiles(
-          projectId,
-          searchQuery,
-          'settings',
-          {
-            signal: abortController.signal,
-          }
-        );
+        const results = await searchTagsAndFiles(searchQuery, projectId);
 
         // Only process if this request wasn't aborted
         if (!abortController.signal.aborted) {
-          const fileResults: FileSearchResult[] = result.map((item) => ({
-            ...item,
-            name: item.path.split('/').pop() || item.path,
-          }));
-
           // Cache the results
-          searchCacheRef.current.set(searchQuery, fileResults);
+          searchCacheRef.current.set(searchQuery, results);
 
-          setSearchResults(fileResults);
-          setShowDropdown(fileResults.length > 0);
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
           setSelectedIndex(-1);
         }
       } catch (error) {
         if (!abortController.signal.aborted) {
-          console.error('Failed to search files:', error);
+          console.error('Failed to search items:', error);
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -109,7 +95,7 @@ export function MultiFileSearchTextarea({
       }
     };
 
-    const debounceTimer = setTimeout(searchFiles, 350);
+    const debounceTimer = setTimeout(searchItems, 350);
     return () => {
       clearTimeout(debounceTimer);
       if (abortControllerRef.current) {
@@ -121,6 +107,18 @@ export function MultiFileSearchTextarea({
   // Find current token boundaries based on cursor position
   const findCurrentToken = (text: string, cursorPosition: number) => {
     const textBefore = text.slice(0, cursorPosition);
+
+    // Check for tag/command triggers (@ or /)
+    const tagMatch = textBefore.match(/[@/]([a-zA-Z0-9_-]*)$/);
+    if (tagMatch && enableTagCompletion) {
+      return {
+        token: tagMatch[1],
+        start: cursorPosition - tagMatch[0].length,
+        end: cursorPosition,
+        type: 'tag-command' as const,
+      };
+    }
+
     const textAfter = text.slice(cursorPosition);
 
     // Find the last separator (comma or newline) before cursor
@@ -148,6 +146,7 @@ export function MultiFileSearchTextarea({
       token,
       start: tokenStart,
       end: tokenEnd,
+      type: 'file' as const,
     };
   };
 
@@ -158,13 +157,16 @@ export function MultiFileSearchTextarea({
 
     onChange(newValue);
 
-    const { token, start, end } = findCurrentToken(newValue, cursorPosition);
+    const { token, start, end, type } = findCurrentToken(newValue, cursorPosition);
 
     setCurrentTokenStart(start);
     setCurrentTokenEnd(end);
 
-    // Show search results if token has 2+ characters
-    if (token.length >= 2) {
+    // For tag/command triggers, show search results immediately
+    if (type === 'tag-command' && enableTagCompletion) {
+      setSearchQuery(token);
+    } else if (token.length >= 2) {
+      // For file search, show results only if token has 2+ characters
       setSearchQuery(token);
     } else {
       setSearchQuery('');
@@ -193,7 +195,7 @@ export function MultiFileSearchTextarea({
         case 'Tab':
           if (selectedIndex >= 0) {
             e.preventDefault();
-            selectFile(searchResults[selectedIndex]);
+            selectItem(searchResults[selectedIndex]);
             return;
           }
           break;
@@ -209,27 +211,35 @@ export function MultiFileSearchTextarea({
     onKeyDown?.(e);
   };
 
-  // Select a file and insert it into the text
-  const selectFile = (file: FileSearchResult) => {
+  // Select an item (tag or file) and insert it into the text
+  const selectItem = (item: SearchItem) => {
     if (currentTokenStart === -1) return;
 
     const before = value.slice(0, currentTokenStart);
     const after = value.slice(currentTokenEnd);
 
-    // Smart comma handling - add ", " if not at end and next char isn't comma/newline
-    let insertion = file.path;
-    const trimmedAfter = after.trimStart();
-    const needsComma =
-      trimmedAfter.length > 0 &&
-      !trimmedAfter.startsWith(',') &&
-      !trimmedAfter.startsWith('\n');
+    // Get the trigger character (@ or /) from the token start
+    const trigger = before.slice(-1);
+    
+    let insertion: string;
+    if (item.type === 'tag') {
+      // For tags, include the @ or / prefix
+      insertion = `${trigger}${item.tag!.tag_name} `;
+    } else {
+      // For files, smart comma handling
+      insertion = item.file!.path;
+      const trimmedAfter = after.trimStart();
+      const needsComma =
+        trimmedAfter.length > 0 &&
+        !trimmedAfter.startsWith(',') &&
+        !trimmedAfter.startsWith('\n');
 
-    if (needsComma || trimmedAfter.length === 0) {
-      insertion += ', ';
+      if (needsComma || trimmedAfter.length === 0) {
+        insertion += ', ';
+      }
     }
 
-    const newValue =
-      before.trimEnd() + (before.trimEnd() ? ' ' : '') + insertion + after;
+    const newValue = before + insertion + after;
     onChange(newValue);
 
     setShowDropdown(false);
@@ -238,8 +248,7 @@ export function MultiFileSearchTextarea({
     // Focus back to textarea and position cursor after insertion
     setTimeout(() => {
       if (textareaRef.current) {
-        const newCursorPos =
-          currentTokenStart + (before.trimEnd() ? 1 : 0) + insertion.length;
+        const newCursorPos = currentTokenStart + insertion.length;
         textareaRef.current.focus();
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
@@ -356,9 +365,9 @@ export function MultiFileSearchTextarea({
               </div>
             ) : (
               <div className="py-1">
-                {searchResults.map((file, index) => (
+                {searchResults.map((item, index) => (
                   <div
-                    key={file.path}
+                    key={item.type === 'tag' ? `tag-${item.tag!.id}` : `file-${item.file!.path}`}
                     ref={(el) => {
                       if (el) itemRefs.current.set(index, el);
                       else itemRefs.current.delete(index);
@@ -368,12 +377,28 @@ export function MultiFileSearchTextarea({
                         ? 'bg-blue-50 text-blue-900'
                         : 'hover:bg-muted'
                     }`}
-                    onClick={() => selectFile(file)}
+                    onClick={() => selectItem(item)}
                   >
-                    <div className="font-medium truncate">{file.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {file.path}
-                    </div>
+                    {item.type === 'tag' ? (
+                      <div>
+                        <div className="font-medium flex items-center gap-2">
+                          <span className="text-muted-foreground">@</span>
+                          {item.tag!.tag_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {item.tag!.content.slice(0, 60)}...
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-medium truncate">
+                          {item.file!.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {item.file!.path}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
