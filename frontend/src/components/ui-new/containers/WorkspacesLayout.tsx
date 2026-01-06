@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Allotment, LayoutPriority } from 'allotment';
+import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -347,6 +347,17 @@ export function WorkspacesLayout() {
   const [isChangesMode, setIsChangesMode] = useState(false);
   const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
 
+  // Ref to Allotment for programmatic control
+  const allotmentRef = useRef<AllotmentHandle>(null);
+
+  // Reset Allotment sizes when changes panel becomes visible
+  // This re-applies preferredSize percentages based on current window size
+  useEffect(() => {
+    if (isChangesMode && allotmentRef.current) {
+      allotmentRef.current.reset();
+    }
+  }, [isChangesMode]);
+
   // Reset changes mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
@@ -405,8 +416,18 @@ export function WorkspacesLayout() {
     (sizes: number[]) => {
       // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes panel, sizes[3] = git panel
       if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
-      if (sizes[2] !== undefined) setChangesPanelWidth(sizes[2]);
       if (sizes[3] !== undefined) setGitPanelWidth(sizes[3]);
+
+      // Store changes panel as percentage of TOTAL container width
+      // (Allotment percentages are relative to the entire container, not just main+changes)
+      const changesWidth = sizes[2];
+      if (changesWidth !== undefined) {
+        const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
+        if (total > 0) {
+          const percent = Math.round((changesWidth / total) * 100);
+          setChangesPanelWidth(`${percent}%`);
+        }
+      }
     },
     [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
   );
@@ -656,7 +677,11 @@ export function WorkspacesLayout() {
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
     const content = (
-      <Allotment className="flex-1 min-h-0" onDragEnd={handlePaneResize}>
+      <Allotment
+        ref={allotmentRef}
+        className="flex-1 min-h-0"
+        onDragEnd={handlePaneResize}
+      >
         <Allotment.Pane
           minSize={300}
           preferredSize={sidebarWidth}
