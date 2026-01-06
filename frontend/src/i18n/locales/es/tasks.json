@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "Agregar tarea"
+    "addTask": "Agregar tarea",
+    "collapseAll": "Colapsar todas",
+    "expandAll": "Expandir todas"
   },
+  "collapse": "Colapsar",
+  "expand": "Expandir",
   "filters": {
     "sharedToggleAria": "Alternar tareas compartidas",
     "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"

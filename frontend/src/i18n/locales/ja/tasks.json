@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "タスクを追加"
+    "addTask": "タスクを追加",
+    "collapseAll": "すべて折りたたむ",
+    "expandAll": "すべて展開"
   },
+  "collapse": "折りたたむ",
+  "expand": "展開",
   "filters": {
     "sharedToggleAria": "共有タスクを切り替える",
     "sharedToggleTooltip": "共有コンテンツを表示/非表示"
