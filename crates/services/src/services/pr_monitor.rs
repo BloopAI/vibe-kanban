@@ -16,21 +16,21 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    github::{GitHubService, GitHubServiceError},
+    git_host::{self, GitHostError},
     share::SharePublisher,
 };
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
     #[error(transparent)]
-    GitHubServiceError(#[from] GitHubServiceError),
+    GitHostError(#[from] GitHostError),
     #[error(transparent)]
     WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
 }
 
-/// Service to monitor GitHub PRs and update task status when they are merged
+/// Service to monitor PRs and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
     poll_interval: Duration,
@@ -95,11 +95,11 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        // GitHubService now uses gh CLI, no token needed
-        let github_service = GitHubService::new()?;
+        // Auto-detect provider from PR URL and create appropriate service
+        let git_host_service = git_host::create_service_for_pr_url(&pr_merge.pr_info.url)?;
 
-        let pr_status = github_service
-            .update_pr_status(&pr_merge.pr_info.url)
+        let pr_status = git_host_service
+            .get_pr_status(&pr_merge.pr_info.url)
             .await?;
 
         debug!(
@@ -109,7 +109,7 @@ impl PrMonitorService {
 
         // Update the PR status in the database
         if !matches!(&pr_status.status, MergeStatus::Open) {
-            // Update merge status with the latest information from GitHub
+            // Update merge status with the latest information from git host
             Merge::update_status(
                 &self.db.pool,
                 pr_merge.id,

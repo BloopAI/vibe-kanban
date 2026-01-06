@@ -1,8 +1,7 @@
 //! Minimal helpers around the GitHub CLI (`gh`).
 //!
-//! This module deliberately mirrors the ergonomics of `git_cli.rs` so we can
-//! plug in the GitHub CLI for operations the REST client does not cover well.
-//! Future work will flesh out richer error handling and testing.
+//! This module provides low-level access to the GitHub CLI for operations
+//! the REST client does not cover well.
 
 use std::{
     ffi::{OsStr, OsString},
@@ -13,53 +12,15 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::Value;
 use tempfile::NamedTempFile;
 use thiserror::Error;
-use ts_rs::TS;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::github::{CreatePrRequest, GitHubRepoInfo};
-
-/// Author information for a PR comment
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PrCommentAuthor {
-    pub login: String,
-}
-
-/// A single comment on a GitHub PR
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct PrComment {
-    pub id: String,
-    pub author: PrCommentAuthor,
-    pub author_association: String,
-    pub body: String,
-    pub created_at: DateTime<Utc>,
-    pub url: String,
-}
-
-/// User information for a review comment (from API response)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct ReviewCommentUser {
-    pub login: String,
-}
-
-/// An inline review comment on a GitHub PR (from gh api)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PrReviewComment {
-    pub id: i64,
-    pub user: ReviewCommentUser,
-    pub body: String,
-    pub created_at: DateTime<Utc>,
-    pub html_url: String,
-    pub path: String,
-    pub line: Option<i64>,
-    pub side: Option<String>,
-    pub diff_hunk: String,
-    pub author_association: String,
-}
+use crate::services::git_host::types::{
+    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, RepoInfo, ReviewCommentUser,
+};
 
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
@@ -132,7 +93,8 @@ impl GhCli {
         Err(GhCliError::CommandFailed(stderr))
     }
 
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
+    /// Get repository info (owner and name) from a local repository path.
+    pub fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, GhCliError> {
         let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
 
         #[derive(Deserialize)]
@@ -149,7 +111,7 @@ impl GhCli {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
-        Ok(GitHubRepoInfo {
+        Ok(RepoInfo::GitHub {
             owner: resp.owner.login,
             repo_name: resp.name,
         })
@@ -159,7 +121,8 @@ impl GhCli {
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
-        repo_info: &GitHubRepoInfo,
+        owner: &str,
+        repo_name: &str,
     ) -> Result<PullRequestInfo, GhCliError> {
         // Write body to temp file to avoid shell escaping and length issues
         let body = request.body.as_deref().unwrap_or("");
@@ -173,10 +136,7 @@ impl GhCli {
         args.push(OsString::from("pr"));
         args.push(OsString::from("create"));
         args.push(OsString::from("--repo"));
-        args.push(OsString::from(format!(
-            "{}/{}",
-            repo_info.owner, repo_info.repo_name
-        )));
+        args.push(OsString::from(format!("{}/{}", owner, repo_name)));
         args.push(OsString::from("--head"));
         args.push(OsString::from(&request.head_branch));
         args.push(OsString::from("--base"));
@@ -374,21 +334,126 @@ impl GhCli {
         comments_arr
             .iter()
             .map(|item| {
-                serde_json::from_value(item.clone()).map_err(|err| {
-                    GhCliError::UnexpectedOutput(format!(
-                        "Failed to parse PR comment: {err}; item: {item:#?}"
-                    ))
+                // Parse manually to handle the nested author field
+                let id = item
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        GhCliError::UnexpectedOutput(format!("Comment missing id: {item:#?}"))
+                    })?
+                    .to_string();
+                let author_login = item
+                    .get("author")
+                    .and_then(|a| a.get("login"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                let author_association = item
+                    .get("authorAssociation")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let body = item
+                    .get("body")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let created_at = item
+                    .get("createdAt")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(Utc::now);
+                let url = item
+                    .get("url")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                Ok(PrComment {
+                    id,
+                    author: PrCommentAuthor {
+                        login: author_login,
+                    },
+                    author_association,
+                    body,
+                    created_at,
+                    url,
                 })
             })
             .collect()
     }
 
     fn parse_pr_review_comments(raw: &str) -> Result<Vec<PrReviewComment>, GhCliError> {
-        serde_json::from_str(raw.trim()).map_err(|err| {
+        let items: Vec<Value> = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse review comments API response: {err}; raw: {raw}"
             ))
-        })
+        })?;
+
+        items
+            .into_iter()
+            .map(|item| {
+                let id = item.get("id").and_then(|v| v.as_i64()).ok_or_else(|| {
+                    GhCliError::UnexpectedOutput(format!("Review comment missing id: {item:#?}"))
+                })?;
+                let user_login = item
+                    .get("user")
+                    .and_then(|u| u.get("login"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                let body = item
+                    .get("body")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let created_at = item
+                    .get("created_at")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .unwrap_or_else(Utc::now);
+                let html_url = item
+                    .get("html_url")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let path = item
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let line = item.get("line").and_then(|v| v.as_i64());
+                let side = item
+                    .get("side")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let diff_hunk = item
+                    .get("diff_hunk")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let author_association = item
+                    .get("author_association")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                Ok(PrReviewComment {
+                    id,
+                    user: ReviewCommentUser { login: user_login },
+                    body,
+                    created_at,
+                    html_url,
+                    path,
+                    line,
+                    side,
+                    diff_hunk,
+                    author_association,
+                })
+            })
+            .collect()
     }
 
     fn extract_pr_info(value: &Value) -> Option<PullRequestInfo> {

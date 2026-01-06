@@ -16,7 +16,7 @@ use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     git::GitServiceError,
-    github::GitHubServiceError,
+    git_host::GitHostError,
     image::ImageError,
     project::ProjectServiceError,
     remote_client::RemoteClientError,
@@ -45,7 +45,7 @@ pub enum ApiError {
     #[error(transparent)]
     GitService(#[from] GitServiceError),
     #[error(transparent)]
-    GitHubService(#[from] GitHubServiceError),
+    GitHost(#[from] GitHostError),
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
@@ -120,7 +120,7 @@ impl IntoResponse for ApiError {
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
-            ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
+            ApiError::GitHost(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHostError"),
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
@@ -302,7 +302,7 @@ impl From<ShareError> for ApiError {
                 "GitHub token is required to fetch repository metadata for sharing".to_string(),
             ),
             ShareError::Git(err) => ApiError::GitService(err),
-            ShareError::GitHub(err) => ApiError::GitHubService(err),
+            ShareError::GitHost(err) => ApiError::GitHost(err),
             ShareError::MissingAuth => ApiError::Unauthorized,
             ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
             ShareError::InvalidOrganizationId => {

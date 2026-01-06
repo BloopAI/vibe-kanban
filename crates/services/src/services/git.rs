@@ -1631,7 +1631,7 @@ impl GitService {
         })
     }
 
-    pub fn push_to_github(
+    pub fn push_to_remote(
         &self,
         worktree_path: &Path,
         branch_name: &str,
@@ -1649,7 +1649,7 @@ impl GitService {
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
         let git_cli = GitCli::new();
         if let Err(e) = git_cli.push(worktree_path, remote_url, branch_name, force) {
-            tracing::error!("Push to GitHub failed: {}", e);
+            tracing::error!("Push to remote failed: {}", e);
             return Err(e.into());
         }
 
