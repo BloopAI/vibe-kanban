@@ -92,9 +92,16 @@ RUN addgroup -g 1001 -S appgroup && \
 # Copy binary from builder
 COPY --from=builder /app/target/release/server /usr/local/bin/server
 
-# Create repos directory and set permissions
-RUN mkdir -p /repos && \
-    chown -R appuser:appgroup /repos
+# Copy seed database (will be copied to volume on first run)
+COPY --from=builder /app/dev_assets/db.sqlite /seed/db.sqlite
+
+# Copy entrypoint script
+COPY --from=builder /app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create repos and data directories
+RUN mkdir -p /repos /data && \
+    chown -R appuser:appgroup /repos /data /seed
 
 # Switch to non-root user
 USER appuser
@@ -113,4 +120,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Run the application
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["server"]
+CMD ["docker-entrypoint.sh"]
