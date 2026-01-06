@@ -423,8 +423,14 @@ export function WorkspacesLayout() {
   const handleToggleChangesMode = useCallback(() => {
     setIsChangesMode((prev) => {
       const newChangesMode = !prev;
-      // Auto-hide sidebar when entering changes mode, auto-show when exiting
-      setIsSidebarVisible(!newChangesMode);
+      // Auto-hide sidebar when entering changes mode (unless screen is wide enough)
+      // Auto-show when exiting changes mode
+      const isWideScreen = window.innerWidth > 2048;
+      if (newChangesMode && isWideScreen) {
+        // Keep sidebar visible on wide screens
+      } else {
+        setIsSidebarVisible(!newChangesMode);
+      }
       return newChangesMode;
     });
   }, []);
@@ -432,7 +438,11 @@ export function WorkspacesLayout() {
   // Navigate to changes panel and scroll to a specific file
   const handleViewFileInChanges = useCallback((filePath: string) => {
     setIsChangesMode(true);
-    setIsSidebarVisible(false);
+    // Only auto-hide sidebar on narrower screens
+    const isWideScreen = window.innerWidth > 2048;
+    if (!isWideScreen) {
+      setIsSidebarVisible(false);
+    }
     setSelectedFilePath(filePath);
   }, []);
 
