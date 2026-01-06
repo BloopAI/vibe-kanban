@@ -707,6 +707,7 @@ export function WorkspacesLayout() {
                 diffPaths={diffPaths}
               >
                 <ExecutionProcessesProvider
+                  key={`${selectedWorkspace?.id}-${selectedSessionId}`}
                   attemptId={selectedWorkspace?.id}
                   sessionId={selectedSessionId}
                 >
