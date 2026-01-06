@@ -68,7 +68,15 @@ export default defineConfig({
         target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
         changeOrigin: true,
         ws: true,
-      }
+        configure: (proxy) => {
+          // silencia errores de conexión esperados durante reinicios del backend
+          proxy.on("error", (err) => {
+            if ((err as NodeJS.ErrnoException).code === "ECONNRESET") return;
+            if ((err as NodeJS.ErrnoException).code === "ECONNREFUSED") return;
+            console.error("[vite proxy]", err.message);
+          });
+        },
+      },
     },
     fs: {
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
