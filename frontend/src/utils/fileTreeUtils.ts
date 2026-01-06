@@ -186,12 +186,34 @@ export function getAllFolderPaths(nodes: TreeNode[]): string[] {
 }
 
 /**
- * Sort diffs alphabetically by path to match FileTree ordering
+ * Sort diffs to match FileTree ordering: folders before files at each level,
+ * then alphabetically within each group
  */
 export function sortDiffs(diffs: Diff[]): Diff[] {
   return [...diffs].sort((a, b) => {
     const pathA = a.newPath || a.oldPath || '';
     const pathB = b.newPath || b.oldPath || '';
-    return pathA.localeCompare(pathB);
+
+    const partsA = pathA.split('/');
+    const partsB = pathB.split('/');
+
+    const minLength = Math.min(partsA.length, partsB.length);
+
+    for (let i = 0; i < minLength; i++) {
+      const isLastA = i === partsA.length - 1;
+      const isLastB = i === partsB.length - 1;
+
+      // If one is a file (last segment) and other is a folder (not last), folder comes first
+      if (isLastA !== isLastB) {
+        return isLastA ? 1 : -1;
+      }
+
+      // Same type at this level, compare alphabetically
+      const cmp = partsA[i].localeCompare(partsB[i]);
+      if (cmp !== 0) return cmp;
+    }
+
+    // Shorter path (folder) comes before longer path (nested file)
+    return partsA.length - partsB.length;
   });
 }
