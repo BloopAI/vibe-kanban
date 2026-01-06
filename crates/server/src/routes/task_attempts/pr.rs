@@ -287,7 +287,7 @@ pub async fn create_github_pr(
         draft: request.draft,
     };
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo_path)?;
+    let repo_info = github_service.get_repo_info(&repo_path).await?;
     match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
@@ -388,7 +388,7 @@ pub async fn attach_existing_pr(
     }
 
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path)?;
+    let repo_info = github_service.get_repo_info(&repo.path).await?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -487,7 +487,7 @@ pub async fn get_pr_comments(
     };
 
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path)?;
+    let repo_info = github_service.get_repo_info(&repo.path).await?;
 
     // Fetch comments from GitHub
     match github_service

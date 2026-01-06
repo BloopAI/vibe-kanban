@@ -129,8 +129,13 @@ impl GitHubService {
         })
     }
 
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHubServiceError> {
-        self.gh_cli.get_repo_info(repo_path).map_err(Into::into)
+    pub async fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHubServiceError> {
+        let cli = self.gh_cli.clone();
+        let path = repo_path.to_path_buf();
+        task::spawn_blocking(move || cli.get_repo_info(&path))
+            .await
+            .map_err(|err| GitHubServiceError::Repository(format!("Failed to get repo info: {err}")))?
+            .map_err(Into::into)
     }
 
     pub async fn check_token(&self) -> Result<(), GitHubServiceError> {
