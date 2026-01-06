@@ -44,6 +44,7 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "565488c15b8969694ec52cda3d6fcc99655a972f" }
 sha2 = "0.10"
 derivative = "2.2.0"
+reqwest = { workspace = true, features = ["stream"] }
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"

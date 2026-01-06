@@ -1789,6 +1789,7 @@ dependencies = [
  "mcp-types",
  "os_pipe",
  "regex",
+ "reqwest",
  "schemars 1.1.0",
  "serde",
  "serde_json",
