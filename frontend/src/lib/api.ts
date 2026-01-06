@@ -160,13 +160,25 @@ export class ApiError<E = unknown> extends Error {
   }
 }
 
+// API base URL - use environment variable or default to relative path
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// Helper to build full API URL
+const buildApiUrl = (path: string): string => {
+  if (API_BASE_URL) {
+    return `${API_BASE_URL}${path}`;
+  }
+  return path;
+};
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  return fetch(url, {
+  const fullUrl = buildApiUrl(url);
+  return fetch(fullUrl, {
     ...options,
     headers,
   });
@@ -1081,7 +1093,7 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('/api/images/upload', {
+    const response = await fetch(buildApiUrl('/api/images/upload'), {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1103,7 +1115,7 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(`/api/images/task/${taskId}/upload`, {
+    const response = await fetch(buildApiUrl(`/api/images/task/${taskId}/upload`), {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1133,7 +1145,7 @@ export const imagesApi = {
     formData.append('image', file);
 
     const response = await fetch(
-      `/api/task-attempts/${attemptId}/images/upload`,
+      buildApiUrl(`/api/task-attempts/${attemptId}/images/upload`),
       {
         method: 'POST',
         body: formData,

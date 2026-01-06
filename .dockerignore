@@ -54,8 +54,8 @@ remote-frontend/
 Thumbs.db
 
 # Docker files (prevent recursion)
-Dockerfile*
-.dockerignore
+# Dockerfile*
+# .dockerignore
 docker-compose*.yml
 
 # Environment files (secrets - use flyctl secrets)
@@ -94,3 +94,13 @@ temp/
 # Makefile and scripts (dev only)
 Makefile
 scripts/
+
+# Explicitly allow build context files
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!frontend/
+!shared/
+
+# Allow pre-built binary for deployment
+!target/x86_64-unknown-linux-musl/release/server

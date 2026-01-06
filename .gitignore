@@ -96,3 +96,4 @@ backups/
 # Team-specific Turso config files (contain auth tokens)
 .env.*
 !.env.*.example
+.cargo-registry/

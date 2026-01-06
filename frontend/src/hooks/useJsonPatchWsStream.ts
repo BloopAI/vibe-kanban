@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
+// API base URL for WebSocket connections
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
@@ -91,8 +94,17 @@ export const useJsonPatchWsStream = <T extends object>(
       // Reset finished flag for new connection
       finishedRef.current = false;
 
-      // Convert HTTP endpoint to WebSocket endpoint
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
+      // Build full WebSocket URL using API base URL
+      let wsEndpoint: string;
+      if (API_BASE_URL) {
+        // Convert https://api.example.com to wss://api.example.com
+        const wsBase = API_BASE_URL.replace(/^http/, 'ws');
+        wsEndpoint = `${wsBase}${endpoint}`;
+      } else {
+        // Relative path - use current host
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsEndpoint = `${protocol}//${window.location.host}${endpoint}`;
+      }
       const ws = new WebSocket(wsEndpoint);
 
       ws.onopen = () => {
