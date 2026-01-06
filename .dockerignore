@@ -26,6 +26,7 @@ build/
 
 # Development assets (not needed in production)
 dev_assets/
+!dev_assets/db.sqlite
 dev_assets_seed/
 backups/
 
