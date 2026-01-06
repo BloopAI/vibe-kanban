@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, Play, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 
 type Task = TaskWithAttemptStatus;
 
@@ -41,6 +42,14 @@ export function TaskCard({
   const handleClick = useCallback(() => {
     onViewDetails(task);
   }, [task, onViewDetails]);
+
+  const handleStartTask = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      CreateAttemptDialog.show({ taskId: task.id });
+    },
+    [task.id]
+  );
 
   const handleParentClick = useCallback(
     async (e: React.MouseEvent) => {
@@ -116,6 +125,19 @@ export function TaskCard({
               {task.last_attempt_failed && (
                 <XCircle className="h-4 w-4 text-destructive" />
               )}
+              {status === 'todo' &&
+                !task.has_in_progress_attempt &&
+                !task.last_attempt_failed && (
+                  <Button
+                    variant="icon"
+                    onClick={handleStartTask}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    title={t('startTask')}
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                )}
               {task.parent_workspace_id && (
                 <Button
                   variant="icon"

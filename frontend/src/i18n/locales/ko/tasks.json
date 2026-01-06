@@ -375,6 +375,7 @@
     "editTask": "Edit task"
   },
   "navigateToParent": "상위 작업 시도로 이동",
+  "startTask": "작업 시작",
   "taskPanel": {
     "attemptsCount": "Attempts ({{count}})",
     "errorLoadingAttempts": "Failed to load attempts",

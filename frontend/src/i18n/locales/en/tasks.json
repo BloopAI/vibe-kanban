@@ -153,6 +153,7 @@
     "closePanel": "Close panel"
   },
   "navigateToParent": "Navigate to parent task attempt",
+  "startTask": "Start task",
   "toolbar": {
     "actions": "Actions",
     "noAttempts": "No attempts yet",
