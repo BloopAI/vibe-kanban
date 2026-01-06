@@ -15,7 +15,7 @@ tokio = { workspace = true }
 sqlx = "0.8.6"
 serde_json = { workspace = true }
 tracing = { workspace = true }
-git2 = "^0.18.1"
+git2 = "0.19"
 futures = "0.3.31"
 axum = { workspace = true }
 

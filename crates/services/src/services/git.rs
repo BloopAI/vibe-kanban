@@ -16,7 +16,6 @@ use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
 use super::file_ranker::FileStat;
-use crate::services::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1593,25 +1592,6 @@ impl GitService {
                 }
             }
         }
-    }
-
-    /// Extract GitHub owner and repo name from git repo path
-    pub fn get_github_repo_info(
-        &self,
-        repo_path: &Path,
-    ) -> Result<GitHubRepoInfo, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let remote_name = self.default_remote_name(&repo);
-        let remote = repo.find_remote(&remote_name).map_err(|_| {
-            GitServiceError::InvalidRepository(format!("No '{remote_name}' remote found"))
-        })?;
-
-        let url = remote
-            .url()
-            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-        GitHubRepoInfo::from_remote_url(url).map_err(|e| {
-            GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
-        })
     }
 
     pub fn get_remote_name_from_branch_name(

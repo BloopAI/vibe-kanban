@@ -40,7 +40,7 @@ thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
 ignore = "0.4"
-git2 = "0.18"
+git2 = "0.19"
 mime_guess = "2.0"
 rust-embed = "8.2"
 url = "2.5"

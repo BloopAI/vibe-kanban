@@ -29,6 +29,11 @@ import zhHansSettings from './locales/zh-Hans/settings.json';
 import zhHansProjects from './locales/zh-Hans/projects.json';
 import zhHansTasks from './locales/zh-Hans/tasks.json';
 import zhHansOrganization from './locales/zh-Hans/organization.json';
+import zhHantCommon from './locales/zh-Hant/common.json';
+import zhHantSettings from './locales/zh-Hant/settings.json';
+import zhHantProjects from './locales/zh-Hant/projects.json';
+import zhHantTasks from './locales/zh-Hant/tasks.json';
+import zhHantOrganization from './locales/zh-Hant/organization.json';
 
 const resources = {
   en: {
@@ -66,6 +71,13 @@ const resources = {
     tasks: zhHansTasks,
     organization: zhHansOrganization,
   },
+  'zh-Hant': {
+    common: zhHantCommon,
+    settings: zhHantSettings,
+    projects: zhHantProjects,
+    tasks: zhHantTasks,
+    organization: zhHantOrganization,
+  },
 };
 
 i18n
@@ -74,12 +86,16 @@ i18n
   .init({
     resources,
     fallbackLng: {
+      'zh-TW': ['zh-Hant'],
+      'zh-HK': ['zh-Hant'],
+      'zh-MO': ['zh-Hant'],
       zh: ['zh-Hans'], // Map generic Chinese to Simplified Chinese
       default: ['en'],
     },
     defaultNS: 'common',
     debug: import.meta.env.DEV,
-    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh'], // Include 'zh' for browser detection
+    // Include 'zh' + Traditional Chinese locales for browser detection
+    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh', 'zh-TW', 'zh-HK', 'zh-MO'],
     nonExplicitSupportedLngs: true, // Accept zh -> zh-Hans mapping
     load: 'currentOnly', // Load exact language code
 
