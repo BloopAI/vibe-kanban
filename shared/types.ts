@@ -206,7 +206,12 @@ export type McpServerQuery = { executor: BaseCodingAgent, };
 
 export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, };
 
-export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
+export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, 
+/**
+ * MCP servers from Claude Code's configuration (user and project level)
+ * These are read-only and managed by Claude Code TUI
+ */
+claude_code_servers: { [key in string]?: McpServerWithSource }, };
 
 export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
 
@@ -379,6 +384,22 @@ export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
+
+export type McpServerSource = "vibe_kanban" | "claude_code_user" | "claude_code_project";
+
+export type McpServerWithSource = { 
+/**
+ * The server configuration
+ */
+config: JsonValue, 
+/**
+ * Where this server configuration came from
+ */
+source: McpServerSource, 
+/**
+ * Whether this server can be edited by vibe-kanban (false for Claude Code sources)
+ */
+editable: boolean, };
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 
