@@ -16,7 +16,7 @@ use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     git::GitServiceError,
-    github::GitHubServiceError,
+    github::{GhCliError, GitHubServiceError},
     image::ImageError,
     project::ProjectServiceError,
     remote_client::RemoteClientError,
@@ -46,6 +46,8 @@ pub enum ApiError {
     GitService(#[from] GitServiceError),
     #[error(transparent)]
     GitHubService(#[from] GitHubServiceError),
+    #[error(transparent)]
+    GhCli(#[from] GhCliError),
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
@@ -177,6 +179,7 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::GhCli(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GhCliError"),
         };
 
         let error_message = match &self {

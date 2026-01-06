@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{GitCliError, GitServiceError},
-    github::{CreatePrRequest, GitHubService, GitHubServiceError, UnifiedPrComment},
+    github::{CreatePrRequest, GhCli, GitHubService, GitHubServiceError, UnifiedPrComment},
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -286,8 +286,7 @@ pub async fn create_github_pr(
         base_branch: norm_target_branch_name.clone(),
         draft: request.draft,
     };
-    // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
+    let repo_info = GhCli::new().get_repo_info(&repo_path)?;
 
     // Use GitHubService to create the PR
     let github_service = GitHubService::new()?;
@@ -391,7 +390,7 @@ pub async fn attach_existing_pr(
     }
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
+    let repo_info = GhCli::new().get_repo_info(&repo.path)?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -490,7 +489,7 @@ pub async fn get_pr_comments(
     };
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
+    let repo_info = GhCli::new().get_repo_info(&repo.path)?;
 
     // Fetch comments from GitHub
     match github_service
