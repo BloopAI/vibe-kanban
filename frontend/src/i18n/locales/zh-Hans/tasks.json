@@ -446,7 +446,8 @@
     },
     "card": {
       "review": "审查",
-      "tooltip": "点击在 GitHub 上查看，双击编辑"
+      "tooltip": "点击在 GitHub 上查看，双击编辑",
+      "viewFull": "查看完整评论"
     }
   },
   "taskFormDialog": {
