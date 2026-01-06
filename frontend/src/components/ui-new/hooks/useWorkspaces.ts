@@ -209,8 +209,7 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)))
-      .slice(0, 10);
+      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)));
   }, [activeData, summaries]);
 
   const archivedWorkspaces = useMemo(() => {
@@ -226,8 +225,7 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)))
-      .slice(0, 10);
+      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)));
   }, [archivedData, summaries]);
 
   // isLoading is true when we haven't received initial data from either stream
