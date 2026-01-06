@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
 import type {
   WorkspaceWithStatus,
@@ -187,6 +187,9 @@ export function useWorkspaces(): UseWorkspacesResult {
     refetchInterval: 30000, // Refresh every 30s
     refetchOnWindowFocus: false,
     refetchOnMount: 'always', // Ensure fetch runs when IDs become available
+    // Preserve previous summaries when query key changes (workspace added/deleted)
+    // This prevents summary info from disappearing during refetch
+    placeholderData: keepPreviousData,
     retry: (failureCount, error) => {
       // Don't retry rate limit errors
       if (error instanceof Error && error.message === 'Rate limited') {
