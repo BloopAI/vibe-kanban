@@ -362,7 +362,7 @@ jobs:
 
       - name: Sign main binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/server
           output_path: vibe-kanban
@@ -375,19 +375,9 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban.zip vibe-kanban
 
-      - name: Notarize signed binary (macOS)
-        if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
-        continue-on-error: true
-        with:
-          input_path: vibe-kanban.zip
-          sign: false
-          notarize: true
-          app_store_connect_api_key_json_file: app_store_key.json
-
       - name: Sign MCP binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/mcp_task_server
           output_path: vibe-kanban-mcp
@@ -400,19 +390,9 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
 
-      - name: Notarize signed MCP binary (macOS)
-        if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
-        continue-on-error: true
-        with:
-          input_path: vibe-kanban-mcp.zip
-          sign: false
-          notarize: true
-          app_store_connect_api_key_json_file: app_store_key.json
-
       - name: Sign Review binary (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         with:
           input_path: target/${{ matrix.target }}/release/review
           output_path: vibe-kanban-review
@@ -425,12 +405,15 @@ jobs:
         if: runner.os == 'macOS'
         run: zip vibe-kanban-review.zip vibe-kanban-review
 
-      - name: Notarize signed Review binary (macOS)
+      - name: Notarize signed binaries (macOS)
         if: runner.os == 'macOS'
-        uses: indygreg/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@v1
         continue-on-error: true
         with:
-          input_path: vibe-kanban-review.zip
+          input_path: |
+            vibe-kanban.zip
+            vibe-kanban-mcp.zip
+            vibe-kanban-review.zip
           sign: false
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
