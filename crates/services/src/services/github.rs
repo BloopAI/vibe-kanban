@@ -129,7 +129,6 @@ impl GitHubService {
         })
     }
 
-    /// Get repository owner and name from a local repo path.
     pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHubServiceError> {
         self.gh_cli.get_repo_info(repo_path).map_err(Into::into)
     }
