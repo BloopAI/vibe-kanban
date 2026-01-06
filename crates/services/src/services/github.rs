@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
 use backon::{ExponentialBuilder, Retryable};
 use chrono::{DateTime, Utc};
@@ -127,6 +127,11 @@ impl GitHubService {
         Ok(Self {
             gh_cli: GhCli::new(),
         })
+    }
+
+    /// Get repository owner and name from a local repo path.
+    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHubServiceError> {
+        self.gh_cli.get_repo_info(repo_path).map_err(Into::into)
     }
 
     pub async fn check_token(&self) -> Result<(), GitHubServiceError> {
