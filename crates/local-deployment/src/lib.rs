@@ -2,8 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use db::{DBPoolManager, DBService, RegistryService};
-#[cfg(feature = "turso")]
-use db::{TursoConfig, TursoSync, get_database_path};
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use executors::profile::ExecutorConfigs;
 use services::services::{
@@ -46,8 +44,6 @@ pub struct LocalDeployment {
     registry: Arc<RegistryService>,
     /// Pool manager for multi-tenant database connections
     pool_manager: Arc<DBPoolManager>,
-    #[cfg(feature = "turso")]
-    turso_sync: Option<Arc<TursoSync>>,
     analytics: Option<AnalyticsService>,
     container: LocalContainerService,
     git: GitService,
@@ -109,37 +105,11 @@ impl Deployment for LocalDeployment {
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let filesystem = FilesystemService::new();
 
-        // Initialize Turso sync if configured (before DB creation)
-        #[cfg(feature = "turso")]
-        let turso_sync: Option<Arc<TursoSync>> = {
-            let replica_path = get_database_path();
-            if let Some(turso_config) = TursoConfig::from_env(replica_path) {
-                tracing::info!("Turso configured - initializing distributed sync...");
-                match TursoSync::new(turso_config).await {
-                    Ok(sync) => {
-                        let sync = Arc::new(sync);
-                        // Start background sync
-                        let sync_clone = sync.clone();
-                        sync_clone.start_background_sync();
-                        tracing::info!("Turso sync initialized successfully");
-                        Some(sync)
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to initialize Turso sync: {}. Falling back to local SQLite.", e);
-                        None
-                    }
-                }
-            } else {
-                tracing::info!("Turso not configured - using local SQLite");
-                None
-            }
-        };
-
         // Create shared components for EventService
         let events_msg_store = Arc::new(MsgStore::new());
         let events_entry_count = Arc::new(RwLock::new(0));
 
-        // Create DB with event hooks (will use Turso replica if configured)
+        // Create DB with event hooks
         let db = {
             let hook = EventService::create_hook(
                 events_msg_store.clone(),
@@ -236,8 +206,6 @@ impl Deployment for LocalDeployment {
             db,
             registry,
             pool_manager,
-            #[cfg(feature = "turso")]
-            turso_sync,
             analytics,
             container,
             git,
@@ -406,21 +374,5 @@ impl LocalDeployment {
 
     pub fn share_config(&self) -> Option<&ShareConfig> {
         self.share_config.as_ref()
-    }
-
-    /// Get Turso sync service (if configured and feature enabled)
-    #[cfg(feature = "turso")]
-    pub fn turso_sync(&self) -> Option<&Arc<TursoSync>> {
-        self.turso_sync.as_ref()
-    }
-
-    /// Manually trigger Turso sync
-    #[cfg(feature = "turso")]
-    pub async fn sync_turso(&self) -> Result<(), String> {
-        if let Some(sync) = &self.turso_sync {
-            sync.sync().await.map_err(|e| e.to_string())
-        } else {
-            Err("Turso not configured".to_string())
-        }
     }
 }

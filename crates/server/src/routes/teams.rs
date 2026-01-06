@@ -131,7 +131,7 @@ pub async fn create_team(
         id: team.id.to_string(),
         slug: payload.slug.clone(),
         name: team.name.clone(),
-        turso_db: None, // Will be configured separately if Turso is enabled
+        turso_db: None,
     };
 
     if let Err(e) = deployment.registry().create(&registry_entry).await {
