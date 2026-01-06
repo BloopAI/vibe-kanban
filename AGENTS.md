@@ -163,25 +163,45 @@ ts-rs derives TypeScript types from Rust structs/enums. Annotate Rust types with
 
 ### Railway Deployment
 
-The application is deployed to Railway with separate services for backend API and frontend static files.
+The application is deployed to Railway with separate projects for backend API and frontend.
 
-**Deploy script**: `./mcp/deploy-railway.py`
+| Service | Project ID | Service ID | Environment ID | URL |
+|---------|------------|------------|----------------|-----|
+| **Backend** | `9661a956-d8c2-4bd2-a16b-05e320b85965` | `db8a22cf-beb2-4d00-bc0e-0e80c1e1e661` | `439b9533-a138-4982-8407-ada14aca9a1f` | https://api.scho1ar.com |
+| **Frontend** | `af8b1a5e-f0e0-4640-96ba-298335a85d48` | `fd827df3-1f51-483c-a798-7c5d39610c46` | `7dd40b1a-0e61-4069-9f41-e008d9444e85` | https://app.scho1ar.com |
+
+**Deploy script**: `./mcp/deploy.py`
 
 ```bash
 # Deploy both backend and frontend
-./mcp/deploy-railway.py --all
+./mcp/deploy.py
 
 # Deploy only backend
-./mcp/deploy-railway.py --backend
+./mcp/deploy.py --backend
 
 # Deploy only frontend
-./mcp/deploy-railway.py --frontend
+./mcp/deploy.py --frontend
+
+# Deploy in background (detached)
+./mcp/deploy.py --detach
+
+# View backend logs
+./mcp/deploy.py --logs
 ```
 
 **Required environment variables** (set in Railway dashboard):
+
+Backend:
 - `GITHUB_CLIENT_ID` - GitHub OAuth client ID
 - `GITHUB_CLIENT_SECRET` - GitHub OAuth client secret
-- `CLERK_PUBLISHABLE_KEY` - Clerk authentication key
+- `TURSO_DATABASE_URL` - Turso database URL
+- `TURSO_AUTH_TOKEN` - Turso auth token
+- `ENABLE_API_AUTH` - Set to `true` to enable JWT authentication
+- `CLERK_DOMAIN` - Clerk domain for JWT validation (e.g., `welcome-swift-76.clerk.accounts.dev`)
+
+Frontend:
+- `VITE_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `VITE_API_URL` - Backend API URL (https://api.scho1ar.com)
 
 ## Task Management Workflow (Vibe Kanban MCP)
 

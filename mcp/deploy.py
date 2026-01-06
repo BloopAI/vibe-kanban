@@ -35,14 +35,19 @@ from pathlib import Path
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# Railway configs
+# Railway configs - Backend
 RAILWAY_PROJECT_ID = "9661a956-d8c2-4bd2-a16b-05e320b85965"
 BACKEND_SERVICE_ID = "db8a22cf-beb2-4d00-bc0e-0e80c1e1e661"
-FRONTEND_SERVICE_ID = None  # Set this if you have a frontend service
-RAILWAY_ENVIRONMENT = "production"
+BACKEND_ENVIRONMENT_ID = "439b9533-a138-4982-8407-ada14aca9a1f"
+BACKEND_URL = "https://api.scho1ar.com"
 
-BACKEND_URL = "https://vibe-kanban-api-production.up.railway.app"
-FRONTEND_URL = "https://vibe-kanban-frontend-production.up.railway.app"  # Update when frontend service exists
+# Railway configs - Frontend (separate project)
+FRONTEND_PROJECT_ID = "af8b1a5e-f0e0-4640-96ba-298335a85d48"
+FRONTEND_SERVICE_ID = "fd827df3-1f51-483c-a798-7c5d39610c46"
+FRONTEND_ENVIRONMENT_ID = "7dd40b1a-0e61-4069-9f41-e008d9444e85"
+FRONTEND_URL = "https://app.scho1ar.com"
+
+RAILWAY_ENVIRONMENT = "production"
 
 
 class Colors:
@@ -176,7 +181,7 @@ def deploy_backend(detach: bool = False) -> bool:
     env = {
         "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
         "RAILWAY_SERVICE_ID": BACKEND_SERVICE_ID,
-        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"  # production
+        "RAILWAY_ENVIRONMENT_ID": BACKEND_ENVIRONMENT_ID
     }
 
     try:
@@ -275,11 +280,11 @@ def deploy_frontend(detach: bool = False) -> bool:
 
     start_time = time.time()
 
-    # Set environment variables for Railway service linking
+    # Set environment variables for Railway service linking (frontend is in separate project)
     env = {
-        "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
+        "RAILWAY_PROJECT_ID": FRONTEND_PROJECT_ID,
         "RAILWAY_SERVICE_ID": FRONTEND_SERVICE_ID,
-        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"  # production
+        "RAILWAY_ENVIRONMENT_ID": FRONTEND_ENVIRONMENT_ID
     }
 
     try:
@@ -330,11 +335,18 @@ def show_logs(service: str = "backend", lines: int = 50):
     """Show Railway logs for a service."""
     log(f"Fetching {service} logs...")
 
-    env = {
-        "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
-        "RAILWAY_SERVICE_ID": BACKEND_SERVICE_ID if service == "backend" else FRONTEND_SERVICE_ID,
-        "RAILWAY_ENVIRONMENT_ID": "439b9533-a138-4982-8407-ada14aca9a1f"
-    }
+    if service == "backend":
+        env = {
+            "RAILWAY_PROJECT_ID": RAILWAY_PROJECT_ID,
+            "RAILWAY_SERVICE_ID": BACKEND_SERVICE_ID,
+            "RAILWAY_ENVIRONMENT_ID": BACKEND_ENVIRONMENT_ID
+        }
+    else:
+        env = {
+            "RAILWAY_PROJECT_ID": FRONTEND_PROJECT_ID,
+            "RAILWAY_SERVICE_ID": FRONTEND_SERVICE_ID,
+            "RAILWAY_ENVIRONMENT_ID": FRONTEND_ENVIRONMENT_ID
+        }
 
     try:
         run_command(["railway", "logs"], env=env)
