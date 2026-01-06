@@ -6,8 +6,12 @@
     "noSearchResults": "No tasks match your search."
   },
   "actions": {
-    "addTask": "Add task"
+    "addTask": "Add task",
+    "collapseAll": "Collapse all",
+    "expandAll": "Expand all"
   },
+  "collapse": "Collapse",
+  "expand": "Expand",
   "filters": {
     "sharedToggleAria": "Toggle shared tasks",
     "sharedToggleTooltip": "Show/hide shared content"

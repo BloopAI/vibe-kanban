@@ -21,7 +21,7 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Plus } from 'lucide-react';
+import { ChevronsDownUp, ChevronsUpDown, Plus } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
@@ -153,6 +153,9 @@ export type KanbanHeaderProps =
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      onCollapseAll?: () => void;
+      onExpandAll?: () => void;
+      allCollapsed?: boolean;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -161,6 +164,14 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   if ('children' in props) {
     return props.children;
   }
+
+  const handleCollapseToggle = () => {
+    if (props.allCollapsed) {
+      props.onExpandAll?.();
+    } else {
+      props.onCollapseAll?.();
+    }
+  };
 
   return (
     <Card
@@ -182,6 +193,27 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         <p className="m-0 text-sm">{props.name}</p>
       </span>
       <TooltipProvider>
+        {(props.onCollapseAll || props.onExpandAll) && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                onClick={handleCollapseToggle}
+                aria-label={props.allCollapsed ? t('actions.expandAll') : t('actions.collapseAll')}
+              >
+                {props.allCollapsed ? (
+                  <ChevronsUpDown className="h-4 w-4" />
+                ) : (
+                  <ChevronsDownUp className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {props.allCollapsed ? t('actions.expandAll') : t('actions.collapseAll')}
+            </TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

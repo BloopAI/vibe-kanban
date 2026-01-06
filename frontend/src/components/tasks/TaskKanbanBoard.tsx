@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { useAuth } from '@/hooks';
+import { memo, useCallback, useMemo } from 'react';
+import { useAuth, useCollapsedCards } from '@/hooks';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -48,17 +48,67 @@ function TaskKanbanBoard({
   projectId,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
+  const {
+    isCollapsed,
+    toggleCollapsed,
+    collapseAll,
+    expandAll,
+    areAllCollapsed,
+  } = useCollapsedCards(projectId);
+
+  // calcular IDs de tarjetas por columna para collapse all
+  const columnCardIds = useMemo(() => {
+    const result: Record<TaskStatus, string[]> = {
+      todo: [],
+      inprogress: [],
+      inreview: [],
+      done: [],
+      cancelled: [],
+    };
+
+    Object.entries(columns).forEach(([status, items]) => {
+      const statusKey = status as TaskStatus;
+      result[statusKey] = items.map((item) => {
+        if (item.type === 'shared') {
+          return `shared-${item.task.id}`;
+        }
+        return item.task.id;
+      });
+    });
+
+    return result;
+  }, [columns]);
+
+  const handleCollapseColumn = useCallback(
+    (status: TaskStatus) => {
+      collapseAll(columnCardIds[status]);
+    },
+    [collapseAll, columnCardIds]
+  );
+
+  const handleExpandColumn = useCallback(
+    (status: TaskStatus) => {
+      expandAll(columnCardIds[status]);
+    },
+    [expandAll, columnCardIds]
+  );
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(columns).map(([status, items]) => {
         const statusKey = status as TaskStatus;
+        const cardIds = columnCardIds[statusKey];
+        const allCollapsed = areAllCollapsed(cardIds);
+
         return (
           <KanbanBoard key={status} id={statusKey}>
             <KanbanHeader
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              onCollapseAll={() => handleCollapseColumn(statusKey)}
+              onExpandAll={() => handleExpandColumn(statusKey)}
+              allCollapsed={allCollapsed}
             />
             <KanbanCards>
               {items.map((item, index) => {
@@ -79,21 +129,26 @@ function TaskKanbanBoard({
                       isOpen={selectedTaskId === item.task.id}
                       projectId={projectId}
                       sharedTask={item.sharedTask}
+                      isCollapsed={isCollapsed(item.task.id)}
+                      onToggleCollapsed={toggleCollapsed}
                     />
                   );
                 }
 
                 const sharedTask =
                   item.type === 'shared' ? item.task : item.sharedTask!;
+                const sharedCardId = `shared-${item.task.id}`;
 
                 return (
                   <SharedTaskCard
-                    key={`shared-${item.task.id}`}
+                    key={sharedCardId}
                     task={sharedTask}
                     index={index}
                     status={statusKey}
                     isSelected={selectedSharedTaskId === item.task.id}
                     onViewDetails={onViewSharedTask}
+                    isCollapsed={isCollapsed(sharedCardId)}
+                    onToggleCollapsed={toggleCollapsed}
                   />
                 );
               })}
