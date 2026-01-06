@@ -314,15 +314,6 @@ pub async fn delete_task(
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     ensure_shared_task_auth(&task, &deployment).await?;
 
-    // Validate no running execution processes
-    if deployment
-        .container()
-        .has_running_processes(task.id)
-        .await?
-    {
-        return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
-    }
-
     let pool = &deployment.db().pool;
 
     // Gather task attempts data needed for background cleanup
@@ -332,6 +323,11 @@ pub async fn delete_task(
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             ApiError::Workspace(e)
         })?;
+
+    // Stop any running execution processes before deletion
+    for workspace in &attempts {
+        deployment.container().try_stop(workspace, true).await;
+    }
 
     let repositories = WorkspaceRepo::find_unique_repos_for_task(pool, task.id).await?;
 
