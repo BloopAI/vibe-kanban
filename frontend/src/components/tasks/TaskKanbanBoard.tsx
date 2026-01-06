@@ -26,6 +26,11 @@ export type KanbanColumnItem =
 
 export type KanbanColumns = Record<TaskStatus, KanbanColumnItem[]>;
 
+/** Get a unique card ID for collapse state tracking. Shared tasks use a prefix to avoid collisions. */
+function getCardId(item: KanbanColumnItem): string {
+  return item.type === 'shared' ? `shared-${item.task.id}` : item.task.id;
+}
+
 interface TaskKanbanBoardProps {
   columns: KanbanColumns;
   onDragEnd: (event: DragEndEvent) => void;
@@ -56,7 +61,7 @@ function TaskKanbanBoard({
     areAllCollapsed,
   } = useCollapsedCards(projectId);
 
-  // calcular IDs de tarjetas por columna para collapse all
+  // compute card IDs per column for bulk collapse/expand
   const columnCardIds = useMemo(() => {
     const result: Record<TaskStatus, string[]> = {
       todo: [],
@@ -68,12 +73,7 @@ function TaskKanbanBoard({
 
     Object.entries(columns).forEach(([status, items]) => {
       const statusKey = status as TaskStatus;
-      result[statusKey] = items.map((item) => {
-        if (item.type === 'shared') {
-          return `shared-${item.task.id}`;
-        }
-        return item.task.id;
-      });
+      result[statusKey] = items.map(getCardId);
     });
 
     return result;
@@ -137,17 +137,17 @@ function TaskKanbanBoard({
 
                 const sharedTask =
                   item.type === 'shared' ? item.task : item.sharedTask!;
-                const sharedCardId = `shared-${item.task.id}`;
+                const cardId = getCardId(item);
 
                 return (
                   <SharedTaskCard
-                    key={sharedCardId}
+                    key={cardId}
                     task={sharedTask}
                     index={index}
                     status={statusKey}
                     isSelected={selectedSharedTaskId === item.task.id}
                     onViewDetails={onViewSharedTask}
-                    isCollapsed={isCollapsed(sharedCardId)}
+                    isCollapsed={isCollapsed(cardId)}
                     onToggleCollapsed={toggleCollapsed}
                   />
                 );
