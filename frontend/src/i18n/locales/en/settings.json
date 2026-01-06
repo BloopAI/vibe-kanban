@@ -150,6 +150,19 @@
         "autoCommit": {
           "label": "Auto-commit changes",
           "helper": "When enabled, the agent will automatically commit changes after successful task execution."
+        },
+        "commitTitleMode": {
+          "label": "Commit Title Mode",
+          "helper": "Choose how commit titles are generated for auto-commits.",
+          "options": {
+            "agentSummary": "Use agent's summary (default)",
+            "aiGenerated": "AI-generated (uses custom prompt)",
+            "manual": "Manual (queue commits for review)"
+          },
+          "customPrompt": {
+            "useCustom": "Use custom prompt for commit titles",
+            "helper": "Customize the prompt used to generate commit titles. The AI will use this prompt to create conventional commit messages."
+          }
         }
       },
       "pullRequests": {
@@ -393,6 +406,14 @@
           "useGlobal": "Use global setting",
           "enabled": "Always auto-commit",
           "disabled": "Never auto-commit"
+        },
+        "commitTitleMode": {
+          "label": "Commit Title Mode",
+          "helper": "Override the global commit title mode for this project.",
+          "useGlobal": "Use global setting",
+          "agentSummary": "Use agent's summary",
+          "aiGenerated": "AI-generated",
+          "manual": "Manual (queue for review)"
         }
       },
       "save": {

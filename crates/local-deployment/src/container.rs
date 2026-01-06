@@ -17,6 +17,7 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
+        pending_commit::{CreatePendingCommit, PendingCommit},
         project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
@@ -43,7 +44,7 @@ use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
-    config::Config,
+    config::{Config, GitCommitTitleMode},
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, GitCli, GitService},
@@ -232,41 +233,69 @@ impl LocalContainerService {
         }
     }
 
-    /// Get the commit message based on the execution run reason.
-    async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
+    /// resuelve el modo de título de commit efectivo (proyecto override o config global)
+    async fn get_effective_commit_title_mode(&self, ctx: &ExecutionContext) -> GitCommitTitleMode {
+        // primero verificar si el proyecto tiene un override
+        if let Some(mode_str) = &ctx.project.git_commit_title_mode {
+            match mode_str.as_str() {
+                "AgentSummary" => return GitCommitTitleMode::AgentSummary,
+                "AiGenerated" => return GitCommitTitleMode::AiGenerated,
+                "Manual" => return GitCommitTitleMode::Manual,
+                _ => {
+                    tracing::warn!(
+                        "Invalid git_commit_title_mode '{}' in project, using global config",
+                        mode_str
+                    );
+                }
+            }
+        }
+        // si no hay override, usar config global
+        self.config.read().await.git_commit_title_mode.clone()
+    }
+
+    /// obtener el summary del agente si está disponible
+    async fn get_agent_summary(&self, ctx: &ExecutionContext) -> Option<String> {
+        if ctx.execution_process.run_reason != ExecutionProcessRunReason::CodingAgent {
+            return None;
+        }
+
+        match CodingAgentTurn::find_by_execution_process_id(
+            &self.db().pool,
+            ctx.execution_process.id,
+        )
+        .await
+        {
+            Ok(Some(turn)) => turn.summary,
+            Ok(None) => {
+                tracing::debug!(
+                    "No coding agent turn found for execution process {}",
+                    ctx.execution_process.id
+                );
+                None
+            }
+            Err(e) => {
+                tracing::debug!(
+                    "Failed to retrieve coding agent turn for execution process {}: {}",
+                    ctx.execution_process.id,
+                    e
+                );
+                None
+            }
+        }
+    }
+
+    /// Get the commit message based on the execution run reason (mode AgentSummary).
+    async fn get_commit_message_from_agent(&self, ctx: &ExecutionContext) -> String {
         match ctx.execution_process.run_reason {
             ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the coding agent turn
-                // otherwise fallback to default message
-                match CodingAgentTurn::find_by_execution_process_id(
-                    &self.db().pool,
-                    ctx.execution_process.id,
-                )
-                .await
-                {
-                    Ok(Some(turn)) if turn.summary.is_some() => turn.summary.unwrap(),
-                    Ok(_) => {
-                        tracing::debug!(
-                            "No summary found for execution process {}, using default message",
-                            ctx.execution_process.id
-                        );
+                self.get_agent_summary(ctx)
+                    .await
+                    .unwrap_or_else(|| {
                         format!(
                             "Commit changes from coding agent for workspace {}",
                             ctx.workspace.id
                         )
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "Failed to retrieve summary for execution process {}: {}",
-                            ctx.execution_process.id,
-                            e
-                        );
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
-                    }
-                }
+                    })
             }
             ExecutionProcessRunReason::CleanupScript => {
                 format!("Cleanup script changes for workspace {}", ctx.workspace.id)
@@ -276,6 +305,61 @@ impl LocalContainerService {
                 ctx.execution_process.id
             ),
         }
+    }
+
+    /// obtener un resumen del diff para mostrar al usuario en modo Manual
+    fn get_diff_summary(&self, worktree_path: &Path) -> String {
+        let git = GitCli::new();
+        match git.diff_stat(worktree_path) {
+            Ok(stat) => stat,
+            Err(e) => {
+                tracing::warn!("Failed to get diff stat: {}", e);
+                "Changes pending".to_string()
+            }
+        }
+    }
+
+    /// crear pending commits para modo Manual
+    async fn create_pending_commits(
+        &self,
+        ctx: &ExecutionContext,
+        repos_with_changes: Vec<(Repo, PathBuf)>,
+    ) -> Result<usize, ContainerError> {
+        let agent_summary = self.get_agent_summary(ctx).await;
+        let mut created = 0;
+
+        for (repo, worktree_path) in repos_with_changes {
+            let diff_summary = self.get_diff_summary(&worktree_path);
+
+            let data = CreatePendingCommit {
+                workspace_id: ctx.workspace.id,
+                repo_id: repo.id,
+                repo_path: repo.name.clone(),
+                diff_summary,
+                agent_summary: agent_summary.clone(),
+            };
+
+            match PendingCommit::create(&self.db().pool, &data).await {
+                Ok(pending) => {
+                    tracing::info!(
+                        "Created pending commit {} for repo '{}' in workspace {}",
+                        pending.id,
+                        repo.name,
+                        ctx.workspace.id
+                    );
+                    created += 1;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to create pending commit for repo '{}': {}",
+                        repo.name,
+                        e
+                    );
+                }
+            }
+        }
+
+        Ok(created)
     }
 
     /// Check which repos have uncommitted changes. Fails if any repo is inaccessible.
@@ -1309,8 +1393,6 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
-        let message = self.get_commit_message(ctx).await;
-
         let container_ref = ctx
             .workspace
             .container_ref
@@ -1324,7 +1406,36 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
-        Ok(self.commit_repos(repos_with_changes, &message))
+        // obtener el modo de título de commit
+        let title_mode = self.get_effective_commit_title_mode(ctx).await;
+        tracing::debug!("Commit title mode: {:?}", title_mode);
+
+        match title_mode {
+            GitCommitTitleMode::AgentSummary => {
+                let message = self.get_commit_message_from_agent(ctx).await;
+                Ok(self.commit_repos(repos_with_changes, &message))
+            }
+            GitCommitTitleMode::AiGenerated => {
+                // TODO: implementar generación de título con AI
+                // por ahora, usar el comportamiento de AgentSummary como fallback
+                tracing::debug!("AiGenerated mode not yet implemented, using AgentSummary fallback");
+                let message = self.get_commit_message_from_agent(ctx).await;
+                Ok(self.commit_repos(repos_with_changes, &message))
+            }
+            GitCommitTitleMode::Manual => {
+                // crear pending commits en lugar de commitear directamente
+                let created = self.create_pending_commits(ctx, repos_with_changes).await?;
+                if created > 0 {
+                    tracing::info!(
+                        "Created {} pending commit(s) for workspace {} (manual mode)",
+                        created,
+                        ctx.workspace.id
+                    );
+                }
+                // retornar false porque no se hizo commit automático
+                Ok(false)
+            }
+        }
     }
 
     /// Copy files from the original project directory to the worktree.

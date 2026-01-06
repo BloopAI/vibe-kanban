@@ -27,6 +27,9 @@ pub struct Project {
     pub remote_project_id: Option<Uuid>,
     /// None = usa config global, Some(true/false) = override por proyecto
     pub git_auto_commit_enabled: Option<bool>,
+    /// None = usa config global, Some(mode) = override por proyecto
+    /// valores: "AgentSummary", "AiGenerated", "Manual"
+    pub git_commit_title_mode: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -49,6 +52,10 @@ pub struct UpdateProject {
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     #[ts(optional, type = "boolean | null")]
     pub git_auto_commit_enabled: Option<Option<bool>>,
+    /// None = no cambia, Some(None) = usa config global, Some(Some(mode)) = override
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    #[ts(optional, type = "string | null")]
+    pub git_commit_title_mode: Option<Option<String>>,
 }
 
 /// deserializa campos que pueden ser undefined (ausente), null, o un valor
@@ -92,6 +99,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -110,6 +118,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                   p.git_commit_title_mode,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -136,6 +145,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -156,6 +166,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -179,6 +190,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -210,6 +222,7 @@ impl Project {
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                          git_commit_title_mode,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -236,11 +249,15 @@ impl Project {
         let git_auto_commit_enabled = payload
             .git_auto_commit_enabled
             .unwrap_or(existing.git_auto_commit_enabled);
+        let git_commit_title_mode = payload
+            .git_commit_title_mode
+            .clone()
+            .unwrap_or(existing.git_commit_title_mode);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6, git_commit_title_mode = $7
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -249,6 +266,7 @@ impl Project {
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                         git_commit_title_mode,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -257,6 +275,7 @@ impl Project {
             dev_script_working_dir,
             default_agent_working_dir,
             git_auto_commit_enabled,
+            git_commit_title_mode,
         )
         .fetch_one(pool)
         .await

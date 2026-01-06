@@ -17,15 +17,17 @@ pub enum ConfigError {
     ValidationError(String),
 }
 
-pub type Config = versions::v11::Config;
-pub type NotificationConfig = versions::v11::NotificationConfig;
-pub type EditorConfig = versions::v11::EditorConfig;
-pub type ThemeMode = versions::v11::ThemeMode;
-pub type SoundFile = versions::v11::SoundFile;
-pub type EditorType = versions::v11::EditorType;
-pub type GitHubConfig = versions::v11::GitHubConfig;
-pub type UiLanguage = versions::v11::UiLanguage;
-pub type ShowcaseState = versions::v11::ShowcaseState;
+pub type Config = versions::v12::Config;
+pub type NotificationConfig = versions::v12::NotificationConfig;
+pub type EditorConfig = versions::v12::EditorConfig;
+pub type ThemeMode = versions::v12::ThemeMode;
+pub type SoundFile = versions::v12::SoundFile;
+pub type EditorType = versions::v12::EditorType;
+pub type GitHubConfig = versions::v12::GitHubConfig;
+pub type UiLanguage = versions::v12::UiLanguage;
+pub type ShowcaseState = versions::v12::ShowcaseState;
+pub type GitCommitTitleMode = versions::v12::GitCommitTitleMode;
+pub use versions::v12::DEFAULT_COMMIT_TITLE_PROMPT;
 
 /// Will always return config, trying old schemas or eventually returning default
 pub async fn load_config_from_file(config_path: &PathBuf) -> Config {

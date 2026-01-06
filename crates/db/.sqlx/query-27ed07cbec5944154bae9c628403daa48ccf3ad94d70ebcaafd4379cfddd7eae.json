@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      git_commit_title_mode,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -39,13 +39,18 @@
         "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "git_commit_title_mode",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
@@ -60,9 +65,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "c826296885fd8d16547e6242a45f7bd216221bf9ecf228e3af29cd5a90e43753"
+  "hash": "27ed07cbec5944154bae9c628403daa48ccf3ad94d70ebcaafd4379cfddd7eae"
 }

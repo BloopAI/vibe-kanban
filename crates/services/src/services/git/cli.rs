@@ -163,6 +163,24 @@ impl GitCli {
         Ok(!out.is_empty())
     }
 
+    /// obtener estadísticas del diff (shortstat format)
+    pub fn diff_stat(&self, worktree_path: &Path) -> Result<String, GitCliError> {
+        let out = self.git(worktree_path, ["diff", "--shortstat"])?;
+        if out.is_empty() {
+            // si no hay cambios staged, revisar untracked
+            let status = self.git(
+                worktree_path,
+                ["--no-optional-locks", "status", "--porcelain"],
+            )?;
+            let untracked_count = status.lines().filter(|l| l.starts_with("??")).count();
+            if untracked_count > 0 {
+                return Ok(format!("{} untracked file(s)", untracked_count));
+            }
+            return Ok("No changes".to_string());
+        }
+        Ok(out.trim().to_string())
+    }
+
     /// Diff status vs a base branch using a temporary index (always includes untracked).
     /// Path filter limits the reported paths.
     pub fn diff_status(

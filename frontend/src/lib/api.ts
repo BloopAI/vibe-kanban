@@ -90,6 +90,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  PendingCommit,
+  CommitPendingRequest,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1311,5 +1313,55 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Pending Commits API
+export const pendingCommitsApi = {
+  /**
+   * List all pending commits
+   */
+  list: async (): Promise<PendingCommit[]> => {
+    const response = await makeRequest('/api/pending-commits');
+    return handleApiResponse<PendingCommit[]>(response);
+  },
+
+  /**
+   * Get count of pending commits
+   */
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/pending-commits/count');
+    return handleApiResponse<number>(response);
+  },
+
+  /**
+   * Commit a pending commit with a user-provided title
+   */
+  commit: async (id: string, data: CommitPendingRequest): Promise<void> => {
+    const response = await makeRequest(`/api/pending-commits/${id}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  /**
+   * Discard a single pending commit
+   */
+  discard: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/pending-commits/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  /**
+   * Discard all pending commits
+   */
+  discardAll: async (): Promise<void> => {
+    const response = await makeRequest('/api/pending-commits', {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };

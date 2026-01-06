@@ -20,10 +20,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
+  DEFAULT_COMMIT_TITLE_PROMPT,
   EditorType,
+  GitCommitTitleMode,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -548,6 +551,86 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+
+          {draft?.git_auto_commit_enabled && (
+            <>
+              <div className="space-y-3 ml-6">
+                <Label>{t('settings.general.git.commitTitleMode.label')}</Label>
+                <RadioGroup
+                  value={draft?.git_commit_title_mode ?? 'AgentSummary'}
+                  onValueChange={(value: GitCommitTitleMode) =>
+                    updateDraft({ git_commit_title_mode: value })
+                  }
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="AgentSummary" id="commit-title-agent" />
+                    <Label htmlFor="commit-title-agent" className="cursor-pointer font-normal">
+                      {t('settings.general.git.commitTitleMode.options.agentSummary')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="AiGenerated" id="commit-title-ai" />
+                    <Label htmlFor="commit-title-ai" className="cursor-pointer font-normal">
+                      {t('settings.general.git.commitTitleMode.options.aiGenerated')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Manual" id="commit-title-manual" />
+                    <Label htmlFor="commit-title-manual" className="cursor-pointer font-normal">
+                      {t('settings.general.git.commitTitleMode.options.manual')}
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.git.commitTitleMode.helper')}
+                </p>
+              </div>
+
+              {draft?.git_commit_title_mode === 'AiGenerated' && (
+                <div className="space-y-2 ml-6">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="use-custom-commit-prompt"
+                      checked={draft?.git_commit_title_prompt != null}
+                      onCheckedChange={(checked: boolean) => {
+                        if (checked) {
+                          updateDraft({
+                            git_commit_title_prompt: DEFAULT_COMMIT_TITLE_PROMPT,
+                          });
+                        } else {
+                          updateDraft({ git_commit_title_prompt: null });
+                        }
+                      }}
+                    />
+                    <Label htmlFor="use-custom-commit-prompt" className="cursor-pointer">
+                      {t('settings.general.git.commitTitleMode.customPrompt.useCustom')}
+                    </Label>
+                  </div>
+                  <textarea
+                    id="commit-custom-prompt"
+                    className={`flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      draft?.git_commit_title_prompt == null
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
+                    }`}
+                    value={
+                      draft?.git_commit_title_prompt ?? DEFAULT_COMMIT_TITLE_PROMPT
+                    }
+                    disabled={draft?.git_commit_title_prompt == null}
+                    onChange={(e) =>
+                      updateDraft({
+                        git_commit_title_prompt: e.target.value,
+                      })
+                    }
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.general.git.commitTitleMode.customPrompt.helper')}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
