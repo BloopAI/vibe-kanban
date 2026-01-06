@@ -166,6 +166,7 @@
     "closePanel": "關閉面板"
   },
   "navigateToParent": "導航到父任務嘗試",
+  "startTask": "開始任務",
   "toolbar": {
     "actions": "操作",
     "noAttempts": "尚無嘗試",

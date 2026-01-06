@@ -375,6 +375,7 @@
     "editTask": "Edit task"
   },
   "navigateToParent": "親タスクの試行に移動",
+  "startTask": "タスクを開始",
   "taskPanel": {
     "attemptsCount": "Attempts ({{count}})",
     "errorLoadingAttempts": "Failed to load attempts",
