@@ -2,7 +2,7 @@
 
 mod cli;
 
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
@@ -109,17 +109,12 @@ impl GitHostService for AzureHostService {
         let cli = self.az_cli.clone();
         let request_clone = request.clone();
 
-        // Use Arc to share strings across retry attempts
-        let organization_url = Arc::new(organization_url);
-        let project = Arc::new(project);
-        let repo_name = Arc::new(repo_name);
-
         (|| async {
             let cli = cli.clone();
             let request = request_clone.clone();
-            let organization_url = Arc::clone(&organization_url);
-            let project = Arc::clone(&project);
-            let repo_name = Arc::clone(&repo_name);
+            let organization_url = organization_url.clone();
+            let project = project.clone();
+            let repo_name = repo_name.clone();
 
             let cli_result = task::spawn_blocking(move || {
                 cli.create_pr(&request, &organization_url, &project, &repo_name)
@@ -214,16 +209,11 @@ impl GitHostService for AzureHostService {
         let cli = self.az_cli.clone();
         let branch = branch_name.to_string();
 
-        // Use Arc to share strings across retry attempts
-        let organization_url = Arc::new(organization_url);
-        let project = Arc::new(project);
-        let repo_name = Arc::new(repo_name);
-
         (|| async {
             let cli = cli.clone();
-            let organization_url = Arc::clone(&organization_url);
-            let project = Arc::clone(&project);
-            let repo_name = Arc::clone(&repo_name);
+            let organization_url = organization_url.clone();
+            let project = project.clone();
+            let repo_name = repo_name.clone();
             let branch = branch.clone();
 
             let prs = task::spawn_blocking(move || {
@@ -280,16 +270,11 @@ impl GitHostService for AzureHostService {
 
         let cli = self.az_cli.clone();
 
-        // Use Arc to share strings across retry attempts
-        let organization_url = Arc::new(organization_url);
-        let project_id = Arc::new(project_id);
-        let repo_id = Arc::new(repo_id);
-
         (|| async {
             let cli = cli.clone();
-            let organization_url = Arc::clone(&organization_url);
-            let project_id = Arc::clone(&project_id);
-            let repo_id = Arc::clone(&repo_id);
+            let organization_url = organization_url.clone();
+            let project_id = project_id.clone();
+            let repo_id = repo_id.clone();
 
             let comments = task::spawn_blocking(move || {
                 cli.get_pr_threads(&organization_url, &project_id, &repo_id, pr_number)

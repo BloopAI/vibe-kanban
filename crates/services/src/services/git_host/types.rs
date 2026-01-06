@@ -1,11 +1,8 @@
-//! Unified types for git hosting platforms.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
-/// Git hosting provider types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum GitHostProvider {
@@ -24,30 +21,22 @@ impl std::fmt::Display for GitHostProvider {
     }
 }
 
-/// Unified repository info that works for both providers
 #[derive(Debug, Clone)]
 pub enum RepoInfo {
     GitHub {
         owner: String,
         repo_name: String,
     },
-    /// Azure DevOps repo info extracted from CLI response
     AzureDevOps {
-        /// Full organization URL like `https://dev.azure.com/org` - used for `--organization` flag
         organization_url: String,
-        /// Project name (for display)
         project: String,
-        /// Project UUID (for API calls)
         project_id: String,
-        /// Repository name (for display)
         repo_name: String,
-        /// Repository UUID (for API calls)
         repo_id: String,
     },
 }
 
 impl RepoInfo {
-    /// Get the provider type for this repo info
     pub fn provider(&self) -> GitHostProvider {
         match self {
             RepoInfo::GitHub { .. } => GitHostProvider::GitHub,
@@ -56,7 +45,6 @@ impl RepoInfo {
     }
 }
 
-/// Unified PR creation request (provider-agnostic)
 #[derive(Debug, Clone)]
 pub struct CreatePrRequest {
     pub title: String,
@@ -66,7 +54,6 @@ pub struct CreatePrRequest {
     pub draft: Option<bool>,
 }
 
-/// Unified error type for git host operations
 #[derive(Debug, Error)]
 pub enum GitHostError {
     #[error("Repository error: {0}")]
@@ -88,7 +75,6 @@ pub enum GitHostError {
 }
 
 impl GitHostError {
-    /// Whether this error is retryable
     pub fn should_retry(&self) -> bool {
         !matches!(
             self,
@@ -101,13 +87,11 @@ impl GitHostError {
     }
 }
 
-/// Author information for a PR comment
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PrCommentAuthor {
     pub login: String,
 }
 
-/// A single comment on a PR
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct PrComment {
@@ -119,13 +103,11 @@ pub struct PrComment {
     pub url: String,
 }
 
-/// User information for a review comment
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ReviewCommentUser {
     pub login: String,
 }
 
-/// An inline review comment on a PR
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PrReviewComment {
     pub id: i64,
@@ -140,12 +122,10 @@ pub struct PrReviewComment {
     pub author_association: String,
 }
 
-/// Unified PR comment that can be either a general comment or review comment
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(tag = "comment_type", rename_all = "snake_case")]
 #[ts(tag = "comment_type", rename_all = "snake_case")]
 pub enum UnifiedPrComment {
-    /// General PR comment (conversation)
     General {
         id: String,
         author: String,
@@ -154,7 +134,6 @@ pub enum UnifiedPrComment {
         created_at: DateTime<Utc>,
         url: String,
     },
-    /// Inline review comment (on code)
     Review {
         id: i64,
         author: String,
