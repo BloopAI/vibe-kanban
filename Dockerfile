@@ -50,7 +50,7 @@ WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 
 # Build dependencies only - this layer is cached until Cargo.toml/Cargo.lock change
-RUN cargo chef cook --release --recipe-path recipe.json --features turso
+RUN cargo chef cook --release --recipe-path recipe.json
 
 
 # ===========================================
@@ -67,7 +67,7 @@ WORKDIR /app
 COPY . .
 
 # Build the server binary (dependencies already cached from deps-builder)
-RUN cargo build --release --bin server --features turso
+RUN cargo build --release --bin server
 
 
 # ===========================================

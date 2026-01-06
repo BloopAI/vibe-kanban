@@ -14,8 +14,13 @@ pub use pool_manager::{DBPoolManager, PoolManagerError};
 pub use registry::{CreateTeamRegistry, RegistryService, TeamRegistry};
 
 /// Get the database path
+/// Checks DATABASE_PATH env var first (for Railway), falls back to asset_dir
 pub fn get_database_path() -> PathBuf {
-    asset_dir().join("db.sqlite")
+    if let Ok(path) = std::env::var("DATABASE_PATH") {
+        PathBuf::from(path)
+    } else {
+        asset_dir().join("db.sqlite")
+    }
 }
 
 #[derive(Clone)]
