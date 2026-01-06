@@ -4,9 +4,24 @@ pub mod normalize_logs;
 pub mod session;
 use std::{
     collections::HashMap,
+    env,
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+/// Returns the Codex home directory.
+///
+/// Checks the `CODEX_HOME` environment variable first, then falls back to `~/.codex`.
+/// This allows users to configure a custom location for Codex configuration and state.
+pub fn codex_home() -> Option<PathBuf> {
+    if let Ok(codex_home) = env::var("CODEX_HOME") {
+        let path = PathBuf::from(codex_home);
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
+    }
+    dirs::home_dir().map(|home| home.join(".codex"))
+}
 
 use async_trait::async_trait;
 use codex_app_server_protocol::NewConversationParams;
@@ -176,12 +191,12 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
-        dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+        codex_home().map(|home| home.join("config.toml"))
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        if let Some(timestamp) = dirs::home_dir()
-            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
+        if let Some(timestamp) = codex_home()
+            .and_then(|home| std::fs::metadata(home.join("auth.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
@@ -196,8 +211,8 @@ impl StandardCodingAgentExecutor for Codex {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codex").join("version.json").exists())
+        let installation_indicator_found = codex_home()
+            .map(|home| home.join("version.json").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
@@ -449,5 +464,60 @@ impl Codex {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_codex_home_uses_env_var() {
+        // Save original value
+        let original = env::var("CODEX_HOME").ok();
+
+        // SAFETY: We're in a single-threaded test and restore the original value afterward
+        unsafe {
+            // Test with custom CODEX_HOME
+            env::set_var("CODEX_HOME", "/custom/codex/path");
+            let result = codex_home();
+            assert_eq!(result, Some(PathBuf::from("/custom/codex/path")));
+
+            // Test with empty CODEX_HOME (should fall back to default)
+            env::set_var("CODEX_HOME", "");
+            let result = codex_home();
+            assert!(result.is_some());
+            assert!(result.as_ref().unwrap().ends_with(".codex"));
+
+            // Restore original value
+            match original {
+                Some(val) => env::set_var("CODEX_HOME", val),
+                None => env::remove_var("CODEX_HOME"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_codex_home_default_fallback() {
+        // Save original value
+        let original = env::var("CODEX_HOME").ok();
+
+        // SAFETY: We're in a single-threaded test and restore the original value afterward
+        unsafe {
+            // Remove CODEX_HOME to test fallback
+            env::remove_var("CODEX_HOME");
+            let result = codex_home();
+
+            // Should return ~/.codex
+            assert!(result.is_some());
+            let path = result.unwrap();
+            assert!(path.ends_with(".codex"));
+
+            // Restore original value
+            if let Some(val) = original {
+                env::set_var("CODEX_HOME", val);
+            }
+        }
     }
 }

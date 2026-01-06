@@ -6,6 +6,7 @@
 
 use std::{
     ffi::{OsStr, OsString},
+    path::Path,
     process::Command,
 };
 
@@ -92,11 +93,25 @@ impl GhCli {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
+        self.run_in_dir(args, None)
+    }
+
+    /// Execute `gh <args>` in a specific directory and return stdout on success.
+    /// The `cwd` parameter sets the working directory for the command.
+    /// This is useful for older versions of `gh` that require being inside a git repo.
+    fn run_in_dir<I, S>(&self, args: I, cwd: Option<&Path>) -> Result<String, GhCliError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
         self.ensure_available()?;
         let gh = resolve_executable_path_blocking("gh").ok_or(GhCliError::NotAvailable)?;
         let mut cmd = Command::new(&gh);
         for arg in args {
             cmd.arg(arg);
+        }
+        if let Some(dir) = cwd {
+            cmd.current_dir(dir);
         }
         let output = cmd
             .output()
@@ -129,12 +144,16 @@ impl GhCli {
 
     /// Run `gh pr create` and parse the response.
     ///
+    /// The `repo_path` parameter is optional but recommended for compatibility with older
+    /// versions of the GitHub CLI that require running inside a git repository.
+    ///
     /// TODO: support writing the body to a temp file (`--body-file`) for large/multi-line
     /// content and expand stdout/stderr mapping into richer error variants.
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
         repo_info: &GitHubRepoInfo,
+        repo_path: Option<&Path>,
     ) -> Result<PullRequestInfo, GhCliError> {
         let mut args: Vec<OsString> = Vec::with_capacity(12);
         args.push(OsString::from("pr"));
@@ -159,7 +178,7 @@ impl GhCli {
             args.push(OsString::from("--draft"));
         }
 
-        let raw = self.run(args)?;
+        let raw = self.run_in_dir(args, repo_path)?;
         Self::parse_pr_create_text(&raw)
     }
 
