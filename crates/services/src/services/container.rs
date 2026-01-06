@@ -414,6 +414,8 @@ pub trait ContainerService {
                                     project.default_agent_working_dir.clone()
                                 },
                                 git_auto_commit_enabled: None,
+                                auto_pr_on_review_enabled: None,
+                                auto_pr_draft: None,
                             },
                         )
                         .await?;

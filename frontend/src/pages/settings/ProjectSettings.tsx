@@ -39,6 +39,8 @@ interface ProjectFormState {
   dev_script_working_dir: string;
   default_agent_working_dir: string;
   git_auto_commit_enabled: boolean | null;
+  auto_pr_on_review_enabled: boolean | null;
+  auto_pr_draft: boolean | null;
 }
 
 interface RepoScriptsFormState {
@@ -55,6 +57,8 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
     git_auto_commit_enabled: project.git_auto_commit_enabled ?? null,
+    auto_pr_on_review_enabled: project.auto_pr_on_review_enabled ?? null,
+    auto_pr_draft: project.auto_pr_draft ?? null,
   };
 }
 
@@ -400,6 +404,8 @@ export function ProjectSettings() {
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
         git_auto_commit_enabled: draft.git_auto_commit_enabled,
+        auto_pr_on_review_enabled: draft.auto_pr_on_review_enabled,
+        auto_pr_draft: draft.auto_pr_draft,
       };
 
       updateProject.mutate({
@@ -693,6 +699,126 @@ export function ProjectSettings() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.git.autoCommit.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.autoPr.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-default"
+                      name="auto-pr"
+                      checked={draft.auto_pr_on_review_enabled === null}
+                      onChange={() =>
+                        updateDraft({ auto_pr_on_review_enabled: null })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPr.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-enabled"
+                      name="auto-pr"
+                      checked={draft.auto_pr_on_review_enabled === true}
+                      onChange={() =>
+                        updateDraft({ auto_pr_on_review_enabled: true })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-enabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPr.enabled')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-disabled"
+                      name="auto-pr"
+                      checked={draft.auto_pr_on_review_enabled === false}
+                      onChange={() =>
+                        updateDraft({ auto_pr_on_review_enabled: false })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-disabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPr.disabled')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.autoPr.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.autoPrDraft.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-draft-default"
+                      name="auto-pr-draft"
+                      checked={draft.auto_pr_draft === null}
+                      onChange={() => updateDraft({ auto_pr_draft: null })}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-draft-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPrDraft.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-draft-enabled"
+                      name="auto-pr-draft"
+                      checked={draft.auto_pr_draft === true}
+                      onChange={() => updateDraft({ auto_pr_draft: true })}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-draft-enabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPrDraft.enabled')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="auto-pr-draft-disabled"
+                      name="auto-pr-draft"
+                      checked={draft.auto_pr_draft === false}
+                      onChange={() => updateDraft({ auto_pr_draft: false })}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="auto-pr-draft-disabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.autoPrDraft.disabled')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.autoPrDraft.helper')}
                 </p>
               </div>
 

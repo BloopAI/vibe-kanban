@@ -16,7 +16,15 @@ export type Project = { id: string, name: string, dev_script: string | null, dev
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
-git_auto_commit_enabled: boolean | null, created_at: Date, updated_at: Date, };
+git_auto_commit_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_on_review_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_draft: boolean | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
@@ -24,7 +32,15 @@ export type UpdateProject = { name: string | null, dev_script: string | null, de
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
-git_auto_commit_enabled?: boolean | null, };
+git_auto_commit_enabled?: boolean | null, 
+/**
+ * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+ */
+auto_pr_on_review_enabled?: boolean | null, 
+/**
+ * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+ */
+auto_pr_draft?: boolean | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
@@ -296,6 +312,12 @@ export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "githu
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
+export type AutoPrResult = { repo_id: string, repo_name: string, success: boolean, pr_url: string | null, pr_number: bigint | null, error: AutoPrError | null, };
+
+export type AutoPrError = { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "no_branch_to_push" } | { "type": "pr_already_exists", url: string, } | { "type": "no_workspace" } | { "type": "repo_not_found" } | { "type": "other", message: string, };
+
+export type TaskUpdateResponse = { auto_pr_results: Array<AutoPrResult> | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string, body: string, created_at: string, url: string, } | { "comment_type": "review", id: bigint, author: string, author_association: string, body: string, created_at: string, url: string, path: string, line: bigint | null, diff_hunk: string, };
 
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
@@ -332,7 +354,15 @@ use_google_fonts: boolean,
 /**
  * cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
  */
-discord_counter_enabled: boolean, };
+discord_counter_enabled: boolean, 
+/**
+ * cuando está habilitado, se crea automáticamente un PR cuando la tarea pasa a "In Review"
+ */
+auto_pr_on_review_enabled: boolean, 
+/**
+ * cuando está habilitado, los PRs automáticos se crean como draft
+ */
+auto_pr_draft: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 

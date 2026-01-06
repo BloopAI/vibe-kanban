@@ -31,6 +31,7 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
+  TaskUpdateResponse,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -423,12 +424,12 @@ export const tasksApi = {
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 
-  update: async (taskId: string, data: UpdateTask): Promise<Task> => {
+  update: async (taskId: string, data: UpdateTask): Promise<TaskUpdateResponse> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<Task>(response);
+    return handleApiResponse<TaskUpdateResponse>(response);
   },
 
   delete: async (taskId: string): Promise<void> => {

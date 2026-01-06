@@ -8,6 +8,7 @@ import type {
   CreateAndStartTaskRequest,
   Task,
   TaskWithAttemptStatus,
+  TaskUpdateResponse,
   UpdateTask,
   SharedTaskDetails,
 } from 'shared/types';
@@ -70,8 +71,28 @@ export function useTaskMutations(projectId?: string) {
   const updateTask = useMutation({
     mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTask }) =>
       tasksApi.update(taskId, data),
-    onSuccess: (updatedTask: Task) => {
-      invalidateQueries(updatedTask.id);
+    onSuccess: (response: TaskUpdateResponse) => {
+      invalidateQueries(response.id);
+
+      // procesar resultados de auto-PR si existen
+      if (response.auto_pr_results && response.auto_pr_results.length > 0) {
+        const successful = response.auto_pr_results.filter((r) => r.success);
+        const failed = response.auto_pr_results.filter((r) => !r.success);
+
+        if (successful.length > 0) {
+          console.info(
+            `Auto-PR created for ${successful.length} repo(s):`,
+            successful.map((r) => r.pr_url)
+          );
+        }
+
+        if (failed.length > 0) {
+          console.warn(
+            `Auto-PR failed for ${failed.length} repo(s):`,
+            failed.map((r) => ({ repo: r.repo_name, error: r.error }))
+          );
+        }
+      }
     },
     onError: (err) => {
       console.error('Failed to update task:', err);
