@@ -1,6 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use backon::{ExponentialBuilder, Retryable};
+use regex::Regex;
 use chrono::{DateTime, Utc};
 use db::models::merge::PullRequestInfo;
 use serde::Serialize;
@@ -105,6 +106,42 @@ impl GitHubServiceError {
 pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
+}
+
+impl GitHubRepoInfo {
+    pub fn from_remote_url(remote_url: &str) -> Result<Self, GitHubServiceError> {
+        // Supports SSH, HTTPS and PR GitHub URLs. See tests for examples.
+        let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
+            .map_err(|e| {
+                GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
+            })?;
+
+        let caps = re.captures(remote_url).ok_or_else(|| {
+            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))
+        })?;
+
+        let owner = caps
+            .name("owner")
+            .ok_or_else(|| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to extract owner from GitHub URL: {remote_url}"
+                ))
+            })?
+            .as_str()
+            .to_string();
+
+        let repo_name = caps
+            .name("repo")
+            .ok_or_else(|| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to extract repo name from GitHub URL: {remote_url}"
+                ))
+            })?
+            .as_str()
+            .to_string();
+
+        Ok(Self { owner, repo_name })
+    }
 }
 
 #[derive(Debug, Clone)]
