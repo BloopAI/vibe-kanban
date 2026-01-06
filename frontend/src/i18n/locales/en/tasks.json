@@ -447,7 +447,8 @@
     },
     "card": {
       "review": "Review",
-      "tooltip": "Click to view on GitHub, double-click to edit"
+      "tooltip": "Click to view on GitHub, double-click to edit",
+      "viewFull": "View full comment"
     }
   },
   "taskFormDialog": {
