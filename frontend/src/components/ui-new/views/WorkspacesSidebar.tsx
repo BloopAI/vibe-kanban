@@ -43,14 +43,16 @@ export function WorkspacesSidebar({
   onSelectCreate,
 }: WorkspacesSidebarProps) {
   const searchLower = searchQuery.toLowerCase();
+  const isSearching = searchQuery.length > 0;
+  const DISPLAY_LIMIT = 10;
 
-  const filteredWorkspaces = workspaces.filter((workspace) =>
-    workspace.name.toLowerCase().includes(searchLower)
-  );
+  const filteredWorkspaces = workspaces
+    .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
+    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
-  const filteredArchivedWorkspaces = archivedWorkspaces.filter((workspace) =>
-    workspace.name.toLowerCase().includes(searchLower)
-  );
+  const filteredArchivedWorkspaces = archivedWorkspaces
+    .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
+    .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
   return (
     <div className="w-full h-full bg-secondary flex flex-col">
