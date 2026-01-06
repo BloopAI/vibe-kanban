@@ -20,6 +20,17 @@
       "@playwright/mcp@latest"
     ]
   },
+  "exa": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "exa-mcp-server",
+      "tools=web_search_exa,get_code_context_exa"
+    ],
+    "env": {
+      "EXA_API_KEY": "YOUR_API_KEY"
+    }
+  },
   "meta": {
     "vibe_kanban": {
       "name": "Vibe Kanban",
@@ -38,6 +49,12 @@
       "description": "Browser automation with Playwright",
       "url": "https://github.com/microsoft/playwright-mcp",
       "icon": "mcp/playwright_logo_icon.svg"
+    },
+    "exa": {
+      "name": "Exa",
+      "description": "Web search and code context retrieval powered by Exa AI",
+      "url": "https://docs.exa.ai/reference/exa-mcp",
+      "icon": "mcp/exa_logo.svg"
     }
   }
 }
