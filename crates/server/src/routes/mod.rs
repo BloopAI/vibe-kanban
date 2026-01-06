@@ -101,16 +101,20 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     let cors = CorsLayer::new()
         .allow_origin([
+            // Production custom domains
+            "https://app.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://api.scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://www.scho1ar.com".parse::<HeaderValue>().unwrap(),
-            "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
+            // Local development
             "http://localhost:3000".parse::<HeaderValue>().unwrap(),
             "http://localhost:3003".parse::<HeaderValue>().unwrap(),
-             // Allow backend domain itself if needed
-            "https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap(),
             // Railway deployment domains
             "https://vibe-kanban-frontend-production.up.railway.app".parse::<HeaderValue>().unwrap(),
             "https://vibe-kanban-api-production.up.railway.app".parse::<HeaderValue>().unwrap(),
+            // Legacy Fly.io domains
+            "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
+            "https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap(),
         ])
         .allow_methods([
             Method::GET,
