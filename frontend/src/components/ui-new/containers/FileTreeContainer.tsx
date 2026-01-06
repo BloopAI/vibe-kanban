@@ -6,9 +6,11 @@ import {
   getExpandedPathsForSearch,
   getAllFolderPaths,
 } from '@/utils/fileTreeUtils';
+import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
+  workspaceId?: string;
   diffs: Diff[];
   selectedFilePath?: string | null;
   onSelectFile?: (path: string, diff: Diff) => void;
@@ -16,13 +18,15 @@ interface FileTreeContainerProps {
 }
 
 export function FileTreeContainer({
+  workspaceId,
   diffs,
   selectedFilePath,
   onSelectFile,
   className,
 }: FileTreeContainerProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedPaths, setExpandedPaths] = useState<Set<string> | null>(null);
+  const [collapsedPaths, setCollapsedPaths] =
+    usePersistedCollapsedPaths(workspaceId);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -57,26 +61,8 @@ export function FileTreeContainer({
   // Get all folder paths for expand all functionality
   const allFolderPaths = useMemo(() => getAllFolderPaths(fullTree), [fullTree]);
 
-  // Initialize with all folders expanded on first render
-  useEffect(() => {
-    if (expandedPaths === null && allFolderPaths.length > 0) {
-      setExpandedPaths(new Set(allFolderPaths));
-    }
-  }, [allFolderPaths, expandedPaths]);
-
-  // Use actual expanded paths or empty set while initializing
-  const effectiveExpandedPaths = useMemo(
-    () => expandedPaths ?? new Set<string>(),
-    [expandedPaths]
-  );
-
-  // Check if all folders are expanded
-  const isAllExpanded = useMemo(
-    () =>
-      allFolderPaths.length > 0 &&
-      allFolderPaths.every((p) => effectiveExpandedPaths.has(p)),
-    [allFolderPaths, effectiveExpandedPaths]
-  );
+  // All folders are expanded when none are in the collapsed set
+  const isAllExpanded = collapsedPaths.size === 0;
 
   // Filter tree based on search
   const filteredTree = useMemo(
@@ -84,33 +70,39 @@ export function FileTreeContainer({
     [fullTree, searchQuery]
   );
 
-  // Auto-expand folders when searching (merge with existing expanded paths)
+  // Auto-expand folders when searching (remove from collapsed set)
+  const collapsedPathsRef = useRef(collapsedPaths);
+  collapsedPathsRef.current = collapsedPaths;
+
   useEffect(() => {
     if (searchQuery) {
       const pathsToExpand = getExpandedPathsForSearch(fullTree, searchQuery);
-      setExpandedPaths((prev) => new Set([...(prev ?? []), ...pathsToExpand]));
+      const next = new Set(collapsedPathsRef.current);
+      pathsToExpand.forEach((p) => next.delete(p));
+      setCollapsedPaths(next);
     }
-  }, [searchQuery, fullTree]);
+  }, [searchQuery, fullTree, setCollapsedPaths]);
 
-  const handleToggleExpand = useCallback((path: string) => {
-    setExpandedPaths((prev) => {
-      const next = new Set(prev ?? []);
+  const handleToggleExpand = useCallback(
+    (path: string) => {
+      const next = new Set(collapsedPaths);
       if (next.has(path)) {
-        next.delete(path);
+        next.delete(path); // was collapsed, now expand
       } else {
-        next.add(path);
+        next.add(path); // was expanded, now collapse
       }
-      return next;
-    });
-  }, []);
+      setCollapsedPaths(next);
+    },
+    [collapsedPaths, setCollapsedPaths]
+  );
 
   const handleToggleExpandAll = useCallback(() => {
     if (isAllExpanded) {
-      setExpandedPaths(new Set());
+      setCollapsedPaths(new Set(allFolderPaths)); // collapse all
     } else {
-      setExpandedPaths(new Set(allFolderPaths));
+      setCollapsedPaths(new Set()); // expand all
     }
-  }, [isAllExpanded, allFolderPaths]);
+  }, [isAllExpanded, allFolderPaths, setCollapsedPaths]);
 
   const handleSelectFile = useCallback(
     (path: string) => {
@@ -127,7 +119,7 @@ export function FileTreeContainer({
   return (
     <FileTree
       nodes={filteredTree}
-      expandedPaths={effectiveExpandedPaths}
+      collapsedPaths={collapsedPaths}
       onToggleExpand={handleToggleExpand}
       selectedPath={selectedPath}
       onSelectFile={handleSelectFile}

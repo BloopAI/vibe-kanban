@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
@@ -54,12 +55,14 @@ type State = {
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
+  collapsedPaths: Record<string, string[]>;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
   setExpandedAll: (keys: string[], value: boolean) => void;
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
+  setCollapsedPaths: (key: string, paths: string[]) => void;
 };
 
 const useUiPreferencesStore = create<State>()(
@@ -69,6 +72,7 @@ const useUiPreferencesStore = create<State>()(
       expanded: {},
       contextBarPosition: 'middle-right',
       paneSizes: {},
+      collapsedPaths: {},
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -91,6 +95,8 @@ const useUiPreferencesStore = create<State>()(
         set({ contextBarPosition: position }),
       setPaneSize: (key, size) =>
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
+      setCollapsedPaths: (key, paths) =>
+        set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
     }),
     { name: 'ui-preferences' }
   )
@@ -152,4 +158,23 @@ export function useExpandedAll() {
   const expanded = useUiPreferencesStore((s) => s.expanded);
   const setExpandedAll = useUiPreferencesStore((s) => s.setExpandedAll);
   return { expanded, setExpandedAll };
+}
+
+// Hook for persisted file tree collapsed paths (per workspace)
+export function usePersistedCollapsedPaths(
+  workspaceId: string | undefined
+): [Set<string>, (paths: Set<string>) => void] {
+  const key = workspaceId ? `file-tree:${workspaceId}` : '';
+  const paths = useUiPreferencesStore((s) => s.collapsedPaths[key] ?? []);
+  const setPaths = useUiPreferencesStore((s) => s.setCollapsedPaths);
+
+  const pathSet = useMemo(() => new Set(paths), [paths]);
+  const setPathSet = useCallback(
+    (newPaths: Set<string>) => {
+      if (key) setPaths(key, [...newPaths]);
+    },
+    [key, setPaths]
+  );
+
+  return [pathSet, setPathSet];
 }
