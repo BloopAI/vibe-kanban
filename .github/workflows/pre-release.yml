@@ -407,7 +407,7 @@ jobs:
 
       - name: Notarize signed binaries (macOS)
         if: runner.os == 'macOS'
-        uses: BloopAI/apple-code-sign-action@v1
+        uses: BloopAI/apple-code-sign-action@main
         continue-on-error: true
         with:
           input_path: |
