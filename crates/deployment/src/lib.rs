@@ -133,7 +133,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics_service: analytics_service.clone(),
             });
         let publisher = self.share_publisher().ok();
-        PrMonitorService::spawn(db, analytics, publisher).await
+        let queued_message_service = self.queued_message_service().clone();
+        PrMonitorService::spawn(db, analytics, publisher, queued_message_service).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
