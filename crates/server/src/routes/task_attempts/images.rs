@@ -51,9 +51,13 @@ pub async fn upload_image(
         .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
+    let base_path = match workspace.agent_working_dir.as_deref() {
+        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
+        _ => workspace_path,
+    };
     deployment
         .image()
-        .copy_images_by_ids_to_worktree(&workspace_path, &[image_response.id])
+        .copy_images_by_ids_to_worktree(&base_path, &[image_response.id])
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(image_response)))
@@ -95,7 +99,11 @@ pub async fn get_image_metadata(
         .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
-    let full_path = workspace_path.join(&query.path);
+    let base_path = match workspace.agent_working_dir.as_deref() {
+        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
+        _ => workspace_path,
+    };
+    let full_path = base_path.join(&query.path);
 
     // Check if file exists
     let metadata = match tokio::fs::metadata(&full_path).await {
@@ -154,8 +162,11 @@ pub async fn serve_image(
         .ensure_container_exists(&workspace)
         .await?;
     let workspace_path = std::path::PathBuf::from(container_ref);
-
-    let vibe_images_dir = workspace_path.join(utils::path::VIBE_IMAGES_DIR);
+    let base_path = match workspace.agent_working_dir.as_deref() {
+        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
+        _ => workspace_path,
+    };
+    let vibe_images_dir = base_path.join(utils::path::VIBE_IMAGES_DIR);
     let full_path = vibe_images_dir.join(&path);
 
     // Security: Canonicalize and verify path is within .vibe-images
