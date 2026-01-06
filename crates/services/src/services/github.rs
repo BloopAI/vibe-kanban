@@ -129,12 +129,17 @@ impl GitHubService {
         })
     }
 
-    pub async fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHubServiceError> {
+    pub async fn get_repo_info(
+        &self,
+        repo_path: &Path,
+    ) -> Result<GitHubRepoInfo, GitHubServiceError> {
         let cli = self.gh_cli.clone();
         let path = repo_path.to_path_buf();
         task::spawn_blocking(move || cli.get_repo_info(&path))
             .await
-            .map_err(|err| GitHubServiceError::Repository(format!("Failed to get repo info: {err}")))?
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!("Failed to get repo info: {err}"))
+            })?
             .map_err(Into::into)
     }
 
