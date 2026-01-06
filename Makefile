@@ -60,6 +60,22 @@ frontend: $(LOG_DIR)
 		sleep 2; \
 	fi
 
+# Start frontend connected to Fly.io backend (no local backend/SQLite needed)
+# Usage: make dev-remote
+FLYIO_API_URL ?= https://vibe-kanban-api.fly.dev
+dev-remote: $(LOG_DIR)
+	@echo "Starting frontend connected to Fly.io backend..."
+	@echo "  API: $(FLYIO_API_URL)"
+	@if lsof -i :$(FRONTEND_PORT) > /dev/null 2>&1; then \
+		echo "Frontend already running on port $(FRONTEND_PORT)"; \
+	else \
+		cd frontend && VITE_API_URL=$(FLYIO_API_URL) \
+			nohup npm run dev -- --port $(FRONTEND_PORT) --host > ../$(LOG_DIR)/frontend.log 2>&1 & \
+		echo "Frontend starting on http://localhost:$(FRONTEND_PORT)"; \
+		echo "Connected to: $(FLYIO_API_URL)"; \
+		sleep 2; \
+	fi
+
 # Stop all services
 stop:
 	@echo "Stopping services..."
@@ -213,6 +229,7 @@ help:
 	@echo "Vibe Kanban Development Commands"
 	@echo "================================="
 	@echo ""
+	@echo "Local Development (with local SQLite):"
 	@echo "  make start      - Start frontend and backend (local SQLite)"
 	@echo "  make stop       - Stop all services"
 	@echo "  make restart    - Restart all services"
@@ -222,6 +239,10 @@ help:
 	@echo "  make logs       - View recent logs"
 	@echo "  make logs-follow - Follow logs in real-time"
 	@echo "  make clean      - Remove log files"
+	@echo ""
+	@echo "Remote Development (no local SQLite):"
+	@echo "  make dev-remote - Start frontend connected to Fly.io backend"
+	@echo "                    All data stored on Fly.io, no local DB needed"
 	@echo ""
 	@echo "Database Sync (Local <-> Turso):"
 	@echo "  make sync-to-turso      - Push local changes to Turso cloud"
@@ -244,10 +265,12 @@ help:
 	@echo "  make deploy-status       - Check deployment status"
 	@echo "  make deploy-logs         - View production logs"
 	@echo ""
-	@echo "Architecture: Frontend -> Backend -> Local SQLite (db.sqlite)"
-	@echo "              Sync to Turso via 'make sync-to-turso' or MCP"
+	@echo "Architecture:"
+	@echo "  Local mode:  Frontend -> Local Backend -> dev_assets/db.sqlite"
+	@echo "  Remote mode: Frontend -> Fly.io Backend -> Fly.io SQLite volume"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make start                         # Start with defaults"
+	@echo "  make start                         # Local dev (full stack)"
+	@echo "  make dev-remote                    # Remote dev (no local DB)"
 	@echo "  make deploy-local                  # Deploy to Fly.io"
 	@echo "  BACKEND_PORT=4000 make start       # Custom backend port"
