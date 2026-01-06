@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, forwardRef, useMemo } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -70,13 +77,15 @@ export const FileSearchTextarea = forwardRef<
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [slashPosition, setSlashPosition] = useState(-1);
   const [isLoadingCommands, setIsLoadingCommands] = useState(false);
-  const [slashCommandError, setSlashCommandError] = useState<string | null>(null);
+  const [slashCommandError, setSlashCommandError] = useState<string | null>(
+    null
+  );
 
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef =
     (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
   const dropdownRef = useRef<HTMLDivElement>(null);
-const slashDropdownRef = useRef<HTMLDivElement>(null);
+  const slashDropdownRef = useRef<HTMLDivElement>(null);
 
   // --- SLASH COMMAND LOGIC ---
 
@@ -103,7 +112,8 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
       }
     } catch (error) {
       console.error('Failed to load slash commands:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       setSlashCommandError(`Unable to load slash commands: ${errorMessage}`);
       setCommands([]); // Clear commands on error
     } finally {
@@ -212,13 +222,16 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
     if (lastSlashIndex !== -1) {
       // Check if it's at start of line or after space/newline
       const prevChar = textBeforeCursor[lastSlashIndex - 1];
-      const isValidSlashPosition = lastSlashIndex === 0 || prevChar === ' ' || prevChar === '\n';
+      const isValidSlashPosition =
+        lastSlashIndex === 0 || prevChar === ' ' || prevChar === '\n';
 
       if (isValidSlashPosition) {
         const textAfterSlash = textBeforeCursor.slice(lastSlashIndex + 1);
-        const hasInvalidChars = textAfterSlash.includes(' ') || textAfterSlash.includes('\n');
+        const hasInvalidChars =
+          textAfterSlash.includes(' ') || textAfterSlash.includes('\n');
 
-        if (!hasInvalidChars && textAfterSlash.length < 20) { // Reasonable limit
+        if (!hasInvalidChars && textAfterSlash.length < 20) {
+          // Reasonable limit
           setSlashPosition(lastSlashIndex);
           setSlashSearchQuery(textAfterSlash);
           setShowSlashDropdown(true);
@@ -264,7 +277,9 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
     if (slashPosition === -1) return;
 
     const beforeSlash = value.slice(0, slashPosition);
-    const afterSlashQuery = value.slice(slashPosition + 1 + slashSearchQuery.length);
+    const afterSlashQuery = value.slice(
+      slashPosition + 1 + slashSearchQuery.length
+    );
 
     const newValue = beforeSlash + command.name + afterSlashQuery;
     onChange(newValue);
@@ -321,7 +336,7 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
   };
 
   // Calculate dropdown position relative to textarea
-  const getDropdownPosition = () => {
+  const getDropdownPosition = useCallback(() => {
     if (!textareaRef.current) return { top: 0, left: 0, maxHeight: 240 };
 
     const textareaRect = textareaRef.current.getBoundingClientRect();
@@ -371,7 +386,7 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
     }
 
     return { top: finalTop, left: finalLeft, maxHeight };
-  };
+  }, [textareaRef]);
 
   // Use effect to reposition when dropdown content changes
   useEffect(() => {
@@ -386,19 +401,23 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
         }
       }, 0);
     }
-  }, [searchResults.length, showDropdown]);
+  }, [searchResults.length, showDropdown, getDropdownPosition]);
 
   const dropdownPosition = getDropdownPosition();
 
   // Filter slash commands based on search query - optimized with useMemo
-  const allFilteredSlashCommands = useMemo(() => commands.filter(cmd => {
-    const query = slashSearchQuery.toLowerCase();
-    const nameWithoutSlash = cmd.name.substring(1).toLowerCase(); // Remove leading "/" for comparison
+  const allFilteredSlashCommands = useMemo(
+    () =>
+      commands.filter((cmd) => {
+        const query = slashSearchQuery.toLowerCase();
+        const nameWithoutSlash = cmd.name.substring(1).toLowerCase(); // Remove leading "/" for comparison
 
-    // For slash commands, ONLY use prefix matching on command name (after removing "/")
-    // No description or example matching for slash commands - this is for command discovery, not content search
-    return nameWithoutSlash.startsWith(query);
-  }), [commands, slashSearchQuery]);
+        // For slash commands, ONLY use prefix matching on command name (after removing "/")
+        // No description or example matching for slash commands - this is for command discovery, not content search
+        return nameWithoutSlash.startsWith(query);
+      }),
+    [commands, slashSearchQuery]
+  );
 
   const filteredSlashCommands = allFilteredSlashCommands.slice(0, 50); // Limit to max 50 items to prevent extremely long dropdowns
 
@@ -408,11 +427,15 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedSlashIndex(prev => (prev + 1) % filteredSlashCommands.length);
+          setSelectedSlashIndex(
+            (prev) => (prev + 1) % filteredSlashCommands.length
+          );
           return;
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedSlashIndex(prev => prev === 0 ? filteredSlashCommands.length - 1 : prev - 1);
+          setSelectedSlashIndex((prev) =>
+            prev === 0 ? filteredSlashCommands.length - 1 : prev - 1
+          );
           return;
         case 'Enter':
           e.preventDefault();
@@ -474,18 +497,28 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Close dropdown if clicking outside both textarea and both dropdowns
-      const clickedInsideTextarea = textareaRef.current?.contains(event.target as Node);
-      const clickedInsideFileDropdown = dropdownRef.current?.contains(event.target as Node);
-      const clickedInsideSlashDropdown = slashDropdownRef.current?.contains(event.target as Node);
+      const clickedInsideTextarea = textareaRef.current?.contains(
+        event.target as Node
+      );
+      const clickedInsideFileDropdown = dropdownRef.current?.contains(
+        event.target as Node
+      );
+      const clickedInsideSlashDropdown = slashDropdownRef.current?.contains(
+        event.target as Node
+      );
 
-      if (!clickedInsideTextarea && !clickedInsideFileDropdown && !clickedInsideSlashDropdown) {
+      if (
+        !clickedInsideTextarea &&
+        !clickedInsideFileDropdown &&
+        !clickedInsideSlashDropdown
+      ) {
         setShowSlashDropdown(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [textareaRef]);
 
   // Group results by type for rendering
   const tagResults = searchResults.filter((r) => r.type === 'tag');
@@ -611,7 +644,9 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
         )}
 
       {/* SLASH COMMAND ERROR ALERT */}
-      {showSlashDropdown && slashCommandError && !disabled &&
+      {showSlashDropdown &&
+        slashCommandError &&
+        !disabled &&
         createPortal(
           <div
             className="fixed bg-background border border-border rounded-md shadow-lg z-50 p-4"
@@ -640,7 +675,8 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
         )}
 
       {/* SLASH COMMAND DROPDOWN */}
-      {showSlashDropdown && !disabled &&
+      {showSlashDropdown &&
+        !disabled &&
         createPortal(
           <div
             ref={slashDropdownRef}
@@ -663,8 +699,7 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
                   ? 'Commands unavailable due to error'
                   : slashSearchQuery.trim()
                     ? `No commands found for "${slashSearchQuery}"`
-                    : 'No commands available'
-                }
+                    : 'No commands available'}
               </div>
             ) : (
               <div role="listbox" className="py-1">

@@ -33,7 +33,7 @@ function TodoPanel() {
     if (detailsRef.current && detailsRef.current.open !== isOpen) {
       detailsRef.current.open = isOpen;
     }
-  }, []);
+  }, [isOpen]);
 
   // persiste el estado en localStorage cuando cambia
   useEffect(() => {

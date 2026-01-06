@@ -257,7 +257,9 @@ export function NextActionCard({
                   variant="default"
                   size="sm"
                   onClick={handleKeepGoing}
-                  disabled={!attempt?.session?.id || keepGoingMutation.isPending}
+                  disabled={
+                    !attempt?.session?.id || keepGoingMutation.isPending
+                  }
                   className="text-sm w-full sm:w-auto"
                   aria-label={t('attempt.keepGoing')}
                 >

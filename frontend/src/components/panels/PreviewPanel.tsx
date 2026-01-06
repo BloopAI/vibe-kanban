@@ -55,7 +55,6 @@ export function PreviewPanel() {
   // Compute effective URL - custom URL overrides auto-detected
   const effectiveUrl = customUrl ?? previewState.url;
 
-
   const handleRefresh = () => {
     setIframeError(false);
     setRefreshKey((prev) => prev + 1);
