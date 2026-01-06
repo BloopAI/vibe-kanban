@@ -172,10 +172,43 @@ const buildApiUrl = (path: string): string => {
   return path;
 };
 
+// Auth token getter - can be set by React components
+let authTokenGetter: (() => Promise<string | null>) | null = null;
+
+/**
+ * Set the auth token getter function.
+ * Call this from your React app with Clerk's getToken function.
+ * Example: setAuthTokenGetter(() => getToken())
+ */
+export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
+  authTokenGetter = getter;
+};
+
+/**
+ * Get the current auth token (if available)
+ */
+export const getAuthToken = async (): Promise<string | null> => {
+  if (!authTokenGetter) {
+    return null;
+  }
+  try {
+    return await authTokenGetter();
+  } catch (e) {
+    console.warn('Failed to get auth token:', e);
+    return null;
+  }
+};
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  // Add Authorization header if token is available
+  const token = await getAuthToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const fullUrl = buildApiUrl(url);

@@ -10,6 +10,7 @@ import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { AuthInitializer } from '@/components/auth/AuthInitializer';
 // Import modal type definitions
 import './types/modals';
 
@@ -95,6 +96,7 @@ const AppWithProviders = () => (
 ReactDOM.createRoot(document.getElementById('root')!).render(
   CLERK_PUBLISHABLE_KEY ? (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <AuthInitializer />
       <AppWithProviders />
     </ClerkProvider>
   ) : (

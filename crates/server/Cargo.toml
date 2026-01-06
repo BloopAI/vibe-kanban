@@ -56,6 +56,9 @@ urlencoding = "2.1"
 pdf-extract = "0.7"
 csv = "1.3"
 tower-http = { version = "0.5", features = ["cors"] }
+jsonwebtoken = "9"
+governor = "0.6"
+tower = { version = "0.4", features = ["util"] }
 
 [build-dependencies]
 dotenv = "0.15"
