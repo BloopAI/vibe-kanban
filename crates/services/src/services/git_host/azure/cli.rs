@@ -2,9 +2,6 @@
 //!
 //! This module provides low-level access to the Azure CLI for Azure DevOps
 //! repository and pull request operations.
-//!
-//! Most operations use `--detect true` which auto-detects organization, project,
-//! and repository from git config when run from within a repo directory.
 
 use std::{
     ffi::{OsStr, OsString},
@@ -22,24 +19,6 @@ use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{CreatePrRequest, RepoInfo, UnifiedPrComment};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Response structs for Azure CLI JSON output
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Response from `az repos show`
-#[derive(Deserialize)]
-struct AzRepoShowResponse {
-    name: String,
-    url: String,
-    project: AzProject,
-}
-
-#[derive(Deserialize)]
-struct AzProject {
-    name: String,
-}
-
-/// Response from `az repos pr show/create/list`
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AzPrResponse {
@@ -62,7 +41,11 @@ struct AzCommit {
     commit_id: Option<String>,
 }
 
-/// Response from `az repos pr list-threads`
+#[derive(Deserialize)]
+struct AzThreadsResponse {
+    value: Vec<AzThread>,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AzThread {
@@ -96,6 +79,22 @@ struct AzThreadComment {
 #[serde(rename_all = "camelCase")]
 struct AzAuthor {
     display_name: Option<String>,
+}
+
+/// Response item from `az repos list`
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzRepoListItem {
+    id: String,
+    name: String,
+    project: AzRepoProject,
+    remote_url: String,
+}
+
+#[derive(Deserialize)]
+struct AzRepoProject {
+    id: String,
+    name: String,
 }
 
 /// High-level errors originating from the Azure CLI.
@@ -168,58 +167,70 @@ impl AzCli {
 
         Err(AzCliError::CommandFailed(stderr))
     }
-    /// Get repository info from a local repository path.
-    ///
-    /// Uses `--detect true` to auto-detect the repo, then extracts org/project/repo
-    /// from the CLI response.
     pub fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, AzCliError> {
         let raw = self.run(
-            ["repos", "show", "--detect", "true", "--output", "json"],
+            ["repos", "list", "--detect", "true", "--output", "json"],
             Some(repo_path),
         )?;
 
-        let response: AzRepoShowResponse = serde_json::from_str(&raw).map_err(|e| {
-            AzCliError::UnexpectedOutput(format!("Failed to parse az repos show: {e}"))
+        let repos: Vec<AzRepoListItem> = serde_json::from_str(raw.trim()).map_err(|e| {
+            AzCliError::UnexpectedOutput(format!("Failed to parse repos list: {e}; raw: {raw}"))
         })?;
 
-        let organization_url = Self::extract_org_url(&response.url).ok_or_else(|| {
+        let repo = repos
+            .into_iter()
+            .next()
+            .ok_or_else(|| AzCliError::UnexpectedOutput("No repos found in project".to_string()))?;
+
+        // Extract org from remoteUrl: https://dev.azure.com/{org}/...
+        let org = Self::extract_org_from_remote_url(&repo.remote_url).ok_or_else(|| {
             AzCliError::UnexpectedOutput(format!(
-                "Could not extract organization URL from: {}",
-                response.url
+                "Could not extract org from remote URL: {}",
+                repo.remote_url
             ))
         })?;
 
+        let organization_url = format!("https://dev.azure.com/{}", org);
+
         tracing::debug!(
-            "Got Azure DevOps repo info: org_url='{}', project='{}', repo='{}'",
+            "Got Azure DevOps repo info: org_url='{}', project='{}' ({}), repo='{}' ({})",
             organization_url,
-            response.project.name,
-            response.name
+            repo.project.name,
+            repo.project.id,
+            repo.name,
+            repo.id
         );
 
         Ok(RepoInfo::AzureDevOps {
             organization_url,
-            project: response.project.name,
-            repo_name: response.name,
+            project: repo.project.name,
+            project_id: repo.project.id,
+            repo_name: repo.name,
+            repo_id: repo.id,
         })
     }
 
-    /// Extract base organization URL from an API URL.
-    ///
-    /// Input: `https://dev.azure.com/{org}/.../_apis/...`
-    /// Output: `https://dev.azure.com/{org}`
-    fn extract_org_url(api_url: &str) -> Option<String> {
-        // Find dev.azure.com/ and extract the org name after it
-        if let Some(idx) = api_url.find("dev.azure.com/") {
-            let after = &api_url[idx + "dev.azure.com/".len()..];
-            if let Some(slash_idx) = after.find('/') {
-                let org = &after[..slash_idx];
-                return Some(format!("https://dev.azure.com/{}", org));
+    fn extract_org_from_remote_url(url: &str) -> Option<String> {
+        // dev.azure.com format: https://dev.azure.com/{org}/...
+        if url.contains("dev.azure.com") {
+            let parts: Vec<&str> = url.split('/').collect();
+            let azure_idx = parts.iter().position(|&p| p.contains("dev.azure.com"))?;
+            return parts.get(azure_idx + 1).map(|s| s.to_string());
+        }
+
+        // Legacy format: https://{org}.visualstudio.com/...
+        if url.contains(".visualstudio.com") {
+            let parts: Vec<&str> = url.split('/').collect();
+            for part in parts {
+                if part.contains(".visualstudio.com") {
+                    return part.split('.').next().map(|s| s.to_string());
+                }
             }
         }
+
         None
     }
 
-    /// Run `az repos pr create` and parse the response.
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
@@ -267,7 +278,6 @@ impl AzCli {
         Self::parse_pr_response(&raw)
     }
 
-    /// Ensure the Azure CLI has valid auth.
     pub fn check_auth(&self) -> Result<(), AzCliError> {
         match self.run(["account", "show"], None) {
             Ok(_) => Ok(()),
@@ -276,9 +286,6 @@ impl AzCli {
         }
     }
 
-    /// Retrieve details for a pull request by URL.
-    ///
-    /// Parses the URL to extract organization and PR ID, then queries Azure CLI.
     pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestInfo, AzCliError> {
         let (organization, pr_id) = Self::parse_pr_url(pr_url).ok_or_else(|| {
             AzCliError::UnexpectedOutput(format!("Could not parse Azure DevOps PR URL: {pr_url}"))
@@ -304,7 +311,6 @@ impl AzCli {
         Self::parse_pr_response(&raw)
     }
 
-    /// List pull requests for a branch (includes closed/merged).
     pub fn list_prs_for_branch(
         &self,
         organization_url: &str,
@@ -336,27 +342,32 @@ impl AzCli {
         Self::parse_pr_list_response(&raw)
     }
 
-    /// Fetch comments (threads) for a pull request.
     pub fn get_pr_threads(
         &self,
         organization_url: &str,
+        project_id: &str,
+        repo_id: &str,
         pr_id: i64,
     ) -> Result<Vec<UnifiedPrComment>, AzCliError> {
-        let raw = self.run(
-            [
-                "repos",
-                "pr",
-                "list-threads",
-                "--organization",
-                organization_url,
-                "--id",
-                &pr_id.to_string(),
-                "--output",
-                "json",
-            ],
-            None,
-        )?;
+        let mut args: Vec<OsString> = Vec::with_capacity(16);
+        args.push(OsString::from("devops"));
+        args.push(OsString::from("invoke"));
+        args.push(OsString::from("--area"));
+        args.push(OsString::from("git"));
+        args.push(OsString::from("--resource"));
+        args.push(OsString::from("pullRequestThreads"));
+        args.push(OsString::from("--route-parameters"));
+        args.push(OsString::from(format!("project={}", project_id)));
+        args.push(OsString::from(format!("repositoryId={}", repo_id)));
+        args.push(OsString::from(format!("pullRequestId={}", pr_id)));
+        args.push(OsString::from("--organization"));
+        args.push(OsString::from(organization_url));
+        args.push(OsString::from("--api-version"));
+        args.push(OsString::from("7.0"));
+        args.push(OsString::from("--output"));
+        args.push(OsString::from("json"));
 
+        let raw = self.run(args, None)?;
         Self::parse_pr_threads(&raw)
     }
 
@@ -447,9 +458,11 @@ impl AzCli {
     }
 
     fn parse_pr_threads(raw: &str) -> Result<Vec<UnifiedPrComment>, AzCliError> {
-        let threads: Vec<AzThread> = serde_json::from_str(raw.trim()).map_err(|e| {
+        // REST API returns { "value": [...threads...] } wrapper
+        let response: AzThreadsResponse = serde_json::from_str(raw.trim()).map_err(|e| {
             AzCliError::UnexpectedOutput(format!("Failed to parse threads: {e}; raw: {raw}"))
         })?;
+        let threads = response.value;
 
         let mut comments = Vec::new();
 
@@ -579,5 +592,28 @@ mod tests {
             AzCli::map_azure_status("unknown"),
             MergeStatus::Unknown
         ));
+    }
+
+    #[test]
+    fn test_extract_org_from_remote_url_dev_azure() {
+        let org =
+            AzCli::extract_org_from_remote_url("https://dev.azure.com/myorg/myproject/_git/myrepo")
+                .unwrap();
+        assert_eq!(org, "myorg");
+    }
+
+    #[test]
+    fn test_extract_org_from_remote_url_visualstudio() {
+        let org = AzCli::extract_org_from_remote_url(
+            "https://myorg.visualstudio.com/myproject/_git/myrepo",
+        )
+        .unwrap();
+        assert_eq!(org, "myorg");
+    }
+
+    #[test]
+    fn test_extract_org_from_remote_url_invalid() {
+        // GitHub URL should return None
+        assert!(AzCli::extract_org_from_remote_url("https://github.com/owner/repo").is_none());
     }
 }

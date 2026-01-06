@@ -35,8 +35,14 @@ pub enum RepoInfo {
     AzureDevOps {
         /// Full organization URL like `https://dev.azure.com/org` - used for `--organization` flag
         organization_url: String,
+        /// Project name (for display)
         project: String,
+        /// Project UUID (for API calls)
+        project_id: String,
+        /// Repository name (for display)
         repo_name: String,
+        /// Repository UUID (for API calls)
+        repo_id: String,
     },
 }
 

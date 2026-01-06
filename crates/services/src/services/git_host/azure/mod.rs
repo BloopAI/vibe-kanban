@@ -97,6 +97,7 @@ impl GitHostService for AzureHostService {
                 organization_url,
                 project,
                 repo_name,
+                ..
             } => (organization_url.clone(), project.clone(), repo_name.clone()),
             _ => {
                 return Err(GitHostError::Repository(
@@ -201,6 +202,7 @@ impl GitHostService for AzureHostService {
                 organization_url,
                 project,
                 repo_name,
+                ..
             } => (organization_url.clone(), project.clone(), repo_name.clone()),
             _ => {
                 return Err(GitHostError::Repository(
@@ -258,10 +260,17 @@ impl GitHostService for AzureHostService {
         repo_info: &RepoInfo,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
-        let organization_url = match repo_info {
+        let (organization_url, project_id, repo_id) = match repo_info {
             RepoInfo::AzureDevOps {
-                organization_url, ..
-            } => organization_url.clone(),
+                organization_url,
+                project_id,
+                repo_id,
+                ..
+            } => (
+                organization_url.clone(),
+                project_id.clone(),
+                repo_id.clone(),
+            ),
             _ => {
                 return Err(GitHostError::Repository(
                     "Azure service received non-Azure repo info".to_string(),
@@ -271,21 +280,26 @@ impl GitHostService for AzureHostService {
 
         let cli = self.az_cli.clone();
 
-        // Use Arc to share string across retry attempts
+        // Use Arc to share strings across retry attempts
         let organization_url = Arc::new(organization_url);
+        let project_id = Arc::new(project_id);
+        let repo_id = Arc::new(repo_id);
 
         (|| async {
             let cli = cli.clone();
             let organization_url = Arc::clone(&organization_url);
+            let project_id = Arc::clone(&project_id);
+            let repo_id = Arc::clone(&repo_id);
 
-            let comments =
-                task::spawn_blocking(move || cli.get_pr_threads(&organization_url, pr_number))
-                    .await
-                    .map_err(|err| {
-                        GitHostError::PullRequest(format!(
-                            "Failed to execute Azure CLI for fetching PR comments: {err}"
-                        ))
-                    })?;
+            let comments = task::spawn_blocking(move || {
+                cli.get_pr_threads(&organization_url, &project_id, &repo_id, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHostError::PullRequest(format!(
+                    "Failed to execute Azure CLI for fetching PR comments: {err}"
+                ))
+            })?;
             comments.map_err(GitHostError::from)
         })
         .retry(
