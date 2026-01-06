@@ -120,7 +120,7 @@ impl StandardCodingAgentExecutor for CodeBuddy {
             .unwrap_or(false);
 
         let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codebuddy").join("settings.json").exists())
+            .map(|home| home.join(".codebuddy").join("installation_id").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
