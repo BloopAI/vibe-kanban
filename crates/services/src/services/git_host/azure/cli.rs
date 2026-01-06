@@ -15,12 +15,88 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
-use serde_json::Value;
+use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{CreatePrRequest, RepoInfo, UnifiedPrComment};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Response structs for Azure CLI JSON output
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Response from `az repos show`
+#[derive(Deserialize)]
+struct AzRepoShowResponse {
+    name: String,
+    url: String,
+    project: AzProject,
+}
+
+#[derive(Deserialize)]
+struct AzProject {
+    name: String,
+}
+
+/// Response from `az repos pr show/create/list`
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzPrResponse {
+    pull_request_id: i64,
+    status: Option<String>,
+    closed_date: Option<String>,
+    repository: Option<AzRepository>,
+    last_merge_commit: Option<AzCommit>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzRepository {
+    web_url: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzCommit {
+    commit_id: Option<String>,
+}
+
+/// Response from `az repos pr list-threads`
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzThread {
+    comments: Option<Vec<AzThreadComment>>,
+    thread_context: Option<AzThreadContext>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzThreadContext {
+    file_path: Option<String>,
+    right_file_start: Option<AzFilePosition>,
+}
+
+#[derive(Deserialize)]
+struct AzFilePosition {
+    line: Option<i64>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzThreadComment {
+    id: Option<i64>,
+    author: Option<AzAuthor>,
+    content: Option<String>,
+    published_date: Option<String>,
+    comment_type: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AzAuthor {
+    display_name: Option<String>,
+}
 
 /// High-level errors originating from the Azure CLI.
 #[derive(Debug, Error)]
@@ -102,48 +178,28 @@ impl AzCli {
             Some(repo_path),
         )?;
 
-        let value: Value = serde_json::from_str(&raw).map_err(|e| {
-            AzCliError::UnexpectedOutput(format!("Failed to parse az repos show response: {e}"))
+        let response: AzRepoShowResponse = serde_json::from_str(&raw).map_err(|e| {
+            AzCliError::UnexpectedOutput(format!("Failed to parse az repos show: {e}"))
         })?;
 
-        let repo_name = value
-            .get("name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| AzCliError::UnexpectedOutput("Missing 'name' in response".to_string()))?
-            .to_string();
-
-        let project = value
-            .get("project")
-            .and_then(|p| p.get("name"))
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                AzCliError::UnexpectedOutput("Missing 'project.name' in response".to_string())
-            })?
-            .to_string();
-
-        // Extract org URL from the 'url' field: https://dev.azure.com/{org}/.../_apis/...
-        let api_url = value
-            .get("url")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| AzCliError::UnexpectedOutput("Missing 'url' in response".to_string()))?;
-
-        let organization_url = Self::extract_org_url(api_url).ok_or_else(|| {
+        let organization_url = Self::extract_org_url(&response.url).ok_or_else(|| {
             AzCliError::UnexpectedOutput(format!(
-                "Could not extract organization URL from: {api_url}"
+                "Could not extract organization URL from: {}",
+                response.url
             ))
         })?;
 
         tracing::debug!(
             "Got Azure DevOps repo info: org_url='{}', project='{}', repo='{}'",
             organization_url,
-            project,
-            repo_name
+            response.project.name,
+            response.name
         );
 
         Ok(RepoInfo::AzureDevOps {
             organization_url,
-            project,
-            repo_name,
+            project: response.project.name,
+            repo_name: response.name,
         })
     }
 
@@ -353,134 +409,98 @@ impl AzCli {
     /// Parse PR response from Azure CLI.
     /// Works for both `az repos pr create` and `az repos pr show`.
     fn parse_pr_response(raw: &str) -> Result<PullRequestInfo, AzCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
-            AzCliError::UnexpectedOutput(format!(
-                "Failed to parse az repos pr response: {err}; raw: {raw}"
-            ))
+        let pr: AzPrResponse = serde_json::from_str(raw.trim()).map_err(|e| {
+            AzCliError::UnexpectedOutput(format!("Failed to parse PR response: {e}; raw: {raw}"))
         })?;
-
-        Self::extract_pr_info(&value).ok_or_else(|| {
-            AzCliError::UnexpectedOutput(format!(
-                "az repos pr response missing required fields: {value:#?}"
-            ))
-        })
+        Ok(Self::az_pr_to_info(pr))
     }
 
     fn parse_pr_list_response(raw: &str) -> Result<Vec<PullRequestInfo>, AzCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
-            AzCliError::UnexpectedOutput(format!(
-                "Failed to parse az repos pr list response: {err}; raw: {raw}"
-            ))
+        let prs: Vec<AzPrResponse> = serde_json::from_str(raw.trim()).map_err(|e| {
+            AzCliError::UnexpectedOutput(format!("Failed to parse PR list: {e}; raw: {raw}"))
         })?;
+        Ok(prs.into_iter().map(Self::az_pr_to_info).collect())
+    }
 
-        let arr = value.as_array().ok_or_else(|| {
-            AzCliError::UnexpectedOutput(format!(
-                "az repos pr list response is not an array: {value:#?}"
-            ))
-        })?;
+    /// Convert Azure PR response to PullRequestInfo.
+    fn az_pr_to_info(pr: AzPrResponse) -> PullRequestInfo {
+        let url = pr
+            .repository
+            .and_then(|r| r.web_url)
+            .map(|u| format!("{}/pullrequest/{}", u, pr.pull_request_id))
+            .unwrap_or_else(|| format!("pullrequest/{}", pr.pull_request_id));
 
-        arr.iter()
-            .map(|item| {
-                Self::extract_pr_info(item).ok_or_else(|| {
-                    AzCliError::UnexpectedOutput(format!(
-                        "az repos pr list item missing required fields: {item:#?}"
-                    ))
-                })
-            })
-            .collect()
+        let status = pr.status.as_deref().unwrap_or("active");
+        let merged_at = pr
+            .closed_date
+            .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
+            .map(|dt| dt.with_timezone(&Utc));
+        let merge_commit_sha = pr.last_merge_commit.and_then(|c| c.commit_id);
+
+        PullRequestInfo {
+            number: pr.pull_request_id,
+            url,
+            status: Self::map_azure_status(status),
+            merged_at,
+            merge_commit_sha,
+        }
     }
 
     fn parse_pr_threads(raw: &str) -> Result<Vec<UnifiedPrComment>, AzCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
-            AzCliError::UnexpectedOutput(format!(
-                "Failed to parse az repos pr list-threads response: {err}; raw: {raw}"
-            ))
-        })?;
-
-        let threads = value.as_array().ok_or_else(|| {
-            AzCliError::UnexpectedOutput(format!(
-                "az repos pr list-threads response is not an array: {value:#?}"
-            ))
+        let threads: Vec<AzThread> = serde_json::from_str(raw.trim()).map_err(|e| {
+            AzCliError::UnexpectedOutput(format!("Failed to parse threads: {e}; raw: {raw}"))
         })?;
 
         let mut comments = Vec::new();
 
         for thread in threads {
-            // Each thread can have multiple comments
-            let thread_comments = thread.get("comments").and_then(|c| c.as_array());
+            let file_path = thread
+                .thread_context
+                .as_ref()
+                .and_then(|c| c.file_path.clone());
+            let line = thread
+                .thread_context
+                .as_ref()
+                .and_then(|c| c.right_file_start.as_ref())
+                .and_then(|p| p.line);
 
-            // Get thread context for file path info
-            let thread_context = thread.get("threadContext");
-            let file_path = thread_context
-                .and_then(|ctx| ctx.get("filePath"))
-                .and_then(|p| p.as_str())
-                .map(|s| s.to_string());
-
-            // Get right file line if available
-            let line = thread_context
-                .and_then(|ctx| ctx.get("rightFileStart"))
-                .and_then(|rfs| rfs.get("line"))
-                .and_then(|l| l.as_i64());
-
-            if let Some(thread_comments) = thread_comments {
-                for comment in thread_comments {
-                    let id = comment
-                        .get("id")
-                        .and_then(|v| v.as_i64())
-                        .unwrap_or(0)
-                        .to_string();
-
-                    let author = comment
-                        .get("author")
-                        .and_then(|a| a.get("displayName"))
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("unknown")
-                        .to_string();
-
-                    let body = comment
-                        .get("content")
-                        .and_then(|c| c.as_str())
-                        .unwrap_or("")
-                        .to_string();
-
-                    let created_at = comment
-                        .get("publishedDate")
-                        .and_then(|d| d.as_str())
-                        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(Utc::now);
-
+            if let Some(thread_comments) = thread.comments {
+                for c in thread_comments {
                     // Skip system-generated comments
-                    let comment_type = comment
-                        .get("commentType")
-                        .and_then(|ct| ct.as_str())
-                        .unwrap_or("text");
-
-                    if comment_type == "system" {
+                    if c.comment_type.as_deref() == Some("system") {
                         continue;
                     }
 
+                    let id = c.id.unwrap_or(0);
+                    let author = c
+                        .author
+                        .and_then(|a| a.display_name)
+                        .unwrap_or_else(|| "unknown".to_string());
+                    let body = c.content.unwrap_or_default();
+                    let created_at = c
+                        .published_date
+                        .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
+                        .map(|dt| dt.with_timezone(&Utc))
+                        .unwrap_or_else(Utc::now);
+
                     // Azure doesn't provide direct comment URLs in threads response
-                    // Use empty string - caller can construct if needed
                     let url = String::new();
 
                     if let Some(ref path) = file_path {
-                        // This is a review comment on a file
                         comments.push(UnifiedPrComment::Review {
-                            id: id.parse().unwrap_or(0),
+                            id,
                             author,
-                            author_association: String::new(), // Azure doesn't have this concept
+                            author_association: String::new(),
                             body,
                             created_at,
                             url,
                             path: path.clone(),
                             line,
-                            diff_hunk: String::new(), // Azure doesn't provide this in the same way
+                            diff_hunk: String::new(),
                         });
                     } else {
-                        // This is a general comment
                         comments.push(UnifiedPrComment::General {
-                            id,
+                            id: id.to_string(),
                             author,
                             author_association: String::new(),
                             body,
@@ -492,52 +512,8 @@ impl AzCli {
             }
         }
 
-        // Sort by creation time
         comments.sort_by_key(|c| c.created_at());
-
         Ok(comments)
-    }
-
-    /// Extract PR info from Azure CLI JSON response.
-    /// The response includes a `repository.webUrl` field we use to construct the PR URL.
-    fn extract_pr_info(value: &Value) -> Option<PullRequestInfo> {
-        let number = value.get("pullRequestId")?.as_i64()?;
-
-        // Get the PR URL from the repository's webUrl + pullRequestId
-        // Response has: repository.webUrl = "https://dev.azure.com/org/project/_git/repo"
-        let url = value
-            .get("repository")
-            .and_then(|r| r.get("webUrl"))
-            .and_then(|u| u.as_str())
-            .map(|web_url| format!("{}/pullrequest/{}", web_url, number))
-            .unwrap_or_else(|| format!("pullrequest/{}", number));
-
-        let status = value
-            .get("status")
-            .and_then(Value::as_str)
-            .unwrap_or("active")
-            .to_string();
-
-        let merged_at = value
-            .get("closedDate")
-            .and_then(Value::as_str)
-            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.with_timezone(&Utc));
-
-        // Azure uses "completionOptions.mergeCommitMessage" or "lastMergeCommit.commitId"
-        let merge_commit_sha = value
-            .get("lastMergeCommit")
-            .and_then(|v| v.get("commitId"))
-            .and_then(Value::as_str)
-            .map(|s| s.to_string());
-
-        Some(PullRequestInfo {
-            number,
-            url,
-            status: Self::map_azure_status(&status),
-            merged_at,
-            merge_commit_sha,
-        })
     }
 
     /// Map Azure DevOps PR status to MergeStatus
