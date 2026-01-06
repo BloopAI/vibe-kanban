@@ -33,6 +33,10 @@ fn default_discord_counter_enabled() -> bool {
     true
 }
 
+fn default_redirect_to_attempt_on_create() -> bool {
+    true
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -69,6 +73,9 @@ pub struct Config {
     /// cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
     #[serde(default = "default_discord_counter_enabled")]
     pub discord_counter_enabled: bool,
+    /// cuando está habilitado, se redirige al detalle del intento después de crear una tarea
+    #[serde(default = "default_redirect_to_attempt_on_create")]
+    pub redirect_to_attempt_on_create: bool,
 }
 
 impl Config {
@@ -95,6 +102,7 @@ impl Config {
             font_family: old_config.font_family,
             use_google_fonts: true, // default to true para mantener el comportamiento original
             discord_counter_enabled: true, // default to true para mantener el comportamiento original
+            redirect_to_attempt_on_create: true, // default to true para mantener el comportamiento original
         }
     }
 
@@ -149,6 +157,7 @@ impl Default for Config {
             font_family: None,
             use_google_fonts: true,
             discord_counter_enabled: true,
+            redirect_to_attempt_on_create: true,
         }
     }
 }
