@@ -142,7 +142,7 @@ export function NextActionCard({
       await sessionsApi.followUp(attempt.session.id, {
         prompt: '',
         variant: null,
-        retry_process_id: undefined,
+        retry_process_id: null,
         force_when_dirty: false,
         perform_git_reset: false,
       });

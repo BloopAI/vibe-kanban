@@ -1713,12 +1713,24 @@ impl GitService {
         branch_name: &str,
         force: bool,
     ) -> Result<(), GitServiceError> {
+        tracing::info!(
+            "push_to_github: worktree={}, branch={}",
+            worktree_path.display(),
+            branch_name
+        );
         let repo = Repository::open(worktree_path)?;
         self.check_worktree_clean(&repo)?;
 
         let default_remote_name = self.default_remote_name(&repo);
         let branch = Self::find_branch(&repo, branch_name)?;
         let branch_ref = branch.get();
+
+        // Log branch commit info for debugging
+        if let Some(oid) = branch_ref.target() {
+            tracing::info!("push_to_github: branch {} points to commit {}", branch_name, oid);
+        } else {
+            tracing::warn!("push_to_github: branch {} has no target commit!", branch_name);
+        }
 
         let remote = self
             .get_remote_from_branch_ref(&repo, branch_ref)
@@ -1734,11 +1746,18 @@ impl GitService {
         let remote_url = remote
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
+        tracing::info!(
+            "push_to_github: pushing to remote '{}' url={} refspec=refs/heads/{}",
+            remote_name,
+            remote_url,
+            branch_name
+        );
         let git_cli = GitCli::new();
         if let Err(e) = git_cli.push(worktree_path, remote_url, branch_name, force) {
             tracing::error!("Push to GitHub failed: {}", e);
             return Err(e.into());
         }
+        tracing::info!("push_to_github: push succeeded for branch {}", branch_name);
 
         let mut branch = branch;
         if !branch.get().is_remote() {

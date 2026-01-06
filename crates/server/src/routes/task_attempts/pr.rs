@@ -41,7 +41,6 @@ pub struct CreateGitHubPrRequest {
     pub repo_id: Uuid,
     #[serde(default)]
     pub auto_generate_description: bool,
-    pub remote_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -287,8 +286,13 @@ pub async fn create_github_pr(
         base_branch: norm_target_branch_name.clone(),
         draft: request.draft,
     };
+    // Get repo info by parsing the remote URL - this ensures we create the PR
+    // in the same repo that we pushed to (important for forks)
+    // Using GitService instead of 'gh repo view' which may return the upstream repo
+    let repo_info = deployment
+        .git()
+        .get_github_repo_info(&worktree_path, None)?;
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo_path).await?;
     match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
@@ -388,8 +392,18 @@ pub async fn attach_existing_pr(
         })));
     }
 
+    // Use worktree path for repo info to correctly handle forks
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+    let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
+
+    // Get repo info by parsing the remote URL (not 'gh repo view' which may return upstream)
+    let repo_info = deployment
+        .git()
+        .get_github_repo_info(&worktree_path, None)?;
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path).await?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -487,8 +501,18 @@ pub async fn get_pr_comments(
         }
     };
 
+    // Use worktree path for repo info to correctly handle forks
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+    let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
+
+    // Get repo info by parsing the remote URL (not 'gh repo view' which may return upstream)
+    let repo_info = deployment
+        .git()
+        .get_github_repo_info(&worktree_path, None)?;
     let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path).await?;
 
     // Fetch comments from GitHub
     match github_service
