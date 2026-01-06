@@ -276,7 +276,11 @@ conflict_op: ConflictOp | null,
 /**
  * List of files currently in conflicted (unmerged) state
  */
-conflicted_files: Array<string>, };
+conflicted_files: Array<string>, 
+/**
+ * True if the target branch is a remote branch (merging not allowed, must use PR)
+ */
+is_target_remote: boolean, };
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
@@ -306,7 +310,11 @@ conflict_op: ConflictOp | null,
 /**
  * List of files currently in conflicted (unmerged) state
  */
-conflicted_files: Array<string>, };
+conflicted_files: Array<string>, 
+/**
+ * True if the target branch is a remote branch (merging not allowed, must use PR)
+ */
+is_target_remote: boolean, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
 
