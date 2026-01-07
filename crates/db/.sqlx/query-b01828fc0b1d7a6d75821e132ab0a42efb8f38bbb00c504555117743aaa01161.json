@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                    eprs.repo_id as \"repo_id!: Uuid\",\n                    eprs.before_head_commit as \"before_head_commit!\"\n               FROM execution_process_repo_states eprs\n               JOIN execution_processes ep ON ep.id = eprs.execution_process_id\n               JOIN sessions s ON s.id = ep.session_id\n               WHERE s.workspace_id = $1\n                 AND eprs.before_head_commit IS NOT NULL\n               GROUP BY eprs.repo_id\n               HAVING ep.created_at = MIN(ep.created_at)",
+  "describe": {
+    "columns": [
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "before_head_commit!",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "b01828fc0b1d7a6d75821e132ab0a42efb8f38bbb00c504555117743aaa01161"
+}
