@@ -17,7 +17,6 @@ use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{CreatePrRequest, UnifiedPrComment};
 
-/// Azure DevOps-specific repository information
 #[derive(Debug, Clone)]
 pub struct AzureRepoInfo {
     pub organization_url: String,
@@ -105,7 +104,6 @@ struct AzRepoProject {
     name: String,
 }
 
-/// High-level errors originating from the Azure CLI.
 #[derive(Debug, Error)]
 pub enum AzCliError {
     #[error("Azure CLI (`az`) executable not found or not runnable")]
@@ -118,7 +116,6 @@ pub enum AzCliError {
     UnexpectedOutput(String),
 }
 
-/// Newtype wrapper for invoking the `az` command.
 #[derive(Debug, Clone, Default)]
 pub struct AzCli;
 

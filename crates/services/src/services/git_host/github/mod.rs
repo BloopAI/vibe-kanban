@@ -17,7 +17,6 @@ use super::{
     types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
 };
 
-/// GitHub hosting provider implementation
 #[derive(Debug, Clone)]
 pub struct GitHubProvider {
     gh_cli: GhCli,
@@ -30,7 +29,6 @@ impl GitHubProvider {
         })
     }
 
-    /// Get repository info from the GitHub CLI
     async fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHostError> {
         let cli = self.gh_cli.clone();
         let path = repo_path.to_path_buf();
@@ -40,7 +38,6 @@ impl GitHubProvider {
             .map_err(Into::into)
     }
 
-    /// Check authentication status
     async fn check_auth(&self) -> Result<(), GitHostError> {
         let cli = self.gh_cli.clone();
         task::spawn_blocking(move || cli.check_auth())

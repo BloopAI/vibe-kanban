@@ -21,7 +21,6 @@ use crate::services::git_host::types::{
     CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
 };
 
-/// GitHub-specific repository information
 #[derive(Debug, Clone)]
 pub struct GitHubRepoInfo {
     pub owner: String,
@@ -87,7 +86,6 @@ struct GhPrResponse {
     merge_commit: Option<GhMergeCommit>,
 }
 
-/// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
 pub enum GhCliError {
     #[error("GitHub CLI (`gh`) executable not found or not runnable")]
@@ -100,7 +98,6 @@ pub enum GhCliError {
     UnexpectedOutput(String),
 }
 
-/// Newtype wrapper for invoking the `gh` command.
 #[derive(Debug, Clone, Default)]
 pub struct GhCli;
 

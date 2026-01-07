@@ -17,7 +17,6 @@ use super::{
     types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
 };
 
-/// Azure DevOps hosting provider implementation
 #[derive(Debug, Clone)]
 pub struct AzureDevOpsProvider {
     az_cli: AzCli,
@@ -30,7 +29,6 @@ impl AzureDevOpsProvider {
         })
     }
 
-    /// Get repository info from the Azure CLI
     async fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, GitHostError> {
         let cli = self.az_cli.clone();
         let path = repo_path.to_path_buf();
@@ -40,7 +38,6 @@ impl AzureDevOpsProvider {
             .map_err(Into::into)
     }
 
-    /// Check authentication status
     async fn check_auth(&self) -> Result<(), GitHostError> {
         let cli = self.az_cli.clone();
         task::spawn_blocking(move || cli.check_auth())

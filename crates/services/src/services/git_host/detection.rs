@@ -11,15 +11,11 @@ use super::types::ProviderKind;
 pub fn detect_provider_from_url(url: &str) -> ProviderKind {
     let url_lower = url.to_lowercase();
 
-    // GitHub.com (most common case)
     if url_lower.contains("github.com") {
         return ProviderKind::GitHub;
     }
 
-    // Azure DevOps patterns (check before GHE to avoid false positives)
-    // - dev.azure.com
-    // - *.visualstudio.com
-    // - Contains /_git/ (Azure-specific path pattern)
+    // Check Azure patterns before GHE to avoid false positives
     if url_lower.contains("dev.azure.com")
         || url_lower.contains(".visualstudio.com")
         || url_lower.contains("ssh.dev.azure.com")
@@ -27,15 +23,12 @@ pub fn detect_provider_from_url(url: &str) -> ProviderKind {
         return ProviderKind::AzureDevOps;
     }
 
-    // Azure DevOps uses /_git/ in paths, which is unique to Azure
+    // /_git/ is unique to Azure DevOps
     if url_lower.contains("/_git/") {
         return ProviderKind::AzureDevOps;
     }
 
-    // GitHub Enterprise patterns
-    // GHE URLs typically look like: https://github.company.com/owner/repo
-    // or SSH: git@github.company.com:owner/repo.git
-    // Key indicators: contains "github." but not the Azure patterns above
+    // GitHub Enterprise (contains "github." but not the Azure patterns above)
     if url_lower.contains("github.") {
         return ProviderKind::GitHub;
     }

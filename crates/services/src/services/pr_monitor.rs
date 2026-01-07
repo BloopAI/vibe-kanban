@@ -95,7 +95,6 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        // Get PR status from URL (auto-detects provider)
         let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
         let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 

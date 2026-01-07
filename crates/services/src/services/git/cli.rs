@@ -415,7 +415,6 @@ impl GitCli {
         }
     }
 
-    /// Get the URL for a remote (e.g., "origin").
     pub fn get_remote_url(
         &self,
         repo_path: &Path,

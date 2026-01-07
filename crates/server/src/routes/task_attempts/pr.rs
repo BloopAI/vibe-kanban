@@ -289,7 +289,6 @@ pub async fn create_pr(
         target_branch
     };
 
-    // Get the remote URL for the branch to detect the provider
     let remote_url = deployment
         .git()
         .get_remote_url_from_branch_or_default(&repo_path, &workspace.branch)?;
@@ -424,7 +423,6 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Get the remote URL for the branch to detect the provider
     let remote_url = deployment
         .git()
         .get_remote_url_from_branch_or_default(&repo.path, &workspace.branch)?;
@@ -529,7 +527,6 @@ pub async fn get_pr_comments(
         }
     };
 
-    // Create git host from the PR URL
     let git_host = match git_host::GitHostService::from_url(&pr_info.url) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
@@ -542,7 +539,6 @@ pub async fn get_pr_comments(
 
     let provider = git_host.provider_kind();
 
-    // Fetch comments
     match git_host.get_pr_comments(&repo.path, pr_info.number).await {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
             comments,
