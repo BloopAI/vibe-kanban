@@ -1019,7 +1019,10 @@ export function ProjectTasks() {
     <GitOperationsProvider attemptId={attempt?.id}>
       <ClickedElementsProvider attempt={attempt}>
         <ReviewProvider attemptId={attempt?.id}>
-          <ExecutionProcessesProvider attemptId={attempt?.id}>
+          <ExecutionProcessesProvider
+            attemptId={attempt?.id}
+            sessionId={attempt?.session?.id}
+          >
             <TasksLayout
               kanban={kanbanContent}
               attempt={attemptContent}
