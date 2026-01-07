@@ -107,6 +107,30 @@ pub struct NormalizedEntry {
 }
 
 impl NormalizedEntry {
+    /// crea una entrada con timestamp actual en formato RFC3339
+    pub fn new(entry_type: NormalizedEntryType, content: String) -> Self {
+        Self {
+            timestamp: Some(Utc::now().to_rfc3339()),
+            entry_type,
+            content,
+            metadata: None,
+        }
+    }
+
+    /// crea una entrada con timestamp y metadata
+    pub fn with_metadata(
+        entry_type: NormalizedEntryType,
+        content: String,
+        metadata: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            timestamp: Some(Utc::now().to_rfc3339()),
+            entry_type,
+            content,
+            metadata,
+        }
+    }
+
     pub fn with_tool_status(&self, status: ToolStatus) -> Option<Self> {
         if let NormalizedEntryType::ToolUse {
             tool_name,

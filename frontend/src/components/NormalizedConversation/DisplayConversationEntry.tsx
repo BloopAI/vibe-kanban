@@ -34,6 +34,7 @@ import PendingApprovalEntry from './PendingApprovalEntry';
 import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
+import { formatTimestamp, formatFullTimestamp } from '@/utils/formatTimestamp';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -507,6 +508,11 @@ const ToolCallCard: React.FC<{
     'w-full flex items-center gap-1.5 text-left text-secondary-foreground'
   );
 
+  // timestamp a mostrar
+  const timestamp = isNormalizedEntry ? entry.timestamp : null;
+  const formattedTime = formatTimestamp(timestamp);
+  const fullTime = formatFullTimestamp(timestamp);
+
   return (
     <div className="inline-block w-full flex flex-col gap-4">
       <HeaderWrapper {...headerProps} className={headerClassName}>
@@ -521,6 +527,14 @@ const ToolCallCard: React.FC<{
             <span className="text-sm font-mono">{label}</span>
           )}
         </span>
+        {formattedTime && (
+          <span
+            className="text-xs opacity-50 ml-auto"
+            title={fullTime}
+          >
+            {formattedTime}
+          </span>
+        )}
       </HeaderWrapper>
 
       {effectiveExpanded && (
@@ -814,8 +828,19 @@ function DisplayConversationEntry({
     );
   }
 
+  // timestamp para mensajes generales (assistant, system, thinking, etc.)
+  const timestamp = isNormalizedEntry(entry) ? entry.timestamp : null;
+  const formattedTime = formatTimestamp(timestamp);
+  const fullTime = formatFullTimestamp(timestamp);
+
   return (
     <div className="px-4 py-2 text-sm">
+      {formattedTime && (
+        <div className="flex items-center gap-1.5 mb-1 text-xs opacity-50">
+          {getEntryIcon(entryType)}
+          <span title={fullTime}>{formattedTime}</span>
+        </div>
+      )}
       <div className={getContentClassName(entryType)}>
         {shouldRenderMarkdown(entryType) ? (
           <WYSIWYGEditor
