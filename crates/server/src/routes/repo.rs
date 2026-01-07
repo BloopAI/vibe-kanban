@@ -4,7 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::repo::Repo;
+use db::models::repo::{Repo, UpdateRepo};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::git::GitBranch;
@@ -92,6 +92,33 @@ pub async fn get_repos_batch(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+pub async fn get_repos(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
+    let repos = Repo::list_all(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(repos)))
+}
+
+pub async fn get_repo(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+    Ok(ResponseJson(ApiResponse::success(repo)))
+}
+
+pub async fn update_repo(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+    ResponseJson(payload): ResponseJson<UpdateRepo>,
+) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
+    let repo = Repo::update(&deployment.db().pool, repo_id, &payload).await?;
+    Ok(ResponseJson(ApiResponse::success(repo)))
+}
+
 pub async fn open_repo_in_editor(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
@@ -141,9 +168,10 @@ pub async fn open_repo_in_editor(
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/repos", post(register_repo))
+        .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/init", post(init_repo))
         .route("/repos/batch", post(get_repos_batch))
+        .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
 }
