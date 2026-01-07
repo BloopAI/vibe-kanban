@@ -53,6 +53,6 @@ jobs:
 
       - name: Deploy
         working-directory: ./deploy_payload
-        run: railway up --service vibe-kanban-frontend --detach
+        run: railway up --service frontend-app --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
