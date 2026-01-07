@@ -115,7 +115,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             // Legacy Fly.io domains
             "https://scho1ar.fly.dev".parse::<HeaderValue>().unwrap(),
             "https://vibe-kanban.fly.dev".parse::<HeaderValue>().unwrap(),
-        ]);
+        ])
+        .allow_methods([
+            Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
+        ])
+        .allow_headers(Any);
     
     // Allow dynamic origins from env var (comma separated)
     let cors = if let Ok(extra_origins) = std::env::var("CORS_ALLOWED_ORIGINS") {
