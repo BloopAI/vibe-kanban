@@ -26,6 +26,8 @@ pub struct ReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub context: Option<Vec<RepoReviewContext>>,
     pub additional_prompt: Option<String>,
+    /// The full prompt sent to the model (built from context + additional_prompt)
+    pub prompt: String,
     /// Optional relative path to execute the agent in (relative to container_ref).
     #[serde(default)]
     pub working_dir: Option<String>,

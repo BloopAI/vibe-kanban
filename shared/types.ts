@@ -525,6 +525,10 @@ working_dir: string | null, };
 
 export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, 
 /**
+ * The full prompt sent to the model (built from context + additional_prompt)
+ */
+prompt: string, 
+/**
  * Optional relative path to execute the agent in (relative to container_ref).
  */
 working_dir: string | null, };

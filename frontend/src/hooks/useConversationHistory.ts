@@ -237,10 +237,7 @@ export const useConversationHistory = ({
               entry_type: {
                 type: 'user_message',
               },
-              content:
-                actionType.type === 'ReviewRequest'
-                  ? (actionType.additional_prompt ?? 'Review the code changes')
-                  : actionType.prompt,
+              content: actionType.prompt,
               timestamp: null,
             };
             const userPatch: PatchType = {
