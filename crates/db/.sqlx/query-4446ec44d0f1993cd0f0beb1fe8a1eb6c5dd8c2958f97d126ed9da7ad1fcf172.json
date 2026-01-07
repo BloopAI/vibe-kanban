@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      project_id as \"project_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      setup_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\"\n               FROM project_repos\n               WHERE repo_id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      project_id as \"project_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      setup_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      dev_server_script\n               FROM project_repos\n               WHERE repo_id = $1",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,11 @@
         "name": "parallel_setup_script!: bool",
         "ordinal": 6,
         "type_info": "Integer"
+      },
+      {
+        "name": "dev_server_script",
+        "ordinal": 7,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -49,8 +54,9 @@
       true,
       true,
       true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "c72348c44cbae9a9605c6d069b97e1391a7fb3600290df9521cf2d8841a3f2b2"
+  "hash": "4446ec44d0f1993cd0f0beb1fe8a1eb6c5dd8c2958f97d126ed9da7ad1fcf172"
 }

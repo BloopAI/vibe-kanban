@@ -340,15 +340,6 @@
           "parallelLabel": "Run setup script in parallel with coding agent",
           "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
         },
-        "dev": {
-          "label": "Dev Server Script",
-          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree) unless a working directory is specified below."
-        },
-        "devWorkingDir": {
-          "label": "Dev Server Working Directory",
-          "placeholder": "e.g., my-repo",
-          "helper": "The directory to run the dev server script from, relative to the workspace root. Leave empty to run from the workspace root."
-        },
         "agentWorkingDir": {
           "label": "Agent Working Directory",
           "placeholder": "e.g., my-repo",
@@ -361,6 +352,10 @@
         "copyFiles": {
           "label": "Copy Files",
           "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+        },
+        "devServer": {
+          "label": "Dev Server Script",
+          "helper": "Starts a development server for this repository. Scripts execute from within the repository's worktree directory. When multiple repos have dev server scripts configured, they all run in parallel."
         }
       },
       "save": {

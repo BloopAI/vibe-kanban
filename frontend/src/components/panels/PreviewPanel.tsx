@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useHasDevServerScript } from '@/hooks/useHasDevServerScript';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
 import { ClickToComponentListener } from '@/utils/previewBridge';
@@ -31,7 +32,8 @@ export function PreviewPanel() {
 
   const attemptId =
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
-  const projectHasDevScript = Boolean(project?.dev_script);
+  const { data: projectHasDevScript = false } =
+    useHasDevServerScript(projectId);
 
   const {
     start: startDevServer,

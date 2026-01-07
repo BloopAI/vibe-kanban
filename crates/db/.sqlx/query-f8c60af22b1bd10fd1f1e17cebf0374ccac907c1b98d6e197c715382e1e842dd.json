@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT pr.id as \"id!: Uuid\",\n                      pr.project_id as \"project_id!: Uuid\",\n                      pr.repo_id as \"repo_id!: Uuid\",\n                      r.name as \"repo_name!\",\n                      pr.setup_script,\n                      pr.cleanup_script,\n                      pr.copy_files,\n                      pr.parallel_setup_script as \"parallel_setup_script!: bool\"\n               FROM project_repos pr\n               JOIN repos r ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT pr.id as \"id!: Uuid\",\n                      pr.project_id as \"project_id!: Uuid\",\n                      pr.repo_id as \"repo_id!: Uuid\",\n                      r.name as \"repo_name!\",\n                      pr.setup_script,\n                      pr.cleanup_script,\n                      pr.copy_files,\n                      pr.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      pr.dev_server_script\n               FROM project_repos pr\n               JOIN repos r ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -42,6 +42,11 @@
         "name": "parallel_setup_script!: bool",
         "ordinal": 7,
         "type_info": "Integer"
+      },
+      {
+        "name": "dev_server_script",
+        "ordinal": 8,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -55,8 +60,9 @@
       true,
       true,
       true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "0c9ee0273c78ae47634deb65dba5c052d7d21810b34bcd0bd498e4fc3de0b259"
+  "hash": "f8c60af22b1bd10fd1f1e17cebf0374ccac907c1b98d6e197c715382e1e842dd"
 }

@@ -17,6 +17,7 @@ import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useHasDevServerScript } from '@/hooks/useHasDevServerScript';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -55,7 +56,7 @@ export function NextActionCard({
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
-  const { project } = useProject();
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -79,7 +80,8 @@ export function NextActionCard({
     latestDevServerProcess,
   } = useDevServer(attemptId);
 
-  const projectHasDevScript = Boolean(project?.dev_script);
+  const { data: projectHasDevScript = false } =
+    useHasDevServerScript(projectId);
 
   const handleCopy = useCallback(async () => {
     if (!containerRef) return;
