@@ -371,7 +371,11 @@
     hsl(var(--console-success)) 20%,
     hsl(var(--background)) 80%
   );
-  --diff-del-lineNumber--: hsl(var(--console-error) / 0.2);
+  --diff-del-lineNumber--: color-mix(
+    in srgb,
+    hsl(var(--console-error)) 20%,
+    hsl(var(--background)) 80%
+  );
   --diff-plain-content--: hsl(var(--muted));
   --diff-expand-content--: hsl(var(--muted));
   --diff-plain-lineNumber--: hsl(var(--muted));
