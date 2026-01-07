@@ -55,4 +55,4 @@ jobs:
         working-directory: ./deploy_payload
         run: railway up --service fd827df3-1f51-483c-a798-7c5d39610c46 --detach
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_FRONTEND_TOKEN }}
