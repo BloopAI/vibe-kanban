@@ -8,16 +8,8 @@ export function useHasDevServerScript(projectId?: string) {
       if (!projectId) return false;
 
       const repos = await projectsApi.getRepositories(projectId);
-      if (repos.length === 0) return false;
-
-      // Check each repo for dev_server_script
-      const projectRepoPromises = repos.map((repo) =>
-        projectsApi.getRepository(projectId, repo.id)
-      );
-      const projectRepos = await Promise.all(projectRepoPromises);
-
-      return projectRepos.some(
-        (pr) => pr.dev_server_script && pr.dev_server_script.trim() !== ''
+      return repos.some(
+        (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
       );
     },
     enabled: !!projectId,

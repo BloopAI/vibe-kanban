@@ -488,7 +488,10 @@ pub trait ContainerService {
         })
     }
 
-    fn build_sequential_setup_chain(repos: &[&Repo], next_action: ExecutorAction) -> ExecutorAction {
+    fn build_sequential_setup_chain(
+        repos: &[&Repo],
+        next_action: ExecutorAction,
+    ) -> ExecutorAction {
         let mut chained = next_action;
         for repo in repos.iter().rev() {
             if let Some(script) = &repo.setup_script {
@@ -887,10 +890,7 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        let repos_with_setup: Vec<_> = repos
-            .iter()
-            .filter(|r| r.setup_script.is_some())
-            .collect();
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
         let all_parallel = repos_with_setup.iter().all(|r| r.parallel_setup_script);
 
