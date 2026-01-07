@@ -144,7 +144,7 @@ export function SessionChatBoxContainer({
   }, [entries]);
 
   // Approval mutation for approve/deny actions
-  const { approve, denyAsync, isApproving, isDenying, denyError } =
+  const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
     useApprovalMutation();
 
   // Branch status for edit retry
@@ -414,20 +414,24 @@ export function SessionChatBoxContainer({
   }, [editContext.activeEdit, setLocalMessage]);
 
   // Handle approve action
-  const handleApprove = useCallback(() => {
+  const handleApprove = useCallback(async () => {
     if (!pendingApproval) return;
 
     // Exit feedback mode if active
     feedbackContext?.exitFeedbackMode();
 
-    approve({
-      approvalId: pendingApproval.approvalId,
-      executionProcessId: pendingApproval.executionProcessId,
-    });
+    try {
+      await approveAsync({
+        approvalId: pendingApproval.approvalId,
+        executionProcessId: pendingApproval.executionProcessId,
+      });
 
-    // Invalidate workspace summary cache to update sidebar
-    queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
-  }, [pendingApproval, feedbackContext, approve, queryClient]);
+      // Invalidate workspace summary cache to update sidebar
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+    } catch {
+      // Error is handled by mutation
+    }
+  }, [pendingApproval, feedbackContext, approveAsync, queryClient]);
 
   // Handle request changes (deny with feedback)
   const handleRequestChanges = useCallback(async () => {
