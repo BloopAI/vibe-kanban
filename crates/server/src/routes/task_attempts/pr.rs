@@ -24,7 +24,11 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{GitCliError, GitServiceError},
-    github::{CreatePrRequest, GitHubService, GitHubServiceError, UnifiedPrComment},
+    github::UnifiedPrComment,
+    vcs_provider::{
+        CreatePrRequest as VcsCreatePrRequest, VcsProviderError, VcsProviderRegistry,
+        VcsProviderType,
+    },
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -52,6 +56,9 @@ pub enum CreatePrError {
     GitCliNotLoggedIn,
     GitCliNotInstalled,
     TargetBranchNotFound { branch: String },
+    BitbucketAuthRequired,
+    BitbucketAuthFailed { message: String },
+    UnsupportedVcsProvider { message: String },
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -79,6 +86,9 @@ pub enum GetPrCommentsError {
     NoPrAttached,
     GithubCliNotInstalled,
     GithubCliNotLoggedIn,
+    BitbucketAuthRequired,
+    BitbucketAuthFailed { message: String },
+    UnsupportedVcsProvider { message: String },
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -278,17 +288,29 @@ pub async fn create_github_pr(
     } else {
         target_branch
     };
-    // Create the PR using GitHub service
-    let pr_request = CreatePrRequest {
+    // Create the PR using VCS provider
+    let pr_request = VcsCreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: workspace.branch.clone(),
         base_branch: norm_target_branch_name.clone(),
         draft: request.draft,
     };
-    let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo_path).await?;
-    match github_service.create_pr(&repo_info, &pr_request).await {
+
+    // Use GitService to get VCS repo info (auto-detects GitHub/Bitbucket)
+    let repo_info = deployment.git().get_vcs_repo_info(&repo_path)?;
+
+    // Get appropriate VCS provider based on remote URL
+    let registry = VcsProviderRegistry::new_with_loaded_credentials().await.map_err(|e| {
+        ApiError::BadRequest(format!("Failed to initialize VCS providers: {}", e))
+    })?;
+
+    let remote_url = deployment.git().get_remote_url(&repo_path)?;
+    let provider = registry.detect_from_url(&remote_url).ok_or_else(|| {
+        ApiError::BadRequest(format!("Unsupported VCS provider for URL: {}", remote_url))
+    })?;
+
+    match provider.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
             if let Err(e) = Merge::create_pr(
@@ -308,17 +330,25 @@ pub async fn create_github_pr(
             if let Err(e) = utils::browser::open_browser(&pr_info.url).await {
                 tracing::warn!("Failed to open PR in browser: {}", e);
             }
+
+            // Track analytics with provider type
+            let event_name = match repo_info.provider_type {
+                VcsProviderType::GitHub => "github_pr_created",
+                VcsProviderType::BitbucketServer => "bitbucket_pr_created",
+            };
             deployment
                 .track_if_analytics_allowed(
-                    "github_pr_created",
+                    event_name,
                     serde_json::json!({
                         "workspace_id": workspace.id.to_string(),
+                        "provider": format!("{:?}", repo_info.provider_type),
                     }),
                 )
                 .await;
 
-            // Trigger auto-description follow-up if enabled
+            // Trigger auto-description follow-up if enabled (only for GitHub currently)
             if request.auto_generate_description
+                && repo_info.provider_type == VcsProviderType::GitHub
                 && let Err(e) = trigger_pr_description_follow_up(
                     &deployment,
                     &workspace,
@@ -338,18 +368,35 @@ pub async fn create_github_pr(
         }
         Err(e) => {
             tracing::error!(
-                "Failed to create GitHub PR for attempt {}: {}",
+                "Failed to create PR for attempt {}: {}",
                 workspace.id,
                 e
             );
             match &e {
-                GitHubServiceError::GhCliNotInstalled(_) => Ok(ResponseJson(
+                VcsProviderError::GhCliNotInstalled => Ok(ResponseJson(
                     ApiResponse::error_with_data(CreatePrError::GithubCliNotInstalled),
                 )),
-                GitHubServiceError::AuthFailed(_) => Ok(ResponseJson(
-                    ApiResponse::error_with_data(CreatePrError::GithubCliNotLoggedIn),
+                VcsProviderError::AuthFailed(_) => {
+                    match repo_info.provider_type {
+                        VcsProviderType::GitHub => Ok(ResponseJson(
+                            ApiResponse::error_with_data(CreatePrError::GithubCliNotLoggedIn),
+                        )),
+                        VcsProviderType::BitbucketServer => Ok(ResponseJson(
+                            ApiResponse::error_with_data(CreatePrError::BitbucketAuthFailed {
+                                message: e.to_string(),
+                            }),
+                        )),
+                    }
+                }
+                VcsProviderError::AuthRequired(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(CreatePrError::BitbucketAuthRequired),
                 )),
-                _ => Err(ApiError::GitHubService(e)),
+                VcsProviderError::UnsupportedProvider(msg) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(CreatePrError::UnsupportedVcsProvider {
+                        message: msg.clone(),
+                    }),
+                )),
+                _ => Err(ApiError::BadRequest(format!("VCS provider error: {}", e))),
             }
         }
     }
@@ -387,13 +434,23 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path).await?;
+    // Use VcsProviderRegistry to detect and use appropriate provider
+    let repo_info = deployment.git().get_vcs_repo_info(&repo.path)?;
+    let remote_url = deployment.git().get_remote_url(&repo.path)?;
+
+    let registry = VcsProviderRegistry::new_with_loaded_credentials().await.map_err(|e| {
+        ApiError::BadRequest(format!("Failed to initialize VCS providers: {}", e))
+    })?;
+
+    let provider = registry.detect_from_url(&remote_url).ok_or_else(|| {
+        ApiError::BadRequest(format!("Unsupported VCS provider for URL: {}", remote_url))
+    })?;
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = github_service
-        .list_all_prs_for_branch(&repo_info, &workspace.branch)
-        .await?;
+    let prs = provider
+        .list_prs_for_branch(&repo_info, &workspace.branch)
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to list PRs: {}", e)))?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {
@@ -486,14 +543,20 @@ pub async fn get_pr_comments(
         }
     };
 
-    let github_service = GitHubService::new()?;
-    let repo_info = github_service.get_repo_info(&repo.path).await?;
+    // Use VcsProviderRegistry to detect and use appropriate provider
+    let repo_info = deployment.git().get_vcs_repo_info(&repo.path)?;
+    let remote_url = deployment.git().get_remote_url(&repo.path)?;
 
-    // Fetch comments from GitHub
-    match github_service
-        .get_pr_comments(&repo_info, pr_info.number)
-        .await
-    {
+    let registry = VcsProviderRegistry::new_with_loaded_credentials().await.map_err(|e| {
+        ApiError::BadRequest(format!("Failed to initialize VCS providers: {}", e))
+    })?;
+
+    let provider = registry.detect_from_url(&remote_url).ok_or_else(|| {
+        ApiError::BadRequest(format!("Unsupported VCS provider for URL: {}", remote_url))
+    })?;
+
+    // Fetch comments from VCS provider
+    match provider.get_pr_comments(&repo_info, pr_info.number).await {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
             comments,
         }))),
@@ -505,13 +568,30 @@ pub async fn get_pr_comments(
                 e
             );
             match &e {
-                GitHubServiceError::GhCliNotInstalled(_) => Ok(ResponseJson(
+                VcsProviderError::GhCliNotInstalled => Ok(ResponseJson(
                     ApiResponse::error_with_data(GetPrCommentsError::GithubCliNotInstalled),
                 )),
-                GitHubServiceError::AuthFailed(_) => Ok(ResponseJson(
-                    ApiResponse::error_with_data(GetPrCommentsError::GithubCliNotLoggedIn),
+                VcsProviderError::AuthFailed(_) => {
+                    match repo_info.provider_type {
+                        VcsProviderType::GitHub => Ok(ResponseJson(
+                            ApiResponse::error_with_data(GetPrCommentsError::GithubCliNotLoggedIn),
+                        )),
+                        VcsProviderType::BitbucketServer => Ok(ResponseJson(
+                            ApiResponse::error_with_data(GetPrCommentsError::BitbucketAuthFailed {
+                                message: e.to_string(),
+                            }),
+                        )),
+                    }
+                }
+                VcsProviderError::AuthRequired(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(GetPrCommentsError::BitbucketAuthRequired),
                 )),
-                _ => Err(ApiError::GitHubService(e)),
+                VcsProviderError::UnsupportedProvider(msg) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(GetPrCommentsError::UnsupportedVcsProvider {
+                        message: msg.clone(),
+                    }),
+                )),
+                _ => Err(ApiError::BadRequest(format!("VCS provider error: {}", e))),
             }
         }
     }
