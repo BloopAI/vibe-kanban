@@ -255,6 +255,10 @@
         "action": "로그인"
       }
     },
+    "mergeDialog": {
+      "title": "변경사항 병합",
+      "description": "변경사항을 대상 브랜치에 병합합니다. 계속하시겠습니까?"
+    },
     "states": {
       "createPr": "PR 생성",
       "creating": "생성 중...",

@@ -255,6 +255,10 @@
         "action": "Iniciar sesión"
       }
     },
+    "mergeDialog": {
+      "title": "Fusionar cambios",
+      "description": "Esto fusionará sus cambios en la rama de destino. ¿Está seguro de que desea continuar?"
+    },
     "states": {
       "createPr": "Crear PR",
       "forcePush": "Push forzado",
