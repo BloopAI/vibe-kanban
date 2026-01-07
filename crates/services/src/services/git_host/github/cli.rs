@@ -13,7 +13,6 @@ use std::{
 use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
-use serde_json::Value;
 use tempfile::NamedTempFile;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
@@ -21,6 +20,65 @@ use utils::shell::resolve_executable_path_blocking;
 use crate::services::git_host::types::{
     CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, RepoInfo, ReviewCommentUser,
 };
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhCommentResponse {
+    id: String,
+    author: Option<GhUserLogin>,
+    #[serde(default)]
+    author_association: String,
+    #[serde(default)]
+    body: String,
+    created_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    url: String,
+}
+
+#[derive(Deserialize)]
+struct GhCommentsWrapper {
+    comments: Vec<GhCommentResponse>,
+}
+
+#[derive(Deserialize)]
+struct GhUserLogin {
+    login: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GhReviewCommentResponse {
+    id: i64,
+    user: Option<GhUserLogin>,
+    #[serde(default)]
+    body: String,
+    created_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    html_url: String,
+    #[serde(default)]
+    path: String,
+    line: Option<i64>,
+    side: Option<String>,
+    #[serde(default)]
+    diff_hunk: String,
+    #[serde(default)]
+    author_association: String,
+}
+
+#[derive(Deserialize)]
+struct GhMergeCommit {
+    oid: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhPrResponse {
+    number: i64,
+    url: String,
+    #[serde(default)]
+    state: String,
+    merged_at: Option<DateTime<Utc>>,
+    merge_commit: Option<GhMergeCommit>,
+}
 
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
@@ -285,206 +343,96 @@ impl GhCli {
     }
 
     fn parse_pr_view(raw: &str) -> Result<PullRequestInfo, GhCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
+        let pr: GhPrResponse = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse gh pr view response: {err}; raw: {raw}"
             ))
         })?;
-        Self::extract_pr_info(&value).ok_or_else(|| {
-            GhCliError::UnexpectedOutput(format!(
-                "gh pr view response missing required fields: {value:#?}"
-            ))
-        })
+        Ok(Self::pr_response_to_info(pr))
     }
 
     fn parse_pr_list(raw: &str) -> Result<Vec<PullRequestInfo>, GhCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
+        let prs: Vec<GhPrResponse> = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse gh pr list response: {err}; raw: {raw}"
             ))
         })?;
-        let arr = value.as_array().ok_or_else(|| {
-            GhCliError::UnexpectedOutput(format!("gh pr list response is not an array: {value:#?}"))
-        })?;
-        arr.iter()
-            .map(|item| {
-                Self::extract_pr_info(item).ok_or_else(|| {
-                    GhCliError::UnexpectedOutput(format!(
-                        "gh pr list item missing required fields: {item:#?}"
-                    ))
-                })
-            })
-            .collect()
+        Ok(prs.into_iter().map(Self::pr_response_to_info).collect())
     }
 
-    fn parse_pr_comments(raw: &str) -> Result<Vec<PrComment>, GhCliError> {
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
-            GhCliError::UnexpectedOutput(format!(
-                "Failed to parse gh pr view --json comments response: {err}; raw: {raw}"
-            ))
-        })?;
-        let comments_arr = value
-            .get("comments")
-            .and_then(|v| v.as_array())
-            .ok_or_else(|| {
-                GhCliError::UnexpectedOutput(format!(
-                    "gh pr view --json comments response missing 'comments' array: {value:#?}"
-                ))
-            })?;
-        comments_arr
-            .iter()
-            .map(|item| {
-                // Parse manually to handle the nested author field
-                let id = item
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| {
-                        GhCliError::UnexpectedOutput(format!("Comment missing id: {item:#?}"))
-                    })?
-                    .to_string();
-                let author_login = item
-                    .get("author")
-                    .and_then(|a| a.get("login"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                let author_association = item
-                    .get("authorAssociation")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let body = item
-                    .get("body")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let created_at = item
-                    .get("createdAt")
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(Utc::now);
-                let url = item
-                    .get("url")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                Ok(PrComment {
-                    id,
-                    author: PrCommentAuthor {
-                        login: author_login,
-                    },
-                    author_association,
-                    body,
-                    created_at,
-                    url,
-                })
-            })
-            .collect()
-    }
-
-    fn parse_pr_review_comments(raw: &str) -> Result<Vec<PrReviewComment>, GhCliError> {
-        let items: Vec<Value> = serde_json::from_str(raw.trim()).map_err(|err| {
-            GhCliError::UnexpectedOutput(format!(
-                "Failed to parse review comments API response: {err}; raw: {raw}"
-            ))
-        })?;
-
-        items
-            .into_iter()
-            .map(|item| {
-                let id = item.get("id").and_then(|v| v.as_i64()).ok_or_else(|| {
-                    GhCliError::UnexpectedOutput(format!("Review comment missing id: {item:#?}"))
-                })?;
-                let user_login = item
-                    .get("user")
-                    .and_then(|u| u.get("login"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                let body = item
-                    .get("body")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let created_at = item
-                    .get("created_at")
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(Utc::now);
-                let html_url = item
-                    .get("html_url")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let path = item
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let line = item.get("line").and_then(|v| v.as_i64());
-                let side = item
-                    .get("side")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let diff_hunk = item
-                    .get("diff_hunk")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let author_association = item
-                    .get("author_association")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-
-                Ok(PrReviewComment {
-                    id,
-                    user: ReviewCommentUser { login: user_login },
-                    body,
-                    created_at,
-                    html_url,
-                    path,
-                    line,
-                    side,
-                    diff_hunk,
-                    author_association,
-                })
-            })
-            .collect()
-    }
-
-    fn extract_pr_info(value: &Value) -> Option<PullRequestInfo> {
-        let number = value.get("number")?.as_i64()?;
-        let url = value.get("url")?.as_str()?.to_string();
-        let state = value
-            .get("state")
-            .and_then(Value::as_str)
-            .unwrap_or("OPEN")
-            .to_string();
-        let merged_at = value
-            .get("mergedAt")
-            .and_then(Value::as_str)
-            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.with_timezone(&Utc));
-        let merge_commit_sha = value
-            .get("mergeCommit")
-            .and_then(|v| v.get("oid"))
-            .and_then(Value::as_str)
-            .map(|s| s.to_string());
-        Some(PullRequestInfo {
-            number,
-            url,
+    fn pr_response_to_info(pr: GhPrResponse) -> PullRequestInfo {
+        let state = if pr.state.is_empty() {
+            "OPEN"
+        } else {
+            &pr.state
+        };
+        PullRequestInfo {
+            number: pr.number,
+            url: pr.url,
             status: match state.to_ascii_uppercase().as_str() {
                 "OPEN" => MergeStatus::Open,
                 "MERGED" => MergeStatus::Merged,
                 "CLOSED" => MergeStatus::Closed,
                 _ => MergeStatus::Unknown,
             },
-            merged_at,
-            merge_commit_sha,
-        })
+            merged_at: pr.merged_at,
+            merge_commit_sha: pr.merge_commit.and_then(|c| c.oid),
+        }
+    }
+
+    fn parse_pr_comments(raw: &str) -> Result<Vec<PrComment>, GhCliError> {
+        let wrapper: GhCommentsWrapper = serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh pr view --json comments response: {err}; raw: {raw}"
+            ))
+        })?;
+
+        Ok(wrapper
+            .comments
+            .into_iter()
+            .map(|c| PrComment {
+                id: c.id,
+                author: PrCommentAuthor {
+                    login: c
+                        .author
+                        .and_then(|a| a.login)
+                        .unwrap_or_else(|| "unknown".to_string()),
+                },
+                author_association: c.author_association,
+                body: c.body,
+                created_at: c.created_at.unwrap_or_else(Utc::now),
+                url: c.url,
+            })
+            .collect())
+    }
+
+    fn parse_pr_review_comments(raw: &str) -> Result<Vec<PrReviewComment>, GhCliError> {
+        let items: Vec<GhReviewCommentResponse> =
+            serde_json::from_str(raw.trim()).map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse review comments API response: {err}; raw: {raw}"
+                ))
+            })?;
+
+        Ok(items
+            .into_iter()
+            .map(|c| PrReviewComment {
+                id: c.id,
+                user: ReviewCommentUser {
+                    login: c
+                        .user
+                        .and_then(|u| u.login)
+                        .unwrap_or_else(|| "unknown".to_string()),
+                },
+                body: c.body,
+                created_at: c.created_at.unwrap_or_else(Utc::now),
+                html_url: c.html_url,
+                path: c.path,
+                line: c.line,
+                side: c.side,
+                diff_hunk: c.diff_hunk,
+                author_association: c.author_association,
+            })
+            .collect())
     }
 }

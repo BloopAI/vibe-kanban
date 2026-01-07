@@ -5,7 +5,6 @@
 
 use std::{
     ffi::{OsStr, OsString},
-    io::Write,
     path::Path,
     process::Command,
 };
@@ -13,7 +12,6 @@ use std::{
 use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
-use tempfile::NamedTempFile;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
@@ -238,13 +236,7 @@ impl AzCli {
         project: &str,
         repo_name: &str,
     ) -> Result<PullRequestInfo, AzCliError> {
-        // Write body to temp file to avoid shell escaping issues
         let body = request.body.as_deref().unwrap_or("");
-        let mut body_file = NamedTempFile::new()
-            .map_err(|e| AzCliError::CommandFailed(format!("Failed to create temp file: {e}")))?;
-        body_file
-            .write_all(body.as_bytes())
-            .map_err(|e| AzCliError::CommandFailed(format!("Failed to write body: {e}")))?;
 
         let mut args: Vec<OsString> = Vec::with_capacity(20);
         args.push(OsString::from("repos"));
@@ -263,10 +255,7 @@ impl AzCli {
         args.push(OsString::from("--title"));
         args.push(OsString::from(&request.title));
         args.push(OsString::from("--description"));
-        // Read description from temp file
-        let description =
-            std::fs::read_to_string(body_file.path()).unwrap_or_else(|_| body.to_string());
-        args.push(OsString::from(&description));
+        args.push(OsString::from(body));
         args.push(OsString::from("--output"));
         args.push(OsString::from("json"));
 
