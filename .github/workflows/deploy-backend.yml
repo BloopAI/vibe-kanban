@@ -95,10 +95,10 @@ jobs:
     environment: dve
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Railway Deploy
-        uses: bervProject/railway-deploy@main
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        run: railway up --service vibe-kanban-api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        with:
-          service: "vibe-kanban-api"
-          detach: true
