@@ -31,6 +31,7 @@ export function extractProfileFromAction(
     switch (typ.type) {
       case 'CodingAgentInitialRequest':
       case 'CodingAgentFollowUpRequest':
+      case 'ReviewRequest':
         return typ.executor_profile_id;
       case 'ScriptRequest':
         curr = curr.next_action;
