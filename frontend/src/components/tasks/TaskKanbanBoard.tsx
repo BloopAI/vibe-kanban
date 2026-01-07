@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo } from 'react';
 import { useAuth, useCollapsedCards } from '@/hooks';
+import { useCollapsedColumns } from '@/hooks/useCollapsedColumns';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -60,6 +61,8 @@ function TaskKanbanBoard({
     expandAll,
     areAllCollapsed,
   } = useCollapsedCards(projectId);
+  const { isColumnCollapsed, toggleColumnCollapsed } =
+    useCollapsedColumns(projectId);
 
   // compute card IDs per column for bulk collapse/expand
   const columnCardIds = useMemo(() => {
@@ -99,6 +102,7 @@ function TaskKanbanBoard({
         const statusKey = status as TaskStatus;
         const cardIds = columnCardIds[statusKey];
         const allCollapsed = areAllCollapsed(cardIds);
+        const columnCollapsed = isColumnCollapsed(statusKey);
 
         return (
           <KanbanBoard key={status} id={statusKey}>
@@ -109,9 +113,12 @@ function TaskKanbanBoard({
               onCollapseAll={() => handleCollapseColumn(statusKey)}
               onExpandAll={() => handleExpandColumn(statusKey)}
               allCollapsed={allCollapsed}
+              onToggleColumnCollapsed={() => toggleColumnCollapsed(statusKey)}
+              columnCollapsed={columnCollapsed}
             />
-            <KanbanCards>
-              {items.map((item, index) => {
+            {!columnCollapsed && (
+              <KanbanCards>
+                {items.map((item, index) => {
                 const isOwnTask =
                   item.type === 'task' &&
                   (!item.sharedTask?.assignee_user_id ||
@@ -152,7 +159,8 @@ function TaskKanbanBoard({
                   />
                 );
               })}
-            </KanbanCards>
+              </KanbanCards>
+            )}
           </KanbanBoard>
         );
       })}

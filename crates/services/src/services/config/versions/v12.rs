@@ -37,6 +37,14 @@ fn default_git_commit_title_mode() -> GitCommitTitleMode {
     GitCommitTitleMode::default()
 }
 
+fn default_auto_pr_on_review_enabled() -> bool {
+    false
+}
+
+fn default_auto_pr_draft() -> bool {
+    true
+}
+
 /// modo de generación del título de commit para auto-commits
 #[derive(Clone, Debug, Serialize, Deserialize, TS, Default, PartialEq)]
 pub enum GitCommitTitleMode {
@@ -98,6 +106,12 @@ pub struct Config {
     /// prompt personalizado para generación de títulos de commit (modo AiGenerated)
     #[serde(default)]
     pub git_commit_title_prompt: Option<String>,
+    /// cuando está habilitado, se crea automáticamente un PR cuando la tarea pasa a "In Review"
+    #[serde(default = "default_auto_pr_on_review_enabled")]
+    pub auto_pr_on_review_enabled: bool,
+    /// cuando está habilitado, los PRs automáticos se crean como draft
+    #[serde(default = "default_auto_pr_draft")]
+    pub auto_pr_draft: bool,
 }
 
 impl Config {
@@ -124,8 +138,11 @@ impl Config {
             font_family: old_config.font_family,
             use_google_fonts: old_config.use_google_fonts,
             discord_counter_enabled: old_config.discord_counter_enabled,
+            // nuevos campos con valores por defecto
             git_commit_title_mode: GitCommitTitleMode::default(),
             git_commit_title_prompt: None,
+            auto_pr_on_review_enabled: false,
+            auto_pr_draft: true,
         }
     }
 
@@ -182,6 +199,8 @@ impl Default for Config {
             discord_counter_enabled: true,
             git_commit_title_mode: GitCommitTitleMode::default(),
             git_commit_title_prompt: None,
+            auto_pr_on_review_enabled: false,
+            auto_pr_draft: true,
         }
     }
 }

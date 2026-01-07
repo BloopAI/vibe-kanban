@@ -676,6 +676,46 @@ export function GeneralSettings() {
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
             <Checkbox
+              id="auto-pr-on-review"
+              checked={draft?.auto_pr_on_review_enabled ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ auto_pr_on_review_enabled: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="auto-pr-on-review" className="cursor-pointer">
+                {t('settings.general.pullRequests.autoPr.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.pullRequests.autoPr.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="auto-pr-draft"
+              checked={draft?.auto_pr_draft ?? true}
+              disabled={!draft?.auto_pr_on_review_enabled}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ auto_pr_draft: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="auto-pr-draft"
+                className={`cursor-pointer ${!draft?.auto_pr_on_review_enabled ? 'opacity-50' : ''}`}
+              >
+                {t('settings.general.pullRequests.autoPrDraft.label')}
+              </Label>
+              <p
+                className={`text-sm text-muted-foreground ${!draft?.auto_pr_on_review_enabled ? 'opacity-50' : ''}`}
+              >
+                {t('settings.general.pullRequests.autoPrDraft.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
               id="pr-auto-description"
               checked={draft?.pr_auto_description_enabled ?? false}
               onCheckedChange={(checked: boolean) =>

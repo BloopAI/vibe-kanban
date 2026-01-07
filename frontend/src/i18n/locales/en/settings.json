@@ -177,6 +177,14 @@
       "pullRequests": {
         "title": "Pull Requests",
         "description": "Configure PR creation behavior",
+        "autoPr": {
+          "label": "Create PR when moving to In Review",
+          "helper": "Automatically create a pull request when a task is moved to the In Review status."
+        },
+        "autoPrDraft": {
+          "label": "Create as draft PR",
+          "helper": "When auto-creating PRs, create them as drafts instead of ready for review."
+        },
         "autoDescription": {
           "label": "Auto-generate PR description by default",
           "helper": "When enabled, the AI agent will automatically update the PR title and description after creation."
@@ -432,6 +440,20 @@
           "aiGenerated": "AI-generated",
           "manual": "Manual (queue for review)"
         }
+      },
+      "autoPr": {
+        "label": "Auto-create PR on In Review",
+        "helper": "Control whether a PR is automatically created when the task moves to In Review status.",
+        "useGlobal": "Use global setting",
+        "enabled": "Always create PR",
+        "disabled": "Never create PR automatically"
+      },
+      "autoPrDraft": {
+        "label": "Create as Draft PR",
+        "helper": "Control whether auto-created PRs are created as drafts.",
+        "useGlobal": "Use global setting",
+        "enabled": "Always create as draft",
+        "disabled": "Create as ready for review"
       },
       "tasks": {
         "redirectToAttempt": {
