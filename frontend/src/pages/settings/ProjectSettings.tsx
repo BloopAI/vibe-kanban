@@ -226,6 +226,9 @@ export function ProjectSettings() {
         queryKey: ['projectRepositories', selectedProjectId],
       });
       queryClient.invalidateQueries({
+        queryKey: ['repos'],
+      });
+      queryClient.invalidateQueries({
         queryKey: repoBranchKeys.byRepo(newRepo.id),
       });
     } catch (err) {
@@ -247,6 +250,9 @@ export function ProjectSettings() {
       setRepositories((prev) => prev.filter((r) => r.id !== repoId));
       queryClient.invalidateQueries({
         queryKey: ['projectRepositories', selectedProjectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['repos'],
       });
       queryClient.invalidateQueries({
         queryKey: repoBranchKeys.byRepo(repoId),
