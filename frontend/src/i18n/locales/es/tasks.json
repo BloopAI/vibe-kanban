@@ -354,7 +354,7 @@
     "noServer": {
       "companionLink": "Ver guía de instalación",
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
-      "editButton": "Editar Script de Desarrollo",
+      "configureButton": "Configurar",
       "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
       "startButton": "Iniciar Servidor de Desarrollo",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
