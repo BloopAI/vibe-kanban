@@ -67,7 +67,7 @@ const ScriptLogsDialogImpl = NiceModal.create<ScriptLogsDialogProps>(
               </button>
             </div>
           </DialogHeader>
-          <div className="h-[60vh] flex flex-col min-h-0 min-w-0 bg-black/90">
+          <div className="h-[60vh] flex flex-col min-h-0 min-w-0 bg-panel">
             <ProcessLogsViewerContent logs={logs} error={error} />
           </div>
         </DialogContent>
