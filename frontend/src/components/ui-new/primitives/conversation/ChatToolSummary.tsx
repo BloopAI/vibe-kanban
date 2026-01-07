@@ -1,4 +1,7 @@
-import { ListMagnifyingGlassIcon } from '@phosphor-icons/react';
+import {
+  ListMagnifyingGlassIcon,
+  TerminalWindowIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
@@ -9,6 +12,8 @@ interface ChatToolSummaryProps {
   expanded?: boolean;
   onToggle?: () => void;
   status?: ToolStatus;
+  onViewContent?: () => void;
+  toolName?: string;
 }
 
 export function ChatToolSummary({
@@ -17,18 +22,31 @@ export function ChatToolSummary({
   expanded,
   onToggle,
   status,
+  onViewContent,
+  toolName,
 }: ChatToolSummaryProps) {
+  const handleClick = () => {
+    if (onViewContent) {
+      onViewContent();
+    } else if (onToggle) {
+      onToggle();
+    }
+  };
+
+  const Icon =
+    toolName === 'Bash' ? TerminalWindowIcon : ListMagnifyingGlassIcon;
+
   return (
     <div
       className={cn(
         'flex items-start gap-base text-sm text-low cursor-pointer',
         className
       )}
-      onClick={onToggle}
+      onClick={handleClick}
       role="button"
     >
       <span className="relative shrink-0 mt-0.5">
-        <ListMagnifyingGlassIcon className="size-icon-base" />
+        <Icon className="size-icon-base" />
         {status && (
           <ToolStatusDot
             status={status}

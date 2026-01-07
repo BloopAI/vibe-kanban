@@ -6,11 +6,13 @@ import { SectionHeader } from '../primitives/SectionHeader';
 interface ProcessListContainerProps {
   selectedProcessId: string | null;
   onSelectProcess: (processId: string) => void;
+  disableAutoSelect?: boolean;
 }
 
 export function ProcessListContainer({
   selectedProcessId,
   onSelectProcess,
+  disableAutoSelect,
 }: ProcessListContainerProps) {
   const { executionProcessesVisible } = useExecutionProcessesContext();
 
@@ -23,12 +25,16 @@ export function ProcessListContainer({
     });
   }, [executionProcessesVisible]);
 
-  // Auto-select latest process if none selected
+  // Auto-select latest process if none selected (unless disabled)
   useEffect(() => {
-    if (!selectedProcessId && sortedProcesses.length > 0) {
+    if (
+      !disableAutoSelect &&
+      !selectedProcessId &&
+      sortedProcesses.length > 0
+    ) {
       onSelectProcess(sortedProcesses[0].id);
     }
-  }, [selectedProcessId, sortedProcesses, onSelectProcess]);
+  }, [disableAutoSelect, selectedProcessId, sortedProcesses, onSelectProcess]);
 
   const handleSelectProcess = useCallback(
     (processId: string) => {

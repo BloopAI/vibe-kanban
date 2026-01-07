@@ -13,7 +13,10 @@ import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
 import { LogNavigationProvider } from '@/contexts/LogNavigationContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
+import {
+  LogsContentContainer,
+  type LogsPanelContent,
+} from '@/components/ui-new/containers/LogsContentContainer';
 import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
@@ -345,10 +348,9 @@ export function WorkspacesLayout() {
   const [isLogsMode, setIsLogsMode] = useState(false);
   const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
 
-  // Selected process for logs panel
-  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
-    null
-  );
+  // Content for logs panel (either process logs or tool content)
+  const [logsPanelContent, setLogsPanelContent] =
+    useState<LogsPanelContent | null>(null);
 
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
@@ -492,13 +494,28 @@ export function WorkspacesLayout() {
   const handleViewProcessInPanel = useCallback((processId: string) => {
     setIsLogsMode(true);
     setIsChangesMode(false); // Mutually exclusive
-    setSelectedProcessId(processId);
+    setLogsPanelContent({ type: 'process', processId });
     // Only auto-hide sidebar on narrower screens
     const isWideScreen = window.innerWidth > 2048;
     if (!isWideScreen) {
       setIsSidebarVisible(false);
     }
   }, []);
+
+  // Navigate to logs panel and display static tool content
+  const handleViewToolContentInPanel = useCallback(
+    (toolName: string, content: string, command?: string) => {
+      setIsLogsMode(true);
+      setIsChangesMode(false); // Mutually exclusive
+      setLogsPanelContent({ type: 'tool', toolName, content, command });
+      // Only auto-hide sidebar on narrower screens
+      const isWideScreen = window.innerWidth > 2048;
+      if (!isWideScreen) {
+        setIsSidebarVisible(false);
+      }
+    },
+    []
+  );
 
   // Navigate to changes panel and scroll to a specific file
   const handleViewFileInChanges = useCallback((filePath: string) => {
@@ -615,12 +632,18 @@ export function WorkspacesLayout() {
 
     if (isLogsMode) {
       // In logs mode, split git panel vertically: process list on top, git on bottom
+      // Derive selectedProcessId from logsPanelContent if it's a process
+      const selectedProcessId =
+        logsPanelContent?.type === 'process'
+          ? logsPanelContent.processId
+          : null;
       return (
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
             <ProcessListContainer
               selectedProcessId={selectedProcessId}
-              onSelectProcess={setSelectedProcessId}
+              onSelectProcess={handleViewProcessInPanel}
+              disableAutoSelect={logsPanelContent?.type === 'tool'}
             />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
@@ -693,6 +716,7 @@ export function WorkspacesLayout() {
               >
                 <LogNavigationProvider
                   viewProcessInPanel={handleViewProcessInPanel}
+                  viewToolContentInPanel={handleViewToolContentInPanel}
                 >
                   <WorkspacesMainContainer
                     selectedWorkspace={selectedWorkspace ?? null}
@@ -726,9 +750,7 @@ export function WorkspacesLayout() {
                 attemptId={selectedWorkspace?.id}
               />
             )}
-            {isLogsMode && (
-              <LogsContentContainer selectedProcessId={selectedProcessId} />
-            )}
+            {isLogsMode && <LogsContentContainer content={logsPanelContent} />}
           </div>
         </Allotment.Pane>
 

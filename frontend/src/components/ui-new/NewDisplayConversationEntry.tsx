@@ -15,6 +15,7 @@ import {
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useFileNavigation } from '@/contexts/FileNavigationContext';
+import { useLogNavigation } from '@/contexts/LogNavigationContext';
 import { cn } from '@/lib/utils';
 import {
   ChatToolSummary,
@@ -94,6 +95,48 @@ function getToolSummary(
     default:
       return tool_name || 'Tool';
   }
+}
+
+/**
+ * Extract the actual tool output from action_type.result
+ * The output location depends on the action type:
+ * - command_run: result.output
+ * - tool: result.value (JSON stringified if object)
+ * - others: fall back to entry.content
+ */
+function getToolOutput(
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  entryContent: string
+): string {
+  const { action_type } = entryType;
+
+  switch (action_type.action) {
+    case 'command_run':
+      return action_type.result?.output ?? entryContent;
+    case 'tool':
+      if (action_type.result?.value != null) {
+        return typeof action_type.result.value === 'string'
+          ? action_type.result.value
+          : JSON.stringify(action_type.result.value, null, 2);
+      }
+      return entryContent;
+    default:
+      return entryContent;
+  }
+}
+
+/**
+ * Extract the command from action_type for command_run actions
+ */
+function getToolCommand(
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>
+): string | undefined {
+  const { action_type } = entryType;
+
+  if (action_type.action === 'command_run') {
+    return action_type.command;
+  }
+  return undefined;
 }
 
 /**
@@ -190,6 +233,9 @@ function renderToolUseEntry(
       summary={getToolSummary(entryType)}
       expansionKey={expansionKey}
       status={status}
+      content={getToolOutput(entryType, props.entry.content)}
+      toolName={entryType.tool_name}
+      command={getToolCommand(entryType)}
     />
   );
 }
@@ -480,15 +526,30 @@ function ToolSummaryEntry({
   summary,
   expansionKey,
   status,
+  content,
+  toolName,
+  command,
 }: {
   summary: string;
   expansionKey: string;
   status: ToolStatus;
+  content: string;
+  toolName: string;
+  command?: string;
 }) {
   const [expanded, toggle] = usePersistedExpanded(
     `tool:${expansionKey}`,
     false
   );
+  const { viewToolContentInPanel } = useLogNavigation();
+
+  // Only Bash tools with output should open the logs panel
+  const isBash = toolName === 'Bash';
+  const hasOutput = isBash && content && content.trim().length > 0;
+
+  const handleViewContent = useCallback(() => {
+    viewToolContentInPanel(toolName, content, command);
+  }, [viewToolContentInPanel, toolName, content, command]);
 
   return (
     <ChatToolSummary
@@ -496,6 +557,8 @@ function ToolSummaryEntry({
       expanded={expanded}
       onToggle={toggle}
       status={status}
+      onViewContent={hasOutput ? handleViewContent : undefined}
+      toolName={toolName}
     />
   );
 }
