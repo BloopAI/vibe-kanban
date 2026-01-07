@@ -6,6 +6,7 @@ import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
+import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
@@ -681,80 +682,83 @@ export function WorkspacesLayout() {
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
     const content = (
-      <Allotment
-        ref={allotmentRef}
-        className="flex-1 min-h-0"
-        onDragEnd={handlePaneResize}
-      >
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={sidebarWidth}
-          maxSize={600}
-          visible={isSidebarVisible}
+      <ReviewProvider attemptId={selectedWorkspace?.id}>
+        <Allotment
+          ref={allotmentRef}
+          className="flex-1 min-h-0"
+          onDragEnd={handlePaneResize}
         >
-          <div className="h-full overflow-hidden">{renderSidebar()}</div>
-        </Allotment.Pane>
+          <Allotment.Pane
+            minSize={300}
+            preferredSize={sidebarWidth}
+            maxSize={600}
+            visible={isSidebarVisible}
+          >
+            <div className="h-full overflow-hidden">{renderSidebar()}</div>
+          </Allotment.Pane>
 
-        <Allotment.Pane
-          visible={isMainPanelVisible}
-          priority={LayoutPriority.High}
-          minSize={300}
-        >
-          <div className="h-full overflow-hidden">
-            {isCreateMode ? (
-              <CreateChatBoxContainer />
-            ) : (
-              <FileNavigationProvider
-                viewFileInChanges={handleViewFileInChanges}
-                diffPaths={diffPaths}
-              >
-                <ExecutionProcessesProvider
-                  key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-                  attemptId={selectedWorkspace?.id}
-                  sessionId={selectedSessionId}
+          <Allotment.Pane
+            visible={isMainPanelVisible}
+            priority={LayoutPriority.High}
+            minSize={300}
+          >
+            <div className="h-full overflow-hidden">
+              {isCreateMode ? (
+                <CreateChatBoxContainer />
+              ) : (
+                <FileNavigationProvider
+                  viewFileInChanges={handleViewFileInChanges}
+                  diffPaths={diffPaths}
                 >
-                  <WorkspacesMainContainer
-                    selectedWorkspace={selectedWorkspace ?? null}
-                    selectedSession={selectedSession}
-                    sessions={sessions}
-                    onSelectSession={selectSession}
-                    isLoading={isLoading}
-                    isNewSessionMode={isNewSessionMode}
-                    onStartNewSession={startNewSession}
-                    onViewCode={handleToggleChangesMode}
-                    diffStats={diffStats}
-                  />
-                </ExecutionProcessesProvider>
-              </FileNavigationProvider>
-            )}
-          </div>
-        </Allotment.Pane>
+                  <ExecutionProcessesProvider
+                    key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+                    attemptId={selectedWorkspace?.id}
+                    sessionId={selectedSessionId}
+                  >
+                    <WorkspacesMainContainer
+                      selectedWorkspace={selectedWorkspace ?? null}
+                      selectedSession={selectedSession}
+                      sessions={sessions}
+                      onSelectSession={selectSession}
+                      isLoading={isLoading}
+                      isNewSessionMode={isNewSessionMode}
+                      onStartNewSession={startNewSession}
+                      onViewCode={handleToggleChangesMode}
+                      diffStats={diffStats}
+                    />
+                  </ExecutionProcessesProvider>
+                </FileNavigationProvider>
+              )}
+            </div>
+          </Allotment.Pane>
 
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={changesPanelWidth}
-          visible={isChangesMode}
-        >
-          <div className="h-full overflow-hidden">
-            <ChangesPanelContainer
-              diffs={realDiffs}
-              selectedFilePath={selectedFilePath}
-              onFileInViewChange={setFileInView}
-            />
-          </div>
-        </Allotment.Pane>
+          <Allotment.Pane
+            minSize={300}
+            preferredSize={changesPanelWidth}
+            visible={isChangesMode}
+          >
+            <div className="h-full overflow-hidden">
+              <ChangesPanelContainer
+                diffs={realDiffs}
+                selectedFilePath={selectedFilePath}
+                onFileInViewChange={setFileInView}
+                projectId={selectedWorkspaceTask?.project_id}
+              />
+            </div>
+          </Allotment.Pane>
 
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={gitPanelWidth}
-          maxSize={600}
-          visible={isGitPanelVisible}
-        >
-          <div className="h-full overflow-hidden">
-            {renderGitPanelContent()}
-          </div>
-        </Allotment.Pane>
-      </Allotment>
+          <Allotment.Pane
+            minSize={300}
+            preferredSize={gitPanelWidth}
+            maxSize={600}
+            visible={isGitPanelVisible}
+          >
+            <div className="h-full overflow-hidden">
+              {renderGitPanelContent()}
+            </div>
+          </Allotment.Pane>
+        </Allotment>
+      </ReviewProvider>
     );
 
     if (isCreateMode) {

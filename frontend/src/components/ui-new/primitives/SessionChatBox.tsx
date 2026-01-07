@@ -6,6 +6,8 @@ import {
   XIcon,
   PlusIcon,
   SpinnerIcon,
+  ChatCircleIcon,
+  TrashIcon,
 } from '@phosphor-icons/react';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import { formatDateShortWithTime } from '@/utils/date';
@@ -90,6 +92,15 @@ interface ApprovalModeProps {
   error?: string | null;
 }
 
+interface ReviewCommentsProps {
+  /** Number of review comments */
+  count: number;
+  /** Preview markdown of the comments */
+  previewMarkdown: string;
+  /** Clear all comments */
+  onClear: () => void;
+}
+
 interface SessionChatBoxProps {
   status: ExecutionStatus;
   editor: EditorProps;
@@ -101,6 +112,8 @@ interface SessionChatBoxProps {
   editMode?: EditModeProps;
   /** Approval mode for pending plan approvals */
   approvalMode?: ApprovalModeProps;
+  /** Review comments from diff viewer */
+  reviewComments?: ReviewCommentsProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
@@ -124,6 +137,7 @@ export function SessionChatBox({
   feedbackMode,
   editMode,
   approvalMode,
+  reviewComments,
   error,
   projectId,
   agent,
@@ -153,9 +167,10 @@ export function SessionChatBox({
     feedbackMode?.isSubmitting ||
     editMode?.isSubmitting ||
     approvalMode?.isSubmitting;
+  const hasContent =
+    editor.value.trim().length > 0 || (reviewComments?.count ?? 0) > 0;
   const canSend =
-    editor.value.trim().length > 0 &&
-    !['sending', 'stopping', 'queue-loading'].includes(status);
+    hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
   const showRunningAnimation =
@@ -386,9 +401,39 @@ export function SessionChatBox({
 
   // Banner content
   const renderBanner = () => {
+    const banners: React.ReactNode[] = [];
+
+    // Review comments banner
+    if (reviewComments && reviewComments.count > 0) {
+      banners.push(
+        <div
+          key="review-comments"
+          className="bg-accent/5 border-b px-double py-base flex items-center gap-base"
+        >
+          <ChatCircleIcon className="h-4 w-4 text-accent flex-shrink-0" />
+          <span className="text-sm text-normal flex-1">
+            {reviewComments.count} review{' '}
+            {reviewComments.count === 1 ? 'comment' : 'comments'} will be
+            included
+          </span>
+          <button
+            onClick={reviewComments.onClear}
+            className="text-low hover:text-normal transition-colors p-1 -m-1"
+            title="Clear review comments"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+
+    // Queued message banner
     if (isQueued) {
-      return (
-        <div className="bg-secondary border-b px-double py-base flex items-center gap-base">
+      banners.push(
+        <div
+          key="queued"
+          className="bg-secondary border-b px-double py-base flex items-center gap-base"
+        >
           <ClockIcon className="h-4 w-4 text-low" />
           <span className="text-sm text-low">
             Message queued - will execute when current run finishes
@@ -397,7 +442,7 @@ export function SessionChatBox({
       );
     }
 
-    return null;
+    return banners.length > 0 ? <>{banners}</> : null;
   };
 
   // Combine errors

@@ -114,6 +114,8 @@ interface ChangesPanelContainerProps {
   selectedFilePath?: string | null;
   onFileInViewChange?: (path: string) => void;
   className?: string;
+  /** Project ID for @ mentions in comments */
+  projectId?: string;
 }
 
 export function ChangesPanelContainer({
@@ -121,6 +123,7 @@ export function ChangesPanelContainer({
   selectedFilePath,
   onFileInViewChange,
   className,
+  projectId,
 }: ChangesPanelContainerProps) {
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // Track which diffs we've processed for auto-collapse
@@ -178,6 +181,7 @@ export function ChangesPanelContainer({
       className={className}
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
+      projectId={projectId}
     />
   );
 }

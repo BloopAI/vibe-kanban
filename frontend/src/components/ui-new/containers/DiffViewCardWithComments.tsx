@@ -1,0 +1,368 @@
+import { useMemo, useCallback } from 'react';
+import { CaretDownIcon, ChatCircleIcon } from '@phosphor-icons/react';
+import { DiffView, DiffModeEnum, SplitSide } from '@git-diff-view/react';
+import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
+import { cn } from '@/lib/utils';
+import { getFileIcon } from '@/utils/fileTypeIcon';
+import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
+import { useTheme } from '@/components/ThemeProvider';
+import { getActualTheme } from '@/utils/theme';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import { stripLineEnding } from '@/utils/string';
+import {
+  useReview,
+  type ReviewDraft,
+  type ReviewComment,
+} from '@/contexts/ReviewProvider';
+import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
+import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
+import { ToolStatus } from 'shared/types';
+import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
+import '@/styles/diff-style-overrides.css';
+
+// Discriminated union for input format flexibility
+export type DiffInput =
+  | {
+      type: 'content';
+      oldContent: string;
+      newContent: string;
+      oldPath?: string;
+      newPath: string;
+    }
+  | {
+      type: 'unified';
+      path: string;
+      unifiedDiff: string;
+      hasLineNumbers?: boolean;
+    };
+
+interface DiffViewCardWithCommentsProps {
+  /** Diff data - either raw content or unified diff string */
+  input: DiffInput;
+  /** Expansion state */
+  expanded?: boolean;
+  /** Toggle expansion callback */
+  onToggle?: () => void;
+  /** Optional status indicator */
+  status?: ToolStatus;
+  /** Additional className */
+  className?: string;
+  /** Project ID for @ mentions in comments */
+  projectId?: string;
+}
+
+interface DiffData {
+  diffFile: DiffFile | null;
+  additions: number;
+  deletions: number;
+  filePath: string;
+  isValid: boolean;
+}
+
+/**
+ * Read a plain line from the diff file for context in comments
+ */
+function readPlainLine(
+  diffFile: DiffFile | null,
+  lineNumber: number,
+  side: SplitSide
+): string | undefined {
+  if (!diffFile) return undefined;
+  try {
+    const rawLine =
+      side === SplitSide.old
+        ? diffFile.getOldPlainLine(lineNumber)
+        : diffFile.getNewPlainLine(lineNumber);
+    if (rawLine?.value === undefined) return undefined;
+    return stripLineEnding(rawLine.value);
+  } catch (error) {
+    console.error('Failed to read line content for review comment', error);
+    return undefined;
+  }
+}
+
+/**
+ * Process input to get diff data and statistics
+ */
+function useDiffData(input: DiffInput): DiffData {
+  return useMemo(() => {
+    if (input.type === 'content') {
+      const filePath = input.newPath || input.oldPath || 'unknown';
+      const oldLang =
+        getHighLightLanguageFromPath(input.oldPath || filePath) || 'plaintext';
+      const newLang =
+        getHighLightLanguageFromPath(input.newPath || filePath) || 'plaintext';
+
+      const oldContent = input.oldContent || '';
+      const newContent = input.newContent || '';
+
+      if (oldContent === newContent) {
+        return {
+          diffFile: null,
+          additions: 0,
+          deletions: 0,
+          filePath,
+          isValid: false,
+        };
+      }
+
+      try {
+        const file = generateDiffFile(
+          input.oldPath || filePath,
+          oldContent,
+          input.newPath || filePath,
+          newContent,
+          oldLang,
+          newLang
+        );
+        file.initRaw();
+
+        return {
+          diffFile: file,
+          additions: file.additionLength ?? 0,
+          deletions: file.deletionLength ?? 0,
+          filePath,
+          isValid: true,
+        };
+      } catch (e) {
+        console.error('Failed to generate diff:', e);
+        return {
+          diffFile: null,
+          additions: 0,
+          deletions: 0,
+          filePath,
+          isValid: false,
+        };
+      }
+    } else {
+      // Unified diff - doesn't support comments (need DiffFile for line content)
+      return {
+        diffFile: null,
+        additions: 0,
+        deletions: 0,
+        filePath: input.path,
+        isValid: false,
+      };
+    }
+  }, [input]);
+}
+
+export function DiffViewCardWithComments({
+  input,
+  expanded = false,
+  onToggle,
+  status,
+  className,
+  projectId,
+}: DiffViewCardWithCommentsProps) {
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
+  const globalMode = useDiffViewMode();
+  const diffMode =
+    globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
+
+  const { diffFile, additions, deletions, filePath, isValid } =
+    useDiffData(input);
+  const { comments, drafts, setDraft } = useReview();
+
+  const FileIcon = getFileIcon(filePath, actualTheme);
+  const hasStats = additions > 0 || deletions > 0;
+
+  // Filter comments for this file
+  const commentsForFile = useMemo(
+    () => comments.filter((c) => c.filePath === filePath),
+    [comments, filePath]
+  );
+
+  // Transform comments to git-diff-view extendData format
+  const extendData = useMemo(() => {
+    const oldFileData: Record<string, { data: ReviewComment }> = {};
+    const newFileData: Record<string, { data: ReviewComment }> = {};
+
+    commentsForFile.forEach((comment) => {
+      const lineKey = String(comment.lineNumber);
+      if (comment.side === SplitSide.old) {
+        oldFileData[lineKey] = { data: comment };
+      } else {
+        newFileData[lineKey] = { data: comment };
+      }
+    });
+
+    return {
+      oldFile: oldFileData,
+      newFile: newFileData,
+    };
+  }, [commentsForFile]);
+
+  // Handle click on "add widget" button in diff view
+  const handleAddWidgetClick = useCallback(
+    (lineNumber: number, side: SplitSide) => {
+      const widgetKey = `${filePath}-${side}-${lineNumber}`;
+      const codeLine = readPlainLine(diffFile, lineNumber, side);
+      const draft: ReviewDraft = {
+        filePath,
+        side,
+        lineNumber,
+        text: '',
+        ...(codeLine !== undefined ? { codeLine } : {}),
+      };
+      setDraft(widgetKey, draft);
+    },
+    [filePath, diffFile, setDraft]
+  );
+
+  // Render the comment widget line (for new comments)
+  const renderWidgetLine = useCallback(
+    (props: { side: SplitSide; lineNumber: number; onClose: () => void }) => {
+      const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
+      const draft = drafts[widgetKey];
+      if (!draft) return null;
+
+      return (
+        <CommentWidgetLine
+          draft={draft}
+          widgetKey={widgetKey}
+          onSave={props.onClose}
+          onCancel={props.onClose}
+          projectId={projectId}
+        />
+      );
+    },
+    [filePath, drafts, projectId]
+  );
+
+  // Render existing comments below lines
+  const renderExtendLine = useCallback(
+    (lineData: { data: ReviewComment }) => {
+      return (
+        <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
+      );
+    },
+    [projectId]
+  );
+
+  return (
+    <div className={cn('rounded-sm border overflow-hidden', className)}>
+      {/* Header */}
+      <div
+        className={cn(
+          'flex items-center bg-panel p-base w-full',
+          onToggle && 'cursor-pointer'
+        )}
+        onClick={onToggle}
+      >
+        <div className="flex-1 flex items-center gap-base min-w-0">
+          <span className="relative shrink-0">
+            <FileIcon className="size-icon-base" />
+            {status && (
+              <ToolStatusDot
+                status={status}
+                className="absolute -bottom-0.5 -right-0.5"
+              />
+            )}
+          </span>
+          <span className="text-sm text-normal truncate font-ibm-plex-mono">
+            {filePath}
+          </span>
+          {hasStats && (
+            <span className="text-sm shrink-0">
+              {additions > 0 && (
+                <span className="text-success">+{additions}</span>
+              )}
+              {additions > 0 && deletions > 0 && ' '}
+              {deletions > 0 && (
+                <span className="text-error">-{deletions}</span>
+              )}
+            </span>
+          )}
+          {commentsForFile.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-accent/10 text-accent rounded shrink-0">
+              <ChatCircleIcon className="size-icon-xs" weight="fill" />
+              {commentsForFile.length}
+            </span>
+          )}
+        </div>
+        {onToggle && (
+          <CaretDownIcon
+            className={cn(
+              'size-icon-xs shrink-0 text-low transition-transform',
+              !expanded && '-rotate-90'
+            )}
+          />
+        )}
+      </div>
+
+      {/* Diff body - shown when expanded */}
+      {expanded && (
+        <DiffViewBodyWithComments
+          diffFile={diffFile}
+          isValid={isValid}
+          theme={actualTheme}
+          diffMode={diffMode}
+          extendData={extendData}
+          onAddWidgetClick={handleAddWidgetClick}
+          renderWidgetLine={renderWidgetLine}
+          renderExtendLine={renderExtendLine}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Diff body component with comment support
+ */
+function DiffViewBodyWithComments({
+  diffFile,
+  isValid,
+  theme,
+  diffMode,
+  extendData,
+  onAddWidgetClick,
+  renderWidgetLine,
+  renderExtendLine,
+}: {
+  diffFile: DiffFile | null;
+  isValid: boolean;
+  theme: 'light' | 'dark';
+  diffMode: DiffModeEnum;
+  extendData: {
+    oldFile: Record<string, { data: ReviewComment }>;
+    newFile: Record<string, { data: ReviewComment }>;
+  };
+  onAddWidgetClick: (lineNumber: number, side: SplitSide) => void;
+  renderWidgetLine: (props: {
+    side: SplitSide;
+    lineNumber: number;
+    onClose: () => void;
+  }) => React.ReactNode;
+  renderExtendLine: (lineData: { data: ReviewComment }) => React.ReactNode;
+}) {
+  if (!isValid || !diffFile) {
+    return (
+      <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
+        Unable to render diff.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <DiffView
+        diffFile={diffFile}
+        diffViewWrap={false}
+        diffViewTheme={theme}
+        diffViewHighlight
+        diffViewMode={diffMode}
+        diffViewFontSize={12}
+        diffViewAddWidget
+        onAddWidgetClick={onAddWidgetClick}
+        renderWidgetLine={renderWidgetLine}
+        extendData={extendData}
+        renderExtendLine={renderExtendLine}
+      />
+    </div>
+  );
+}
+
+export { useDiffData };

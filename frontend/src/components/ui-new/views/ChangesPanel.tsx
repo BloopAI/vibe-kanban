@@ -1,8 +1,8 @@
 import { memo } from 'react';
 import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
-import { DiffViewCard } from '../primitives/conversation/DiffViewCard';
-import type { DiffInput } from '../primitives/conversation/DiffViewCard';
+import { DiffViewCardWithComments } from '../containers/DiffViewCardWithComments';
+import type { DiffInput } from '../containers/DiffViewCardWithComments';
 import type { Diff } from 'shared/types';
 
 interface DiffItemData {
@@ -14,6 +14,8 @@ interface ChangesPanelProps {
   className?: string;
   diffItems: DiffItemData[];
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
+  /** Project ID for @ mentions in comments */
+  projectId?: string;
 }
 
 // Memoized DiffItem - only re-renders when its specific diff reference changes
@@ -21,10 +23,12 @@ const DiffItem = memo(function DiffItem({
   diff,
   initialExpanded = true,
   onRef,
+  projectId,
 }: {
   diff: Diff;
   initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
+  projectId?: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
   const [expanded, toggle] = usePersistedExpanded(
@@ -44,7 +48,12 @@ const DiffItem = memo(function DiffItem({
 
   return (
     <div ref={(el) => onRef?.(path, el)}>
-      <DiffViewCard input={input} expanded={expanded} onToggle={toggle} />
+      <DiffViewCardWithComments
+        input={input}
+        expanded={expanded}
+        onToggle={toggle}
+        projectId={projectId}
+      />
     </div>
   );
 });
@@ -53,6 +62,7 @@ export function ChangesPanel({
   className,
   diffItems,
   onDiffRef,
+  projectId,
 }: ChangesPanelProps) {
   return (
     <div
@@ -68,6 +78,7 @@ export function ChangesPanel({
             diff={diff}
             initialExpanded={initialExpanded}
             onRef={onDiffRef}
+            projectId={projectId}
           />
         ))}
       </div>
