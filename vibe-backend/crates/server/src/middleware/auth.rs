@@ -190,18 +190,20 @@ pub async fn auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Result<Response, AuthError> {
-    // Extract Authorization header
-    let auth_header = request
-        .headers()
-        .get(AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .ok_or(AuthError::MissingToken)?;
-
-    // Extract bearer token
-    let token = extract_bearer_token(auth_header).ok_or(AuthError::InvalidToken)?;
+    // Extract token from Authorization header or query parameter
+    let token = match request.headers().get(AUTHORIZATION).and_then(|h| h.to_str().ok()) {
+        Some(header) => extract_bearer_token(header).ok_or(AuthError::InvalidToken)?.to_string(),
+        None => {
+            let query = request.uri().query().unwrap_or("");
+            url::form_urlencoded::parse(query.as_bytes())
+                .find(|(k, _)| k == "token")
+                .map(|(_, v)| v.to_string())
+                .ok_or(AuthError::MissingToken)?
+        }
+    };
 
     // Validate token and get user
-    let user = auth_state.validate_token(token).await?;
+    let user = auth_state.validate_token(&token).await?;
 
     // Inject user into request extensions
     request.extensions_mut().insert(user);
