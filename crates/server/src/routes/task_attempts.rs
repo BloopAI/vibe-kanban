@@ -177,16 +177,17 @@ pub async fn create_task_attempt(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let agent_working_dir = project
-        .default_agent_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
+    // Compute agent_working_dir based on repo count:
+    // - Single repo: use repo name as working dir (agent runs in repo directory)
+    // - Multiple repos: use None (agent runs in workspace root)
+    let agent_working_dir = if payload.repos.len() == 1 {
+        let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+        Some(repo.name)
+    } else {
+        None
+    };
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
