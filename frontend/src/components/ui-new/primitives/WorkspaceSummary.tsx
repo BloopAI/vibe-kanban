@@ -8,32 +8,9 @@ import {
   CircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { formatRelativeTime } from '@/utils/date';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-
-function RunningDots() {
-  return (
-    <div className="flex items-center gap-[2px] shrink-0">
-      <span className="size-dot rounded-full bg-brand animate-running-dot-1" />
-      <span className="size-dot rounded-full bg-brand animate-running-dot-2" />
-      <span className="size-dot rounded-full bg-brand animate-running-dot-3" />
-    </div>
-  );
-}
-
-function formatTimeElapsed(dateString?: string): string | null {
-  if (!dateString) return null;
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 0) return `${diffDays}d ago`;
-  if (diffHours > 0) return `${diffHours}h ago`;
-  if (diffMins > 0) return `${diffMins}m ago`;
-  return 'just now';
-}
+import { RunningDots } from './RunningDots';
 
 interface WorkspaceSummaryProps {
   name: string;
@@ -155,7 +132,7 @@ export function WorkspaceSummary({
                 <span className="min-w-0 flex-1 truncate">Draft</span>
               ) : latestProcessCompletedAt ? (
                 <span className="min-w-0 flex-1 truncate">
-                  {formatTimeElapsed(latestProcessCompletedAt)}
+                  {formatRelativeTime(latestProcessCompletedAt)}
                 </span>
               ) : (
                 <span className="flex-1" />

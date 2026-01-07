@@ -8,6 +8,7 @@ import {
   CaretDoubleDownIcon,
   ColumnsIcon,
   RowsIcon,
+  TerminalIcon,
   type Icon,
 } from '@phosphor-icons/react';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
@@ -66,6 +67,7 @@ export interface NavbarProps {
   isMainPanelVisible?: boolean;
   isGitPanelVisible?: boolean;
   isChangesMode?: boolean;
+  isLogsMode?: boolean;
   isCreateMode?: boolean;
   // Archive state
   isArchived?: boolean;
@@ -78,6 +80,7 @@ export interface NavbarProps {
   onToggleMainPanel?: () => void;
   onToggleGitPanel?: () => void;
   onToggleChangesMode?: () => void;
+  onToggleLogsMode?: () => void;
   onToggleArchive?: () => void;
   // Diff control handlers
   onToggleAllDiffs?: () => void;
@@ -93,6 +96,7 @@ export function Navbar({
   isMainPanelVisible,
   isGitPanelVisible,
   isChangesMode,
+  isLogsMode,
   isCreateMode,
   isArchived,
   hasDiffs,
@@ -102,6 +106,7 @@ export function Navbar({
   onToggleMainPanel,
   onToggleGitPanel,
   onToggleChangesMode,
+  onToggleLogsMode,
   onToggleArchive,
   onToggleAllDiffs,
   onToggleDiffViewMode,
@@ -206,6 +211,15 @@ export function Navbar({
           onClick={onToggleChangesMode}
           aria-label="Toggle changes mode"
           tooltip="Toggle changes mode"
+          disabled={isCreateMode}
+          className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
+        />
+        <NavbarIconButton
+          icon={TerminalIcon}
+          isActive={isLogsMode}
+          onClick={onToggleLogsMode}
+          aria-label="Toggle logs panel"
+          tooltip="Toggle logs panel"
           disabled={isCreateMode}
           className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
         />

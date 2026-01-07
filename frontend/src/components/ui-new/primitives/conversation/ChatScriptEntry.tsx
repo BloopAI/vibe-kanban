@@ -2,7 +2,7 @@ import { TerminalIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
-import { ScriptLogsDialog } from '@/components/dialogs/ScriptLogsDialog';
+import { useLogNavigation } from '@/contexts/LogNavigationContext';
 
 interface ChatScriptEntryProps {
   title: string;
@@ -19,12 +19,13 @@ export function ChatScriptEntry({
   className,
   status,
 }: ChatScriptEntryProps) {
+  const { viewProcessInPanel } = useLogNavigation();
   const isRunning = status.status === 'created';
   const isSuccess = status.status === 'success';
   const isFailed = status.status === 'failed';
 
   const handleClick = () => {
-    ScriptLogsDialog.show({ processId, title });
+    viewProcessInPanel(processId);
   };
 
   const getSubtitle = () => {

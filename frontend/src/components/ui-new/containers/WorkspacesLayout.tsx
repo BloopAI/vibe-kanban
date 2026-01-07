@@ -11,7 +11,10 @@ import { splitMessageToTitleDescription } from '@/utils/string';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
+import { LogNavigationProvider } from '@/contexts/LogNavigationContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
+import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContainer';
@@ -339,23 +342,30 @@ export function WorkspacesLayout() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
   const [isChangesMode, setIsChangesMode] = useState(false);
+  const [isLogsMode, setIsLogsMode] = useState(false);
   const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
+
+  // Selected process for logs panel
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
+    null
+  );
 
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
-  // Reset Allotment sizes when changes panel becomes visible
+  // Reset Allotment sizes when changes or logs panel becomes visible
   // This re-applies preferredSize percentages based on current window size
   useEffect(() => {
-    if (isChangesMode && allotmentRef.current) {
+    if ((isChangesMode || isLogsMode) && allotmentRef.current) {
       allotmentRef.current.reset();
     }
-  }, [isChangesMode]);
+  }, [isChangesMode, isLogsMode]);
 
-  // Reset changes mode when entering create mode
+  // Reset changes and logs mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
       setIsChangesMode(false);
+      setIsLogsMode(false);
     }
   }, [isCreateMode]);
 
@@ -414,17 +424,16 @@ export function WorkspacesLayout() {
   // Handle pane resize end
   const handlePaneResize = useCallback(
     (sizes: number[]) => {
-      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes panel, sizes[3] = git panel
+      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes/logs panel, sizes[3] = git panel
       if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
       if (sizes[3] !== undefined) setGitPanelWidth(sizes[3]);
 
-      // Store changes panel as percentage of TOTAL container width
-      // (Allotment percentages are relative to the entire container, not just main+changes)
-      const changesWidth = sizes[2];
-      if (changesWidth !== undefined) {
-        const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
-        if (total > 0) {
-          const percent = Math.round((changesWidth / total) * 100);
+      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
+      if (total > 0) {
+        // Store changes/logs panel as percentage of TOTAL container width
+        const centerPaneWidth = sizes[2];
+        if (centerPaneWidth !== undefined) {
+          const percent = Math.round((centerPaneWidth / total) * 100);
           setChangesPanelWidth(`${percent}%`);
         }
       }
@@ -444,21 +453,57 @@ export function WorkspacesLayout() {
   const handleToggleChangesMode = useCallback(() => {
     setIsChangesMode((prev) => {
       const newChangesMode = !prev;
-      // Auto-hide sidebar when entering changes mode (unless screen is wide enough)
-      // Auto-show when exiting changes mode
       const isWideScreen = window.innerWidth > 2048;
-      if (newChangesMode && isWideScreen) {
-        // Keep sidebar visible on wide screens
+      if (newChangesMode) {
+        // Logs and changes are mutually exclusive - turn off logs mode
+        setIsLogsMode(false);
+        // Auto-hide sidebar when entering changes mode (unless screen is wide enough)
+        if (!isWideScreen) {
+          setIsSidebarVisible(false);
+        }
       } else {
-        setIsSidebarVisible(!newChangesMode);
+        // Auto-show sidebar when exiting changes mode
+        setIsSidebarVisible(true);
       }
       return newChangesMode;
     });
   }, []);
 
+  const handleToggleLogsMode = useCallback(() => {
+    setIsLogsMode((prev) => {
+      const newLogsMode = !prev;
+      const isWideScreen = window.innerWidth > 2048;
+      if (newLogsMode) {
+        // Logs and changes are mutually exclusive - turn off changes mode
+        setIsChangesMode(false);
+        // Auto-hide sidebar when entering logs mode (unless screen is wide enough)
+        if (!isWideScreen) {
+          setIsSidebarVisible(false);
+        }
+      } else {
+        // Auto-show sidebar when exiting logs mode
+        setIsSidebarVisible(true);
+      }
+      return newLogsMode;
+    });
+  }, []);
+
+  // Navigate to logs panel and select a specific process
+  const handleViewProcessInPanel = useCallback((processId: string) => {
+    setIsLogsMode(true);
+    setIsChangesMode(false); // Mutually exclusive
+    setSelectedProcessId(processId);
+    // Only auto-hide sidebar on narrower screens
+    const isWideScreen = window.innerWidth > 2048;
+    if (!isWideScreen) {
+      setIsSidebarVisible(false);
+    }
+  }, []);
+
   // Navigate to changes panel and scroll to a specific file
   const handleViewFileInChanges = useCallback((filePath: string) => {
     setIsChangesMode(true);
+    setIsLogsMode(false); // Mutually exclusive
     // Only auto-hide sidebar on narrower screens
     const isWideScreen = window.innerWidth > 2048;
     if (!isWideScreen) {
@@ -532,8 +577,8 @@ export function WorkspacesLayout() {
     }
   );
 
-  // Render git panel content - either split (in changes mode) or normal
-  const renderGitPanelContent = () => {
+  // Render right panel content based on current mode
+  const renderRightPanelContent = () => {
     if (isCreateMode) {
       return <GitPanelCreateContainer />;
     }
@@ -554,6 +599,28 @@ export function WorkspacesLayout() {
                 // Expand the diff if it was collapsed
                 setExpanded(`diff:${path}`, true);
               }}
+            />
+          </Allotment.Pane>
+          <Allotment.Pane minSize={200}>
+            <GitPanelContainer
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+              repoInfos={repoInfos}
+              onBranchNameChange={handleBranchNameChange}
+            />
+          </Allotment.Pane>
+        </Allotment>
+      );
+    }
+
+    if (isLogsMode) {
+      // In logs mode, split git panel vertically: process list on top, git on bottom
+      return (
+        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
+          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+            <ProcessListContainer
+              selectedProcessId={selectedProcessId}
+              onSelectProcess={setSelectedProcessId}
             />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
@@ -596,63 +663,61 @@ export function WorkspacesLayout() {
 
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
-    const content = (
-      <ReviewProvider attemptId={selectedWorkspace?.id}>
-        <Allotment
-          ref={allotmentRef}
-          className="flex-1 min-h-0"
-          onDragEnd={handlePaneResize}
+    const allotmentContent = (
+      <Allotment
+        ref={allotmentRef}
+        className="flex-1 min-h-0"
+        onDragEnd={handlePaneResize}
+      >
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={sidebarWidth}
+          maxSize={600}
+          visible={isSidebarVisible}
         >
-          <Allotment.Pane
-            minSize={300}
-            preferredSize={sidebarWidth}
-            maxSize={600}
-            visible={isSidebarVisible}
-          >
-            <div className="h-full overflow-hidden">{renderSidebar()}</div>
-          </Allotment.Pane>
+          <div className="h-full overflow-hidden">{renderSidebar()}</div>
+        </Allotment.Pane>
 
-          <Allotment.Pane
-            visible={isMainPanelVisible}
-            priority={LayoutPriority.High}
-            minSize={300}
-          >
-            <div className="h-full overflow-hidden">
-              {isCreateMode ? (
-                <CreateChatBoxContainer />
-              ) : (
-                <FileNavigationProvider
-                  viewFileInChanges={handleViewFileInChanges}
-                  diffPaths={diffPaths}
+        <Allotment.Pane
+          visible={isMainPanelVisible}
+          priority={LayoutPriority.High}
+          minSize={300}
+        >
+          <div className="h-full overflow-hidden">
+            {isCreateMode ? (
+              <CreateChatBoxContainer />
+            ) : (
+              <FileNavigationProvider
+                viewFileInChanges={handleViewFileInChanges}
+                diffPaths={diffPaths}
+              >
+                <LogNavigationProvider
+                  viewProcessInPanel={handleViewProcessInPanel}
                 >
-                  <ExecutionProcessesProvider
-                    key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-                    attemptId={selectedWorkspace?.id}
-                    sessionId={selectedSessionId}
-                  >
-                    <WorkspacesMainContainer
-                      selectedWorkspace={selectedWorkspace ?? null}
-                      selectedSession={selectedSession}
-                      sessions={sessions}
-                      onSelectSession={selectSession}
-                      isLoading={isLoading}
-                      isNewSessionMode={isNewSessionMode}
-                      onStartNewSession={startNewSession}
-                      onViewCode={handleToggleChangesMode}
-                      diffStats={diffStats}
-                    />
-                  </ExecutionProcessesProvider>
-                </FileNavigationProvider>
-              )}
-            </div>
-          </Allotment.Pane>
+                  <WorkspacesMainContainer
+                    selectedWorkspace={selectedWorkspace ?? null}
+                    selectedSession={selectedSession}
+                    sessions={sessions}
+                    onSelectSession={selectSession}
+                    isLoading={isLoading}
+                    isNewSessionMode={isNewSessionMode}
+                    onStartNewSession={startNewSession}
+                    onViewCode={handleToggleChangesMode}
+                    diffStats={diffStats}
+                  />
+                </LogNavigationProvider>
+              </FileNavigationProvider>
+            )}
+          </div>
+        </Allotment.Pane>
 
-          <Allotment.Pane
-            minSize={300}
-            preferredSize={changesPanelWidth}
-            visible={isChangesMode}
-          >
-            <div className="h-full overflow-hidden">
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={changesPanelWidth}
+          visible={isChangesMode || isLogsMode}
+        >
+          <div className="h-full overflow-hidden">
+            {isChangesMode && (
               <ChangesPanelContainer
                 diffs={realDiffs}
                 selectedFilePath={selectedFilePath}
@@ -660,21 +725,24 @@ export function WorkspacesLayout() {
                 projectId={selectedWorkspaceTask?.project_id}
                 attemptId={selectedWorkspace?.id}
               />
-            </div>
-          </Allotment.Pane>
+            )}
+            {isLogsMode && (
+              <LogsContentContainer selectedProcessId={selectedProcessId} />
+            )}
+          </div>
+        </Allotment.Pane>
 
-          <Allotment.Pane
-            minSize={300}
-            preferredSize={gitPanelWidth}
-            maxSize={600}
-            visible={isGitPanelVisible}
-          >
-            <div className="h-full overflow-hidden">
-              {renderGitPanelContent()}
-            </div>
-          </Allotment.Pane>
-        </Allotment>
-      </ReviewProvider>
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={gitPanelWidth}
+          maxSize={600}
+          visible={isGitPanelVisible}
+        >
+          <div className="h-full overflow-hidden">
+            {renderRightPanelContent()}
+          </div>
+        </Allotment.Pane>
+      </Allotment>
     );
 
     if (isCreateMode) {
@@ -683,12 +751,24 @@ export function WorkspacesLayout() {
           initialProjectId={lastWorkspaceTask?.project_id}
           initialRepos={lastWorkspaceRepos}
         >
-          {content}
+          <ReviewProvider attemptId={selectedWorkspace?.id}>
+            {allotmentContent}
+          </ReviewProvider>
         </CreateModeProvider>
       );
     }
 
-    return content;
+    return (
+      <ExecutionProcessesProvider
+        key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+        attemptId={selectedWorkspace?.id}
+        sessionId={selectedSessionId}
+      >
+        <ReviewProvider attemptId={selectedWorkspace?.id}>
+          {allotmentContent}
+        </ReviewProvider>
+      </ExecutionProcessesProvider>
+    );
   };
 
   return (
@@ -699,6 +779,7 @@ export function WorkspacesLayout() {
         isMainPanelVisible={isMainPanelVisible}
         isGitPanelVisible={isGitPanelVisible}
         isChangesMode={isChangesMode}
+        isLogsMode={isLogsMode}
         isCreateMode={isCreateMode}
         isArchived={selectedWorkspace?.archived}
         hasDiffs={realDiffs.length > 0}
@@ -708,6 +789,7 @@ export function WorkspacesLayout() {
         onToggleMainPanel={handleToggleMainPanel}
         onToggleGitPanel={handleToggleGitPanel}
         onToggleChangesMode={handleToggleChangesMode}
+        onToggleLogsMode={handleToggleLogsMode}
         onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
         onToggleAllDiffs={handleToggleAllDiffs}
         onToggleDiffViewMode={toggleDiffViewMode}
