@@ -2,7 +2,7 @@
 # Runtime Only Dockerfile
 # Expects pre-compiled binary "server" in current dir
 # ===========================================
-FROM ubuntu:24.04
+FROM debian:bookworm-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
