@@ -1,6 +1,7 @@
 use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process_repo_state::ExecutionProcessRepoState,
     session::{CreateSession, Session},
     workspace::Workspace,
 };
@@ -39,6 +40,9 @@ pub struct StartReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub context: Option<Vec<RepoReviewContext>>,
     pub additional_prompt: Option<String>,
+    /// If true and context is None, automatically include all workspace commits
+    #[serde(default)]
+    pub use_all_workspace_commits: bool,
 }
 
 /// Error types for review operations
@@ -83,10 +87,36 @@ pub async fn start_review(
     )
     .await?;
 
-    // Convert context types
-    let context: Option<Vec<executors::actions::review::RepoReviewContext>> = payload
-        .context
-        .map(|ctx| ctx.into_iter().map(|c| c.into()).collect());
+    // Build context - either from payload or auto-populated from workspace commits
+    let context: Option<Vec<executors::actions::review::RepoReviewContext>> =
+        if let Some(ctx) = payload.context {
+            // Use explicit context if provided
+            Some(ctx.into_iter().map(|c| c.into()).collect())
+        } else if payload.use_all_workspace_commits {
+            // Auto-populate with initial commits for each repo in the workspace
+            let initial_commits =
+                ExecutionProcessRepoState::find_initial_commits_for_workspace(pool, workspace.id)
+                    .await?;
+
+            if initial_commits.is_empty() {
+                None
+            } else {
+                Some(
+                    initial_commits
+                        .into_iter()
+                        .map(|(repo_id, initial_commit)| {
+                            executors::actions::review::RepoReviewContext {
+                                repo_id,
+                                // Store just the initial commit - prompt will say "from this commit onwards"
+                                commit_hashes: vec![initial_commit],
+                            }
+                        })
+                        .collect(),
+                )
+            }
+        } else {
+            None
+        };
 
     // Build the review action
     let action = ExecutorAction::new(

@@ -313,6 +313,7 @@ impl AppendPrompt {
 }
 
 /// Build a natural language review prompt from context and additional instructions.
+/// When context contains initial commits, instructs the agent to review all changes from those commits.
 pub fn build_review_prompt(
     context: Option<&[RepoReviewContext]>,
     additional_prompt: Option<&str>,
@@ -320,13 +321,26 @@ pub fn build_review_prompt(
     let mut prompt = String::from("Please review the code changes.\n\n");
 
     if let Some(repos) = context {
-        prompt.push_str("Commits to review:\n");
-        for repo in repos {
-            for hash in &repo.commit_hashes {
-                prompt.push_str(&format!("- {}\n", hash));
+        // Check if this looks like initial commit context (single commit per repo)
+        let has_single_commits = repos.iter().all(|r| r.commit_hashes.len() == 1);
+
+        if has_single_commits && !repos.is_empty() {
+            prompt.push_str("Review all changes made since the following base commit(s):\n");
+            for repo in repos {
+                if let Some(hash) = repo.commit_hashes.first() {
+                    prompt.push_str(&format!("- {} (base)\n", hash));
+                }
             }
+            prompt.push_str("\nYou can use `git diff <base>..HEAD` to see the changes.\n\n");
+        } else {
+            prompt.push_str("Commits to review:\n");
+            for repo in repos {
+                for hash in &repo.commit_hashes {
+                    prompt.push_str(&format!("- {}\n", hash));
+                }
+            }
+            prompt.push('\n');
         }
-        prompt.push('\n');
     }
 
     if let Some(additional) = additional_prompt {

@@ -232,7 +232,11 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, };
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, 
+/**
+ * If true and context is None, automatically include all workspace commits
+ */
+use_all_workspace_commits: boolean, };
 
 export type ReviewError = { "type": "process_already_running" };
 
