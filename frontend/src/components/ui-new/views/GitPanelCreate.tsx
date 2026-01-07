@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposList';
-import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
-import { DropdownMenuTriggerButton } from '@/components/ui-new/primitives/Dropdown';
+import { ProjectSelectorContainer } from '@/components/ui-new/containers/ProjectSelectorContainer';
 import { RecentReposListContainer } from '@/components/ui-new/containers/RecentReposListContainer';
 import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
 import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
+import { WarningIcon } from '@phosphor-icons/react';
 import type { Project, GitBranch, Repo } from 'shared/types';
 
 interface GitPanelCreateProps {
@@ -15,6 +15,7 @@ interface GitPanelCreateProps {
   selectedProjectId: string | null;
   selectedProjectName?: string;
   onProjectSelect: (project: Project) => void;
+  onCreateProject: () => void;
   onRepoRemove: (repoId: string) => void;
   branchesByRepo: Record<string, GitBranch[]>;
   targetBranches: Record<string, string>;
@@ -30,6 +31,7 @@ export function GitPanelCreate({
   selectedProjectId,
   selectedProjectName,
   onProjectSelect,
+  onCreateProject,
   onRepoRemove,
   branchesByRepo,
   targetBranches,
@@ -37,6 +39,8 @@ export function GitPanelCreate({
   registeredRepoPaths,
   onRepoRegistered,
 }: GitPanelCreateProps) {
+  const hasNoRepos = repos.length === 0;
+
   return (
     <div
       className={cn(
@@ -46,31 +50,33 @@ export function GitPanelCreate({
     >
       <SectionHeader title="Project" />
       <div className="p-base border-b">
-        <SearchableDropdownContainer
-          items={projects}
-          selectedValue={selectedProjectId}
-          getItemKey={(p) => p.id}
-          getItemLabel={(p) => p.name}
-          onSelect={onProjectSelect}
-          trigger={
-            <DropdownMenuTriggerButton
-              label={selectedProjectName ?? 'Select project'}
-            />
-          }
-          placeholder="Search projects..."
-          emptyMessage="No projects found"
+        <ProjectSelectorContainer
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          selectedProjectName={selectedProjectName}
+          onProjectSelect={onProjectSelect}
+          onCreateProject={onCreateProject}
         />
       </div>
 
       <SectionHeader title="Repositories" />
       <div className="p-base border-b">
-        <SelectedReposList
-          repos={repos}
-          onRemove={onRepoRemove}
-          branchesByRepo={branchesByRepo}
-          selectedBranches={targetBranches}
-          onBranchChange={onBranchChange}
-        />
+        {hasNoRepos ? (
+          <div className="flex items-center gap-2 p-base rounded bg-warning/10 border border-warning/20">
+            <WarningIcon className="h-4 w-4 text-warning shrink-0" />
+            <p className="text-sm text-warning">
+              Please select at least one repository to get started
+            </p>
+          </div>
+        ) : (
+          <SelectedReposList
+            repos={repos}
+            onRemove={onRepoRemove}
+            branchesByRepo={branchesByRepo}
+            selectedBranches={targetBranches}
+            onBranchChange={onBranchChange}
+          />
+        )}
       </div>
       <SectionHeader title="Add Repositories" />
       <div className="flex flex-col p-base gap-half">
