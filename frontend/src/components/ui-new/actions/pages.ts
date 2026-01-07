@@ -1,9 +1,13 @@
 import type { Icon } from '@phosphor-icons/react';
-import { type ActionDefinition } from './index';
+import { type ActionDefinition, type ActionVisibilityContext } from './index';
 import { Actions } from './index';
 
 // Define page IDs first to avoid circular reference
-export type PageId = 'root' | 'workspaceActions' | 'diffOptions';
+export type PageId =
+  | 'root'
+  | 'workspaceActions'
+  | 'diffOptions'
+  | 'viewOptions';
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -37,6 +41,8 @@ export interface CommandBarPage {
   items: CommandBarItem[];
   // Optional: parent page for back button navigation
   parent?: PageId;
+  // Optional visibility condition - if omitted, page is always visible
+  isVisible?: (ctx: ActionVisibilityContext) => boolean;
 }
 
 export const Pages: Record<PageId, CommandBarPage> = {
@@ -49,16 +55,22 @@ export const Pages: Record<PageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.NewWorkspace },
+          { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
         ],
       },
       {
         type: 'group',
-        label: 'General',
+        label: 'View',
         items: [
-          { type: 'action', action: Actions.Settings },
+          { type: 'childPages', id: 'viewOptions' },
           { type: 'childPages', id: 'diffOptions' },
         ],
+      },
+      {
+        type: 'group',
+        label: 'General',
+        items: [{ type: 'action', action: Actions.Settings }],
       },
     ],
   },
@@ -68,6 +80,7 @@ export const Pages: Record<PageId, CommandBarPage> = {
     id: 'workspace-actions',
     title: 'Workspace Actions',
     parent: 'root',
+    isVisible: (ctx) => ctx.hasWorkspace,
     items: [
       {
         type: 'group',
@@ -87,22 +100,36 @@ export const Pages: Record<PageId, CommandBarPage> = {
     id: 'diff-options',
     title: 'Diff Options',
     parent: 'root',
+    isVisible: (ctx) => ctx.isChangesMode,
     items: [
-      {
-        type: 'group',
-        label: 'View',
-        items: [
-          { type: 'action', action: Actions.ToggleDiffViewMode },
-          { type: 'action', action: Actions.ToggleWrapLines },
-        ],
-      },
       {
         type: 'group',
         label: 'Display',
         items: [
+          { type: 'action', action: Actions.ToggleDiffViewMode },
+          { type: 'action', action: Actions.ToggleWrapLines },
           { type: 'action', action: Actions.ToggleIgnoreWhitespace },
-          { type: 'action', action: Actions.ExpandAllDiffs },
-          { type: 'action', action: Actions.CollapseAllDiffs },
+          { type: 'action', action: Actions.ToggleAllDiffs },
+        ],
+      },
+    ],
+  },
+
+  // View options page - layout panel controls
+  viewOptions: {
+    id: 'view-options',
+    title: 'View Options',
+    parent: 'root',
+    items: [
+      {
+        type: 'group',
+        label: 'Panels',
+        items: [
+          { type: 'action', action: Actions.ToggleSidebar },
+          { type: 'action', action: Actions.ToggleMainPanel },
+          { type: 'action', action: Actions.ToggleGitPanel },
+          { type: 'action', action: Actions.ToggleChangesMode },
+          { type: 'action', action: Actions.ToggleLogsMode },
         ],
       },
     ],

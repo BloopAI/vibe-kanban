@@ -14,6 +14,7 @@ import {
   type ActionExecutorContext,
   resolveLabel,
 } from '@/components/ui-new/actions';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId
@@ -38,14 +39,20 @@ interface ActionsProviderProps {
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
+  const { selectWorkspace, sidebarWorkspaces, workspaceId } =
+    useWorkspaceContext();
 
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
       navigate,
       queryClient,
+      selectWorkspace,
+      sidebarWorkspaces,
+      currentWorkspaceId: workspaceId,
     }),
-    [navigate, queryClient]
+    [navigate, queryClient, selectWorkspace, sidebarWorkspaces, workspaceId]
   );
 
   // Main action executor with centralized target validation and error handling

@@ -8,7 +8,6 @@ import {
 } from 'react';
 import { ChangesPanel } from '../views/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
-import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -179,19 +178,6 @@ export function ChangesPanelContainer({
       return { diff, initialExpanded };
     });
   }, [diffs, processedPaths]);
-
-  // Register diff paths in the store for expand/collapse all functionality
-  useEffect(() => {
-    const paths = diffs
-      .map((d) => d.newPath || d.oldPath || '')
-      .filter(Boolean);
-    useDiffViewStore.getState().setDiffPaths(paths);
-
-    // Clear paths when unmounting
-    return () => {
-      useDiffViewStore.getState().setDiffPaths([]);
-    };
-  }, [diffs]);
 
   return (
     <ChangesPanel

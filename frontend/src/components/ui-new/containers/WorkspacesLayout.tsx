@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
@@ -24,11 +23,10 @@ import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContai
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
-import { Navbar } from '@/components/ui-new/views/Navbar';
+import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { repoApi } from '@/lib/api';
 import { useRepoBranches } from '@/hooks';
-import { useWorkspaceMutations } from '@/hooks/useWorkspaceMutations';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -39,7 +37,8 @@ import {
   useExpandedAll,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
-import { useDiffViewMode, useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useLayoutStore } from '@/stores/useLayoutStore';
+import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
@@ -205,7 +204,6 @@ function GitPanelContainer({
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
 export function WorkspacesLayout() {
-  const navigate = useNavigate();
   const {
     workspace: selectedWorkspace,
     workspaceId: selectedWorkspaceId,
@@ -224,6 +222,18 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Layout state from store
+  const {
+    isSidebarVisible,
+    isMainPanelVisible,
+    isGitPanelVisible,
+    isChangesMode,
+    isLogsMode,
+    setChangesMode,
+    setLogsMode,
+    resetForCreateMode,
+  } = useLayoutStore();
 
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
   const { scratch: draftScratch } = useScratch(
@@ -263,16 +273,6 @@ export function WorkspacesLayout() {
     selectedWorkspace?.id ?? null,
     !isCreateMode && !!selectedWorkspace?.id
   );
-
-  // Workspace mutations (archive for navbar toggle)
-  const { toggleArchive: toggleArchiveMutation } = useWorkspaceMutations({
-    onArchiveSuccess: ({ archived, nextWorkspaceId }) => {
-      // When archiving, navigate to the next workspace
-      if (!archived && nextWorkspaceId) {
-        selectWorkspace(nextWorkspaceId);
-      }
-    },
-  });
 
   // Hook to rename branch via API
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
@@ -341,13 +341,6 @@ export function WorkspacesLayout() {
     [repos, diffStats, branchStatus]
   );
 
-  // Visibility state for sidebar panels
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [isGitPanelVisible, setIsGitPanelVisible] = useState(true);
-  const [isChangesMode, setIsChangesMode] = useState(false);
-  const [isLogsMode, setIsLogsMode] = useState(false);
-  const [isMainPanelVisible, setIsMainPanelVisible] = useState(true);
-
   // Content for logs panel (either process logs or tool content)
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);
@@ -366,36 +359,18 @@ export function WorkspacesLayout() {
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
-      setIsChangesMode(false);
-      setIsLogsMode(false);
+      resetForCreateMode();
     }
-  }, [isCreateMode]);
+  }, [isCreateMode, resetForCreateMode]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
-    CommandBarDialog.show({ showDiffOptions: isChangesMode });
-  }, [isChangesMode]);
+    CommandBarDialog.show();
+  }, []);
   useCommandBarShortcut(handleOpenCommandBar);
 
-  // Diff view controls
-  const diffViewMode = useDiffViewMode();
-  const toggleDiffViewMode = useDiffViewStore((s) => s.toggle);
-  const { expanded, setExpanded, setExpandedAll } = useExpandedAll();
-
-  // Compute diff keys and expansion state
-  const diffKeys = useMemo(
-    () => realDiffs.map((d) => `diff:${d.newPath || d.oldPath || ''}`),
-    [realDiffs]
-  );
-  const isAllDiffsExpanded = useMemo(
-    () => diffKeys.length > 0 && diffKeys.every((k) => expanded[k] !== false),
-    [diffKeys, expanded]
-  );
-
-  // Toggle all diffs expanded/collapsed
-  const handleToggleAllDiffs = useCallback(() => {
-    setExpandedAll(diffKeys, !isAllDiffsExpanded);
-  }, [diffKeys, isAllDiffsExpanded, setExpandedAll]);
+  // Expanded state for file tree selection
+  const { setExpanded } = useExpandedAll();
 
   // Persisted pane sizes
   const [sidebarWidth, setSidebarWidth] = usePaneSize(
@@ -443,91 +418,37 @@ export function WorkspacesLayout() {
     [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
   );
 
-  // Panel toggle handlers
-  const handleToggleSidebar = useCallback(() => {
-    setIsSidebarVisible((prev) => !prev);
-  }, []);
-
-  const handleToggleGitPanel = useCallback(() => {
-    setIsGitPanelVisible((prev) => !prev);
-  }, []);
-
-  const handleToggleChangesMode = useCallback(() => {
-    setIsChangesMode((prev) => {
-      const newChangesMode = !prev;
-      const isWideScreen = window.innerWidth > 2048;
-      if (newChangesMode) {
-        // Logs and changes are mutually exclusive - turn off logs mode
-        setIsLogsMode(false);
-        // Auto-hide sidebar when entering changes mode (unless screen is wide enough)
-        if (!isWideScreen) {
-          setIsSidebarVisible(false);
-        }
-      } else {
-        // Auto-show sidebar when exiting changes mode
-        setIsSidebarVisible(true);
-      }
-      return newChangesMode;
-    });
-  }, []);
-
-  const handleToggleLogsMode = useCallback(() => {
-    setIsLogsMode((prev) => {
-      const newLogsMode = !prev;
-      const isWideScreen = window.innerWidth > 2048;
-      if (newLogsMode) {
-        // Logs and changes are mutually exclusive - turn off changes mode
-        setIsChangesMode(false);
-        // Auto-hide sidebar when entering logs mode (unless screen is wide enough)
-        if (!isWideScreen) {
-          setIsSidebarVisible(false);
-        }
-      } else {
-        // Auto-show sidebar when exiting logs mode
-        setIsSidebarVisible(true);
-      }
-      return newLogsMode;
-    });
-  }, []);
-
   // Navigate to logs panel and select a specific process
-  const handleViewProcessInPanel = useCallback((processId: string) => {
-    setIsLogsMode(true);
-    setIsChangesMode(false); // Mutually exclusive
-    setLogsPanelContent({ type: 'process', processId });
-    // Only auto-hide sidebar on narrower screens
-    const isWideScreen = window.innerWidth > 2048;
-    if (!isWideScreen) {
-      setIsSidebarVisible(false);
-    }
-  }, []);
+  const handleViewProcessInPanel = useCallback(
+    (processId: string) => {
+      setLogsMode(true);
+      setLogsPanelContent({ type: 'process', processId });
+    },
+    [setLogsMode]
+  );
 
   // Navigate to logs panel and display static tool content
   const handleViewToolContentInPanel = useCallback(
     (toolName: string, content: string, command?: string) => {
-      setIsLogsMode(true);
-      setIsChangesMode(false); // Mutually exclusive
+      setLogsMode(true);
       setLogsPanelContent({ type: 'tool', toolName, content, command });
-      // Only auto-hide sidebar on narrower screens
-      const isWideScreen = window.innerWidth > 2048;
-      if (!isWideScreen) {
-        setIsSidebarVisible(false);
-      }
     },
-    []
+    [setLogsMode]
   );
 
   // Navigate to changes panel and scroll to a specific file
-  const handleViewFileInChanges = useCallback((filePath: string) => {
-    setIsChangesMode(true);
-    setIsLogsMode(false); // Mutually exclusive
-    // Only auto-hide sidebar on narrower screens
-    const isWideScreen = window.innerWidth > 2048;
-    if (!isWideScreen) {
-      setIsSidebarVisible(false);
-    }
-    setSelectedFilePath(filePath);
-  }, []);
+  const handleViewFileInChanges = useCallback(
+    (filePath: string) => {
+      setChangesMode(true);
+      setSelectedFilePath(filePath);
+    },
+    [setChangesMode]
+  );
+
+  // Toggle changes mode for "View Code" button in main panel
+  const handleToggleChangesMode = useCallback(() => {
+    setChangesMode(!isChangesMode);
+  }, [isChangesMode, setChangesMode]);
 
   // Compute diffPaths for FileNavigationContext
   const diffPaths = useMemo(() => {
@@ -536,48 +457,11 @@ export function WorkspacesLayout() {
     );
   }, [realDiffs]);
 
-  const handleToggleMainPanel = useCallback(() => {
-    // At least one of Main or Changes must be visible
-    if (isMainPanelVisible && !isChangesMode) return;
-    setIsMainPanelVisible((prev) => !prev);
-  }, [isMainPanelVisible, isChangesMode]);
-
-  const handleToggleArchive = useCallback(() => {
-    if (!selectedWorkspace) return;
-
-    // When archiving, find next workspace to select
-    let nextWorkspaceId: string | null = null;
-    if (!selectedWorkspace.archived) {
-      const currentIndex = sidebarWorkspaces.findIndex(
-        (ws) => ws.id === selectedWorkspace.id
-      );
-      if (currentIndex >= 0 && sidebarWorkspaces.length > 1) {
-        const nextWorkspace =
-          sidebarWorkspaces[currentIndex + 1] ||
-          sidebarWorkspaces[currentIndex - 1];
-        nextWorkspaceId = nextWorkspace?.id ?? null;
-      }
-    }
-
-    toggleArchiveMutation.mutate({
-      workspaceId: selectedWorkspace.id,
-      archived: selectedWorkspace.archived,
-      nextWorkspaceId,
-    });
-  }, [selectedWorkspace, sidebarWorkspaces, toggleArchiveMutation]);
-
-  // Navigate to old UI handler
-  const handleNavigateToOldUI = useCallback(() => {
-    if (selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id) {
-      navigate(
-        `/projects/${selectedWorkspaceTask.project_id}/tasks/${selectedWorkspace.task_id}`
-      );
-    }
-  }, [selectedWorkspaceTask?.project_id, selectedWorkspace?.task_id, navigate]);
-
-  const navbarTitle = isCreateMode
-    ? 'Create Workspace'
-    : selectedWorkspace?.branch;
+  // Sync diffPaths to store for actions (ToggleAllDiffs, ExpandAllDiffs, etc.)
+  useEffect(() => {
+    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
+    return () => useDiffViewStore.getState().setDiffPaths([]);
+  }, [diffPaths]);
 
   // Get the most recent workspace to auto-select its project and repos in create mode
   const mostRecentWorkspace = sidebarWorkspaces[0];
@@ -795,32 +679,7 @@ export function WorkspacesLayout() {
 
   return (
     <div className="flex flex-col h-screen">
-      <Navbar
-        workspaceTitle={navbarTitle}
-        isSidebarVisible={isSidebarVisible}
-        isMainPanelVisible={isMainPanelVisible}
-        isGitPanelVisible={isGitPanelVisible}
-        isChangesMode={isChangesMode}
-        isLogsMode={isLogsMode}
-        isCreateMode={isCreateMode}
-        isArchived={selectedWorkspace?.archived}
-        hasDiffs={realDiffs.length > 0}
-        isAllDiffsExpanded={isAllDiffsExpanded}
-        diffViewMode={diffViewMode}
-        onToggleSidebar={handleToggleSidebar}
-        onToggleMainPanel={handleToggleMainPanel}
-        onToggleGitPanel={handleToggleGitPanel}
-        onToggleChangesMode={handleToggleChangesMode}
-        onToggleLogsMode={handleToggleLogsMode}
-        onToggleArchive={selectedWorkspace ? handleToggleArchive : undefined}
-        onToggleAllDiffs={handleToggleAllDiffs}
-        onToggleDiffViewMode={toggleDiffViewMode}
-        onNavigateToOldUI={
-          selectedWorkspaceTask?.project_id && selectedWorkspace?.task_id
-            ? handleNavigateToOldUI
-            : undefined
-        }
-      />
+      <NavbarContainer />
       {renderContent()}
     </div>
   );

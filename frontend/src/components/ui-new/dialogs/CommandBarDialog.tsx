@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { StackIcon, SlidersIcon } from '@phosphor-icons/react';
+import { StackIcon, SlidersIcon, SquaresFourIcon } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
@@ -20,6 +20,11 @@ import {
   type ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
 import { resolveLabel } from '@/components/ui-new/actions';
+import {
+  useActionVisibilityContext,
+  isActionVisible,
+  isPageVisible,
+} from '@/components/ui-new/actions/useActionVisibility';
 
 // Resolved page structure passed to CommandBar
 interface ResolvedCommandBarPage {
@@ -33,12 +38,10 @@ export interface CommandBarDialogProps {
   page?: PageId;
   // Optional workspaceId for workspace actions
   workspaceId?: string;
-  // Show diff options when changes panel is visible
-  showDiffOptions?: boolean;
 }
 
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
-  ({ page = 'root', workspaceId, showDiffOptions = false }) => {
+  ({ page = 'root', workspaceId }) => {
     const modal = useModal();
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const queryClient = useQueryClient();
@@ -47,6 +50,9 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
 
     // Use prop workspaceId if provided, otherwise fall back to context
     const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
+
+    // Get visibility context for filtering actions
+    const visibilityContext = useActionVisibilityContext();
 
     // Page navigation state (lifted from CommandBar)
     const [currentPage, setCurrentPage] = useState<PageId>(page);
@@ -87,29 +93,32 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
             const resolvedItems = group.items.flatMap(
               (item: CommandBarGroupItem): ResolvedGroupItem[] => {
                 if (item.type === 'childPages') {
-                  // Only insert page link if conditions are met
-                  if (item.id === 'workspaceActions' && effectiveWorkspaceId) {
-                    return [
-                      {
-                        type: 'page' as const,
-                        pageId: item.id,
-                        label: 'Workspace Actions',
-                        icon: StackIcon,
-                      },
-                    ];
+                  const childPage = Pages[item.id];
+                  // Check page visibility condition
+                  if (!isPageVisible(childPage, visibilityContext)) {
+                    return [];
                   }
-                  if (item.id === 'diffOptions' && showDiffOptions) {
-                    return [
-                      {
-                        type: 'page' as const,
-                        pageId: item.id,
-                        label: 'Diff Options',
-                        icon: SlidersIcon,
-                      },
-                    ];
+                  // Get icon based on page type
+                  const pageIcons: Record<PageId, typeof StackIcon> = {
+                    root: SquaresFourIcon,
+                    workspaceActions: StackIcon,
+                    diffOptions: SlidersIcon,
+                    viewOptions: SquaresFourIcon,
+                  };
+                  return [
+                    {
+                      type: 'page' as const,
+                      pageId: item.id,
+                      label: childPage.title ?? item.id,
+                      icon: pageIcons[item.id],
+                    },
+                  ];
+                }
+                // For action items, filter by visibility condition
+                if (item.type === 'action') {
+                  if (!isActionVisible(item.action, visibilityContext)) {
+                    return [];
                   }
-                  // Condition not met, remove marker
-                  return [];
                 }
                 // action or page items pass through
                 return [item];
@@ -133,17 +142,17 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           const searchLower = searchQuery.toLowerCase();
 
           // Inject workspace actions if workspace is available
-          if (effectiveWorkspaceId) {
+          if (visibilityContext.hasWorkspace) {
             const workspaceActions = getPageActions('workspaceActions');
-            const matchingWorkspaceActions = workspaceActions.filter(
-              (action) => {
+            const matchingWorkspaceActions = workspaceActions
+              .filter((action) => isActionVisible(action, visibilityContext))
+              .filter((action) => {
                 const label = resolveLabel(action, workspace);
                 return (
                   label.toLowerCase().includes(searchLower) ||
                   action.id.toLowerCase().includes(searchLower)
                 );
-              }
-            );
+              });
 
             if (matchingWorkspaceActions.length > 0) {
               resolvedGroups.push({
@@ -156,10 +165,11 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
             }
           }
 
-          // Inject diff options if diff panel is visible
-          if (showDiffOptions) {
-            const diffActions = getPageActions('diffOptions');
-            const matchingDiffActions = diffActions.filter((action) => {
+          // Inject diff options (filtered by visibility)
+          const diffActions = getPageActions('diffOptions');
+          const matchingDiffActions = diffActions
+            .filter((action) => isActionVisible(action, visibilityContext))
+            .filter((action) => {
               const label = resolveLabel(action, workspace);
               return (
                 label.toLowerCase().includes(searchLower) ||
@@ -167,15 +177,36 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
               );
             });
 
-            if (matchingDiffActions.length > 0) {
-              resolvedGroups.push({
-                label: Pages.diffOptions.title || 'Diff Options',
-                items: matchingDiffActions.map((action) => ({
-                  type: 'action' as const,
-                  action,
-                })),
-              });
-            }
+          if (matchingDiffActions.length > 0) {
+            resolvedGroups.push({
+              label: Pages.diffOptions.title || 'Diff Options',
+              items: matchingDiffActions.map((action) => ({
+                type: 'action' as const,
+                action,
+              })),
+            });
+          }
+
+          // Inject view options (filtered by visibility)
+          const viewActions = getPageActions('viewOptions');
+          const matchingViewActions = viewActions
+            .filter((action) => isActionVisible(action, visibilityContext))
+            .filter((action) => {
+              const label = resolveLabel(action, workspace);
+              return (
+                label.toLowerCase().includes(searchLower) ||
+                action.id.toLowerCase().includes(searchLower)
+              );
+            });
+
+          if (matchingViewActions.length > 0) {
+            resolvedGroups.push({
+              label: Pages.viewOptions.title || 'View Options',
+              items: matchingViewActions.map((action) => ({
+                type: 'action' as const,
+                action,
+              })),
+            });
           }
         }
 
@@ -185,7 +216,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           groups: resolvedGroups,
         };
       };
-    }, [effectiveWorkspaceId, workspace, showDiffOptions]);
+    }, [visibilityContext, workspace]);
 
     // Store the previously focused element when dialog opens
     useEffect(() => {

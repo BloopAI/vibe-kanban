@@ -1,40 +1,36 @@
-import {
-  SidebarSimpleIcon,
-  ArchiveIcon,
-  ArrowSquareOutIcon,
-  GitDiffIcon,
-  ChatsTeardropIcon,
-  CaretDoubleUpIcon,
-  CaretDoubleDownIcon,
-  ColumnsIcon,
-  RowsIcon,
-  TerminalIcon,
-  type Icon,
-} from '@phosphor-icons/react';
-import type { DiffViewMode } from '@/stores/useDiffViewStore';
+import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
+import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  type NavbarItem,
+} from '../actions';
+import {
+  isActionActive,
+  isActionEnabled,
+  getActionIcon,
+  getActionTooltip,
+} from '../actions/useActionVisibility';
+
+/**
+ * Check if a NavbarItem is a divider
+ */
+function isDivider(item: NavbarItem): item is { readonly type: 'divider' } {
+  return 'type' in item && item.type === 'divider';
+}
 
 // NavbarIconButton - inlined from primitives
 interface NavbarIconButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
-  rotation?: 0 | 90 | 180 | 270;
   tooltip?: string;
 }
-
-const rotationClasses = {
-  0: '',
-  90: 'rotate-90',
-  180: 'rotate-180',
-  270: '-rotate-90',
-} as const;
 
 function NavbarIconButton({
   icon: IconComponent,
   isActive = false,
-  rotation = 0,
   tooltip,
   className,
   ...props
@@ -51,7 +47,7 @@ function NavbarIconButton({
       {...props}
     >
       <IconComponent
-        className={cn('size-icon-base', rotationClasses[rotation])}
+        className="size-icon-base"
         weight={isActive ? 'fill' : 'regular'}
       />
     </button>
@@ -62,59 +58,53 @@ function NavbarIconButton({
 
 export interface NavbarProps {
   workspaceTitle?: string;
-  // Panel visibility states
-  isSidebarVisible?: boolean;
-  isMainPanelVisible?: boolean;
-  isGitPanelVisible?: boolean;
-  isChangesMode?: boolean;
-  isLogsMode?: boolean;
-  isCreateMode?: boolean;
-  // Archive state
-  isArchived?: boolean;
-  // Diff controls
-  hasDiffs?: boolean; // Show view mode toggle when there are diffs
-  isAllDiffsExpanded?: boolean;
-  diffViewMode?: DiffViewMode;
-  // Panel toggle handlers
-  onToggleSidebar?: () => void;
-  onToggleMainPanel?: () => void;
-  onToggleGitPanel?: () => void;
-  onToggleChangesMode?: () => void;
-  onToggleLogsMode?: () => void;
-  onToggleArchive?: () => void;
-  // Diff control handlers
-  onToggleAllDiffs?: () => void;
-  onToggleDiffViewMode?: () => void;
-  // Navigation to old UI
-  onNavigateToOldUI?: () => void;
+  // Items for left side of navbar
+  leftItems?: NavbarItem[];
+  // Items for right side of navbar (with dividers inline)
+  rightItems?: NavbarItem[];
+  // Context for deriving action state
+  actionContext: ActionVisibilityContext;
+  // Handler to execute an action
+  onExecuteAction: (action: ActionDefinition) => void;
   className?: string;
 }
 
 export function Navbar({
   workspaceTitle = 'Workspace Title',
-  isSidebarVisible,
-  isMainPanelVisible,
-  isGitPanelVisible,
-  isChangesMode,
-  isLogsMode,
-  isCreateMode,
-  isArchived,
-  hasDiffs,
-  isAllDiffsExpanded,
-  diffViewMode,
-  onToggleSidebar,
-  onToggleMainPanel,
-  onToggleGitPanel,
-  onToggleChangesMode,
-  onToggleLogsMode,
-  onToggleArchive,
-  onToggleAllDiffs,
-  onToggleDiffViewMode,
-  onNavigateToOldUI,
+  leftItems = [],
+  rightItems = [],
+  actionContext,
+  onExecuteAction,
   className,
 }: NavbarProps) {
-  // Main toggle is disabled when Main is visible and Changes is not (can't hide both)
-  const isMainToggleDisabled = isMainPanelVisible && !isChangesMode;
+  const renderItem = (item: NavbarItem, key: string) => {
+    // Render divider
+    if (isDivider(item)) {
+      return <div key={key} className="h-4 w-px bg-border" />;
+    }
+
+    // Render action - derive state from action callbacks
+    const action = item;
+    const active = isActionActive(action, actionContext);
+    const enabled = isActionEnabled(action, actionContext);
+    const IconComponent = getActionIcon(action, actionContext);
+    const tooltip = getActionTooltip(action, actionContext);
+    const isDisabled = !enabled;
+
+    return (
+      <NavbarIconButton
+        key={key}
+        icon={IconComponent}
+        isActive={active}
+        onClick={() => onExecuteAction(action)}
+        aria-label={tooltip}
+        tooltip={tooltip}
+        disabled={isDisabled}
+        className={isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
+      />
+    );
+  };
+
   return (
     <nav
       className={cn(
@@ -124,30 +114,11 @@ export function Navbar({
     >
       {/* Left - Archive & Old UI Link */}
       <div className="flex-1 flex items-center gap-base">
-        {(onToggleArchive || onNavigateToOldUI) && (
-          <>
-            {onToggleArchive && (
-              <NavbarIconButton
-                icon={ArchiveIcon}
-                isActive={isArchived}
-                onClick={onToggleArchive}
-                aria-label={
-                  isArchived ? 'Unarchive workspace' : 'Archive workspace'
-                }
-                tooltip={
-                  isArchived ? 'Unarchive workspace' : 'Archive workspace'
-                }
-              />
-            )}
-            {onNavigateToOldUI && (
-              <NavbarIconButton
-                icon={ArrowSquareOutIcon}
-                onClick={onNavigateToOldUI}
-                aria-label="Open in old UI"
-                tooltip="Open in old UI"
-              />
-            )}
-          </>
+        {leftItems.map((item, index) =>
+          renderItem(
+            item,
+            `left-${isDivider(item) ? 'divider' : item.id}-${index}`
+          )
         )}
       </div>
 
@@ -156,81 +127,14 @@ export function Navbar({
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
-      {/* Right - Diff Controls + Panel Toggles */}
+      {/* Right - Diff Controls + Panel Toggles (dividers inline) */}
       <div className="flex-1 flex items-center justify-end gap-base">
-        {/* View mode toggle - visible when there are diffs (in or out of changes mode) */}
-        {(isChangesMode || hasDiffs) && (
-          <NavbarIconButton
-            icon={diffViewMode === 'split' ? ColumnsIcon : RowsIcon}
-            isActive={diffViewMode === 'split'}
-            onClick={onToggleDiffViewMode}
-            aria-label={
-              diffViewMode === 'split' ? 'Side-by-side view' : 'Inline view'
-            }
-            tooltip={
-              diffViewMode === 'split' ? 'Inline view' : 'Side-by-side view'
-            }
-          />
+        {rightItems.map((item, index) =>
+          renderItem(
+            item,
+            `right-${isDivider(item) ? 'divider' : item.id}-${index}`
+          )
         )}
-        {/* Expand/collapse all - only in changes mode */}
-        {isChangesMode && (
-          <NavbarIconButton
-            icon={isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon}
-            onClick={onToggleAllDiffs}
-            aria-label={
-              isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs'
-            }
-            tooltip={
-              isAllDiffsExpanded ? 'Collapse all diffs' : 'Expand all diffs'
-            }
-          />
-        )}
-        {/* Separator - show when any diff controls are visible */}
-        {(isChangesMode || hasDiffs) && <div className="h-4 w-px bg-border" />}
-        <NavbarIconButton
-          icon={SidebarSimpleIcon}
-          isActive={isSidebarVisible}
-          onClick={onToggleSidebar}
-          aria-label="Toggle sidebar"
-          tooltip="Toggle sidebar"
-        />
-        <NavbarIconButton
-          icon={ChatsTeardropIcon}
-          isActive={isMainPanelVisible}
-          onClick={onToggleMainPanel}
-          aria-label="Toggle main panel"
-          tooltip="Toggle main panel"
-          disabled={isMainToggleDisabled}
-          className={
-            isMainToggleDisabled ? 'opacity-40 cursor-not-allowed' : ''
-          }
-        />
-        <NavbarIconButton
-          icon={GitDiffIcon}
-          isActive={isChangesMode}
-          onClick={onToggleChangesMode}
-          aria-label="Toggle changes mode"
-          tooltip="Toggle changes mode"
-          disabled={isCreateMode}
-          className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
-        />
-        <NavbarIconButton
-          icon={TerminalIcon}
-          isActive={isLogsMode}
-          onClick={onToggleLogsMode}
-          aria-label="Toggle logs panel"
-          tooltip="Toggle logs panel"
-          disabled={isCreateMode}
-          className={isCreateMode ? 'opacity-40 cursor-not-allowed' : ''}
-        />
-        <NavbarIconButton
-          icon={SidebarSimpleIcon}
-          rotation={180}
-          isActive={isGitPanelVisible}
-          onClick={onToggleGitPanel}
-          aria-label="Toggle git panel"
-          tooltip="Toggle git panel"
-        />
       </div>
     </nav>
   );
