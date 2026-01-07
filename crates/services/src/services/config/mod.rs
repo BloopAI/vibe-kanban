@@ -26,6 +26,8 @@ pub type EditorType = versions::v12::EditorType;
 pub type GitHubConfig = versions::v12::GitHubConfig;
 pub type UiLanguage = versions::v12::UiLanguage;
 pub type ShowcaseState = versions::v12::ShowcaseState;
+pub type GitCommitTitleMode = versions::v12::GitCommitTitleMode;
+pub use versions::v12::DEFAULT_COMMIT_TITLE_PROMPT;
 
 /// Will always return config, trying old schemas or eventually returning default
 pub async fn load_config_from_file(config_path: &PathBuf) -> Config {

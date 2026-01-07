@@ -1,0 +1,23 @@
+{
+  "title": "Commits Pendientes",
+  "description": "Estos cambios esperan que proporciones títulos de commit. Revisa cada cambio e ingresa un mensaje de commit significativo.",
+  "noPending": "No hay commits pendientes",
+  "agentSummary": "Resumen del Agente",
+  "diffSummary": "Cambios",
+  "commitTitle": "Título del Commit",
+  "titlePlaceholder": "Ingresa un título de commit (ej., feat: agregar autenticación de usuario)",
+  "commit": "Confirmar",
+  "discard": "Descartar",
+  "discardAll": "Descartar Todo",
+  "close": "Cerrar",
+  "indicator": {
+    "ariaLabel": "{{count}} commits pendientes",
+    "tooltip": "{{count}} commits esperando tu revisión"
+  },
+  "errors": {
+    "titleRequired": "Se requiere un título de commit",
+    "titleTooLong": "El título del commit es demasiado largo (máximo 500 caracteres)",
+    "commitFailed": "Error al crear el commit",
+    "discardFailed": "Error al descartar el commit"
+  }
+}

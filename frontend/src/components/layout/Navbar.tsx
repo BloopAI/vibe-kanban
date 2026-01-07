@@ -40,6 +40,7 @@ import {
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
+import { PendingCommitsIndicator } from '@/components/PendingCommitsIndicator';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -237,6 +238,8 @@ export function Navbar() {
             ) : null}
 
             <div className="flex items-center gap-1">
+              <PendingCommitsIndicator />
+
               <Button
                 variant="ghost"
                 size="icon"

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
@@ -39,6 +40,7 @@ interface ProjectFormState {
   dev_script_working_dir: string;
   default_agent_working_dir: string;
   git_auto_commit_enabled: boolean | null;
+  git_commit_title_mode: string | null;
   auto_pr_on_review_enabled: boolean | null;
   auto_pr_draft: boolean | null;
   redirect_to_attempt_on_create: boolean | null;
@@ -58,6 +60,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
     git_auto_commit_enabled: project.git_auto_commit_enabled ?? null,
+    git_commit_title_mode: project.git_commit_title_mode ?? null,
     auto_pr_on_review_enabled: project.auto_pr_on_review_enabled ?? null,
     auto_pr_draft: project.auto_pr_draft ?? null,
     redirect_to_attempt_on_create: project.redirect_to_attempt_on_create ?? null,
@@ -702,6 +705,90 @@ export function ProjectSettings() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.git.autoCommit.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.git.commitTitleMode.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="commit-title-mode-default"
+                      name="commit-title-mode"
+                      checked={draft.git_commit_title_mode === null}
+                      onChange={() =>
+                        updateDraft({ git_commit_title_mode: null })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="commit-title-mode-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.commitTitleMode.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="commit-title-mode-agent"
+                      name="commit-title-mode"
+                      checked={draft.git_commit_title_mode === 'AgentSummary'}
+                      onChange={() =>
+                        updateDraft({ git_commit_title_mode: 'AgentSummary' })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="commit-title-mode-agent"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.commitTitleMode.agentSummary')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="commit-title-mode-ai"
+                      name="commit-title-mode"
+                      checked={draft.git_commit_title_mode === 'AiGenerated'}
+                      onChange={() =>
+                        updateDraft({ git_commit_title_mode: 'AiGenerated' })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="commit-title-mode-ai"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.commitTitleMode.aiGenerated')}
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        {t('settings.general.git.commitTitleMode.notImplemented')}
+                      </Badge>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="commit-title-mode-manual"
+                      name="commit-title-mode"
+                      checked={draft.git_commit_title_mode === 'Manual'}
+                      onChange={() =>
+                        updateDraft({ git_commit_title_mode: 'Manual' })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="commit-title-mode-manual"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.git.commitTitleMode.manual')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.git.commitTitleMode.helper')}
                 </p>
               </div>
 

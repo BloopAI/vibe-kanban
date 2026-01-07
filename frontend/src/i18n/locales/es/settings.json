@@ -146,10 +146,30 @@
             "invalidChars": "Contiene caracteres no válidos.",
             "controlChars": "Contiene caracteres de control."
           }
+
+        },
+        "commitTitleMode": {
+          "label": "Modo de Título de Commit",
+          "helper": "Elige cómo se generan los títulos de los commits durante la ejecución del agente.",
+          "options": {
+            "agentSummary": "Resumen del agente",
+            "agentSummaryHelper": "Usar la primera línea de la respuesta del agente como título del commit.",
+            "aiGenerated": "Generado por IA",
+            "aiGeneratedHelper": "Pedir al modelo que genere un título de commit usando el prompt personalizado abajo.",
+            "manual": "Manual (encolar para revisión)",
+            "manualHelper": "Encolar commits para revisión. Te pedirá el título cuando vuelvas a la UI."
+          },
+          "customPrompt": {
+            "label": "Prompt Personalizado para Título de Commit",
+            "helper": "Prompt personalizado para el agente de IA al generar títulos de commit. Usa {diff} como marcador para el resumen de cambios."
+          },
+          "notImplemented": "Aún No Implementado"
+          }
         },
         "autoCommit": {
           "label": "Auto-confirmar cambios",
           "helper": "Cuando está habilitado, el agente confirmará automáticamente los cambios después de una ejecución exitosa de la tarea."
+
         }
       },
       "pullRequests": {
@@ -394,7 +414,18 @@
           "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
         }
       },
+
       "git": {
+        "title": "Configuración de Git",
+        "description": "Configura el comportamiento de git para este proyecto.",
+        "commitTitleMode": {
+          "label": "Modo de Título de Commit",
+          "helper": "Sobrescribir el modo de título de commit global para este proyecto.",
+          "useGlobal": "Usar configuración global",
+          "agentSummary": "Usar resumen del agente",
+          "aiGenerated": "Generado por IA",
+          "manual": "Manual (encolar para revisión)"
+        },
         "autoCommit": {
           "label": "Auto-confirmar Cambios",
           "helper": "Controla si el agente confirma automáticamente los cambios después de la ejecución de la tarea.",
@@ -403,6 +434,7 @@
           "disabled": "Nunca auto-confirmar"
         }
       },
+
       "save": {
         "button": "Guardar Configuración del Proyecto",
         "success": "✓ ¡Configuración del proyecto guardada exitosamente!",
