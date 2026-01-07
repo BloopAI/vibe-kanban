@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { StackIcon } from '@phosphor-icons/react';
+import { StackIcon, SlidersIcon } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
@@ -33,10 +33,12 @@ export interface CommandBarDialogProps {
   page?: PageId;
   // Optional workspaceId for workspace actions
   workspaceId?: string;
+  // Show diff options when changes panel is visible
+  showDiffOptions?: boolean;
 }
 
 const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
-  ({ page = 'root', workspaceId }) => {
+  ({ page = 'root', workspaceId, showDiffOptions = false }) => {
     const modal = useModal();
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const queryClient = useQueryClient();
@@ -96,6 +98,16 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
                       },
                     ];
                   }
+                  if (item.id === 'diffOptions' && showDiffOptions) {
+                    return [
+                      {
+                        type: 'page' as const,
+                        pageId: item.id,
+                        label: 'Diff Options',
+                        icon: SlidersIcon,
+                      },
+                    ];
+                  }
                   // Condition not met, remove marker
                   return [];
                 }
@@ -117,27 +129,53 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           .filter((group): group is ResolvedGroup => group !== null);
 
         // When searching on root page, inject matching actions from nested pages
-        if (pageId === 'root' && searchQuery.trim() && effectiveWorkspaceId) {
-          const workspaceActions = getPageActions('workspaceActions');
+        if (pageId === 'root' && searchQuery.trim()) {
           const searchLower = searchQuery.toLowerCase();
 
-          // Filter actions that match the search query by label
-          const matchingActions = workspaceActions.filter((action) => {
-            const label = resolveLabel(action, workspace);
-            return (
-              label.toLowerCase().includes(searchLower) ||
-              action.id.toLowerCase().includes(searchLower)
+          // Inject workspace actions if workspace is available
+          if (effectiveWorkspaceId) {
+            const workspaceActions = getPageActions('workspaceActions');
+            const matchingWorkspaceActions = workspaceActions.filter(
+              (action) => {
+                const label = resolveLabel(action, workspace);
+                return (
+                  label.toLowerCase().includes(searchLower) ||
+                  action.id.toLowerCase().includes(searchLower)
+                );
+              }
             );
-          });
 
-          if (matchingActions.length > 0) {
-            resolvedGroups.push({
-              label: Pages.workspaceActions.title || 'Workspace Actions',
-              items: matchingActions.map((action) => ({
-                type: 'action' as const,
-                action,
-              })),
+            if (matchingWorkspaceActions.length > 0) {
+              resolvedGroups.push({
+                label: Pages.workspaceActions.title || 'Workspace Actions',
+                items: matchingWorkspaceActions.map((action) => ({
+                  type: 'action' as const,
+                  action,
+                })),
+              });
+            }
+          }
+
+          // Inject diff options if diff panel is visible
+          if (showDiffOptions) {
+            const diffActions = getPageActions('diffOptions');
+            const matchingDiffActions = diffActions.filter((action) => {
+              const label = resolveLabel(action, workspace);
+              return (
+                label.toLowerCase().includes(searchLower) ||
+                action.id.toLowerCase().includes(searchLower)
+              );
             });
+
+            if (matchingDiffActions.length > 0) {
+              resolvedGroups.push({
+                label: Pages.diffOptions.title || 'Diff Options',
+                items: matchingDiffActions.map((action) => ({
+                  type: 'action' as const,
+                  action,
+                })),
+              });
+            }
           }
         }
 
@@ -147,7 +185,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           groups: resolvedGroups,
         };
       };
-    }, [effectiveWorkspaceId, workspace]);
+    }, [effectiveWorkspaceId, workspace, showDiffOptions]);
 
     // Store the previously focused element when dialog opens
     useEffect(() => {

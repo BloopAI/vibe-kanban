@@ -3,7 +3,7 @@ import { type ActionDefinition } from './index';
 import { Actions } from './index';
 
 // Define page IDs first to avoid circular reference
-export type PageId = 'root' | 'workspaceActions';
+export type PageId = 'root' | 'workspaceActions' | 'diffOptions';
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -55,7 +55,10 @@ export const Pages: Record<PageId, CommandBarPage> = {
       {
         type: 'group',
         label: 'General',
-        items: [{ type: 'action', action: Actions.Settings }],
+        items: [
+          { type: 'action', action: Actions.Settings },
+          { type: 'childPages', id: 'diffOptions' },
+        ],
       },
     ],
   },
@@ -74,6 +77,32 @@ export const Pages: Record<PageId, CommandBarPage> = {
           { type: 'action', action: Actions.PinWorkspace },
           { type: 'action', action: Actions.ArchiveWorkspace },
           { type: 'action', action: Actions.DeleteWorkspace },
+        ],
+      },
+    ],
+  },
+
+  // Diff options page - shown when changes panel is visible
+  diffOptions: {
+    id: 'diff-options',
+    title: 'Diff Options',
+    parent: 'root',
+    items: [
+      {
+        type: 'group',
+        label: 'View',
+        items: [
+          { type: 'action', action: Actions.ToggleDiffViewMode },
+          { type: 'action', action: Actions.ToggleWrapLines },
+        ],
+      },
+      {
+        type: 'group',
+        label: 'Display',
+        items: [
+          { type: 'action', action: Actions.ToggleIgnoreWhitespace },
+          { type: 'action', action: Actions.ExpandAllDiffs },
+          { type: 'action', action: Actions.CollapseAllDiffs },
         ],
       },
     ],

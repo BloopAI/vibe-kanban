@@ -9,7 +9,14 @@ import {
   TrashIcon,
   PlusIcon,
   GearIcon,
+  ColumnsIcon,
+  ArrowsOutIcon,
+  ArrowsInIcon,
+  TextAlignLeftIcon,
+  EyeSlashIcon,
 } from '@phosphor-icons/react';
+import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { attemptsApi, tasksApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
@@ -170,6 +177,72 @@ export const Actions = {
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/settings');
+    },
+  },
+
+  // === Diff View Actions ===
+  ToggleDiffViewMode: {
+    id: 'toggle-diff-view-mode',
+    label: () =>
+      useDiffViewStore.getState().mode === 'unified'
+        ? 'Switch to Side-by-Side View'
+        : 'Switch to Inline View',
+    icon: ColumnsIcon,
+    requiresTarget: false,
+    execute: () => {
+      useDiffViewStore.getState().toggle();
+    },
+  },
+
+  ToggleIgnoreWhitespace: {
+    id: 'toggle-ignore-whitespace',
+    label: () =>
+      useDiffViewStore.getState().ignoreWhitespace
+        ? 'Show Whitespace Changes'
+        : 'Ignore Whitespace Changes',
+    icon: EyeSlashIcon,
+    requiresTarget: false,
+    execute: () => {
+      const store = useDiffViewStore.getState();
+      store.setIgnoreWhitespace(!store.ignoreWhitespace);
+    },
+  },
+
+  ToggleWrapLines: {
+    id: 'toggle-wrap-lines',
+    label: () =>
+      useDiffViewStore.getState().wrapText
+        ? 'Disable Line Wrapping'
+        : 'Enable Line Wrapping',
+    icon: TextAlignLeftIcon,
+    requiresTarget: false,
+    execute: () => {
+      const store = useDiffViewStore.getState();
+      store.setWrapText(!store.wrapText);
+    },
+  },
+
+  ExpandAllDiffs: {
+    id: 'expand-all-diffs',
+    label: 'Expand All Diffs',
+    icon: ArrowsOutIcon,
+    requiresTarget: false,
+    execute: () => {
+      const { diffPaths } = useDiffViewStore.getState();
+      const keys = diffPaths.map((p) => `diff:${p}`);
+      useUiPreferencesStore.getState().setExpandedAll(keys, true);
+    },
+  },
+
+  CollapseAllDiffs: {
+    id: 'collapse-all-diffs',
+    label: 'Collapse All Diffs',
+    icon: ArrowsInIcon,
+    requiresTarget: false,
+    execute: () => {
+      const { diffPaths } = useDiffViewStore.getState();
+      const keys = diffPaths.map((p) => `diff:${p}`);
+      useUiPreferencesStore.getState().setExpandedAll(keys, false);
     },
   },
 } as const satisfies Record<string, ActionDefinition>;

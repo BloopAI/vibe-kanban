@@ -65,7 +65,7 @@ type State = {
   setCollapsedPaths: (key: string, paths: string[]) => void;
 };
 
-const useUiPreferencesStore = create<State>()(
+export const useUiPreferencesStore = create<State>()(
   persist(
     (set) => ({
       repoActions: {},

@@ -239,11 +239,8 @@ export function WorkspacesLayout() {
     return title || 'New Workspace';
   }, [draftScratch]);
 
-  // Command bar keyboard shortcut (CMD+K)
-  const handleOpenCommandBar = useCallback(() => {
-    CommandBarDialog.show();
-  }, []);
-  useCommandBarShortcut(handleOpenCommandBar);
+  // Command bar keyboard shortcut (CMD+K) - defined later after isChangesMode
+  // See useCommandBarShortcut call below
 
   // Selected file path for scroll-to in changes mode (user clicked in FileTree)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
@@ -361,6 +358,12 @@ export function WorkspacesLayout() {
       setIsChangesMode(false);
     }
   }, [isCreateMode]);
+
+  // Command bar keyboard shortcut (CMD+K)
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show({ showDiffOptions: isChangesMode });
+  }, [isChangesMode]);
+  useCommandBarShortcut(handleOpenCommandBar);
 
   // Diff view controls
   const diffViewMode = useDiffViewMode();

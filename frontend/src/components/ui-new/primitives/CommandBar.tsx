@@ -95,7 +95,7 @@ export function CommandBar({
                 return (
                   <CommandItem
                     key={item.action.id}
-                    value={item.action.id}
+                    value={`${item.action.id} ${label}`}
                     onSelect={() => onSelect(item)}
                     className={
                       item.action.variant === 'destructive'
