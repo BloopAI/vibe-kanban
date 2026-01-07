@@ -2,24 +2,17 @@
 
 use std::path::Path;
 
-use git2::Repository;
-
 use super::types::{GitHostError, GitHostProvider};
+use crate::services::git::GitCli;
 
 /// Detect the git hosting provider from a repository path by examining its remote URL.
 pub fn detect_provider(repo_path: &Path) -> Result<GitHostProvider, GitHostError> {
-    let repo = Repository::open(repo_path)
-        .map_err(|e| GitHostError::Repository(format!("Failed to open repository: {e}")))?;
+    let git = GitCli::new();
+    let url = git
+        .get_remote_url(repo_path, "origin")
+        .map_err(|e| GitHostError::Repository(format!("Failed to get origin remote URL: {e}")))?;
 
-    let remote = repo
-        .find_remote("origin")
-        .map_err(|e| GitHostError::Repository(format!("Failed to find origin remote: {e}")))?;
-
-    let url = remote
-        .url()
-        .ok_or_else(|| GitHostError::Repository("Remote has no URL".to_string()))?;
-
-    Ok(detect_provider_from_url(url))
+    Ok(detect_provider_from_url(&url))
 }
 
 /// Detect the git hosting provider from a remote URL.

@@ -415,6 +415,16 @@ impl GitCli {
         }
     }
 
+    /// Get the URL for a remote (e.g., "origin").
+    pub fn get_remote_url(
+        &self,
+        repo_path: &Path,
+        remote_name: &str,
+    ) -> Result<String, GitCliError> {
+        let output = self.git(repo_path, ["remote", "get-url", remote_name])?;
+        Ok(output.trim().to_string())
+    }
+
     // Parse `git diff --name-status` output into structured entries.
     // Handles rename/copy scores like `R100` by matching the first letter.
     fn parse_name_status(output: &str) -> Vec<StatusDiffEntry> {
