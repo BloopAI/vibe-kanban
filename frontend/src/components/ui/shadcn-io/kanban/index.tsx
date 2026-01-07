@@ -202,7 +202,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     >
       <span className={cn(
         'flex items-center gap-2',
-        props.columnCollapsed ? 'flex-col-reverse' : 'flex-1'
+        props.columnCollapsed ? 'flex-col' : 'flex-1'
       )}>
         {props.onToggleColumnCollapsed && (
           <TooltipProvider>
@@ -211,7 +211,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
                 <Button
                   variant="ghost"
                   className={cn(
-                    "m-0 p-0 h-0 text-foreground/50 hover:text-foreground",
+                    "m-0 p-0 h-auto text-foreground/50 hover:text-foreground",
                     props.columnCollapsed && "rotate-180"
                   )}
                   onClick={props.onToggleColumnCollapsed}
