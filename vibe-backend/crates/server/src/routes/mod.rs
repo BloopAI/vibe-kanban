@@ -103,6 +103,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .allow_origin([
             // Production custom domains
             "https://app.scho1ar.com".parse::<HeaderValue>().unwrap(),
+            "https://www.app.scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://api.scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://scho1ar.com".parse::<HeaderValue>().unwrap(),
             "https://www.scho1ar.com".parse::<HeaderValue>().unwrap(),
@@ -119,6 +120,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .allow_methods([
             Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
         ])
+        .allow_credentials(true)
         .allow_headers(Any);
     
     // Allow dynamic origins from env var (comma separated)
@@ -126,6 +128,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         let mut origins = Vec::new();
         // Add hardcoded defaults
          origins.push("https://app.scho1ar.com".parse::<HeaderValue>().unwrap());
+         origins.push("https://www.app.scho1ar.com".parse::<HeaderValue>().unwrap());
          origins.push("https://api.scho1ar.com".parse::<HeaderValue>().unwrap());
          origins.push("https://scho1ar.com".parse::<HeaderValue>().unwrap());
          origins.push("https://www.scho1ar.com".parse::<HeaderValue>().unwrap());
@@ -146,6 +149,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             .allow_methods([
                 Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
             ])
+            .allow_credentials(true)
             .allow_headers(Any)
     } else {
         cors
