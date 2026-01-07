@@ -76,16 +76,21 @@ pub async fn start_review(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Create a fresh session for the review
-    let session = Session::create(
-        pool,
-        &CreateSession {
-            executor: Some(payload.executor_profile_id.executor.to_string()),
-        },
-        Uuid::new_v4(),
-        workspace.id,
-    )
-    .await?;
+    // Use existing session if available (so review logs appear in same conversation view)
+    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
+        Some(s) => s,
+        None => {
+            Session::create(
+                pool,
+                &CreateSession {
+                    executor: Some(payload.executor_profile_id.executor.to_string()),
+                },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await?
+        }
+    };
 
     // Build context - either from payload or auto-populated from workspace commits
     let context: Option<Vec<executors::actions::review::RepoReviewContext>> =
