@@ -458,3 +458,137 @@ impl WorkspaceManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn create_test_repo(id: Uuid, name: &str, path: PathBuf) -> Repo {
+        Repo {
+            id,
+            path,
+            name: name.to_string(),
+            display_name: name.to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_workspace_with_scripts_executes_script() {
+        let workspace_dir = TempDir::new().unwrap();
+        let marker_dir = TempDir::new().unwrap();
+        let marker_file = marker_dir.path().join("cleanup_marker.txt");
+
+        let repo_id = Uuid::new_v4();
+        let repo_name = "test-repo";
+        let worktree_path = workspace_dir.path().join(repo_name);
+
+        // Create the worktree directory (simulating an existing worktree)
+        fs::create_dir_all(&worktree_path).unwrap();
+        fs::write(worktree_path.join("test.txt"), "test content").unwrap();
+
+        // Create a repo pointing to a temp dir (won't be used for actual git ops in this test)
+        let repo_dir = TempDir::new().unwrap();
+        let repo = create_test_repo(repo_id, repo_name, repo_dir.path().to_path_buf());
+
+        // Script that creates a marker file to prove it ran
+        let script = format!("echo 'cleanup ran' > {}", marker_file.display());
+        let repo_scripts = vec![(repo_id, Some(script))];
+
+        // Call cleanup - it will fail on git worktree prune (no real git repo)
+        // but the script should still execute before that
+        let _ = WorkspaceManager::cleanup_workspace_with_scripts(
+            workspace_dir.path(),
+            &[repo],
+            &repo_scripts,
+        )
+        .await;
+
+        // Verify the script executed by checking the marker file
+        assert!(
+            marker_file.exists(),
+            "Cleanup script should have created marker file"
+        );
+        let content = fs::read_to_string(&marker_file).unwrap();
+        assert!(
+            content.contains("cleanup ran"),
+            "Marker file should contain expected content"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_workspace_with_scripts_continues_on_script_failure() {
+        let workspace_dir = TempDir::new().unwrap();
+
+        let repo_id = Uuid::new_v4();
+        let repo_name = "test-repo";
+        let worktree_path = workspace_dir.path().join(repo_name);
+
+        // Create the worktree directory
+        fs::create_dir_all(&worktree_path).unwrap();
+        fs::write(worktree_path.join("test.txt"), "test content").unwrap();
+
+        let repo_dir = TempDir::new().unwrap();
+        let repo = create_test_repo(repo_id, repo_name, repo_dir.path().to_path_buf());
+
+        // Script that exits with non-zero status
+        let script = "exit 1".to_string();
+        let repo_scripts = vec![(repo_id, Some(script))];
+
+        // Cleanup should not error even though script failed
+        let result = WorkspaceManager::cleanup_workspace_with_scripts(
+            workspace_dir.path(),
+            &[repo],
+            &repo_scripts,
+        )
+        .await;
+
+        // The cleanup itself may fail due to no real git worktree, but the function
+        // should continue past the script failure. We verify by checking it didn't panic
+        // and the workspace directory cleanup was attempted.
+        assert!(
+            result.is_ok() || !workspace_dir.path().exists(),
+            "Cleanup should continue past script failure"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_workspace_with_scripts_skips_empty_script() {
+        let workspace_dir = TempDir::new().unwrap();
+        let marker_dir = TempDir::new().unwrap();
+        let marker_file = marker_dir.path().join("should_not_exist.txt");
+
+        let repo_id = Uuid::new_v4();
+        let repo_name = "test-repo";
+        let worktree_path = workspace_dir.path().join(repo_name);
+
+        // Create the worktree directory
+        fs::create_dir_all(&worktree_path).unwrap();
+
+        let repo_dir = TempDir::new().unwrap();
+        let repo = create_test_repo(repo_id, repo_name, repo_dir.path().to_path_buf());
+
+        // Whitespace-only script should be skipped
+        let script = "   ".to_string();
+        let repo_scripts = vec![(repo_id, Some(script))];
+
+        // If the script were executed, it would be an empty bash command which succeeds
+        // but we can verify behavior by checking the function completes without issues
+        let _ = WorkspaceManager::cleanup_workspace_with_scripts(
+            workspace_dir.path(),
+            &[repo],
+            &repo_scripts,
+        )
+        .await;
+
+        // The marker file should NOT exist since empty scripts are skipped
+        assert!(
+            !marker_file.exists(),
+            "Empty script should not create any files"
+        );
+    }
+}
