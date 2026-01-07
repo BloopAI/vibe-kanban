@@ -24,7 +24,7 @@ export const useDiffStream = (
   enabled: boolean,
   options?: UseDiffStreamOptions
 ): UseDiffStreamResult => {
-  const endpoint = (() => {
+  const endpoint = useMemo(() => {
     if (!attemptId) return undefined;
     const query = `/api/task-attempts/${attemptId}/diff/ws`;
     if (typeof options?.statsOnly === 'boolean') {
@@ -34,7 +34,7 @@ export const useDiffStream = (
     } else {
       return query;
     }
-  })();
+  }, [attemptId, options?.statsOnly]);
 
   const initialData = useCallback(
     (): DiffStreamEvent => ({

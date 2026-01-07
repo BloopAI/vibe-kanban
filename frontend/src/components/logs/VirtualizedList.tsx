@@ -6,7 +6,7 @@ import {
   VirtuosoMessageListMethods,
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
 import { useEntries } from '@/contexts/EntriesContext';
@@ -80,7 +80,13 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(loading);
   const { setEntries, reset } = useEntries();
+
+  // Keep loadingRef in sync with loading state
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   useEffect(() => {
     setLoading(true);
@@ -88,24 +94,27 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
     reset();
   }, [attempt.id, reset]);
 
-  const onEntriesUpdated = (
-    newEntries: PatchTypeWithKey[],
-    addType: AddEntryType,
-    newLoading: boolean
-  ) => {
-    let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+  const onEntriesUpdated = useCallback(
+    (
+      newEntries: PatchTypeWithKey[],
+      addType: AddEntryType,
+      newLoading: boolean
+    ) => {
+      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-    if (addType === 'running' && !loading) {
-      scrollModifier = AutoScrollToBottom;
-    }
+      if (addType === 'running' && !loadingRef.current) {
+        scrollModifier = AutoScrollToBottom;
+      }
 
-    setChannelData({ data: newEntries, scrollModifier });
-    setEntries(newEntries);
+      setChannelData({ data: newEntries, scrollModifier });
+      setEntries(newEntries);
 
-    if (loading) {
-      setLoading(newLoading);
-    }
-  };
+      if (loadingRef.current) {
+        setLoading(newLoading);
+      }
+    },
+    [setEntries]
+  );
 
   useConversationHistory({ attempt, onEntriesUpdated });
 

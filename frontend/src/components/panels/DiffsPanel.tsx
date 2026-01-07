@@ -60,6 +60,13 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     selectedAttempt?.id ?? null
   );
 
+  // Reset state when attempt changes
+  useEffect(() => {
+    setLoadingState('loading');
+    setCollapsedIds(new Set());
+    setProcessedIds(new Set());
+  }, [selectedAttempt?.id]);
+
   // If no diffs arrive within 3 seconds, stop showing the spinner
   useEffect(() => {
     if (loadingState !== 'loading') return;

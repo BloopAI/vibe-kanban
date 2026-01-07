@@ -7,5 +7,8 @@ export function useBranchStatus(attemptId?: string) {
     queryFn: () => attemptsApi.getBranchStatus(attemptId!),
     enabled: !!attemptId,
     refetchInterval: 5000,
+    staleTime: 4000, // Data is considered fresh for 4 seconds
+    refetchOnMount: false, // Don't refetch on component mount if data is fresh
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 }

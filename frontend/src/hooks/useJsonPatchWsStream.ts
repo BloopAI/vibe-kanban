@@ -41,12 +41,17 @@ export const useJsonPatchWsStream = <T extends object>(
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+  const MAX_RETRY_ATTEMPTS = 3;
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
+    if (retryAttemptsRef.current >= MAX_RETRY_ATTEMPTS) {
+      setError(`Connection failed after ${MAX_RETRY_ATTEMPTS} attempts`);
+      return;
+    }
     // Exponential backoff with cap: 1s, 2s, 4s, 8s (max), then stay at 8s
     const attempt = retryAttemptsRef.current;
     const delay = Math.min(8000, 1000 * Math.pow(2, attempt));
