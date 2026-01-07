@@ -66,7 +66,6 @@ import {
   BreadcrumbList,
   BreadcrumbLink,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
@@ -813,16 +812,16 @@ export function ProjectTasks() {
     return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
-  const truncateTitle = (title: string | undefined, maxLength = 20) => {
+  const formatBreadcrumbTitle = (
+    title: string | undefined,
+    branch?: string | null,
+  ) => {
     if (!title) return 'Task';
-    if (title.length <= maxLength) return title;
-
-    const truncated = title.substring(0, maxLength);
-    const lastSpace = truncated.lastIndexOf(' ');
-
-    return lastSpace > 0
-      ? `${truncated.substring(0, lastSpace)}...`
-      : `${truncated}...`;
+    // Display branch first (if available) followed by full title
+    if (branch) {
+      return `${branch} — ${title}`;
+    }
+    return title;
   };
 
   const kanbanContent =
@@ -895,7 +894,7 @@ export function ProjectTasks() {
             <BreadcrumbItem>
               {isTaskView ? (
                 <BreadcrumbPage>
-                  {truncateTitle(selectedTask?.title)}
+                  {formatBreadcrumbTitle(selectedTask?.title, null)}
                 </BreadcrumbPage>
               ) : (
                 <BreadcrumbLink
@@ -904,20 +903,13 @@ export function ProjectTasks() {
                     navigateWithSearch(paths.task(projectId!, taskId!))
                   }
                 >
-                  {truncateTitle(selectedTask?.title)}
+                  {formatBreadcrumbTitle(
+                    selectedTask?.title,
+                    attempt?.branch,
+                  )}
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>
-            {!isTaskView && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {attempt?.branch || 'Task Attempt'}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
@@ -947,7 +939,7 @@ export function ProjectTasks() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbPage>
-                {truncateTitle(selectedSharedTask?.title)}
+                {formatBreadcrumbTitle(selectedSharedTask?.title, null)}
               </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
