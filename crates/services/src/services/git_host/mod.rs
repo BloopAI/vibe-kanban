@@ -23,6 +23,7 @@ pub trait GitHostProvider: Send + Sync {
     async fn create_pr(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError>;
 
@@ -31,12 +32,14 @@ pub trait GitHostProvider: Send + Sync {
     async fn list_prs_for_branch(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError>;
 
     async fn get_pr_comments(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError>;
 
@@ -53,9 +56,7 @@ impl GitHostService {
     pub fn from_url(url: &str) -> Result<Self, GitHostError> {
         match detect_provider_from_url(url) {
             ProviderKind::GitHub => Ok(Self::GitHub(GitHubProvider::new()?)),
-            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new(
-                url.to_string(),
-            )?)),
+            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new()?)),
             ProviderKind::Unknown => Err(GitHostError::UnsupportedProvider),
         }
     }

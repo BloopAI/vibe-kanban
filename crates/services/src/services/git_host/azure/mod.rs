@@ -20,22 +20,24 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct AzureDevOpsProvider {
     az_cli: AzCli,
-    remote_url: String,
 }
 
 impl AzureDevOpsProvider {
-    pub fn new(remote_url: String) -> Result<Self, GitHostError> {
+    pub fn new() -> Result<Self, GitHostError> {
         Ok(Self {
             az_cli: AzCli::new(),
-            remote_url,
         })
     }
 
-    async fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, GitHostError> {
+    async fn get_repo_info(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+    ) -> Result<AzureRepoInfo, GitHostError> {
         let cli = self.az_cli.clone();
         let path = repo_path.to_path_buf();
-        let remote_url = self.remote_url.clone();
-        task::spawn_blocking(move || cli.get_repo_info(&path, &remote_url))
+        let url = remote_url.to_string();
+        task::spawn_blocking(move || cli.get_repo_info(&path, &url))
             .await
             .map_err(|err| GitHostError::Repository(format!("Failed to get repo info: {err}")))?
             .map_err(Into::into)
@@ -92,12 +94,13 @@ impl GitHostProvider for AzureDevOpsProvider {
     async fn create_pr(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
         // Check auth first
         self.check_auth().await?;
 
-        let repo_info = self.get_repo_info(repo_path).await?;
+        let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         let cli = self.az_cli.clone();
         let request_clone = request.clone();
@@ -183,9 +186,10 @@ impl GitHostProvider for AzureDevOpsProvider {
     async fn list_prs_for_branch(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError> {
-        let repo_info = self.get_repo_info(repo_path).await?;
+        let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         let cli = self.az_cli.clone();
         let branch = branch_name.to_string();
@@ -229,9 +233,10 @@ impl GitHostProvider for AzureDevOpsProvider {
     async fn get_pr_comments(
         &self,
         repo_path: &Path,
+        remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
-        let repo_info = self.get_repo_info(repo_path).await?;
+        let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         let cli = self.az_cli.clone();
 

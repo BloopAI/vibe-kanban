@@ -319,7 +319,7 @@ pub async fn create_pr(
         draft: request.draft,
     };
 
-    match git_host.create_pr(&repo_path, &pr_request).await {
+    match git_host.create_pr(&repo_path, &remote_url, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
             if let Err(e) = Merge::create_pr(
@@ -425,12 +425,12 @@ pub async fn attach_existing_pr(
 
     let remote_url = deployment
         .git()
-        .get_remote_url_from_branch_or_default(&repo.path, &workspace.branch)?;
+        .get_remote_url_from_branch_or_default(&repo.path, &workspace_repo.target_branch)?;
     let git_host = git_host::GitHostService::from_url(&remote_url)?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = git_host
-        .list_prs_for_branch(&repo.path, &workspace.branch)
+        .list_prs_for_branch(&repo.path, &remote_url, &workspace.branch)
         .await?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
@@ -543,7 +543,7 @@ pub async fn get_pr_comments(
 
     let provider = git_host.provider_kind();
 
-    match git_host.get_pr_comments(&repo.path, pr_info.number).await {
+    match git_host.get_pr_comments(&repo.path, &remote_url, pr_info.number).await {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
             comments,
         }))),

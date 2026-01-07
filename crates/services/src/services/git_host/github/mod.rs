@@ -177,6 +177,7 @@ impl GitHostProvider for GitHubProvider {
     async fn create_pr(
         &self,
         repo_path: &Path,
+        _remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
         // Check auth first
@@ -265,6 +266,7 @@ impl GitHostProvider for GitHubProvider {
     async fn list_prs_for_branch(
         &self,
         repo_path: &Path,
+        _remote_url: &str,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError> {
         let repo_info = self.get_repo_info(repo_path).await?;
@@ -309,6 +311,7 @@ impl GitHostProvider for GitHubProvider {
     async fn get_pr_comments(
         &self,
         repo_path: &Path,
+        _remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
         let repo_info = self.get_repo_info(repo_path).await?;
