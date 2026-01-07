@@ -26,7 +26,6 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
-    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
@@ -1230,15 +1229,15 @@ pub async fn start_dev_server(
         }
     }
 
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let repos_with_dev_script: Vec<_> = project_repos
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repos_with_dev_script: Vec<_> = repos
         .iter()
         .filter(|r| r.dev_server_script.as_ref().is_some_and(|s| !s.is_empty()))
         .collect();
 
     if repos_with_dev_script.is_empty() {
         return Ok(ResponseJson(ApiResponse::error(
-            "No dev server script configured for any repository in this project",
+            "No dev server script configured for any repository in this workspace",
         )));
     }
 
@@ -1263,7 +1262,7 @@ pub async fn start_dev_server(
                 script: repo.dev_server_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::DevServer,
-                working_dir: Some(repo.repo_name.clone()),
+                working_dir: Some(repo.name.clone()),
             }),
             None,
         );
@@ -1370,7 +1369,6 @@ pub async fn run_setup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1380,10 +1378,11 @@ pub async fn run_setup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let executor_action = match deployment
         .container()
-        .setup_actions_for_repos(&project_repos)
+        .setup_actions_for_repos(&repos)
     {
         Some(action) => action,
         None => {
@@ -1454,7 +1453,6 @@ pub async fn run_cleanup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1464,10 +1462,11 @@ pub async fn run_cleanup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let executor_action = match deployment
         .container()
-        .cleanup_actions_for_repos(&project_repos)
+        .cleanup_actions_for_repos(&repos)
     {
         Some(action) => action,
         None => {

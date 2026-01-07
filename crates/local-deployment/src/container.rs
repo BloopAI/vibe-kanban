@@ -18,7 +18,6 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
-        project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
@@ -828,9 +827,9 @@ impl LocalContainerService {
         )
         .await?;
 
-        let project_repos =
-            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
-        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+        let repos =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = ctx
             .workspace

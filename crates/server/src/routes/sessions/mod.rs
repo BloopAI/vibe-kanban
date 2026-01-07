@@ -11,10 +11,10 @@ use axum::{
 };
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    project_repo::ProjectRepo,
     scratch::{Scratch, ScratchType},
     session::{CreateSession, Session},
     workspace::{Workspace, WorkspaceError},
+    workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
 use executors::{
@@ -26,7 +26,6 @@ use executors::{
 };
 use serde::Deserialize;
 use services::services::container::ContainerService;
-use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -144,18 +143,6 @@ pub async fn follow_up(
         variant: payload.variant,
     };
 
-    // Get parent task
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
     // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {
         // Validate process belongs to this session
@@ -196,10 +183,10 @@ pub async fn follow_up(
 
     let prompt = payload.prompt;
 
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let cleanup_action = deployment
         .container()
-        .cleanup_actions_for_repos(&project_repos);
+        .cleanup_actions_for_repos(&repos);
 
     let working_dir = workspace
         .agent_working_dir
