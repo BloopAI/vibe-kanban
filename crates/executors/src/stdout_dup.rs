@@ -77,6 +77,7 @@ pub fn duplicate_stdout(
 }
 
 /// Handle to append additional lines into the child's stdout stream.
+#[derive(Clone)]
 pub struct StdoutAppender {
     tx: tokio::sync::mpsc::UnboundedSender<String>,
 }
@@ -84,7 +85,11 @@ pub struct StdoutAppender {
 impl StdoutAppender {
     pub fn append_line<S: Into<String>>(&self, line: S) {
         // Best-effort; ignore send errors if writer task ended
-        let _ = self.tx.send(line.into());
+        let mut line = line.into();
+        while line.ends_with('\n') || line.ends_with('\r') {
+            line.pop();
+        }
+        let _ = self.tx.send(line);
     }
 }
 

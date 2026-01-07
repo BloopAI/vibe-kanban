@@ -1765,6 +1765,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "eventsource-stream"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74fef4569247a5f429d9156b9d0a2599914385dd189c539334c625d8099d90ab"
+dependencies = [
+ "futures-core",
+ "nom",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "executors"
 version = "0.0.144"
 dependencies = [
@@ -1782,6 +1793,7 @@ dependencies = [
  "directories",
  "dirs 5.0.1",
  "enum_dispatch",
+ "eventsource-stream",
  "fork_stream",
  "futures",
  "futures-io",
@@ -1789,6 +1801,8 @@ dependencies = [
  "mcp-types",
  "os_pipe",
  "regex",
+ "reqwest",
+ "rustls",
  "schemars 1.1.0",
  "serde",
  "serde_json",
@@ -5492,6 +5506,7 @@ dependencies = [
  "futures-core",
  "futures-io",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
