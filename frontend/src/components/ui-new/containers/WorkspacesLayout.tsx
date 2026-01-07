@@ -20,7 +20,7 @@ import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanel
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { Navbar } from '@/components/ui-new/views/Navbar';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
-import { attemptsApi, repoApi } from '@/lib/api';
+import { repoApi } from '@/lib/api';
 import { useRepoBranches } from '@/hooks';
 import { useWorkspaceMutations } from '@/hooks/useWorkspaceMutations';
 import { useDiffStream } from '@/hooks/useDiffStream';
@@ -38,6 +38,8 @@ import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDial
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 
@@ -237,6 +239,12 @@ export function WorkspacesLayout() {
     return title || 'New Workspace';
   }, [draftScratch]);
 
+  // Command bar keyboard shortcut (CMD+K)
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show();
+  }, []);
+  useCommandBarShortcut(handleOpenCommandBar);
+
   // Selected file path for scroll-to in changes mode (user clicked in FileTree)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   // File currently in view from scrolling (for FileTree highlighting)
@@ -253,24 +261,12 @@ export function WorkspacesLayout() {
     !isCreateMode && !!selectedWorkspace?.id
   );
 
-  // Workspace mutations (archive/pin/delete)
-  const {
-    toggleArchive: toggleArchiveMutation,
-    togglePin: togglePinMutation,
-    deleteWorkspace: deleteWorkspaceMutation,
-  } = useWorkspaceMutations({
+  // Workspace mutations (archive for navbar toggle)
+  const { toggleArchive: toggleArchiveMutation } = useWorkspaceMutations({
     onArchiveSuccess: ({ archived, nextWorkspaceId }) => {
       // When archiving, navigate to the next workspace
       if (!archived && nextWorkspaceId) {
         selectWorkspace(nextWorkspaceId);
-      }
-    },
-    onDeleteSuccess: ({ nextWorkspaceId }) => {
-      // After deleting, navigate to the next workspace or create mode
-      if (nextWorkspaceId) {
-        selectWorkspace(nextWorkspaceId);
-      } else {
-        navigateToCreate();
       }
     },
   });
@@ -514,86 +510,6 @@ export function WorkspacesLayout() {
     }
   }, [selectedWorkspaceTask?.project_id, selectedWorkspace?.task_id, navigate]);
 
-  // Workspace action handlers
-  const handleDeleteWorkspace = useCallback(
-    async (workspaceId: string) => {
-      const result = await ConfirmDialog.show({
-        title: 'Delete Workspace',
-        message:
-          'Are you sure you want to delete this workspace? This will remove all sessions and execution history. This action cannot be undone.',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        variant: 'destructive',
-      });
-
-      if (result === 'confirmed') {
-        // Find next workspace to select after deletion
-        const allWorkspaces = [
-          ...sidebarWorkspaces,
-          ...archivedSidebarWorkspaces,
-        ];
-        const currentIndex = allWorkspaces.findIndex(
-          (ws) => ws.id === workspaceId
-        );
-        let nextWorkspaceId: string | null = null;
-        if (currentIndex >= 0 && allWorkspaces.length > 1) {
-          const nextWorkspace =
-            allWorkspaces[currentIndex + 1] || allWorkspaces[currentIndex - 1];
-          nextWorkspaceId = nextWorkspace?.id ?? null;
-        }
-
-        try {
-          await deleteWorkspaceMutation.mutateAsync({
-            workspaceId,
-            nextWorkspaceId,
-          });
-        } catch (error) {
-          console.error('Failed to delete workspace:', error);
-        }
-      }
-    },
-    [deleteWorkspaceMutation, sidebarWorkspaces, archivedSidebarWorkspaces]
-  );
-
-  const handleArchiveWorkspace = useCallback(
-    async (workspaceId: string, isCurrentlyArchived: boolean) => {
-      try {
-        await attemptsApi.update(workspaceId, {
-          archived: !isCurrentlyArchived,
-        });
-      } catch (error) {
-        console.error('Failed to update workspace archive status:', error);
-      }
-    },
-    []
-  );
-
-  const handlePinWorkspace = useCallback(
-    (workspaceId: string, isCurrentlyPinned: boolean) => {
-      togglePinMutation.mutate({
-        workspaceId,
-        pinned: isCurrentlyPinned,
-      });
-    },
-    [togglePinMutation]
-  );
-
-  const handleDuplicateWorkspace = useCallback(
-    async (workspaceId: string) => {
-      try {
-        const firstMessage = await attemptsApi.getFirstUserMessage(workspaceId);
-        navigate('/workspaces/create', {
-          state: { duplicatePrompt: firstMessage },
-        });
-      } catch (error) {
-        console.error('Failed to get workspace prompt for duplication:', error);
-        // Navigate to create anyway, just without the pre-filled prompt
-        navigate('/workspaces/create');
-      }
-    },
-    [navigate]
-  );
-
   const navbarTitle = isCreateMode
     ? 'Create Workspace'
     : selectedWorkspace?.branch;
@@ -669,10 +585,6 @@ export function WorkspacesLayout() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAddWorkspace={navigateToCreate}
-      onDeleteWorkspace={handleDeleteWorkspace}
-      onArchiveWorkspace={handleArchiveWorkspace}
-      onPinWorkspace={handlePinWorkspace}
-      onDuplicateWorkspace={handleDuplicateWorkspace}
       isCreateMode={isCreateMode}
       draftTitle={persistedDraftTitle}
       onSelectCreate={navigateToCreate}

@@ -1,22 +1,13 @@
 import {
   PushPinIcon,
   DotsThreeIcon,
-  CopyIcon,
-  ArchiveIcon,
-  TrashIcon,
   HandIcon,
   TriangleIcon,
   PlayIcon,
   FileIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui-new/primitives/Dropdown';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 
 function RunningDots() {
   return (
@@ -45,22 +36,18 @@ function formatTimeElapsed(dateString?: string): string | null {
 
 interface WorkspaceSummaryProps {
   name: string;
+  workspaceId?: string;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
   isActive?: boolean;
   isRunning?: boolean;
   isPinned?: boolean;
-  isArchived?: boolean;
   hasPendingApproval?: boolean;
   hasRunningDevServer?: boolean;
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   onClick?: () => void;
-  onDelete?: () => void;
-  onArchive?: () => void;
-  onPin?: () => void;
-  onDuplicate?: () => void;
   className?: string;
   summary?: boolean;
   /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
@@ -69,22 +56,18 @@ interface WorkspaceSummaryProps {
 
 export function WorkspaceSummary({
   name,
+  workspaceId,
   filesChanged,
   linesAdded,
   linesRemoved,
   isActive = false,
   isRunning = false,
   isPinned = false,
-  isArchived = false,
   hasPendingApproval = false,
   hasRunningDevServer = false,
   latestProcessCompletedAt,
   latestProcessStatus,
   onClick,
-  onDelete,
-  onArchive,
-  onPin,
-  onDuplicate,
   className,
   summary = false,
   isDraft = false,
@@ -92,7 +75,14 @@ export function WorkspaceSummary({
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
   const isFailed =
     latestProcessStatus === 'failed' || latestProcessStatus === 'killed';
-  const hasActions = onDelete || onArchive || onPin || onDuplicate;
+
+  const handleOpenCommandBar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    CommandBarDialog.show({
+      page: 'workspaceActions',
+      workspaceId,
+    });
+  };
 
   return (
     <div className={cn('group relative', className)}>
@@ -180,69 +170,15 @@ export function WorkspaceSummary({
         )}
       </button>
 
-      {hasActions && (
+      {workspaceId && (
         <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="p-half rounded-sm hover:bg-tertiary text-low hover:text-high focus:outline-none"
-              >
-                <DotsThreeIcon className="size-icon-sm" weight="bold" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {onDuplicate && (
-                <DropdownMenuItem
-                  icon={CopyIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDuplicate();
-                  }}
-                >
-                  Duplicate
-                </DropdownMenuItem>
-              )}
-              {onPin && (
-                <DropdownMenuItem
-                  icon={PushPinIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPin();
-                  }}
-                >
-                  {isPinned ? 'Unpin' : 'Pin'}
-                </DropdownMenuItem>
-              )}
-              {onArchive && (
-                <DropdownMenuItem
-                  icon={ArchiveIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onArchive();
-                  }}
-                >
-                  {isArchived ? 'Unarchive' : 'Archive'}
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    icon={TrashIcon}
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            onClick={handleOpenCommandBar}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="p-half rounded-sm hover:bg-tertiary text-low hover:text-high focus:outline-none"
+          >
+            <DotsThreeIcon className="size-icon-sm" weight="bold" />
+          </button>
         </div>
       )}
     </div>
