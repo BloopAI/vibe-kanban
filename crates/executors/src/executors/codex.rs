@@ -34,8 +34,8 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        ExecutorExitResult, SpawnedChild, StandardCodingAgentExecutor,
         codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
     },
     stdout_dup::create_stdout_pipe_writer,
@@ -105,6 +105,8 @@ pub enum ReasoningSummaryFormat {
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Codex {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -299,7 +301,7 @@ impl Codex {
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
         let (program_path, args) = command_parts.into_resolved().await?;
 
         let mut process = Command::new(program_path);

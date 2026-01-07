@@ -12,7 +12,10 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::CommandParts,
     env::ExecutionEnv,
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        CombineFullPrompt, AppendPrompt, PrependPrompt, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor,
+    },
     logs::utils::EntryIndexProvider,
 };
 
@@ -54,6 +57,8 @@ pub enum ReasoningEffortLevel {
 /// Droid executor configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Droid {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
 
@@ -146,7 +151,7 @@ impl StandardCodingAgentExecutor for Droid {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let droid_command = self.build_command_builder().build_initial()?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         spawn_droid(droid_command, &combined_prompt, current_dir, env, &self.cmd).await
     }
@@ -166,7 +171,7 @@ impl StandardCodingAgentExecutor for Droid {
         let continue_cmd = self
             .build_command_builder()
             .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await
     }

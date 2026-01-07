@@ -19,7 +19,8 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
@@ -34,6 +35,8 @@ const CURSOR_AUTH_REQUIRED_MSG: &str = "Authentication required. Please run 'cur
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct CursorAgent {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -83,7 +86,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
 
         let (executable_path, args) = command_parts.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(executable_path);
         command
@@ -122,7 +125,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(executable_path);
         command
@@ -1223,6 +1226,7 @@ mod tests {
         // Avoid relying on feature flag in tests; construct with a dummy command
         let executor = CursorAgent {
             // No command field needed anymore
+            prepend_prompt: PrependPrompt::default(),
             append_prompt: AppendPrompt::default(),
             force: None,
             model: None,

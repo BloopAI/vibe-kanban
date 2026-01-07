@@ -27,8 +27,8 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        codex::client::LogWriter,
+        CombineFullPrompt, AppendPrompt, AvailabilityInfo, PrependPrompt, ExecutorError,
+        SpawnedChild, StandardCodingAgentExecutor, codex::client::LogWriter,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
@@ -52,6 +52,8 @@ use derivative::Derivative;
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct ClaudeCode {
+    #[serde(default)]
+    pub prepend_prompt: PrependPrompt,
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -239,7 +241,7 @@ impl ClaudeCode {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let combined_prompt = CombineFullPrompt(&self.prepend_prompt, prompt, &self.append_prompt);
 
         let mut command = Command::new(program_path);
         command
@@ -2012,6 +2014,7 @@ mod tests {
             plan: None,
             approvals: None,
             model: None,
+            prepend_prompt: PrependPrompt::default(),
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
             cmd: crate::command::CmdOverrides {
