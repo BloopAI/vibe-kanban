@@ -38,6 +38,15 @@
           "placeholder": "언어 선택",
           "helper": "선호하는 언어를 선택하세요. 브라우저 기본값은 시스템 언어를 따릅니다."
         },
+        "useGoogleFonts": {
+          "label": "Google Fonts 사용",
+          "helper": "Google Fonts(Chivo Mono)에서 글꼴을 로드합니다. 비활성화하면 시스템 글꼴이 사용됩니다."
+        },
+        "fontFamily": {
+          "label": "사용자 지정 글꼴 재정의",
+          "placeholder": "예: 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "사용자 지정 값으로 글꼴을 완전히 재정의합니다. 기본 글꼴(Google 또는 시스템)을 사용하려면 비워 두세요."
+        },
         "discordCounter": {
           "label": "Discord 카운터 표시",
           "helper": "내비게이션 바에 Discord 온라인 사용자 수를 표시합니다. 비활성화하면 Discord에 요청을 보내지 않습니다."
@@ -137,6 +146,10 @@
             "invalidChars": "유효하지 않은 문자가 포함되어 있습니다.",
             "controlChars": "제어 문자가 포함되어 있습니다."
           }
+        },
+        "autoCommit": {
+          "label": "변경 사항 자동 커밋",
+          "helper": "활성화하면 에이전트가 작업 실행 성공 후 자동으로 변경 사항을 커밋합니다."
         }
       },
       "pullRequests": {
@@ -286,7 +299,15 @@
         "serverConfig": "서버 구성 (JSON)",
         "popularServers": "인기 서버",
         "serverHelper": "카드를 클릭하여 위의 JSON에 해당 MCP 서버를 삽입하세요.",
-        "saveLocation": "변경 사항이 저장될 위치:"
+        "saveLocation": "변경 사항이 저장될 위치:",
+        "claudeCodeServers": "Claude Code MCP 서버",
+        "claudeCodeServersHelper": "이러한 MCP 서버는 Claude Code에서 구성되며 작업 실행 시 사용할 수 있습니다.",
+        "claudeCodeServersNote": "이러한 서버를 수정하려면 ~/.claude/.mcp.json 또는 프로젝트의 .mcp.json 파일을 편집하세요.",
+        "readOnly": "읽기 전용"
+      },
+      "sources": {
+        "user": "사용자 (~/.claude/.mcp.json)",
+        "project": "프로젝트 (.mcp.json)"
       },
       "loadingStates": {
         "jsonEditor": "로딩 중...",
@@ -338,6 +359,12 @@
       "scripts": {
         "title": "스크립트 및 구성",
         "description": "이 프로젝트의 설정, 정리 스크립트 및 복사할 파일을 구성하세요.",
+        "projectLevel": {
+          "title": "프로젝트 스크립트"
+        },
+        "repoLevel": {
+          "title": "저장소별 스크립트"
+        },
         "setup": {
           "label": "설정 스크립트",
           "helper": "이 스크립트는 워크트리 내부에서 생성 후 코딩 에이전트가 시작되기 전에 실행됩니다. 종속성 설치 또는 환경 준비와 같은 설정 작업에 사용하세요.",
@@ -365,6 +392,15 @@
         "copyFiles": {
           "label": "파일 복사",
           "helper": "원래 프로젝트 디렉토리에서 워크트리로 복사할 파일의 쉼표로 구분된 목록입니다. 이러한 파일은 워크트리가 생성된 후 설정 스크립트가 실행되기 전에 복사됩니다. .env, 구성 파일 및 로컬 설정과 같은 환경별 파일에 유용합니다. gitignore되었는지 확인하세요. 그렇지 않으면 커밋될 수 있습니다!"
+        }
+      },
+      "git": {
+        "autoCommit": {
+          "label": "변경 사항 자동 커밋",
+          "helper": "작업 실행 후 에이전트가 자동으로 변경 사항을 커밋할지 여부를 제어합니다.",
+          "useGlobal": "전역 설정 사용",
+          "enabled": "항상 자동 커밋",
+          "disabled": "자동 커밋 안 함"
         }
       },
       "save": {

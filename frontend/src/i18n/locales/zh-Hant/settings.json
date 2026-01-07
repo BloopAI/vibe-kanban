@@ -38,6 +38,15 @@
           "placeholder": "選擇語言",
           "helper": "選擇您偏好的語言。瀏覽器預設將跟隨系統語言。"
         },
+        "useGoogleFonts": {
+          "label": "使用 Google Fonts",
+          "helper": "從 Google Fonts 載入字體（Chivo Mono）。停用時將使用系統字體。"
+        },
+        "fontFamily": {
+          "label": "自訂字體覆蓋",
+          "placeholder": "例如：'Fira Code'，'JetBrains Mono'，monospace",
+          "helper": "使用自訂值完全覆蓋字體。留空以使用預設字體（Google 或系統）。"
+        },
         "discordCounter": {
           "label": "顯示 Discord 計數器",
           "helper": "在導覽列中顯示 Discord 線上使用者數。停用時不會向 Discord 發送請求。"
@@ -137,6 +146,10 @@
             "invalidChars": "包含無效字元。",
             "controlChars": "包含控制字元。"
           }
+        },
+        "autoCommit": {
+          "label": "自動提交變更",
+          "helper": "啟用後，代理將在任務執行成功後自動提交變更。"
         }
       },
       "pullRequests": {
@@ -286,7 +299,15 @@
         "serverConfig": "伺服器設定（JSON）",
         "popularServers": "熱門伺服器",
         "serverHelper": "點擊卡片將該 MCP 伺服器插入到上方 JSON 中。",
-        "saveLocation": "變更將儲存到："
+        "saveLocation": "變更將儲存到：",
+        "claudeCodeServers": "Claude Code MCP 伺服器",
+        "claudeCodeServersHelper": "這些 MCP 伺服器在 Claude Code 中設定，執行任務時可用。",
+        "claudeCodeServersNote": "要修改這些伺服器，請編輯 ~/.claude/.mcp.json 或專案的 .mcp.json 檔案。",
+        "readOnly": "唯讀"
+      },
+      "sources": {
+        "user": "使用者（~/.claude/.mcp.json）",
+        "project": "專案（.mcp.json）"
       },
       "loadingStates": {
         "jsonEditor": "載入中...",
@@ -338,6 +359,12 @@
       "scripts": {
         "title": "腳本與設定",
         "description": "為此專案設定設定腳本、清理腳本與要複製的檔案。",
+        "projectLevel": {
+          "title": "專案腳本"
+        },
+        "repoLevel": {
+          "title": "每個儲存庫的腳本"
+        },
         "setup": {
           "label": "設定腳本",
           "helper": "此腳本在工作樹內執行，於建立後、編碼代理啟動前執行。用於安裝相依套件或準備環境等設定工作。",
@@ -365,6 +392,15 @@
         "copyFiles": {
           "label": "複製檔案",
           "helper": "要從原始專案目錄複製到工作樹的檔案清單（以逗號分隔）。這些檔案會在建立工作樹後但在執行設定腳本前複製。適合用於 .env、設定檔與本機設定等環境特定檔案。請確保這些檔案已加入 gitignore，否則可能會被提交！"
+        }
+      },
+      "git": {
+        "autoCommit": {
+          "label": "自動提交變更",
+          "helper": "控制代理是否在任務執行後自動提交變更。",
+          "useGlobal": "使用全域設定",
+          "enabled": "總是自動提交",
+          "disabled": "永不自動提交"
         }
       },
       "save": {

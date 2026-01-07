@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, Play, XCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Link, Loader2, Play, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,8 @@ interface TaskCardProps {
   isOpen?: boolean;
   projectId: string;
   sharedTask?: SharedTaskRecord;
+  isCollapsed?: boolean;
+  onToggleCollapsed?: (taskId: string) => void;
 }
 
 export function TaskCard({
@@ -33,6 +35,8 @@ export function TaskCard({
   isOpen,
   projectId,
   sharedTask,
+  isCollapsed = false,
+  onToggleCollapsed,
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
@@ -74,6 +78,14 @@ export function TaskCard({
     [task.parent_workspace_id, projectId, navigate, isNavigatingToParent]
   );
 
+  const handleToggleCollapsed = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onToggleCollapsed?.(task.id);
+    },
+    [task.id, onToggleCollapsed]
+  );
+
   const localRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,6 +99,8 @@ export function TaskCard({
       });
     });
   }, [isOpen]);
+
+  const hasExpandableContent = task.description;
 
   return (
     <KanbanCard
@@ -107,7 +121,41 @@ export function TaskCard({
     >
       <div className="flex flex-col gap-2">
         <TaskCardHeader
-          title={task.title}
+          title={
+            <span className="flex items-center gap-1">
+              {hasExpandableContent && onToggleCollapsed && (
+                <Button
+                  variant="icon"
+                  onClick={handleToggleCollapsed}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="h-4 w-4 p-0 -ml-1 shrink-0"
+                  title={isCollapsed ? t('expand') : t('collapse')}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              <span>{task.title}</span>
+              {task.pr_number != null && task.pr_url && (
+                <a
+                  href={task.pr_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 ml-1 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  title={`Pull Request #${task.pr_number.toString()}`}
+                >
+                  #{task.pr_number.toString()}
+                </a>
+              )}
+            </span>
+          }
           avatar={
             sharedTask
               ? {
@@ -154,25 +202,12 @@ export function TaskCard({
             </>
           }
         />
-        {task.description && (
+        {!isCollapsed && task.description && (
           <p className="text-sm text-secondary-foreground break-words">
             {task.description.length > 130
               ? `${task.description.substring(0, 130)}...`
               : task.description}
           </p>
-        )}
-        {task.pr_number != null && task.pr_url && (
-          <a
-            href={task.pr_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            #{task.pr_number.toString()}
-          </a>
         )}
       </div>
     </KanbanCard>

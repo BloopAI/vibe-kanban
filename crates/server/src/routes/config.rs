@@ -13,7 +13,10 @@ use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
-    mcp_config::{McpConfig, read_agent_config, write_agent_config},
+    mcp_config::{
+        McpConfig, McpServerWithSource, read_agent_config, read_all_claude_code_mcp_servers,
+        write_agent_config,
+    },
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use serde::{Deserialize, Serialize};
@@ -208,6 +211,10 @@ pub struct GetMcpServerResponse {
     // servers: HashMap<String, Value>,
     mcp_config: McpConfig,
     config_path: String,
+    /// MCP servers from Claude Code's configuration (user and project level)
+    /// These are read-only and managed by Claude Code TUI
+    #[serde(default)]
+    claude_code_servers: HashMap<String, McpServerWithSource>,
 }
 
 #[derive(TS, Debug, Serialize, Deserialize)]
@@ -245,9 +252,20 @@ async fn get_mcp_servers(
     let raw_config = read_agent_config(&config_path, &mcpc).await?;
     let servers = get_mcp_servers_from_config_path(&raw_config, &mcpc.servers_path);
     mcpc.set_servers(servers);
+
+    // Read Claude Code's MCP servers (user and project level) for ClaudeCode executor
+    let claude_code_servers = if matches!(query.executor, BaseCodingAgent::ClaudeCode) {
+        // For now, read only user-level servers since we don't have project context here
+        // Project-level servers will be read when a task is started with a specific project
+        read_all_claude_code_mcp_servers(None).await
+    } else {
+        HashMap::new()
+    };
+
     Ok(ResponseJson(ApiResponse::success(GetMcpServerResponse {
         mcp_config: mcpc,
         config_path: config_path.to_string_lossy().to_string(),
+        claude_code_servers,
     })))
 }
 

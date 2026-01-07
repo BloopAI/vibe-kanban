@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO projects (\n                    id,\n                    name\n                ) VALUES (\n                    $1, $2\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                          auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                          auto_pr_draft as \"auto_pr_draft: bool\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                      auto_pr_draft as \"auto_pr_draft: bool\",\n                      redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -49,25 +49,31 @@
         "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "redirect_to_attempt_on_create: bool",
         "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       true,
       false,
       true,
-      false,
-      false,
+      true,
+      true,
+      true,
       true,
       true,
       true,
@@ -76,5 +82,5 @@
       false
     ]
   },
-  "hash": "f0a5f45136e8c96478ca14e05fa23813ea8156fb7bbe45b24db62e3e45cc2ca2"
+  "hash": "b0bfa907fda9b97afb1069ac766099680ee9efd22f9b01335db7da454cb2d219"
 }

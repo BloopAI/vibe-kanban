@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "작업 추가"
+    "addTask": "작업 추가",
+    "collapseAll": "모두 접기",
+    "expandAll": "모두 펼치기"
   },
+  "collapse": "접기",
+  "expand": "펼치기",
   "filters": {
     "sharedToggleAria": "공유 작업 전환",
     "sharedToggleTooltip": "공유 콘텐츠 표시/숨기기"
@@ -447,7 +451,8 @@
     },
     "card": {
       "review": "리뷰",
-      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
+      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집",
+      "viewFull": "전체 댓글 보기"
     }
   },
   "taskFormDialog": {
@@ -455,6 +460,8 @@
     "editTitle": "작업 수정",
     "titlePlaceholder": "작업 제목",
     "descriptionPlaceholder": "세부 정보 추가 (선택 사항). @를 입력하여 파일을 검색합니다.",
+    "branchNameLabel": "브랜치 이름",
+    "branchNamePlaceholder": "제목에서 자동 생성",
     "statusLabel": "상태",
     "statusOptions": {
       "todo": "할 일",

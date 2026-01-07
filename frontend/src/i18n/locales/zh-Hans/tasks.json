@@ -6,8 +6,12 @@
     "noSearchResults": "没有任务匹配您的搜索。"
   },
   "actions": {
-    "addTask": "添加任务"
+    "addTask": "添加任务",
+    "collapseAll": "全部折叠",
+    "expandAll": "全部展开"
   },
+  "collapse": "折叠",
+  "expand": "展开",
   "filters": {
     "sharedToggleAria": "切换共享任务",
     "sharedToggleTooltip": "显示/隐藏共享内容"
@@ -321,6 +325,7 @@
   "actionsMenu": {
     "attempt": "尝试",
     "openInIde": "在 IDE 中打开尝试",
+    "openInTerminal": "在终端中打开尝试",
     "viewProcesses": "查看进程",
     "viewRelatedTasks": "查看相关任务",
     "createNewAttempt": "创建新尝试",
@@ -446,7 +451,8 @@
     },
     "card": {
       "review": "审查",
-      "tooltip": "点击在 GitHub 上查看，双击编辑"
+      "tooltip": "点击在 GitHub 上查看，双击编辑",
+      "viewFull": "查看完整评论"
     }
   },
   "taskFormDialog": {
@@ -454,6 +460,8 @@
     "editTitle": "编辑任务",
     "titlePlaceholder": "任务标题",
     "descriptionPlaceholder": "添加更多详情（可选）。输入 @ 搜索文件。",
+    "branchNameLabel": "分支名称",
+    "branchNamePlaceholder": "从标题自动生成",
     "statusLabel": "状态",
     "statusOptions": {
       "todo": "待办",

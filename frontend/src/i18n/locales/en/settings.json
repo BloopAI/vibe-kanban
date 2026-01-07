@@ -152,6 +152,14 @@
           "helper": "When enabled, the agent will automatically commit changes after successful task execution."
         }
       },
+      "tasks": {
+        "title": "Tasks",
+        "description": "Configure task creation and navigation behavior.",
+        "redirectToAttempt": {
+          "label": "Redirect to attempt on task creation",
+          "helper": "When enabled, automatically navigate to the task attempt detail view after creating and starting a task."
+        }
+      },
       "pullRequests": {
         "title": "Pull Requests",
         "description": "Configure PR creation behavior",
@@ -307,7 +315,15 @@
         "serverConfig": "Server Configuration (JSON)",
         "popularServers": "Popular servers",
         "serverHelper": "Click a card to insert that MCP Server into the JSON above.",
-        "saveLocation": "Changes will be saved to:"
+        "saveLocation": "Changes will be saved to:",
+        "claudeCodeServers": "Claude Code MCP Servers",
+        "claudeCodeServersHelper": "These MCP servers are configured in Claude Code and will be available when running tasks.",
+        "claudeCodeServersNote": "To modify these servers, edit ~/.claude/.mcp.json or the project's .mcp.json file.",
+        "readOnly": "Read-only"
+      },
+      "sources": {
+        "user": "User (~/.claude/.mcp.json)",
+        "project": "Project (.mcp.json)"
       },
       "loadingStates": {
         "jsonEditor": "Loading...",
@@ -416,6 +432,15 @@
         "useGlobal": "Use global setting",
         "enabled": "Always create as draft",
         "disabled": "Create as ready for review"
+      },
+      "tasks": {
+        "redirectToAttempt": {
+          "label": "Redirect to Attempt on Task Creation",
+          "helper": "Control whether to navigate to the task attempt detail view after creating a task.",
+          "useGlobal": "Use global setting",
+          "enabled": "Always redirect",
+          "disabled": "Never redirect"
+        }
       },
       "save": {
         "button": "Save Project Settings",

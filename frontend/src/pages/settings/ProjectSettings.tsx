@@ -41,6 +41,7 @@ interface ProjectFormState {
   git_auto_commit_enabled: boolean | null;
   auto_pr_on_review_enabled: boolean | null;
   auto_pr_draft: boolean | null;
+  redirect_to_attempt_on_create: boolean | null;
 }
 
 interface RepoScriptsFormState {
@@ -59,6 +60,7 @@ function projectToFormState(project: Project): ProjectFormState {
     git_auto_commit_enabled: project.git_auto_commit_enabled ?? null,
     auto_pr_on_review_enabled: project.auto_pr_on_review_enabled ?? null,
     auto_pr_draft: project.auto_pr_draft ?? null,
+    redirect_to_attempt_on_create: project.redirect_to_attempt_on_create ?? null,
   };
 }
 
@@ -406,6 +408,7 @@ export function ProjectSettings() {
         git_auto_commit_enabled: draft.git_auto_commit_enabled,
         auto_pr_on_review_enabled: draft.auto_pr_on_review_enabled,
         auto_pr_draft: draft.auto_pr_draft,
+        redirect_to_attempt_on_create: draft.redirect_to_attempt_on_create,
       };
 
       updateProject.mutate({
@@ -819,6 +822,69 @@ export function ProjectSettings() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.autoPrDraft.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('settings.projects.tasks.redirectToAttempt.label')}</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="redirect-to-attempt-default"
+                      name="redirect-to-attempt"
+                      checked={draft.redirect_to_attempt_on_create === null}
+                      onChange={() =>
+                        updateDraft({ redirect_to_attempt_on_create: null })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="redirect-to-attempt-default"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.tasks.redirectToAttempt.useGlobal')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="redirect-to-attempt-enabled"
+                      name="redirect-to-attempt"
+                      checked={draft.redirect_to_attempt_on_create === true}
+                      onChange={() =>
+                        updateDraft({ redirect_to_attempt_on_create: true })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="redirect-to-attempt-enabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.tasks.redirectToAttempt.enabled')}
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="redirect-to-attempt-disabled"
+                      name="redirect-to-attempt"
+                      checked={draft.redirect_to_attempt_on_create === false}
+                      onChange={() =>
+                        updateDraft({ redirect_to_attempt_on_create: false })
+                      }
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="redirect-to-attempt-disabled"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t('settings.projects.tasks.redirectToAttempt.disabled')}
+                    </Label>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.tasks.redirectToAttempt.helper')}
                 </p>
               </div>
 

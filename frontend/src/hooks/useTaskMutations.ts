@@ -14,9 +14,15 @@ import type {
 } from 'shared/types';
 import { taskKeys } from './useTask';
 
-export function useTaskMutations(projectId?: string) {
+interface UseTaskMutationsOptions {
+  /** cuando es false, no redirige al intento después de crear la tarea */
+  redirectToAttemptOnCreate?: boolean;
+}
+
+export function useTaskMutations(projectId?: string, options?: UseTaskMutationsOptions) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
+  const shouldRedirect = options?.redirectToAttemptOnCreate ?? true;
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: taskKeys.all });
@@ -37,7 +43,7 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (projectId && shouldRedirect) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
@@ -59,7 +65,7 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (projectId && shouldRedirect) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },

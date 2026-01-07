@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "タスクを追加"
+    "addTask": "タスクを追加",
+    "collapseAll": "すべて折りたたむ",
+    "expandAll": "すべて展開"
   },
+  "collapse": "折りたたむ",
+  "expand": "展開",
   "filters": {
     "sharedToggleAria": "共有タスクを切り替える",
     "sharedToggleTooltip": "共有コンテンツを表示/非表示"
@@ -447,7 +451,8 @@
     },
     "card": {
       "review": "レビュー",
-      "tooltip": "クリックでGitHubで表示、ダブルクリックで編集"
+      "tooltip": "クリックでGitHubで表示、ダブルクリックで編集",
+      "viewFull": "コメント全文を表示"
     }
   },
   "taskFormDialog": {
@@ -455,6 +460,8 @@
     "editTitle": "タスクを編集",
     "titlePlaceholder": "タスクのタイトル",
     "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
+    "branchNameLabel": "ブランチ名",
+    "branchNamePlaceholder": "タイトルから自動生成",
     "statusLabel": "ステータス",
     "statusOptions": {
       "todo": "未着手",

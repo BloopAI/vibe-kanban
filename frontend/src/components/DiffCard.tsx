@@ -302,6 +302,7 @@ export default function DiffCard({
       {expanded && diffFile && (
         <div>
           <DiffView
+            key={`${newContentSafe.length}-${oldContentSafe.length}-${newContentSafe.slice(0, 50)}`}
             diffFile={diffFile}
             diffViewWrap={wrapText}
             diffViewTheme={theme}

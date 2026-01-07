@@ -38,6 +38,15 @@
           "placeholder": "言語を選択",
           "helper": "お好みの言語を選択してください。ブラウザ設定では、システム言語に従います。"
         },
+        "useGoogleFonts": {
+          "label": "Google Fontsを使用",
+          "helper": "Google Fonts（Chivo Mono）からフォントを読み込みます。無効にすると、システムフォントが使用されます。"
+        },
+        "fontFamily": {
+          "label": "カスタムフォントオーバーライド",
+          "placeholder": "例: 'Fira Code', 'JetBrains Mono', monospace",
+          "helper": "カスタム値でフォントを完全にオーバーライドします。デフォルトのフォント（GoogleまたはSystem）を使用する場合は空のままにしてください。"
+        },
         "discordCounter": {
           "label": "Discordカウンターを表示",
           "helper": "ナビゲーションバーにDiscordのオンラインユーザー数を表示します。無効にするとDiscordへのリクエストは行われません。"
@@ -137,6 +146,10 @@
             "invalidChars": "無効な文字が含まれています。",
             "controlChars": "制御文字が含まれています。"
           }
+        },
+        "autoCommit": {
+          "label": "変更を自動コミット",
+          "helper": "有効にすると、タスク実行が成功した後、エージェントが自動的に変更をコミットします。"
         }
       },
       "pullRequests": {
@@ -286,7 +299,15 @@
         "serverConfig": "サーバー設定（JSON）",
         "popularServers": "人気サーバー",
         "serverHelper": "カードをクリックして、そのMCPサーバーを上記のJSONに挿入します。",
-        "saveLocation": "変更は次の場所に保存されます："
+        "saveLocation": "変更は次の場所に保存されます：",
+        "claudeCodeServers": "Claude Code MCPサーバー",
+        "claudeCodeServersHelper": "これらのMCPサーバーはClaude Codeで設定されており、タスク実行時に利用できます。",
+        "claudeCodeServersNote": "これらのサーバーを変更するには、~/.claude/.mcp.jsonまたはプロジェクトの.mcp.jsonファイルを編集してください。",
+        "readOnly": "読み取り専用"
+      },
+      "sources": {
+        "user": "ユーザー（~/.claude/.mcp.json）",
+        "project": "プロジェクト（.mcp.json）"
       },
       "loadingStates": {
         "jsonEditor": "読み込み中...",
@@ -338,6 +359,12 @@
       "scripts": {
         "title": "スクリプトと設定",
         "description": "このプロジェクトのセットアップ、クリーンアップスクリプト、およびコピーするファイルを設定します。",
+        "projectLevel": {
+          "title": "プロジェクトスクリプト"
+        },
+        "repoLevel": {
+          "title": "リポジトリごとのスクリプト"
+        },
         "setup": {
           "label": "セットアップスクリプト",
           "helper": "このスクリプトはワークツリー内から、作成後かつコーディングエージェントの開始前に実行されます。依存関係のインストールや環境の準備などのセットアップタスクに使用してください。",
@@ -365,6 +392,15 @@
         "copyFiles": {
           "label": "ファイルをコピー",
           "helper": "元のプロジェクトディレクトリからワークツリーにコピーするファイルのカンマ区切りリスト。これらのファイルは、ワークツリーが作成された後、セットアップスクリプトが実行される前にコピーされます。.env、設定ファイル、ローカル設定などの環境固有のファイルに役立ちます。gitignoreされていることを確認してください。そうしないとコミットされる可能性があります！"
+        }
+      },
+      "git": {
+        "autoCommit": {
+          "label": "変更を自動コミット",
+          "helper": "タスク実行後にエージェントが自動的に変更をコミットするかどうかを制御します。",
+          "useGlobal": "グローバル設定を使用",
+          "enabled": "常に自動コミット",
+          "disabled": "自動コミットしない"
         }
       },
       "save": {

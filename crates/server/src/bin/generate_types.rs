@@ -161,6 +161,8 @@ fn generate_types_content() -> String {
         services::services::git::ConflictOp::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
+        executors::mcp_config::McpServerSource::decl(),
+        executors::mcp_config::McpServerWithSource::decl(),
         executors::actions::ExecutorActionType::decl(),
         executors::actions::script::ScriptContext::decl(),
         executors::actions::script::ScriptRequest::decl(),

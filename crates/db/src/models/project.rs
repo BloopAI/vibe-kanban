@@ -31,6 +31,8 @@ pub struct Project {
     pub auto_pr_on_review_enabled: Option<bool>,
     /// None = usa config global, Some(true/false) = override por proyecto
     pub auto_pr_draft: Option<bool>,
+    /// None = usa config global, Some(true/false) = override por proyecto
+    pub redirect_to_attempt_on_create: Option<bool>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -61,6 +63,10 @@ pub struct UpdateProject {
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     #[ts(optional, type = "boolean | null")]
     pub auto_pr_draft: Option<Option<bool>>,
+    /// None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    #[ts(optional, type = "boolean | null")]
+    pub redirect_to_attempt_on_create: Option<Option<bool>>,
 }
 
 /// deserializa campos que pueden ser undefined (ausente), null, o un valor
@@ -106,6 +112,7 @@ impl Project {
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -126,6 +133,7 @@ impl Project {
                    p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                    p.auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                    p.auto_pr_draft as "auto_pr_draft: bool",
+                   p.redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -154,6 +162,7 @@ impl Project {
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -176,6 +185,7 @@ impl Project {
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -201,6 +211,7 @@ impl Project {
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -234,6 +245,7 @@ impl Project {
                           git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                           auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                           auto_pr_draft as "auto_pr_draft: bool",
+                          redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -266,12 +278,15 @@ impl Project {
         let auto_pr_draft = payload
             .auto_pr_draft
             .unwrap_or(existing.auto_pr_draft);
+        let redirect_to_attempt_on_create = payload
+            .redirect_to_attempt_on_create
+            .unwrap_or(existing.redirect_to_attempt_on_create);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
                SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5,
-                   git_auto_commit_enabled = $6, auto_pr_on_review_enabled = $7, auto_pr_draft = $8
+                   git_auto_commit_enabled = $6, auto_pr_on_review_enabled = $7, auto_pr_draft = $8, redirect_to_attempt_on_create = $9
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -282,6 +297,7 @@ impl Project {
                          git_auto_commit_enabled as "git_auto_commit_enabled: bool",
                          auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                          auto_pr_draft as "auto_pr_draft: bool",
+                         redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -292,6 +308,7 @@ impl Project {
             git_auto_commit_enabled,
             auto_pr_on_review_enabled,
             auto_pr_draft,
+            redirect_to_attempt_on_create,
         )
         .fetch_one(pool)
         .await

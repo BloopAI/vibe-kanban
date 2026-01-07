@@ -135,6 +135,7 @@ impl ProjectService {
                     git_auto_commit_enabled: None,
                     auto_pr_on_review_enabled: None,
                     auto_pr_draft: None,
+                    redirect_to_attempt_on_create: None,
                 },
             )
             .await?;

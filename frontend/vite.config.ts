@@ -71,8 +71,11 @@ export default defineConfig({
         configure: (proxy) => {
           // silencia errores de conexión esperados durante reinicios del backend
           proxy.on("error", (err) => {
-            if ((err as NodeJS.ErrnoException).code === "ECONNRESET") return;
-            if ((err as NodeJS.ErrnoException).code === "ECONNREFUSED") return;
+            const code = (err as NodeJS.ErrnoException).code;
+            const name = err.name;
+            // ignora errores de conexión comunes durante reinicios
+            if (code === "ECONNRESET" || code === "ECONNREFUSED") return;
+            if (name === "AggregateError") return; // múltiples errores de conexión
             console.error("[vite proxy]", err.message);
           });
         },
