@@ -191,11 +191,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   return (
     <Card
       className={cn(
-        'sticky z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed transition-all duration-200',
+        'sticky z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed',
         'bg-background',
-        props.columnCollapsed
-          ? 'flex-col rotate-180 origin-center writing-mode-vertical-rl top-0 left-0'
-          : 'flex-row top-0',
+        props.columnCollapsed ? 'flex-row top-0 left-0' : 'flex-row top-0',
         props.className
       )}
       style={{
@@ -210,7 +208,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
       <span
         className={cn(
           'flex items-center gap-2',
-          props.columnCollapsed ? 'flex-col' : 'flex-1'
+          props.columnCollapsed ? 'flex-row' : 'flex-1'
         )}
       >
         {props.onToggleColumnCollapsed && (
@@ -219,10 +217,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className={cn(
-                    'm-0 p-0 h-auto text-foreground/50 hover:text-foreground',
-                    props.columnCollapsed && 'rotate-180'
-                  )}
+                  className="m-0 p-0 h-auto text-foreground/50 hover:text-foreground"
                   onClick={props.onToggleColumnCollapsed}
                   aria-label={
                     props.columnCollapsed ? t('expand') : t('collapse')
