@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      git_commit_title_mode,\n                      auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                      auto_pr_draft as \"auto_pr_draft: bool\",\n                      redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
+  "query": "SELECT p.id as \"id!: Uuid\",\n                      p.name,\n                      p.dev_script,\n                      p.dev_script_working_dir,\n                      p.default_agent_working_dir,\n                      p.remote_project_id as \"remote_project_id: Uuid\",\n                      p.git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      p.git_commit_title_mode,\n                      p.auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                      p.auto_pr_draft as \"auto_pr_draft: bool\",\n                      p.redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      p.created_at as \"created_at!: DateTime<Utc>\",\n                      p.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects p\n               LEFT JOIN (\n                   SELECT t.project_id, MAX(t.updated_at) as last_task_activity\n                   FROM tasks t\n                   GROUP BY t.project_id\n               ) recent_activity ON p.id = recent_activity.project_id\n               ORDER BY\n                   CASE\n                       WHEN recent_activity.last_task_activity IS NOT NULL\n                       THEN recent_activity.last_task_activity\n                       ELSE p.created_at\n                   END DESC",
   "describe": {
     "columns": [
       {
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "4ee0a25c4220fe026b12d7de1888a8711fb6065fb3fe04460b5addc57d6703d9"
+  "hash": "63635138e3d3dc235531d81f982a246498a538150a8b45412fc2d3e85db02123"
 }
