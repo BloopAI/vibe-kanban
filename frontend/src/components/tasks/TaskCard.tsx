@@ -100,7 +100,7 @@ export function TaskCard({
     });
   }, [isOpen]);
 
-  const hasExpandableContent = task.description || (task.pr_number != null && task.pr_url);
+  const hasExpandableContent = task.description;
 
   return (
     <KanbanCard
@@ -140,6 +140,20 @@ export function TaskCard({
                 </Button>
               )}
               <span>{task.title}</span>
+              {task.pr_number != null && task.pr_url && (
+                <a
+                  href={task.pr_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 ml-1 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  title={`Pull Request #${task.pr_number.toString()}`}
+                >
+                  #{task.pr_number.toString()}
+                </a>
+              )}
             </span>
           }
           avatar={
@@ -194,19 +208,6 @@ export function TaskCard({
               ? `${task.description.substring(0, 130)}...`
               : task.description}
           </p>
-        )}
-        {!isCollapsed && task.pr_number != null && task.pr_url && (
-          <a
-            href={task.pr_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            #{task.pr_number.toString()}
-          </a>
         )}
       </div>
     </KanbanCard>
