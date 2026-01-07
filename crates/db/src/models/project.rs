@@ -27,6 +27,8 @@ pub struct Project {
     pub remote_project_id: Option<Uuid>,
     /// None = usa config global, Some(true/false) = override por proyecto
     pub git_auto_commit_enabled: Option<bool>,
+    /// None = usa config global, Some(true/false) = override por proyecto
+    pub redirect_to_attempt_on_create: Option<bool>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -49,6 +51,10 @@ pub struct UpdateProject {
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     #[ts(optional, type = "boolean | null")]
     pub git_auto_commit_enabled: Option<Option<bool>>,
+    /// None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    #[ts(optional, type = "boolean | null")]
+    pub redirect_to_attempt_on_create: Option<Option<bool>>,
 }
 
 /// deserializa campos que pueden ser undefined (ausente), null, o un valor
@@ -92,6 +98,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -110,6 +117,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                   p.redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -136,6 +144,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -156,6 +165,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -179,6 +189,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -210,6 +221,7 @@ impl Project {
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                          redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -236,11 +248,14 @@ impl Project {
         let git_auto_commit_enabled = payload
             .git_auto_commit_enabled
             .unwrap_or(existing.git_auto_commit_enabled);
+        let redirect_to_attempt_on_create = payload
+            .redirect_to_attempt_on_create
+            .unwrap_or(existing.redirect_to_attempt_on_create);
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6
+               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6, redirect_to_attempt_on_create = $7
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -249,6 +264,7 @@ impl Project {
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                         redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -257,6 +273,7 @@ impl Project {
             dev_script_working_dir,
             default_agent_working_dir,
             git_auto_commit_enabled,
+            redirect_to_attempt_on_create,
         )
         .fetch_one(pool)
         .await

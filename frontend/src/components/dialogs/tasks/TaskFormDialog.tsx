@@ -36,6 +36,7 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useProjects,
 } from '@/hooks';
 import {
   useKeySubmitTask,
@@ -106,9 +107,23 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const editMode = mode === 'edit';
   const modal = useModal();
   const { t } = useTranslation(['tasks', 'common']);
+  const { system, config, profiles, loading: userSystemLoading } = useUserSystem();
+  const { projectsById } = useProjects();
+
+  // calcula el setting efectivo para redirigir al intento después de crear una tarea
+  // prioridad: project override > global config > default (true)
+  const redirectToAttemptOnCreate = useMemo(() => {
+    const project = projectsById[projectId];
+    const projectSetting = project?.redirect_to_attempt_on_create;
+    // si el proyecto tiene un override, usarlo; si no, usar el global config
+    if (projectSetting !== null && projectSetting !== undefined) {
+      return projectSetting;
+    }
+    return config?.redirect_to_attempt_on_create ?? true;
+  }, [projectsById, projectId, config?.redirect_to_attempt_on_create]);
+
   const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId);
-  const { system, profiles, loading: userSystemLoading } = useUserSystem();
+    useTaskMutations(projectId, { redirectToAttemptOnCreate });
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
 

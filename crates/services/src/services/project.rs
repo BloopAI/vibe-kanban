@@ -133,6 +133,7 @@ impl ProjectService {
                     dev_script_working_dir: None,
                     default_agent_working_dir: Some(repo.name),
                     git_auto_commit_enabled: None,
+                    redirect_to_attempt_on_create: None,
                 },
             )
             .await?;

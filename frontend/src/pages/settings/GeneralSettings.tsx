@@ -553,6 +553,34 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t('settings.general.tasks.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.tasks.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="redirect-to-attempt"
+              checked={draft?.redirect_to_attempt_on_create ?? true}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ redirect_to_attempt_on_create: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="redirect-to-attempt" className="cursor-pointer">
+                {t('settings.general.tasks.redirectToAttempt.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.tasks.redirectToAttempt.helper')}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t('settings.general.pullRequests.title')}</CardTitle>
           <CardDescription>
             {t('settings.general.pullRequests.description')}

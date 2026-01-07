@@ -16,7 +16,11 @@ export type Project = { id: string, name: string, dev_script: string | null, dev
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
-git_auto_commit_enabled: boolean | null, created_at: Date, updated_at: Date, };
+git_auto_commit_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+redirect_to_attempt_on_create: boolean | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
@@ -24,7 +28,11 @@ export type UpdateProject = { name: string | null, dev_script: string | null, de
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
-git_auto_commit_enabled?: boolean | null, };
+git_auto_commit_enabled?: boolean | null, 
+/**
+ * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
+ */
+redirect_to_attempt_on_create?: boolean | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
@@ -337,7 +345,11 @@ use_google_fonts: boolean,
 /**
  * cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
  */
-discord_counter_enabled: boolean, };
+discord_counter_enabled: boolean, 
+/**
+ * cuando está habilitado, se redirige al detalle del intento después de crear una tarea
+ */
+redirect_to_attempt_on_create: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
