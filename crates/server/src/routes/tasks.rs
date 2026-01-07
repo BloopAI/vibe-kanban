@@ -16,7 +16,7 @@ use db::models::{
     image::TaskImage,
     project::{Project, ProjectError},
     repo::Repo,
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -34,7 +34,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_task_middleware,
-    routes::task_attempts::WorkspaceRepoInput,
+    routes::task_attempts::{WorkspaceRepoInput, pr::{AutoPrResult, auto_create_prs_for_workspace}},
 };
 use utils::text::git_branch_id;
 
@@ -268,22 +268,31 @@ pub async fn create_task_and_start(
     })))
 }
 
+/// respuesta del endpoint update_task incluyendo resultados de auto-PR
+#[derive(Debug, Serialize, TS)]
+pub struct TaskUpdateResponse {
+    #[serde(flatten)]
+    pub task: Task,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_pr_results: Option<Vec<AutoPrResult>>,
+}
+
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 
     Json(payload): Json<UpdateTask>,
-) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<TaskUpdateResponse>>, ApiError> {
     ensure_shared_task_auth(&existing_task, &deployment).await?;
 
     // Use existing values if not provided in update
-    let title = payload.title.unwrap_or(existing_task.title);
+    let title = payload.title.unwrap_or(existing_task.title.clone());
     let description = match payload.description {
         Some(s) if s.trim().is_empty() => None, // Empty string = clear description
         Some(s) => Some(s),                     // Non-empty string = update description
-        None => existing_task.description,      // Field omitted = keep existing
+        None => existing_task.description.clone(), // Field omitted = keep existing
     };
-    let status = payload.status.unwrap_or(existing_task.status);
+    let status = payload.status.unwrap_or(existing_task.status.clone());
     let parent_workspace_id = payload
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);
@@ -294,7 +303,7 @@ pub async fn update_task(
         existing_task.project_id,
         title,
         description,
-        status,
+        status.clone(),
         parent_workspace_id,
     )
     .await?;
@@ -312,7 +321,88 @@ pub async fn update_task(
         publisher.update_shared_task(&task).await?;
     }
 
-    Ok(ResponseJson(ApiResponse::success(task)))
+    // intentar crear PRs automáticamente si la tarea pasó a InReview
+    let auto_pr_results = if existing_task.status != TaskStatus::InReview
+        && status == TaskStatus::InReview
+    {
+        try_auto_create_prs(&deployment, &task).await
+    } else {
+        None
+    };
+
+    Ok(ResponseJson(ApiResponse::success(TaskUpdateResponse {
+        task,
+        auto_pr_results,
+    })))
+}
+
+/// intenta crear PRs automáticamente para una tarea
+async fn try_auto_create_prs(
+    deployment: &DeploymentImpl,
+    task: &Task,
+) -> Option<Vec<AutoPrResult>> {
+    let pool = &deployment.db().pool;
+
+    // obtener configuración del proyecto
+    let project = match Project::find_by_id(pool, task.project_id).await {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            tracing::warn!("Project not found for auto-PR: {}", task.project_id);
+            return None;
+        }
+        Err(e) => {
+            tracing::error!("Failed to get project for auto-PR: {}", e);
+            return None;
+        }
+    };
+
+    // obtener configuración global
+    let config = deployment.config().read().await;
+
+    // resolver configuración efectiva (project override > global)
+    let auto_enabled = project
+        .auto_pr_on_review_enabled
+        .unwrap_or(config.auto_pr_on_review_enabled);
+
+    if !auto_enabled {
+        return None;
+    }
+
+    let is_draft = project.auto_pr_draft.unwrap_or(config.auto_pr_draft);
+    let auto_generate_description = config.pr_auto_description_enabled;
+
+    drop(config); // liberar el lock antes de operaciones async
+
+    // obtener el workspace más reciente para la tarea (fetch_all devuelve ordenado por created_at DESC)
+    let workspace = match Workspace::fetch_all(pool, Some(task.id)).await {
+        Ok(workspaces) => match workspaces.into_iter().next() {
+            Some(w) => w,
+            None => {
+                tracing::debug!("No workspace found for task {}, skipping auto-PR", task.id);
+                return None;
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to get workspace for auto-PR: {}", e);
+            return None;
+        }
+    };
+
+    // crear PRs para todos los repos
+    let results = auto_create_prs_for_workspace(
+        deployment,
+        &workspace,
+        task,
+        is_draft,
+        auto_generate_description,
+    )
+    .await;
+
+    if results.is_empty() {
+        None
+    } else {
+        Some(results)
+    }
 }
 
 async fn ensure_shared_task_auth(
