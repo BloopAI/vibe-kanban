@@ -172,9 +172,9 @@ impl DiffStreamManager {
         loop {
             let event = tokio::select! {
                 Some(res) = fs_rx.next() => DiffEvent::Filesystem(res),
-                Some(_) = async {
+                Ok(()) = async {
                     match git_rx.as_mut() {
-                        Some(rx) => rx.recv().await,
+                        Some(rx) => rx.changed().await,
                         None => std::future::pending().await,
                     }
                 } => DiffEvent::GitStateChange,
@@ -515,18 +515,18 @@ fn process_file_changes(
 }
 
 /// Watches `.git/HEAD` and `.git/logs/HEAD` for changes.
-/// correctly resolves gitdir even for worktrees.
+/// Correctly resolves gitdir even for worktrees.
 fn setup_git_watcher(
     worktree_path: &Path,
 ) -> Option<(
     Debouncer<RecommendedWatcher, RecommendedCache>,
-    tokio::sync::mpsc::UnboundedReceiver<()>,
+    tokio::sync::watch::Receiver<()>,
 )> {
     let Ok(repo) = git2::Repository::open(worktree_path) else {
         tracing::warn!("Failed to open git repo at {:?}, git events will be ignored", worktree_path);
         return None;
     };
-    
+
     // For worktrees, repo.path() points to the actual gitdir (e.g. .git/worktrees/name or .git/)
     let gitdir = repo.path();
     let paths_to_watch = vec![
@@ -534,18 +534,19 @@ fn setup_git_watcher(
         gitdir.join("logs").join("HEAD"),
     ];
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-    
+    let (tx, rx) = tokio::sync::watch::channel(());
+
     // Create debouncer with short timeout since git operations might touch multiple files
     let mut debouncer = new_debouncer(
         Duration::from_millis(200),
         None,
         move |res: DebounceEventResult| {
-             if res.is_ok() {
-                 let _ = tx.send(());
-             }
+            if res.is_ok() {
+                let _ = tx.send(());
+            }
         },
-    ).ok()?;
+    )
+    .ok()?;
 
     let mut watched_any = false;
     for path in paths_to_watch {
