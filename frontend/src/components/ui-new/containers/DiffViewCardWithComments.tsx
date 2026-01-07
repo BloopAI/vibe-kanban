@@ -25,18 +25,18 @@ import '@/styles/diff-style-overrides.css';
 // Discriminated union for input format flexibility
 export type DiffInput =
   | {
-      type: 'content';
-      oldContent: string;
-      newContent: string;
-      oldPath?: string;
-      newPath: string;
-    }
+    type: 'content';
+    oldContent: string;
+    newContent: string;
+    oldPath?: string;
+    newPath: string;
+  }
   | {
-      type: 'unified';
-      path: string;
-      unifiedDiff: string;
-      hasLineNumbers?: boolean;
-    };
+    type: 'unified';
+    path: string;
+    unifiedDiff: string;
+    hasLineNumbers?: boolean;
+  };
 
 interface DiffViewCardWithCommentsProps {
   /** Diff data - either raw content or unified diff string */
@@ -299,7 +299,7 @@ export function DiffViewCardWithComments({
             <span onClick={(e) => e.stopPropagation()}>
               <OpenInIdeButton
                 onClick={handleOpenInIde}
-                className="size-6 p-0"
+                className="size-icon-xs p-0"
               />
             </span>
           )}
