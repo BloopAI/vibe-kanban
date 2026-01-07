@@ -527,7 +527,11 @@ pub async fn get_pr_comments(
         }
     };
 
-    let git_host = match git_host::GitHostService::from_url(&pr_info.url) {
+    let remote_url = deployment
+        .git()
+        .get_remote_url_from_branch_or_default(&repo.path, &workspace_repo.target_branch)?;
+
+    let git_host = match git_host::GitHostService::from_url(&remote_url) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(

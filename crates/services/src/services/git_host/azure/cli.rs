@@ -96,6 +96,7 @@ struct AzRepoListItem {
     name: String,
     project: AzRepoProject,
     remote_url: String,
+    ssh_url: String,
 }
 
 #[derive(Deserialize)]
@@ -186,10 +187,17 @@ impl AzCli {
             AzCliError::UnexpectedOutput(format!("Failed to parse repos list: {e}; raw: {raw}"))
         })?;
 
-        // Find the repo that matches our remote URL
+        // Find the repo that matches our remote URL (check both HTTPS and SSH)
+        let is_ssh = remote_url.starts_with("git@");
         let repo = repos
             .into_iter()
-            .find(|r| Self::remote_urls_match(&r.remote_url, remote_url))
+            .find(|r| {
+                if is_ssh {
+                    Self::urls_match(&r.ssh_url, remote_url)
+                } else {
+                    Self::urls_match(&r.remote_url, remote_url)
+                }
+            })
             .ok_or_else(|| {
                 AzCliError::UnexpectedOutput(format!(
                     "No repo found matching remote URL: {}",
@@ -223,9 +231,7 @@ impl AzCli {
         })
     }
 
-    /// Check if two Azure DevOps remote URLs refer to the same repository.
-    /// Handles both dev.azure.com and legacy visualstudio.com formats.
-    fn remote_urls_match(url1: &str, url2: &str) -> bool {
+    fn urls_match(url1: &str, url2: &str) -> bool {
         let normalize = |url: &str| {
             url.to_lowercase()
                 .trim_end_matches('/')
@@ -606,35 +612,41 @@ mod tests {
     }
 
     #[test]
-    fn test_remote_urls_match() {
+    fn test_urls_match() {
         // Exact match
-        assert!(AzCli::remote_urls_match(
+        assert!(AzCli::urls_match(
             "https://dev.azure.com/myorg/myproject/_git/myrepo",
             "https://dev.azure.com/myorg/myproject/_git/myrepo"
         ));
 
         // Trailing slash
-        assert!(AzCli::remote_urls_match(
+        assert!(AzCli::urls_match(
             "https://dev.azure.com/myorg/myproject/_git/myrepo/",
             "https://dev.azure.com/myorg/myproject/_git/myrepo"
         ));
 
         // .git suffix
-        assert!(AzCli::remote_urls_match(
+        assert!(AzCli::urls_match(
             "https://dev.azure.com/myorg/myproject/_git/myrepo.git",
             "https://dev.azure.com/myorg/myproject/_git/myrepo"
         ));
 
         // Case insensitive
-        assert!(AzCli::remote_urls_match(
+        assert!(AzCli::urls_match(
             "https://dev.azure.com/MyOrg/MyProject/_git/MyRepo",
             "https://dev.azure.com/myorg/myproject/_git/myrepo"
         ));
 
         // Different repos should not match
-        assert!(!AzCli::remote_urls_match(
+        assert!(!AzCli::urls_match(
             "https://dev.azure.com/myorg/myproject/_git/repo1",
             "https://dev.azure.com/myorg/myproject/_git/repo2"
+        ));
+
+        // SSH URLs
+        assert!(AzCli::urls_match(
+            "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo",
+            "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo"
         ));
     }
 
