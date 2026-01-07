@@ -9,4 +9,4 @@ if [ -f "/seed/db.sqlite" ]; then
 fi
 
 # Run the server
-exec server "$@"
+exec /usr/local/bin/server "$@"

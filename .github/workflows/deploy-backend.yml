@@ -88,3 +88,16 @@ jobs:
           file: ./vibe-backend/Dockerfile.deploy  # Use the specialized Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
+
+  deploy-railway:
+    name: Deploy to Railway
+    needs: push-docker
+    environment: dve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Railway Deploy
+        uses: bervProject/railway-deploy@main
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: "vibe-kanban-api"
+          image: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
