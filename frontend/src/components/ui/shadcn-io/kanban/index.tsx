@@ -51,15 +51,17 @@ export type KanbanBoardProps = {
   id: Status['id'];
   children: ReactNode;
   className?: string;
+  collapsed?: boolean;
 };
 
-export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
+export const KanbanBoard = ({ id, children, className, collapsed = false }: KanbanBoardProps) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
     <div
       className={cn(
-        'flex min-h-40 flex-col',
+        'flex flex-col transition-all duration-200',
+        collapsed ? 'min-w-[48px] max-w-[48px]' : 'min-h-40',
         isOver ? 'outline-primary' : 'outline-black',
         className
       )}
@@ -184,15 +186,24 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   return (
     <Card
       className={cn(
-        'sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed flex gap-2',
+        'sticky z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed transition-all duration-200',
         'bg-background',
+        props.columnCollapsed ? 'flex-col rotate-180 origin-center writing-mode-vertical-rl top-0 left-0' : 'flex-row top-0',
         props.className
       )}
       style={{
         backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
+        ...(props.columnCollapsed && {
+          writingMode: 'vertical-rl',
+          width: '48px',
+          height: 'auto',
+        }),
       }}
     >
-      <span className="flex-1 flex items-center gap-2">
+      <span className={cn(
+        'flex items-center gap-2',
+        props.columnCollapsed ? 'flex-col-reverse rotate-180' : 'flex-1'
+      )}>
         {props.onToggleColumnCollapsed && (
           <TooltipProvider>
             <Tooltip>
@@ -223,50 +234,52 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
         />
 
-        <p className="m-0 text-sm">{props.name}</p>
+        <p className="m-0 text-sm whitespace-nowrap">{props.name}</p>
       </span>
-      <TooltipProvider>
-        {(props.onCollapseAll || props.onExpandAll) && (
+      {!props.columnCollapsed && (
+        <TooltipProvider>
+          {(props.onCollapseAll || props.onExpandAll) && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                  onClick={handleCollapseToggle}
+                  aria-label={
+                    props.allCollapsed
+                      ? t('actions.expandAll')
+                      : t('actions.collapseAll')
+                  }
+                >
+                  {props.allCollapsed ? (
+                    <ChevronsUpDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronsDownUp className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {props.allCollapsed
+                  ? t('actions.expandAll')
+                  : t('actions.collapseAll')}
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
-                onClick={handleCollapseToggle}
-                aria-label={
-                  props.allCollapsed
-                    ? t('actions.expandAll')
-                    : t('actions.collapseAll')
-                }
+                onClick={props.onAddTask}
+                aria-label={t('actions.addTask')}
               >
-                {props.allCollapsed ? (
-                  <ChevronsUpDown className="h-4 w-4" />
-                ) : (
-                  <ChevronsDownUp className="h-4 w-4" />
-                )}
+                <Plus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">
-              {props.allCollapsed
-                ? t('actions.expandAll')
-                : t('actions.collapseAll')}
-            </TooltipContent>
+            <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
           </Tooltip>
-        )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
-              onClick={props.onAddTask}
-              aria-label={t('actions.addTask')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+        </TooltipProvider>
+      )}
     </Card>
   );
 };
