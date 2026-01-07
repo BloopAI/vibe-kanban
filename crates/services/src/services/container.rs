@@ -18,8 +18,6 @@ use db::{
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
-        project::{Project, UpdateProject},
-        project_repo::ProjectRepo,
         repo::Repo,
         session::{CreateSession, Session, SessionError},
         task::{Task, TaskStatus},
@@ -371,33 +369,6 @@ pub trait ContainerService {
                 .to_string();
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
-
-            // Update agent_working_dir for single-repo projects
-            let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
-            for pr in project_repos {
-                let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
-                if all_repos.len() == 1
-                    && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
-                {
-                    let needs_default_agent_working_dir = project
-                        .default_agent_working_dir
-                        .as_ref()
-                        .map(|s| s.is_empty())
-                        .unwrap_or(true);
-
-                    if needs_default_agent_working_dir {
-                        Project::update(
-                            pool,
-                            pr.project_id,
-                            &UpdateProject {
-                                name: Some(project.name.clone()),
-                                default_agent_working_dir: Some(name.clone()),
-                            },
-                        )
-                        .await?;
-                    }
-                }
-            }
         }
 
         Ok(())

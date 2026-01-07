@@ -16,7 +16,7 @@ export type Project = { id: string, name: string, default_agent_working_dir: str
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, default_agent_working_dir: string | null, };
+export type UpdateProject = { name: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**

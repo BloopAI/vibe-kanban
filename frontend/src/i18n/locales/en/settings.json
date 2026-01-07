@@ -333,11 +333,6 @@
           "helper": "The absolute path to your git repository on disk."
         }
       },
-      "agentWorkingDir": {
-        "label": "Agent Working Directory",
-        "placeholder": "e.g., my-repo",
-        "helper": "Default directory for new workspaces to run the coding agent from, relative to the workspace root. This value is captured when a workspace is created and won't affect existing workspaces. For single-repo projects, this defaults to the repo name. Leave empty to run from the workspace root."
-      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",
