@@ -304,7 +304,7 @@
     "noServer": {
       "companionLink": "설치 가이드 보기",
       "companionPrompt": "클릭하여 편집 기능을 사용하려면 프로젝트에 브라우저 컴패니언을 추가하세요.",
-      "editButton": "개발 스크립트 편집",
+      "configureButton": "구성",
       "setupPrompt": "라이브 미리보기 및 클릭하여 편집을 사용하려면 이 프로젝트에 개발 서버 스크립트를 추가하세요.",
       "startButton": "개발 서버 시작",
       "startPrompt": "미리보기를 보려면 개발 서버를 시작하세요",

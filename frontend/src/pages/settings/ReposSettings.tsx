@@ -186,7 +186,9 @@ export function ReposSettings() {
       const updatedRepo = await repoApi.update(selectedRepo.id, updateData);
       setSelectedRepo(updatedRepo);
       setDraft(repoToFormState(updatedRepo));
-      queryClient.invalidateQueries({ queryKey: ['repos'] });
+      queryClient.setQueryData(['repos'], (old: Repo[] | undefined) =>
+        old?.map((r) => (r.id === updatedRepo.id ? updatedRepo : r))
+      );
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -463,32 +465,6 @@ export function ReposSettings() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Sticky Save Button */}
-          {hasUnsavedChanges && (
-            <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {t('settings.repos.save.unsavedChanges')}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleDiscard}
-                    disabled={saving}
-                  >
-                    {t('settings.repos.save.discard')}
-                  </Button>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {t('settings.repos.save.button')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
