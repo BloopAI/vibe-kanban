@@ -113,6 +113,9 @@ impl ProjectRepository {
         pool: &PgPool,
         organization_id: Uuid,
     ) -> Result<Vec<Project>, ProjectError> {
+        // TODO: Update to sort by most recent shared task activity like local implementation
+        // This requires running `pnpm run remote:prepare-db` after updating the query
+        // See crates/db/src/models/project.rs:find_all for reference implementation
         let rows = sqlx::query!(
             r#"
             SELECT
