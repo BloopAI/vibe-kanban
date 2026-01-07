@@ -47,8 +47,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create auth state
     let auth_state = Arc::new(AuthState::new());
 
-    // Create rate limiter (100 requests per minute per IP)
-    let rate_limiter = create_rate_limit_layer(RateLimitConfig::default());
+    // Create rate limiter (1000 requests per minute per IP)
+    let rate_limiter = create_rate_limit_layer(RateLimitConfig {
+        requests_per_window: 1000,
+        window_seconds: 60,
+    });
 
     // Public routes (no auth required)
     let public_routes = Router::new()
