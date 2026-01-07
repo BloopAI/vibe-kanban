@@ -15,7 +15,17 @@ use serde::Deserialize;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::git_host::types::{CreatePrRequest, RepoInfo, UnifiedPrComment};
+use crate::services::git_host::types::{CreatePrRequest, UnifiedPrComment};
+
+/// Azure DevOps-specific repository information
+#[derive(Debug, Clone)]
+pub struct AzureRepoInfo {
+    pub organization_url: String,
+    pub project: String,
+    pub project_id: String,
+    pub repo_name: String,
+    pub repo_id: String,
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,7 +175,7 @@ impl AzCli {
 
         Err(AzCliError::CommandFailed(stderr))
     }
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, AzCliError> {
+    pub fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, AzCliError> {
         let raw = self.run(
             ["repos", "list", "--detect", "true", "--output", "json"],
             Some(repo_path),
@@ -199,7 +209,7 @@ impl AzCli {
             repo.id
         );
 
-        Ok(RepoInfo::AzureDevOps {
+        Ok(AzureRepoInfo {
             organization_url,
             project: repo.project.name,
             project_id: repo.project.id,

@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    git_host::{self, GitHostError},
+    git_host::{self, GitHostError, GitHostProvider},
     share::SharePublisher,
 };
 
@@ -95,12 +95,9 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        // Auto-detect provider from PR URL and create appropriate service
-        let git_host_service = git_host::create_service_for_pr_url(&pr_merge.pr_info.url)?;
-
-        let pr_status = git_host_service
-            .get_pr_status(&pr_merge.pr_info.url)
-            .await?;
+        // Get PR status from URL (auto-detects provider)
+        let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
+        let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 
         debug!(
             "PR #{} status: {:?} (was open)",

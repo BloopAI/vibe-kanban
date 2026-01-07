@@ -8,51 +8,62 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use db::models::merge::PullRequestInfo;
-pub use detection::{detect_provider, detect_provider_from_url};
+use detection::detect_provider_from_url;
+use enum_dispatch::enum_dispatch;
 pub use types::{
-    CreatePrRequest, GitHostError, GitHostProvider, PrComment, PrCommentAuthor, PrReviewComment,
-    RepoInfo, ReviewCommentUser, UnifiedPrComment,
+    CreatePrRequest, GitHostError, PrComment, PrCommentAuthor, PrReviewComment, ProviderKind,
+    ReviewCommentUser, UnifiedPrComment,
 };
 
+use self::{azure::AzureDevOpsProvider, github::GitHubProvider};
+
+/// Trait for git hosting provider operations (GitHub, Azure DevOps, etc.)
 #[async_trait]
-pub trait GitHostService: Send + Sync {
-    async fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, GitHostError>;
-    async fn check_auth(&self) -> Result<(), GitHostError>;
+#[enum_dispatch(GitHostService)]
+pub trait GitHostProvider: Send + Sync {
+    /// Create a pull request. Handles auth check internally.
     async fn create_pr(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError>;
+
+    /// Get PR status from a PR URL.
     async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError>;
+
+    /// List all PRs for a branch.
     async fn list_prs_for_branch(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError>;
+
+    /// Get comments for a PR.
     async fn get_pr_comments(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError>;
-    fn provider(&self) -> GitHostProvider;
+
+    /// Get the provider kind.
+    fn provider_kind(&self) -> ProviderKind;
 }
 
-pub fn create_service(repo_path: &Path) -> Result<Box<dyn GitHostService>, GitHostError> {
-    let provider = detect_provider(repo_path)?;
-    create_service_for_provider(provider)
+/// Git hosting service - dispatches to the appropriate provider.
+#[enum_dispatch]
+pub enum GitHostService {
+    GitHub(GitHubProvider),
+    AzureDevOps(AzureDevOpsProvider),
 }
 
-pub fn create_service_for_provider(
-    provider: GitHostProvider,
-) -> Result<Box<dyn GitHostService>, GitHostError> {
-    match provider {
-        GitHostProvider::GitHub => Ok(Box::new(github::GitHubHostService::new()?)),
-        GitHostProvider::AzureDevOps => Ok(Box::new(azure::AzureHostService::new()?)),
-        GitHostProvider::Unknown => Err(GitHostError::UnsupportedProvider),
+impl GitHostService {
+    /// Create a GitHostService by detecting the provider from a URL.
+    /// Works with PR URLs, remote URLs, or any URL that identifies a provider.
+    pub fn from_url(url: &str) -> Result<Self, GitHostError> {
+        match detect_provider_from_url(url) {
+            ProviderKind::GitHub => Ok(Self::GitHub(GitHubProvider::new()?)),
+            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new()?)),
+            ProviderKind::Unknown => Err(GitHostError::UnsupportedProvider),
+        }
     }
-}
-
-pub fn create_service_for_pr_url(pr_url: &str) -> Result<Box<dyn GitHostService>, GitHostError> {
-    let provider = detect_provider_from_url(pr_url);
-    create_service_for_provider(provider)
 }

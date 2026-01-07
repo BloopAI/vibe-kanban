@@ -7,27 +7,61 @@ use std::{path::Path, time::Duration};
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::AzCli;
-use cli::AzCliError;
+use cli::{AzCliError, AzureRepoInfo};
 use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
 use super::{
-    GitHostService,
-    types::{CreatePrRequest, GitHostError, GitHostProvider, RepoInfo, UnifiedPrComment},
+    GitHostProvider,
+    types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
 };
 
-/// Azure DevOps hosting service
+/// Azure DevOps hosting provider implementation
 #[derive(Debug, Clone)]
-pub struct AzureHostService {
+pub struct AzureDevOpsProvider {
     az_cli: AzCli,
 }
 
-impl AzureHostService {
+impl AzureDevOpsProvider {
     pub fn new() -> Result<Self, GitHostError> {
         Ok(Self {
             az_cli: AzCli::new(),
         })
+    }
+
+    /// Get repository info from the Azure CLI
+    async fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, GitHostError> {
+        let cli = self.az_cli.clone();
+        let path = repo_path.to_path_buf();
+        task::spawn_blocking(move || cli.get_repo_info(&path))
+            .await
+            .map_err(|err| GitHostError::Repository(format!("Failed to get repo info: {err}")))?
+            .map_err(Into::into)
+    }
+
+    /// Check authentication status
+    async fn check_auth(&self) -> Result<(), GitHostError> {
+        let cli = self.az_cli.clone();
+        task::spawn_blocking(move || cli.check_auth())
+            .await
+            .map_err(|err| {
+                GitHostError::Repository(format!(
+                    "Failed to execute Azure CLI for auth check: {err}"
+                ))
+            })?
+            .map_err(|err| match err {
+                AzCliError::NotAvailable => GitHostError::CliNotInstalled {
+                    provider: ProviderKind::AzureDevOps,
+                },
+                AzCliError::AuthFailed(msg) => GitHostError::AuthFailed(msg),
+                AzCliError::CommandFailed(msg) => {
+                    GitHostError::Repository(format!("Azure CLI auth check failed: {msg}"))
+                }
+                AzCliError::UnexpectedOutput(msg) => GitHostError::Repository(format!(
+                    "Unexpected output from Azure CLI auth check: {msg}"
+                )),
+            })
     }
 }
 
@@ -36,7 +70,7 @@ impl From<AzCliError> for GitHostError {
         match &error {
             AzCliError::AuthFailed(msg) => GitHostError::AuthFailed(msg.clone()),
             AzCliError::NotAvailable => GitHostError::CliNotInstalled {
-                provider: GitHostProvider::AzureDevOps,
+                provider: ProviderKind::AzureDevOps,
             },
             AzCliError::CommandFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
@@ -54,57 +88,16 @@ impl From<AzCliError> for GitHostError {
 }
 
 #[async_trait]
-impl GitHostService for AzureHostService {
-    async fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, GitHostError> {
-        let cli = self.az_cli.clone();
-        let path = repo_path.to_path_buf();
-        task::spawn_blocking(move || cli.get_repo_info(&path))
-            .await
-            .map_err(|err| GitHostError::Repository(format!("Failed to get repo info: {err}")))?
-            .map_err(Into::into)
-    }
-
-    async fn check_auth(&self) -> Result<(), GitHostError> {
-        let cli = self.az_cli.clone();
-        task::spawn_blocking(move || cli.check_auth())
-            .await
-            .map_err(|err| {
-                GitHostError::Repository(format!(
-                    "Failed to execute Azure CLI for auth check: {err}"
-                ))
-            })?
-            .map_err(|err| match err {
-                AzCliError::NotAvailable => GitHostError::CliNotInstalled {
-                    provider: GitHostProvider::AzureDevOps,
-                },
-                AzCliError::AuthFailed(msg) => GitHostError::AuthFailed(msg),
-                AzCliError::CommandFailed(msg) => {
-                    GitHostError::Repository(format!("Azure CLI auth check failed: {msg}"))
-                }
-                AzCliError::UnexpectedOutput(msg) => GitHostError::Repository(format!(
-                    "Unexpected output from Azure CLI auth check: {msg}"
-                )),
-            })
-    }
-
+impl GitHostProvider for AzureDevOpsProvider {
     async fn create_pr(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
-        let (organization_url, project, repo_name) = match repo_info {
-            RepoInfo::AzureDevOps {
-                organization_url,
-                project,
-                repo_name,
-                ..
-            } => (organization_url.clone(), project.clone(), repo_name.clone()),
-            _ => {
-                return Err(GitHostError::Repository(
-                    "Azure service received non-Azure repo info".to_string(),
-                ));
-            }
-        };
+        // Check auth first
+        self.check_auth().await?;
+
+        let repo_info = self.get_repo_info(repo_path).await?;
 
         let cli = self.az_cli.clone();
         let request_clone = request.clone();
@@ -112,9 +105,9 @@ impl GitHostService for AzureHostService {
         (|| async {
             let cli = cli.clone();
             let request = request_clone.clone();
-            let organization_url = organization_url.clone();
-            let project = project.clone();
-            let repo_name = repo_name.clone();
+            let organization_url = repo_info.organization_url.clone();
+            let project = repo_info.project.clone();
+            let repo_name = repo_info.repo_name.clone();
 
             let cli_result = task::spawn_blocking(move || {
                 cli.create_pr(&request, &organization_url, &project, &repo_name)
@@ -189,31 +182,19 @@ impl GitHostService for AzureHostService {
 
     async fn list_prs_for_branch(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError> {
-        let (organization_url, project, repo_name) = match repo_info {
-            RepoInfo::AzureDevOps {
-                organization_url,
-                project,
-                repo_name,
-                ..
-            } => (organization_url.clone(), project.clone(), repo_name.clone()),
-            _ => {
-                return Err(GitHostError::Repository(
-                    "Azure service received non-Azure repo info".to_string(),
-                ));
-            }
-        };
+        let repo_info = self.get_repo_info(repo_path).await?;
 
         let cli = self.az_cli.clone();
         let branch = branch_name.to_string();
 
         (|| async {
             let cli = cli.clone();
-            let organization_url = organization_url.clone();
-            let project = project.clone();
-            let repo_name = repo_name.clone();
+            let organization_url = repo_info.organization_url.clone();
+            let project = repo_info.project.clone();
+            let repo_name = repo_info.repo_name.clone();
             let branch = branch.clone();
 
             let prs = task::spawn_blocking(move || {
@@ -247,34 +228,18 @@ impl GitHostService for AzureHostService {
 
     async fn get_pr_comments(
         &self,
-        repo_info: &RepoInfo,
+        repo_path: &Path,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
-        let (organization_url, project_id, repo_id) = match repo_info {
-            RepoInfo::AzureDevOps {
-                organization_url,
-                project_id,
-                repo_id,
-                ..
-            } => (
-                organization_url.clone(),
-                project_id.clone(),
-                repo_id.clone(),
-            ),
-            _ => {
-                return Err(GitHostError::Repository(
-                    "Azure service received non-Azure repo info".to_string(),
-                ));
-            }
-        };
+        let repo_info = self.get_repo_info(repo_path).await?;
 
         let cli = self.az_cli.clone();
 
         (|| async {
             let cli = cli.clone();
-            let organization_url = organization_url.clone();
-            let project_id = project_id.clone();
-            let repo_id = repo_id.clone();
+            let organization_url = repo_info.organization_url.clone();
+            let project_id = repo_info.project_id.clone();
+            let repo_id = repo_info.repo_id.clone();
 
             let comments = task::spawn_blocking(move || {
                 cli.get_pr_threads(&organization_url, &project_id, &repo_id, pr_number)
@@ -305,7 +270,7 @@ impl GitHostService for AzureHostService {
         .await
     }
 
-    fn provider(&self) -> GitHostProvider {
-        GitHostProvider::AzureDevOps
+    fn provider_kind(&self) -> ProviderKind {
+        ProviderKind::AzureDevOps
     }
 }

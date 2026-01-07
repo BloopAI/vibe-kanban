@@ -18,8 +18,15 @@ use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::git_host::types::{
-    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, RepoInfo, ReviewCommentUser,
+    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
 };
+
+/// GitHub-specific repository information
+#[derive(Debug, Clone)]
+pub struct GitHubRepoInfo {
+    pub owner: String,
+    pub repo_name: String,
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -152,7 +159,7 @@ impl GhCli {
     }
 
     /// Get repository info (owner and name) from a local repository path.
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<RepoInfo, GhCliError> {
+    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
         let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
 
         #[derive(Deserialize)]
@@ -169,7 +176,7 @@ impl GhCli {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
-        Ok(RepoInfo::GitHub {
+        Ok(GitHubRepoInfo {
             owner: resp.owner.login,
             repo_name: resp.name,
         })

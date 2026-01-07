@@ -266,7 +266,7 @@ export type GitOperationError = { "type": "merge_conflicts", message: string, op
 
 export type PushError = { "type": "force_push_required" };
 
-export type CreatePrError = { "type": "cli_not_installed", provider: GitHostProvider, } | { "type": "cli_not_logged_in", provider: GitHostProvider, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
+export type CreatePrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
 
 export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
@@ -292,13 +292,13 @@ export type AttachExistingPrRequest = { repo_id: string, };
 
 export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 
-export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_not_installed", provider: GitHostProvider, } | { "type": "cli_not_logged_in", provider: GitHostProvider, };
+export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, };
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, diff_hunk: string | null, };
 
-export type GitHostProvider = "git_hub" | "azure_dev_ops" | "unknown";
+export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**

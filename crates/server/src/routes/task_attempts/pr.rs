@@ -24,7 +24,9 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{GitCliError, GitServiceError},
-    git_host::{self, CreatePrRequest, GitHostError, GitHostProvider, UnifiedPrComment},
+    git_host::{
+        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
+    },
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -47,8 +49,8 @@ pub struct CreatePrApiRequest {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum CreatePrError {
-    CliNotInstalled { provider: GitHostProvider },
-    CliNotLoggedIn { provider: GitHostProvider },
+    CliNotInstalled { provider: ProviderKind },
+    CliNotLoggedIn { provider: ProviderKind },
     GitCliNotLoggedIn,
     GitCliNotInstalled,
     TargetBranchNotFound { branch: String },
@@ -78,8 +80,8 @@ pub struct PrCommentsResponse {
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum GetPrCommentsError {
     NoPrAttached,
-    CliNotInstalled { provider: GitHostProvider },
-    CliNotLoggedIn { provider: GitHostProvider },
+    CliNotInstalled { provider: ProviderKind },
+    CliNotLoggedIn { provider: ProviderKind },
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -287,8 +289,13 @@ pub async fn create_pr(
         target_branch
     };
 
-    let git_host_service = match git_host::create_service(&repo_path) {
-        Ok(service) => service,
+    // Get the remote URL for the branch to detect the provider
+    let remote_url = deployment
+        .git()
+        .get_remote_url_from_branch_or_default(&repo_path, &workspace.branch)?;
+
+    let git_host = match git_host::GitHostService::from_url(&remote_url) {
+        Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 CreatePrError::UnsupportedProvider,
@@ -302,7 +309,7 @@ pub async fn create_pr(
         Err(e) => return Err(ApiError::GitHost(e)),
     };
 
-    let provider = git_host_service.provider();
+    let provider = git_host.provider_kind();
 
     // Create the PR
     let pr_request = CreatePrRequest {
@@ -313,9 +320,7 @@ pub async fn create_pr(
         draft: request.draft,
     };
 
-    let repo_info = git_host_service.get_repo_info(&repo_path).await?;
-
-    match git_host_service.create_pr(&repo_info, &pr_request).await {
+    match git_host.create_pr(&repo_path, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
             if let Err(e) = Merge::create_pr(
@@ -419,13 +424,15 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Create git host service - auto-detects provider
-    let git_host_service = git_host::create_service(&repo.path)?;
-    let repo_info = git_host_service.get_repo_info(&repo.path).await?;
+    // Get the remote URL for the branch to detect the provider
+    let remote_url = deployment
+        .git()
+        .get_remote_url_from_branch_or_default(&repo.path, &workspace.branch)?;
+    let git_host = git_host::GitHostService::from_url(&remote_url)?;
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = git_host_service
-        .list_prs_for_branch(&repo_info, &workspace.branch)
+    let prs = git_host
+        .list_prs_for_branch(&repo.path, &workspace.branch)
         .await?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
@@ -522,8 +529,9 @@ pub async fn get_pr_comments(
         }
     };
 
-    let git_host_service = match git_host::create_service(&repo.path) {
-        Ok(service) => service,
+    // Create git host from the PR URL
+    let git_host = match git_host::GitHostService::from_url(&pr_info.url) {
+        Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 GetPrCommentsError::CliNotInstalled { provider },
@@ -532,14 +540,10 @@ pub async fn get_pr_comments(
         Err(e) => return Err(ApiError::GitHost(e)),
     };
 
-    let provider = git_host_service.provider();
-    let repo_info = git_host_service.get_repo_info(&repo.path).await?;
+    let provider = git_host.provider_kind();
 
     // Fetch comments
-    match git_host_service
-        .get_pr_comments(&repo_info, pr_info.number)
-        .await
-    {
+    match git_host.get_pr_comments(&repo.path, pr_info.number).await {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
             comments,
         }))),

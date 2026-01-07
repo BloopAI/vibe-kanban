@@ -5,42 +5,18 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
-pub enum GitHostProvider {
+pub enum ProviderKind {
     GitHub,
     AzureDevOps,
     Unknown,
 }
 
-impl std::fmt::Display for GitHostProvider {
+impl std::fmt::Display for ProviderKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GitHostProvider::GitHub => write!(f, "GitHub"),
-            GitHostProvider::AzureDevOps => write!(f, "Azure DevOps"),
-            GitHostProvider::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum RepoInfo {
-    GitHub {
-        owner: String,
-        repo_name: String,
-    },
-    AzureDevOps {
-        organization_url: String,
-        project: String,
-        project_id: String,
-        repo_name: String,
-        repo_id: String,
-    },
-}
-
-impl RepoInfo {
-    pub fn provider(&self) -> GitHostProvider {
-        match self {
-            RepoInfo::GitHub { .. } => GitHostProvider::GitHub,
-            RepoInfo::AzureDevOps { .. } => GitHostProvider::AzureDevOps,
+            ProviderKind::GitHub => write!(f, "GitHub"),
+            ProviderKind::AzureDevOps => write!(f, "Azure DevOps"),
+            ProviderKind::Unknown => write!(f, "Unknown"),
         }
     }
 }
@@ -67,7 +43,7 @@ pub enum GitHostError {
     #[error("Repository not found or no access: {0}")]
     RepoNotFoundOrNoAccess(String),
     #[error("{provider} CLI is not installed or not available in PATH")]
-    CliNotInstalled { provider: GitHostProvider },
+    CliNotInstalled { provider: ProviderKind },
     #[error("Unsupported git hosting provider")]
     UnsupportedProvider,
     #[error("CLI returned unexpected output: {0}")]
