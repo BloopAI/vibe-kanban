@@ -285,6 +285,7 @@ export function ProjectTasks() {
   const { data: attempt } = useTaskAttemptWithSession(effectiveAttemptId);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
+  const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
@@ -961,7 +962,12 @@ export function ProjectTasks() {
       {isTaskView ? (
         <TaskPanel task={selectedTask} />
       ) : (
-        <TaskAttemptPanel attempt={attempt} task={selectedTask}>
+        <TaskAttemptPanel
+          attempt={attempt}
+          task={selectedTask}
+          branchStatus={branchStatus ?? null}
+          isAttemptRunning={isAttemptRunning}
+        >
           {({ logs, followUp }) => (
             <>
               <GitErrorBanner />
