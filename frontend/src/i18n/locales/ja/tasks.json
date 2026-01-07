@@ -254,6 +254,10 @@
         "action": "サインイン"
       }
     },
+    "mergeDialog": {
+      "title": "変更をマージ",
+      "description": "変更をターゲットブランチにマージします。続行してもよろしいですか？"
+    },
     "states": {
       "createPr": "PRを作成",
       "creating": "作成中...",

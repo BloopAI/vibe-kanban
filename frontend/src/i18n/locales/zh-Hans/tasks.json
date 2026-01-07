@@ -282,6 +282,10 @@
         "description": "登录 Vibe Kanban，以便您可以推送分支、合并更改或为此任务打开拉取请求。",
         "action": "登录"
       }
+    },
+    "mergeDialog": {
+      "title": "合并更改",
+      "description": "这将把您的更改合并到目标分支。您确定要继续吗？"
     }
   },
   "createAttemptDialog": {
