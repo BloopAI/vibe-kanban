@@ -79,27 +79,13 @@ export const workspaceSummaryKeys = {
     ['workspace-summaries', ids.sort().join(',')] as const,
 };
 
-// Rate limiting - track last fetch time
-let lastFetchTime = 0;
-let isFirstFetch = true; // Skip rate limiting on initial fetch
-const MIN_FETCH_INTERVAL = 5000; // 5 seconds minimum between requests
-
-// Fetch workspace summaries from the API with rate limiting
+// Fetch workspace summaries from the API
 async function fetchWorkspaceSummaries(
   workspaceIds: string[]
 ): Promise<Map<string, WorkspaceSummary>> {
   if (workspaceIds.length === 0) {
     return new Map();
   }
-
-  // Rate limiting check - skip on first fetch to ensure initial data loads
-  const now = Date.now();
-  if (!isFirstFetch && now - lastFetchTime < MIN_FETCH_INTERVAL) {
-    // Skip this request - TanStack Query will use cached data
-    throw new Error('Rate limited');
-  }
-  isFirstFetch = false;
-  lastFetchTime = now;
 
   try {
     const response = await fetch('/api/task-attempts/summary', {
@@ -124,10 +110,6 @@ async function fetchWorkspaceSummaries(
     }
     return map;
   } catch (err) {
-    // Re-throw rate limit errors so TanStack Query doesn't treat as failure
-    if (err instanceof Error && err.message === 'Rate limited') {
-      throw err;
-    }
     console.warn('Error fetching workspace summaries:', err);
     return new Map();
   }
@@ -178,25 +160,18 @@ export function useWorkspaces(): UseWorkspacesResult {
     return ids;
   }, [activeData, archivedData]);
 
-  // Fetch summaries using TanStack Query with 30s refresh and 5s rate limiting
+  // Fetch summaries using TanStack Query with 30s auto-refresh
   const { data: summaries = new Map<string, WorkspaceSummary>() } = useQuery({
     queryKey: workspaceSummaryKeys.byIds(allWorkspaceIds),
     queryFn: () => fetchWorkspaceSummaries(allWorkspaceIds),
     enabled: bothStreamsReady && allWorkspaceIds.length > 0,
-    staleTime: 15000, // Consider data stale after 15s
-    refetchInterval: 30000, // Refresh every 30s
+    staleTime: 1000, // Consider data stale after 1s (prevents duplicate fetches)
+    refetchInterval: 15000, // Auto-refresh every 15s
     refetchOnWindowFocus: false,
     refetchOnMount: 'always', // Ensure fetch runs when IDs become available
     // Preserve previous summaries when query key changes (workspace added/deleted)
     // This prevents summary info from disappearing during refetch
     placeholderData: keepPreviousData,
-    retry: (failureCount, error) => {
-      // Don't retry rate limit errors
-      if (error instanceof Error && error.message === 'Rate limited') {
-        return false;
-      }
-      return failureCount < 3;
-    },
   });
 
   const workspaces = useMemo(() => {
