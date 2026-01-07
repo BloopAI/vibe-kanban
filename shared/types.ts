@@ -348,7 +348,11 @@ latest_process_status: ExecutionProcessStatus | null,
 /**
  * Is a dev server currently running?
  */
-has_running_dev_server: boolean, };
+has_running_dev_server: boolean, 
+/**
+ * Does this workspace have unseen coding agent turns?
+ */
+has_unseen_turns: boolean, };
 
 export type WorkspaceSummaryResponse = { summaries: Array<WorkspaceSummary>, };
 

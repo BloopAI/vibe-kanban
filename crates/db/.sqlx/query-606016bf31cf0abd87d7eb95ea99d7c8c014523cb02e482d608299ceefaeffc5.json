@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT EXISTS(\n                SELECT 1 FROM coding_agent_turns cat\n                JOIN execution_processes ep ON cat.execution_process_id = ep.id\n                JOIN sessions s ON ep.session_id = s.id\n                WHERE s.workspace_id = $1 AND cat.seen = 0\n            ) as \"has_unseen!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "has_unseen!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "606016bf31cf0abd87d7eb95ea99d7c8c014523cb02e482d608299ceefaeffc5"
+}

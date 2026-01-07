@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessStatus},
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
@@ -42,6 +43,8 @@ pub struct WorkspaceSummary {
     pub latest_process_status: Option<ExecutionProcessStatus>,
     /// Is a dev server currently running?
     pub has_running_dev_server: bool,
+    /// Does this workspace have unseen coding agent turns?
+    pub has_unseen_turns: bool,
 }
 
 /// Response containing summaries for requested workspaces
@@ -84,7 +87,11 @@ pub async fn get_workspace_summaries(
         .approvals()
         .get_pending_execution_process_ids(&running_ep_ids);
 
-    // 4. Fetch workspaces for diff computation
+    // 4. Batch check which workspaces have unseen coding agent turns
+    let unseen_workspaces =
+        CodingAgentTurn::has_unseen_by_workspace_ids(pool, workspace_ids).await?;
+
+    // 5. Fetch workspaces for diff computation
     let workspaces: HashMap<Uuid, Workspace> = {
         let mut map = HashMap::new();
         for id in workspace_ids {
@@ -95,7 +102,7 @@ pub async fn get_workspace_summaries(
         map
     };
 
-    // 5. Compute diff stats for each workspace (in parallel)
+    // 6. Compute diff stats for each workspace (in parallel)
     let diff_futures: Vec<_> = workspace_ids
         .iter()
         .map(|id| {
@@ -115,7 +122,7 @@ pub async fn get_workspace_summaries(
     let diff_stats: Vec<Option<(usize, usize, usize)>> =
         futures_util::future::join_all(diff_futures).await;
 
-    // 6. Assemble response
+    // 7. Assemble response
     let summaries: Vec<WorkspaceSummary> = workspace_ids
         .iter()
         .zip(diff_stats.iter())
@@ -135,6 +142,7 @@ pub async fn get_workspace_summaries(
                 latest_process_completed_at: latest.and_then(|p| p.completed_at),
                 latest_process_status: latest.map(|p| p.status.clone()),
                 has_running_dev_server: dev_server_workspaces.contains(id),
+                has_unseen_turns: unseen_workspaces.contains(id),
             }
         })
         .collect();

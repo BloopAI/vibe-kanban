@@ -1,12 +1,21 @@
-import { createContext, useContext, ReactNode, useMemo } from 'react';
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useMemo,
+  useCallback,
+} from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkspaces,
+  workspaceSummaryKeys,
   type SidebarWorkspace,
 } from '@/components/ui-new/hooks/useWorkspaces';
 import { useAttempt } from '@/hooks/useAttempt';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
+import { attemptsApi } from '@/lib/api';
 import type {
   Workspace as ApiWorkspace,
   Session,
@@ -51,6 +60,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
   const isCreateMode = location.pathname === '/workspaces/create';
@@ -87,11 +97,22 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
-  const selectWorkspace = useMemo(
-    () => (id: string) => {
+  const selectWorkspace = useCallback(
+    (id: string) => {
+      // Fire-and-forget mark as seen (don't block navigation)
+      attemptsApi
+        .markSeen(id)
+        .then(() => {
+          // Invalidate summary cache to refresh unseen indicators
+          queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+        })
+        .catch((error) => {
+          // Silently fail - this is not critical
+          console.warn('Failed to mark workspace as seen:', error);
+        });
       navigate(`/workspaces/${id}`);
     },
-    [navigate]
+    [navigate, queryClient]
   );
 
   const navigateToCreate = useMemo(

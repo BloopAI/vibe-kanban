@@ -92,6 +92,7 @@ export function WorkspacesSidebar({
               isPinned={workspace.isPinned}
               hasPendingApproval={workspace.hasPendingApproval}
               hasRunningDevServer={workspace.hasRunningDevServer}
+              hasUnseenActivity={workspace.hasUnseenActivity}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
@@ -118,6 +119,7 @@ export function WorkspacesSidebar({
               isPinned={workspace.isPinned}
               hasPendingApproval={workspace.hasPendingApproval}
               hasRunningDevServer={workspace.hasRunningDevServer}
+              hasUnseenActivity={workspace.hasUnseenActivity}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
