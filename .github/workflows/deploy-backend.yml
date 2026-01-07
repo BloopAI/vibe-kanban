@@ -97,7 +97,8 @@ jobs:
     steps:
       - name: Trigger Railway Deploy
         uses: bervProject/railway-deploy@main
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
           service: "vibe-kanban-api"
-          image: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
+          detach: true
