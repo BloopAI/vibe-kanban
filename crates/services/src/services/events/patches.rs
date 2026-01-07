@@ -1,6 +1,9 @@
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, scratch::Scratch,
-    task::TaskWithAttemptStatus, workspace::Workspace,
+    execution_process::ExecutionProcess,
+    project::{Project, ProjectTaskCounts, ProjectWithTaskCounts},
+    scratch::Scratch,
+    task::TaskWithAttemptStatus,
+    workspace::Workspace,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -59,24 +62,56 @@ pub mod project_patch {
         )
     }
 
-    /// Create patch for adding a new project
-    pub fn add(project: &Project) -> Patch {
+    /// Create patch for adding a new project with task counts
+    pub fn add_with_counts(project: &ProjectWithTaskCounts) -> Patch {
         Patch(vec![PatchOperation::Add(AddOperation {
-            path: project_path(project.id)
+            path: project_path(project.project.id)
                 .try_into()
                 .expect("Project path should be valid"),
             value: serde_json::to_value(project).expect("Project serialization should not fail"),
         })])
     }
 
-    /// Create patch for updating an existing project
-    pub fn replace(project: &Project) -> Patch {
+    /// Create patch for updating an existing project with task counts
+    pub fn replace_with_counts(project: &ProjectWithTaskCounts) -> Patch {
         Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: project_path(project.id)
+            path: project_path(project.project.id)
                 .try_into()
                 .expect("Project path should be valid"),
             value: serde_json::to_value(project).expect("Project serialization should not fail"),
         })])
+    }
+
+    /// Create patch for adding a new project (fallback without counts)
+    pub fn add(project: &Project) -> Patch {
+        // Create empty task counts for backward compatibility
+        let project_with_counts = ProjectWithTaskCounts {
+            project: project.clone(),
+            task_counts: ProjectTaskCounts {
+                todo: 0,
+                inprogress: 0,
+                inreview: 0,
+                done: 0,
+                cancelled: 0,
+            },
+        };
+        add_with_counts(&project_with_counts)
+    }
+
+    /// Create patch for updating an existing project (fallback without counts)
+    pub fn replace(project: &Project) -> Patch {
+        // Create empty task counts for backward compatibility
+        let project_with_counts = ProjectWithTaskCounts {
+            project: project.clone(),
+            task_counts: ProjectTaskCounts {
+                todo: 0,
+                inprogress: 0,
+                inreview: 0,
+                done: 0,
+                cancelled: 0,
+            },
+        };
+        replace_with_counts(&project_with_counts)
     }
 
     /// Create patch for removing a project

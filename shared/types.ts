@@ -12,19 +12,39 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null,
+export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, 
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
-git_auto_commit_enabled: boolean | null,
+git_auto_commit_enabled: boolean | null, 
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
-auto_pr_on_review_enabled: boolean | null,
+auto_pr_on_review_enabled: boolean | null, 
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
-auto_pr_draft: boolean | null,
+auto_pr_draft: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+redirect_to_attempt_on_create: boolean | null, created_at: Date, updated_at: Date, };
+
+export type ProjectTaskCounts = { todo: bigint, inprogress: bigint, inreview: bigint, done: bigint, cancelled: bigint, };
+
+export type ProjectWithTaskCounts = { task_counts: ProjectTaskCounts, id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+git_auto_commit_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_on_review_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_draft: boolean | null, 
 /**
  * None = usa config global, Some(true/false) = override por proyecto
  */
@@ -32,19 +52,19 @@ redirect_to_attempt_on_create: boolean | null, created_at: Date, updated_at: Dat
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null,
+export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, 
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
-git_auto_commit_enabled?: boolean | null,
+git_auto_commit_enabled?: boolean | null, 
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
-auto_pr_on_review_enabled?: boolean | null,
+auto_pr_on_review_enabled?: boolean | null, 
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
-auto_pr_draft?: boolean | null,
+auto_pr_draft?: boolean | null, 
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
@@ -363,23 +383,19 @@ font_family: string | null,
 /**
  * cuando está habilitado, se cargarán las fuentes de Google (Chivo Mono, Inter, JetBrains Mono)
  */
-use_google_fonts: boolean,
+use_google_fonts: boolean, 
 /**
  * cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
  */
-discord_counter_enabled: boolean,
+discord_counter_enabled: boolean, 
 /**
  * cuando está habilitado, se crea automáticamente un PR cuando la tarea pasa a "In Review"
  */
-auto_pr_on_review_enabled: boolean,
+auto_pr_on_review_enabled: boolean, 
 /**
  * cuando está habilitado, los PRs automáticos se crean como draft
  */
-auto_pr_draft: boolean,
-/**
- * cuando está habilitado, se redirige al detalle del intento después de crear una tarea
- */
-redirect_to_attempt_on_create: boolean, };
+auto_pr_draft: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
