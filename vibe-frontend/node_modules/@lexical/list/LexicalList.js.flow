@@ -1,0 +1,118 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {
+  NodeKey,
+  LexicalNode,
+  LexicalEditor,
+  ParagraphNode,
+  RangeSelection,
+  LexicalCommand,
+  SerializedElementNode,
+  LexicalExtension,
+  ExtensionConfigBase,
+} from 'lexical';
+import type {NamedSignalsOutput} from '@lexical/extension';
+import {ElementNode} from 'lexical';
+
+export type ListNodeTagType = 'ul' | 'ol';
+export type ListType = 'number' | 'bullet' | 'check';
+declare export function $createListItemNode(
+  checked?: boolean | void,
+): ListItemNode;
+declare export function $createListNode(
+  listType: ListType,
+  start?: number,
+): ListNode;
+declare export function $getListDepth(listNode: ListNode): number;
+declare export function $handleListInsertParagraph(): boolean;
+declare export function $isListItemNode(
+  node: ?LexicalNode,
+): node is ListItemNode;
+declare export function $isListNode(
+  node: ?LexicalNode,
+): node is ListNode;
+declare export function indentList(): void;
+declare export function $insertList(
+  listType: ListType,
+): void;
+/** @deprecated use {@link $insertList} from an update or command listener */
+declare export function insertList(
+  editor: LexicalEditor,
+  listType: ListType,
+): void;
+declare export class ListItemNode extends ElementNode {
+  append(...nodes: LexicalNode[]): this;
+  replace<N: LexicalNode>(replaceWithNode: N): N;
+  insertAfter(node: LexicalNode, restoreSelection?: boolean): LexicalNode;
+  insertNewAfter(
+    selection: RangeSelection,
+    restoreSelection?: boolean,
+  ): ListItemNode | ParagraphNode;
+  collapseAtStart(selection: RangeSelection): true;
+  getIndent(): number;
+  setIndent(indent: number): this;
+  insertBefore(nodeToInsert: LexicalNode): LexicalNode;
+  canInsertAfter(node: LexicalNode): boolean;
+  canReplaceWith(replacement: LexicalNode): boolean;
+  canMergeWith(node: LexicalNode): boolean;
+  getValue(): number;
+  setValue(value: number): void;
+  getChecked(): boolean | void;
+  setChecked(boolean): this;
+  toggleChecked(): void;
+  static importJSON(serializedNode: SerializedListItemNode): ListItemNode;
+}
+declare export class ListNode extends ElementNode {
+  __tag: ListNodeTagType;
+  __start: number;
+  canBeEmpty(): false;
+  append(...nodesToAppend: LexicalNode[]): this;
+  getTag(): ListNodeTagType;
+  getStart(): number;
+  getListType(): ListType;
+  static importJSON(serializedNode: SerializedListNode): ListNode;
+}
+declare export function outdentList(): void;
+/** @deprecated use {@link $removeList} from an update or command listener */
+declare export function removeList(editor: LexicalEditor): void;
+declare export function $removeList(): void;
+
+declare export var INSERT_UNORDERED_LIST_COMMAND: LexicalCommand<void>;
+declare export var INSERT_ORDERED_LIST_COMMAND: LexicalCommand<void>;
+declare export var INSERT_CHECK_LIST_COMMAND: LexicalCommand<void>;
+declare export var REMOVE_LIST_COMMAND: LexicalCommand<void>;
+
+export type SerializedListItemNode = SerializedElementNode & {
+  checked: boolean | void,
+  value: number,
+};
+
+export type SerializedListNode = SerializedElementNode & {
+  listType: ListType,
+  start: number,
+  tag: ListNodeTagType,
+};
+
+declare export function registerListStrictIndentTransform(
+  editor: LexicalEditor,
+): () => void;
+
+declare export function registerCheckList(editor: LexicalEditor): () => void;
+
+declare export var UPDATE_LIST_START_COMMAND: LexicalCommand<{
+  listNodeKey: NodeKey;
+  newStart: number;
+}>
+
+export type ListConfig = {
+  hasStrictIndent: boolean;
+};
+declare export var ListExtension: LexicalExtension<ListConfig, "@lexical/list/List", NamedSignalsOutput<ListConfig>, void>;
+declare export var CheckListExtension: LexicalExtension<ExtensionConfigBase, "@lexical/list/CheckList", void, void>;

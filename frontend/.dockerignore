@@ -1,5 +1,0 @@
-# Only include dist/ and nginx.conf for deployment
-*
-!dist
-!dist/**
-!nginx.conf

@@ -1,0 +1,135 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {
+  LexicalEditor,
+  LexicalNode,
+  ElementNode,
+  TextFormatType,
+  TextNode,
+} from 'lexical';
+
+export type Transformer =
+  | ElementTransformer
+  | MultilineElementTransformer
+  | TextFormatTransformer
+  | TextMatchTransformer;
+
+export type ElementTransformer = {
+  dependencies: Array<Class<LexicalNode>>,
+  export: (
+    node: LexicalNode,
+    traverseChildren: (node: ElementNode) => string,
+  ) => string | null,
+  regExp: RegExp,
+  replace: (
+    parentNode: ElementNode,
+    children: Array<LexicalNode>,
+    match: Array<string>,
+    isImport: boolean,
+  ) => boolean | void,
+  type: 'element',
+};
+
+export type MultilineElementTransformer = {
+  dependencies: Array<Class<LexicalNode>>;
+  export?: (
+    node: LexicalNode,
+    traverseChildren: (node: ElementNode) => string,
+  ) => string | null;
+  handleImportAfterStartMatch?: (args: {
+    lines: Array<string>;
+    rootNode: ElementNode;
+    startLineIndex: number;
+    startMatch: RegExp$matchResult;
+    transformer: MultilineElementTransformer;
+  }) => [boolean, number] | null | void;
+  regExpStart: RegExp;
+  regExpEnd?:
+    | RegExp
+    | {
+        optional?: true;
+        regExp: RegExp;
+      };
+  replace: (
+    rootNode: ElementNode,
+    children: Array<LexicalNode> | null,
+    startMatch: Array<string>,
+    endMatch: Array<string> | null,
+    linesInBetween: Array<string> | null,
+    isImport: boolean,
+  ) => boolean | void;
+  type: 'multiline-element';
+};
+
+export type TextFormatTransformer = $ReadOnly<{
+  format: $ReadOnlyArray<TextFormatType>,
+  tag: string,
+  intraword?: boolean,
+  type: 'text-format',
+}>;
+
+export type TextMatchTransformer = $ReadOnly<{
+  dependencies: Array<Class<LexicalNode>>,
+  export?: (
+    node: LexicalNode,
+    exportChildren: (node: ElementNode) => string,
+    exportFormat: (node: TextNode, textContent: string) => string,
+  ) => string | null,
+  getEndIndex?: (node: TextNode, match: RegExp$matchResult) => number | false;
+  importRegExp?: RegExp,
+  regExp: RegExp,
+  replace?: (node: TextNode, match: RegExp$matchResult) => void | TextNode,
+  trigger?: string,
+  type: 'text-match',
+}>;
+
+declare export function registerMarkdownShortcuts(
+  editor: LexicalEditor,
+  transformers?: Array<Transformer>,
+): () => void;
+
+declare export function $convertFromMarkdownString(
+  markdown: string,
+  transformers?: Array<Transformer>,
+  node?: ElementNode,
+  shouldPreserveNewLines?: boolean,
+  shouldMergeAdjacentLines?: boolean,
+): void;
+
+declare export function $convertToMarkdownString(
+  transformers?: Array<Transformer>,
+  node?: ElementNode,
+  shouldPreserveNewLines?: boolean,
+): string;
+
+declare export var INLINE_CODE: TextFormatTransformer;
+declare export var HIGHLIGHT: TextFormatTransformer;
+declare export var BOLD_ITALIC_STAR: TextFormatTransformer;
+declare export var BOLD_ITALIC_UNDERSCORE: TextFormatTransformer;
+declare export var BOLD_STAR: TextFormatTransformer;
+declare export var BOLD_UNDERSCORE: TextFormatTransformer;
+declare export var STRIKETHROUGH: TextFormatTransformer;
+declare export var ITALIC_STAR: TextFormatTransformer;
+declare export var ITALIC_UNDERSCORE: TextFormatTransformer;
+
+declare export var HEADING: ElementTransformer;
+declare export var QUOTE: ElementTransformer;
+declare export var CODE: MultilineElementTransformer;
+declare export var UNORDERED_LIST: ElementTransformer;
+declare export var CHECK_LIST: ElementTransformer;
+declare export var ORDERED_LIST: ElementTransformer;
+
+declare export var LINK: TextMatchTransformer;
+
+declare export var TRANSFORMERS: Array<Transformer>;
+declare export var ELEMENT_TRANSFORMERS: Array<ElementTransformer>;
+declare export var MULTILINE_ELEMENT_TRANSFORMERS: Array<MultilineElementTransformer>;
+declare export var TEXT_FORMAT_TRANSFORMERS: Array<TextFormatTransformer>;
+declare export var TEXT_MATCH_TRANSFORMERS: Array<TextFormatTransformer>;

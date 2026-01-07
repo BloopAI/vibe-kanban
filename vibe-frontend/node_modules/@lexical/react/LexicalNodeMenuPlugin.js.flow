@@ -1,0 +1,64 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {LexicalCommand, LexicalEditor, NodeKey, TextNode} from 'lexical';
+import * as React from 'react';
+
+export type MenuTextMatch = {
+  leadOffset: number,
+  matchingString: string,
+  replaceableString: string,
+};
+
+export type MenuResolution = {
+  match?: MenuTextMatch,
+  getRect: () => ClientRect,
+};
+
+declare export class MenuOption {
+  key: string;
+  ref: {current: HTMLElement | null};
+  constructor(key: string): void;
+  setRefElement(element: HTMLElement | null): void;
+}
+
+export type MenuRenderFn<TOption> = (
+  anchorElementRef: {current: HTMLElement | null},
+  itemProps: {
+    selectedIndex: number | null,
+    selectOptionAndCleanUp: (option: TOption) => void,
+    setHighlightedIndex: (index: number) => void,
+    options: Array<TOption>,
+  },
+  matchingString: string,
+) => React.Portal | React.MixedElement | null;
+
+export type TriggerFn = (
+  text: string,
+  editor: LexicalEditor,
+) => MenuTextMatch | null;
+
+type NodeMenuPluginProps<TOption> = {
+  onSelectOption: (
+    option: TOption,
+    textNodeContainingQuery: TextNode | null,
+    closeMenu: () => void,
+    matchingString: string,
+  ) => void,
+  options: Array<TOption>,
+  nodeKey: NodeKey | null,
+  onClose?: () => void,
+  onOpen?: (resolution: MenuResolution) => void,
+  menuRenderFn: MenuRenderFn<TOption>,
+  anchorClassName?: string,
+};
+
+declare export function LexicalNodeMenuPlugin<TOption>(
+  options: NodeMenuPluginProps<TOption>,
+): React.MixedElement | null;

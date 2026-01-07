@@ -1,0 +1,40 @@
+{
+  "name": "@dnd-kit/core",
+  "version": "6.3.1",
+  "description": "dnd kit – a lightweight React library for building performant and accessible drag and drop experiences",
+  "author": "Claudéric Demers",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clauderic/dnd-kit.git",
+    "directory": "packages/core"
+  },
+  "scripts": {
+    "start": "tsdx watch --tsconfig tsconfig.build.json --verbose --noClean",
+    "build": "tsdx build --tsconfig tsconfig.build.json",
+    "test": "tsdx test",
+    "lint": "tsdx lint",
+    "prepublish": "npm run build"
+  },
+  "main": "dist/index.js",
+  "module": "dist/core.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "dependencies": {
+    "tslib": "^2.0.0",
+    "@dnd-kit/accessibility": "^3.1.1",
+    "@dnd-kit/utilities": "^3.2.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

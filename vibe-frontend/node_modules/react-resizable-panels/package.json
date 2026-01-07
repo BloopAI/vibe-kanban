@@ -1,0 +1,81 @@
+{
+  "name": "react-resizable-panels",
+  "version": "3.0.6",
+  "type": "module",
+  "description": "React components for resizable panel groups/layouts",
+  "author": "Brian Vaughn <brian.david.vaughn@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bvaughn/react-resizable-panels.git"
+  },
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/react-resizable-panels.js",
+      "development": {
+        "edge-light": "./dist/react-resizable-panels.development.edge-light.js",
+        "worker": "./dist/react-resizable-panels.development.edge-light.js",
+        "workerd": "./dist/react-resizable-panels.development.edge-light.js",
+        "browser": "./dist/react-resizable-panels.browser.development.js",
+        "node": "./dist/react-resizable-panels.development.edge-light.js",
+        "default": "./dist/react-resizable-panels.development.js"
+      },
+      "edge-light": "./dist/react-resizable-panels.edge-light.js",
+      "worker": "./dist/react-resizable-panels.edge-light.js",
+      "workerd": "./dist/react-resizable-panels.edge-light.js",
+      "browser": "./dist/react-resizable-panels.browser.js",
+      "node": "./dist/react-resizable-panels.edge-light.js",
+      "default": "./dist/react-resizable-panels.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#is-development": {
+      "development": "./src/env-conditions/development.ts",
+      "default": "./src/env-conditions/production.ts"
+    },
+    "#is-browser": {
+      "edge-light": "./src/env-conditions/server.ts",
+      "workerd": "./src/env-conditions/server.ts",
+      "worker": "./src/env-conditions/server.ts",
+      "browser": "./src/env-conditions/browser.ts",
+      "node": "./src/env-conditions/server.ts",
+      "default": "./src/env-conditions/check-is-browser.ts"
+    }
+  },
+  "types": "dist/react-resizable-panels.d.ts",
+  "scripts": {
+    "clear": "pnpm run clear:builds & pnpm run clear:node_modules",
+    "clear:builds": "rm -rf ./packages/*/dist",
+    "clear:node_modules": "rm -rf ./node_modules",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test:browser": "vitest",
+    "test:node": "vitest -c vitest.node.config.ts",
+    "watch": "parcel watch --port=2345"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-nullish-coalescing-operator": "7.18.6",
+    "@babel/plugin-proposal-optional-chaining": "7.21.0",
+    "@vitest/ui": "^3.1.2",
+    "eslint": "^8.37.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "jsdom": "^26.1.0",
+    "react": "experimental",
+    "react-dom": "experimental",
+    "vitest": "^3.1.2"
+  },
+  "peerDependencies": {
+    "react": "^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
+    "react-dom": "^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc"
+  },
+  "browserslist": [
+    "Chrome 79"
+  ]
+}

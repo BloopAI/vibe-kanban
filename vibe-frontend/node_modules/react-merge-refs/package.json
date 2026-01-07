@@ -1,0 +1,41 @@
+{
+  "name": "react-merge-refs",
+  "description": "React utility to merge refs.",
+  "keywords": [
+    "react",
+    "utility",
+    "ref"
+  ],
+  "version": "1.1.0",
+  "author": "Greg Bergé <berge.greg@gmail.com>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/react-merge-refs.esm.js",
+  "typings": "dist/index.d.ts",
+  "repository": "github:gregberge/react-merge-refs",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/gregberge"
+  },
+  "scripts": {
+    "prepublishOnly": "yarn build",
+    "release": "standard-version && conventional-github-releaser --preset angular",
+    "start": "tsdx watch",
+    "test": "tsdx test",
+    "build": "tsdx build"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^10.4.7",
+    "@types/react": "^16.9.34",
+    "@types/react-dom": "^16.9.7",
+    "conventional-github-releaser": "^3.1.3",
+    "jest": "^26.1.0",
+    "microbundle": "^0.12.3",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "standard-version": "^8.0.2",
+    "tsdx": "^0.13.2",
+    "tslib": "^2.0.0",
+    "typescript": "^3.8.3"
+  }
+}

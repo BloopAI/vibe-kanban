@@ -1,0 +1,3 @@
+// THIS FILE IS AUTO GENERATED
+import { IconTree, IconType } from '../lib'
+export declare const RiTimer2Fill: IconType;

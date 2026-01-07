@@ -1,0 +1,6 @@
+{
+  "sideEffects": false,
+  "main": "floating-ui.react.utils.umd.js",
+  "module": "floating-ui.react.utils.esm.js",
+  "types": "floating-ui.react.utils.d.ts"
+}

@@ -10,10 +10,15 @@
 ## Infrastructure
 
 * **Hosting**: Railway
-* **Backend Deployment**:
-  * Source: Docker Image (`rupeedev/vibe-kanban-backend:latest`)
-  * CI/CD: GitLab CI -> Docker Hub -> Railway
-* **Database**: SQLite (Local embedded in Backend on Railway)
+*   **Backend Deployment**:
+    *   Source: Docker Image (`rupeedev/vibe-kanban-backend:latest`)
+    *   CI/CD: GitHub Actions (`deploy-backend.yml`) -> Docker Hub -> Railway
+*   **Database**: SQLite (Local embedded in Backend on Railway)
+
+## Local Development Context
+*   **Frontend Port**: 3003 (as per user request)
+*   **Backend Port**: 3003 (Note: Potential conflict if running simultaneously; Dockerfile defaults to 3000)
+
 
 ## Key Constraints
 

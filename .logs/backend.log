@@ -1,0 +1,202 @@
+warning: unused variable: `was_created`
+    --> crates/server/src/routes/documents.rs:1121:21
+     |
+1121 |                 let was_created = {
+     |                     ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_was_created`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `folders_created` is never read
+    --> crates/server/src/routes/documents.rs:1070:31
+     |
+1070 |     let mut folders_created = 0;
+     |                               ^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `token_type` and `scope` are never read
+   --> crates/server/src/routes/oauth.rs:437:5
+    |
+435 | struct GitHubTokenResponse {
+    |        ------------------- fields in this struct
+436 |     access_token: String,
+437 |     token_type: String,
+    |     ^^^^^^^^^^
+438 |     scope: String,
+    |     ^^^^^
+    |
+    = note: `GitHubTokenResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `server` (lib) generated 3 warnings (run `cargo fix --lib -p server` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.92s
+warning: the following packages contain code that will be rejected by a future version of Rust: num-bigint-dig v0.8.5
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running `target/debug/server`
+[2m2026-01-06T09:45:25.057185Z[0m [32m INFO[0m [2mexecutors::profile[0m[2m:[0m No user profiles.json found, using defaults only
+[2m2026-01-06T09:45:25.071397Z[0m [32m INFO[0m [2mdb[0m[2m:[0m Connecting to database: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/db.sqlite
+[2m2026-01-06T09:45:25.076619Z[0m [32m INFO[0m [2mdb[0m[2m:[0m Creating pool for database: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/db.sqlite
+[2m2026-01-06T09:45:25.077881Z[0m [32m INFO[0m [2mdb::registry[0m[2m:[0m Initializing team registry at: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/registry.sqlite
+[2m2026-01-06T09:45:25.078443Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m Multi-tenant database registry initialized
+[2m2026-01-06T09:45:25.078590Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m Starting orphaned image cleanup...
+[2m2026-01-06T09:45:25.078827Z[0m [32m INFO[0m [2mservices::services::oauth_credentials[0m[2m:[0m OAuth credentials backend: file
+[2m2026-01-06T09:45:25.078865Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m VK_SHARED_API_BASE not set; remote features disabled
+[2m2026-01-06T09:45:25.080140Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T09:45:25.080224Z[0m [32m INFO[0m [2mservices::services::pr_monitor[0m[2m:[0m Starting PR monitoring service with interval 60s
+[2m2026-01-06T09:45:25.080323Z[0m [32m INFO[0m [2mservices::services::file_search_cache[0m[2m:[0m Starting file search cache warming...
+[2m2026-01-06T09:45:25.081147Z[0m [32m INFO[0m [2mservices::services::file_search_cache[0m[2m:[0m No active projects found, skipping cache warming
+[2m2026-01-06T09:45:25.089301Z[0m [32m INFO[0m [2mserver[0m[2m:[0m Server running on http://127.0.0.1:3003
+[2m2026-01-06T12:20:49.829138Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T12:45:05.002907Z[0m [33m WARN[0m [2mserver::middleware::model_loaders[0m[2m:[0m Task c2ac984e-552f-4a6d-8bbc-5d52b86854e0 not found
+[2m2026-01-06T12:50:49.828324Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T13:20:49.831997Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T13:32:09.046339Z[0m [33m WARN[0m [2mserver::middleware::model_loaders[0m[2m:[0m Task 19a216f5-78b1-4e6b-a68a-9a525d78cf70 not found
+[2m2026-01-06T13:32:16.233083Z[0m [33m WARN[0m [2mserver::middleware::model_loaders[0m[2m:[0m Task 19a216f5-78b1-4e6b-a68a-9a525d78cf70 not found
+[2m2026-01-06T13:50:49.840924Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T14:20:49.849910Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T14:50:49.858657Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T15:20:49.867149Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T15:50:49.876168Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T16:20:49.882345Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T16:50:49.891920Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T17:20:49.900620Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T17:50:49.911000Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T18:20:49.922820Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T18:50:49.928026Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T19:20:49.946712Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T19:50:49.956889Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T20:20:49.974604Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T20:50:49.982746Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T21:20:49.994384Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T21:50:50.009454Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T22:20:50.020689Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T22:50:50.029855Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T23:20:50.031136Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-06T23:50:50.032046Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T00:20:50.030100Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T00:50:50.038161Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T02:29:47.236030Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T02:59:47.253407Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T03:29:47.265788Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T03:59:47.271748Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T04:29:47.276565Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T04:59:47.287913Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T05:29:47.299059Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T05:59:47.306226Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T06:29:47.318632Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T06:59:47.324934Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T07:29:47.330894Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T07:59:47.343008Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T08:29:47.349909Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T08:59:47.368239Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T09:29:47.379737Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T09:59:47.390494Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T09:59:47.404391Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:00:47.388795Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:01:47.390565Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:02:47.389654Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:03:47.390929Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:04:47.389652Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:05:47.390970Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:06:47.389587Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:07:47.391239Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:08:47.390765Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:09:47.393908Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:10:47.394956Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:11:47.395429Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:12:47.392413Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:13:47.393243Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:14:47.394062Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:15:47.394324Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:16:47.393940Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:17:47.397478Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:18:47.396412Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:19:47.395063Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:20:47.394466Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:21:47.398617Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:22:47.396786Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:23:47.397129Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:24:47.396354Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:25:47.397918Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:26:47.397839Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:27:47.398085Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:28:47.397713Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:29:47.401604Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T10:29:47.408328Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:29:47.409685Z[0m [31mERROR[0m [2mlocal_deployment::container[0m[2m:[0m Failed to clean up expired workspaces: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:30:47.398518Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:31:47.400293Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:32:47.400903Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:33:47.400720Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:34:47.400129Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:35:47.402343Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:36:47.400821Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:37:47.401523Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:38:47.402878Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:39:47.403056Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:40:47.406605Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:41:47.401465Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:42:47.400749Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:43:47.400927Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:44:47.402920Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:45:47.402254Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:46:47.401442Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:47:47.404250Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:48:47.403621Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:49:47.403889Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:50:47.403632Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:51:47.404760Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:52:47.405448Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:53:47.406149Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:54:47.404002Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:55:47.406770Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:56:47.405263Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:57:47.408202Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:58:47.407124Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:59:47.406517Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T10:59:47.411543Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T10:59:47.411615Z[0m [31mERROR[0m [2mlocal_deployment::container[0m[2m:[0m Failed to clean up expired workspaces: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:00:47.406927Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:01:47.409249Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:02:47.406640Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:03:47.406662Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:04:47.406120Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:05:47.405886Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:06:47.406972Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:07:47.407272Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:08:47.406586Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:09:47.408515Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:10:47.406968Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:11:47.406519Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:12:47.407759Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:13:47.407405Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:14:47.415740Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:15:47.408239Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:16:47.409926Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:17:47.409270Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:18:47.409549Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:19:47.411709Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:20:47.409428Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:21:47.410351Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:22:47.411094Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:23:47.411017Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:24:47.409720Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:25:47.407841Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:26:47.408691Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:27:47.410645Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:28:47.411177Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:29:47.410343Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-07T11:29:47.415271Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:29:47.415377Z[0m [31mERROR[0m [2mlocal_deployment::container[0m[2m:[0m Failed to clean up expired workspaces: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:30:47.409354Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:31:47.409866Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:32:47.408681Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:33:47.410420Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:34:47.410391Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:35:47.411028Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:36:47.410928Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:37:47.414037Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:38:47.412137Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:39:47.411847Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file
+[2m2026-01-07T11:40:47.411951Z[0m [31mERROR[0m [2mservices::services::pr_monitor[0m[2m:[0m Error checking open PRs: error returned from database: (code: 14) unable to open database file

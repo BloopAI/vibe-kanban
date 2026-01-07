@@ -1,0 +1,84 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+/**
+ * LexicalReactPluginHostExtension
+ */
+import type {
+  LexicalExtension,
+  AnyLexicalExtension,
+  LexicalEditor,
+  LexicalExtensionOutput,
+  LexicalCommand,
+  ExtensionConfigBase,
+} from 'lexical';
+import type {Signal} from '@lexical/extension';
+import type {DecoratorComponentProps} from '@lexical/react/ReactExtension';
+export type {DecoratorComponentProps};
+
+type Container = DocumentFragment | Element;
+// TODO: Not sure how to import RootType from react-dom/client
+type Root = mixed;
+
+export interface HostMountCommandArg {
+  root: Root;
+}
+
+export interface MountPluginCommandArg {
+  key: string;
+  element: React.Node | null;
+  domNode?: Container | null;
+}
+
+declare export function mountReactExtensionComponent<
+  Extension: AnyLexicalExtension,
+>(
+  editor: LexicalEditor,
+  opts: {
+    extension: Extension;
+    props: [LexicalExtensionOutput<Extension>] extends [
+      {
+        // $FlowFixMe[unclear-type]: defined by user
+        Component: infer OutputComponentType extends React.ComponentType<any>;
+      },
+    ]
+      ? React.PropsOf<OutputComponentType> | null
+      : empty;
+  } & Omit<MountPluginCommandArg, 'element'>,
+): void;
+
+declare export function mountReactPluginComponent<
+  P: {...} = {...},
+>(
+  editor: LexicalEditor,
+  opts: {
+    Component: React.ComponentType<P>;
+    props: (P & {key?: null | void | React.Key}) | null;
+  } & Omit<MountPluginCommandArg, 'element'>,
+): void;
+
+declare export function mountReactPluginElement(
+  editor: LexicalEditor,
+  opts: MountPluginCommandArg,
+): void;
+
+declare export function mountReactPluginHost(
+  editor: LexicalEditor,
+  container: Container,
+): void;
+
+declare export var REACT_PLUGIN_HOST_MOUNT_ROOT_COMMAND: LexicalCommand<HostMountCommandArg>;
+declare export var REACT_PLUGIN_HOST_MOUNT_PLUGIN_COMMAND: LexicalCommand<MountPluginCommandArg>;
+declare export var ReactPluginHostExtension: LexicalExtension<ExtensionConfigBase, "@lexical/react/ReactPluginHost", {
+    mountReactPlugin: (arg: MountPluginCommandArg) => void;
+    mountReactPluginHost: (container: Container) => boolean;
+    mountedPluginsStore: Signal<{
+        plugins: Map<string, MountPluginCommandArg>;
+    }>;
+}, void>;

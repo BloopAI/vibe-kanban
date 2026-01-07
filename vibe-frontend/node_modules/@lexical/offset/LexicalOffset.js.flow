@@ -1,0 +1,67 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+import type {
+  EditorState,
+  LexicalEditor,
+  NodeKey,
+  RangeSelection,
+} from 'lexical';
+type OffsetElementNode = {
+  child: null | OffsetNode,
+  end: number,
+  key: NodeKey,
+  next: null | OffsetNode,
+  parent: null | OffsetElementNode,
+  prev: null | OffsetNode,
+  start: number,
+  type: 'element',
+};
+type OffsetTextNode = {
+  child: null,
+  end: number,
+  key: NodeKey,
+  next: null | OffsetNode,
+  parent: null | OffsetElementNode,
+  prev: null | OffsetNode,
+  start: number,
+  type: 'text',
+};
+type OffsetInlineNode = {
+  child: null,
+  end: number,
+  key: NodeKey,
+  next: null | OffsetNode,
+  parent: null | OffsetElementNode,
+  prev: null | OffsetNode,
+  start: number,
+  type: 'inline',
+};
+type OffsetNode = OffsetElementNode | OffsetTextNode | OffsetInlineNode;
+type OffsetMap = Map<NodeKey, OffsetNode>;
+declare export class OffsetView {
+  _offsetMap: OffsetMap;
+  _firstNode: null | OffsetNode;
+  _blockOffsetSize: number;
+  constructor(
+    offsetMap: OffsetMap,
+    firstNode: null | OffsetNode,
+    blockOffsetSize: number,
+  ): void;
+  createSelectionFromOffsets(
+    originalStart: number,
+    originalEnd: number,
+    diffOffsetView?: OffsetView,
+  ): null | RangeSelection;
+  getOffsetsFromSelection(selection: RangeSelection): [number, number];
+}
+declare export function $createOffsetView(
+  editor: LexicalEditor,
+  blockOffsetSize?: number,
+  editorState?: EditorState,
+): OffsetView;

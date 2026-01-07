@@ -1,0 +1,58 @@
+{
+  "name": "@tanstack/devtools-event-client",
+  "version": "0.4.0",
+  "description": "TanStack Event Client is a lightweight event client for TanStack Devtools event bus.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/devtools.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://tanstack.com/devtools",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "devtools"
+  ],
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "src"
+  ],
+  "devDependencies": {
+    "@tanstack/devtools-event-bus": "0.3.3"
+  },
+  "scripts": {
+    "clean": "premove ./build ./dist",
+    "lint:fix": "eslint ./src --fix",
+    "test:eslint": "eslint ./src",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm test:lib --watch",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  }
+}

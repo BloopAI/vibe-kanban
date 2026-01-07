@@ -1,0 +1,54 @@
+{
+  "type": "module",
+  "name": "click-to-react-component",
+  "version": "1.1.3",
+  "description": "Option+Click your React components in your browser to open the source file in VS Code",
+  "exports": {
+    "types": "./src/types.d.ts",
+    "import": "./src/index.js",
+    "default": "./src/index.js"
+  },
+  "types": "src/types.d.ts",
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericclemmons/click-to-component.git"
+  },
+  "keywords": [
+    "react",
+    "vue",
+    "dx",
+    "vscode",
+    "devtools"
+  ],
+  "author": "Eric Clemmons <eric@smarterspam.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ericclemmons/click-to-component/issues"
+  },
+  "homepage": "https://github.com/ericclemmons/click-to-component#readme",
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "dependencies": {
+    "@floating-ui/react-dom-interactions": "^0.3.1",
+    "htm": "^3.1.0",
+    "react-merge-refs": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.6",
+    "@types/react": "^18.3.12",
+    "@types/react-reconciler": "^0.28.8",
+    "eslint": "^8.0.0",
+    "eslint-config-react-app": "^7.0.1"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "echo \"Fuck build tools\"",
+    "dev": "pnpm run build",
+    "lint": "tsc -p ./jsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

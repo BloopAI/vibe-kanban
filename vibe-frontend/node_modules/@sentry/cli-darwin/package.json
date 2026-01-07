@@ -1,0 +1,16 @@
+{
+  "name": "@sentry/cli-darwin",
+  "version": "2.58.4",
+  "description": "The darwin distribution of the Sentry CLI binary.",
+  "repository": "https://github.com/getsentry/sentry-cli",
+  "license": "FSL-1.1-MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "os": [
+    "darwin"
+  ]
+}

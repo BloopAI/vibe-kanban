@@ -1,0 +1,83 @@
+{
+  "name": "eslint-plugin-eslint-comments",
+  "version": "3.2.0",
+  "description": "Additional ESLint rules for ESLint directive comments.",
+  "engines": {
+    "node": ">=6.5.0"
+  },
+  "main": "index.js",
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "eslint": ">=4.19.1"
+  },
+  "dependencies": {
+    "escape-string-regexp": "^1.0.5",
+    "ignore": "^5.0.5"
+  },
+  "devDependencies": {
+    "@mysticatea/eslint-plugin": "^13.0.0",
+    "@types/node": "^14.0.1",
+    "@vuepress/plugin-pwa": "^1.0.1",
+    "babel-eslint": "^10.0.1",
+    "codecov": "^3.3.0",
+    "cross-spawn": "^6.0.5",
+    "eslint": "^7.0.0",
+    "eslint4b": "^7.0.0",
+    "fs-extra": "^8.0.1",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "opener": "^1.4.3",
+    "rimraf": "^2.6.2",
+    "semver": "^7.3.2",
+    "string-replace-loader": "^2.1.1",
+    "vue-eslint-editor": "^1.1.0",
+    "vuepress": "^1.0.1"
+  },
+  "scripts": {
+    "preversion": "npm test",
+    "version": "node scripts/update && git add .",
+    "postversion": "git push && git push --tags",
+    "clean": "rimraf .nyc_output coverage docs/.vuepress/dist",
+    "docs:build": "vuepress build docs",
+    "docs:watch": "vuepress dev docs",
+    "docs:deploy": "node scripts/deploy",
+    "lint": "eslint lib scripts tests",
+    "pretest": "npm run -s lint",
+    "test": "nyc npm run -s test:mocha",
+    "test:ci": "nyc npm run -s test:mocha",
+    "test:mocha": "mocha \"tests/lib/**/*.js\" --reporter dot --timeout 8000",
+    "watch": "npm run -s test:mocha -- --watch --growl",
+    "coverage": "nyc report --reporter lcov && opener coverage/lcov-report/index.html",
+    "codecov": "nyc report --reporter text-lcov | codecov --pipe --disable=gcov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mysticatea/eslint-plugin-eslint-comments.git"
+  },
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "plugin",
+    "comment",
+    "comments",
+    "directive",
+    "global",
+    "globals",
+    "exported",
+    "eslint-env",
+    "eslint-enable",
+    "eslint-disable",
+    "eslint-disable-line",
+    "eslint-disable-next-line"
+  ],
+  "author": "Toru Nagashima",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mysticatea/eslint-plugin-eslint-comments/issues"
+  },
+  "homepage": "https://github.com/mysticatea/eslint-plugin-eslint-comments#readme",
+  "funding": "https://github.com/sponsors/mysticatea"
+}

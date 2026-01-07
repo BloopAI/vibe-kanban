@@ -1,0 +1,31 @@
+image: docker:25.0
+
+services:
+  - docker:25.0-dind
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+stages:
+  - build
+
+build:
+  stage: build
+  before_script:
+    - export DOCKER_USER=${DOCKER_USER:-$docker_user}
+    - export DOCKER_PAT=${DOCKER_PAT:-$docker_pat}
+    - |
+      if [ -z "$DOCKER_USER" ] || [ -z "$DOCKER_PAT" ]; then
+        echo "Error: DOCKER_USER or DOCKER_PAT variables are not set in GitLab CI/CD Settings."
+        echo "Please check Settings > CI/CD > Variables."
+        echo "Current DOCKER_USER value: '$DOCKER_USER'"
+        exit 1
+      fi
+    - echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin
+
+  script:
+    - docker build -t $DOCKER_USER/vibe-kanban-backend:latest .
+    - docker push $DOCKER_USER/vibe-kanban-backend:latest
+  only:
+    - main

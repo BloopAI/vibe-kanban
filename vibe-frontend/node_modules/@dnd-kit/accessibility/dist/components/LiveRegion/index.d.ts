@@ -1,0 +1,1 @@
+export { LiveRegion } from './LiveRegion';

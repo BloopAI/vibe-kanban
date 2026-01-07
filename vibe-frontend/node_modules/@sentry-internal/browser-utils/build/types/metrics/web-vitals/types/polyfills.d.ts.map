@@ -1,0 +1,1 @@
+{"version":3,"file":"polyfills.d.ts","sourceRoot":"","sources":["../../../../../src/metrics/web-vitals/types/polyfills.ts"],"names":[],"mappings":"AAgBA,MAAM,MAAM,uBAAuB,GAAG,IAAI,CAAC,sBAAsB,EAAE,eAAe,CAAC,CAAC;AAEpF,MAAM,WAAW,0BAA0B;IACzC,CAAC,KAAK,EAAE,uBAAuB,GAAG,IAAI,CAAC;CACxC"}

@@ -1,0 +1,21 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {CustomPrintNodeFn} from '@lexical/devtools-core';
+import type {LexicalEditor} from 'lexical';
+
+declare export function TreeView(props: {
+  timeTravelPanelClassName: string,
+  timeTravelPanelSliderClassName: string,
+  timeTravelPanelButtonClassName: string,
+  timeTravelButtonClassName: string,
+  viewClassName: string,
+  editor: LexicalEditor,
+  customPrintNode?: CustomPrintNodeFn,
+}): React.Node;

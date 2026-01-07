@@ -1,0 +1,1 @@
+{"version":3,"file":"symbol.mjs","sources":["../../../../src/motion/utils/symbol.ts"],"sourcesContent":["export const motionComponentSymbol = Symbol.for(\"motionComponentSymbol\")\n"],"names":[],"mappings":"AAAa,MAAA,qBAAqB,GAAG,MAAM,CAAC,GAAG,CAAC,uBAAuB;;;;"}

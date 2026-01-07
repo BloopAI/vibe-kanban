@@ -1,0 +1,1 @@
+export { RestoreFocus } from './RestoreFocus';

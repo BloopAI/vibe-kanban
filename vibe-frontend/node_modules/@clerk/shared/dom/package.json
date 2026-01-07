@@ -1,0 +1,3 @@
+{
+  "main": "../dist/runtime/dom/index.js"
+}

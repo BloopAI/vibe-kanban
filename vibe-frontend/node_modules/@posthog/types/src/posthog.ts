@@ -1,0 +1,490 @@
+/**
+ * PostHog instance interface
+ *
+ * This interface describes the public API of the PostHog class.
+ * It can be used to type `window.posthog` when loading PostHog via a script tag.
+ */
+
+import type { PostHogConfig } from './posthog-config'
+import type { Properties, JsonType } from './common'
+import type { CaptureResult, CaptureOptions } from './capture'
+import type { FeatureFlagsCallback, EarlyAccessFeatureCallback, EarlyAccessFeatureStage } from './feature-flags'
+import type { SessionIdChangedCallback } from './session-recording'
+import type { RequestCallback } from './request'
+
+/**
+ * The PostHog instance interface.
+ *
+ * This can be used to type `window.posthog` when loading PostHog via a `<script>` tag.
+ *
+ * @example
+ * ```typescript
+ * import type { PostHog } from '@posthog/types'
+ *
+ * declare global {
+ *     interface Window {
+ *         posthog?: PostHog
+ *     }
+ * }
+ *
+ * // Now you can use window.posthog with type safety
+ * window.posthog?.capture('my_event', { property: 'value' })
+ * ```
+ */
+export interface PostHog {
+    /**
+     * The current configuration of the PostHog instance.
+     */
+    config: PostHogConfig
+
+    /**
+     * The library version.
+     */
+    version: string
+
+    /**
+     * Whether the PostHog instance has been loaded.
+     */
+    __loaded: boolean
+
+    /**
+     * Whether the flags endpoint has been hit.
+     */
+    flagsEndpointWasHit: boolean
+
+    // ============================================================================
+    // Initialization
+    // ============================================================================
+
+    /**
+     * Initializes a new instance of the PostHog capturing object.
+     *
+     * @param token - Your PostHog API token
+     * @param config - A dictionary of config options to override
+     * @param name - The name for the new posthog instance that you want created
+     * @returns The newly initialized PostHog instance
+     */
+    init(token: string, config?: Partial<PostHogConfig>, name?: string): PostHog
+
+    // ============================================================================
+    // Event Capture
+    // ============================================================================
+
+    /**
+     * Capture an event.
+     *
+     * @param event_name - The name of the event
+     * @param properties - A set of properties to include with the event
+     * @param options - Additional options for the capture
+     * @returns The capture result
+     */
+    capture(event_name: string, properties?: Properties | null, options?: CaptureOptions): CaptureResult | undefined
+
+    /**
+     * Capture an exception.
+     *
+     * @param error - The error to capture
+     * @param additionalProperties - Additional properties to include with the event
+     * @returns The capture result
+     */
+    captureException(error: unknown, additionalProperties?: Properties): CaptureResult | undefined
+
+    // ============================================================================
+    // User Identification
+    // ============================================================================
+
+    /**
+     * Identify a user with a distinct ID and optionally set person properties.
+     *
+     * @param new_distinct_id - The new distinct ID for the user
+     * @param userPropertiesToSet - Properties to set on the user (using $set)
+     * @param userPropertiesToSetOnce - Properties to set once on the user (using $set_once)
+     */
+    identify(new_distinct_id?: string, userPropertiesToSet?: Properties, userPropertiesToSetOnce?: Properties): void
+
+    /**
+     * Set properties on the current user.
+     *
+     * @param userPropertiesToSet - Properties to set on the user (using $set)
+     * @param userPropertiesToSetOnce - Properties to set once on the user (using $set_once)
+     */
+    setPersonProperties(userPropertiesToSet?: Properties, userPropertiesToSetOnce?: Properties): void
+
+    /**
+     * Create an alias for the current user.
+     *
+     * @param alias - The alias to create
+     * @param original - The original distinct ID (defaults to current distinct ID)
+     */
+    alias(alias: string, original?: string): CaptureResult | void | number
+
+    /**
+     * Get the current distinct ID.
+     *
+     * @returns The current distinct ID
+     */
+    get_distinct_id(): string
+
+    /**
+     * Reset the user's identity and start a new session.
+     *
+     * @param reset_device_id - Whether to reset the device ID as well
+     */
+    reset(reset_device_id?: boolean): void
+
+    /**
+     * Create a person profile for the current user.
+     */
+    createPersonProfile(): void
+
+    // ============================================================================
+    // Groups
+    // ============================================================================
+
+    /**
+     * Associate the user with a group.
+     *
+     * @param groupType - The type of group (e.g., 'company', 'project')
+     * @param groupKey - The unique identifier for the group
+     * @param groupPropertiesToSet - Properties to set on the group
+     */
+    group(groupType: string, groupKey: string, groupPropertiesToSet?: Properties): void
+
+    /**
+     * Get the current groups.
+     *
+     * @returns A record of group types to group keys
+     */
+    getGroups(): Record<string, any>
+
+    /**
+     * Reset all groups for the current user.
+     */
+    resetGroups(): void
+
+    // ============================================================================
+    // Feature Flags
+    // ============================================================================
+
+    /**
+     * Get the value of a feature flag.
+     *
+     * @param key - The feature flag key
+     * @param options - Options for the feature flag lookup
+     * @returns The feature flag value (boolean for simple flags, string for multivariate)
+     */
+    getFeatureFlag(key: string, options?: { send_event?: boolean }): boolean | string | undefined
+
+    /**
+     * Get the payload of a feature flag.
+     *
+     * @param key - The feature flag key
+     * @returns The feature flag payload
+     */
+    getFeatureFlagPayload(key: string): JsonType
+
+    /**
+     * Check if a feature flag is enabled.
+     *
+     * @param key - The feature flag key
+     * @param options - Options for the feature flag lookup
+     * @returns Whether the feature flag is enabled
+     */
+    isFeatureEnabled(key: string, options?: { send_event?: boolean }): boolean | undefined
+
+    /**
+     * Reload feature flags from the server.
+     */
+    reloadFeatureFlags(): void
+
+    /**
+     * Register a callback to be called when feature flags are loaded.
+     *
+     * @param callback - The callback to call
+     * @returns A function to unsubscribe
+     */
+    onFeatureFlags(callback: FeatureFlagsCallback): () => void
+
+    /**
+     * Set person properties to be used for feature flag evaluation.
+     *
+     * @param properties - The properties to set
+     * @param reloadFeatureFlags - Whether to reload feature flags after setting
+     */
+    setPersonPropertiesForFlags(properties: Properties, reloadFeatureFlags?: boolean): void
+
+    /**
+     * Reset person properties used for feature flag evaluation.
+     */
+    resetPersonPropertiesForFlags(): void
+
+    /**
+     * Set group properties to be used for feature flag evaluation.
+     *
+     * @param properties - The properties to set (keyed by group type)
+     * @param reloadFeatureFlags - Whether to reload feature flags after setting
+     */
+    setGroupPropertiesForFlags(properties: { [type: string]: Properties }, reloadFeatureFlags?: boolean): void
+
+    /**
+     * Reset group properties used for feature flag evaluation.
+     *
+     * @param group_type - Optional group type to reset (resets all if not provided)
+     */
+    resetGroupPropertiesForFlags(group_type?: string): void
+
+    // ============================================================================
+    // Early Access Features
+    // ============================================================================
+
+    /**
+     * Get the list of early access features.
+     *
+     * @param callback - Callback to receive the features
+     * @param forceReload - Whether to force a reload from the server
+     */
+    getEarlyAccessFeatures(callback: EarlyAccessFeatureCallback, forceReload?: boolean): void
+
+    /**
+     * Update enrollment in an early access feature.
+     *
+     * @param key - The feature key
+     * @param isEnrolled - Whether the user is enrolled
+     * @param stage - The stage of the feature
+     */
+    updateEarlyAccessFeatureEnrollment(key: string, isEnrolled: boolean, stage?: EarlyAccessFeatureStage): void
+
+    // ============================================================================
+    // Super Properties
+    // ============================================================================
+
+    /**
+     * Register properties to be sent with every event.
+     *
+     * @param properties - The properties to register
+     * @param days - Number of days to persist the properties
+     */
+    register(properties: Properties, days?: number): void
+
+    /**
+     * Register properties to be sent with every event, but only if they haven't been set before.
+     *
+     * @param properties - The properties to register
+     * @param default_value - Default value for the property
+     * @param days - Number of days to persist the properties
+     */
+    register_once(properties: Properties, default_value?: any, days?: number): void
+
+    /**
+     * Register properties for the current session only.
+     *
+     * @param properties - The properties to register
+     */
+    register_for_session(properties: Properties): void
+
+    /**
+     * Unregister a property so it is no longer sent with events.
+     *
+     * @param property - The property name to unregister
+     */
+    unregister(property: string): void
+
+    /**
+     * Unregister a session property.
+     *
+     * @param property - The property name to unregister
+     */
+    unregister_for_session(property: string): void
+
+    /**
+     * Get a property value from persistence.
+     *
+     * @param property_name - The property name
+     * @returns The property value
+     */
+    get_property(property_name: string): any | undefined
+
+    /**
+     * Get a session property value.
+     *
+     * @param property_name - The property name
+     * @returns The property value
+     */
+    getSessionProperty(property_name: string): any | undefined
+
+    // ============================================================================
+    // Session & Recording
+    // ============================================================================
+
+    /**
+     * Get the current session ID.
+     *
+     * @returns The current session ID
+     */
+    get_session_id(): string
+
+    /**
+     * Register a callback to be called when the session ID changes.
+     *
+     * @param callback - The callback to call
+     * @returns A function to unsubscribe
+     */
+    onSessionId(callback: SessionIdChangedCallback): () => void
+
+    /**
+     * Get the URL to view the current session recording.
+     *
+     * @param options - Options for the URL
+     * @returns The session replay URL
+     */
+    get_session_replay_url(options?: { withTimestamp?: boolean; timestampLookBack?: number }): string
+
+    /**
+     * Start session recording (if not already started).
+     *
+     * @param override - Options to override default behavior, or `true` to override all controls
+     * @param override.sampling - Override the default sampling behavior
+     * @param override.linked_flag - Override the default linked_flag behavior
+     * @param override.url_trigger - Override the default url_trigger behavior (only accepts `true`)
+     * @param override.event_trigger - Override the default event_trigger behavior (only accepts `true`)
+     */
+    startSessionRecording(
+        override?: { sampling?: boolean; linked_flag?: boolean; url_trigger?: true; event_trigger?: true } | true
+    ): void
+
+    /**
+     * Stop session recording.
+     */
+    stopSessionRecording(): void
+
+    /**
+     * Check if session recording has started.
+     *
+     * @returns Whether session recording has started
+     */
+    sessionRecordingStarted(): boolean
+
+    // ============================================================================
+    // Consent & Opt-in/out
+    // ============================================================================
+
+    /**
+     * Opt the user into capturing.
+     */
+    opt_in_capturing(): void
+
+    /**
+     * Opt the user out of capturing.
+     */
+    opt_out_capturing(): void
+
+    /**
+     * Check if the user has opted in to capturing.
+     *
+     * @returns Whether the user has opted in
+     */
+    has_opted_in_capturing(): boolean
+
+    /**
+     * Check if the user has opted out of capturing.
+     *
+     * @returns Whether the user has opted out
+     */
+    has_opted_out_capturing(): boolean
+
+    /**
+     * Get the explicit consent status.
+     *
+     * @returns The consent status
+     */
+    get_explicit_consent_status(): 'granted' | 'denied' | 'pending'
+
+    /**
+     * Clear the opt-in/out status.
+     */
+    clear_opt_in_out_capturing(): void
+
+    // ============================================================================
+    // Configuration
+    // ============================================================================
+
+    /**
+     * Update the configuration.
+     *
+     * @param config - The configuration to merge
+     */
+    set_config(config: Partial<PostHogConfig>): void
+
+    /**
+     * Enable or disable debug mode.
+     *
+     * @param debug - Whether to enable debug mode (defaults to true)
+     */
+    debug(debug?: boolean): void
+
+    // ============================================================================
+    // Surveys
+    // ============================================================================
+
+    /**
+     * Get the list of surveys.
+     *
+     * @param callback - Callback to receive the surveys
+     * @param forceReload - Whether to force a reload from the server
+     */
+    getSurveys(callback: (surveys: any[]) => void, forceReload?: boolean): void
+
+    /**
+     * Get active surveys that match the current user.
+     *
+     * @param callback - Callback to receive the surveys
+     * @param forceReload - Whether to force a reload from the server
+     */
+    getActiveMatchingSurveys(callback: (surveys: any[]) => void, forceReload?: boolean): void
+
+    /**
+     * Render a survey in a specific container.
+     *
+     * @param surveyId - The survey ID
+     * @param selector - CSS selector for the container
+     */
+    renderSurvey(surveyId: string, selector: string): void
+
+    /**
+     * Check if a survey can be rendered.
+     *
+     * @param surveyId - The survey ID
+     * @returns The render reason or null if can't render
+     */
+    canRenderSurvey(surveyId: string): any | null
+
+    // ============================================================================
+    // Events
+    // ============================================================================
+
+    /**
+     * Register an event listener.
+     *
+     * @param event - The event name (currently only 'eventCaptured' is supported)
+     * @param cb - The callback to call
+     * @returns A function to unsubscribe
+     */
+    on(event: 'eventCaptured', cb: (...args: any[]) => void): () => void
+
+    // ============================================================================
+    // Deprecated
+    // ============================================================================
+
+    /**
+     * @deprecated Use `setPersonProperties` instead
+     */
+    people: {
+        set: (prop: string | Properties, to?: string, callback?: RequestCallback) => void
+        set_once: (prop: string | Properties, to?: string, callback?: RequestCallback) => void
+    }
+
+    /**
+     * @deprecated Use `flagsEndpointWasHit` instead
+     */
+    decideEndpointWasHit: boolean
+}

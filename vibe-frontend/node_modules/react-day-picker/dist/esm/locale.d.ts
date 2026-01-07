@@ -1,0 +1,110 @@
+export * from "date-fns/locale";
+/**
+ * DayPicker locale types including translated DayPicker labels.
+ *
+ * @since V9.12.0
+ */
+export type { DayPickerLocale, DayPickerLocaleLabels, } from "./classes/DateLib.js";
+/**
+ * DayPicker locales extended with translated labels.
+ *
+ * @since V9.12.0
+ */
+export { af } from "./locale/af.js";
+export { amET } from "./locale/am-ET.js";
+export { ar } from "./locale/ar.js";
+export { arDZ } from "./locale/ar-DZ.js";
+export { arEG } from "./locale/ar-EG.js";
+export { arMA } from "./locale/ar-MA.js";
+export { arSA } from "./locale/ar-SA.js";
+export { arTN } from "./locale/ar-TN.js";
+export { az } from "./locale/az.js";
+export { be } from "./locale/be.js";
+export { beTarask } from "./locale/be-tarask.js";
+export { bg } from "./locale/bg.js";
+export { bn } from "./locale/bn.js";
+export { bs } from "./locale/bs.js";
+export { ca } from "./locale/ca.js";
+export { ckb } from "./locale/ckb.js";
+export { cs } from "./locale/cs.js";
+export { cy } from "./locale/cy.js";
+export { da } from "./locale/da.js";
+export { de } from "./locale/de.js";
+export { deAT } from "./locale/de-AT.js";
+export { el } from "./locale/el.js";
+export { enAU } from "./locale/en-AU.js";
+export { enCA } from "./locale/en-CA.js";
+export { enGB } from "./locale/en-GB.js";
+export { enIE } from "./locale/en-IE.js";
+export { enIN } from "./locale/en-IN.js";
+export { enNZ } from "./locale/en-NZ.js";
+export { enUS } from "./locale/en-US.js";
+export { enUSJalali } from "./locale/en-US-jalali.js";
+export { enZA } from "./locale/en-ZA.js";
+export { eo } from "./locale/eo.js";
+export { es } from "./locale/es.js";
+export { et } from "./locale/et.js";
+export { eu } from "./locale/eu.js";
+export { faIR } from "./locale/fa-IR.js";
+export { faIRJalali } from "./locale/fa-IR-jalali.js";
+export { fi } from "./locale/fi.js";
+export { fr } from "./locale/fr.js";
+export { frCA } from "./locale/fr-CA.js";
+export { frCH } from "./locale/fr-CH.js";
+export { fy } from "./locale/fy.js";
+export { gd } from "./locale/gd.js";
+export { gl } from "./locale/gl.js";
+export { gu } from "./locale/gu.js";
+export { he } from "./locale/he.js";
+export { hi } from "./locale/hi.js";
+export { hr } from "./locale/hr.js";
+export { ht } from "./locale/ht.js";
+export { hu } from "./locale/hu.js";
+export { hy } from "./locale/hy.js";
+export { id } from "./locale/id.js";
+export { is } from "./locale/is.js";
+export { it } from "./locale/it.js";
+export { itCH } from "./locale/it-CH.js";
+export { ja } from "./locale/ja.js";
+export { jaHira } from "./locale/ja-Hira.js";
+export { ka } from "./locale/ka.js";
+export { kk } from "./locale/kk.js";
+export { km } from "./locale/km.js";
+export { kn } from "./locale/kn.js";
+export { ko } from "./locale/ko.js";
+export { lb } from "./locale/lb.js";
+export { lt } from "./locale/lt.js";
+export { lv } from "./locale/lv.js";
+export { mk } from "./locale/mk.js";
+export { mn } from "./locale/mn.js";
+export { ms } from "./locale/ms.js";
+export { mt } from "./locale/mt.js";
+export { nb } from "./locale/nb.js";
+export { nl } from "./locale/nl.js";
+export { nlBE } from "./locale/nl-BE.js";
+export { nn } from "./locale/nn.js";
+export { oc } from "./locale/oc.js";
+export { pl } from "./locale/pl.js";
+export { pt } from "./locale/pt.js";
+export { ptBR } from "./locale/pt-BR.js";
+export { ro } from "./locale/ro.js";
+export { ru } from "./locale/ru.js";
+export { se } from "./locale/se.js";
+export { sk } from "./locale/sk.js";
+export { sl } from "./locale/sl.js";
+export { sq } from "./locale/sq.js";
+export { sr } from "./locale/sr.js";
+export { srLatn } from "./locale/sr-Latn.js";
+export { sv } from "./locale/sv.js";
+export { ta } from "./locale/ta.js";
+export { te } from "./locale/te.js";
+export { th } from "./locale/th.js";
+export { tr } from "./locale/tr.js";
+export { ug } from "./locale/ug.js";
+export { uk } from "./locale/uk.js";
+export { uz } from "./locale/uz.js";
+export { uzCyrl } from "./locale/uz-Cyrl.js";
+export { vi } from "./locale/vi.js";
+export { zhCN } from "./locale/zh-CN.js";
+export { zhHK } from "./locale/zh-HK.js";
+export { zhTW } from "./locale/zh-TW.js";

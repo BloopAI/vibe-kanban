@@ -1,0 +1,76 @@
+{
+  "name": "@tanstack/pacer-lite",
+  "version": "0.1.1",
+  "description": "Lightweight utilities for debouncing, throttling, and more - designed for npm packages.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/pacer.git",
+    "directory": "packages/pacer-lite"
+  },
+  "homepage": "https://tanstack.com/pacer",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "debounce",
+    "throttle",
+    "rate-limit",
+    "pacer",
+    "lightweight",
+    "minimal"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./lite-batcher": {
+      "require": "./dist/lite-batcher.cjs",
+      "import": "./dist/lite-batcher.js"
+    },
+    "./lite-debouncer": {
+      "require": "./dist/lite-debouncer.cjs",
+      "import": "./dist/lite-debouncer.js"
+    },
+    "./lite-queuer": {
+      "require": "./dist/lite-queuer.cjs",
+      "import": "./dist/lite-queuer.js"
+    },
+    "./lite-rate-limiter": {
+      "require": "./dist/lite-rate-limiter.cjs",
+      "import": "./dist/lite-rate-limiter.js"
+    },
+    "./lite-throttler": {
+      "require": "./dist/lite-throttler.cjs",
+      "import": "./dist/lite-throttler.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "src"
+  ],
+  "devDependencies": {
+    "@tanstack/pacer": "0.16.4"
+  },
+  "scripts": {
+    "clean": "premove ./build ./dist",
+    "lint:fix": "eslint ./src --fix",
+    "test:eslint": "eslint ./src",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm test:lib --watch",
+    "test:types": "tsc",
+    "build": "tsdown"
+  }
+}

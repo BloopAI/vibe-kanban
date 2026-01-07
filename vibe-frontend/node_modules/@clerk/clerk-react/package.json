@@ -1,0 +1,110 @@
+{
+  "name": "@clerk/clerk-react",
+  "version": "5.59.2",
+  "description": "Clerk React library",
+  "keywords": [
+    "clerk",
+    "react",
+    "auth",
+    "authentication",
+    "passwordless",
+    "session",
+    "jwt"
+  ],
+  "homepage": "https://clerk.com/",
+  "bugs": {
+    "url": "https://github.com/clerk/javascript/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clerk/javascript.git",
+    "directory": "packages/react"
+  },
+  "license": "MIT",
+  "author": "Clerk",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./internal": {
+      "import": {
+        "types": "./dist/internal.d.mts",
+        "default": "./dist/internal.mjs"
+      },
+      "require": {
+        "types": "./dist/internal.d.ts",
+        "default": "./dist/internal.js"
+      }
+    },
+    "./errors": {
+      "import": {
+        "types": "./dist/errors.d.mts",
+        "default": "./dist/errors.mjs"
+      },
+      "require": {
+        "types": "./dist/errors.d.ts",
+        "default": "./dist/errors.js"
+      }
+    },
+    "./experimental": {
+      "import": {
+        "types": "./dist/experimental.d.mts",
+        "default": "./dist/experimental.mjs"
+      },
+      "require": {
+        "types": "./dist/experimental.d.ts",
+        "default": "./dist/experimental.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "internal",
+    "errors",
+    "experimental"
+  ],
+  "dependencies": {
+    "tslib": "2.8.1",
+    "@clerk/shared": "^3.41.1"
+  },
+  "devDependencies": {
+    "@types/semver": "^7.7.1",
+    "@clerk/localizations": "3.32.1",
+    "@clerk/themes": "2.4.46"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0",
+    "react-dom": "^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "postbuild": "node ../../scripts/subpath-workaround.mjs react",
+    "build:declarations": "tsc -p tsconfig.declarations.json",
+    "clean": "rimraf ./dist",
+    "dev": "tsup --watch",
+    "dev:publish": "pnpm dev --env.publish",
+    "format": "node ../../scripts/format-package.mjs",
+    "format:check": "node ../../scripts/format-package.mjs --check",
+    "lint": "eslint src",
+    "lint:attw": "attw --pack . --profile node16",
+    "lint:publint": "publint",
+    "publish:local": "pnpm yalc push --replace  --sig",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  }
+}

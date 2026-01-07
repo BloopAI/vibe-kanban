@@ -1,0 +1,19 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {LexicalEditor} from 'lexical';
+// $FlowFixMe[cannot-resolve-module] - Not able to type this with a flow extension
+import type {TRefFor} from 'CoreTypes.flow';
+
+
+type Props = $ReadOnly<{
+  editorRef: TRefFor<LexicalEditor>,
+}>;
+
+declare export function EditorRefPlugin(props: Props): null;

@@ -1,0 +1,28 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {BaseSelection, EditorState, LexicalEditor} from 'lexical';
+
+export type HistoryStateEntry = {
+  editor: LexicalEditor,
+  editorState: EditorState,
+  undoSelection?: BaseSelection | null,
+};
+
+export type HistoryState = {
+  current: null | HistoryStateEntry,
+  redoStack: Array<HistoryStateEntry>,
+  undoStack: Array<HistoryStateEntry>,
+};
+
+declare export function HistoryPlugin({
+  externalHistoryState?: HistoryState,
+}): React.Node;
+
+declare export function createEmptyHistoryState(): HistoryState;

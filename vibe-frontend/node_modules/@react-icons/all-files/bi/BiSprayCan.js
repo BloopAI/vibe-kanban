@@ -1,0 +1,5 @@
+// THIS FILE IS AUTO GENERATED
+var GenIcon = require('../lib').GenIcon
+module.exports.BiSprayCan = function BiSprayCan (props) {
+  return GenIcon({"tag":"svg","attr":{"viewBox":"0 0 24 24"},"child":[{"tag":"path","attr":{"d":"M11.002 2h-4c-.552 0-1 .448-1 1v3.812c-1.791 1.04-3 2.973-3 5.188v.988C3.002 12.992 3 12.996 3 13c0 .024.001.048.002.072V21c0 .553.448 1 1 1h10c.553 0 1-.447 1-1v-8-1c0-2.215-1.21-4.149-3-5.188V3C12.002 2.448 11.555 2 11.002 2zM8.002 6V4h2v2H8.002zM13.003 20h-8v-6h8V20zM5.002 12c0-2.206 1.794-4 4-4 2.206 0 4 1.794 4 4H5.002zM13.003 3H15.003V5H13.003zM16 3H18V5H16zM16 6H18V8H16zM19 3H21V5H19zM19 6H21V8H19zM19 9H21V11H19z"}}]})(props);
+};

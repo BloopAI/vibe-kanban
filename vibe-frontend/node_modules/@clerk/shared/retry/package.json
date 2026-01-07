@@ -1,0 +1,3 @@
+{
+  "main": "../dist/runtime/retry.js"
+}

@@ -1,0 +1,152 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {
+  EditorConfig,
+  LexicalNode,
+  NodeKey,
+  ParagraphNode,
+  RangeSelection,
+  EditorThemeClasses,
+  LexicalEditor,
+  LineBreakNode,
+  SerializedElementNode,
+  SerializedTabNode,
+  TabNode,
+  LexicalExtension,
+  ExtensionConfigBase,
+} from 'lexical';
+
+import {ElementNode, TextNode} from 'lexical';
+
+/**
+ *  CodeHighlighter
+ */
+declare export function $getEndOfCodeInLine(
+  anchor: CodeHighlightNode | TabNode,
+): CodeHighlightNode | TabNode;
+/** @deprecated renamed to {@link $getEndOfCodeInLine} by @lexical/eslint-plugin rules-of-lexical */
+declare export function getEndOfCodeInLine(
+  anchor: CodeHighlightNode | TabNode,
+): CodeHighlightNode | TabNode;
+
+declare export function $getStartOfCodeInLine(
+  anchor: CodeHighlightNode | TabNode,
+  offset: number,
+): null | {
+  node: CodeHighlightNode | TabNode | LineBreakNode,
+  offset: number,
+};
+/** @deprecated renamed to {@link $getStartOfCodeInLine} by @lexical/eslint-plugin rules-of-lexical */
+declare export function getStartOfCodeInLine(
+  anchor: CodeHighlightNode | TabNode,
+  offset: number,
+): null | {
+  node: CodeHighlightNode | TabNode | LineBreakNode,
+  offset: number,
+};
+
+type TokenContent = string | Token | (string | Token)[];
+export interface Token {
+  type: string;
+  content: TokenContent;
+}
+export interface Tokenizer {
+  defaultLanguage: string;
+  tokenize(code: string, language?: string): (string | Token)[];
+}
+declare export var PrismTokenizer: Tokenizer;
+
+declare export function registerCodeHighlighting(
+  editor: LexicalEditor,
+  tokenizer?: Tokenizer,
+): () => void;
+
+/**
+ * CodeHighlightNode
+ */
+
+declare export function $createCodeHighlightNode(
+  text: string,
+  highlightType?: string,
+): CodeHighlightNode;
+
+declare export function $isCodeHighlightNode(
+  node: ?LexicalNode,
+): node is CodeHighlightNode;
+
+declare export var CODE_LANGUAGE_FRIENDLY_NAME_MAP: {[string]: string};
+declare export var CODE_LANGUAGE_MAP: {[string]: string};
+
+declare export class CodeHighlightNode extends TextNode {
+  __highlightType: ?string;
+  constructor(text: string, highlightType?: string, key?: NodeKey): void;
+  static getType(): string;
+  static clone(node: CodeHighlightNode): CodeHighlightNode;
+  createDOM(config: EditorConfig): HTMLElement;
+  setFormat(format: number): this;
+}
+
+declare export var DEFAULT_CODE_LANGUAGE: string;
+
+declare export var getCodeLanguages: () => Array<string>;
+declare export var getDefaultCodeLanguage: () => string;
+
+declare export function $getFirstCodeNodeOfLine(
+  anchor: CodeHighlightNode | TabNode | LineBreakNode,
+): CodeHighlightNode | TabNode | LineBreakNode;
+/** @deprecated renamed to {@link $getFirstCodeNodeOfLine} by @lexical/eslint-plugin rules-of-lexical */
+declare export function getFirstCodeNodeOfLine(
+  anchor: CodeHighlightNode | TabNode | LineBreakNode,
+): null | CodeHighlightNode | TabNode | LineBreakNode;
+
+declare export function getLanguageFriendlyName(lang: string): string;
+
+declare export function $getLastCodeNodeOfLine(
+  anchor: CodeHighlightNode | TabNode | LineBreakNode,
+): CodeHighlightNode | TabNode | LineBreakNode;
+/** @deprecated renamed to {@link $getLastCodeNodeOfLine} by @lexical/eslint-plugin rules-of-lexical */
+declare export function getLastCodeNodeOfLine(
+  anchor: CodeHighlightNode | TabNode | LineBreakNode,
+): CodeHighlightNode | TabNode | LineBreakNode;
+
+declare export function normalizeCodeLang(lang: string): string;
+
+/**
+ * CodeNode
+ */
+
+export type SerializedCodeNode = {
+  ...SerializedElementNode,
+  language: string | null | void,
+  ...
+};
+
+declare export function $createCodeNode(language: ?string): CodeNode;
+
+declare export function $isCodeNode(
+  node: ?LexicalNode,
+): node is CodeNode;
+
+declare export class CodeNode extends ElementNode {
+  __language: string | null | void;
+  static getType(): string;
+  static clone(node: CodeNode): CodeNode;
+  constructor(language: ?string, key?: NodeKey): void;
+  createDOM(config: EditorConfig): HTMLElement;
+  insertNewAfter(
+    selection: RangeSelection,
+    restoreSelection?: boolean,
+  ): null | ParagraphNode | CodeHighlightNode | TabNode;
+  collapseAtStart(): true;
+  setLanguage(language: string): void;
+  getLanguage(): string | void;
+}
+
+declare export var CodeExtension: LexicalExtension<ExtensionConfigBase, "@lexical/code", mixed, mixed>;

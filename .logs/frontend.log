@@ -1,0 +1,478 @@
+
+> vibe-kanban@0.0.142 dev
+> VITE_OPEN=${VITE_OPEN:-false} vite --port 3000 --host
+
+[sentry-vite-plugin] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+
+  VITE v5.4.19  ready in 494 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://172.16.250.186:3000/
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+9:27:22 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx, /src/pages/JoinTeam.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamDocuments.tsx, /src/components/ConfigProvider.tsx, /src/pages/ProjectTasks.tsx, /src/pages/TeamProjects.tsx, /src/pages/TeamMembers.tsx, /src/components/dialogs/projects/ProjectFormDialog.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/components/tasks/IssueDetailPanel.tsx, /src/components/layout/Sidebar.tsx, /src/pages/settings/OrganizationSettings.tsx, /src/components/dialogs/teams/TeamFormDialog.tsx, /src/components/dialogs/teams/MigrateTasksDialog.tsx, /src/components/dialogs/issues/IssueDetailDialog.tsx, /src/components/dialogs/teams/InvitePeopleDialog.tsx, /src/components/projects/ProjectDetail.tsx, /src/App.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/panels/PreviewPanel.tsx, /src/components/NormalizedConversation/NextActionCard.tsx, /src/components/NormalizedConversation/UserMessage.tsx, /src/components/tasks/follow-up/FollowUpConflictSection.tsx, /src/pages/settings/ProjectSettings.tsx, /src/components/dialogs/tasks/EditorSelectionDialog.tsx, /src/components/dialogs/org/InviteMemberDialog.tsx, /src/components/dialogs/org/CreateOrganizationDialog.tsx, /src/components/dialogs/projects/LinkProjectDialog.tsx, /src/components/dialogs/tasks/EditBranchNameDialog.tsx, /src/components/dialogs/teams/MemberProjectsDialog.tsx, /src/components/dialogs/global/OnboardingDialog.tsx, /src/pages/settings/AgentSettings.tsx, /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx, /src/pages/settings/GeneralSettings.tsx, /src/components/dialogs/shared/RepoPickerDialog.tsx, /src/pages/settings/McpSettings.tsx, /src/components/dialogs/git/ForcePushDialog.tsx, /src/components/dialogs/issues/LinkDocumentsDialog.tsx, /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx, /src/components/DiffCard.tsx, /src/components/TagManager.tsx, /src/components/dialogs/shared/FolderPickerDialog.tsx, /src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx, /src/components/dialogs/tasks/TagEditDialog.tsx, /src/components/dialogs/tasks/RestoreLogsDialog.tsx, /src/components/dialogs/auth/GhCliSetupDialog.tsx, /src/components/ui/multi-file-search-textarea.tsx, /src/components/tasks/TaskDetails/ProcessesTab.tsx, /src/components/dialogs/tasks/GitHubCommentsDialog.tsx, /src/components/ui/wysiwyg/plugins/file-tag-typeahead-plugin.tsx, /src/components/NormalizedConversation/PendingApprovalEntry.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/ConfigProvider.tsx Could not Fast Refresh ("useUserSystem" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/App.tsx, /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/components/dialogs/global/OnboardingDialog.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/dialogs/projects/LinkProjectDialog.tsx, /src/components/tasks/IssueDetailPanel.tsx, /src/components/dialogs/issues/IssueDetailDialog.tsx, /src/pages/settings/OrganizationSettings.tsx, /src/pages/settings/GeneralSettings.tsx, /src/pages/settings/McpSettings.tsx, /src/pages/settings/AgentSettings.tsx, /src/components/ide/OpenInIdeButton.tsx, /src/components/DiffCard.tsx, /src/pages/settings/ProjectSettings.tsx, /src/components/NormalizedConversation/UserMessage.tsx, /src/components/NormalizedConversation/FileChangeRenderer.tsx, /src/components/NormalizedConversation/NextActionCard.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/NormalizedConversation/EditDiffRenderer.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/projects/ProjectFormDialog.tsx Could not Fast Refresh ("ProjectFormDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/components/projects/ProjectList.tsx, /src/components/layout/Sidebar.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/issues/IssueFormDialog.tsx Could not Fast Refresh ("IssueFormDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamIssues.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/teams/TeamFormDialog.tsx Could not Fast Refresh ("TeamFormDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/layout/Sidebar.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/teams/MigrateTasksDialog.tsx Could not Fast Refresh ("MigrateTasksDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/projects/ProjectCard.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/issues/IssueDetailDialog.tsx Could not Fast Refresh ("IssueDetailDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/teams/InvitePeopleDialog.tsx Could not Fast Refresh ("InvitePeopleDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamMembers.tsx, /src/components/layout/Sidebar.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/ShareDialog.tsx Could not Fast Refresh ("ShareDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/StopShareTaskDialog.tsx Could not Fast Refresh ("StopShareTaskDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/global/OAuthDialog.tsx Could not Fast Refresh ("OAuthDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/layout/Navbar.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/dialogs/shared/LoginRequiredPrompt.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/TaskFormDialog.tsx Could not Fast Refresh ("TaskFormDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/components/layout/Navbar.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx, /src/App.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/CreateAttemptDialog.tsx Could not Fast Refresh ("CreateAttemptDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/panels/TaskPanel.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/NormalizedConversation/NextActionCard.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/CreatePRDialog.tsx Could not Fast Refresh ("CreatePRDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/ReassignDialog.tsx Could not Fast Refresh ("ReassignDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/GitActionsDialog.tsx Could not Fast Refresh ("GitActionsDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/NormalizedConversation/NextActionCard.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/EditorSelectionDialog.tsx Could not Fast Refresh ("EditorSelectionDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/dialogs/tasks/EditorSelectionDialog.tsx, /src/components/tasks/follow-up/FollowUpConflictSection.tsx, /src/components/NormalizedConversation/NextActionCard.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/org/InviteMemberDialog.tsx Could not Fast Refresh ("InviteMemberDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/org/CreateOrganizationDialog.tsx Could not Fast Refresh ("CreateOrganizationDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/projects/LinkProjectDialog.tsx Could not Fast Refresh ("LinkProjectDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/projects/ProjectCard.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/EditBranchNameDialog.tsx Could not Fast Refresh ("EditBranchNameDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/teams/MemberProjectsDialog.tsx Could not Fast Refresh ("MemberProjectsDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamMembers.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/global/OnboardingDialog.tsx Could not Fast Refresh ("OnboardingDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/App.tsx, /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx Could not Fast Refresh ("ViewRelatedTasksDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/shared/RepoPickerDialog.tsx Could not Fast Refresh ("RepoPickerDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/dialogs/projects/ProjectFormDialog.tsx, /src/pages/settings/ProjectSettings.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/git/ForcePushDialog.tsx Could not Fast Refresh ("ForcePushDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx Could not Fast Refresh ("ProjectEditorSelectionDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/shared/FolderPickerDialog.tsx Could not Fast Refresh ("FolderPickerDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/dialogs/shared/RepoPickerDialog.tsx, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx Could not Fast Refresh ("DeleteTaskConfirmationDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/TagEditDialog.tsx Could not Fast Refresh ("TagEditDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/TagManager.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/RestoreLogsDialog.tsx Could not Fast Refresh ("RestoreLogsDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/auth/GhCliSetupDialog.tsx Could not Fast Refresh ("GhCliSetupDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/App.tsx, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx
+9:27:23 PM [vite] hmr invalidate /src/components/dialogs/tasks/GitHubCommentsDialog.tsx Could not Fast Refresh ("GitHubCommentsDialog" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:27:23 PM [vite] hmr update /src/styles/index.css, /src/components/tasks/TaskFollowUpSection.tsx
+9:27:56 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+9:28:04 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+9:31:13 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx, /src/pages/JoinTeam.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamDocuments.tsx, /src/components/ConfigProvider.tsx, /src/pages/ProjectTasks.tsx, /src/pages/TeamProjects.tsx, /src/pages/TeamMembers.tsx, /src/components/dialogs/projects/ProjectFormDialog.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/components/tasks/IssueDetailPanel.tsx, /src/components/layout/Sidebar.tsx, /src/pages/settings/OrganizationSettings.tsx, /src/components/dialogs/teams/TeamFormDialog.tsx, /src/components/dialogs/teams/MigrateTasksDialog.tsx, /src/components/dialogs/issues/IssueDetailDialog.tsx, /src/components/dialogs/teams/InvitePeopleDialog.tsx, /src/components/projects/ProjectDetail.tsx, /src/App.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/panels/PreviewPanel.tsx, /src/components/NormalizedConversation/NextActionCard.tsx, /src/components/NormalizedConversation/UserMessage.tsx, /src/components/tasks/follow-up/FollowUpConflictSection.tsx, /src/pages/settings/ProjectSettings.tsx, /src/components/dialogs/tasks/EditorSelectionDialog.tsx, /src/components/dialogs/org/InviteMemberDialog.tsx, /src/components/dialogs/org/CreateOrganizationDialog.tsx, /src/components/dialogs/projects/LinkProjectDialog.tsx, /src/components/dialogs/tasks/EditBranchNameDialog.tsx, /src/components/dialogs/teams/MemberProjectsDialog.tsx, /src/components/dialogs/global/OnboardingDialog.tsx, /src/pages/settings/AgentSettings.tsx, /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx, /src/pages/settings/GeneralSettings.tsx, /src/components/dialogs/shared/RepoPickerDialog.tsx, /src/pages/settings/McpSettings.tsx, /src/components/dialogs/git/ForcePushDialog.tsx, /src/components/dialogs/issues/LinkDocumentsDialog.tsx, /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx, /src/components/DiffCard.tsx, /src/components/TagManager.tsx, /src/components/dialogs/shared/FolderPickerDialog.tsx, /src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx, /src/components/dialogs/tasks/TagEditDialog.tsx, /src/components/dialogs/tasks/RestoreLogsDialog.tsx, /src/components/dialogs/auth/GhCliSetupDialog.tsx, /src/components/ui/multi-file-search-textarea.tsx, /src/components/tasks/TaskDetails/ProcessesTab.tsx, /src/components/dialogs/tasks/GitHubCommentsDialog.tsx, /src/components/ui/wysiwyg/plugins/file-tag-typeahead-plugin.tsx, /src/components/NormalizedConversation/PendingApprovalEntry.tsx
+9:31:13 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+9:31:31 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx, /src/pages/JoinTeam.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamDocuments.tsx, /src/components/ConfigProvider.tsx, /src/pages/ProjectTasks.tsx, /src/pages/TeamProjects.tsx, /src/pages/TeamMembers.tsx, /src/components/dialogs/projects/ProjectFormDialog.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/components/tasks/IssueDetailPanel.tsx, /src/components/layout/Sidebar.tsx, /src/pages/settings/OrganizationSettings.tsx, /src/components/dialogs/teams/TeamFormDialog.tsx, /src/components/dialogs/teams/MigrateTasksDialog.tsx, /src/components/dialogs/issues/IssueDetailDialog.tsx, /src/components/dialogs/teams/InvitePeopleDialog.tsx, /src/components/projects/ProjectDetail.tsx, /src/App.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/dialogs/global/OAuthDialog.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/components/panels/PreviewPanel.tsx, /src/components/NormalizedConversation/NextActionCard.tsx, /src/components/NormalizedConversation/UserMessage.tsx, /src/components/tasks/follow-up/FollowUpConflictSection.tsx, /src/pages/settings/ProjectSettings.tsx, /src/components/dialogs/tasks/EditorSelectionDialog.tsx, /src/components/dialogs/org/InviteMemberDialog.tsx, /src/components/dialogs/org/CreateOrganizationDialog.tsx, /src/components/dialogs/projects/LinkProjectDialog.tsx, /src/components/dialogs/tasks/EditBranchNameDialog.tsx, /src/components/dialogs/teams/MemberProjectsDialog.tsx, /src/components/dialogs/global/OnboardingDialog.tsx, /src/pages/settings/AgentSettings.tsx, /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx, /src/pages/settings/GeneralSettings.tsx, /src/components/dialogs/shared/RepoPickerDialog.tsx, /src/pages/settings/McpSettings.tsx, /src/components/dialogs/git/ForcePushDialog.tsx, /src/components/dialogs/issues/LinkDocumentsDialog.tsx, /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx, /src/components/DiffCard.tsx, /src/components/TagManager.tsx, /src/components/dialogs/shared/FolderPickerDialog.tsx, /src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx, /src/components/dialogs/tasks/TagEditDialog.tsx, /src/components/dialogs/tasks/RestoreLogsDialog.tsx, /src/components/dialogs/auth/GhCliSetupDialog.tsx, /src/components/ui/multi-file-search-textarea.tsx, /src/components/tasks/TaskDetails/ProcessesTab.tsx, /src/components/dialogs/tasks/GitHubCommentsDialog.tsx, /src/components/ui/wysiwyg/plugins/file-tag-typeahead-plugin.tsx, /src/components/NormalizedConversation/PendingApprovalEntry.tsx
+9:31:31 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+5:47:10 PM [vite] changed tsconfig file detected: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/frontend/tsconfig.json - Clearing cache and forcing full-reload to ensure TypeScript is compiled with updated config values.
+5:47:11 PM [vite] vite.config.ts changed, restarting server...
+5:47:11 PM [vite] .env.local changed, restarting server...
+5:47:11 PM [vite] page reload index.html
+5:47:11 PM [vite] hmr update /src/App.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/AgentAvailabilityIndicator.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ConfigProvider.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/DevBanner.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/DiffCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/DiffViewSwitch.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/EditorAvailabilityIndicator.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ExecutorConfigForm.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/Logo.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/DisplayConversationEntry.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/EditDiffRenderer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/FileChangeRenderer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/FileContentView.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/NextActionCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/PendingApprovalEntry.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/RetryEditorInline.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/NormalizedConversation/UserMessage.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/SearchBar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/TagManager.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ThemeProvider.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/auth/ProtectedRoute.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/auth/AuthInitializer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/comments/CommentEditor.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/comments/CommentItem.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/comments/CommentList.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/tasks/IssueDetailPanel.tsx, /src/components/dialogs/issues/IssueDetailDialog.tsx
+5:47:11 PM [vite] hmr update /src/components/common/ProfileVariantBadge.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/common/RawLogText.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/auth/GhCliSetupDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/git/ForcePushDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/global/DisclaimerDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/global/FeatureShowcaseDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/global/OAuthDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/global/OnboardingDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/global/ReleaseNotesDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/components/projects/ProjectDetail.tsx, /src/components/dialogs/issues/IssueFormDialog.tsx, /src/pages/FullAttemptLogs.tsx, /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/components/dialogs/tasks/ShareDialog.tsx, /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/components/layout/Navbar.tsx, /src/components/tasks/TaskKanbanBoard.tsx, /src/components/panels/TaskPanel.tsx, /src/components/projects/ProjectCard.tsx, /src/components/tasks/TaskCard.tsx, /src/components/ui/actions-dropdown.tsx, /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/components/tasks/TaskFollowUpSection.tsx, /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/components/tasks/Toolbar/GitOperations.tsx, /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/components/dialogs/tasks/ReassignDialog.tsx, /src/components/dialogs/tasks/GitActionsDialog.tsx
+5:47:11 PM [vite] hmr update /src/components/dialogs/issues/IssueDetailDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/issues/IssueFormDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/issues/LinkDocumentsDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/org/CreateOrganizationDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/org/InviteMemberDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/projects/LinkProjectDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/projects/ProjectEditorSelectionDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/projects/ProjectFormDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/settings/CreateConfigurationDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/settings/DeleteConfigurationDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/shared/ConfirmDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/shared/FolderPickerDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/shared/LoginRequiredPrompt.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/shared/RepoPickerDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/CreateAttemptDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/CreatePRDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/DeleteTaskConfirmationDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/EditBranchNameDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/EditorSelectionDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/GitActionsDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/GitHubCommentsDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/ReassignDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/RebaseDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/RestoreLogsDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/ShareDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/StopShareTaskDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/TagEditDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/TaskFormDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/ViewProcessesDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/tasks/ViewRelatedTasksDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/teams/InvitePeopleDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/teams/MemberProjectsDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/teams/MigrateTasksDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/teams/TeamFormDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/diff/CommentWidgetLine.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/diff/ReviewCommentRenderer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/CsvViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/DocumentOutline.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/DocxViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/ImageViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/MarkdownViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/documents/PdfViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ide/IdeIcon.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ide/OpenInIdeButton.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/GlobalKeyboardShortcuts.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/Navbar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/NormalLayout.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/Sidebar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/TasksLayout.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/layout/WorkspaceSwitcher.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/logs/VirtualizedList.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/components/org/MemberListItem.tsx
+5:47:11 PM [vite] page reload src/components/org/PendingInvitationItem.tsx
+5:47:11 PM [vite] page reload src/components/org/RemoteProjectItem.tsx
+5:47:11 PM [vite] hmr update /src/components/panels/AttemptHeaderActions.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/DiffsPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/PreviewPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/SharedTaskPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/TaskAttemptPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/TaskPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/panels/TaskPanelHeaderActions.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/projects/CopyFilesField.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/projects/ProjectCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/projects/ProjectDetail.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/projects/ProjectList.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/fields/KeyValueField.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/components/rjsf/fields/index.ts
+5:47:11 PM [vite] page reload src/components/rjsf/index.ts
+5:47:11 PM [vite] hmr update /src/components/rjsf/templates/ArrayFieldTemplate.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/templates/FieldTemplate.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/templates/FormTemplate.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/templates/ObjectFieldTemplate.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/components/rjsf/templates/index.ts
+5:47:11 PM [vite] page reload src/components/rjsf/theme.ts
+5:47:11 PM [vite] hmr update /src/components/rjsf/widgets/CheckboxWidget.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/widgets/SelectWidget.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/widgets/TextWidget.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/rjsf/widgets/TextareaWidget.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/components/rjsf/widgets/index.ts
+5:47:11 PM [vite] hmr update /src/components/selectors/AssigneeSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/selectors/ComponentSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/selectors/PrioritySelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/tasks/LinearIssueCard.tsx
+5:47:11 PM [vite] hmr update /src/components/settings/ExecutorProfileSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/components/settings/index.ts
+5:47:11 PM [vite] hmr update /src/components/showcase/ShowcaseStageMedia.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/AgentSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/BranchSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/ClickedElementsBanner.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/ConfigSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/ConflictBanner.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/InsightsPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/IssueDetailPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/LinearIssueCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/RepoBranchSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/RepoSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/SharedTaskCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskCard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskCardHeader.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/ProcessLogsViewer.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/ProcessesTab.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/preview/DevServerLogsView.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/preview/NoServerContent.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/preview/PreviewToolbar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskDetails/preview/ReadyContent.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskFollowUpSection.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TaskKanbanBoard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TeamKanbanBoard.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/TodoPanel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/Toolbar/GitOperations.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/UserAvatar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/VariantSelector.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/tasks/follow-up/FollowUpConflictSection.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/actions-dropdown.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/alert.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/auto-expanding-textarea.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/badge.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/breadcrumb.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/button.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/calendar.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/card.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/carousel.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/checkbox.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/dialog.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/dropdown-menu.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/emoji-picker.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/github-comment-card.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/input.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/json-editor.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/label.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/loader.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/multi-file-search-textarea.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/new-card.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/popover.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/select.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/shadcn-io/kanban/index.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/switch.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/table/data-table.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx
+5:47:11 PM [vite] hmr update /src/components/ui/table/table.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/tabs.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/textarea.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/toggle-group.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/tooltip.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/tree-view.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/ui/wysiwyg.tsx, /src/components/ui/wysiwyg/nodes/image-node.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/ui/wysiwyg.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/ui/wysiwyg/nodes/image-node.tsx, /src/components/ui/wysiwyg/nodes/github-comment-node.tsx
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/nodes/github-comment-node.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/nodes/image-node.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/code-block-shortcut-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/code-highlight-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/file-tag-typeahead-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/image-keyboard-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/keyboard-commands-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/markdown-sync-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/read-only-link-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg/plugins/toolbar-plugin.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/components/ui/wysiwyg.tsx
+5:47:11 PM [vite] hmr update /src/components/ui/wysiwyg.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/constants/processes.ts
+5:47:11 PM [vite] hmr update /src/contexts/ApprovalFormContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/ClickedElementsProvider.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/EntriesContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/ExecutionProcessesContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/GitOperationsContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/ProcessSelectionContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/ProjectContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/RetryUiContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/ReviewProvider.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/SearchContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/contexts/SidebarContext.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/contexts/TabNavigationContext.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/pages/FullAttemptLogs.tsx, /src/pages/settings/OrganizationSettings.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/pages/FullAttemptLogs.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/pages/FullAttemptLogs.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/pages/FullAttemptLogs.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx, /src/pages/FullAttemptLogs.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/AgentSettings.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/FullAttemptLogs.tsx, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/hooks/useAttempt.ts
+5:47:11 PM [vite] page reload src/hooks/useAttemptBranch.ts
+5:47:11 PM [vite] page reload src/hooks/useAttemptConflicts.ts
+5:47:11 PM [vite] page reload src/hooks/useAttemptCreation.ts
+5:47:11 PM [vite] page reload src/hooks/useAttemptExecution.ts
+5:47:11 PM [vite] page reload src/hooks/useAttemptRepo.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/FullAttemptLogs.tsx, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/hooks/useBranchStatus.ts
+5:47:11 PM [vite] page reload src/hooks/useChangeTargetBranch.ts
+5:47:11 PM [vite] page reload src/hooks/useConversationHistory.ts
+5:47:11 PM [vite] page reload src/hooks/useDebouncedCallback.ts
+5:47:11 PM [vite] page reload src/hooks/useDevServer.ts
+5:47:11 PM [vite] page reload src/hooks/useDevserverPreview.ts
+5:47:11 PM [vite] page reload src/hooks/useDevserverUrl.ts
+5:47:11 PM [vite] page reload src/hooks/useDiffStream.ts
+5:47:11 PM [vite] page reload src/hooks/useDiffSummary.ts
+5:47:11 PM [vite] page reload src/hooks/useDiscordOnlineCount.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamDocuments.tsx, /src/pages/settings/OrganizationSettings.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/GeneralSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/useExecutionProcesses.ts
+5:47:11 PM [vite] page reload src/hooks/useFollowUpSend.ts
+5:47:11 PM [vite] page reload src/hooks/useForcePush.ts
+5:47:11 PM [vite] page reload src/hooks/useGitHubConnection.ts
+5:47:11 PM [vite] page reload src/hooks/useGitOperations.ts
+5:47:11 PM [vite] page reload src/hooks/useImageMetadata.ts
+5:47:11 PM [vite] page reload src/hooks/useImageUpload.ts
+5:47:11 PM [vite] page reload src/hooks/useInbox.ts
+5:47:11 PM [vite] page reload src/hooks/useJsonPatchWsStream.ts
+5:47:11 PM [vite] page reload src/hooks/useLogStream.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/hooks/useMerge.ts
+5:47:11 PM [vite] page reload src/hooks/useNavigateWithSearch.ts
+5:47:11 PM [vite] page reload src/hooks/useOpenInEditor.ts
+5:47:11 PM [vite] page reload src/hooks/useOpenProjectInEditor.ts
+5:47:11 PM [vite] page reload src/hooks/useOrganizationInvitations.ts
+5:47:11 PM [vite] page reload src/hooks/useOrganizationMembers.ts
+5:47:11 PM [vite] page reload src/hooks/useOrganizationMutations.ts
+5:47:11 PM [vite] page reload src/hooks/useOrganizationProjects.ts
+5:47:11 PM [vite] page reload src/hooks/useOrganizationSelection.ts
+5:47:11 PM [vite] page reload src/hooks/usePinnedTodos.ts
+5:47:11 PM [vite] page reload src/hooks/usePrComments.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/SettingsLayout.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/AgentSettings.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/ProjectSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/useProjectRemoteMembers.ts
+5:47:11 PM [vite] page reload src/hooks/useProjectRepos.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/FullAttemptLogs.tsx, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamProjects.tsx, /src/pages/settings/ProjectSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/usePush.ts
+5:47:11 PM [vite] page reload src/hooks/useQueueStatus.ts
+5:47:11 PM [vite] page reload src/hooks/useRebase.ts
+5:47:11 PM [vite] page reload src/hooks/useRenameBranch.ts
+5:47:11 PM [vite] page reload src/hooks/useRepoBranchSelection.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/ProjectSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/useRetryProcess.ts
+5:47:11 PM [vite] page reload src/hooks/useScratch.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/ProjectSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/useTask.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/FullAttemptLogs.tsx, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/hooks/useTaskComments.ts
+5:47:11 PM [vite] page reload src/hooks/useTaskDocumentLinks.ts
+5:47:11 PM [vite] page reload src/hooks/useTaskImages.ts
+5:47:11 PM [vite] page reload src/hooks/useTaskMutations.ts
+5:47:11 PM [vite] page reload src/hooks/useTaskRelationships.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/pages/TeamIssues.tsx, /src/pages/TeamProjectDetail.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx, /src/pages/TeamMembers.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/pages/TeamIssues.tsx, /src/pages/TeamMembers.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/TeamDocuments.tsx, /src/pages/settings/OrganizationSettings.tsx
+5:47:11 PM [vite] page reload src/hooks/useUserOrganizations.ts
+5:47:11 PM [vite] page reload src/hooks/useVariant.ts
+5:47:11 PM [vite] page reload src/hooks/useVideoProgress.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/OrganizationSettings.tsx
+5:47:11 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/GeneralSettings.tsx
+5:47:11 PM [vite] page reload src/i18n/locales/en/common.json
+5:47:11 PM [vite] page reload src/i18n/locales/en/organization.json
+5:47:11 PM [vite] page reload src/i18n/locales/en/projects.json
+5:47:11 PM [vite] page reload src/i18n/locales/en/settings.json
+5:47:11 PM [vite] page reload src/i18n/locales/en/tasks.json
+5:47:11 PM [vite] page reload src/i18n/locales/es/common.json
+5:47:11 PM [vite] page reload src/i18n/locales/es/organization.json
+5:47:11 PM [vite] page reload src/i18n/locales/es/projects.json
+5:47:11 PM [vite] page reload src/i18n/locales/es/settings.json
+5:47:11 PM [vite] page reload src/i18n/locales/es/tasks.json
+5:47:11 PM [vite] page reload src/i18n/locales/ja/common.json
+5:47:11 PM [vite] page reload src/i18n/locales/ja/organization.json
+5:47:11 PM [vite] page reload src/i18n/locales/ja/projects.json
+5:47:11 PM [vite] page reload src/i18n/locales/ja/settings.json
+5:47:11 PM [vite] page reload src/i18n/locales/ja/tasks.json
+5:47:11 PM [vite] page reload src/i18n/locales/ko/common.json
+5:47:11 PM [vite] page reload src/i18n/locales/ko/organization.json
+5:47:11 PM [vite] page reload src/i18n/locales/ko/projects.json
+5:47:11 PM [vite] page reload src/i18n/locales/ko/settings.json
+5:47:11 PM [vite] page reload src/i18n/locales/ko/tasks.json
+5:47:11 PM [vite] page reload src/i18n/locales/zh-Hans/common.json
+5:47:11 PM [vite] page reload src/i18n/locales/zh-Hans/organization.json
+5:47:11 PM [vite] page reload src/i18n/locales/zh-Hans/projects.json
+5:47:11 PM [vite] page reload src/i18n/locales/zh-Hans/settings.json
+5:47:11 PM [vite] page reload src/i18n/locales/zh-Hans/tasks.json
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/pages/ProjectTasks.tsx, /src/pages/settings/SettingsLayout.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/keyboard/registry.ts
+5:47:11 PM [vite] page reload src/keyboard/types.ts
+5:47:11 PM [vite] page reload src/keyboard/useSemanticKey.ts
+5:47:11 PM [vite] page reload src/lib/api.ts
+5:47:11 PM [vite] page reload src/lib/conflicts.ts
+5:47:11 PM [vite] page reload src/lib/electric/config.ts
+5:47:11 PM [vite] page reload src/lib/electric/sharedTasksCollection.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/settings/McpSettings.tsx
+5:47:11 PM [vite] page reload src/lib/modals.ts
+5:47:11 PM [vite] page reload src/lib/openIssueDetail.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamIssues.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/ProjectTasks.tsx
+5:47:11 PM [vite] page reload src/lib/remoteApi.ts
+5:47:11 PM [vite] page reload src/lib/searchTagsAndFiles.ts
+5:47:11 PM [vite] page reload src/lib/types.ts
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx
+5:47:11 PM [vite] hmr update /src/styles/index.css, /src/pages/TeamProjects.tsx, /src/pages/TeamProjectDetail.tsx, /src/pages/settings/SettingsLayout.tsx
+5:47:11 PM [vite] hmr update /src/main.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/About.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/FullAttemptLogs.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/JoinTeam.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/ProjectTasks.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/Projects.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/TeamDocuments.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/pages/TeamGitHub.tsx
+5:47:11 PM [vite] hmr update /src/pages/TeamIssues.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/TeamMembers.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/TeamProjectDetail.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/TeamProjects.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/AgentSettings.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/GeneralSettings.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/McpSettings.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/OrganizationSettings.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/ProjectSettings.tsx, /src/styles/index.css
+5:47:11 PM [vite] hmr update /src/pages/settings/SettingsLayout.tsx, /src/styles/index.css
+5:47:11 PM [vite] page reload src/pages/settings/index.ts
+5:47:11 PM [vite] page reload src/stores/useDiffViewStore.ts
+5:47:11 PM [vite] page reload src/stores/useExpandableStore.ts
+5:47:11 PM [vite] page reload src/stores/useTaskDetailsUiStore.ts
+5:47:11 PM [vite] hmr update /src/styles/diff-style-overrides.css
+5:47:11 PM [vite] hmr update /src/styles/edit-diff-overrides.css
+5:47:11 PM [vite] hmr update /src/styles/index.css
+5:47:11 PM [vite] page reload src/types/attempt.ts
+5:47:11 PM [vite] page reload src/types/logs.ts
+5:47:11 PM [vite] page reload src/types/modal-args.d.ts
+5:47:11 PM [vite] page reload src/types/modals.ts
+5:47:11 PM [vite] page reload src/types/showcase.ts
+5:47:11 PM [vite] page reload src/types/tabs.ts
+5:47:11 PM [vite] page reload src/types/virtual-executor-schemas.d.ts
+5:47:11 PM [vite] hmr update /src/utils/StyleOverride.tsx
+5:47:11 PM [vite] page reload src/utils/companionInstallTask.ts
+5:47:11 PM [vite] page reload src/utils/extToLanguage.ts
+5:47:11 PM [vite] page reload src/utils/id.ts
+5:47:11 PM [vite] page reload src/utils/previewBridge.ts
+5:47:11 PM [vite] page reload src/utils/priorityUtils.tsx
+5:47:11 PM [vite] page reload src/utils/scriptPlaceholders.ts
+5:47:11 PM [vite] hmr update /src/utils/statusIcons.tsx
+5:47:11 PM [vite] page reload src/utils/statusLabels.ts
+5:47:11 PM [vite] page reload src/utils/streamJsonPatchEntries.ts
+5:47:11 PM [vite] page reload src/utils/string.ts
+5:47:11 PM [vite] page reload src/utils/theme.ts
+5:47:11 PM [vite] page reload src/vite-env.d.ts
+5:47:11 PM [vite] hmr update /src/vscode/ContextMenu.tsx
+5:47:11 PM [vite] page reload src/vscode/bridge.ts
+5:47:11 PM [vite] page reload tailwind.config.js
+5:47:11 PM [vite] server restarted.
+(!) Could not auto-determine entry point from rollupOptions or html files and there are no explicit optimizeDeps.include patterns. Skipping dependency pre-bundling.

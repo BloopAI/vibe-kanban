@@ -1,0 +1,49 @@
+# Railway ignore for BACKEND deployment
+# Include ONLY what the backend Dockerfile needs
+
+# Ignore Rust build artifacts (19GB+)
+target/
+**/target/
+
+# Ignore ALL node_modules (not needed for backend)
+node_modules/
+**/node_modules/
+
+# Ignore frontend code (deployed separately)
+frontend/
+remote-frontend/
+
+# Ignore dev/docs
+dev_assets/
+dev_assets_seed/
+backups/
+docs/
+mcp/
+scripts/
+
+# Ignore IDE/OS
+.git/
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+
+# Ignore logs
+*.log
+.logs/
+logs/
+
+# Ignore env files (secrets set in Railway)
+.env
+.env.*
+!.env.example
+
+# KEEP: backend/ (Rust source code)
+# KEEP: Cargo.toml, Cargo.lock
+# KEEP: backend/Dockerfile
+# KEEP: railway.toml
+# KEEP: docker-entrypoint.sh
+# KEEP: server-linux (pre-built binary)
+!server-linux
+
+

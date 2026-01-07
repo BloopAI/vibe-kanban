@@ -1,0 +1,52 @@
+{
+    "name": "@react-pdf-viewer/page-navigation",
+    "version": "3.12.0",
+    "description": "A React component to view a PDF document",
+    "license": "https://react-pdf-viewer.dev/license",
+    "author": {
+        "name": "Nguyen Huu Phuoc",
+        "email": "me@phuoc.ng",
+        "url": "https://twitter.com/nghuuphuoc"
+    },
+    "homepage": "https://react-pdf-viewer.dev",
+    "keywords": [
+        "react",
+        "react.js",
+        "pdf",
+        "pdf.js",
+        "pdf viewer"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/react-pdf-viewer/react-pdf-viewer",
+        "directory": "packages/page-navigation"
+    },
+    "bugs": {
+        "url": "https://github.com/react-pdf-viewer/react-pdf-viewer/issues"
+    },
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "files": [
+        "lib/cjs/*.*",
+        "lib/styles/*.*",
+        "lib/index.d.ts",
+        "lib/index.js"
+    ],
+    "dependencies": {
+        "@react-pdf-viewer/core": "3.12.0"
+    },
+    "peerDependencies": {
+        "react": ">=16.8.0",
+        "react-dom": ">=16.8.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "clean": "rm -rf lib && mkdir lib",
+        "build": "npm run clean && npm run js && npm run css",
+        "js": "cp src/index.d.ts lib && cp dist/index.js lib && rollup -c ../../rollup.config.cjs",
+        "css": "sass --no-source-map --style compressed src/styles/index.scss lib/styles/index.css"
+    },
+    "gitHead": "ea84015146e8c5d4c78d7f10df2fba84567ef4aa"
+}

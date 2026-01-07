@@ -1,0 +1,1 @@
+{"version":3,"file":"use-isomorphic-effect.mjs","sources":["../../../src/utils/use-isomorphic-effect.ts"],"sourcesContent":["\"use client\"\n\nimport { useEffect, useLayoutEffect } from \"react\"\nimport { isBrowser } from \"./is-browser\"\n\nexport const useIsomorphicLayoutEffect = isBrowser ? useLayoutEffect : useEffect\n"],"names":[],"mappings":";;;;AAKO;;"}

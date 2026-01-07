@@ -1,0 +1,26 @@
+/**
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * @flow strict
+ */
+
+import type {
+  LexicalEditor,
+  EditorThemeClasses,
+  LexicalNode,
+  LexicalNodeReplacement,
+} from 'lexical';
+
+export type LexicalNestedComposerProps = {
+  children?: React.Node;
+  initialEditor: LexicalEditor;
+  initialTheme?: EditorThemeClasses;
+  initialNodes?: $ReadOnlyArray<Class<LexicalNode> | LexicalNodeReplacement>;
+  skipCollabChecks?: void | true;
+  skipEditableListener?: void | true;
+};
+
+declare export function LexicalNestedComposer(props: LexicalNestedComposerProps): React.Node;

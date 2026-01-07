@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.js","sources":["../../src/constants.ts"],"sourcesContent":["export const REACT_RENDER_OP = 'ui.react.render';\n\nexport const REACT_UPDATE_OP = 'ui.react.update';\n\nexport const REACT_MOUNT_OP = 'ui.react.mount';\n"],"names":[],"mappings":"AAAO,MAAM,eAAA,GAAkB;;AAExB,MAAM,eAAA,GAAkB;;AAExB,MAAM,cAAA,GAAiB;;;;"}

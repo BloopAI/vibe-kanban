@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.js","sourceRoot":"","sources":["../../../../src/extensions/product-tours/constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,yBAAyB,GAAG,4BAA4B,CAAA;AACxD,QAAA,yBAAyB,GAAG,4BAA4B,CAAA","sourcesContent":["export const TOUR_COMPLETED_KEY_PREFIX = 'ph_product_tour_completed_'\nexport const TOUR_DISMISSED_KEY_PREFIX = 'ph_product_tour_dismissed_'\n"]}

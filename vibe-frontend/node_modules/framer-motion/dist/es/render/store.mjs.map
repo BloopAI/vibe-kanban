@@ -1,0 +1,1 @@
+{"version":3,"file":"store.mjs","sources":["../../../src/render/store.ts"],"sourcesContent":["import type { VisualElement } from \"./VisualElement\"\n\nexport const visualElementStore = new WeakMap<any, VisualElement>()\n"],"names":[],"mappings":"AAEa,MAAA,kBAAkB,GAAG,IAAI,OAAO;;;;"}

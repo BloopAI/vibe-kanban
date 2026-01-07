@@ -1,0 +1,1 @@
+{"version":3,"file":"noop-B3MbDAfb.mjs","names":[],"sources":["../../src/utils/noop.ts"],"sourcesContent":["export const noop = (..._args: any[]): void => {\n  // do nothing.\n};\n"],"mappings":";AAAA,MAAa,QAAQ,GAAG,UAAuB"}

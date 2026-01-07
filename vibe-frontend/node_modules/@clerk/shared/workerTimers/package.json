@@ -1,0 +1,3 @@
+{
+  "main": "../dist/runtime/workerTimers/index.js"
+}

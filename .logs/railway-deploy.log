@@ -1,0 +1,403 @@
+   Compiling utils v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/utils)
+warning: server@0.0.142: Creating dummy frontend/dist directory for compilation
+   Compiling executors v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/executors)
+   Compiling remote v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/remote)
+   Compiling db v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/db)
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/lib.rs:16:7
+   |
+16 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/libsql_db.rs:15:7
+   |
+15 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/libsql_db.rs:66:7
+   |
+66 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/libsql_db.rs:73:7
+   |
+73 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/libsql_db.rs:295:11
+    |
+295 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/libsql_db.rs:299:11
+    |
+299 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/libsql_db.rs:315:7
+    |
+315 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/libsql_db.rs:322:7
+    |
+322 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/libsql_db.rs:457:17
+    |
+457 | #[cfg(all(test, feature = "turso"))]
+    |                 ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/libsql_db.rs:45:11
+   |
+45 |     #[cfg(feature = "turso")]
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unused import: `std::sync::Arc`
+  --> crates/db/src/libsql_db.rs:12:5
+   |
+12 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unexpected `cfg` condition value: `turso`
+ --> crates/db/src/turso.rs:6:7
+  |
+6 | #[cfg(feature = "turso")]
+  |       ^^^^^^^^^^^^^^^^^
+  |
+  = note: expected values for `feature` are: `default`
+  = help: consider adding `turso` as a feature in `Cargo.toml`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/turso.rs:10:7
+   |
+10 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/db/src/turso.rs:12:7
+   |
+12 | #[cfg(feature = "turso")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:144:7
+    |
+144 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:151:7
+    |
+151 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:237:11
+    |
+237 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:240:11
+    |
+240 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:275:7
+    |
+275 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:280:7
+    |
+280 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:336:11
+    |
+336 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:339:11
+    |
+339 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:350:7
+    |
+350 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:356:7
+    |
+356 | #[cfg(feature = "turso")]
+    |       ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:519:11
+    |
+519 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/db/src/turso.rs:522:11
+    |
+522 | #[cfg(not(feature = "turso"))]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+   Compiling services v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/services)
+warning: `db` (lib) generated 26 warnings (run `cargo fix --lib -p db` to apply 1 suggestion)
+   Compiling deployment v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/deployment)
+   Compiling local-deployment v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/local-deployment)
+warning: unexpected `cfg` condition value: `turso`
+ --> crates/local-deployment/src/lib.rs:5:7
+  |
+5 | #[cfg(feature = "turso")]
+  |       ^^^^^^^^^^^^^^^^^
+  |
+  = note: expected values for `feature` are: `default`
+  = help: consider adding `turso` as a feature in `Cargo.toml`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `turso`
+  --> crates/local-deployment/src/lib.rs:49:11
+   |
+49 |     #[cfg(feature = "turso")]
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `default`
+   = help: consider adding `turso` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/local-deployment/src/lib.rs:113:15
+    |
+113 |         #[cfg(feature = "turso")]
+    |               ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/local-deployment/src/lib.rs:239:19
+    |
+239 |             #[cfg(feature = "turso")]
+    |                   ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/local-deployment/src/lib.rs:412:11
+    |
+412 |     #[cfg(feature = "turso")]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `turso`
+   --> crates/local-deployment/src/lib.rs:418:11
+    |
+418 |     #[cfg(feature = "turso")]
+    |           ^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `turso` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+   Compiling server v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/crates/server)
+warning: unused variable: `was_created`
+    --> crates/server/src/routes/documents.rs:1107:21
+     |
+1107 |                 let was_created = {
+     |                     ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_was_created`
+     |
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `folders_created` is never read
+    --> crates/server/src/routes/documents.rs:1056:31
+     |
+1056 |     let mut folders_created = 0;
+     |                               ^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `token_type` and `scope` are never read
+   --> crates/server/src/routes/oauth.rs:437:5
+    |
+435 | struct GitHubTokenResponse {
+    |        ------------------- fields in this struct
+436 |     access_token: String,
+437 |     token_type: String,
+    |     ^^^^^^^^^^
+438 |     scope: String,
+    |     ^^^^^
+    |
+    = note: `GitHubTokenResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `local-deployment` (lib) generated 6 warnings
+warning: `server` (lib) generated 3 warnings (run `cargo fix --lib -p server` to apply 1 suggestion)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2m 00s
+warning: the following packages contain code that will be rejected by a future version of Rust: num-bigint-dig v0.8.5
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+Indexing...
+Uploading...
+Failed to upload code. File too large (1783039700 bytes): 
+
+[1mVibe Kanban Railway Deployment[0m
+========================================
+
+[92m[1m==>[0m Checking prerequisites...
+  [94m→[0m ✓ rustc: rustc 1.92.0 (ded5c06cf 2025-12-08)
+  [94m→[0m ✓ cargo: cargo 1.92.0 (344c4567c 2025-10-21)
+  [94m→[0m ✓ cargo-zigbuild: cargo-zigbuild 0.20.1
+  [94m→[0m ✓ zig: 0.15.2
+  [94m→[0m ✓ railway: railway 4.16.1
+  [94m→[0m Checking musl target...
+  [94m→[0m ✓ Target x86_64-unknown-linux-musl installed
+  [94m→[0m Checking Railway project is linked...
+  [94m→[0m ✓ Railway project linked
+  Project: vibe-kanban-api
+Environment: production
+Service: vibe-kanban-api
+
+[96m[1m──────────────────────────────────────────────────[0m
+[96m[1mRAILWAY DEPLOYMENT[0m
+[96m[1m──────────────────────────────────────────────────[0m
+
+[92m[1m==>[0m Building Linux binary with cargo-zigbuild...
+  [94m→[0m Running: cargo zigbuild --release --bin server --target x86_64-unknown-linux-musl
+  [94m→[0m ✓ Binary built: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/target/x86_64-unknown-linux-musl/release/server
+  [94m→[0m ✓ Size: 44.8 MB
+  [94m→[0m ✓ Build time: 121.0s
+[92m[1m==>[0m Verifying binary...
+  [94m→[0m /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/target/x86_64-unknown-linux-musl/release/server: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+  [94m→[0m ✓ Statically linked (good for Alpine)
+[92m[1m==>[0m Deploying to Railway...
+  [94m→[0m Running: railway up --detach
+[91m[1mERROR:[0m Command failed with exit code 1
+[91m[1mERROR:[0m Railway deployment failed

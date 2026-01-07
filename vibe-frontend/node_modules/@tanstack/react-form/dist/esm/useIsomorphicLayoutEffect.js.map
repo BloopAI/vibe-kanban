@@ -1,0 +1,1 @@
+{"version":3,"file":"useIsomorphicLayoutEffect.js","sources":["../../src/useIsomorphicLayoutEffect.ts"],"sourcesContent":["import { useEffect, useLayoutEffect } from 'react'\n\nexport const useIsomorphicLayoutEffect =\n  typeof window !== 'undefined' ? useLayoutEffect : useEffect\n"],"names":[],"mappings":";AAEO,MAAM,4BACX,OAAO,WAAW,cAAc,kBAAkB;"}

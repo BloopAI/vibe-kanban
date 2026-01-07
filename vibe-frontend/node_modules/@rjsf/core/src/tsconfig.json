@@ -1,0 +1,31 @@
+{
+  "extends": "../../../tsconfig.build.json",
+  "include": [
+    "./"
+  ],
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "../lib",
+    "baseUrl": "../",
+    "jsx": "react-jsx",
+    "composite": true
+  },
+  "references": [
+    {
+      "path": "../../utils"
+    },
+    {
+      "path": "../../validator-ajv8"
+    }
+  ],
+  "tsc-alias": {
+    "resolveFullPaths": true,
+    "verbose": true,
+    "replacers": {
+      "lodash": {
+        "enabled": true,
+        "file": "lodashReplacer.js"
+      }
+    }
+  }
+}

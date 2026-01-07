@@ -1,0 +1,47 @@
+# ===========================================
+# Runtime Only Dockerfile
+# Expects pre-compiled binary "server" in current dir
+# ===========================================
+FROM alpine:latest
+
+# Install runtime dependencies
+# sqlite-libs: Required for dynamic linking
+# libssl3: Required for OpenSSL
+# ca-certificates: Required for HTTPS
+RUN apk add --no-cache \
+    ca-certificates \
+    tini \
+    libgcc \
+    sqlite-libs \
+    libssl3
+
+# Create app user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Copy pre-built binary
+COPY server /usr/local/bin/server
+RUN chmod +x /usr/local/bin/server
+
+# Copy entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create data directories
+RUN mkdir -p /repos /data /seed && \
+    chown -R appuser:appgroup /repos /data /seed
+
+# Switch user
+USER appuser
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+EXPOSE 3000
+
+WORKDIR /repos
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider "http://${HOST:-localhost}:${PORT:-3000}" || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["docker-entrypoint.sh"]

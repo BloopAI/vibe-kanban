@@ -1,0 +1,36 @@
+{
+  "name": "@dnd-kit/accessibility",
+  "version": "3.1.1",
+  "description": "A generic toolkit to help with accessibility",
+  "author": "Claudéric Demers",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clauderic/dnd-kit.git",
+    "directory": "packages/accessibility"
+  },
+  "scripts": {
+    "start": "tsdx watch --tsconfig tsconfig.build.json --verbose --noClean",
+    "build": "tsdx build --tsconfig tsconfig.build.json",
+    "test": "tsdx test",
+    "lint": "tsdx lint",
+    "prepublish": "npm run build"
+  },
+  "main": "dist/index.js",
+  "module": "dist/accessibility.esm.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "README.md",
+    "CHANGELOG.md",
+    "dist"
+  ],
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "dependencies": {
+    "tslib": "^2.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

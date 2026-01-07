@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../../docs"
+		},
+		{
+			"path": "../../../../Projects/schild"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}

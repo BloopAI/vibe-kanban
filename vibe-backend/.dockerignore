@@ -1,0 +1,108 @@
+# ===========================================
+# Docker Build Context Optimization
+# Reduces context from ~20GB to ~50MB
+# ===========================================
+
+# Rust build artifacts (19GB+)
+target/
+**/target/
+
+# Node modules (800MB+)
+node_modules/
+**/node_modules/
+
+# Build outputs (not needed - rebuilt in Docker)
+# NOTE: frontend/dist/ is allowed for nginx deployment
+build/
+**/build/
+*.tgz
+*.tar.gz
+
+# Git repository (58MB)
+.git/
+.gitignore
+.gitattributes
+
+# Development assets (not needed in production)
+dev_assets/
+!dev_assets/db.sqlite
+dev_assets_seed/
+backups/
+
+# Documentation (not needed in build)
+docs/
+
+# MCP server (Python - not needed in Docker)
+mcp/
+
+# Remote frontend (separate deployment)
+remote-frontend/
+frontend/
+
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+**/.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Docker files (prevent recursion)
+# Dockerfile*
+# .dockerignore
+docker-compose*.yml
+
+# Environment files (secrets - use flyctl secrets)
+.env
+.env.*
+!.env.example
+frontend/.env.local
+
+# Logs
+*.log
+.logs/
+logs/
+
+# Claude/AI config
+.claude/
+
+# GitHub workflows
+.github/
+
+# npm/pnpm debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage and test artifacts
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Makefile and scripts (dev only)
+Makefile
+scripts/
+
+# Explicitly allow build context files
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+
+!shared/
+
+# Allow pre-built binary for deployment
+!target/x86_64-unknown-linux-musl/release/server

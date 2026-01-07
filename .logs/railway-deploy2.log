@@ -1,0 +1,36 @@
+Indexing...
+Uploading...
+Failed to upload code. File too large (1803406040 bytes): 
+
+[1mVibe Kanban Railway Deployment[0m
+========================================
+
+[92m[1m==>[0m Checking prerequisites...
+  [94m→[0m ✓ rustc: rustc 1.92.0 (ded5c06cf 2025-12-08)
+  [94m→[0m ✓ cargo: cargo 1.92.0 (344c4567c 2025-10-21)
+  [94m→[0m ✓ cargo-zigbuild: cargo-zigbuild 0.20.1
+  [94m→[0m ✓ zig: 0.15.2
+  [94m→[0m ✓ railway: railway 4.16.1
+  [94m→[0m Checking musl target...
+  [94m→[0m ✓ Target x86_64-unknown-linux-musl installed
+  [94m→[0m Checking Railway project is linked...
+  [94m→[0m ✓ Railway project linked
+  Project: vibe-kanban-api
+Environment: production
+Service: vibe-kanban-api
+
+[96m[1m──────────────────────────────────────────────────[0m
+[96m[1mRAILWAY DEPLOYMENT[0m
+[96m[1m──────────────────────────────────────────────────[0m
+
+[92m[1m==>[0m Using existing binary...
+[92m[1m==>[0m Verifying binary...
+  [94m→[0m /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/target/x86_64-unknown-linux-musl/release/server: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+  [94m→[0m ✓ Statically linked (good for Alpine)
+[92m[1m==>[0m Deploying to Railway...
+  [94m→[0m Copying binary to staging: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/backend/.railway-staging/server
+  [94m→[0m Staging directory size: 44.8 MB
+  [94m→[0m Running: railway up --detach
+[91m[1mERROR:[0m Command failed with exit code 1
+[91m[1mERROR:[0m Railway deployment failed
+  [94m→[0m Cleaned up staging directory

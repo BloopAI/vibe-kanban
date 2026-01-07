@@ -1,0 +1,21 @@
+require('./constants-B8tEdUlH.js');
+require('./instance-CDcvbQik.js');
+const require_url = require('./url-Clb-n8zC.js');
+
+exports.addClerkPrefix = require_url.addClerkPrefix;
+exports.cleanDoubleSlashes = require_url.cleanDoubleSlashes;
+exports.getClerkJsMajorVersionOrTag = require_url.getClerkJsMajorVersionOrTag;
+exports.getScriptUrl = require_url.getScriptUrl;
+exports.hasLeadingSlash = require_url.hasLeadingSlash;
+exports.hasTrailingSlash = require_url.hasTrailingSlash;
+exports.isAbsoluteUrl = require_url.isAbsoluteUrl;
+exports.isCurrentDevAccountPortalOrigin = require_url.isCurrentDevAccountPortalOrigin;
+exports.isLegacyDevAccountPortalOrigin = require_url.isLegacyDevAccountPortalOrigin;
+exports.isNonEmptyURL = require_url.isNonEmptyURL;
+exports.joinURL = require_url.joinURL;
+exports.parseSearchParams = require_url.parseSearchParams;
+exports.stripScheme = require_url.stripScheme;
+exports.withLeadingSlash = require_url.withLeadingSlash;
+exports.withTrailingSlash = require_url.withTrailingSlash;
+exports.withoutLeadingSlash = require_url.withoutLeadingSlash;
+exports.withoutTrailingSlash = require_url.withoutTrailingSlash;
