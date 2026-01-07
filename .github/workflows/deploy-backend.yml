@@ -98,7 +98,15 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Create Proxy Dockerfile
+        run: |
+          mkdir deploy_payload
+          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest" > deploy_payload/Dockerfile
+          echo "ENV PORT=3000" >> deploy_payload/Dockerfile
+          echo "EXPOSE 3000" >> deploy_payload/Dockerfile
+
       - name: Deploy
+        working-directory: ./deploy_payload
         run: railway up --service vibe-kanban-api --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
