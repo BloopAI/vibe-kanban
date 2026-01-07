@@ -2,22 +2,19 @@
 # Runtime Only Dockerfile
 # Expects pre-compiled binary "server" in current dir
 # ===========================================
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 # Install runtime dependencies
-# sqlite-libs: Required for dynamic linking
-# libssl3: Required for OpenSSL
-# ca-certificates: Required for HTTPS
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     ca-certificates \
     tini \
-    libgcc \
-    sqlite-libs \
-    libssl3
+    libssl-dev \
+    libsqlite3-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create app user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -s /bin/bash appuser
 
 # Copy pre-built binary
 COPY server /usr/local/bin/server
@@ -40,8 +37,5 @@ EXPOSE 3000
 
 WORKDIR /repos
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider "http://${HOST:-localhost}:${PORT:-3000}" || exit 1
-
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["docker-entrypoint.sh"]
