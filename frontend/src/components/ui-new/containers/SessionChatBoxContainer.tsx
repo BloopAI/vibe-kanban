@@ -10,6 +10,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useEntries } from '@/contexts/EntriesContext';
+import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useTodos } from '@/hooks/useTodos';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
@@ -110,6 +111,14 @@ export function SessionChatBoxContainer({
   // Detect pending approval and todos from entries
   const { entries } = useEntries();
   const { inProgressTodo } = useTodos(entries);
+
+  // Review comments context (optional - only available when ReviewProvider wraps this)
+  const reviewContext = useReviewOptional();
+  const reviewMarkdown = useMemo(
+    () => reviewContext?.generateReviewMarkdown() ?? '',
+    [reviewContext]
+  );
+  const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
 
   // Extract pending approval metadata from entries
   const pendingApproval = useMemo(() => {
@@ -255,20 +264,28 @@ export function SessionChatBoxContainer({
   });
 
   const handleSend = useCallback(async () => {
-    const success = await send(localMessage, selectedVariant);
+    // Combine review comments with user message
+    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
+    const combinedMessage = messageParts.join('\n\n');
+
+    const success = await send(combinedMessage, selectedVariant);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
       if (isNewSessionMode) await clearDraft();
+      // Clear review comments after successful send
+      reviewContext?.clearComments();
     }
   }, [
     send,
     localMessage,
+    reviewMarkdown,
     selectedVariant,
     cancelDebouncedSave,
     setLocalMessage,
     isNewSessionMode,
     clearDraft,
+    reviewContext,
   ]);
 
   // Track previous process count for queue refresh
@@ -293,12 +310,19 @@ export function SessionChatBoxContainer({
 
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
-    if (!localMessage.trim()) return;
+    // Allow queueing if there's a message OR review comments
+    if (!localMessage.trim() && !reviewMarkdown) return;
+
+    // Combine review comments with user message
+    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
+    const combinedMessage = messageParts.join('\n\n');
+
     cancelDebouncedSave();
     await saveToScratch(localMessage, selectedVariant);
-    await queueMessage(localMessage, selectedVariant);
+    await queueMessage(combinedMessage, selectedVariant);
   }, [
     localMessage,
+    reviewMarkdown,
     selectedVariant,
     queueMessage,
     cancelDebouncedSave,
@@ -534,6 +558,15 @@ export function SessionChatBoxContainer({
         onCancel: handleCancelEdit,
         isSubmitting: editRetryMutation.isPending,
       }}
+      reviewComments={
+        hasReviewComments && reviewContext
+          ? {
+              count: reviewContext.comments.length,
+              previewMarkdown: reviewMarkdown,
+              onClear: reviewContext.clearComments,
+            }
+          : undefined
+      }
     />
   );
 }

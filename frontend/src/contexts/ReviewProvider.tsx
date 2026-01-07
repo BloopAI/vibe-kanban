@@ -47,6 +47,14 @@ export function useReview() {
   return context;
 }
 
+/**
+ * Optional version of useReview that returns null if not inside a ReviewProvider.
+ * Useful for components that may or may not be inside a review context.
+ */
+export function useReviewOptional() {
+  return useContext(ReviewContext);
+}
+
 export function ReviewProvider({
   children,
   attemptId,
