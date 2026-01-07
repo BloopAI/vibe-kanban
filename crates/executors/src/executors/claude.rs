@@ -416,12 +416,10 @@ impl ClaudeLogProcessor {
                         Err(_) => {
                             // Handle non-JSON output as raw system message
                             if !trimmed.is_empty() {
-                                let entry = NormalizedEntry {
-                                    timestamp: None,
-                                    entry_type: NormalizedEntryType::SystemMessage,
-                                    content: trimmed.to_string(),
-                                    metadata: None,
-                                };
+                                let entry = NormalizedEntry::new(
+                                    NormalizedEntryType::SystemMessage,
+                                    trimmed.to_string(),
+                                );
 
                                 let patch_id = entry_index_provider.next();
                                 let patch =
@@ -438,12 +436,10 @@ impl ClaudeLogProcessor {
 
             // Handle any remaining content in buffer
             if !buffer.trim().is_empty() {
-                let entry = NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::SystemMessage,
-                    content: buffer.trim().to_string(),
-                    metadata: None,
-                };
+                let entry = NormalizedEntry::new(
+                    NormalizedEntryType::SystemMessage,
+                    buffer.trim().to_string(),
+                );
 
                 let patch_id = entry_index_provider.next();
                 let patch = ConversationPatch::add_normalized_entry(patch_id, entry);
@@ -474,13 +470,12 @@ impl ClaudeLogProcessor {
                 tracing::warn!(
                     "ANTHROPIC_API_KEY env variable detected, your Anthropic subscription is not being used"
                 );
-                Some(NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage { error_type: NormalizedEntryError::Other,
+                Some(NormalizedEntry::new(
+                    NormalizedEntryType::ErrorMessage {
+                        error_type: NormalizedEntryError::Other,
                     },
-                    content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription. If this is unintended, please select the `disable_api_key` checkbox in the conding-agent-configurations settings page.".to_string(),
-                    metadata: None,
-                })
+                    "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription. If this is unintended, please select the `disable_api_key` checkbox in the conding-agent-configurations settings page.".to_string(),
+                ))
             }
             _ => None,
         }
@@ -536,23 +531,17 @@ impl ClaudeLogProcessor {
                     "assistant" => NormalizedEntryType::AssistantMessage,
                     _ => return None,
                 };
-                Some(NormalizedEntry {
-                    timestamp: None,
+                Some(NormalizedEntry::with_metadata(
                     entry_type,
-                    content: text.clone(),
-                    metadata: Some(
-                        serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
-                    ),
-                })
+                    text.clone(),
+                    Some(serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null)),
+                ))
             }
-            ClaudeContentItem::Thinking { thinking } => Some(NormalizedEntry {
-                timestamp: None,
-                entry_type: NormalizedEntryType::Thinking,
-                content: thinking.clone(),
-                metadata: Some(
-                    serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
-                ),
-            }),
+            ClaudeContentItem::Thinking { thinking } => Some(NormalizedEntry::with_metadata(
+                NormalizedEntryType::Thinking,
+                thinking.clone(),
+                Some(serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null)),
+            )),
             ClaudeContentItem::ToolUse { tool_data, id } => {
                 let name = tool_data.get_name();
                 let action_type = Self::extract_action_type(tool_data, worktree_path);
@@ -569,16 +558,15 @@ impl ClaudeLogProcessor {
                     );
                 }
 
-                Some(NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::ToolUse {
+                Some(NormalizedEntry::with_metadata(
+                    NormalizedEntryType::ToolUse {
                         tool_name: name.to_string(),
                         action_type,
                         status: ToolStatus::Created,
                     },
                     content,
-                    metadata: Some(metadata),
-                })
+                    Some(metadata),
+                ))
             }
             ClaudeContentItem::ToolResult { .. } => {
                 // TODO: Add proper ToolResult support to NormalizedEntry when the type system supports it
@@ -763,28 +751,26 @@ impl ClaudeLogProcessor {
                         // We'll send system initialized message with first assistant message that has a model field.
                     }
                     Some(subtype) => {
-                        let entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::SystemMessage,
-                            content: format!("System: {subtype}"),
-                            metadata: Some(
+                        let entry = NormalizedEntry::with_metadata(
+                            NormalizedEntryType::SystemMessage,
+                            format!("System: {subtype}"),
+                            Some(
                                 serde_json::to_value(claude_json)
                                     .unwrap_or(serde_json::Value::Null),
                             ),
-                        };
+                        );
                         let idx = entry_index_provider.next();
                         patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                     }
                     None => {
-                        let entry = NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::SystemMessage,
-                            content: "System message".to_string(),
-                            metadata: Some(
+                        let entry = NormalizedEntry::with_metadata(
+                            NormalizedEntryType::SystemMessage,
+                            "System message".to_string(),
+                            Some(
                                 serde_json::to_value(claude_json)
                                     .unwrap_or(serde_json::Value::Null),
                             ),
-                        };
+                        );
                         let idx = entry_index_provider.next();
                         patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                     }
@@ -825,16 +811,15 @@ impl ClaudeLogProcessor {
                                 );
                             }
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
+                            let entry = NormalizedEntry::with_metadata(
+                                NormalizedEntryType::ToolUse {
                                     tool_name: tool_name.clone(),
                                     action_type,
                                     status: ToolStatus::Created,
                                 },
-                                content: content_text.clone(),
-                                metadata: Some(metadata),
-                            };
+                                content_text.clone(),
+                                Some(metadata),
+                            );
                             let is_new = entry_index.is_none();
                             let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
                             self.tool_map.insert(
@@ -892,14 +877,13 @@ impl ClaudeLogProcessor {
 
                     for item in &message.content {
                         if let ClaudeContentItem::Text { text } = item {
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::UserMessage,
-                                content: text.clone(),
-                                metadata: Some(
+                            let entry = NormalizedEntry::with_metadata(
+                                NormalizedEntryType::UserMessage,
+                                text.clone(),
+                                Some(
                                     serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
                                 ),
-                            };
+                            );
                             let id = entry_index_provider.next();
                             patches.push(ConversationPatch::add_normalized_entry(id, entry));
                         }
@@ -965,9 +949,8 @@ impl ClaudeLogProcessor {
                                 ToolStatus::Success
                             };
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
+                            let entry = NormalizedEntry::new(
+                                NormalizedEntryType::ToolUse {
                                     tool_name: info.tool_name.clone(),
                                     action_type: ActionType::CommandRun {
                                         command: info.content.clone(),
@@ -975,9 +958,8 @@ impl ClaudeLogProcessor {
                                     },
                                     status,
                                 },
-                                content: info.content.clone(),
-                                metadata: None,
-                            };
+                                info.content.clone(),
+                            );
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         } else if matches!(
                             info.tool_data,
@@ -1015,9 +997,8 @@ impl ClaudeLogProcessor {
                                 ToolStatus::Success
                             };
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
+                            let entry = NormalizedEntry::new(
+                                NormalizedEntryType::ToolUse {
                                     tool_name: label.clone(),
                                     action_type: ActionType::Tool {
                                         tool_name: label,
@@ -1029,9 +1010,8 @@ impl ClaudeLogProcessor {
                                     },
                                     status,
                                 },
-                                content: info.content.clone(),
-                                metadata: None,
-                            };
+                                info.content.clone(),
+                            );
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         }
                         // Note: With control protocol, denials are handled via protocol messages
@@ -1045,18 +1025,17 @@ impl ClaudeLogProcessor {
                 let content =
                     Self::generate_concise_content(tool_data, &action_type, worktree_path);
 
-                let entry = NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::ToolUse {
+                let entry = NormalizedEntry::with_metadata(
+                    NormalizedEntryType::ToolUse {
                         tool_name: tool_name.to_string(),
                         action_type,
                         status: ToolStatus::Created,
                     },
                     content,
-                    metadata: Some(
+                    Some(
                         serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                     ),
-                };
+                );
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
@@ -1123,17 +1102,16 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result { is_error, .. } => {
                 if matches!(self.strategy, HistoryStrategy::AmpResume) && is_error.unwrap_or(false)
                 {
-                    let entry = NormalizedEntry {
-                        timestamp: None,
-                        entry_type: NormalizedEntryType::ErrorMessage {
+                    let entry = NormalizedEntry::with_metadata(
+                        NormalizedEntryType::ErrorMessage {
                             error_type: NormalizedEntryError::Other,
                         },
-                        content: serde_json::to_string(claude_json)
+                        serde_json::to_string(claude_json)
                             .unwrap_or_else(|_| "error".to_string()),
-                        metadata: Some(
+                        Some(
                             serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                         ),
-                    };
+                    );
                     let idx = entry_index_provider.next();
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
@@ -1147,26 +1125,22 @@ impl ClaudeLogProcessor {
                 let entry_opt = match approval_status {
                     ApprovalStatus::Pending => None,
                     ApprovalStatus::Approved => None,
-                    ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
-                        timestamp: None,
-                        entry_type: NormalizedEntryType::UserFeedback {
+                    ApprovalStatus::Denied { reason } => Some(NormalizedEntry::new(
+                        NormalizedEntryType::UserFeedback {
                             denied_tool: tool_name.clone(),
                         },
-                        content: reason
+                        reason
                             .as_ref()
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
                             .unwrap_or_else(|| "User denied this tool use request".to_string()),
-                        metadata: None,
-                    }),
-                    ApprovalStatus::TimedOut => Some(NormalizedEntry {
-                        timestamp: None,
-                        entry_type: NormalizedEntryType::ErrorMessage {
+                    )),
+                    ApprovalStatus::TimedOut => Some(NormalizedEntry::new(
+                        NormalizedEntryType::ErrorMessage {
                             error_type: NormalizedEntryError::Other,
                         },
-                        content: format!("Approval timed out for tool {tool_name}"),
-                        metadata: None,
-                    }),
+                        format!("Approval timed out for tool {tool_name}"),
+                    )),
                 };
 
                 if let Some(entry) = entry_opt {
@@ -1175,15 +1149,13 @@ impl ClaudeLogProcessor {
                 }
             }
             ClaudeJson::Unknown { data } => {
-                let entry = NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::SystemMessage,
-                    content: format!(
+                let entry = NormalizedEntry::new(
+                    NormalizedEntryType::SystemMessage,
+                    format!(
                         "Unrecognized JSON message: {}",
                         serde_json::to_value(data).unwrap_or_default()
                     ),
-                    metadata: None,
-                };
+                );
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
@@ -1293,12 +1265,10 @@ fn extract_model_name(
         && let Some(model) = message.model.as_ref()
     {
         processor.model_name = Some(model.clone());
-        let entry = NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::SystemMessage,
-            content: format!("System initialized with model: {model}"),
-            metadata: None,
-        };
+        let entry = NormalizedEntry::new(
+            NormalizedEntryType::SystemMessage,
+            format!("System initialized with model: {model}"),
+        );
         let id = entry_index_provider.next();
         Some(ConversationPatch::add_normalized_entry(id, entry))
     } else {
