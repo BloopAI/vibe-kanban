@@ -319,7 +319,10 @@ pub async fn create_pr(
         draft: request.draft,
     };
 
-    match git_host.create_pr(&repo_path, &remote_url, &pr_request).await {
+    match git_host
+        .create_pr(&repo_path, &remote_url, &pr_request)
+        .await
+    {
         Ok(pr_info) => {
             // Update the workspace with PR information
             if let Err(e) = Merge::create_pr(
@@ -543,7 +546,10 @@ pub async fn get_pr_comments(
 
     let provider = git_host.provider_kind();
 
-    match git_host.get_pr_comments(&repo.path, &remote_url, pr_info.number).await {
+    match git_host
+        .get_pr_comments(&repo.path, &remote_url, pr_info.number)
+        .await
+    {
         Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
             comments,
         }))),
