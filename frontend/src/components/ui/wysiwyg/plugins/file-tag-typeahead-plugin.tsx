@@ -29,7 +29,6 @@ class FileTagOption extends MenuOption {
   }
 }
 
-const MAX_DIALOG_HEIGHT = 320;
 const VIEWPORT_MARGIN = 8;
 const VERTICAL_GAP = 4;
 const VERTICAL_GAP_ABOVE = 24;
@@ -44,13 +43,6 @@ function getMenuPosition(anchorEl: HTMLElement) {
   const spaceBelow = viewportHeight - rect.bottom;
 
   const showBelow = spaceBelow >= spaceAbove;
-
-  const availableVerticalSpace = showBelow ? spaceBelow : spaceAbove;
-
-  const maxHeight = Math.max(
-    0,
-    Math.min(MAX_DIALOG_HEIGHT, availableVerticalSpace - 2 * VIEWPORT_MARGIN)
-  );
 
   let top: number | undefined;
   let bottom: number | undefined;
@@ -67,14 +59,13 @@ function getMenuPosition(anchorEl: HTMLElement) {
     left = Math.max(VIEWPORT_MARGIN, maxLeft);
   }
 
-  return { top, bottom, left, maxHeight };
+  return { top, bottom, left };
 }
 
 export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
-  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const lastSelectedIndexRef = useRef<number>(-1);
+  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
   const portalContainer = usePortalContainer();
 
   const onQueryChange = useCallback(
@@ -179,35 +170,18 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       ) => {
         if (!anchorRef.current) return null;
 
-        const { top, bottom, left, maxHeight } = getMenuPosition(
-          anchorRef.current
-        );
-
-        // Scroll selected item into view when navigating with arrow keys
-        if (
-          selectedIndex !== null &&
-          selectedIndex !== lastSelectedIndexRef.current
-        ) {
-          lastSelectedIndexRef.current = selectedIndex;
-          setTimeout(() => {
-            const itemEl = itemRefs.current.get(selectedIndex);
-            if (itemEl) {
-              itemEl.scrollIntoView({ block: 'nearest' });
-            }
-          }, 0);
-        }
+        const { top, bottom, left } = getMenuPosition(anchorRef.current);
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
 
         return createPortal(
           <div
-            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
+            className="fixed bg-background border border-border rounded-md shadow-lg"
             style={{
               top,
               bottom,
               left,
-              maxHeight,
               minWidth: MIN_WIDTH,
               zIndex: 10000,
             }}
@@ -230,16 +204,19 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
                               ? 'bg-muted text-foreground text-high'
                               : 'hover:bg-muted text-muted-foreground'
                           }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={(e) => {
+                            const pos = { x: e.clientX, y: e.clientY };
+                            const last = lastMousePositionRef.current;
+                            if (!last || last.x !== pos.x || last.y !== pos.y) {
+                              lastMousePositionRef.current = pos;
+                              setHighlightedIndex(index);
+                            }
+                          }}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
                           <div className="flex items-center gap-2 font-medium">
@@ -271,16 +248,19 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
                               ? 'bg-muted text-foreground text-high'
                               : 'hover:bg-muted text-muted-foreground'
                           }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={(e) => {
+                            const pos = { x: e.clientX, y: e.clientY };
+                            const last = lastMousePositionRef.current;
+                            if (!last || last.x !== pos.x || last.y !== pos.y) {
+                              lastMousePositionRef.current = pos;
+                              setHighlightedIndex(index);
+                            }
+                          }}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
                           <div className="flex items-center gap-2 font-medium truncate">
