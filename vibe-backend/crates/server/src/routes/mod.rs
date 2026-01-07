@@ -53,11 +53,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Public routes (no auth required)
     let public_routes = Router::new()
         .route("/health", get(health::health_check))
+        .merge(config::router())
         .merge(oauth::router());
 
     // Protected routes (auth required when enabled)
     let protected_routes = Router::new()
-        .merge(config::router())
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
         .merge(tasks::router(&deployment))
