@@ -38,6 +38,7 @@ export function FullAttemptLogsPage() {
                 <ExecutionProcessesProvider
                   key={attempt.id}
                   attemptId={attempt.id}
+                  sessionId={attempt.session?.id}
                 >
                   <TaskAttemptPanel attempt={attempt} task={task}>
                     {({ logs, followUp }) => (
