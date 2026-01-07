@@ -43,4 +43,5 @@ export {
   useDiscardPendingCommit,
   useDiscardAllPendingCommits,
 } from './usePendingCommits';
+export { useProjects } from './useProjects';
 export { useCollapsedCards } from './useCollapsedCards';

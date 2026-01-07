@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE projects\n               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5, git_auto_commit_enabled = $6, git_commit_title_mode = $7\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         dev_script,\n                         dev_script_working_dir,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                         git_commit_title_mode,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      git_commit_title_mode,\n                      redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "redirect_to_attempt_on_create: bool",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 1
     },
     "nullable": [
       true,
@@ -66,9 +71,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "f29af358cee884145202f6b5ff7bd88c84e165af8adf6973507a7e585c9f9c49"
+  "hash": "4e199bd8228ca1d61b557d624c7d89108b20f61978ff7d348499f2d5d54d8a76"
 }

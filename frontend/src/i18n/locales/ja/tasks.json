@@ -460,6 +460,8 @@
     "editTitle": "タスクを編集",
     "titlePlaceholder": "タスクのタイトル",
     "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
+    "branchNameLabel": "ブランチ名",
+    "branchNamePlaceholder": "タイトルから自動生成",
     "statusLabel": "ステータス",
     "statusOptions": {
       "todo": "未着手",

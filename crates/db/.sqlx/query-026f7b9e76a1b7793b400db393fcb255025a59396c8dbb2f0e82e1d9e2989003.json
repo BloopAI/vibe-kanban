@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      git_commit_title_mode,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      git_commit_title_mode,\n                      redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -44,13 +44,18 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "redirect_to_attempt_on_create: bool",
         "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
@@ -66,9 +71,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "27ed07cbec5944154bae9c628403daa48ccf3ad94d70ebcaafd4379cfddd7eae"
+  "hash": "026f7b9e76a1b7793b400db393fcb255025a59396c8dbb2f0e82e1d9e2989003"
 }
