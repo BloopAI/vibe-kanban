@@ -115,6 +115,7 @@ function TaskKanbanBoard({
               allCollapsed={allCollapsed}
               onToggleColumnCollapsed={() => toggleColumnCollapsed(statusKey)}
               columnCollapsed={columnCollapsed}
+              taskCount={items.length}
             />
             {!columnCollapsed && (
               <KanbanCards>
