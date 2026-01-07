@@ -465,6 +465,8 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
+    "startReview": "Start Review",
+    "startingReview": "Starting Review...",
     "task": "Task",
     "share": "Share",
     "reassign": "Reassign",
