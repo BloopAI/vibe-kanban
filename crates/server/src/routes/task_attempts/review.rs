@@ -2,12 +2,19 @@ use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     execution_process_repo_state::ExecutionProcessRepoState,
+    repo::Repo,
     session::{CreateSession, Session},
     workspace::Workspace,
 };
 use deployment::Deployment;
 use executors::{
-    actions::{ExecutorAction, ExecutorActionType, review::ReviewRequest as ReviewAction},
+    actions::{
+        ExecutorAction, ExecutorActionType,
+        review::{
+            CommitRange, RepoReviewContext as ExecutorRepoReviewContext,
+            ReviewRequest as ReviewAction,
+        },
+    },
     executors::build_review_prompt,
     profile::ExecutorProfileId,
 };
@@ -19,29 +26,12 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-/// Context for a repository in a review request
-#[derive(Debug, Clone, Deserialize, Serialize, TS)]
-pub struct RepoReviewContext {
-    pub repo_id: Uuid,
-    pub commit_hashes: Vec<String>,
-}
-
-impl From<RepoReviewContext> for executors::actions::review::RepoReviewContext {
-    fn from(ctx: RepoReviewContext) -> Self {
-        Self {
-            repo_id: ctx.repo_id,
-            commit_hashes: ctx.commit_hashes,
-        }
-    }
-}
-
 /// Request to start a review session
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct StartReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
-    pub context: Option<Vec<RepoReviewContext>>,
     pub additional_prompt: Option<String>,
-    /// If true and context is None, automatically include all workspace commits
+    /// If true, automatically include all workspace commits from initial state
     #[serde(default)]
     pub use_all_workspace_commits: bool,
 }
@@ -93,36 +83,41 @@ pub async fn start_review(
         }
     };
 
-    // Build context - either from payload or auto-populated from workspace commits
-    let context: Option<Vec<executors::actions::review::RepoReviewContext>> =
-        if let Some(ctx) = payload.context {
-            // Use explicit context if provided
-            Some(ctx.into_iter().map(|c| c.into()).collect())
-        } else if payload.use_all_workspace_commits {
-            // Auto-populate with initial commits for each repo in the workspace
-            let initial_commits =
-                ExecutionProcessRepoState::find_initial_commits_for_workspace(pool, workspace.id)
-                    .await?;
+    // Build context - auto-populated from workspace commits when requested
+    let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
+        // Auto-populate with initial commits for each repo in the workspace
+        let initial_commits =
+            ExecutionProcessRepoState::find_initial_commits_for_workspace(pool, workspace.id)
+                .await?;
 
-            if initial_commits.is_empty() {
-                None
-            } else {
-                Some(
-                    initial_commits
-                        .into_iter()
-                        .map(|(repo_id, initial_commit)| {
-                            executors::actions::review::RepoReviewContext {
-                                repo_id,
-                                // Store just the initial commit - prompt will say "from this commit onwards"
-                                commit_hashes: vec![initial_commit],
-                            }
-                        })
-                        .collect(),
-                )
-            }
-        } else {
+        if initial_commits.is_empty() {
             None
-        };
+        } else {
+            // Look up repo names
+            let repo_ids: Vec<Uuid> = initial_commits.iter().map(|(id, _)| *id).collect();
+            let repos = Repo::find_by_ids(pool, &repo_ids).await?;
+            let repo_map: std::collections::HashMap<Uuid, &Repo> =
+                repos.iter().map(|r| (r.id, r)).collect();
+
+            Some(
+                initial_commits
+                    .into_iter()
+                    .filter_map(|(repo_id, initial_commit)| {
+                        let repo = repo_map.get(&repo_id)?;
+                        Some(ExecutorRepoReviewContext {
+                            repo_id,
+                            repo_name: repo.display_name.clone(),
+                            commits: CommitRange::FromBase {
+                                commit: initial_commit,
+                            },
+                        })
+                    })
+                    .collect(),
+            )
+        }
+    } else {
+        None
+    };
 
     // Build the full prompt for display and execution
     let prompt = build_review_prompt(context.as_deref(), payload.additional_prompt.as_deref());

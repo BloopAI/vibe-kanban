@@ -232,9 +232,9 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, 
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, 
 /**
- * If true and context is None, automatically include all workspace commits
+ * If true, automatically include all workspace commits from initial state
  */
 use_all_workspace_commits: boolean, };
 
@@ -533,7 +533,9 @@ prompt: string,
  */
 working_dir: string | null, };
 
-export type RepoReviewContext = { repo_id: string, commit_hashes: Array<string>, };
+export type RepoReviewContext = { repo_id: string, repo_name: string, commits: CommitRange, };
+
+export type CommitRange = { "type": "from_base", commit: string, } | { "type": "specific", commits: Array<string>, } | { "type": "range", from: string, to: string, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

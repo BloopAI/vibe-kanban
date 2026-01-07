@@ -19,7 +19,6 @@ export function useStartReview(
       if (!attemptId) throw new Error('No attempt ID');
       return attemptsApi.startReview(attemptId, {
         executor_profile_id: params.executorProfileId,
-        context: null,
         additional_prompt: params.additionalPrompt ?? null,
         use_all_workspace_commits: true,
       });

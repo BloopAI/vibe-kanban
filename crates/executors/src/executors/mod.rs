@@ -313,30 +313,44 @@ impl AppendPrompt {
 }
 
 /// Build a natural language review prompt from context and additional instructions.
-/// When context contains initial commits, instructs the agent to review all changes from those commits.
 pub fn build_review_prompt(
     context: Option<&[RepoReviewContext]>,
     additional_prompt: Option<&str>,
 ) -> String {
+    use crate::actions::review::CommitRange;
+
     let mut prompt = String::from("Please review the code changes.\n\n");
 
     if let Some(repos) = context {
-        // Check if this looks like initial commit context (single commit per repo)
-        let has_single_commits = repos.iter().all(|r| r.commit_hashes.len() == 1);
+        for repo in repos {
+            prompt.push_str(&format!("Repository: {}\n", repo.repo_name));
 
-        if has_single_commits && !repos.is_empty() {
-            prompt.push_str("Review all changes made since the following base commit(s):\n");
-            for repo in repos {
-                if let Some(hash) = repo.commit_hashes.first() {
-                    prompt.push_str(&format!("- {} (base)\n", hash));
+            match &repo.commits {
+                CommitRange::FromBase { commit } => {
+                    prompt.push_str(&format!(
+                        "Review all changes from base commit {} to HEAD.\n",
+                        commit
+                    ));
+                    prompt.push_str(&format!(
+                        "Use `git diff {}..HEAD` to see the changes.\n",
+                        commit
+                    ));
                 }
-            }
-            prompt.push_str("\nYou can use `git diff <base>..HEAD` to see the changes.\n\n");
-        } else {
-            prompt.push_str("Commits to review:\n");
-            for repo in repos {
-                for hash in &repo.commit_hashes {
-                    prompt.push_str(&format!("- {}\n", hash));
+                CommitRange::Specific { commits } => {
+                    prompt.push_str("Review the following commits:\n");
+                    for hash in commits {
+                        prompt.push_str(&format!("- {}\n", hash));
+                    }
+                }
+                CommitRange::Range { from, to } => {
+                    prompt.push_str(&format!(
+                        "Review all changes from commit {} to {}.\n",
+                        from, to
+                    ));
+                    prompt.push_str(&format!(
+                        "Use `git diff {}..{}` to see the changes.\n",
+                        from, to
+                    ));
                 }
             }
             prompt.push('\n');
