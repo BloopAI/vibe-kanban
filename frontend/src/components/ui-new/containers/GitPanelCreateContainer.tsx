@@ -1,8 +1,9 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import { GitPanelCreate } from '@/components/ui-new/views/GitPanelCreate';
 import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
 import { useProjects } from '@/hooks/useProjects';
 import { useCreateMode } from '@/contexts/CreateModeContext';
+import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 
 interface GitPanelCreateContainerProps {
   className?: string;
@@ -42,6 +43,13 @@ export function GitPanelCreateContainer({
 
   const registeredRepoPaths = useMemo(() => repos.map((r) => r.path), [repos]);
 
+  const handleCreateProject = useCallback(async () => {
+    const result = await ProjectFormDialog.show({});
+    if (result.status === 'saved') {
+      setSelectedProjectId(result.project.id);
+    }
+  }, [setSelectedProjectId]);
+
   return (
     <GitPanelCreate
       className={className}
@@ -50,6 +58,7 @@ export function GitPanelCreateContainer({
       selectedProjectId={selectedProjectId}
       selectedProjectName={selectedProject?.name}
       onProjectSelect={(p) => setSelectedProjectId(p.id)}
+      onCreateProject={handleCreateProject}
       onRepoRemove={removeRepo}
       branchesByRepo={branchesByRepo}
       targetBranches={targetBranches}

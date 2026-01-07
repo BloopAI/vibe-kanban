@@ -11,7 +11,7 @@ import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { repoApi } from '@/lib/api';
+import { repoApi, projectsApi } from '@/lib/api';
 
 interface LocationState {
   duplicatePrompt?: string | null;
@@ -226,6 +226,52 @@ export function useCreateModeState({
       setSelectedProjectId(initialProjectId);
     }
   }, [initialProjectId]);
+
+  // Track if we've attempted auto-selection
+  const hasAttemptedAutoSelect = useRef(false);
+
+  // Auto-select first project or create "My first project" when no project is selected
+  useEffect(() => {
+    // Wait for scratch initialization to complete (hasInitialValue is set after initialization)
+    if (!hasInitialValue) return;
+    // Only run once
+    if (hasAttemptedAutoSelect.current) return;
+    // Skip if already have a project from scratch or props
+    if (selectedProjectId) return;
+    // Wait for projects to load
+    if (!projectsById) return;
+
+    hasAttemptedAutoSelect.current = true;
+
+    const projectsList = Object.values(projectsById);
+
+    if (projectsList.length > 0) {
+      // Auto-select the first project (sorted by created_at desc)
+      const sortedProjects = [...projectsList].sort(
+        (a, b) =>
+          new Date(b.created_at as unknown as string).getTime() -
+          new Date(a.created_at as unknown as string).getTime()
+      );
+      setSelectedProjectId(sortedProjects[0].id);
+    } else {
+      // Create "My first project" if no projects exist
+      const createDefaultProject = async () => {
+        try {
+          const newProject = await projectsApi.create({
+            name: 'My first project',
+            repositories: [],
+          });
+          setSelectedProjectId(newProject.id);
+        } catch (e) {
+          console.error(
+            '[useCreateModeState] Failed to create default project:',
+            e
+          );
+        }
+      };
+      createDefaultProject();
+    }
+  }, [hasInitialValue, selectedProjectId, projectsById]);
 
   // Handle duplicate prompt from navigation state
   useEffect(() => {
