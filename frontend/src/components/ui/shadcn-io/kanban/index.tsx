@@ -21,7 +21,13 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ChevronsDownUp, ChevronsUpDown, Plus } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Plus,
+} from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
@@ -156,6 +162,8 @@ export type KanbanHeaderProps =
       onCollapseAll?: () => void;
       onExpandAll?: () => void;
       allCollapsed?: boolean;
+      onToggleColumnCollapsed?: () => void;
+      columnCollapsed?: boolean;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -185,6 +193,31 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
       }}
     >
       <span className="flex-1 flex items-center gap-2">
+        {props.onToggleColumnCollapsed && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                  onClick={props.onToggleColumnCollapsed}
+                  aria-label={
+                    props.columnCollapsed ? t('expand') : t('collapse')
+                  }
+                >
+                  {props.columnCollapsed ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {props.columnCollapsed ? t('expand') : t('collapse')}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <div
           className="h-2 w-2 rounded-full"
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
@@ -200,7 +233,11 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
                 variant="ghost"
                 className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
                 onClick={handleCollapseToggle}
-                aria-label={props.allCollapsed ? t('actions.expandAll') : t('actions.collapseAll')}
+                aria-label={
+                  props.allCollapsed
+                    ? t('actions.expandAll')
+                    : t('actions.collapseAll')
+                }
               >
                 {props.allCollapsed ? (
                   <ChevronsUpDown className="h-4 w-4" />
@@ -210,7 +247,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
-              {props.allCollapsed ? t('actions.expandAll') : t('actions.collapseAll')}
+              {props.allCollapsed
+                ? t('actions.expandAll')
+                : t('actions.collapseAll')}
             </TooltipContent>
           </Tooltip>
         )}
