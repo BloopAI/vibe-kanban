@@ -49,6 +49,14 @@
         null
       ]
     },
+    "model_provider": {
+      "title": "Model Provider",
+      "description": "Model provider to use (e.g., openai, anthropic, google)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

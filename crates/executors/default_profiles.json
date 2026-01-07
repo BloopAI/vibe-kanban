@@ -233,6 +233,13 @@
           "autonomy": "skip-permissions-unsafe",
           "model": "glm-4.6"
         }
+      },
+      "CUSTOM_GLM_4_7": {
+        "DROID": {
+          "autonomy": "high",
+          "model": "custom:GLM-4.7-[GLM-Coding-Plan-China]-0",
+          "reasoning_effort": "none"
+        }
       }
     }
   }
