@@ -31,3 +31,4 @@ async-trait = "0.1"
 debug = true
 split-debuginfo = "packed"
 strip = true
+ 
