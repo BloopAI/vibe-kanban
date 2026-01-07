@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                p.id as \"id!: Uuid\",\n                p.name,\n                p.dev_script,\n                p.dev_script_working_dir,\n                p.default_agent_working_dir,\n                p.remote_project_id as \"remote_project_id: Uuid\",\n                p.git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                p.git_commit_title_mode,\n                p.auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                p.auto_pr_draft as \"auto_pr_draft: bool\",\n                p.redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                p.created_at as \"created_at!: DateTime<Utc>\",\n                p.updated_at as \"updated_at!: DateTime<Utc>\",\n                COALESCE(SUM(CASE WHEN t.status = 'todo' THEN 1 ELSE 0 END), 0) as \"todo!: i64\",\n                COALESCE(SUM(CASE WHEN t.status = 'inprogress' THEN 1 ELSE 0 END), 0) as \"inprogress!: i64\",\n                COALESCE(SUM(CASE WHEN t.status = 'inreview' THEN 1 ELSE 0 END), 0) as \"inreview!: i64\",\n                COALESCE(SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END), 0) as \"done!: i64\",\n                COALESCE(SUM(CASE WHEN t.status = 'cancelled' THEN 1 ELSE 0 END), 0) as \"cancelled!: i64\"\n            FROM projects p\n            LEFT JOIN tasks t ON t.project_id = p.id\n            GROUP BY p.id\n            ORDER BY p.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script_working_dir",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_agent_working_dir",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "git_auto_commit_enabled: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "git_commit_title_mode",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "auto_pr_on_review_enabled: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "auto_pr_draft: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "redirect_to_attempt_on_create: bool",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "todo!: i64",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "inprogress!: i64",
+        "ordinal": 14,
+        "type_info": "Integer"
+      },
+      {
+        "name": "inreview!: i64",
+        "ordinal": 15,
+        "type_info": "Integer"
+      },
+      {
+        "name": "done!: i64",
+        "ordinal": 16,
+        "type_info": "Integer"
+      },
+      {
+        "name": "cancelled!: i64",
+        "ordinal": 17,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0dcca9b39f5e3beca7f9e050a1c6448ea3ce4da0848ad0341803e23c4ae6a025"
+}

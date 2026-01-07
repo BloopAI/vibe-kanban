@@ -35,6 +35,31 @@ auto_pr_draft: boolean | null,
  */
 redirect_to_attempt_on_create: boolean | null, created_at: Date, updated_at: Date, };
 
+export type ProjectTaskCounts = { todo: bigint, inprogress: bigint, inreview: bigint, done: bigint, cancelled: bigint, };
+
+export type ProjectWithTaskCounts = { task_counts: ProjectTaskCounts, id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+git_auto_commit_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(mode) = override por proyecto
+ * valores: "AgentSummary", "AiGenerated", "Manual"
+ */
+git_commit_title_mode: string | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_on_review_enabled: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+auto_pr_draft: boolean | null, 
+/**
+ * None = usa config global, Some(true/false) = override por proyecto
+ */
+redirect_to_attempt_on_create: boolean | null, created_at: Date, updated_at: Date, };
+
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
 export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, 

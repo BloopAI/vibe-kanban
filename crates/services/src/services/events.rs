@@ -268,7 +268,7 @@ impl EventService {
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == task.id)
                                     {
-                                        let patch = match hook.operation {
+                                        let task_patch = match hook.operation {
                                             SqliteOperation::Insert => {
                                                 task_patch::add(&task_with_status)
                                             }
@@ -277,25 +277,47 @@ impl EventService {
                                             }
                                             _ => task_patch::replace(&task_with_status), // fallback
                                         };
-                                        msg_store_for_hook.push_patch(patch);
+                                        msg_store_for_hook.push_patch(task_patch);
+
+                                        // Also update project counts when task changes
+                                        if let Ok(Some(project_with_counts)) =
+                                            Project::find_by_id_with_task_counts(&db.pool, task.project_id).await
+                                        {
+                                            let project_patch = project_patch::replace_with_counts(&project_with_counts);
+                                            msg_store_for_hook.push_patch(project_patch);
+                                        }
                                         return;
                                     }
                                 }
                                 RecordTypes::DeletedTask {
                                     task_id: Some(task_id),
+                                    project_id: Some(project_id),
                                     ..
                                 } => {
                                     let patch = task_patch::remove(*task_id);
                                     msg_store_for_hook.push_patch(patch);
+
+                                    // Also update project counts when task is deleted
+                                    if let Ok(Some(project_with_counts)) =
+                                        Project::find_by_id_with_task_counts(&db.pool, *project_id).await
+                                    {
+                                        let project_patch = project_patch::replace_with_counts(&project_with_counts);
+                                        msg_store_for_hook.push_patch(project_patch);
+                                    }
                                     return;
                                 }
                                 RecordTypes::Project(project) => {
-                                    let patch = match hook.operation {
-                                        SqliteOperation::Insert => project_patch::add(project),
-                                        SqliteOperation::Update => project_patch::replace(project),
-                                        _ => project_patch::replace(project),
-                                    };
-                                    msg_store_for_hook.push_patch(patch);
+                                    // Fetch project with task counts
+                                    if let Ok(Some(project_with_counts)) =
+                                        Project::find_by_id_with_task_counts(&db.pool, project.id).await
+                                    {
+                                        let patch = match hook.operation {
+                                            SqliteOperation::Insert => project_patch::add_with_counts(&project_with_counts),
+                                            SqliteOperation::Update => project_patch::replace_with_counts(&project_with_counts),
+                                            _ => project_patch::replace_with_counts(&project_with_counts),
+                                        };
+                                        msg_store_for_hook.push_patch(patch);
+                                    }
                                     return;
                                 }
                                 RecordTypes::Scratch(scratch) => {

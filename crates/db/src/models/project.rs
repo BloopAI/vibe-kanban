@@ -42,6 +42,23 @@ pub struct Project {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectTaskCounts {
+    pub todo: i64,
+    pub inprogress: i64,
+    pub inreview: i64,
+    pub done: i64,
+    pub cancelled: i64,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ProjectWithTaskCounts {
+    #[serde(flatten)]
+    #[ts(flatten)]
+    pub project: Project,
+    pub task_counts: ProjectTaskCounts,
+}
+
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProject {
     pub name: String,
@@ -403,5 +420,128 @@ impl Project {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    pub async fn find_by_id_with_task_counts(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Option<ProjectWithTaskCounts>, sqlx::Error> {
+        let record = sqlx::query!(
+            r#"
+            SELECT
+                p.id as "id!: Uuid",
+                p.name,
+                p.dev_script,
+                p.dev_script_working_dir,
+                p.default_agent_working_dir,
+                p.remote_project_id as "remote_project_id: Uuid",
+                p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                p.git_commit_title_mode,
+                p.auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
+                p.auto_pr_draft as "auto_pr_draft: bool",
+                p.redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
+                p.created_at as "created_at!: DateTime<Utc>",
+                p.updated_at as "updated_at!: DateTime<Utc>",
+                COALESCE(SUM(CASE WHEN t.status = 'todo' THEN 1 ELSE 0 END), 0) as "todo!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'inprogress' THEN 1 ELSE 0 END), 0) as "inprogress!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'inreview' THEN 1 ELSE 0 END), 0) as "inreview!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END), 0) as "done!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'cancelled' THEN 1 ELSE 0 END), 0) as "cancelled!: i64"
+            FROM projects p
+            LEFT JOIN tasks t ON t.project_id = p.id
+            WHERE p.id = $1
+            GROUP BY p.id
+            "#,
+            project_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(record.map(|r| ProjectWithTaskCounts {
+            project: Project {
+                id: r.id,
+                name: r.name,
+                dev_script: r.dev_script,
+                dev_script_working_dir: r.dev_script_working_dir,
+                default_agent_working_dir: r.default_agent_working_dir,
+                remote_project_id: r.remote_project_id,
+                git_auto_commit_enabled: r.git_auto_commit_enabled,
+                git_commit_title_mode: r.git_commit_title_mode,
+                auto_pr_on_review_enabled: r.auto_pr_on_review_enabled,
+                auto_pr_draft: r.auto_pr_draft,
+                redirect_to_attempt_on_create: r.redirect_to_attempt_on_create,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            },
+            task_counts: ProjectTaskCounts {
+                todo: r.todo,
+                inprogress: r.inprogress,
+                inreview: r.inreview,
+                done: r.done,
+                cancelled: r.cancelled,
+            },
+        }))
+    }
+
+    pub async fn find_all_with_task_counts(
+        pool: &SqlitePool,
+    ) -> Result<Vec<ProjectWithTaskCounts>, sqlx::Error> {
+        let records = sqlx::query!(
+            r#"
+            SELECT
+                p.id as "id!: Uuid",
+                p.name,
+                p.dev_script,
+                p.dev_script_working_dir,
+                p.default_agent_working_dir,
+                p.remote_project_id as "remote_project_id: Uuid",
+                p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                p.git_commit_title_mode,
+                p.auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
+                p.auto_pr_draft as "auto_pr_draft: bool",
+                p.redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
+                p.created_at as "created_at!: DateTime<Utc>",
+                p.updated_at as "updated_at!: DateTime<Utc>",
+                COALESCE(SUM(CASE WHEN t.status = 'todo' THEN 1 ELSE 0 END), 0) as "todo!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'inprogress' THEN 1 ELSE 0 END), 0) as "inprogress!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'inreview' THEN 1 ELSE 0 END), 0) as "inreview!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END), 0) as "done!: i64",
+                COALESCE(SUM(CASE WHEN t.status = 'cancelled' THEN 1 ELSE 0 END), 0) as "cancelled!: i64"
+            FROM projects p
+            LEFT JOIN tasks t ON t.project_id = p.id
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+            "#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|r| ProjectWithTaskCounts {
+                project: Project {
+                    id: r.id,
+                    name: r.name,
+                    dev_script: r.dev_script,
+                    dev_script_working_dir: r.dev_script_working_dir,
+                    default_agent_working_dir: r.default_agent_working_dir,
+                    remote_project_id: r.remote_project_id,
+                    git_auto_commit_enabled: r.git_auto_commit_enabled,
+                    git_commit_title_mode: r.git_commit_title_mode,
+                    auto_pr_on_review_enabled: r.auto_pr_on_review_enabled,
+                    auto_pr_draft: r.auto_pr_draft,
+                    redirect_to_attempt_on_create: r.redirect_to_attempt_on_create,
+                    created_at: r.created_at,
+                    updated_at: r.updated_at,
+                },
+                task_counts: ProjectTaskCounts {
+                    todo: r.todo,
+                    inprogress: r.inprogress,
+                    inreview: r.inreview,
+                    done: r.done,
+                    cancelled: r.cancelled,
+                },
+            })
+            .collect())
     }
 }

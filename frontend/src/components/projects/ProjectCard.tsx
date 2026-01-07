@@ -22,7 +22,7 @@ import {
   Trash2,
   Unlink,
 } from 'lucide-react';
-import { Project } from 'shared/types';
+import { ProjectWithTaskCounts } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useOpenProjectInTerminal } from '@/hooks/useOpenProjectInTerminal';
@@ -30,13 +30,14 @@ import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
+import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 type Props = {
-  project: Project;
+  project: ProjectWithTaskCounts;
   isFocused: boolean;
   setError: (error: string) => void;
-  onEdit: (project: Project) => void;
+  onEdit: (project: ProjectWithTaskCounts) => void;
 };
 
 function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
@@ -79,7 +80,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
     }
   };
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = (project: ProjectWithTaskCounts) => {
     onEdit(project);
   };
 
@@ -97,6 +98,10 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
       console.error('Failed to link project:', error);
     }
   };
+
+
+  const taskCounts = project.task_counts;
+  const totalTasks = Number(taskCounts.todo) + Number(taskCounts.inprogress) + Number(taskCounts.inreview) + Number(taskCounts.done) + Number(taskCounts.cancelled);
 
   const handleUnlinkProject = () => {
     const confirmed = window.confirm(
@@ -198,11 +203,37 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
             </DropdownMenu>
           </div>
         </div>
-        <CardDescription className="flex items-center">
-          <Calendar className="mr-1 h-3 w-3" />
-          {t('createdDate', {
-            date: new Date(project.created_at).toLocaleDateString(),
-          })}
+        <CardDescription className="flex items-center gap-3">
+          <div className="flex items-center">
+            <Calendar className="mr-1 h-3 w-3" />
+            {t('createdDate', {
+              date: new Date(project.created_at).toLocaleDateString(),
+            })}
+          </div>
+          {totalTasks > 0 && (
+            <div className="flex items-center gap-2">
+              {(['todo', 'inprogress', 'inreview', 'done', 'cancelled'] as const).map((status) => {
+                const count = Number(taskCounts[status]);
+                if (count === 0) return null;
+
+                return (
+                  <div
+                    key={status}
+                    className="flex items-center gap-1 text-xs"
+                    title={`${statusLabels[status]}: ${count}`}
+                  >
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        backgroundColor: `hsl(var(${statusBoardColors[status]}))`,
+                      }}
+                    />
+                    <span>{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
     </Card>
