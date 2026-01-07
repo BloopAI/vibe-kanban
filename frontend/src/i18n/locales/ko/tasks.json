@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "작업 추가"
+    "addTask": "작업 추가",
+    "collapseAll": "모두 접기",
+    "expandAll": "모두 펼치기"
   },
+  "collapse": "접기",
+  "expand": "펼치기",
   "filters": {
     "sharedToggleAria": "공유 작업 전환",
     "sharedToggleTooltip": "공유 콘텐츠 표시/숨기기"
@@ -447,7 +451,8 @@
     },
     "card": {
       "review": "리뷰",
-      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
+      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집",
+      "viewFull": "전체 댓글 보기"
     }
   },
   "taskFormDialog": {

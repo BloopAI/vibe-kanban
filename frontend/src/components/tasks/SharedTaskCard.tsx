@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
+import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface SharedTaskCardProps {
   task: SharedTaskRecord;
@@ -9,6 +12,8 @@ interface SharedTaskCardProps {
   status: string;
   onViewDetails?: (task: SharedTaskRecord) => void;
   isSelected?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapsed?: (taskId: string) => void;
 }
 
 export function SharedTaskCard({
@@ -17,12 +22,25 @@ export function SharedTaskCard({
   status,
   onViewDetails,
   isSelected,
+  isCollapsed = false,
+  onToggleCollapsed,
 }: SharedTaskCardProps) {
+  const { t } = useTranslation('tasks');
   const localRef = useRef<HTMLDivElement>(null);
 
   const handleClick = useCallback(() => {
     onViewDetails?.(task);
   }, [onViewDetails, task]);
+
+  const handleToggleCollapsed = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onToggleCollapsed?.(task.id);
+    },
+    [task.id, onToggleCollapsed]
+  );
+
+  const hasExpandableContent = !!task.description;
 
   useEffect(() => {
     if (!isSelected || !localRef.current) return;
@@ -50,14 +68,34 @@ export function SharedTaskCard({
     >
       <div className="flex flex-col gap-2">
         <TaskCardHeader
-          title={task.title}
+          title={
+            <span className="flex items-center gap-1">
+              {hasExpandableContent && onToggleCollapsed && (
+                <Button
+                  variant="icon"
+                  onClick={handleToggleCollapsed}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="h-4 w-4 p-0 -ml-1 shrink-0"
+                  title={isCollapsed ? t('expand') : t('collapse')}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              <span>{task.title}</span>
+            </span>
+          }
           avatar={{
             firstName: task.assignee_first_name ?? undefined,
             lastName: task.assignee_last_name ?? undefined,
             username: task.assignee_username ?? undefined,
           }}
         />
-        {task.description && (
+        {!isCollapsed && task.description && (
           <p className="text-sm text-secondary-foreground break-words">
             {task.description.length > 130
               ? `${task.description.substring(0, 130)}...`

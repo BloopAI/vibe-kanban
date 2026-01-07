@@ -6,8 +6,12 @@
     "noSearchResults": "沒有任務符合您的搜尋。"
   },
   "actions": {
-    "addTask": "新增任務"
+    "addTask": "新增任務",
+    "collapseAll": "全部摺疊",
+    "expandAll": "全部展開"
   },
+  "collapse": "摺疊",
+  "expand": "展開",
   "filters": {
     "sharedToggleAria": "切換共享任務",
     "sharedToggleTooltip": "顯示/隱藏共享內容"
@@ -444,7 +448,8 @@
     },
     "card": {
       "review": "審查",
-      "tooltip": "點擊在 GitHub 上查看，雙擊編輯"
+      "tooltip": "點擊在 GitHub 上查看，雙擊編輯",
+      "viewFull": "查看完整評論"
     }
   },
   "taskFormDialog": {

@@ -6,8 +6,12 @@
     "noSearchResults": "没有任务匹配您的搜索。"
   },
   "actions": {
-    "addTask": "添加任务"
+    "addTask": "添加任务",
+    "collapseAll": "全部折叠",
+    "expandAll": "全部展开"
   },
+  "collapse": "折叠",
+  "expand": "展开",
   "filters": {
     "sharedToggleAria": "切换共享任务",
     "sharedToggleTooltip": "显示/隐藏共享内容"
@@ -446,7 +450,8 @@
     },
     "card": {
       "review": "审查",
-      "tooltip": "点击在 GitHub 上查看，双击编辑"
+      "tooltip": "点击在 GitHub 上查看，双击编辑",
+      "viewFull": "查看完整评论"
     }
   },
   "taskFormDialog": {

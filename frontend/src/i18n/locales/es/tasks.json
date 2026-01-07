@@ -1,7 +1,11 @@
 {
   "actions": {
-    "addTask": "Agregar tarea"
+    "addTask": "Agregar tarea",
+    "collapseAll": "Colapsar todas",
+    "expandAll": "Expandir todas"
   },
+  "collapse": "Colapsar",
+  "expand": "Expandir",
   "filters": {
     "sharedToggleAria": "Alternar tareas compartidas",
     "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"
@@ -447,7 +451,8 @@
     },
     "card": {
       "review": "Revisión",
-      "tooltip": "Clic para ver en GitHub, doble clic para editar"
+      "tooltip": "Clic para ver en GitHub, doble clic para editar",
+      "viewFull": "Ver comentario completo"
     }
   },
   "taskFormDialog": {
