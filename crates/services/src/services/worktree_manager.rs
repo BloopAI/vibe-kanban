@@ -196,32 +196,47 @@ impl WorktreeManager {
         }
 
         let worktree_root = canonicalize_for_compare(&normalize_macos_private_alias(worktree_path));
-        let worktree_metadata_path = git_repo_path.join(".git").join("worktrees");
-        let worktree_metadata_folders = fs::read_dir(&worktree_metadata_path)
-            .map_err(|e| {
-                WorktreeError::Repository(format!(
+        let worktree_metadata_path = Self::get_worktree_metadata_path(git_repo_path)?;
+        let worktree_metadata_folders = match fs::read_dir(&worktree_metadata_path) {
+            Ok(read_dir) => read_dir
+                .filter_map(|entry| entry.ok())
+                .collect::<Vec<fs::DirEntry>>(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => {
+                return Err(WorktreeError::Repository(format!(
                     "Failed to read worktree metadata directory at {}: {}",
                     worktree_metadata_path.display(),
                     e
-                ))
-            })?
-            .filter_map(|entry| entry.ok())
-            .collect::<Vec<fs::DirEntry>>();
+                )));
+            }
+        };
         // read the worktrees/*/gitdir and see which one matches the worktree_path
         for entry in worktree_metadata_folders {
             let gitdir_path = entry.path().join("gitdir");
             if gitdir_path.exists()
                 && let Ok(gitdir_content) = fs::read_to_string(&gitdir_path)
-                && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
-                    .parent()
-                    .map(canonicalize_for_compare)
-                    .map(|p| p == worktree_root)
-                    .unwrap_or(false)
+                && {
+                    let raw_gitdir_path = Path::new(gitdir_content.trim());
+                    let resolved_gitdir_path = if raw_gitdir_path.is_absolute() {
+                        raw_gitdir_path.to_path_buf()
+                    } else {
+                        entry.path().join(raw_gitdir_path)
+                    };
+                    normalize_macos_private_alias(&resolved_gitdir_path)
+                        .parent()
+                        .map(canonicalize_for_compare)
+                        .is_some_and(|p| p == worktree_root)
+                }
             {
                 return Ok(Some(entry.file_name().to_string_lossy().to_string()));
             }
         }
         Ok(None)
+    }
+
+    fn get_worktree_metadata_path(git_repo_path: &Path) -> Result<PathBuf, WorktreeError> {
+        let repo = Repository::open(git_repo_path).map_err(WorktreeError::Git)?;
+        Ok(repo.commondir().join("worktrees"))
     }
 
     /// Comprehensive cleanup of worktree path and metadata to prevent "path exists" errors (blocking)
@@ -389,10 +404,8 @@ impl WorktreeManager {
         if let Some(worktree_name) =
             Self::find_worktree_git_internal_name(git_repo_path, worktree_path)?
         {
-            let git_worktree_metadata_path = git_repo_path
-                .join(".git")
-                .join("worktrees")
-                .join(worktree_name);
+            let git_worktree_metadata_path =
+                Self::get_worktree_metadata_path(git_repo_path)?.join(worktree_name);
 
             if git_worktree_metadata_path.exists() {
                 debug!(
