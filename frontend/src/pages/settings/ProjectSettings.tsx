@@ -35,8 +35,6 @@ import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
-  dev_script: string;
-  dev_script_working_dir: string;
   default_agent_working_dir: string;
 }
 
@@ -45,13 +43,12 @@ interface RepoScriptsFormState {
   parallel_setup_script: boolean;
   cleanup_script: string;
   copy_files: string;
+  dev_server_script: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
-    dev_script: project.dev_script ?? '',
-    dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
   };
 }
@@ -64,6 +61,7 @@ function projectRepoToScriptsFormState(
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
+    dev_server_script: projectRepo?.dev_server_script ?? '',
   };
 }
 
@@ -393,8 +391,6 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        dev_script: draft.dev_script.trim() || null,
-        dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
       };
@@ -426,6 +422,7 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
+          dev_server_script: scriptsDraft.dev_server_script.trim() || null,
         }
       );
       setSelectedProjectRepo(updatedRepo);
@@ -570,43 +567,6 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.general.name.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-script">
-                  {t('settings.projects.scripts.dev.label')}
-                </Label>
-                <AutoExpandingTextarea
-                  id="dev-script"
-                  value={draft.dev_script}
-                  onChange={(e) => updateDraft({ dev_script: e.target.value })}
-                  placeholder={placeholders.dev}
-                  maxRows={12}
-                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.dev.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-script-working-dir">
-                  {t('settings.projects.scripts.devWorkingDir.label')}
-                </Label>
-                <Input
-                  id="dev-script-working-dir"
-                  value={draft.dev_script_working_dir}
-                  onChange={(e) =>
-                    updateDraft({ dev_script_working_dir: e.target.value })
-                  }
-                  placeholder={t(
-                    'settings.projects.scripts.devWorkingDir.placeholder'
-                  )}
-                  className="font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.devWorkingDir.helper')}
                 </p>
               </div>
 
@@ -888,6 +848,27 @@ export function ProjectSettings() {
                         />
                         <p className="text-sm text-muted-foreground">
                           {t('settings.projects.scripts.copyFiles.helper')}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dev-server-script">
+                          {t('settings.projects.scripts.devServer.label')}
+                        </Label>
+                        <AutoExpandingTextarea
+                          id="dev-server-script"
+                          value={scriptsDraft.dev_server_script}
+                          onChange={(e) =>
+                            updateScriptsDraft({
+                              dev_server_script: e.target.value,
+                            })
+                          }
+                          placeholder={placeholders.dev}
+                          maxRows={12}
+                          className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          {t('settings.projects.scripts.devServer.helper')}
                         </p>
                       </div>
 

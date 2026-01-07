@@ -372,47 +372,26 @@ pub trait ContainerService {
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
 
-            // Also update dev_script_working_dir and agent_working_dir for single-repo projects
+            // Update agent_working_dir for single-repo projects
             let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
             for pr in project_repos {
                 let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
                 if all_repos.len() == 1
                     && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
                 {
-                    let needs_dev_script_working_dir = project
-                        .dev_script
-                        .as_ref()
-                        .map(|s| !s.is_empty())
-                        .unwrap_or(false)
-                        && project
-                            .dev_script_working_dir
-                            .as_ref()
-                            .map(|s| s.is_empty())
-                            .unwrap_or(true);
-
                     let needs_default_agent_working_dir = project
                         .default_agent_working_dir
                         .as_ref()
                         .map(|s| s.is_empty())
                         .unwrap_or(true);
 
-                    if needs_dev_script_working_dir || needs_default_agent_working_dir {
+                    if needs_default_agent_working_dir {
                         Project::update(
                             pool,
                             pr.project_id,
                             &UpdateProject {
                                 name: Some(project.name.clone()),
-                                dev_script: project.dev_script.clone(),
-                                dev_script_working_dir: if needs_dev_script_working_dir {
-                                    Some(name.clone())
-                                } else {
-                                    project.dev_script_working_dir.clone()
-                                },
-                                default_agent_working_dir: if needs_default_agent_working_dir {
-                                    Some(name.clone())
-                                } else {
-                                    project.default_agent_working_dir.clone()
-                                },
+                                default_agent_working_dir: Some(name.clone()),
                             },
                         )
                         .await?;
