@@ -31,13 +31,13 @@ import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
 import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
-import { useProjectWithTaskCountsMutations } from '@/hooks/useProjectWithTaskCountsMutations';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 type Props = {
-  project: Project;
+  project: ProjectWithTaskCounts;
   isFocused: boolean;
   setError: (error: string) => void;
-  onEdit: (project: Project) => void;
+  onEdit: (project: ProjectWithTaskCounts) => void;
 };
 
 function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
@@ -80,7 +80,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
     }
   };
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = (project: ProjectWithTaskCounts) => {
     onEdit(project);
   };
 
