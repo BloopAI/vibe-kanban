@@ -153,7 +153,7 @@ export const useConversationHistory = ({
   const getLiveExecutionProcess = (
     executionProcessId: string
   ): ExecutionProcess | undefined => {
-    return executionProcesses?.current.find(
+    return executionProcessesRaw.find(
       (executionProcess) => executionProcess.id === executionProcessId
     );
   };
@@ -193,10 +193,12 @@ export const useConversationHistory = ({
 
   const getActiveAgentProcesses = (): ExecutionProcess[] => {
     return (
-      executionProcesses?.current.filter(
+      executionProcessesRaw.filter(
         (p) =>
-          p.status === ExecutionProcessStatus.running &&
-          p.run_reason !== 'devserver'
+          (p.run_reason === 'setupscript' ||
+            p.run_reason === 'cleanupscript' ||
+            p.run_reason === 'codingagent') &&
+          p.status === ExecutionProcessStatus.running
       ) ?? []
     );
   };
