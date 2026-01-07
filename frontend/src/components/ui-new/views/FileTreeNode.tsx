@@ -29,7 +29,13 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
 
     const isFolder = node.type === 'folder';
     const isDeleted = node.changeKind === 'deleted';
+    const isAdded = node.changeKind === 'added';
+    const isRenamed = node.changeKind === 'renamed';
+    const isCopied = node.changeKind === 'copied';
     const FileIcon = isFolder ? null : getFileIcon(node.name, actualTheme);
+
+    // Extract filename from path for renamed/copied display
+    const getFileName = (path: string) => path.split('/').pop() || path;
 
     const handleClick = () => {
       if (isFolder && onToggle) {
@@ -66,7 +72,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
 
         {/* Content with padding based on depth */}
         <div
-          className="flex items-center gap-half flex-1 min-w-0 pr-base"
+          className="flex items-center gap-half flex-1 pr-base whitespace-nowrap"
           style={{ paddingLeft: `${depth * 12 + 6}px` }}
         >
           {/* Expand/collapse caret for folders */}
@@ -88,15 +94,23 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
             ) : null}
           </span>
 
-          {/* File/folder name - strikethrough and error color for deleted files */}
+          {/* File/folder name - color based on change kind */}
           <span
             className={cn(
-              'flex-1 text-sm truncate min-w-0',
-              isDeleted && 'text-error line-through'
+              'text-sm',
+              isDeleted && 'text-error line-through',
+              isAdded && 'text-success'
             )}
           >
             {node.name}
           </span>
+
+          {/* Show old filename for renamed/copied files */}
+          {(isRenamed || isCopied) && node.diff?.oldPath && (
+            <span className="text-low text-sm shrink-0">
+              ← {getFileName(node.diff.oldPath)}
+            </span>
+          )}
 
           {/* Stats for files */}
           {node.type === 'file' && (node.additions || node.deletions) && (

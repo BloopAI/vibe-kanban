@@ -72,7 +72,7 @@ export function FileTree({
           onToggleExpandAll={onToggleExpandAll}
         />
       </div>
-      <div className="p-base flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
+      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
         {nodes.length > 0 ? (
           renderNodes(nodes)
         ) : (

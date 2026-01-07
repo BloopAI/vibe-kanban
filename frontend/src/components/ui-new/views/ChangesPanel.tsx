@@ -48,6 +48,7 @@ const DiffItem = memo(function DiffItem({
     newContent: diff.newContent || '',
     oldPath: diff.oldPath || undefined,
     newPath: diff.newPath || '',
+    changeKind: diff.change,
   };
 
   return (

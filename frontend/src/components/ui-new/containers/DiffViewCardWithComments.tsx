@@ -16,11 +16,12 @@ import {
 } from '@/contexts/ReviewProvider';
 import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
-import { ToolStatus } from 'shared/types';
+import type { ToolStatus, DiffChangeKind } from 'shared/types';
 import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
+import { DisplayTruncatedPath } from '@/utils/TruncatePath';
 
 // Discriminated union for input format flexibility
 export type DiffInput =
@@ -30,6 +31,7 @@ export type DiffInput =
       newContent: string;
       oldPath?: string;
       newPath: string;
+      changeKind?: DiffChangeKind;
     }
   | {
       type: 'unified';
@@ -180,6 +182,29 @@ export function DiffViewCardWithComments({
   const FileIcon = getFileIcon(filePath, actualTheme);
   const hasStats = additions > 0 || deletions > 0;
 
+  // Extract change kind from input
+  const changeKind = input.type === 'content' ? input.changeKind : undefined;
+  const oldPath = input.type === 'content' ? input.oldPath : undefined;
+
+  // Get short label for change kind (no label for modified)
+  const getChangeLabel = (kind?: DiffChangeKind): string | null => {
+    switch (kind) {
+      case 'added':
+        return 'Added';
+      case 'deleted':
+        return 'Deleted';
+      case 'renamed':
+        return 'Renamed';
+      case 'copied':
+        return 'Copied';
+      case 'permissionChange':
+        return 'Perm';
+      default:
+        return null;
+    }
+  };
+  const changeLabel = getChangeLabel(changeKind);
+
   // Filter comments for this file
   const commentsForFile = useMemo(
     () => comments.filter((c) => c.filePath === filePath),
@@ -258,42 +283,59 @@ export function DiffViewCardWithComments({
       {/* Header */}
       <div
         className={cn(
-          'flex items-center bg-panel p-base w-full',
+          'w-full flex items-center bg-panel p-base gap-base',
           onToggle && 'cursor-pointer'
         )}
         onClick={onToggle}
       >
-        <div className="flex-1 flex items-center gap-base min-w-0">
-          <span className="relative shrink-0">
-            <FileIcon className="size-icon-base" />
-            {status && (
-              <ToolStatusDot
-                status={status}
-                className="absolute -bottom-0.5 -right-0.5"
-              />
+        <span className="relative shrink-0">
+          <FileIcon className="size-icon-base" />
+          {status && (
+            <ToolStatusDot
+              status={status}
+              className="absolute -bottom-0.5 -right-0.5"
+            />
+          )}
+        </span>
+        {changeLabel && (
+          <span
+            className={cn(
+              'text-sm shrink-0 bg-primary rounded-sm px-1',
+              changeKind === 'deleted' && 'text-error border border-error/20',
+              changeKind === 'added' && 'text-success border border-success/20'
             )}
+          >
+            {changeLabel}
           </span>
-          <span className="text-sm text-normal truncate font-ibm-plex-mono">
-            {filePath}
-          </span>
-          {hasStats && (
-            <span className="text-sm shrink-0">
-              {additions > 0 && (
-                <span className="text-success">+{additions}</span>
-              )}
-              {additions > 0 && deletions > 0 && ' '}
-              {deletions > 0 && (
-                <span className="text-error">-{deletions}</span>
-              )}
-            </span>
+        )}
+        <div
+          className={cn(
+            'text-sm flex-1 min-w-0',
+            changeKind === 'deleted' && 'text-error line-through'
           )}
-          {commentsForFile.length > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-accent/10 text-accent rounded shrink-0">
-              <ChatCircleIcon className="size-icon-xs" weight="fill" />
-              {commentsForFile.length}
-            </span>
-          )}
+        >
+          <DisplayTruncatedPath path={filePath} />
         </div>
+        {(changeKind === 'renamed' || changeKind === 'copied') && oldPath && (
+          <span className="text-low text-sm shrink-0">
+            ← {oldPath.split('/').pop()}
+          </span>
+        )}
+        {hasStats && (
+          <span className="text-sm shrink-0">
+            {additions > 0 && (
+              <span className="text-success">+{additions}</span>
+            )}
+            {additions > 0 && deletions > 0 && ' '}
+            {deletions > 0 && <span className="text-error">-{deletions}</span>}
+          </span>
+        )}
+        {commentsForFile.length > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-accent/10 text-accent rounded shrink-0">
+            <ChatCircleIcon className="size-icon-xs" weight="fill" />
+            {commentsForFile.length}
+          </span>
+        )}
         <div className="flex items-center gap-1 shrink-0">
           {attemptId && (
             <span onClick={(e) => e.stopPropagation()}>
