@@ -232,6 +232,10 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, };
+
+export type ReviewError = { "type": "process_already_running" };
+
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
 export type OpenEditorResponse = { url: string | null, };
@@ -410,7 +414,7 @@ export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAct
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
-export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
 export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
 
@@ -514,6 +518,14 @@ executor_profile_id: ExecutorProfileId,
  * If None, uses the container_ref directory directly.
  */
 working_dir: string | null, };
+
+export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, 
+/**
+ * Optional relative path to execute the agent in (relative to container_ref).
+ */
+working_dir: string | null, };
+
+export type RepoReviewContext = { repo_id: string, commit_hashes: Array<string>, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 
