@@ -199,7 +199,9 @@ impl Repo {
         id: Uuid,
         payload: &UpdateRepo,
     ) -> Result<Self, RepoError> {
-        let existing = Self::find_by_id(pool, id).await?.ok_or(RepoError::NotFound)?;
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
 
         let display_name = payload
             .display_name

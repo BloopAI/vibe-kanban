@@ -17,6 +17,7 @@ import {
   McpSettings,
   OrganizationSettings,
   ProjectSettings,
+  ReposSettings,
   SettingsLayout,
 } from '@/pages/settings/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
@@ -156,6 +157,7 @@ function AppContent() {
                 <Route index element={<Navigate to="general" replace />} />
                 <Route path="general" element={<GeneralSettings />} />
                 <Route path="projects" element={<ProjectSettings />} />
+                <Route path="repos" element={<ReposSettings />} />
                 <Route
                   path="organizations"
                   element={<OrganizationSettings />}
