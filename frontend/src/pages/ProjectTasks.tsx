@@ -102,10 +102,12 @@ function DiffsPanelContainer({
   attempt,
   selectedTask,
   branchStatus,
+  branchStatusError,
 }: {
   attempt: Workspace | null;
   selectedTask: TaskWithAttemptStatus | null;
   branchStatus: RepoBranchStatus[] | null;
+  branchStatusError?: Error | null;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
@@ -118,6 +120,7 @@ function DiffsPanelContainer({
           ? {
               task: selectedTask,
               branchStatus: branchStatus ?? null,
+              branchStatusError,
               isAttemptRunning,
               selectedBranch: branchStatus?.[0]?.target_branch_name ?? null,
             }
@@ -284,7 +287,7 @@ export function ProjectTasks() {
   const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttemptWithSession(effectiveAttemptId);
 
-  const { data: branchStatus } = useBranchStatus(attempt?.id);
+  const { data: branchStatus, error: branchStatusError } = useBranchStatus(attempt?.id);
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
@@ -1000,6 +1003,7 @@ export function ProjectTasks() {
             attempt={attempt}
             selectedTask={selectedTask}
             branchStatus={branchStatus ?? null}
+            branchStatusError={branchStatusError}
           />
         )}
       </div>

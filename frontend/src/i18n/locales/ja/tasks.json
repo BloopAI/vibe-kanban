@@ -235,7 +235,8 @@
       "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
       "mergeChanges": "変更のマージに失敗しました",
       "pushChanges": "変更のプッシュに失敗しました",
-      "rebaseBranch": "ブランチのリベースに失敗しました"
+      "rebaseBranch": "ブランチのリベースに失敗しました",
+      "branchStatusUnavailable": "ブランチのステータスを取得できません。ターゲットブランチの変更は引き続き可能です。"
     },
     "labels": {
       "taskBranch": "タスクブランチ"

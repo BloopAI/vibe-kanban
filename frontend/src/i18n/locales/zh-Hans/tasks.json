@@ -270,7 +270,8 @@
       "changeTargetBranch": "更改目标分支失败",
       "pushChanges": "推送更改失败",
       "mergeChanges": "合并更改失败",
-      "rebaseBranch": "变基分支失败"
+      "rebaseBranch": "变基分支失败",
+      "branchStatusUnavailable": "无法获取分支状态。您仍然可以更改目标分支。"
     },
     "pr": {
       "open": "打开 PR #{{number}}",

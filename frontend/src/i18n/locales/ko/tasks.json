@@ -235,7 +235,8 @@
       "changeTargetBranch": "대상 브랜치를 변경하지 못했습니다",
       "mergeChanges": "변경사항을 병합하지 못했습니다",
       "pushChanges": "변경사항을 푸시하지 못했습니다",
-      "rebaseBranch": "브랜치를 리베이스하지 못했습니다"
+      "rebaseBranch": "브랜치를 리베이스하지 못했습니다",
+      "branchStatusUnavailable": "브랜치 상태를 가져올 수 없습니다. 대상 브랜치는 여전히 변경할 수 있습니다."
     },
     "labels": {
       "taskBranch": "작업 브랜치"

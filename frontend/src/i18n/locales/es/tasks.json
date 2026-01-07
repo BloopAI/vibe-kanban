@@ -235,7 +235,8 @@
       "changeTargetBranch": "Error al cambiar rama de destino",
       "mergeChanges": "Error al fusionar cambios",
       "pushChanges": "Error al enviar cambios",
-      "rebaseBranch": "Error al hacer rebase de la rama"
+      "rebaseBranch": "Error al hacer rebase de la rama",
+      "branchStatusUnavailable": "No se puede obtener el estado de la rama. Aún puedes cambiar la rama de destino."
     },
     "labels": {
       "taskBranch": "Rama de tarea"

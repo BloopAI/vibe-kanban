@@ -257,7 +257,8 @@
       "changeTargetBranch": "Failed to change target branch",
       "pushChanges": "Failed to push changes",
       "mergeChanges": "Failed to merge changes",
-      "rebaseBranch": "Failed to rebase branch"
+      "rebaseBranch": "Failed to rebase branch",
+      "branchStatusUnavailable": "Unable to fetch branch status. You can still change the target branch."
     },
     "pr": {
       "open": "Open PR #{{number}}",
