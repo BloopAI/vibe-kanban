@@ -61,7 +61,7 @@ export const KanbanBoard = ({ id, children, className, collapsed = false }: Kanb
     <div
       className={cn(
         'flex flex-col transition-all duration-200',
-        collapsed ? 'min-w-[48px] max-w-[48px]' : 'min-h-40',
+        collapsed ? 'w-[48px]' : 'min-w-[200px] max-w-[400px] min-h-40',
         isOver ? 'outline-primary' : 'outline-black',
         className
       )}
@@ -202,7 +202,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     >
       <span className={cn(
         'flex items-center gap-2',
-        props.columnCollapsed ? 'flex-col-reverse rotate-180' : 'flex-1'
+        props.columnCollapsed ? 'flex-col-reverse' : 'flex-1'
       )}>
         {props.onToggleColumnCollapsed && (
           <TooltipProvider>
@@ -210,7 +210,10 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                  className={cn(
+                    "m-0 p-0 h-0 text-foreground/50 hover:text-foreground",
+                    props.columnCollapsed && "rotate-180"
+                  )}
                   onClick={props.onToggleColumnCollapsed}
                   aria-label={
                     props.columnCollapsed ? t('expand') : t('collapse')
@@ -369,7 +372,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
+          'inline-flex divide-x border-x items-stretch min-h-full',
           className
         )}
       >
