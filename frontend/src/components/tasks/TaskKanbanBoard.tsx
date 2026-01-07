@@ -38,6 +38,7 @@ interface TaskKanbanBoardProps {
   selectedTaskId?: string;
   selectedSharedTaskId?: string | null;
   onCreateTask?: () => void;
+  onImportIssues?: () => void;
   projectId: string;
 }
 
@@ -49,6 +50,7 @@ function TaskKanbanBoard({
   selectedTaskId,
   selectedSharedTaskId,
   onCreateTask,
+  onImportIssues,
   projectId,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
@@ -85,6 +87,7 @@ function TaskKanbanBoard({
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
               onClearColumn={isDoneColumn && hasOwnTasks ? handleClearDone : undefined}
+              onImportIssues={statusKey === 'todo' ? onImportIssues : undefined}
             />
             <KanbanCards>
               {items.map((item, index) => {

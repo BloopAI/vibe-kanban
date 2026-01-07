@@ -19,6 +19,15 @@ use utils::shell::resolve_executable_path_blocking;
 
 use crate::services::github::{CreatePrRequest, GitHubRepoInfo};
 
+/// A GitHub issue
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubIssue {
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: String, // "open" or "closed"
+}
+
 /// Author information for a PR comment
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PrCommentAuthor {
@@ -245,6 +254,29 @@ impl GhCli {
         ])?;
         Self::parse_pr_review_comments(&raw)
     }
+
+    /// List issues for a repository.
+    /// `state` can be "open", "closed", or "all".
+    pub fn list_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+    ) -> Result<Vec<GitHubIssue>, GhCliError> {
+        let raw = self.run([
+            "issue",
+            "list",
+            "--repo",
+            &format!("{owner}/{repo}"),
+            "--state",
+            state,
+            "--json",
+            "number,title,body,state",
+            "--limit",
+            "100",
+        ])?;
+        Self::parse_issues(&raw)
+    }
 }
 
 impl GhCli {
@@ -353,6 +385,14 @@ impl GhCli {
         serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse review comments API response: {err}; raw: {raw}"
+            ))
+        })
+    }
+
+    fn parse_issues(raw: &str) -> Result<Vec<GitHubIssue>, GhCliError> {
+        serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh issue list response: {err}; raw: {raw}"
             ))
         })
     }

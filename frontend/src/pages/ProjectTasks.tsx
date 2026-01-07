@@ -3,12 +3,13 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, X } from 'lucide-react';
+import { AlertTriangle, Github, Plus, X } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
+import { ImportGitHubIssuesDialog } from '@/components/dialogs';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { usePostHog } from 'posthog-js/react';
@@ -317,6 +318,15 @@ export function ProjectTasks() {
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();
   }, [handleCreateTask]);
+
+  const handleImportIssues = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      await ImportGitHubIssuesDialog.show({ projectId });
+    } catch {
+      // User cancelled
+    }
+  }, [projectId]);
 
   useKeyCreate(handleCreateNewTask, {
     scope: Scope.KANBAN,
@@ -831,10 +841,16 @@ export function ProjectTasks() {
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">{t('empty.noTasks')}</p>
-            <Button className="mt-4" onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('empty.createFirst')}
-            </Button>
+            <div className="flex gap-2 justify-center mt-4">
+              <Button onClick={handleCreateNewTask}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('empty.createFirst')}
+              </Button>
+              <Button variant="outline" onClick={handleImportIssues}>
+                <Github className="h-4 w-4 mr-2" />
+                Import from GitHub
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -858,6 +874,7 @@ export function ProjectTasks() {
           selectedTaskId={selectedTask?.id}
           selectedSharedTaskId={selectedSharedTaskId}
           onCreateTask={handleCreateNewTask}
+          onImportIssues={handleImportIssues}
           projectId={projectId!}
         />
       </div>

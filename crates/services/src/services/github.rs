@@ -13,7 +13,7 @@ use ts_rs::TS;
 mod cli;
 
 use cli::{GhCli, GhCliError, PrComment, PrReviewComment};
-pub use cli::{PrCommentAuthor, ReviewCommentUser};
+pub use cli::{GitHubIssue, PrCommentAuthor, ReviewCommentUser};
 
 /// Unified PR comment that can be either a general comment or review comment
 #[derive(Debug, Clone, Serialize, TS)]
@@ -432,6 +432,50 @@ impl GitHubService {
                 ))
             })?;
             comments.map_err(GitHubServiceError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// List issues for a GitHub repository
+    /// `state` can be "open", "closed", or "all"
+    pub async fn list_issues(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        state: &str,
+    ) -> Result<Vec<GitHubIssue>, GitHubServiceError> {
+        (|| async {
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let state = state.to_string();
+            let cli = self.gh_cli.clone();
+            let issues = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                let state = state.clone();
+                move || cli.list_issues(&owner, &repo, &state)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for listing issues: {err}"
+                ))
+            })?;
+            issues.map_err(GitHubServiceError::from)
         })
         .retry(
             &ExponentialBuilder::default()

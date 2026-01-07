@@ -21,7 +21,7 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Github, Plus, Trash2 } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
@@ -154,6 +154,7 @@ export type KanbanHeaderProps =
       className?: string;
       onAddTask?: () => void;
       onClearColumn?: () => void;
+      onImportIssues?: () => void;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -196,6 +197,23 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">{t('actions.clearColumn')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      {props.onImportIssues && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                onClick={props.onImportIssues}
+                aria-label={t('actions.importIssues')}
+              >
+                <Github className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t('actions.importIssues')}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       )}

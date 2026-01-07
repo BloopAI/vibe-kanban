@@ -93,6 +93,11 @@ export {
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
+export {
+  ImportGitHubIssuesDialog,
+  type ImportGitHubIssuesDialogProps,
+  type ImportGitHubIssuesDialogResult,
+} from './tasks/ImportGitHubIssuesDialog';
 
 // Auth dialogs
 export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
