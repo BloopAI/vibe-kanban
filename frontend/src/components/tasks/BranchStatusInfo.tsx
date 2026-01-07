@@ -22,7 +22,7 @@ import RepoSelector from '@/components/tasks/RepoSelector';
 
 interface BranchStatusInfoProps {
   selectedAttempt: Workspace;
-  branchStatus: RepoBranchStatus[] | null;
+  branchStatus: RepoBranchStatus[] | null | undefined;
   selectedRepoStatus: RepoBranchStatus | null;
   isAttemptRunning: boolean;
   selectedBranch: string | null;
@@ -290,7 +290,7 @@ export function BranchStatusInfo({
         </>
       ) : (
         <>
-          {repos.length > 0 && onRepoSelect && (
+          {repos.length > 1 && onRepoSelect && (
             <RepoSelector
               repos={repos}
               selectedRepoId={selectedRepoId ?? null}

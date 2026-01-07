@@ -10,7 +10,6 @@ import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
-import { useBranchStatus, useAttemptExecution } from '@/hooks';
 
 export function FullAttemptLogsPage() {
   const {
@@ -27,9 +26,6 @@ export function FullAttemptLogsPage() {
   const { tasksById } = useProjectTasks(projectId);
   const task = taskId ? (tasksById[taskId] ?? null) : null;
 
-  const { data: branchStatus } = useBranchStatus(attempt?.id);
-  const { isAttemptRunning } = useAttemptExecution(attempt?.id);
-
   return (
     <AppWithStyleOverride>
       <div className="h-screen flex flex-col bg-muted">
@@ -43,12 +39,7 @@ export function FullAttemptLogsPage() {
                   key={attempt.id}
                   attemptId={attempt.id}
                 >
-                  <TaskAttemptPanel
-                    attempt={attempt}
-                    task={task}
-                    branchStatus={branchStatus ?? null}
-                    isAttemptRunning={isAttemptRunning}
-                  >
+                  <TaskAttemptPanel attempt={attempt} task={task}>
                     {({ logs, followUp }) => (
                       <div className="h-full min-h-0 flex flex-col">
                         <div className="flex-1 min-h-0 flex flex-col">
@@ -66,12 +57,7 @@ export function FullAttemptLogsPage() {
               </ReviewProvider>
             </ClickedElementsProvider>
           ) : (
-            <TaskAttemptPanel
-              attempt={attempt}
-              task={task}
-              branchStatus={branchStatus ?? null}
-              isAttemptRunning={isAttemptRunning}
-            >
+            <TaskAttemptPanel attempt={attempt} task={task}>
               {({ logs, followUp }) => (
                 <div className="h-full min-h-0 flex flex-col">
                   <div className="flex-1 min-h-0 flex flex-col">{logs}</div>

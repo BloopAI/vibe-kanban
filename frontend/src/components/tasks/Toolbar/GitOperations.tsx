@@ -1,20 +1,17 @@
 import { GitBranch as GitBranchIcon, GitPullRequest, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type {
   RepoBranchStatus,
   Merge,
   TaskWithAttemptStatus,
   Workspace,
 } from 'shared/types';
-import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useGitOperations } from '@/hooks/useGitOperations';
-import { useRepoBranches } from '@/hooks';
 import { BranchStatusInfo } from '@/components/tasks/BranchStatusInfo';
+import { useRepoStatusOperations } from '@/hooks/useRepoStatusOperations';
 
 interface GitOperationsProps {
   selectedAttempt: Workspace;
@@ -37,12 +34,18 @@ function GitOperations({
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
-  const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(
-    selectedAttempt.id
-  );
-  const git = useGitOperations(selectedAttempt.id, selectedRepoId ?? undefined);
-  const { data: branches = [] } = useRepoBranches(selectedRepoId);
-  const isChangingTargetBranch = git.states.changeTargetBranchPending;
+  // use custom hook for repo status operations
+  const {
+    repos,
+    selectedRepoId,
+    setSelectedRepoId,
+    selectedRepoStatus,
+    hasConflicts: hasConflictsCalculated,
+    getSelectedRepoId,
+    handleChangeTargetBranchDialogOpen,
+    git,
+    branches,
+  } = useRepoStatusOperations(selectedAttempt.id, branchStatus);
 
   // Local state for git operations
   const [merging, setMerging] = useState(false);
@@ -51,52 +54,8 @@ function GitOperations({
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [pushSuccess, setPushSuccess] = useState(false);
 
-  // Target branch change handlers
-  const handleChangeTargetBranchClick = async (newBranch: string) => {
-    const repoId = getSelectedRepoId();
-    if (!repoId) return;
-    await git.actions.changeTargetBranch({
-      newTargetBranch: newBranch,
-      repoId,
-    });
-  };
-
-  const handleChangeTargetBranchDialogOpen = async () => {
-    try {
-      const result = await ChangeTargetBranchDialog.show({
-        branches,
-        isChangingTargetBranch: isChangingTargetBranch,
-      });
-
-      if (result.action === 'confirmed' && result.branchName) {
-        await handleChangeTargetBranchClick(result.branchName);
-      }
-    } catch (error) {
-      // User cancelled - do nothing
-    }
-  };
-
-  const getSelectedRepoId = useCallback(() => {
-    return selectedRepoId ?? repos[0]?.id;
-  }, [selectedRepoId, repos]);
-
-  const getSelectedRepoStatus = useCallback(() => {
-    const repoId = getSelectedRepoId();
-    return branchStatus?.find((r) => r.repo_id === repoId);
-  }, [branchStatus, getSelectedRepoId]);
-
-  // Memoize the selected repo status for use in button disabled states
-  const selectedRepoStatus = useMemo(
-    () => getSelectedRepoStatus(),
-    [getSelectedRepoStatus]
-  );
-
-  const hasConflictsCalculated =
-    (selectedRepoStatus?.conflicted_files?.length ?? 0) > 0;
-
   // Memoize merge status information to avoid repeated calculations
   const mergeInfo = useMemo(() => {
-    const selectedRepoStatus = getSelectedRepoStatus();
     if (!selectedRepoStatus?.merges)
       return {
         hasOpenPR: false,
@@ -129,7 +88,7 @@ function GitOperations({
       hasMerged: merges.length > 0,
       latestMerge: selectedRepoStatus.merges[0] || null, // Most recent merge
     };
-  }, [getSelectedRepoStatus]);
+  }, [selectedRepoStatus]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return t('git.states.merged');
@@ -206,7 +165,7 @@ function GitOperations({
 
   const handleRebaseDialogOpen = async () => {
     try {
-      const defaultTargetBranch = getSelectedRepoStatus()?.target_branch_name;
+      const defaultTargetBranch = selectedRepoStatus?.target_branch_name;
       const result = await RebaseDialog.show({
         branches,
         isRebasing: rebasing,
@@ -239,7 +198,7 @@ function GitOperations({
       attempt: selectedAttempt,
       task,
       repoId: getSelectedRepoId(),
-      targetBranch: getSelectedRepoStatus()?.target_branch_name,
+      targetBranch: selectedRepoStatus?.target_branch_name,
     });
   };
 
