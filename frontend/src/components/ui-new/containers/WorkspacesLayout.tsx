@@ -743,6 +743,7 @@ export function WorkspacesLayout() {
                 selectedFilePath={selectedFilePath}
                 onFileInViewChange={setFileInView}
                 projectId={selectedWorkspaceTask?.project_id}
+                attemptId={selectedWorkspace?.id}
               />
             </div>
           </Allotment.Pane>
