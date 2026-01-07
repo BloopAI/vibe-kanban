@@ -116,6 +116,8 @@ interface ChangesPanelContainerProps {
   className?: string;
   /** Project ID for @ mentions in comments */
   projectId?: string;
+  /** Attempt ID for opening files in IDE */
+  attemptId?: string;
 }
 
 export function ChangesPanelContainer({
@@ -124,6 +126,7 @@ export function ChangesPanelContainer({
   onFileInViewChange,
   className,
   projectId,
+  attemptId,
 }: ChangesPanelContainerProps) {
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // Track which diffs we've processed for auto-collapse
@@ -182,6 +185,7 @@ export function ChangesPanelContainer({
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
       projectId={projectId}
+      attemptId={attemptId}
     />
   );
 }

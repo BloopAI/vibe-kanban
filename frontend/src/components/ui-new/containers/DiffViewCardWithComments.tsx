@@ -18,6 +18,8 @@ import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
+import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
 
 // Discriminated union for input format flexibility
@@ -49,6 +51,8 @@ interface DiffViewCardWithCommentsProps {
   className?: string;
   /** Project ID for @ mentions in comments */
   projectId?: string;
+  /** Attempt ID for opening files in IDE */
+  attemptId?: string;
 }
 
 interface DiffData {
@@ -154,6 +158,7 @@ export function DiffViewCardWithComments({
   status,
   className,
   projectId,
+  attemptId,
 }: DiffViewCardWithCommentsProps) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
@@ -164,6 +169,13 @@ export function DiffViewCardWithComments({
   const { diffFile, additions, deletions, filePath, isValid } =
     useDiffData(input);
   const { comments, drafts, setDraft } = useReview();
+
+  // Open in IDE functionality
+  const openInEditor = useOpenInEditor(attemptId);
+
+  const handleOpenInIde = useCallback(() => {
+    openInEditor({ filePath });
+  }, [openInEditor, filePath]);
 
   const FileIcon = getFileIcon(filePath, actualTheme);
   const hasStats = additions > 0 || deletions > 0;
@@ -282,14 +294,24 @@ export function DiffViewCardWithComments({
             </span>
           )}
         </div>
-        {onToggle && (
-          <CaretDownIcon
-            className={cn(
-              'size-icon-xs shrink-0 text-low transition-transform',
-              !expanded && '-rotate-90'
-            )}
-          />
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {attemptId && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <OpenInIdeButton
+                onClick={handleOpenInIde}
+                className="size-6 p-0"
+              />
+            </span>
+          )}
+          {onToggle && (
+            <CaretDownIcon
+              className={cn(
+                'size-icon-xs text-low transition-transform',
+                !expanded && '-rotate-90'
+              )}
+            />
+          )}
+        </div>
       </div>
 
       {/* Diff body - shown when expanded */}

@@ -16,6 +16,8 @@ interface ChangesPanelProps {
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
   /** Project ID for @ mentions in comments */
   projectId?: string;
+  /** Attempt ID for opening files in IDE */
+  attemptId?: string;
 }
 
 // Memoized DiffItem - only re-renders when its specific diff reference changes
@@ -24,11 +26,13 @@ const DiffItem = memo(function DiffItem({
   initialExpanded = true,
   onRef,
   projectId,
+  attemptId,
 }: {
   diff: Diff;
   initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
   projectId?: string;
+  attemptId?: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
   const [expanded, toggle] = usePersistedExpanded(
@@ -53,6 +57,7 @@ const DiffItem = memo(function DiffItem({
         expanded={expanded}
         onToggle={toggle}
         projectId={projectId}
+        attemptId={attemptId}
       />
     </div>
   );
@@ -63,6 +68,7 @@ export function ChangesPanel({
   diffItems,
   onDiffRef,
   projectId,
+  attemptId,
 }: ChangesPanelProps) {
   return (
     <div
@@ -79,6 +85,7 @@ export function ChangesPanel({
             initialExpanded={initialExpanded}
             onRef={onDiffRef}
             projectId={projectId}
+            attemptId={attemptId}
           />
         ))}
       </div>
