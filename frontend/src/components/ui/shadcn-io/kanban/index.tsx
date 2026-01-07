@@ -171,6 +171,7 @@ export type KanbanHeaderProps =
       allCollapsed?: boolean;
       onToggleColumnCollapsed?: () => void;
       columnCollapsed?: boolean;
+      taskCount?: number;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -241,7 +242,14 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
         />
 
-        <p className="m-0 text-sm whitespace-nowrap">{props.name}</p>
+        <p className="m-0 text-sm whitespace-nowrap">
+          {props.name}
+          {props.taskCount !== undefined && (
+            <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+              ({props.taskCount})
+            </span>
+          )}
+        </p>
       </span>
       {!props.columnCollapsed && (
         <TooltipProvider>
