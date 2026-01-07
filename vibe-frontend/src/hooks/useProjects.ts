@@ -2,6 +2,8 @@ import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
+import { useAuth } from '@clerk/clerk-react';
+import { useState, useEffect } from 'react';
 
 type ProjectsState = {
   projects: Record<string, Project>;
@@ -18,13 +20,22 @@ export interface UseProjectsResult {
 
 export function useProjects(): UseProjectsResult {
   const endpoint = '/api/projects/stream/ws';
+  const { getToken, isLoaded } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      getToken().then(setToken).catch(console.error);
+    }
+  }, [getToken, isLoaded]);
 
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 
   const { data, isConnected, error } = useJsonPatchWsStream<ProjectsState>(
     endpoint,
-    true,
-    initialData
+    !!token, // Only enable when token is available
+    initialData,
+    { token }
   );
 
   const projectsById = useMemo(() => data?.projects ?? {}, [data]);

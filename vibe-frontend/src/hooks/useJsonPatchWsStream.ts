@@ -18,6 +18,10 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Authentication token to include in the WebSocket URL
+   */
+  token?: string | null;
 }
 
 interface UseJsonPatchStreamResult<T> {
@@ -105,6 +109,13 @@ export const useJsonPatchWsStream = <T extends object>(
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         wsEndpoint = `${protocol}//${window.location.host}${endpoint}`;
       }
+
+      // Add auth token if provided
+      if (options?.token) {
+        const separator = wsEndpoint.includes('?') ? '&' : '?';
+        wsEndpoint = `${wsEndpoint}${separator}token=${encodeURIComponent(options.token)}`;
+      }
+
       const ws = new WebSocket(wsEndpoint);
 
       ws.onopen = () => {
@@ -205,7 +216,9 @@ export const useJsonPatchWsStream = <T extends object>(
     initialData,
     injectInitialEntry,
     deduplicatePatches,
+    deduplicatePatches,
     retryNonce,
+    options?.token,
   ]);
 
   return { data, isConnected, error };

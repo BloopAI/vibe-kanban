@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useAuth } from '@clerk/clerk-react';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
@@ -35,17 +36,26 @@ export const useExecutionProcesses = (
     endpoint = `/api/execution-processes/stream/ws?${params.toString()}`;
   }
 
+  const { getToken, isLoaded } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      getToken().then(setToken).catch(console.error);
+    }
+  }, [getToken, isLoaded]);
+
   const initialData = useCallback(
     (): ExecutionProcessState => ({ execution_processes: {} }),
     []
   );
 
-  const { data, isConnected, error } =
-    useJsonPatchWsStream<ExecutionProcessState>(
-      endpoint,
-      !!taskAttemptId,
-      initialData
-    );
+  useJsonPatchWsStream<ExecutionProcessState>(
+    endpoint,
+    !!taskAttemptId && !!token,
+    initialData,
+    { token }
+  );
 
   const executionProcessesById = data?.execution_processes ?? {};
   const executionProcesses = Object.values(executionProcessesById).sort(

@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useAuth } from '@/hooks';
+import { useAuth } from '@clerk/clerk-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
 import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
@@ -41,7 +41,15 @@ export interface UseProjectTasksResult {
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const { project } = useProject();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken, isLoaded } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      getToken().then(setToken).catch(console.error);
+    }
+  }, [getToken, isLoaded]);
+
   const remoteProjectId = project?.remote_project_id;
 
   const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
@@ -50,8 +58,9 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const { data, isConnected, error } = useJsonPatchWsStream(
     endpoint,
-    !!projectId,
-    initialData
+    !!projectId && !!token,
+    initialData,
+    { token }
   );
 
   const sharedTasksQuery = useLiveQuery(

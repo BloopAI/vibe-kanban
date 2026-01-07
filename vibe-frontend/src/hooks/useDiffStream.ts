@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import type { Diff, PatchType } from 'shared/types';
+import { useAuth } from '@clerk/clerk-react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 
 interface DiffEntries {
@@ -36,6 +37,15 @@ export const useDiffStream = (
     }
   })();
 
+  const { getToken, isLoaded } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      getToken().then(setToken).catch(console.error);
+    }
+  }, [getToken, isLoaded]);
+
   const initialData = useCallback(
     (): DiffStreamEvent => ({
       entries: {},
@@ -45,8 +55,9 @@ export const useDiffStream = (
 
   const { data, error } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
-    enabled && !!attemptId,
-    initialData
+    enabled && !!attemptId && !!token,
+    initialData,
+    { token }
     // No need for injectInitialEntry or deduplicatePatches for diffs
   );
 

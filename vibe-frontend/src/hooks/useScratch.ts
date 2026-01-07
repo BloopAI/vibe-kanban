@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useAuth } from '@clerk/clerk-react';
 import { scratchApi } from '@/lib/api';
 import { ScratchType, type Scratch, type UpdateScratch } from 'shared/types';
 
@@ -25,13 +26,22 @@ export const useScratch = (
   id: string
 ): UseScratchResult => {
   const endpoint = scratchApi.getStreamUrl(scratchType, id);
+  const { getToken, isLoaded } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoaded) {
+      getToken().then(setToken).catch(console.error);
+    }
+  }, [getToken, isLoaded]);
 
   const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
   const { data, isConnected, error } = useJsonPatchWsStream<ScratchState>(
     endpoint,
-    true,
-    initialData
+    !!token,
+    initialData,
+    { token }
   );
 
   // Treat deleted scratches as null
