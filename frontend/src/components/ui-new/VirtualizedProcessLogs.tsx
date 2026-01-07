@@ -61,27 +61,31 @@ export function VirtualizedProcessLogs({
   const prevLogsLengthRef = useRef(0);
 
   useEffect(() => {
-    // Add keys to log entries
-    const logsWithKeys: LogEntryWithKey[] = logs.map((entry, index) => ({
-      ...entry,
-      key: `log-${index}`,
-    }));
+    const timeoutId = setTimeout(() => {
+      // Add keys to log entries
+      const logsWithKeys: LogEntryWithKey[] = logs.map((entry, index) => ({
+        ...entry,
+        key: `log-${index}`,
+      }));
 
-    // Determine scroll modifier based on whether this is initial load or update
-    let scrollModifier: ScrollModifier;
-    if (prevLogsLengthRef.current === 0 && logs.length > 0) {
-      // Initial load - scroll to bottom
-      scrollModifier = InitialDataScrollModifier;
-    } else if (logs.length > prevLogsLengthRef.current) {
-      // New logs added - auto-scroll to bottom
-      scrollModifier = AutoScrollToBottom;
-    } else {
-      // No new logs - keep current position
-      scrollModifier = AutoScrollToBottom;
-    }
+      // Determine scroll modifier based on whether this is initial load or update
+      let scrollModifier: ScrollModifier;
+      if (prevLogsLengthRef.current === 0 && logs.length > 0) {
+        // Initial load - scroll to bottom
+        scrollModifier = InitialDataScrollModifier;
+      } else if (logs.length > prevLogsLengthRef.current) {
+        // New logs added - auto-scroll to bottom
+        scrollModifier = AutoScrollToBottom;
+      } else {
+        // No new logs - keep current position
+        scrollModifier = AutoScrollToBottom;
+      }
 
-    prevLogsLengthRef.current = logs.length;
-    setChannelData({ data: logsWithKeys, scrollModifier });
+      prevLogsLengthRef.current = logs.length;
+      setChannelData({ data: logsWithKeys, scrollModifier });
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [logs]);
 
   if (logs.length === 0 && !error) {

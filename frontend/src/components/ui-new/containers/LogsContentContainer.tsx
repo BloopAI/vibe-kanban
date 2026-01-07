@@ -24,7 +24,11 @@ export function LogsContentContainer({
 
   return (
     <div className={cn('h-full bg-secondary', className)}>
-      <VirtualizedProcessLogs logs={logs} error={error} />
+      <VirtualizedProcessLogs
+        key={selectedProcessId}
+        logs={logs}
+        error={error}
+      />
     </div>
   );
 }
