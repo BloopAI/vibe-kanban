@@ -78,6 +78,13 @@ pub struct Droid {
     )]
     pub reasoning_effort: Option<ReasoningEffortLevel>,
 
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Model Provider",
+        description = "Model provider to use (e.g., openai, anthropic, google)"
+    )]
+    pub model_provider: Option<String>,
+
     #[serde(flatten)]
     pub cmd: crate::command::CmdOverrides,
 }
