@@ -93,34 +93,12 @@ export function SessionChatBoxContainer({
 }: SessionChatBoxContainerProps) {
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
-  const scratchId = isNewSessionMode ? workspaceId : sessionId;
   const queryClient = useQueryClient();
 
-  // Execution state
-  const { isAttemptRunning, stopExecution, isStopping, processes } =
-    useAttemptExecution(workspaceId, taskId);
-
-  // Approval feedback context
-  const feedbackContext = useApprovalFeedbackOptional();
-  const isInFeedbackMode = !!feedbackContext?.activeApproval;
-
-  // Message edit context
-  const editContext = useMessageEditContext();
-  const isInEditMode = editContext.isInEditMode;
-
-  // Detect pending approval and todos from entries
+  // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
-  const { inProgressTodo } = useTodos(entries);
 
-  // Review comments context (optional - only available when ReviewProvider wraps this)
-  const reviewContext = useReviewOptional();
-  const reviewMarkdown = useMemo(
-    () => reviewContext?.generateReviewMarkdown() ?? '',
-    [reviewContext]
-  );
-  const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
-
-  // Extract pending approval metadata from entries
+  // Extract pending approval metadata from entries (needed for scratchId)
   const pendingApproval = useMemo(() => {
     for (const entry of entries) {
       if (entry.type !== 'NORMALIZED_ENTRY') continue;
@@ -142,6 +120,38 @@ export function SessionChatBoxContainer({
     }
     return null;
   }, [entries]);
+
+  // Use approval_id as scratch key when pending approval exists to avoid
+  // prefilling approval response with queued follow-up message
+  const scratchId = useMemo(() => {
+    if (pendingApproval?.approvalId) {
+      return pendingApproval.approvalId;
+    }
+    return isNewSessionMode ? workspaceId : sessionId;
+  }, [pendingApproval?.approvalId, isNewSessionMode, workspaceId, sessionId]);
+
+  // Execution state
+  const { isAttemptRunning, stopExecution, isStopping, processes } =
+    useAttemptExecution(workspaceId, taskId);
+
+  // Approval feedback context
+  const feedbackContext = useApprovalFeedbackOptional();
+  const isInFeedbackMode = !!feedbackContext?.activeApproval;
+
+  // Message edit context
+  const editContext = useMessageEditContext();
+  const isInEditMode = editContext.isInEditMode;
+
+  // Get todos from entries
+  const { inProgressTodo } = useTodos(entries);
+
+  // Review comments context (optional - only available when ReviewProvider wraps this)
+  const reviewContext = useReviewOptional();
+  const reviewMarkdown = useMemo(
+    () => reviewContext?.generateReviewMarkdown() ?? '',
+    [reviewContext]
+  );
+  const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
 
   // Approval mutation for approve/deny actions
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
@@ -478,14 +488,24 @@ export function SessionChatBoxContainer({
     isAttemptRunning,
   });
 
+  // During loading, render with empty editor to preserve container UI
+  // In approval mode, don't show queued message - it's for follow-up, not approval response
+  const editorValue = useMemo(() => {
+    if (isScratchLoading || !hasInitialValue) return '';
+    if (pendingApproval) return localMessage;
+    return queuedMessage ?? localMessage;
+  }, [
+    isScratchLoading,
+    hasInitialValue,
+    pendingApproval,
+    queuedMessage,
+    localMessage,
+  ]);
+
   // Don't render if no session and not in new session mode
   if (!session && !isNewSessionMode) {
     return null;
   }
-
-  // During loading, render with empty editor to preserve container UI
-  const editorValue =
-    isScratchLoading || !hasInitialValue ? '' : (queuedMessage ?? localMessage);
 
   return (
     <SessionChatBox

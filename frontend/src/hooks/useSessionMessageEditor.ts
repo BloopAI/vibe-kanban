@@ -74,6 +74,13 @@ export function useSessionMessageEditor({
   // Track whether initial load has happened to avoid re-syncing during typing
   const hasLoadedRef = useRef(false);
 
+  // Reset load state and clear message when scratchId changes (e.g., switching to approval mode)
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    setHasInitialValue(false);
+    setLocalMessage('');
+  }, [scratchId]);
+
   // Sync local message from scratch only on initial load
   useEffect(() => {
     if (isScratchLoading) return;
