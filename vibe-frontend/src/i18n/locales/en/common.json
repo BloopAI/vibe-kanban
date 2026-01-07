@@ -1,0 +1,97 @@
+{
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "send": "Send",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "continue": "Continue",
+    "reset": "Reset",
+    "manage": "Manage",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "close": "Close",
+    "replay": "Replay"
+  },
+  "states": {
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "error": "Error",
+    "success": "Success",
+    "reconnecting": "Reconnecting"
+  },
+  "language": {
+    "browserDefault": "Browser Default"
+  },
+  "conversation": {
+    "plan": "Plan",
+    "planToggle": {
+      "show": "Show plan",
+      "hide": "Hide plan"
+    },
+    "toolDetailsToggle": {
+      "show": "Show details",
+      "hide": "Hide details"
+    },
+    "args": "Args",
+    "output": "Output",
+    "result": "Result",
+    "deniedByUser": "{{toolName}} denied by user"
+  },
+  "folderPicker": {
+    "legend": "Click folder names to navigate • Use action buttons to select",
+    "manualPathLabel": "Enter path manually:",
+    "go": "Go",
+    "searchLabel": "Search current directory:",
+    "selectCurrent": "Select Current",
+    "gitRepo": "git repo",
+    "selectPath": "Select Path"
+  },
+  "branchSelector": {
+    "placeholder": "Select a branch",
+    "searchPlaceholder": "Search branches...",
+    "empty": "No branches found",
+    "badges": {
+      "current": "current",
+      "remote": "remote"
+    },
+    "currentDisabled": "Cannot select the current branch"
+  },
+  "breadcrumb": {
+    "more": "More"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} more"
+  },
+  "orgSwitcher": {
+    "title": "Switch Organization",
+    "description": "Select an organization to switch to.",
+    "loadError": "Failed to load organizations. Please try again.",
+    "noOrganizations": "You are not a member of any organizations.",
+    "menuItem": "Organization",
+    "loadingPlaceholder": "Loading organizations...",
+    "selectPlaceholder": "Select an organization",
+    "currentBadge": " (current)"
+  },
+  "signOut": "Sign out",
+  "devMode": {
+    "banner": "Development Mode - This is a development build"
+  },
+  "oauth": {
+    "title": "Sign in to Vibe Kanban",
+    "description": "Sign in to join organizations and share tasks with your team",
+    "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
+    "waitingTitle": "Complete Authentication",
+    "waitingDescription": "A popup window has been opened for authentication",
+    "waitingForAuth": "Waiting for authentication...",
+    "popupInstructions": "If the popup window didn't open, please check your popup blocker settings.",
+    "back": "Back",
+    "successTitle": "Authentication Successful!",
+    "welcomeBack": "Welcome back, {{name}}",
+    "errorTitle": "Authentication Failed",
+    "errorDescription": "There was a problem authenticating your account",
+    "tryAgain": "Try Again"
+  }
+}

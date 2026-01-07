@@ -1,0 +1,16 @@
+# Ignore source and dev files - only dist/ and nginx.conf needed
+node_modules/
+src/
+public/
+.logs/
+.env*
+*.config.ts
+*.config.js
+tsconfig.json
+tsconfig.node.json
+package.json
+pnpm-lock.yaml
+components.json
+index.html
+vercel.json
+*.md

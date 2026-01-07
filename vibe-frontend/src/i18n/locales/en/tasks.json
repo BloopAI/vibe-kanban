@@ -1,0 +1,518 @@
+{
+  "loading": "Loading tasks...",
+  "empty": {
+    "noTasks": "No tasks found for this project.",
+    "createFirst": "Create First Task",
+    "noSearchResults": "No tasks match your search."
+  },
+  "actions": {
+    "addTask": "Add task"
+  },
+  "filters": {
+    "sharedToggleAria": "Toggle shared tasks",
+    "sharedToggleTooltip": "Show/hide shared content"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "Rebasing...",
+      "withTarget": "Rebase onto {{branch}}"
+    },
+    "dialog": {
+      "title": "Rebase Task Attempt",
+      "description": "Choose a new base branch to rebase this task attempt onto.",
+      "upstreamLabel": "Upstream Branch",
+      "upstreamPlaceholder": "Select an upstream branch",
+      "targetLabel": "Target Branch",
+      "targetPlaceholder": "Select a target branch",
+      "advanced": "Advanced"
+    },
+    "status": {
+      "inProgress": "Rebase in progress{{counts}}",
+      "needed": "Rebase needed{{dirty}}{{counts}}",
+      "dirtyMarker": " (dirty)"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Change target branch",
+        "description": "Choose a new target branch for the task attempt.",
+        "placeholder": "Select a target branch",
+        "action": "Change Branch",
+        "inProgress": "Changing..."
+      }
+    }
+  },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "Change Repository",
+        "description": "Choose a repository for git operations.",
+        "label": "Repository",
+        "placeholder": "Select a repository",
+        "action": "Change Repository"
+      }
+    },
+    "selector": {
+      "placeholder": "Select repository",
+      "empty": "No repositories available"
+    }
+  },
+  "preview": {
+    "title": "Preview",
+    "selectAttempt": "Select an attempt to see preview",
+    "troubleAlert": {
+      "title": "We're having trouble previewing your application:",
+      "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
+      "item2": "Did your dev server print the URL and port to the terminal in the format",
+      "item2Suffix": "? (this is how we know it's running)",
+      "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
+      "item3Link": "follow the installation instructions here"
+    },
+    "noServer": {
+      "title": "No dev server running",
+      "startPrompt": "Please start a dev server to see the preview",
+      "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
+      "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
+      "companionLink": "View installation guide",
+      "startButton": "Start Dev Server",
+      "editButton": "Edit Dev Script",
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
+    },
+    "devScript": {
+      "saveAndStart": "Save & Start",
+      "saveOnly": "Save Only",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
+      "errors": {
+        "notLoaded": "Project not loaded",
+        "empty": "Dev script cannot be empty"
+      }
+    },
+    "logs": {
+      "title": "Dev Server Logs",
+      "hide": "Hide",
+      "show": "Show"
+    },
+    "iframe": {
+      "title": "Dev server preview"
+    },
+    "toolbar": {
+      "refresh": "Refresh preview",
+      "copyUrl": "Copy URL",
+      "openInTab": "Open in new tab",
+      "stopDevServer": "Stop dev server"
+    }
+  },
+  "diff": {
+    "viewModes": {
+      "inline": "Inline view",
+      "split": "Split view"
+    },
+    "ignoreWhitespace": "Ignore whitespace changes",
+    "errorLoadingDiff": "Failed to load diff: {{error}}",
+    "expandAll": "Expand all diffs",
+    "collapseAll": "Collapse all diffs",
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "noChanges": "No changes have been made yet"
+  },
+  "taskPanel": {
+    "noTaskSelected": "No task selected",
+    "loadingAttempts": "Loading attempts...",
+    "errorLoadingAttempts": "Failed to load attempts",
+    "attemptsCount": "Attempts ({{count}})",
+    "noAttempts": "No attempts yet"
+  },
+  "processes": {
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "reconnecting": "Reconnecting...",
+    "loading": "Loading execution processes...",
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "deleted": "Deleted",
+    "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
+    "agent": "Agent:",
+    "exit": "Exit: {{code}}",
+    "started": "Started: {{date}}",
+    "completed": "Completed: {{date}}",
+    "detailsTitle": "Process Details",
+    "backToList": "Back to list",
+    "loadingDetails": "Loading process details...",
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "copyLogs": "Copy logs",
+    "logsCopied": "Copied!"
+  },
+  "taskHeader": {
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "closePanel": "Close panel"
+  },
+  "navigateToParent": "Navigate to parent task attempt",
+  "toolbar": {
+    "actions": "Actions",
+    "noAttempts": "No attempts yet",
+    "startFirstAttempt": "Start your first attempt to begin working on this task",
+    "startAttempt": "Start Attempt"
+  },
+  "followUp": {
+    "stop": "Stop",
+    "clearReviewComments": "Clear Review Comments",
+    "resolveConflicts": "Resolve conflicts",
+    "send": "Send",
+    "unqueuing": "Unqueuing…",
+    "edit": "Edit",
+    "queuing": "Queuing…",
+    "queueForNextTurn": "Queue for next turn",
+    "queue": "Queue",
+    "cancelQueue": "Cancel Queue",
+    "queuedMessage": "Message queued - will execute when current run finishes",
+    "runSetupScript": "Run setup script",
+    "runCleanupScript": "Run cleanup script",
+    "noSetupScript": "No setup script configured for this project",
+    "noCleanupScript": "No cleanup script configured for this project",
+    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
+  },
+  "todos": {
+    "title_one": "Todos ({{count}})",
+    "title_other": "Todos ({{count}})"
+  },
+  "attempt": {
+    "actions": {
+      "openInIde": "Open in IDE",
+      "openMenu": "Open menu",
+      "startDevServer": "Start dev server",
+      "stopDevServer": "Stop dev server"
+    },
+    "labels": {
+      "attempt": "Attempt",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffs",
+      "summaryAndActions": "Summary & Actions"
+    },
+    "agent": "Agent",
+    "path": "Path",
+    "openInEditor": "See changes in {{editor}}",
+    "copied": "Copied!",
+    "clickToCopy": "Copy worktree path",
+    "stopDev": "Stop Dev",
+    "pauseDev": "Pause Dev",
+    "startDev": "Start Dev",
+    "viewDevLogs": "View dev server logs",
+    "stopping": "Stopping...",
+    "stopAttempt": "Stop Attempt",
+    "newAttempt": "New Attempt",
+    "viewHistory": "View attempt history",
+    "createSubtask": "Create Subtask",
+    "preview": "Preview",
+    "diffs": "Diffs",
+    "gitActions": "Git Actions",
+    "tryAgain": "Try Again",
+    "runSetup": "Run Setup",
+    "setupHelpText": "{{agent}} isn't setup correctly. Click 'Run Setup' to install it and login.",
+    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Task Branch"
+    },
+    "branch": {
+      "current": "current"
+    },
+    "forcePushDialog": {
+      "title": "Force Push Required",
+      "description": "The remote branch{{branchLabel}} has diverged from your local branch. A regular push was rejected.",
+      "warning": "Force pushing will overwrite the remote changes with your local changes. This action cannot be undone.",
+      "note": "Only proceed if you're certain you want to replace the remote branch history.",
+      "error": "Failed to force push"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "Conflicts",
+      "upToDate": "Up to date",
+      "ahead": "ahead",
+      "behind": "behind"
+    },
+    "states": {
+      "merged": "Merged!",
+      "merging": "Merging...",
+      "merge": "Merge",
+      "rebasing": "Rebasing...",
+      "rebase": "Rebase",
+      "pushed": "Pushed!",
+      "pushing": "Pushing...",
+      "push": "Push",
+      "forcePush": "Force Push",
+      "forcePushing": "Force Pushing...",
+      "creating": "Creating...",
+      "createPr": "Create PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Failed to change target branch",
+      "pushChanges": "Failed to push changes",
+      "mergeChanges": "Failed to merge changes",
+      "rebaseBranch": "Failed to rebase branch"
+    },
+    "pr": {
+      "open": "Open PR #{{number}}",
+      "number": "PR #{{number}}"
+    },
+    "actions": {
+      "title": "Git Actions",
+      "prMerged": "PR #{{number}} is already merged",
+      "loginRequired": {
+        "title": "Sign in to manage git actions",
+        "description": "Sign in to Vibe Kanban so you can push branches, merge changes, or open pull requests for this task.",
+        "action": "Sign in"
+      }
+    }
+  },
+  "createAttemptDialog": {
+    "title": "Create Attempt",
+    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "baseBranch": "Base branch",
+    "loadingBranches": "Loading branches...",
+    "selectBranch": "Select branch",
+    "error": "Failed to create attempt. Please try again.",
+    "creating": "Creating...",
+    "start": "Start"
+  },
+  "repoBranchSelector": {
+    "label": "Base branch"
+  },
+  "attemptRepoSelector": {
+    "label": "Repositories",
+    "addButton": "Add",
+    "empty": "No repositories selected. Add at least one repository.",
+    "selectBranch": "Select branch",
+    "addRepo": {
+      "title": "Select Git Repository",
+      "description": "Choose a git repository to add to this attempt"
+    }
+  },
+  "viewProcessesDialog": {
+    "title": "Execution processes"
+  },
+  "viewRelatedTasksDialog": {
+    "title": "Related tasks",
+    "empty": "No related tasks for this attempt",
+    "error": "Failed to load related tasks",
+    "tasksCount": "Tasks ({{count}})",
+    "columns": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status"
+    }
+  },
+  "attemptHeaderActions": {
+    "preview": "Preview",
+    "diffs": "Diffs",
+    "relatedTasks": "Related tasks"
+  },
+  "actionsMenu": {
+    "attempt": "Attempt",
+    "openInIde": "Open attempt in IDE",
+    "viewProcesses": "View processes",
+    "viewRelatedTasks": "View related tasks",
+    "createNewAttempt": "Create new attempt",
+    "createSubtask": "Create subtask",
+    "gitActions": "Git actions",
+    "editBranchName": "Edit branch name",
+    "task": "Task",
+    "share": "Share",
+    "reassign": "Reassign",
+    "stopShare": "Stop share",
+    "duplicate": "Duplicate"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Edit Branch Name",
+      "description": "Enter a new name for the branch. Cannot rename if an open PR exists.",
+      "branchNameLabel": "Branch Name",
+      "placeholder": "e.g., feature/my-branch",
+      "renaming": "Renaming...",
+      "action": "Rename Branch"
+    }
+  },
+  "stopShareDialog": {
+    "title": "Stop Sharing Task",
+    "description": "Stop sharing \"{{title}}\" with your organization?",
+    "warning": "Stops sharing the task with your organization, but keeps your local task.",
+    "confirm": "Stop share task",
+    "inProgress": "Stop sharing...",
+    "genericError": "Failed to stop sharing task. Please try again."
+  },
+  "shareDialog": {
+    "title": "Share Task",
+    "description": "Share \"{{title}}\" with your organization?",
+    "success": "Task shared successfully.",
+    "genericError": "Failed to share task. Please try again.",
+    "loadingSystem": "Loading account status...",
+    "loginRequired": {
+      "title": "Sign in to continue",
+      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
+      "action": "Go to sign in"
+    },
+    "githubRequired": {
+      "title": "Connect GitHub",
+      "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
+      "action": "Connect GitHub"
+    },
+    "linkProjectRequired": {
+      "description": "Link this project to an organization before sharing tasks.",
+      "action": "Link Project"
+    },
+    "confirmationTitle": "Confirm sharing",
+    "confirmationBody": "Sharing will publish this task to your shared workspace.",
+    "cancel": "Cancel",
+    "confirm": "Share task",
+    "inProgress": "Sharing...",
+    "closeButton": "Close"
+  },
+  "createPrDialog": {
+    "title": "Create GitHub Pull Request",
+    "description": "Create a pull request for this task attempt on GitHub.",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Enter PR title",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Enter PR description",
+    "baseBranchLabel": "Base Branch",
+    "loadingBranches": "Loading branches...",
+    "selectBaseBranch": "Select base branch",
+    "draftLabel": "Create as draft",
+    "autoGenerateLabel": "Auto-generate PR description with AI",
+    "creating": "Creating...",
+    "createButton": "Create PR",
+    "errors": {
+      "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
+      "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
+      "failedToCreate": "Failed to create GitHub PR",
+      "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
+      "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
+      "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
+    },
+    "loginRequired": {
+      "title": "Sign in to create a pull request",
+      "description": "You need to sign in before you can open a pull request for this task. We'll take you to the sign-in page.",
+      "action": "Sign in"
+    }
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion Point-and-Click",
+        "description": "Click any UI component in the preview window to select it precisely. The coding agent receives exact DOM selectors and component hierarchy, eliminating ambiguous feedback."
+      },
+      "installation": {
+        "title": "Dev Server & Companion Installation",
+        "description": "Set a dev server command for previews, with a setup script configurable in settings. Use a coding agent to automatically install the Vibe Kanban web companion."
+      },
+      "codeReview": {
+        "title": "Built-in Code Review",
+        "description": "Add line-specific comments directly in the diffs view with the plus icon. All feedback is collected and sent as a complete review to the coding agent."
+      },
+      "pullRequest": {
+        "title": "Create PR from Task",
+        "description": "Merge your changes or create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
+      },
+      "tags": {
+        "title": "Custom Prompt Tags",
+        "description": "Save custom prompts as tags and embed them within new tasks or follow-up messages. Reuse common instructions to maintain consistency across your workflow."
+      }
+    },
+    "buttons": {
+      "previous": "Previous",
+      "next": "Next",
+      "finish": "Finish"
+    }
+  },
+  "githubComments": {
+    "dialog": {
+      "title": "Select GitHub Comments",
+      "noComments": "No comments found on this PR",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "add": "Add",
+      "selectedCount": "{{selected}} of {{total}} selected"
+    },
+    "card": {
+      "review": "Review",
+      "tooltip": "Click to view on GitHub, double-click to edit"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "Create New Task",
+    "editTitle": "Edit Task",
+    "titlePlaceholder": "Task title...",
+    "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
+    "statusLabel": "Status",
+    "statusOptions": {
+      "todo": "To Do",
+      "inprogress": "In Progress",
+      "inreview": "In Review",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "startLabel": "Start",
+    "attachImage": "Attach image",
+    "dropImagesHere": "Drop images here",
+    "updating": "Updating...",
+    "updateTask": "Update Task",
+    "starting": "Starting...",
+    "creating": "Creating...",
+    "create": "Create",
+    "discardDialog": {
+      "title": "Discard unsaved changes?",
+      "description": "You have unsaved changes. Are you sure you want to discard them?",
+      "continueEditing": "Continue Editing",
+      "discardChanges": "Discard Changes"
+    }
+  },
+  "restoreLogsDialog": {
+    "title": "Confirm Retry",
+    "historyChange": {
+      "title": "History change",
+      "willDelete": "Will delete this process",
+      "andLaterProcesses_one": "and {{count}} later process",
+      "andLaterProcesses_other": "and {{count}} later processes",
+      "fromHistory": "from history.",
+      "codingAgentRuns_one": "{{count}} coding agent run",
+      "codingAgentRuns_other": "{{count}} coding agent runs",
+      "scriptProcesses_one": "{{count}} script process",
+      "scriptProcesses_other": "{{count}} script processes",
+      "setupCleanupBreakdown": "({{setup}} setup, {{cleanup}} cleanup)",
+      "permanentWarning": "This permanently alters history and cannot be undone."
+    },
+    "uncommittedChanges": {
+      "title": "Uncommitted changes detected",
+      "description_one": "You have {{count}} uncommitted change",
+      "description_other": "You have {{count}} uncommitted changes",
+      "andUntracked_one": " and {{count}} untracked file",
+      "andUntracked_other": " and {{count}} untracked files",
+      "acknowledgeLabel": "I understand these changes may be affected"
+    },
+    "resetWorktree": {
+      "title": "Reset worktree",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "disabledUncommitted": "Disabled (uncommitted changes detected)",
+      "restoreDescription": "Your worktree will be restored to this commit.",
+      "rollbackCommits_one": "Roll back {{count}} commit from current HEAD.",
+      "rollbackCommits_other": "Roll back {{count}} commits from current HEAD.",
+      "discardChanges_one": "Discard {{count}} uncommitted change.",
+      "discardChanges_other": "Discard {{count}} uncommitted changes.",
+      "untrackedPresent_one": "{{count}} untracked file present (not affected by reset).",
+      "untrackedPresent_other": "{{count}} untracked files present (not affected by reset).",
+      "forceReset": "Force reset (discard uncommitted changes)",
+      "uncommittedWillDiscard": "Uncommitted changes will be discarded.",
+      "uncommittedPresentHint": "Uncommitted changes present. Turn on Force reset or commit/stash to proceed."
+    },
+    "buttons": {
+      "retry": "Retry"
+    }
+  }
+}

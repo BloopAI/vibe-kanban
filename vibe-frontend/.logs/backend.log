@@ -1,0 +1,36 @@
+warning: fields `token_type` and `scope` are never read
+   --> crates/server/src/routes/oauth.rs:437:5
+    |
+435 | struct GitHubTokenResponse {
+    |        ------------------- fields in this struct
+436 |     access_token: String,
+437 |     token_type: String,
+    |     ^^^^^^^^^^
+438 |     scope: String,
+    |     ^^^^^
+    |
+    = note: `GitHubTokenResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `server` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.97s
+warning: the following packages contain code that will be rejected by a future version of Rust: num-bigint-dig v0.8.5
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+     Running `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/target/debug/server`
+[2m2026-01-04T15:00:58.559908Z[0m [32m INFO[0m [2mexecutors::profile[0m[2m:[0m No user profiles.json found, using defaults only
+[2m2026-01-04T15:00:58.576425Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m Turso configured - initializing distributed sync...
+[2m2026-01-04T15:00:58.576501Z[0m [32m INFO[0m [2mdb::turso[0m[2m:[0m Initializing Turso sync with replica at "/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/db.turso.sqlite"
+[2m2026-01-04T15:00:59.865920Z[0m [32m INFO[0m [2mdb::turso[0m[2m:[0m Performing initial sync with Turso cloud...
+[2m2026-01-04T15:01:00.618501Z[0m [32m INFO[0m [2mdb::turso[0m[2m:[0m Initial sync complete
+[2m2026-01-04T15:01:00.618649Z[0m [32m INFO[0m [2mdb::turso[0m[2m:[0m Starting background sync every 3600 seconds
+[2m2026-01-04T15:01:00.618835Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m Turso sync initialized successfully
+[2m2026-01-04T15:01:00.620529Z[0m [32m INFO[0m [2mdb[0m[2m:[0m Connecting to database: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/db.turso.sqlite
+[2m2026-01-04T15:01:00.627510Z[0m [32m INFO[0m [2mdb[0m[2m:[0m Creating pool for database: /Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/crates/utils/../../dev_assets/db.turso.sqlite
+[2m2026-01-04T15:01:00.630904Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m Starting orphaned image cleanup...
+[2m2026-01-04T15:01:00.631466Z[0m [32m INFO[0m [2mservices::services::oauth_credentials[0m[2m:[0m OAuth credentials backend: file
+[2m2026-01-04T15:01:00.631532Z[0m [32m INFO[0m [2mlocal_deployment[0m[2m:[0m VK_SHARED_API_BASE not set; remote features disabled
+[2m2026-01-04T15:01:00.632919Z[0m [32m INFO[0m [2mlocal_deployment::container[0m[2m:[0m Starting periodic workspace cleanup...
+[2m2026-01-04T15:01:00.633977Z[0m [32m INFO[0m [2mservices::services::pr_monitor[0m[2m:[0m Starting PR monitoring service with interval 60s
+[2m2026-01-04T15:01:00.634147Z[0m [32m INFO[0m [2mservices::services::file_search_cache[0m[2m:[0m Starting file search cache warming...
+[2m2026-01-04T15:01:00.636315Z[0m [32m INFO[0m [2mservices::services::file_search_cache[0m[2m:[0m No active projects found, skipping cache warming
+[2m2026-01-04T15:01:00.645903Z[0m [32m INFO[0m [2mserver[0m[2m:[0m Server running on http://127.0.0.1:3003

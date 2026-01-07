@@ -1,0 +1,411 @@
+{
+  "settings": {
+    "layout": {
+      "nav": {
+        "title": "Settings",
+        "general": "General",
+        "generalDesc": "Theme, notifications, and preferences",
+        "projects": "Projects",
+        "projectsDesc": "Project scripts and configuration",
+        "agents": "Agents",
+        "agentsDesc": "Coding agent configurations",
+        "mcp": "MCP Servers",
+        "mcpDesc": "Model Context Protocol servers",
+        "organizations": "Organization Settings",
+        "organizationsDesc": "Manage organization members and permissions"
+      }
+    },
+    "general": {
+      "loading": "Loading settings...",
+      "loadError": "Failed to load configuration.",
+      "save": {
+        "button": "Save Settings",
+        "success": "✓ Settings saved successfully!",
+        "error": "Failed to save configuration",
+        "unsavedChanges": "• You have unsaved changes",
+        "discard": "Discard"
+      },
+      "appearance": {
+        "title": "Appearance",
+        "description": "Customize how the application looks and feels.",
+        "theme": {
+          "label": "Theme",
+          "placeholder": "Select theme",
+          "helper": "Choose your preferred color scheme."
+        },
+        "language": {
+          "label": "Language",
+          "placeholder": "Select language",
+          "helper": "Choose your preferred language. Browser Default follows your system language."
+        }
+      },
+      "taskExecution": {
+        "title": "Default Coding Agent",
+        "description": "Choose the default coding agent for tasks.",
+        "executor": {
+          "label": "Default Agent Configuration",
+          "placeholder": "Select profile",
+          "helper": "Choose the default agent configuration to use when creating a task attempt."
+        },
+        "variant": "DEFAULT",
+        "defaultLabel": "Default"
+      },
+      "editor": {
+        "title": "Editor",
+        "description": "Configure your code editing experience.",
+        "type": {
+          "label": "Editor Type",
+          "placeholder": "Select editor",
+          "helper": "Choose your preferred code editor interface."
+        },
+        "customCommand": {
+          "label": "Custom Editor Command",
+          "placeholder": "e.g., code, subl, vim",
+          "helper": "Enter the command to launch your custom editor. This will be used to open files."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "Remote SSH Host (Optional)",
+            "placeholder": "e.g., hostname or IP address",
+            "helper": "Set this if Vibe Kanban is running on a remote server. When set, clicking \"Open in Editor\" will generate a URL to open your editor via SSH instead of spawning a local command."
+          },
+          "user": {
+            "label": "Remote SSH User (Optional)",
+            "placeholder": "e.g., username",
+            "helper": "SSH username for the remote connection. If not set, VS Code will use your SSH config or prompt you."
+          }
+        },
+        "availability": {
+          "checking": "Checking availability...",
+          "available": "Available",
+          "notFound": "Not found in PATH"
+        }
+      },
+      "github": {
+        "title": "GitHub Integration",
+        "cliSetup": {
+          "title": "GitHub CLI Setup",
+          "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",
+          "setupWillTitle": "This setup will:",
+          "steps": {
+            "checkInstalled": "Check if GitHub CLI (gh) is installed",
+            "installHomebrew": "Install it via Homebrew if needed (macOS)",
+            "authenticate": "Authenticate with GitHub using OAuth"
+          },
+          "setupNote": "The setup will run in the chat window. You'll need to complete the authentication in your browser.",
+          "runSetup": "Run Setup",
+          "running": "Running...",
+          "errors": {
+            "brewMissing": "Homebrew is not installed. Install it to enable automatic setup.",
+            "notSupported": "Automatic setup is not supported on this platform. Install GitHub CLI manually.",
+            "setupFailed": "Failed to run GitHub CLI setup."
+          },
+          "help": {
+            "homebrew": {
+              "description": "Automatic installation requires Homebrew. Install Homebrew from",
+              "brewSh": "brew.sh",
+              "manualInstall": "and then rerun the setup. Alternatively, install GitHub CLI manually with:",
+              "afterInstall": "After installation, authenticate with:"
+            },
+            "manual": {
+              "description": "Install GitHub CLI from the",
+              "officialDocs": "official documentation",
+              "andAuthenticate": "and then authenticate with your GitHub account."
+            }
+          }
+        }
+      },
+      "git": {
+        "title": "Git",
+        "description": "Configure git branch naming preferences",
+        "branchPrefix": {
+          "label": "Branch Prefix",
+          "placeholder": "vk",
+          "helper": "Prefix for auto-generated branch names. Leave empty for no prefix.",
+          "preview": "Preview:",
+          "previewWithPrefix": "{{prefix}}/1a2b-task-name",
+          "previewNoPrefix": "1a2b-task-name",
+          "errors": {
+            "slash": "Prefix cannot contain '/'.",
+            "startsWithDot": "Prefix cannot start with '.'.",
+            "endsWithDot": "Prefix cannot end with '.' or '.lock'.",
+            "invalidSequence": "Contains invalid sequence (.., @{).",
+            "invalidChars": "Contains invalid characters.",
+            "controlChars": "Contains control characters."
+          }
+        }
+      },
+      "pullRequests": {
+        "title": "Pull Requests",
+        "description": "Configure PR creation behavior",
+        "autoDescription": {
+          "label": "Auto-generate PR description by default",
+          "helper": "When enabled, the AI agent will automatically update the PR title and description after creation."
+        },
+        "customPrompt": {
+          "useCustom": "Use custom prompt",
+          "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Control when and how you receive notifications.",
+        "sound": {
+          "label": "Sound Notifications",
+          "helper": "Play a sound when task attempts finish running.",
+          "fileLabel": "Sound",
+          "filePlaceholder": "Select sound",
+          "fileHelper": "Choose the sound to play when tasks complete. Click the volume button to preview."
+        },
+        "push": {
+          "label": "Push Notifications",
+          "helper": "Show system notifications when task attempts finish running."
+        }
+      },
+      "privacy": {
+        "title": "Privacy",
+        "description": "Help improve Vibe-Kanban by sharing anonymous usage data.",
+        "telemetry": {
+          "label": "Enable Telemetry",
+          "helper": "Enables anonymous usage events tracking to help improve the application. No prompts or project information are collected."
+        }
+      },
+      "taskTemplates": {
+        "title": "Tags",
+        "description": "Create reusable text snippets that can be inserted into task descriptions using @tag_name."
+      },
+      "tags": {
+        "manager": {
+          "title": "Task Tags",
+          "addTag": "Add Tag",
+          "noTags": "No tags yet. Create reusable text snippets for common task descriptions. Use @tag_name in any task.",
+          "table": {
+            "tagName": "Tag Name",
+            "content": "Content",
+            "actions": "Actions"
+          },
+          "actions": {
+            "editTag": "Edit tag",
+            "deleteTag": "Delete tag"
+          },
+          "deleteConfirm": "Are you sure you want to delete the tag \"{{tagName}}\"?"
+        },
+        "dialog": {
+          "createTitle": "Create Tag",
+          "editTitle": "Edit Tag",
+          "tagName": {
+            "label": "Tag Name",
+            "required": "*",
+            "hint": "Use this name with @ in task descriptions: @{{tagName}}",
+            "placeholder": "e.g., bug_fix, test_plan, api_docs",
+            "error": "Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)"
+          },
+          "content": {
+            "label": "Content",
+            "required": "*",
+            "hint": "Text that will be inserted when you use @{{tagName}} in task descriptions",
+            "placeholder": "Enter the text that will be inserted when you use this tag"
+          },
+          "errors": {
+            "nameRequired": "Tag name is required",
+            "saveFailed": "Failed to save tag"
+          },
+          "buttons": {
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update"
+          }
+        }
+      },
+      "safety": {
+        "title": "Safety & Disclaimers",
+        "description": "Reset acknowledgments for safety warnings and onboarding.",
+        "disclaimer": {
+          "title": "Disclaimer Acknowledgment",
+          "description": "Reset the safety disclaimer.",
+          "button": "Reset"
+        },
+        "onboarding": {
+          "title": "Onboarding",
+          "description": "Reset the onboarding flow.",
+          "button": "Reset"
+        }
+      }
+    },
+    "agents": {
+      "title": "Coding Agent Configurations",
+      "description": "Customize the behavior of coding agents with different configurations.",
+      "loading": "Loading agent configurations...",
+      "save": {
+        "button": "Save Agent Configurations",
+        "success": "✓ Executor configurations saved successfully!"
+      },
+      "availability": {
+        "checking": "Checking...",
+        "loginDetected": "Recent Usage Detected",
+        "loginDetectedTooltip": "Recent authentication credentials found for this agent",
+        "installationFound": "Previous Usage Detected",
+        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
+        "notFound": "Not Found",
+        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
+      },
+      "editor": {
+        "formLabel": "Edit JSON",
+        "agentLabel": "Agent",
+        "agentPlaceholder": "Select executor type",
+        "configLabel": "Configuration",
+        "configPlaceholder": "Select configuration",
+        "createNew": "Create new...",
+        "deleteTitle": "Cannot delete the last configuration",
+        "deleteButton": "Delete {{name}}",
+        "deleteText": "Delete",
+        "jsonLabel": "Agent Configuration (JSON)",
+        "jsonPlaceholder": "Loading profiles...",
+        "jsonLoading": "Loading...",
+        "pathLabel": "Configuration file location:"
+      },
+      "errors": {
+        "deleteFailed": "Failed to delete configuration. Please try again.",
+        "saveFailed": "Failed to save agent configurations. Please try again.",
+        "saveConfigFailed": "Failed to save configuration. Please try again."
+      }
+    },
+    "mcp": {
+      "title": "MCP Server Configuration",
+      "description": "Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.",
+      "loading": "Loading MCP configuration...",
+      "applying": "Applying configuration...",
+      "labels": {
+        "agent": "Agent",
+        "agentPlaceholder": "Select executor",
+        "agentHelper": "Choose which agent to configure MCP servers for.",
+        "serverConfig": "Server Configuration (JSON)",
+        "popularServers": "Popular servers",
+        "serverHelper": "Click a card to insert that MCP Server into the JSON above.",
+        "saveLocation": "Changes will be saved to:"
+      },
+      "loadingStates": {
+        "jsonEditor": "Loading...",
+        "configuration": "Loading current MCP server configuration..."
+      },
+      "errors": {
+        "loadFailed": "Failed to load configuration.",
+        "invalidJson": "Invalid JSON format",
+        "validationError": "Validation error",
+        "saveFailed": "Failed to save MCP servers",
+        "applyFailed": "Failed to apply MCP server configuration",
+        "addServerFailed": "Failed to add preconfigured server",
+        "mcpError": "MCP Configuration Error: {{error}}",
+        "notSupported": "MCP Not Supported",
+        "supportMessage": "To use MCP servers, please select a different executor that supports MCP (Claude, Amp, Gemini, Codex, or Opencode) above."
+      },
+      "save": {
+        "button": "Save MCP Configuration",
+        "success": "Settings Saved!",
+        "successMessage": "✓ MCP configuration saved successfully!",
+        "loading": "Loading current MCP server configuration..."
+      }
+    },
+    "projects": {
+      "title": "Project Configuration",
+      "description": "Configure project-specific scripts and settings.",
+      "loading": "Loading projects...",
+      "loadError": "Failed to load projects.",
+      "selector": {
+        "label": "Select Project",
+        "placeholder": "Choose a project to configure",
+        "helper": "Select a project to view and edit its configuration.",
+        "noProjects": "No projects available"
+      },
+      "general": {
+        "title": "General Settings",
+        "description": "Configure basic project information.",
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name",
+          "helper": "A display name for this project."
+        },
+        "repoPath": {
+          "label": "Git Repository Path",
+          "placeholder": "/path/to/your/existing/repo",
+          "helper": "The absolute path to your git repository on disk."
+        }
+      },
+      "scripts": {
+        "title": "Scripts & Configuration",
+        "description": "Configure setup, cleanup, and copy files for this project.",
+        "setup": {
+          "label": "Setup Script",
+          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
+          "parallelLabel": "Run setup script in parallel with coding agent",
+          "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
+        },
+        "dev": {
+          "label": "Dev Server Script",
+          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree) unless a working directory is specified below."
+        },
+        "devWorkingDir": {
+          "label": "Dev Server Working Directory",
+          "placeholder": "e.g., my-repo",
+          "helper": "The directory to run the dev server script from, relative to the workspace root. Leave empty to run from the workspace root."
+        },
+        "agentWorkingDir": {
+          "label": "Agent Working Directory",
+          "placeholder": "e.g., my-repo",
+          "helper": "Default directory for new workspaces to run the coding agent from, relative to the workspace root. This value is captured when a workspace is created and won't affect existing workspaces. For single-repo projects, this defaults to the repo name. Leave empty to run from the workspace root."
+        },
+        "cleanup": {
+          "label": "Cleanup Script",
+          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
+        },
+        "copyFiles": {
+          "label": "Copy Files",
+          "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+        }
+      },
+      "save": {
+        "button": "Save Project Settings",
+        "success": "✓ Project settings saved successfully!",
+        "error": "Failed to save project settings",
+        "unsavedChanges": "• You have unsaved changes",
+        "discard": "Discard",
+        "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "GitHub CLI Setup",
+        "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",
+        "setupWillTitle": "This setup will:",
+        "steps": {
+          "checkInstalled": "Check if GitHub CLI (gh) is installed",
+          "installHomebrew": "Install it via Homebrew if needed (macOS)",
+          "authenticate": "Authenticate with GitHub using OAuth"
+        },
+        "setupNote": "The setup will run in the chat window. You'll need to complete the authentication in your browser.",
+        "runSetup": "Run Setup",
+        "running": "Running...",
+        "errors": {
+          "brewMissing": "Homebrew is not installed. Install it to enable automatic setup.",
+          "notSupported": "Automatic setup is not supported on this platform. Install GitHub CLI manually.",
+          "setupFailed": "Failed to run GitHub CLI setup."
+        },
+        "help": {
+          "homebrew": {
+            "description": "Automatic installation requires Homebrew. Install Homebrew from",
+            "brewSh": "brew.sh",
+            "manualInstall": "and then rerun the setup. Alternatively, install GitHub CLI manually with:",
+            "afterInstall": "After installation, authenticate with:"
+          },
+          "manual": {
+            "description": "Install GitHub CLI from the",
+            "officialDocs": "official documentation",
+            "andAuthenticate": "and then authenticate with your GitHub account."
+          }
+        }
+      }
+    }
+  }
+}

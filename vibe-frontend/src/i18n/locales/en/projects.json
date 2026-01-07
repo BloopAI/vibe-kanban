@@ -1,0 +1,53 @@
+{
+  "title": "Projects",
+  "subtitle": "Manage your projects and track their progress",
+  "createProject": "Create Project",
+  "linkToOrganization": "Link to Remote Project",
+  "loading": "Loading projects...",
+  "errors": {
+    "fetchFailed": "Failed to fetch projects",
+    "deleteFailed": "Failed to delete project"
+  },
+  "empty": {
+    "title": "No projects yet",
+    "description": "Get started by creating your first project.",
+    "createFirst": "Create your first project"
+  },
+  "linkDialog": {
+    "title": "Link Project to Remote Project",
+    "description": "Link this local project to a remote project for collaboration and syncing.",
+    "projectLabel": "Project",
+    "organizationLabel": "Organization",
+    "loadingOrganizations": "Loading organizations...",
+    "noOrganizations": "No organizations available. Create an organization first.",
+    "selectOrganization": "Select an organization",
+    "loginRequired": {
+      "title": "Login Required",
+      "description": "You need to be logged in to link projects.",
+      "action": "Login"
+    },
+    "linkModeLabel": "Link Mode",
+    "linkToExisting": "Link to Existing",
+    "createNew": "Create New",
+    "remoteProjectLabel": "Remote Project",
+    "loadingRemoteProjects": "Loading remote projects...",
+    "noRemoteProjects": "No remote projects found in this organization. Try creating a new one instead.",
+    "selectRemoteProject": "Select a remote project",
+    "newProjectNameLabel": "New Remote Project Name",
+    "newProjectNamePlaceholder": "Enter project name",
+    "linking": "Linking...",
+    "linkButton": "Link Project",
+    "errors": {
+      "selectOrganization": "Please select an organization",
+      "selectRemoteProject": "Please select a remote project",
+      "enterProjectName": "Please enter a project name",
+      "linkFailed": "Failed to link project"
+    }
+  },
+  "unlinkFromOrganization": "Unlink from Remote Project",
+  "projectNotFound": "The project you're looking for doesn't exist or has been deleted.",
+  "viewProject": "View Project",
+  "openInIDE": "Open in IDE",
+  "createdDate": "Created {{date}}",
+  "copyFilesPlaceholderWithSearch": "File paths or glob patterns (e.g., .env, config/*.json)"
+}

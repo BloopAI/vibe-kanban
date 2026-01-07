@@ -1,0 +1,90 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "vibe-backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend
+
+jobs:
+  build-binary:
+    name: Build Rust Binary
+    environment: dve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install Dependencies (Ubuntu)
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libsqlite3-dev
+
+      # Setup Rust + Caching (The Fast Part)
+      - name: Setup Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vibe-backend
+
+      # Build Release Binary
+      - name: Build Binary
+        working-directory: vibe-backend
+        run: cargo build --release --bin server
+
+      # Upload Artifact for next job
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-binary
+          path: vibe-backend/target/release/server
+          retention-days: 1
+      
+      - name: Upload Entrypoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: entrypoint
+          path: vibe-backend/docker-entrypoint.sh
+          retention-days: 1
+
+  push-docker:
+    name: Push Docker Image
+    needs: build-binary
+    environment: dve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Download Binary
+      - name: Download Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: server-binary
+          path: vibe-backend
+      
+      # Download Entrypoint
+      - name: Download Entrypoint
+        uses: actions/download-artifact@v4
+        with:
+          name: entrypoint
+          path: vibe-backend
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./vibe-backend
+          file: ./vibe-backend/Dockerfile.deploy  # Use the specialized Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest

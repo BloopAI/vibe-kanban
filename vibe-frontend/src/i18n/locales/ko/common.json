@@ -1,0 +1,97 @@
+{
+  "folderPicker": {
+    "legend": "폴더 이름을 클릭하여 탐색 • 작업 버튼을 사용하여 선택",
+    "manualPathLabel": "경로 직접 입력:",
+    "go": "이동",
+    "searchLabel": "현재 디렉토리 검색:",
+    "selectCurrent": "현재 선택",
+    "gitRepo": "git 저장소",
+    "selectPath": "경로 선택"
+  },
+  "branchSelector": {
+    "badges": {
+      "current": "현재",
+      "remote": "원격"
+    },
+    "currentDisabled": "현재 브랜치는 선택할 수 없습니다",
+    "empty": "브랜치를 찾을 수 없습니다",
+    "placeholder": "브랜치 선택",
+    "searchPlaceholder": "브랜치 검색..."
+  },
+  "breadcrumb": {
+    "more": "More"
+  },
+  "buttons": {
+    "cancel": "취소",
+    "close": "닫기",
+    "connect": "연결",
+    "continue": "계속",
+    "create": "생성",
+    "delete": "삭제",
+    "disconnect": "연결 해제",
+    "edit": "편집",
+    "manage": "관리",
+    "replay": "다시 재생",
+    "reset": "초기화",
+    "save": "저장",
+    "send": "보내기"
+  },
+  "conversation": {
+    "args": "인자",
+    "deniedByUser": "{{toolName}} 사용자에 의해 거부됨",
+    "output": "출력",
+    "plan": "계획",
+    "planToggle": {
+      "hide": "계획 숨기기",
+      "show": "계획 보기"
+    },
+    "result": "결과",
+    "toolDetailsToggle": {
+      "hide": "세부 정보 숨기기",
+      "show": "세부 정보 보기"
+    }
+  },
+  "language": {
+    "browserDefault": "브라우저 기본값"
+  },
+  "states": {
+    "error": "오류",
+    "loading": "로딩 중...",
+    "reconnecting": "재연결 중",
+    "saving": "저장 중...",
+    "success": "성공"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}}명 더"
+  },
+  "orgSwitcher": {
+    "title": "조직 전환",
+    "description": "전환할 조직을 선택하세요.",
+    "loadError": "조직을 불러오는데 실패했습니다. 다시 시도해주세요.",
+    "noOrganizations": "어떤 조직에도 소속되어 있지 않습니다.",
+    "menuItem": "조직",
+    "loadingPlaceholder": "조직 로딩 중...",
+    "selectPlaceholder": "조직 선택",
+    "currentBadge": " (현재)"
+  },
+  "signOut": "로그아웃",
+  "devMode": {
+    "banner": "개발 모드 - 개발 빌드입니다"
+  },
+  "oauth": {
+    "title": "Vibe Kanban 로그인",
+    "description": "로그인하여 조직에 참여하고 팀과 작업을 공유하세요",
+    "continueWithGitHub": "GitHub로 계속",
+    "continueWithGoogle": "Google로 계속",
+    "waitingTitle": "인증 완료",
+    "waitingDescription": "인증을 위한 팝업 창이 열렸습니다",
+    "waitingForAuth": "인증 대기 중...",
+    "popupInstructions": "팝업 창이 열리지 않는 경우 팝업 차단 설정을 확인해주세요.",
+    "back": "뒤로",
+    "successTitle": "인증 성공!",
+    "welcomeBack": "환영합니다, {{name}}",
+    "errorTitle": "인증 실패",
+    "errorDescription": "계정 인증 중 문제가 발생했습니다",
+    "tryAgain": "다시 시도"
+  }
+}

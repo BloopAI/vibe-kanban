@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Scholar/Graduate icon for light mode -->
+  <!-- Graduation cap -->
+  <polygon points="32,8 4,22 32,36 60,22" fill="#1e293b"/>
+  <polygon points="32,36 4,22 4,26 32,40 60,26 60,22" fill="#334155"/>
+  <!-- Cap button/top -->
+  <circle cx="32" cy="8" r="3" fill="#1e293b"/>
+  <!-- Tassel -->
+  <line x1="52" y1="22" x2="52" y2="38" stroke="#eab308" stroke-width="2"/>
+  <circle cx="52" cy="40" r="3" fill="#eab308"/>
+  <!-- Person silhouette -->
+  <circle cx="32" cy="48" r="6" fill="#1e293b"/>
+  <path d="M20,64 Q20,54 32,54 Q44,54 44,64" fill="#1e293b"/>
+</svg>

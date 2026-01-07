@@ -1,0 +1,22 @@
+# Railway ignore file - overrides .gitignore for deployment
+# Only ignore what we don't need for nginx deployment
+
+node_modules/
+src/
+public/
+.logs/
+.env*
+*.config.ts
+*.config.js
+tsconfig.json
+tsconfig.node.json
+package.json
+pnpm-lock.yaml
+components.json
+index.html
+vercel.json
+*.md
+.eslintrc.cjs
+.prettierrc.json
+
+# DO NOT ignore dist/ - it's needed for deployment!
