@@ -380,17 +380,15 @@ impl AzCli {
 
         if url_lower.contains("dev.azure.com") && url_lower.contains("/pullrequest/") {
             let parts: Vec<&str> = url.split('/').collect();
-            if let Some(pr_idx) = parts.iter().position(|&p| p == "pullrequest") {
-                if parts.len() > pr_idx + 1 {
-                    let pr_id: i64 = parts[pr_idx + 1].parse().ok()?;
-                    // Find dev.azure.com position to get organization
-                    if let Some(azure_idx) = parts.iter().position(|&p| p.contains("dev.azure.com"))
-                    {
-                        if parts.len() > azure_idx + 1 {
-                            let organization = parts[azure_idx + 1].to_string();
-                            return Some((organization, pr_id));
-                        }
-                    }
+            if let Some(pr_idx) = parts.iter().position(|&p| p == "pullrequest")
+                && parts.len() > pr_idx + 1
+            {
+                let pr_id: i64 = parts[pr_idx + 1].parse().ok()?;
+                if let Some(azure_idx) = parts.iter().position(|&p| p.contains("dev.azure.com"))
+                    && parts.len() > azure_idx + 1
+                {
+                    let organization = parts[azure_idx + 1].to_string();
+                    return Some((organization, pr_id));
                 }
             }
         }
@@ -399,15 +397,12 @@ impl AzCli {
         if url_lower.contains(".visualstudio.com") && url_lower.contains("/pullrequest/") {
             let parts: Vec<&str> = url.split('/').collect();
             for part in parts.iter() {
-                if part.contains(".visualstudio.com") {
-                    if let Some(org) = part.split('.').next() {
-                        if let Some(pr_idx) = parts.iter().position(|&p| p == "pullrequest") {
-                            if parts.len() > pr_idx + 1 {
-                                let pr_id: i64 = parts[pr_idx + 1].parse().ok()?;
-                                return Some((org.to_string(), pr_id));
-                            }
-                        }
-                    }
+                if let Some(org) = part.strip_suffix(".visualstudio.com")
+                    && let Some(pr_idx) = parts.iter().position(|&p| p == "pullrequest")
+                    && parts.len() > pr_idx + 1
+                {
+                    let pr_id: i64 = parts[pr_idx + 1].parse().ok()?;
+                    return Some((org.to_string(), pr_id));
                 }
             }
         }
