@@ -20,19 +20,22 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct AzureDevOpsProvider {
     az_cli: AzCli,
+    remote_url: String,
 }
 
 impl AzureDevOpsProvider {
-    pub fn new() -> Result<Self, GitHostError> {
+    pub fn new(remote_url: String) -> Result<Self, GitHostError> {
         Ok(Self {
             az_cli: AzCli::new(),
+            remote_url,
         })
     }
 
     async fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, GitHostError> {
         let cli = self.az_cli.clone();
         let path = repo_path.to_path_buf();
-        task::spawn_blocking(move || cli.get_repo_info(&path))
+        let remote_url = self.remote_url.clone();
+        task::spawn_blocking(move || cli.get_repo_info(&path, &remote_url))
             .await
             .map_err(|err| GitHostError::Repository(format!("Failed to get repo info: {err}")))?
             .map_err(Into::into)

@@ -172,7 +172,11 @@ impl AzCli {
 
         Err(AzCliError::CommandFailed(stderr))
     }
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<AzureRepoInfo, AzCliError> {
+    pub fn get_repo_info(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+    ) -> Result<AzureRepoInfo, AzCliError> {
         let raw = self.run(
             ["repos", "list", "--detect", "true", "--output", "json"],
             Some(repo_path),
@@ -182,20 +186,24 @@ impl AzCli {
             AzCliError::UnexpectedOutput(format!("Failed to parse repos list: {e}; raw: {raw}"))
         })?;
 
+        // Find the repo that matches our remote URL
         let repo = repos
             .into_iter()
-            .next()
-            .ok_or_else(|| AzCliError::UnexpectedOutput("No repos found in project".to_string()))?;
+            .find(|r| Self::remote_urls_match(&r.remote_url, remote_url))
+            .ok_or_else(|| {
+                AzCliError::UnexpectedOutput(format!(
+                    "No repo found matching remote URL: {}",
+                    remote_url
+                ))
+            })?;
 
-        // Extract org from remoteUrl: https://dev.azure.com/{org}/...
-        let org = Self::extract_org_from_remote_url(&repo.remote_url).ok_or_else(|| {
-            AzCliError::UnexpectedOutput(format!(
-                "Could not extract org from remote URL: {}",
-                repo.remote_url
-            ))
-        })?;
-
-        let organization_url = format!("https://dev.azure.com/{}", org);
+        let organization_url =
+            Self::extract_organization_url(&repo.remote_url).ok_or_else(|| {
+                AzCliError::UnexpectedOutput(format!(
+                    "Could not extract organization URL from: {}",
+                    repo.remote_url
+                ))
+            })?;
 
         tracing::debug!(
             "Got Azure DevOps repo info: org_url='{}', project='{}' ({}), repo='{}' ({})",
@@ -215,20 +223,35 @@ impl AzCli {
         })
     }
 
-    fn extract_org_from_remote_url(url: &str) -> Option<String> {
-        // dev.azure.com format: https://dev.azure.com/{org}/...
+    /// Check if two Azure DevOps remote URLs refer to the same repository.
+    /// Handles both dev.azure.com and legacy visualstudio.com formats.
+    fn remote_urls_match(url1: &str, url2: &str) -> bool {
+        let normalize = |url: &str| {
+            url.to_lowercase()
+                .trim_end_matches('/')
+                .trim_end_matches(".git")
+                .to_string()
+        };
+        normalize(url1) == normalize(url2)
+    }
+
+    /// Extract the organization URL from a remote URL.
+    /// Returns the base URL that can be used with Azure CLI commands.
+    fn extract_organization_url(url: &str) -> Option<String> {
+        // dev.azure.com format: https://dev.azure.com/{org}/... -> https://dev.azure.com/{org}
         if url.contains("dev.azure.com") {
             let parts: Vec<&str> = url.split('/').collect();
             let azure_idx = parts.iter().position(|&p| p.contains("dev.azure.com"))?;
-            return parts.get(azure_idx + 1).map(|s| s.to_string());
+            let org = parts.get(azure_idx + 1)?;
+            return Some(format!("https://dev.azure.com/{}", org));
         }
 
-        // Legacy format: https://{org}.visualstudio.com/...
+        // Legacy format: https://{org}.visualstudio.com/... -> https://{org}.visualstudio.com
         if url.contains(".visualstudio.com") {
             let parts: Vec<&str> = url.split('/').collect();
-            for part in parts {
+            for part in parts.iter() {
                 if part.contains(".visualstudio.com") {
-                    return part.split('.').next().map(|s| s.to_string());
+                    return Some(format!("https://{}", part));
                 }
             }
         }
@@ -583,25 +606,56 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_org_from_remote_url_dev_azure() {
-        let org =
-            AzCli::extract_org_from_remote_url("https://dev.azure.com/myorg/myproject/_git/myrepo")
+    fn test_remote_urls_match() {
+        // Exact match
+        assert!(AzCli::remote_urls_match(
+            "https://dev.azure.com/myorg/myproject/_git/myrepo",
+            "https://dev.azure.com/myorg/myproject/_git/myrepo"
+        ));
+
+        // Trailing slash
+        assert!(AzCli::remote_urls_match(
+            "https://dev.azure.com/myorg/myproject/_git/myrepo/",
+            "https://dev.azure.com/myorg/myproject/_git/myrepo"
+        ));
+
+        // .git suffix
+        assert!(AzCli::remote_urls_match(
+            "https://dev.azure.com/myorg/myproject/_git/myrepo.git",
+            "https://dev.azure.com/myorg/myproject/_git/myrepo"
+        ));
+
+        // Case insensitive
+        assert!(AzCli::remote_urls_match(
+            "https://dev.azure.com/MyOrg/MyProject/_git/MyRepo",
+            "https://dev.azure.com/myorg/myproject/_git/myrepo"
+        ));
+
+        // Different repos should not match
+        assert!(!AzCli::remote_urls_match(
+            "https://dev.azure.com/myorg/myproject/_git/repo1",
+            "https://dev.azure.com/myorg/myproject/_git/repo2"
+        ));
+    }
+
+    #[test]
+    fn test_extract_organization_url_dev_azure() {
+        let org_url =
+            AzCli::extract_organization_url("https://dev.azure.com/myorg/myproject/_git/myrepo")
                 .unwrap();
-        assert_eq!(org, "myorg");
+        assert_eq!(org_url, "https://dev.azure.com/myorg");
     }
 
     #[test]
-    fn test_extract_org_from_remote_url_visualstudio() {
-        let org = AzCli::extract_org_from_remote_url(
-            "https://myorg.visualstudio.com/myproject/_git/myrepo",
-        )
-        .unwrap();
-        assert_eq!(org, "myorg");
+    fn test_extract_organization_url_visualstudio() {
+        let org_url =
+            AzCli::extract_organization_url("https://myorg.visualstudio.com/myproject/_git/myrepo")
+                .unwrap();
+        assert_eq!(org_url, "https://myorg.visualstudio.com");
     }
 
     #[test]
-    fn test_extract_org_from_remote_url_invalid() {
-        // GitHub URL should return None
-        assert!(AzCli::extract_org_from_remote_url("https://github.com/owner/repo").is_none());
+    fn test_extract_organization_url_invalid() {
+        assert!(AzCli::extract_organization_url("https://github.com/owner/repo").is_none());
     }
 }

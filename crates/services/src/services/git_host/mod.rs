@@ -53,7 +53,9 @@ impl GitHostService {
     pub fn from_url(url: &str) -> Result<Self, GitHostError> {
         match detect_provider_from_url(url) {
             ProviderKind::GitHub => Ok(Self::GitHub(GitHubProvider::new()?)),
-            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new()?)),
+            ProviderKind::AzureDevOps => Ok(Self::AzureDevOps(AzureDevOpsProvider::new(
+                url.to_string(),
+            )?)),
             ProviderKind::Unknown => Err(GitHostError::UnsupportedProvider),
         }
     }
