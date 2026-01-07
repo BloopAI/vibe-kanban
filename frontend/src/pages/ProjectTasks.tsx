@@ -287,7 +287,9 @@ export function ProjectTasks() {
   const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttemptWithSession(effectiveAttemptId);
 
-  const { data: branchStatus, error: branchStatusError } = useBranchStatus(attempt?.id);
+  const { data: branchStatus, error: branchStatusError } = useBranchStatus(
+    attempt?.id
+  );
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =

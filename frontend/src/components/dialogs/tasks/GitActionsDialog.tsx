@@ -35,7 +35,9 @@ function GitActionsDialogContent({
   task,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
-  const { data: branchStatus, error: branchStatusError } = useBranchStatus(attempt.id);
+  const { data: branchStatus, error: branchStatusError } = useBranchStatus(
+    attempt.id
+  );
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
   const { repos, selectedRepoId } = useAttemptRepo(attempt.id);
