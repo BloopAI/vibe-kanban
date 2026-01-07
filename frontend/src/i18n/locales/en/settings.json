@@ -358,6 +358,10 @@
           "label": "Cleanup Script",
           "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
         },
+        "worktreeCleanup": {
+          "label": "Worktree Cleanup Script",
+          "helper": "This script runs once before worktree directories are removed (e.g., when a task is deleted). Use it for cleanup tasks like stopping Docker containers, deleting databases, or releasing external resources. Runs from the workspace root directory."
+        },
         "copyFiles": {
           "label": "Copy Files",
           "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"

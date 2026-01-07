@@ -45,6 +45,7 @@ interface RepoScriptsFormState {
   parallel_setup_script: boolean;
   cleanup_script: string;
   copy_files: string;
+  worktree_cleanup_script: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -64,6 +65,7 @@ function projectRepoToScriptsFormState(
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
+    worktree_cleanup_script: projectRepo?.worktree_cleanup_script ?? '',
   };
 }
 
@@ -426,6 +428,8 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
+          worktree_cleanup_script:
+            scriptsDraft.worktree_cleanup_script.trim() || null,
         }
       );
       setSelectedProjectRepo(updatedRepo);
@@ -872,6 +876,27 @@ export function ProjectSettings() {
                         />
                         <p className="text-sm text-muted-foreground">
                           {t('settings.projects.scripts.cleanup.helper')}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="worktree-cleanup-script">
+                          {t('settings.projects.scripts.worktreeCleanup.label')}
+                        </Label>
+                        <AutoExpandingTextarea
+                          id="worktree-cleanup-script"
+                          value={scriptsDraft.worktree_cleanup_script}
+                          onChange={(e) =>
+                            updateScriptsDraft({
+                              worktree_cleanup_script: e.target.value,
+                            })
+                          }
+                          placeholder={placeholders.cleanup}
+                          maxRows={12}
+                          className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          {t('settings.projects.scripts.worktreeCleanup.helper')}
                         </p>
                       </div>
 

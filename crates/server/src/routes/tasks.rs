@@ -15,6 +15,7 @@ use axum::{
 use db::models::{
     image::TaskImage,
     project::{Project, ProjectError},
+    project_repo::ProjectRepo,
     repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
@@ -389,6 +390,23 @@ pub async fn delete_task(
         )
         .await;
 
+    // Fetch per-repo cleanup scripts before spawning background task
+    let repo_scripts: Vec<(Uuid, Option<String>)> =
+        match ProjectRepo::find_by_project_id(pool, task.project_id).await {
+            Ok(project_repos) => project_repos
+                .into_iter()
+                .map(|pr| (pr.repo_id, pr.worktree_cleanup_script))
+                .collect(),
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to fetch project repos for project {}: {}, skipping cleanup scripts",
+                    task.project_id,
+                    e
+                );
+                vec![]
+            }
+        };
+
     let task_id = task.id;
     let pool = pool.clone();
     tokio::spawn(async move {
@@ -399,8 +417,14 @@ pub async fn delete_task(
             repositories.len()
         );
 
+        // Execute per-repo cleanup scripts for each workspace
         for workspace_dir in &workspace_dirs {
-            if let Err(e) = WorkspaceManager::cleanup_workspace(workspace_dir, &repositories).await
+            if let Err(e) = WorkspaceManager::cleanup_workspace_with_scripts(
+                workspace_dir,
+                &repositories,
+                &repo_scripts,
+            )
+            .await
             {
                 tracing::error!(
                     "Background workspace cleanup failed for task {} at {}: {}",

@@ -142,7 +142,11 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    pub async fn cleanup_workspace(db: &DBService, workspace: &Workspace) {
+    pub async fn cleanup_workspace(
+        db: &DBService,
+        workspace: &Workspace,
+        repo_scripts: &[(Uuid, Option<String>)],
+    ) {
         let Some(container_ref) = &workspace.container_ref else {
             return;
         };
@@ -163,15 +167,19 @@ impl LocalContainerService {
                 tracing::warn!("Failed to remove workspace directory: {}", e);
             }
         } else {
-            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to clean up workspace for workspace {}: {}",
-                        workspace.id,
-                        e
-                    );
-                });
+            WorkspaceManager::cleanup_workspace_with_scripts(
+                &workspace_dir,
+                &repositories,
+                repo_scripts,
+            )
+            .await
+            .unwrap_or_else(|e| {
+                tracing::warn!(
+                    "Failed to clean up workspace for workspace {}: {}",
+                    workspace.id,
+                    e
+                );
+            });
         }
 
         // Clear container_ref so this workspace won't be picked up again
@@ -189,9 +197,52 @@ impl LocalContainerService {
             expired_workspaces.len()
         );
         for workspace in &expired_workspaces {
-            Self::cleanup_workspace(db, workspace).await;
+            // Fetch per-repo cleanup scripts via task -> project
+            let repo_scripts = Self::get_cleanup_scripts_for_workspace(db, workspace).await;
+            Self::cleanup_workspace(db, workspace, &repo_scripts).await;
         }
         Ok(())
+    }
+
+    /// Get the worktree cleanup scripts for each repo in a workspace by traversing task -> project -> project_repos.
+    async fn get_cleanup_scripts_for_workspace(
+        db: &DBService,
+        workspace: &Workspace,
+    ) -> Vec<(Uuid, Option<String>)> {
+        let task = match Task::find_by_id(&db.pool, workspace.task_id).await {
+            Ok(Some(task)) => task,
+            Ok(None) => {
+                tracing::debug!(
+                    "Task {} not found for workspace {}, skipping cleanup scripts",
+                    workspace.task_id,
+                    workspace.id
+                );
+                return vec![];
+            }
+            Err(e) => {
+                tracing::debug!(
+                    "Failed to fetch task {} for cleanup scripts: {}",
+                    workspace.task_id,
+                    e
+                );
+                return vec![];
+            }
+        };
+
+        match ProjectRepo::find_by_project_id(&db.pool, task.project_id).await {
+            Ok(project_repos) => project_repos
+                .into_iter()
+                .map(|pr| (pr.repo_id, pr.worktree_cleanup_script))
+                .collect(),
+            Err(e) => {
+                tracing::debug!(
+                    "Failed to fetch project repos for project {}: {}",
+                    task.project_id,
+                    e
+                );
+                vec![]
+            }
+        }
     }
 
     pub async fn spawn_workspace_cleanup(&self) {
@@ -960,7 +1011,8 @@ impl ContainerService for LocalContainerService {
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError> {
         self.try_stop(workspace, true).await;
-        Self::cleanup_workspace(&self.db, workspace).await;
+        let repo_scripts = Self::get_cleanup_scripts_for_workspace(&self.db, workspace).await;
+        Self::cleanup_workspace(&self.db, workspace, &repo_scripts).await;
         Ok(())
     }
 

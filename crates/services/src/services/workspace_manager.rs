@@ -1,8 +1,11 @@
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
+use std::time::Duration;
 
 use db::models::{repo::Repo, workspace::Workspace as DbWorkspace};
 use sqlx::{Pool, Sqlite};
 use thiserror::Error;
+use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -198,6 +201,74 @@ impl WorkspaceManager {
                 "Could not remove workspace directory {}: {}",
                 workspace_dir.display(),
                 e
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Clean up workspace with optional per-repo cleanup scripts.
+    /// Each repo's script runs BEFORE its worktree removal so it can access files if needed.
+    /// The repo_scripts slice contains tuples of (repo_id, optional_script).
+    pub async fn cleanup_workspace_with_scripts(
+        workspace_dir: &Path,
+        repos: &[Repo],
+        repo_scripts: &[(Uuid, Option<String>)],
+    ) -> Result<(), WorkspaceError> {
+        info!("Cleaning up workspace at {}", workspace_dir.display());
+
+        // Execute per-repo cleanup scripts BEFORE removing worktrees
+        for repo in repos {
+            let worktree_path = workspace_dir.join(&repo.name);
+
+            // Find the cleanup script for this repo
+            if let Some((_, Some(script))) = repo_scripts.iter().find(|(id, _)| *id == repo.id) {
+                if !script.trim().is_empty() && worktree_path.exists() {
+                    info!(
+                        "Executing worktree cleanup script for repo '{}' at {}",
+                        repo.name,
+                        worktree_path.display()
+                    );
+                    if let Err(e) = Self::execute_cleanup_script(&worktree_path, script).await {
+                        warn!(
+                            "Worktree cleanup script for repo '{}' failed (continuing with cleanup): {}",
+                            repo.name, e
+                        );
+                    }
+                }
+            }
+        }
+
+        // Proceed with normal cleanup
+        Self::cleanup_workspace(workspace_dir, repos).await
+    }
+
+    /// Execute a cleanup script in the given directory with a timeout.
+    async fn execute_cleanup_script(
+        working_dir: &Path,
+        script: &str,
+    ) -> Result<(), std::io::Error> {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c")
+            .arg(script)
+            .current_dir(working_dir)
+            .stdin(Stdio::null())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+
+        let status = tokio::time::timeout(Duration::from_secs(60), cmd.status())
+            .await
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "Cleanup script timed out after 60 seconds",
+                )
+            })??;
+
+        if !status.success() {
+            warn!(
+                "Cleanup script exited with non-zero status: {:?}",
+                status.code()
             );
         }
 
