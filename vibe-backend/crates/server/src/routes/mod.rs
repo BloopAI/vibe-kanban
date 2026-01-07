@@ -4,9 +4,9 @@ use axum::{
     Router,
     middleware,
     routing::{IntoMakeService, get},
-    http::{Method, HeaderValue},
+    http::{Method, HeaderValue, header::{AUTHORIZATION, CONTENT_TYPE, ACCEPT, ORIGIN, UPGRADE, CONNECTION}},
 };
-use tower_http::cors::{CorsLayer, Any};
+use tower_http::cors::CorsLayer;
 
 use crate::DeploymentImpl;
 use crate::middleware::{
@@ -121,7 +121,14 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
         ])
         .allow_credentials(true)
-        .allow_headers(Any);
+        .allow_headers([
+            AUTHORIZATION,
+            CONTENT_TYPE,
+            ACCEPT,
+            ORIGIN,
+            UPGRADE,
+            CONNECTION,
+        ]);
     
     // Allow dynamic origins from env var (comma separated)
     let cors = if let Ok(extra_origins) = std::env::var("CORS_ALLOWED_ORIGINS") {
@@ -150,7 +157,14 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
                 Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::PATCH, Method::OPTIONS,
             ])
             .allow_credentials(true)
-            .allow_headers(Any)
+            .allow_headers([
+                AUTHORIZATION,
+                CONTENT_TYPE,
+                ACCEPT,
+                ORIGIN,
+                UPGRADE,
+                CONNECTION,
+            ])
     } else {
         cors
     };
