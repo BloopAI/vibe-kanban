@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO coding_agent_turns (\n                id, execution_process_id, agent_session_id, prompt, summary,\n                created_at, updated_at\n               )\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                seen as \"seen!: bool\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM coding_agent_turns\n               WHERE agent_session_id = ?\n               ORDER BY updated_at DESC\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -29,18 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "seen!: bool",
         "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 1
     },
     "nullable": [
       true,
@@ -49,8 +54,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "953633729bed1499b03c338d650c4b404d037cd25dda759b56f72f7fa31e9a04"
+  "hash": "241edef9e66f032a8a5afce586f2a78c82cf2c795d880126596554b9ce5eaf76"
 }

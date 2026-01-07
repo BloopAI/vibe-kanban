@@ -784,6 +784,17 @@ export const attemptsApi = {
     );
     return handleApiResponse<PrCommentsResponse>(response);
   },
+
+  /** Mark all coding agent turns for a workspace as seen */
+  markSeen: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/mark-seen`,
+      {
+        method: 'PUT',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Execution Process APIs

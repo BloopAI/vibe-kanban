@@ -11,6 +11,7 @@ pub struct CodingAgentTurn {
     pub agent_session_id: Option<String>, // Session ID from Claude/Amp coding agent
     pub prompt: Option<String>,           // The prompt sent to the executor
     pub summary: Option<String>,          // Final assistant message/summary
+    pub seen: bool,                       // Whether user has viewed this turn
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -35,6 +36,7 @@ impl CodingAgentTurn {
                 agent_session_id,
                 prompt,
                 summary,
+                seen as "seen!: bool",
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM coding_agent_turns
@@ -57,6 +59,7 @@ impl CodingAgentTurn {
                 agent_session_id,
                 prompt,
                 summary,
+                seen as "seen!: bool",
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM coding_agent_turns
@@ -86,16 +89,17 @@ impl CodingAgentTurn {
         sqlx::query_as!(
             CodingAgentTurn,
             r#"INSERT INTO coding_agent_turns (
-                id, execution_process_id, agent_session_id, prompt, summary,
+                id, execution_process_id, agent_session_id, prompt, summary, seen,
                 created_at, updated_at
                )
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                RETURNING
                 id as "id!: Uuid",
                 execution_process_id as "execution_process_id!: Uuid",
                 agent_session_id,
                 prompt,
                 summary,
+                seen as "seen!: bool",
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -103,6 +107,7 @@ impl CodingAgentTurn {
             None::<String>, // agent_session_id initially None until parsed from output
             data.prompt,
             None::<String>, // summary initially None
+            false,          // seen - defaults to unseen
             now,            // created_at
             now             // updated_at
         )
@@ -150,5 +155,85 @@ impl CodingAgentTurn {
         .await?;
 
         Ok(())
+    }
+
+    /// Mark all coding agent turns for a workspace as seen
+    pub async fn mark_seen_by_workspace_id(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now();
+        sqlx::query!(
+            r#"UPDATE coding_agent_turns
+               SET seen = 1, updated_at = $1
+               WHERE execution_process_id IN (
+                   SELECT ep.id FROM execution_processes ep
+                   JOIN sessions s ON ep.session_id = s.id
+                   WHERE s.workspace_id = $2
+               ) AND seen = 0"#,
+            now,
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Check if a workspace has any unseen coding agent turns
+    pub async fn has_unseen_by_workspace_id(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM coding_agent_turns cat
+                JOIN execution_processes ep ON cat.execution_process_id = ep.id
+                JOIN sessions s ON ep.session_id = s.id
+                WHERE s.workspace_id = $1 AND cat.seen = 0
+            ) as "has_unseen!: bool""#,
+            workspace_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    /// Batch check which workspaces have unseen coding agent turns
+    pub async fn has_unseen_by_workspace_ids(
+        pool: &SqlitePool,
+        workspace_ids: &[Uuid],
+    ) -> Result<std::collections::HashSet<Uuid>, sqlx::Error> {
+        use std::collections::HashSet;
+
+        if workspace_ids.is_empty() {
+            return Ok(HashSet::new());
+        }
+
+        // Build placeholders for the IN clause
+        let placeholders: Vec<String> = workspace_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("${}", i + 1))
+            .collect();
+        let placeholders_str = placeholders.join(", ");
+
+        let query = format!(
+            r#"SELECT DISTINCT s.workspace_id
+               FROM coding_agent_turns cat
+               JOIN execution_processes ep ON cat.execution_process_id = ep.id
+               JOIN sessions s ON ep.session_id = s.id
+               WHERE s.workspace_id IN ({}) AND cat.seen = 0"#,
+            placeholders_str
+        );
+
+        let mut query_builder = sqlx::query_scalar::<_, Uuid>(&query);
+        for id in workspace_ids {
+            query_builder = query_builder.bind(id);
+        }
+
+        let result: Vec<Uuid> = query_builder.fetch_all(pool).await?;
+        Ok(result.into_iter().collect())
     }
 }

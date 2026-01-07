@@ -5,6 +5,7 @@ import {
   TriangleIcon,
   PlayIcon,
   FileIcon,
+  CircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
@@ -45,6 +46,7 @@ interface WorkspaceSummaryProps {
   isPinned?: boolean;
   hasPendingApproval?: boolean;
   hasRunningDevServer?: boolean;
+  hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   onClick?: () => void;
@@ -65,6 +67,7 @@ export function WorkspaceSummary({
   isPinned = false,
   hasPendingApproval = false,
   hasRunningDevServer = false,
+  hasUnseenActivity = false,
   latestProcessCompletedAt,
   latestProcessStatus,
   onClick,
@@ -129,6 +132,14 @@ export function WorkspaceSummary({
               ) : (
                 <RunningDots />
               ))}
+
+            {/* Unseen activity indicator (only when not running and not failed) */}
+            {hasUnseenActivity && !isRunning && !isFailed && (
+              <CircleIcon
+                className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
 
             {/* Pin icon */}
             {isPinned && (
