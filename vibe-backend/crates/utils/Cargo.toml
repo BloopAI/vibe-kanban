@@ -35,7 +35,7 @@ dirs = "5.0"
 thiserror = { workspace = true }
 url = "2.5"
 reqwest = { version = "0.12", features = ["json"] }
-sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "macros", "uuid", "chrono"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
