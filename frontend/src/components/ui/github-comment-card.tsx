@@ -32,33 +32,8 @@ function truncateBody(body: string, maxLength: number): string {
   return body.slice(0, maxLength - 3) + '...';
 }
 
-/**
- * Renders a diff hunk with syntax highlighting for added/removed lines
- */
-function DiffHunk({ diffHunk }: { diffHunk: string }) {
-  const lines = diffHunk.split('\n');
-
-  return (
-    <pre className="mt-2 p-2 bg-secondary rounded text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto">
-      {lines.map((line, i) => {
-        let lineClass = 'block';
-        if (line.startsWith('+') && !line.startsWith('+++')) {
-          lineClass =
-            'block bg-green-500/20 text-green-700 dark:text-green-400';
-        } else if (line.startsWith('-') && !line.startsWith('---')) {
-          lineClass = 'block bg-red-500/20 text-red-700 dark:text-red-400';
-        } else if (line.startsWith('@@')) {
-          lineClass = 'block text-muted-foreground';
-        }
-        return (
-          <code key={i} className={lineClass}>
-            {line}
-          </code>
-        );
-      })}
-    </pre>
-  );
-}
+/** Maximum characters to show in list/full card body preview */
+const LIST_BODY_MAX_LENGTH = 150;
 
 /**
  * Compact variant - inline chip for WYSIWYG editor
@@ -100,6 +75,7 @@ function CompactCard({
 
 /**
  * Full variant - card for dialog selection
+ * Shows truncated body preview with essential info (author, file, line, date, link)
  */
 function FullCard({
   author,
@@ -109,7 +85,6 @@ function FullCard({
   commentType,
   path,
   line,
-  diffHunk,
   onClick,
   variant,
   className,
@@ -117,6 +92,7 @@ function FullCard({
   const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
+  const isTruncated = body.length > LIST_BODY_MAX_LENGTH;
 
   return (
     <div
@@ -166,13 +142,25 @@ function FullCard({
         </div>
       )}
 
-      {/* Diff hunk for review comments */}
-      {isReview && diffHunk && <DiffHunk diffHunk={diffHunk} />}
-
-      {/* Comment body */}
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words mt-2">
-        {body}
+      {/* Comment body preview (truncated for long comments) */}
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+        {truncateBody(body, LIST_BODY_MAX_LENGTH)}
       </p>
+
+      {/* View full link when truncated */}
+      {isTruncated && url && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+          className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1"
+        >
+          {t('githubComments.card.viewFull')}
+          <ExternalLink className="w-3 h-3" />
+        </button>
+      )}
     </div>
   );
 }

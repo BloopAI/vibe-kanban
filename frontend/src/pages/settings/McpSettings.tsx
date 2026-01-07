@@ -25,8 +25,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { JSONEditor } from '@/components/ui/json-editor';
-import { Loader2 } from 'lucide-react';
-import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
+import { Loader2, Lock, User, FolderOpen } from 'lucide-react';
+import type {
+  BaseCodingAgent,
+  ExecutorConfig,
+  McpServerWithSource,
+} from 'shared/types';
 import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
@@ -45,6 +49,9 @@ export function McpSettings() {
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
+  const [claudeCodeServers, setClaudeCodeServers] = useState<
+    Record<string, McpServerWithSource>
+  >({});
 
   // Initialize selected profile when config loads
   useEffect(() => {
@@ -66,6 +73,7 @@ export function McpSettings() {
       // Reset state when loading
       setMcpLoading(true);
       setMcpError(null);
+      setClaudeCodeServers({});
       // Set default empty config based on agent type using strategy
       setMcpConfigPath('');
 
@@ -91,6 +99,18 @@ export function McpSettings() {
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
         setMcpConfigPath(result.config_path);
+
+        // Store Claude Code servers if present (for CLAUDE_CODE executor)
+        if (result.claude_code_servers) {
+          // Filter out undefined values to satisfy TypeScript
+          const servers: Record<string, McpServerWithSource> = {};
+          for (const [key, value] of Object.entries(result.claude_code_servers)) {
+            if (value) {
+              servers[key] = value;
+            }
+          }
+          setClaudeCodeServers(servers);
+        }
       } catch (err: unknown) {
         if (
           err instanceof Error &&
@@ -357,6 +377,63 @@ export function McpSettings() {
                   </span>
                 )}
               </div>
+
+              {/* Claude Code MCP Servers Section */}
+              {Object.keys(claudeCodeServers).length > 0 && (
+                <div className="pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <Label>{t('settings.mcp.labels.claudeCodeServers')}</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t('settings.mcp.labels.claudeCodeServersHelper')}
+                  </p>
+
+                  <div className="space-y-2">
+                    {Object.entries(claudeCodeServers).map(
+                      ([serverName, serverInfo]) => (
+                        <div
+                          key={serverName}
+                          className="flex items-center justify-between rounded-lg border bg-muted/50 p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg border bg-background grid place-items-center">
+                              <span className="font-semibold text-sm">
+                                {serverName.slice(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{serverName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {serverInfo.source === 'claude_code_user' ? (
+                                  <span className="flex items-center gap-1">
+                                    <User className="h-3 w-3" />
+                                    {t('settings.mcp.sources.user')}
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1">
+                                    <FolderOpen className="h-3 w-3" />
+                                    {t('settings.mcp.sources.project')}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
+                              {t('settings.mcp.labels.readOnly')}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-2 italic">
+                    {t('settings.mcp.labels.claudeCodeServersNote')}
+                  </p>
+                </div>
+              )}
 
               {mcpConfig?.preconfigured &&
                 typeof mcpConfig.preconfigured === 'object' && (

@@ -2,7 +2,7 @@
 //!
 //! These helpers abstract over JSON vs TOML formats used by different agents.
 
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::HashMap, path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -304,4 +304,135 @@ impl CodingAgent {
         let canonical = PRECONFIGURED_MCP_SERVERS.clone();
         apply_adapter(adapter, canonical)
     }
+}
+
+/// Represents the source of an MCP server configuration
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum McpServerSource {
+    /// Server configured by vibe-kanban in the agent's config file
+    VibeKanban,
+    /// Server configured in Claude Code's user-level ~/.claude/.mcp.json
+    ClaudeCodeUser,
+    /// Server configured in Claude Code's project-level .mcp.json
+    ClaudeCodeProject,
+}
+
+/// MCP server with source information
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct McpServerWithSource {
+    /// The server configuration
+    pub config: Value,
+    /// Where this server configuration came from
+    pub source: McpServerSource,
+    /// Whether this server can be edited by vibe-kanban (false for Claude Code sources)
+    pub editable: bool,
+}
+
+/// Claude Code MCP configuration from ~/.claude/.mcp.json or project .mcp.json
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ClaudeCodeMcpConfig {
+    #[serde(default, rename = "mcpServers")]
+    pub mcp_servers: HashMap<String, Value>,
+}
+
+/// Returns the path to Claude Code's user-level MCP configuration
+pub fn claude_code_user_mcp_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|home| home.join(".claude").join(".mcp.json"))
+}
+
+/// Returns the path to Claude Code's project-level MCP configuration for a given directory
+pub fn claude_code_project_mcp_path(project_dir: &std::path::Path) -> PathBuf {
+    project_dir.join(".mcp.json")
+}
+
+/// Reads Claude Code's MCP configuration from a given path
+pub async fn read_claude_code_mcp_config(
+    path: &std::path::Path,
+) -> Result<ClaudeCodeMcpConfig, ExecutorError> {
+    match fs::read_to_string(path).await {
+        Ok(content) => {
+            if content.trim().is_empty() {
+                return Ok(ClaudeCodeMcpConfig::default());
+            }
+            serde_json::from_str(&content).map_err(ExecutorError::Json)
+        }
+        Err(_) => Ok(ClaudeCodeMcpConfig::default()),
+    }
+}
+
+/// Reads Claude Code's user-level MCP servers from ~/.claude/.mcp.json
+pub async fn read_claude_code_user_mcp_servers() -> HashMap<String, McpServerWithSource> {
+    let Some(path) = claude_code_user_mcp_path() else {
+        return HashMap::new();
+    };
+
+    match read_claude_code_mcp_config(&path).await {
+        Ok(config) => config
+            .mcp_servers
+            .into_iter()
+            .map(|(name, config)| {
+                (
+                    name,
+                    McpServerWithSource {
+                        config,
+                        source: McpServerSource::ClaudeCodeUser,
+                        editable: false,
+                    },
+                )
+            })
+            .collect(),
+        Err(e) => {
+            tracing::warn!("Failed to read Claude Code user MCP config: {}", e);
+            HashMap::new()
+        }
+    }
+}
+
+/// Reads Claude Code's project-level MCP servers from a project directory's .mcp.json
+pub async fn read_claude_code_project_mcp_servers(
+    project_dir: &std::path::Path,
+) -> HashMap<String, McpServerWithSource> {
+    let path = claude_code_project_mcp_path(project_dir);
+
+    match read_claude_code_mcp_config(&path).await {
+        Ok(config) => config
+            .mcp_servers
+            .into_iter()
+            .map(|(name, config)| {
+                (
+                    name,
+                    McpServerWithSource {
+                        config,
+                        source: McpServerSource::ClaudeCodeProject,
+                        editable: false,
+                    },
+                )
+            })
+            .collect(),
+        Err(e) => {
+            tracing::debug!(
+                "No project-level Claude Code MCP config at {}: {}",
+                path.display(),
+                e
+            );
+            HashMap::new()
+        }
+    }
+}
+
+/// Reads all Claude Code MCP servers (both user and project level)
+/// Project-level servers take precedence over user-level servers with the same name
+pub async fn read_all_claude_code_mcp_servers(
+    project_dir: Option<&std::path::Path>,
+) -> HashMap<String, McpServerWithSource> {
+    let mut servers = read_claude_code_user_mcp_servers().await;
+
+    if let Some(dir) = project_dir {
+        let project_servers = read_claude_code_project_mcp_servers(dir).await;
+        // project-level servers override user-level servers
+        servers.extend(project_servers);
+    }
+
+    servers
 }
