@@ -1,0 +1,23 @@
+{
+  "title": "Pending Commits",
+  "description": "These changes are waiting for you to provide commit titles. Review each change and enter a meaningful commit message.",
+  "noPending": "No pending commits",
+  "agentSummary": "Agent Summary",
+  "diffSummary": "Changes",
+  "commitTitle": "Commit Title",
+  "titlePlaceholder": "Enter a commit title (e.g., feat: add user authentication)",
+  "commit": "Commit",
+  "discard": "Discard",
+  "discardAll": "Discard All",
+  "close": "Close",
+  "indicator": {
+    "ariaLabel": "{{count}} pending commits",
+    "tooltip": "{{count}} commits waiting for your review"
+  },
+  "errors": {
+    "titleRequired": "A commit title is required",
+    "titleTooLong": "Commit title is too long (max 500 characters)",
+    "commitFailed": "Failed to create commit",
+    "discardFailed": "Failed to discard commit"
+  }
+}

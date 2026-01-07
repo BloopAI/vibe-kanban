@@ -18,6 +18,11 @@ export type Project = { id: string, name: string, dev_script: string | null, dev
  */
 git_auto_commit_enabled: boolean | null, 
 /**
+ * None = usa config global, Some(mode) = override por proyecto
+ * valores: "AgentSummary", "AiGenerated", "Manual"
+ */
+git_commit_title_mode: string | null, 
+/**
  * None = usa config global, Some(true/false) = override por proyecto
  */
 auto_pr_on_review_enabled: boolean | null, 
@@ -38,6 +43,11 @@ export type ProjectWithTaskCounts = { task_counts: ProjectTaskCounts, id: string
  */
 git_auto_commit_enabled: boolean | null, 
 /**
+ * None = usa config global, Some(mode) = override por proyecto
+ * valores: "AgentSummary", "AiGenerated", "Manual"
+ */
+git_commit_title_mode: string | null, 
+/**
  * None = usa config global, Some(true/false) = override por proyecto
  */
 auto_pr_on_review_enabled: boolean | null, 
@@ -57,6 +67,10 @@ export type UpdateProject = { name: string | null, dev_script: string | null, de
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
 git_auto_commit_enabled?: boolean | null, 
+/**
+ * None = no cambia, Some(None) = usa config global, Some(Some(mode)) = override
+ */
+git_commit_title_mode?: string | null, 
 /**
  * None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
  */
@@ -279,6 +293,8 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type RenameBranchError = { "type": "empty_branch_name" } | { "type": "invalid_branch_name_format" } | { "type": "open_pull_request" } | { "type": "branch_already_exists", repo_name: string, } | { "type": "rebase_in_progress", repo_name: string, } | { "type": "rename_failed", repo_name: string, message: string, };
+
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
 export type OpenEditorResponse = { url: string | null, };
@@ -389,6 +405,14 @@ use_google_fonts: boolean,
  */
 discord_counter_enabled: boolean, 
 /**
+ * modo de generación del título de commit para auto-commits
+ */
+git_commit_title_mode: GitCommitTitleMode, 
+/**
+ * prompt personalizado para generación de títulos de commit (modo AiGenerated)
+ */
+git_commit_title_prompt: string | null, 
+/**
  * cuando está habilitado, se crea automáticamente un PR cuando la tarea pasa a "In Review"
  */
 auto_pr_on_review_enabled: boolean, 
@@ -414,6 +438,26 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS" | "ZH_HANT";
 
 export type ShowcaseState = { seen_features: Array<string>, };
+
+export type GitCommitTitleMode = "AgentSummary" | "AiGenerated" | "Manual";
+
+export type PendingCommit = { id: string, workspace_id: string, repo_id: string, 
+/**
+ * path del repo dentro del workspace
+ */
+repo_path: string, 
+/**
+ * resumen de los cambios (diff stats o descripción)
+ */
+diff_summary: string, 
+/**
+ * summary del agente si está disponible
+ */
+agent_summary: string | null, created_at: Date, };
+
+export type CreatePendingCommit = { workspace_id: string, repo_id: string, repo_path: string, diff_summary: string, agent_summary: string | null, };
+
+export type CommitPendingRequest = { title: string, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
@@ -618,3 +662,9 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
+
+export const DEFAULT_COMMIT_TITLE_PROMPT = `Generate a concise git commit title for the following changes.
+Follow conventional commits format: type(scope): description
+Types: feat, fix, docs, style, refactor, perf, test, chore
+Keep it under 72 characters.
+Only output the commit title, nothing else.`;

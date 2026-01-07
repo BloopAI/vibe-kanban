@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                      auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                      auto_pr_draft as \"auto_pr_draft: bool\",\n                      redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "INSERT INTO projects (\n                    id,\n                    name\n                ) VALUES (\n                    $1, $2\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          git_auto_commit_enabled as \"git_auto_commit_enabled: bool\",\n                          git_commit_title_mode,\n                          auto_pr_on_review_enabled as \"auto_pr_on_review_enabled: bool\",\n                          auto_pr_draft as \"auto_pr_draft: bool\",\n                          redirect_to_attempt_on_create as \"redirect_to_attempt_on_create: bool\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -39,39 +39,45 @@
         "type_info": "Integer"
       },
       {
-        "name": "auto_pr_on_review_enabled: bool",
+        "name": "git_commit_title_mode",
         "ordinal": 7,
-        "type_info": "Integer"
+        "type_info": "Text"
       },
       {
-        "name": "auto_pr_draft: bool",
+        "name": "auto_pr_on_review_enabled: bool",
         "ordinal": 8,
         "type_info": "Integer"
       },
       {
-        "name": "redirect_to_attempt_on_create: bool",
+        "name": "auto_pr_draft: bool",
         "ordinal": 9,
         "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "redirect_to_attempt_on_create: bool",
         "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
       false,
       true,
-      true,
+      false,
+      false,
       true,
       true,
       true,
@@ -82,5 +88,5 @@
       false
     ]
   },
-  "hash": "8e23925c6e3058d40fc81862fb894b18e8c385682f7b88be867f35162dfcdd04"
+  "hash": "86f4b64c19879b3e06929c7f3643268ff082fa780114e9111ae5e388b19775f0"
 }

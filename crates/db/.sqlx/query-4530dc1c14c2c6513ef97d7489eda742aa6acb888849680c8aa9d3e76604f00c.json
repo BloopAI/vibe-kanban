@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                workspace_id as \"workspace_id!: Uuid\",\n                repo_id as \"repo_id!: Uuid\",\n                repo_path,\n                diff_summary,\n                agent_summary,\n                created_at as \"created_at!: DateTime<Utc>\"\n            FROM pending_commits\n            ORDER BY created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo_path",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "diff_summary",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_summary",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "4530dc1c14c2c6513ef97d7489eda742aa6acb888849680c8aa9d3e76604f00c"
+}

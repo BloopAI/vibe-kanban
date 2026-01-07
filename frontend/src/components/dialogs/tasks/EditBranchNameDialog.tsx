@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, getErrorMessage } from '@/lib/modals';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { ApiError } from '@/lib/api';
+import type { RenameBranchError } from 'shared/types';
 
 export interface EditBranchNameDialogProps {
   attemptId: string;
@@ -23,6 +25,25 @@ export type EditBranchNameDialogResult = {
   action: 'confirmed' | 'canceled';
   branchName?: string;
 };
+
+function formatRenameBranchError(error: RenameBranchError): string {
+  switch (error.type) {
+    case 'empty_branch_name':
+      return 'Branch name cannot be empty';
+    case 'invalid_branch_name_format':
+      return 'Invalid branch name format. Branch names cannot contain spaces or special characters like ~, ^, :, ?, *, [, \\';
+    case 'open_pull_request':
+      return 'Cannot rename branch while a pull request is open';
+    case 'branch_already_exists':
+      return `Branch name already exists in repository "${error.repo_name}"`;
+    case 'rebase_in_progress':
+      return `Cannot rename branch while a rebase is in progress in repository "${error.repo_name}"`;
+    case 'rename_failed':
+      return `Failed to rename branch in repository "${error.repo_name}": ${error.message}`;
+    default:
+      return 'Failed to rename branch';
+  }
+}
 
 const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
   ({ attemptId, currentBranchName }) => {
@@ -46,7 +67,13 @@ const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
         modal.hide();
       },
       (err: unknown) => {
-        setError(getErrorMessage(err) || 'Failed to rename branch');
+        // intenta extraer el error tipado de la respuesta
+        if (err instanceof ApiError && err.error_data) {
+          const errorData = err.error_data as RenameBranchError;
+          setError(formatRenameBranchError(errorData));
+        } else {
+          setError(getErrorMessage(err) || 'Failed to rename branch');
+        }
       }
     );
 

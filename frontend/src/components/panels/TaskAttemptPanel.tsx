@@ -5,9 +5,8 @@ import { TaskFollowUpSection } from '@/components/tasks/TaskFollowUpSection';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import type { ReactNode } from 'react';
-import { BranchStatusInfo } from '@/components/tasks/BranchStatusInfo';
+import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
-import { useRepoStatusOperations } from '@/hooks/useRepoStatusOperations';
 
 interface TaskAttemptPanelProps {
   attempt: WorkspaceWithSession | undefined;
@@ -24,16 +23,6 @@ const TaskAttemptPanel = ({
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
-  // use custom hook for repo status operations
-  const {
-    repos,
-    selectedRepoId,
-    setSelectedRepoId,
-    selectedRepoStatus,
-    hasConflicts,
-    handleChangeTargetBranchDialogOpen,
-  } = useRepoStatusOperations(attempt?.id, branchStatus);
-
   if (!attempt) {
     return <div className="p-6 text-muted-foreground">Loading attempt...</div>;
   }
@@ -48,20 +37,17 @@ const TaskAttemptPanel = ({
         {children({
           logs: (
             <>
-              {selectedRepoStatus && (
-                <BranchStatusInfo
-                  selectedAttempt={attempt}
-                  branchStatus={branchStatus}
-                  selectedRepoStatus={selectedRepoStatus}
-                  isAttemptRunning={isAttemptRunning}
-                  selectedBranch={selectedRepoStatus.target_branch_name}
-                  layout="compact"
-                  repos={repos}
-                  selectedRepoId={selectedRepoId}
-                  onRepoSelect={setSelectedRepoId}
-                  onChangeTargetBranch={handleChangeTargetBranchDialogOpen}
-                  hasConflicts={hasConflicts}
-                />
+              {branchStatus && (
+                <div className="px-3">
+                  <GitOperations
+                    selectedAttempt={attempt}
+                    task={task}
+                    branchStatus={branchStatus}
+                    isAttemptRunning={isAttemptRunning}
+                    selectedBranch={branchStatus[0]?.target_branch_name ?? null}
+                    layout="horizontal"
+                  />
+                </div>
               )}
               <VirtualizedList
                 key={attempt.id}

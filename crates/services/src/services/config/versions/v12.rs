@@ -33,6 +33,10 @@ fn default_discord_counter_enabled() -> bool {
     true
 }
 
+fn default_git_commit_title_mode() -> GitCommitTitleMode {
+    GitCommitTitleMode::default()
+}
+
 fn default_auto_pr_on_review_enabled() -> bool {
     false
 }
@@ -40,6 +44,25 @@ fn default_auto_pr_on_review_enabled() -> bool {
 fn default_auto_pr_draft() -> bool {
     true
 }
+
+/// modo de generación del título de commit para auto-commits
+#[derive(Clone, Debug, Serialize, Deserialize, TS, Default, PartialEq)]
+pub enum GitCommitTitleMode {
+    /// usa el summary del agente (comportamiento actual)
+    #[default]
+    AgentSummary,
+    /// genera el título usando un prompt personalizable
+    AiGenerated,
+    /// el usuario provee el título manualmente (se encola el commit)
+    Manual,
+}
+
+/// prompt por defecto para generación de títulos de commit
+pub const DEFAULT_COMMIT_TITLE_PROMPT: &str = r#"Generate a concise git commit title for the following changes.
+Follow conventional commits format: type(scope): description
+Types: feat, fix, docs, style, refactor, perf, test, chore
+Keep it under 72 characters.
+Only output the commit title, nothing else."#;
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
@@ -77,6 +100,12 @@ pub struct Config {
     /// cuando está habilitado, se muestra el contador de usuarios online de Discord en la barra de navegación
     #[serde(default = "default_discord_counter_enabled")]
     pub discord_counter_enabled: bool,
+    /// modo de generación del título de commit para auto-commits
+    #[serde(default = "default_git_commit_title_mode")]
+    pub git_commit_title_mode: GitCommitTitleMode,
+    /// prompt personalizado para generación de títulos de commit (modo AiGenerated)
+    #[serde(default)]
+    pub git_commit_title_prompt: Option<String>,
     /// cuando está habilitado, se crea automáticamente un PR cuando la tarea pasa a "In Review"
     #[serde(default = "default_auto_pr_on_review_enabled")]
     pub auto_pr_on_review_enabled: bool,
@@ -110,6 +139,8 @@ impl Config {
             use_google_fonts: old_config.use_google_fonts,
             discord_counter_enabled: old_config.discord_counter_enabled,
             // nuevos campos con valores por defecto
+            git_commit_title_mode: GitCommitTitleMode::default(),
+            git_commit_title_prompt: None,
             auto_pr_on_review_enabled: false,
             auto_pr_draft: true,
         }
@@ -166,6 +197,8 @@ impl Default for Config {
             font_family: None,
             use_google_fonts: true,
             discord_counter_enabled: true,
+            git_commit_title_mode: GitCommitTitleMode::default(),
+            git_commit_title_prompt: None,
             auto_pr_on_review_enabled: false,
             auto_pr_draft: true,
         }

@@ -27,6 +27,9 @@ pub struct Project {
     pub remote_project_id: Option<Uuid>,
     /// None = usa config global, Some(true/false) = override por proyecto
     pub git_auto_commit_enabled: Option<bool>,
+    /// None = usa config global, Some(mode) = override por proyecto
+    /// valores: "AgentSummary", "AiGenerated", "Manual"
+    pub git_commit_title_mode: Option<String>,
     /// None = usa config global, Some(true/false) = override por proyecto
     pub auto_pr_on_review_enabled: Option<bool>,
     /// None = usa config global, Some(true/false) = override por proyecto
@@ -72,6 +75,10 @@ pub struct UpdateProject {
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     #[ts(optional, type = "boolean | null")]
     pub git_auto_commit_enabled: Option<Option<bool>>,
+    /// None = no cambia, Some(None) = usa config global, Some(Some(mode)) = override
+    #[serde(default, deserialize_with = "deserialize_optional_nullable")]
+    #[ts(optional, type = "string | null")]
+    pub git_commit_title_mode: Option<Option<String>>,
     /// None = no cambia, Some(None) = usa config global, Some(Some(v)) = override
     #[serde(default, deserialize_with = "deserialize_optional_nullable")]
     #[ts(optional, type = "boolean | null")]
@@ -127,6 +134,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
                       redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -148,6 +156,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                   p.git_commit_title_mode,
                    p.auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                    p.auto_pr_draft as "auto_pr_draft: bool",
                    p.redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -177,6 +186,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
                       redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -200,6 +210,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
                       redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -226,6 +237,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                      git_commit_title_mode,
                       auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                       auto_pr_draft as "auto_pr_draft: bool",
                       redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -260,6 +272,7 @@ impl Project {
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                          git_commit_title_mode,
                           auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                           auto_pr_draft as "auto_pr_draft: bool",
                           redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -289,6 +302,10 @@ impl Project {
         let git_auto_commit_enabled = payload
             .git_auto_commit_enabled
             .unwrap_or(existing.git_auto_commit_enabled);
+        let git_commit_title_mode = payload
+            .git_commit_title_mode
+            .clone()
+            .unwrap_or(existing.git_commit_title_mode);
         let auto_pr_on_review_enabled = payload
             .auto_pr_on_review_enabled
             .unwrap_or(existing.auto_pr_on_review_enabled);
@@ -303,7 +320,7 @@ impl Project {
             Project,
             r#"UPDATE projects
                SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5,
-                   git_auto_commit_enabled = $6, auto_pr_on_review_enabled = $7, auto_pr_draft = $8, redirect_to_attempt_on_create = $9
+                   git_auto_commit_enabled = $6, git_commit_title_mode = $7, auto_pr_on_review_enabled = $8, auto_pr_draft = $9, redirect_to_attempt_on_create = $10
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -312,6 +329,7 @@ impl Project {
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          git_auto_commit_enabled as "git_auto_commit_enabled: bool",
+                         git_commit_title_mode,
                          auto_pr_on_review_enabled as "auto_pr_on_review_enabled: bool",
                          auto_pr_draft as "auto_pr_draft: bool",
                          redirect_to_attempt_on_create as "redirect_to_attempt_on_create: bool",
@@ -323,6 +341,7 @@ impl Project {
             dev_script_working_dir,
             default_agent_working_dir,
             git_auto_commit_enabled,
+            git_commit_title_mode,
             auto_pr_on_review_enabled,
             auto_pr_draft,
             redirect_to_attempt_on_create,

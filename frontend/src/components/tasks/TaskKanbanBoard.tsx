@@ -105,7 +105,7 @@ function TaskKanbanBoard({
         const columnCollapsed = isColumnCollapsed(statusKey);
 
         return (
-          <KanbanBoard key={status} id={statusKey}>
+          <KanbanBoard key={status} id={statusKey} collapsed={columnCollapsed}>
             <KanbanHeader
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
