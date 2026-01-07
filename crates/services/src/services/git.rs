@@ -1719,7 +1719,20 @@ impl GitService {
             branch_name
         );
         let repo = Repository::open(worktree_path)?;
-        self.check_worktree_clean(&repo)?;
+
+        // auto-commit any uncommitted changes before pushing
+        // esto permite que push funcione incluso cuando git_auto_commit_enabled=false
+        // o git_commit_title_mode="Manual"
+        if let Err(e) = self.check_worktree_clean(&repo) {
+            tracing::warn!(
+                "Worktree has uncommitted changes before push, auto-committing: {}",
+                e
+            );
+            let git_cli = GitCli::new();
+            git_cli.add_all(worktree_path)?;
+            git_cli.commit(worktree_path, "Auto-commit uncommitted changes before push")?;
+            tracing::info!("Auto-committed changes before push");
+        }
 
         let default_remote_name = self.default_remote_name(&repo);
         let branch = Self::find_branch(&repo, branch_name)?;
