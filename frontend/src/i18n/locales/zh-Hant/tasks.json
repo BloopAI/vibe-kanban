@@ -231,6 +231,8 @@
     "diffs": "差異",
     "gitActions": "Git 操作",
     "tryAgain": "重試",
+    "keepGoing": "繼續",
+    "keepGoingInProgress": "繼續中...",
     "runSetup": "執行設定",
     "setupHelpText": "{{agent}} 未正確設定。點擊執行設定以安裝並登入。",
     "devScriptMissingTooltip": "要啟動開發伺服器，請為此專案新增開發腳本"
@@ -323,6 +325,7 @@
   "actionsMenu": {
     "attempt": "嘗試",
     "openInIde": "在 IDE 中開啟嘗試",
+    "openInTerminal": "在終端機中開啟嘗試",
     "viewProcesses": "查看程序",
     "viewRelatedTasks": "查看相關任務",
     "createNewAttempt": "建立新嘗試",
@@ -457,6 +460,8 @@
     "editTitle": "編輯任務",
     "titlePlaceholder": "任務標題",
     "descriptionPlaceholder": "新增更多細節（選填）。輸入 @ 搜尋檔案。",
+    "branchNameLabel": "分支名稱",
+    "branchNamePlaceholder": "從標題自動產生",
     "statusLabel": "狀態",
     "statusOptions": {
       "todo": "待辦",

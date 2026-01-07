@@ -460,6 +460,8 @@
     "editTitle": "Editar Tarea",
     "titlePlaceholder": "Título de la tarea",
     "descriptionPlaceholder": "Agrega más detalles (opcional). Escribe @ para buscar archivos.",
+    "branchNameLabel": "Nombre de rama",
+    "branchNamePlaceholder": "Auto-generado desde el título",
     "statusLabel": "Estado",
     "statusOptions": {
       "todo": "Por Hacer",

@@ -146,6 +146,10 @@
             "invalidChars": "Contiene caracteres no válidos.",
             "controlChars": "Contiene caracteres de control."
           }
+        },
+        "autoCommit": {
+          "label": "Auto-confirmar cambios",
+          "helper": "Cuando está habilitado, el agente confirmará automáticamente los cambios después de una ejecución exitosa de la tarea."
         }
       },
       "pullRequests": {
@@ -299,7 +303,15 @@
         "serverConfig": "Configuración de Servidor (JSON)",
         "popularServers": "Servidores populares",
         "serverHelper": "Haz clic en una tarjeta para insertar ese Servidor MCP en el JSON de arriba.",
-        "saveLocation": "Los cambios se guardarán en:"
+        "saveLocation": "Los cambios se guardarán en:",
+        "claudeCodeServers": "Servidores MCP de Claude Code",
+        "claudeCodeServersHelper": "Estos servidores MCP están configurados en Claude Code y estarán disponibles al ejecutar tareas.",
+        "claudeCodeServersNote": "Para modificar estos servidores, edita ~/.claude/.mcp.json o el archivo .mcp.json del proyecto.",
+        "readOnly": "Solo lectura"
+      },
+      "sources": {
+        "user": "Usuario (~/.claude/.mcp.json)",
+        "project": "Proyecto (.mcp.json)"
       },
       "errors": {
         "loadFailed": "Error al cargar la configuración.",
@@ -347,6 +359,12 @@
       "scripts": {
         "title": "Scripts y Configuración",
         "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este proyecto.",
+        "projectLevel": {
+          "title": "Scripts de Proyecto"
+        },
+        "repoLevel": {
+          "title": "Scripts por Repositorio"
+        },
         "setup": {
           "label": "Script de Instalación",
           "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
@@ -374,6 +392,15 @@
         "copyFiles": {
           "label": "Copiar Archivos",
           "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
+        }
+      },
+      "git": {
+        "autoCommit": {
+          "label": "Auto-confirmar Cambios",
+          "helper": "Controla si el agente confirma automáticamente los cambios después de la ejecución de la tarea.",
+          "useGlobal": "Usar configuración global",
+          "enabled": "Siempre auto-confirmar",
+          "disabled": "Nunca auto-confirmar"
         }
       },
       "save": {

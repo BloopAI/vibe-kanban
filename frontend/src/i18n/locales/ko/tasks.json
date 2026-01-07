@@ -460,6 +460,8 @@
     "editTitle": "작업 수정",
     "titlePlaceholder": "작업 제목",
     "descriptionPlaceholder": "세부 정보 추가 (선택 사항). @를 입력하여 파일을 검색합니다.",
+    "branchNameLabel": "브랜치 이름",
+    "branchNamePlaceholder": "제목에서 자동 생성",
     "statusLabel": "상태",
     "statusOptions": {
       "todo": "할 일",
