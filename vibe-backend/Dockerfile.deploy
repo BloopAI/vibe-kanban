@@ -28,8 +28,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /repos /data /seed && \
     chown -R appuser:appgroup /repos /data /seed
 
-# Switch user
-USER appuser
+# Switch user intentionally REMOVED to allow entrypoint to fix permissions
+# USER appuser
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
