@@ -50,7 +50,7 @@ export const useExecutionProcesses = (
     []
   );
 
-  useJsonPatchWsStream<ExecutionProcessState>(
+  const { data, isConnected, error } = useJsonPatchWsStream<ExecutionProcessState>(
     endpoint,
     !!taskAttemptId && !!token,
     initialData,
