@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.id AS \"id!: Uuid\",\n                      s.workspace_id AS \"workspace_id!: Uuid\",\n                      s.executor,\n                      s.created_at AS \"created_at!: DateTime<Utc>\",\n                      s.updated_at AS \"updated_at!: DateTime<Utc>\"\n               FROM sessions s\n               LEFT JOIN (\n                   SELECT ep.session_id, MAX(ep.created_at) as last_used\n                   FROM execution_processes ep\n                   WHERE ep.run_reason != 'devserver' AND ep.dropped = FALSE\n                   GROUP BY ep.session_id\n               ) latest_ep ON s.id = latest_ep.session_id\n               WHERE s.workspace_id = $1\n               ORDER BY COALESCE(latest_ep.last_used, s.created_at) DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "executor",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "91d94506317abcd36e0da72066a5d31c3ec52530661a96c8231912c5b2a683f8"
+}

@@ -28,7 +28,7 @@ interface UseWorkspaceSessionsResult {
 /**
  * Hook for managing sessions within a workspace.
  * Fetches all sessions for a workspace and provides session switching capability.
- * Sessions are ordered by created_at DESC (latest first).
+ * Sessions are ordered by most recently used (latest non-dev server execution first).
  */
 export function useWorkspaceSessions(
   workspaceId: string | undefined,
@@ -50,7 +50,7 @@ export function useWorkspaceSessions(
   // effect would fire after auto-select when sessions were cached, undoing the selection.
   useEffect(() => {
     if (sessions.length > 0) {
-      // Sessions are ordered by created_at DESC, so first is latest
+      // Sessions are ordered by most recently used, so first is the most recently used
       // Always select first session when sessions are available for this workspace
       // Only auto-select if not in new session mode
       setSelection((prev) => {

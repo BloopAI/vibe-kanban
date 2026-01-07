@@ -153,12 +153,12 @@ export function SessionChatBoxContainer({
   // User profiles, config preference, and latest executor from processes
   const { profiles, config } = useUserSystem();
 
-  // Get last used executor from the most recent session in this workspace
+  // Get last used executor from the most recently used session in this workspace
   const lastSessionExecutor = useMemo(() => {
     if (!sessions?.length) return null;
-    // Sessions are sorted by created_at, last one is most recent
-    const lastSession = sessions[sessions.length - 1];
-    return lastSession?.executor ?? null;
+    // Sessions are sorted by most recently used (first is most recent)
+    const mostRecentSession = sessions[0];
+    return mostRecentSession?.executor ?? null;
   }, [sessions]);
 
   // Compute latestProfileId: from processes, or fall back to last session's executor
