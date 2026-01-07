@@ -236,10 +236,12 @@ impl AzCli {
 
     fn urls_match(url1: &str, url2: &str) -> bool {
         let normalize = |url: &str| {
-            url.to_lowercase()
-                .trim_end_matches('/')
-                .trim_end_matches(".git")
-                .to_string()
+            let mut s = url.to_lowercase();
+            // Normalize ssh:// prefix to scp-style
+            if let Some(rest) = s.strip_prefix("ssh://") {
+                s = rest.to_string();
+            }
+            s.trim_end_matches('/').trim_end_matches(".git").to_string()
         };
         normalize(url1) == normalize(url2)
     }
@@ -649,6 +651,12 @@ mod tests {
         // SSH URLs
         assert!(AzCli::urls_match(
             "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo",
+            "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo"
+        ));
+
+        // SSH URL with ssh:// prefix should match scp-style
+        assert!(AzCli::urls_match(
+            "ssh://git@ssh.dev.azure.com:v3/myorg/myproject/myrepo",
             "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo"
         ));
     }
