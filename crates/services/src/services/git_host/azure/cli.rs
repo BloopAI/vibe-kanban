@@ -96,7 +96,7 @@ struct AzRepoListItem {
     name: String,
     project: AzRepoProject,
     remote_url: String,
-    ssh_url: String,
+    ssh_url: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -193,7 +193,10 @@ impl AzCli {
             .into_iter()
             .find(|r| {
                 if is_ssh {
-                    Self::urls_match(&r.ssh_url, remote_url)
+                    r.ssh_url
+                        .as_ref()
+                        .map(|ssh| Self::urls_match(ssh, remote_url))
+                        .unwrap_or(false)
                 } else {
                     Self::urls_match(&r.remote_url, remote_url)
                 }
