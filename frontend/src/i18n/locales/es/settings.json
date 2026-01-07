@@ -162,6 +162,8 @@
           "customPrompt": {
             "label": "Prompt Personalizado para Título de Commit",
             "helper": "Prompt personalizado para el agente de IA al generar títulos de commit. Usa {diff} como marcador para el resumen de cambios."
+          },
+          "notImplemented": "Aún No Implementado"
           }
         },
         "autoCommit": {

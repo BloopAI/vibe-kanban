@@ -152,4 +152,12 @@ impl PendingCommit {
             .await?;
         Ok(result.rows_affected())
     }
+
+    /// eliminar todos los pending commits
+    pub async fn delete_all(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM pending_commits")
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
 }

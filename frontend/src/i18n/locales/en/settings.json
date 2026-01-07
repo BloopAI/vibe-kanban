@@ -162,7 +162,8 @@
           "customPrompt": {
             "useCustom": "Use custom prompt for commit titles",
             "helper": "Customize the prompt used to generate commit titles. The AI will use this prompt to create conventional commit messages."
-          }
+          },
+          "notImplemented": "Not Yet Implemented"
         }
       },
       "tasks": {

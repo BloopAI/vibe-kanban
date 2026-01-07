@@ -328,6 +328,8 @@ impl LocalContainerService {
         let agent_summary = self.get_agent_summary(ctx).await;
         let mut created = 0;
 
+        let mut failures = Vec::new();
+
         for (repo, worktree_path) in repos_with_changes {
             let diff_summary = self.get_diff_summary(&worktree_path);
 
@@ -350,13 +352,23 @@ impl LocalContainerService {
                     created += 1;
                 }
                 Err(e) => {
-                    tracing::error!(
+                    let error_msg = format!(
                         "Failed to create pending commit for repo '{}': {}",
-                        repo.name,
-                        e
+                        repo.name, e
                     );
+                    tracing::error!("{}", error_msg);
+                    failures.push(error_msg);
                 }
             }
+        }
+
+        if !failures.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Failed to create {} pending commit(s): {}",
+                failures.len(),
+                failures.join("; ")
+            )
+            .into());
         }
 
         Ok(created)

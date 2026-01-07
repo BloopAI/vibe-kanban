@@ -16,6 +16,7 @@
   },
   "errors": {
     "titleRequired": "A commit title is required",
+    "titleTooLong": "Commit title is too long (max 500 characters)",
     "commitFailed": "Failed to create commit",
     "discardFailed": "Failed to discard commit"
   }

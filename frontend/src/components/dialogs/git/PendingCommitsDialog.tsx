@@ -46,13 +46,18 @@ function CommitItem({
   const [expanded, setExpanded] = useState(false);
 
   const handleCommit = async () => {
-    if (!title.trim()) {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
       setError(t('errors.titleRequired'));
+      return;
+    }
+    if (trimmedTitle.length > 500) {
+      setError(t('errors.titleTooLong'));
       return;
     }
     setError(null);
     try {
-      await onCommit(commit.id, title);
+      await onCommit(commit.id, trimmedTitle);
     } catch (err) {
       setError(getErrorMessage(err) || t('errors.commitFailed'));
     }

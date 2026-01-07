@@ -44,6 +44,17 @@ pub async fn commit_pending(
     Path(pending_commit_id): Path<Uuid>,
     Json(payload): Json<CommitPendingRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // validar el título del commit
+    let title = payload.title.trim();
+    if title.is_empty() {
+        return Err(ApiError::BadRequest("Commit title cannot be empty".to_string()));
+    }
+    if title.len() > 500 {
+        return Err(ApiError::BadRequest(
+            "Commit title too long (max 500 characters)".to_string(),
+        ));
+    }
+
     // obtener el pending commit
     let pending_commit = PendingCommit::find_by_id(&deployment.db().pool, pending_commit_id)
         .await?
@@ -65,18 +76,28 @@ pub async fn commit_pending(
 
     // ejecutar el commit con el título del usuario
     let git = GitCli::new();
-    git.add_all(&worktree_path)
-        .map_err(|e| ApiError::BadRequest(format!("git add failed: {e}")))?;
-    git.commit(&worktree_path, &payload.title)
-        .map_err(|e| ApiError::BadRequest(format!("git commit failed: {e}")))?;
 
-    // eliminar el pending commit de la base de datos
+    // intentar agregar cambios - si falla, limpiar el pending commit
+    if let Err(e) = git.add_all(&worktree_path) {
+        // limpiar el pending commit de la base de datos antes de retornar el error
+        let _ = PendingCommit::delete(&deployment.db().pool, pending_commit_id).await;
+        return Err(ApiError::BadRequest(format!("git add failed (workspace may have been deleted): {e}")));
+    }
+
+    // intentar hacer commit - si falla, limpiar el pending commit
+    if let Err(e) = git.commit(&worktree_path, title) {
+        // limpiar el pending commit de la base de datos antes de retornar el error
+        let _ = PendingCommit::delete(&deployment.db().pool, pending_commit_id).await;
+        return Err(ApiError::BadRequest(format!("git commit failed (workspace may have been deleted): {e}")));
+    }
+
+    // eliminar el pending commit de la base de datos solo si el commit fue exitoso
     PendingCommit::delete(&deployment.db().pool, pending_commit_id).await?;
 
     tracing::info!(
         "Committed pending commit {} with title: {}",
         pending_commit_id,
-        payload.title
+        title
     );
 
     Ok(ResponseJson(ApiResponse::success(())))
@@ -100,14 +121,7 @@ pub async fn discard_pending(
 pub async fn discard_all_pending(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<u64>>, ApiError> {
-    // obtener todos los pending commits para contar
-    let pending_commits = PendingCommit::find_all(&deployment.db().pool).await?;
-    let mut total_deleted = 0u64;
-
-    for pending_commit in pending_commits {
-        let deleted = PendingCommit::delete(&deployment.db().pool, pending_commit.id).await?;
-        total_deleted += deleted;
-    }
+    let total_deleted = PendingCommit::delete_all(&deployment.db().pool).await?;
 
     tracing::info!("Discarded {} pending commits", total_deleted);
     Ok(ResponseJson(ApiResponse::success(total_deleted)))

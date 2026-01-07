@@ -16,6 +16,7 @@
   },
   "errors": {
     "titleRequired": "Se requiere un título de commit",
+    "titleTooLong": "El título del commit es demasiado largo (máximo 500 caracteres)",
     "commitFailed": "Error al crear el commit",
     "discardFailed": "Error al descartar el commit"
   }

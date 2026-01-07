@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
@@ -756,6 +757,9 @@ export function ProjectSettings() {
                       className="cursor-pointer font-normal"
                     >
                       {t('settings.projects.git.commitTitleMode.aiGenerated')}
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        {t('settings.general.git.commitTitleMode.notImplemented')}
+                      </Badge>
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
