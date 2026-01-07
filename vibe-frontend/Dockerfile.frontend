@@ -3,16 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY vibe-frontend/package.json ./vibe-frontend/
+COPY vibe-frontend/package.json vibe-frontend/package-lock.json ./vibe-frontend/
 COPY shared/ ./shared/
 
 # Install dependencies
-RUN pnpm install
+RUN cd vibe-frontend && npm ci
 
 # Copy frontend source
 COPY vibe-frontend/ ./vibe-frontend/
@@ -27,7 +23,7 @@ ENV VITE_BASE_PATH=$VITE_BASE_PATH
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Build
-RUN cd vibe-frontend && pnpm run build
+RUN cd vibe-frontend && npm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine
