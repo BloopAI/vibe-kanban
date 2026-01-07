@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, X, FolderOpen, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,6 +36,7 @@ export function SettingsLayout() {
   const { t } = useTranslation('settings');
   const { enableScope, disableScope } = useHotkeysContext();
   const goToPreviousPath = usePreviousPath();
+  const location = useLocation();
 
   // Enable SETTINGS scope when component mounts
   useEffect(() => {
@@ -75,7 +76,10 @@ export function SettingsLayout() {
                   return (
                     <NavLink
                       key={item.path}
-                      to={item.path}
+                      to={{
+                        pathname: item.path,
+                        search: location.search,
+                      }}
                       end
                       className={({ isActive }) =>
                         cn(
