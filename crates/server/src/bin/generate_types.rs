@@ -112,6 +112,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::PushTaskAttemptRequest::decl(),
         server::routes::task_attempts::RenameBranchRequest::decl(),
         server::routes::task_attempts::RenameBranchResponse::decl(),
+        server::routes::task_attempts::RenameBranchError::decl(),
         server::routes::task_attempts::OpenEditorRequest::decl(),
         server::routes::task_attempts::OpenEditorResponse::decl(),
         server::routes::shared_tasks::AssignSharedTaskRequest::decl(),
