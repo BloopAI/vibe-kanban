@@ -41,7 +41,6 @@ import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
-import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -183,9 +182,7 @@ function AppContent() {
               path="/workspaces"
               element={
                 <NewDesignScope>
-                  <WorkspaceProvider>
-                    <NewDesignLayout />
-                  </WorkspaceProvider>
+                  <NewDesignLayout />
                 </NewDesignScope>
               }
             >

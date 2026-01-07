@@ -14,10 +14,6 @@ interface WorkspacesSidebarProps {
   onAddWorkspace?: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  onDeleteWorkspace?: (workspaceId: string) => void;
-  onArchiveWorkspace?: (workspaceId: string, isArchived: boolean) => void;
-  onPinWorkspace?: (workspaceId: string, isPinned: boolean) => void;
-  onDuplicateWorkspace?: (workspaceId: string) => void;
   /** Whether we're in create mode */
   isCreateMode?: boolean;
   /** Title extracted from draft message (only shown when isCreateMode and non-empty) */
@@ -34,10 +30,6 @@ export function WorkspacesSidebar({
   onAddWorkspace,
   searchQuery,
   onSearchChange,
-  onDeleteWorkspace,
-  onArchiveWorkspace,
-  onPinWorkspace,
-  onDuplicateWorkspace,
   isCreateMode = false,
   draftTitle,
   onSelectCreate,
@@ -91,39 +83,18 @@ export function WorkspacesSidebar({
             <WorkspaceSummary
               key={workspace.id}
               name={workspace.name}
+              workspaceId={workspace.id}
               filesChanged={workspace.filesChanged}
               linesAdded={workspace.linesAdded}
               linesRemoved={workspace.linesRemoved}
               isActive={selectedWorkspaceId === workspace.id}
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
-              isArchived={false}
               hasPendingApproval={workspace.hasPendingApproval}
               hasRunningDevServer={workspace.hasRunningDevServer}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
-              onDelete={
-                onDeleteWorkspace
-                  ? () => onDeleteWorkspace(workspace.id)
-                  : undefined
-              }
-              onArchive={
-                onArchiveWorkspace
-                  ? () => onArchiveWorkspace(workspace.id, false)
-                  : undefined
-              }
-              onPin={
-                onPinWorkspace
-                  ? () =>
-                      onPinWorkspace(workspace.id, workspace.isPinned ?? false)
-                  : undefined
-              }
-              onDuplicate={
-                onDuplicateWorkspace
-                  ? () => onDuplicateWorkspace(workspace.id)
-                  : undefined
-              }
             />
           ))}
         </CollapsibleSection>
@@ -138,39 +109,18 @@ export function WorkspacesSidebar({
               summary
               key={workspace.id}
               name={workspace.name}
+              workspaceId={workspace.id}
               filesChanged={workspace.filesChanged}
               linesAdded={workspace.linesAdded}
               linesRemoved={workspace.linesRemoved}
               isActive={selectedWorkspaceId === workspace.id}
               isRunning={workspace.isRunning}
               isPinned={workspace.isPinned}
-              isArchived={true}
               hasPendingApproval={workspace.hasPendingApproval}
               hasRunningDevServer={workspace.hasRunningDevServer}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
-              onDelete={
-                onDeleteWorkspace
-                  ? () => onDeleteWorkspace(workspace.id)
-                  : undefined
-              }
-              onArchive={
-                onArchiveWorkspace
-                  ? () => onArchiveWorkspace(workspace.id, true)
-                  : undefined
-              }
-              onPin={
-                onPinWorkspace
-                  ? () =>
-                      onPinWorkspace(workspace.id, workspace.isPinned ?? false)
-                  : undefined
-              }
-              onDuplicate={
-                onDuplicateWorkspace
-                  ? () => onDuplicateWorkspace(workspace.id)
-                  : undefined
-              }
             />
           ))}
         </CollapsibleSection>

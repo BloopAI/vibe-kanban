@@ -23,6 +23,7 @@ export interface ConfirmDialogProps {
   cancelText?: string;
   variant?: 'default' | 'destructive' | 'info' | 'success';
   icon?: boolean;
+  showCancelButton?: boolean;
 }
 
 const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
@@ -34,6 +35,7 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
     cancelText = 'Cancel',
     variant = 'default',
     icon = true,
+    showCancelButton = true,
   } = props;
 
   const handleConfirm = () => {
@@ -80,9 +82,11 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleCancel}>
-            {cancelText}
-          </Button>
+          {showCancelButton && (
+            <Button variant="outline" onClick={handleCancel}>
+              {cancelText}
+            </Button>
+          )}
           <Button variant={getConfirmButtonVariant()} onClick={handleConfirm}>
             {confirmText}
           </Button>
