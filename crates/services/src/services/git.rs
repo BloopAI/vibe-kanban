@@ -1638,6 +1638,7 @@ impl GitService {
         })
     }
 
+
     pub fn get_remote_name_from_branch_name(
         &self,
         repo_path: &Path,
