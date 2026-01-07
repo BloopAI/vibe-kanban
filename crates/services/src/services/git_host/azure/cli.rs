@@ -491,29 +491,26 @@ impl AzCli {
                         .map(|dt| dt.with_timezone(&Utc))
                         .unwrap_or_else(Utc::now);
 
-                    // Azure doesn't provide direct comment URLs in threads response
-                    let url = String::new();
-
                     if let Some(ref path) = file_path {
                         comments.push(UnifiedPrComment::Review {
                             id,
                             author,
-                            author_association: String::new(),
+                            author_association: None,
                             body,
                             created_at,
-                            url,
+                            url: None,
                             path: path.clone(),
                             line,
-                            diff_hunk: String::new(),
+                            diff_hunk: None,
                         });
                     } else {
                         comments.push(UnifiedPrComment::General {
                             id: id.to_string(),
                             author,
-                            author_association: String::new(),
+                            author_association: None,
                             body,
                             created_at,
-                            url,
+                            url: None,
                         });
                     }
                 }

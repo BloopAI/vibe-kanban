@@ -17,11 +17,11 @@ export interface NormalizedComment {
   author: string;
   body: string;
   created_at: string;
-  url: string;
+  url?: string | null;
   // Review-specific (optional)
   path?: string;
   line?: number | null;
-  diff_hunk?: string;
+  diff_hunk?: string | null;
 }
 
 export type SerializedGitHubCommentNode = Spread<
@@ -41,8 +41,10 @@ function GitHubCommentComponent({
     (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      // Open GitHub URL in new tab
-      window.open(data.url, '_blank', 'noopener,noreferrer');
+      // Open URL in new tab if available
+      if (data.url) {
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+      }
     },
     [data.url]
   );
@@ -72,7 +74,7 @@ const config: DecoratorNodeConfig<NormalizedComment> = {
     serialize: (data) => JSON.stringify(data, null, 2),
     deserialize: (content) => JSON.parse(content),
     validate: (data) =>
-      !!(data.id && data.comment_type && data.author && data.body && data.url),
+      !!(data.id && data.comment_type && data.author && data.body),
   },
   component: GitHubCommentComponent,
   exportDOM: (data) => {

@@ -6,12 +6,12 @@ export interface GitHubCommentCardProps {
   author: string;
   body: string;
   createdAt: string;
-  url: string;
+  url?: string | null;
   // Optional review-specific fields
   commentType?: 'general' | 'review';
   path?: string;
   line?: number | null;
-  diffHunk?: string;
+  diffHunk?: string | null;
   /** Display variant: 'compact' for inline chip, 'full' for inline card, 'list' for block card */
   variant: 'compact' | 'full' | 'list';
   onClick?: (e: React.MouseEvent) => void;

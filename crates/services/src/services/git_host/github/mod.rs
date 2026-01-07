@@ -267,10 +267,10 @@ impl GitHostService for GitHubHostService {
             unified.push(UnifiedPrComment::General {
                 id: c.id,
                 author: c.author.login,
-                author_association: c.author_association,
+                author_association: Some(c.author_association),
                 body: c.body,
                 created_at: c.created_at,
-                url: c.url,
+                url: Some(c.url),
             });
         }
 
@@ -278,13 +278,13 @@ impl GitHostService for GitHubHostService {
             unified.push(UnifiedPrComment::Review {
                 id: c.id,
                 author: c.user.login,
-                author_association: c.author_association,
+                author_association: Some(c.author_association),
                 body: c.body,
                 created_at: c.created_at,
-                url: c.html_url,
+                url: Some(c.html_url),
                 path: c.path,
                 line: c.line,
-                diff_hunk: c.diff_hunk,
+                diff_hunk: Some(c.diff_hunk),
             });
         }
 

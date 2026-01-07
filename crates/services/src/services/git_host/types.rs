@@ -129,21 +129,21 @@ pub enum UnifiedPrComment {
     General {
         id: String,
         author: String,
-        author_association: String,
+        author_association: Option<String>,
         body: String,
         created_at: DateTime<Utc>,
-        url: String,
+        url: Option<String>,
     },
     Review {
         id: i64,
         author: String,
-        author_association: String,
+        author_association: Option<String>,
         body: String,
         created_at: DateTime<Utc>,
-        url: String,
+        url: Option<String>,
         path: String,
         line: Option<i64>,
-        diff_hunk: String,
+        diff_hunk: Option<String>,
     },
 }
 
