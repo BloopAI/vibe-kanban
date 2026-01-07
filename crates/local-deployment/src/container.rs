@@ -288,14 +288,12 @@ impl LocalContainerService {
     async fn get_commit_message_from_agent(&self, ctx: &ExecutionContext) -> String {
         match ctx.execution_process.run_reason {
             ExecutionProcessRunReason::CodingAgent => {
-                self.get_agent_summary(ctx)
-                    .await
-                    .unwrap_or_else(|| {
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
-                    })
+                self.get_agent_summary(ctx).await.unwrap_or_else(|| {
+                    format!(
+                        "Commit changes from coding agent for workspace {}",
+                        ctx.workspace.id
+                    )
+                })
             }
             ExecutionProcessRunReason::CleanupScript => {
                 format!("Cleanup script changes for workspace {}", ctx.workspace.id)
@@ -1434,7 +1432,9 @@ impl ContainerService for LocalContainerService {
             GitCommitTitleMode::AiGenerated => {
                 // TODO: implementar generación de título con AI
                 // por ahora, usar el comportamiento de AgentSummary como fallback
-                tracing::debug!("AiGenerated mode not yet implemented, using AgentSummary fallback");
+                tracing::debug!(
+                    "AiGenerated mode not yet implemented, using AgentSummary fallback"
+                );
                 let message = self.get_commit_message_from_agent(ctx).await;
                 Ok(self.commit_repos(repos_with_changes, &message))
             }

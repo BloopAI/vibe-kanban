@@ -419,7 +419,11 @@ auto_pr_on_review_enabled: boolean,
 /**
  * cuando está habilitado, los PRs automáticos se crean como draft
  */
-auto_pr_draft: boolean, };
+auto_pr_draft: boolean, 
+/**
+ * cuando está habilitado, redirige automáticamente al intento después de crear una tarea
+ */
+redirect_to_attempt_on_create: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 

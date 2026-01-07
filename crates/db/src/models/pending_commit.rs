@@ -32,7 +32,10 @@ pub struct CreatePendingCommit {
 
 impl PendingCommit {
     /// crear un nuevo pending commit
-    pub async fn create(pool: &SqlitePool, data: &CreatePendingCommit) -> Result<Self, sqlx::Error> {
+    pub async fn create(
+        pool: &SqlitePool,
+        data: &CreatePendingCommit,
+    ) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         let now = Utc::now();
 

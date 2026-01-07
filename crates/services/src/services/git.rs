@@ -15,8 +15,7 @@ mod cli;
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
-use super::file_ranker::FileStat;
-use super::github::GitHubRepoInfo;
+use super::{file_ranker::FileStat, github::GitHubRepoInfo};
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1740,9 +1739,16 @@ impl GitService {
 
         // Log branch commit info for debugging
         if let Some(oid) = branch_ref.target() {
-            tracing::info!("push_to_github: branch {} points to commit {}", branch_name, oid);
+            tracing::info!(
+                "push_to_github: branch {} points to commit {}",
+                branch_name,
+                oid
+            );
         } else {
-            tracing::warn!("push_to_github: branch {} has no target commit!", branch_name);
+            tracing::warn!(
+                "push_to_github: branch {} has no target commit!",
+                branch_name
+            );
         }
 
         let remote = self

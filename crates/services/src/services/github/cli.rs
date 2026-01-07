@@ -133,7 +133,10 @@ impl GhCli {
     }
 
     pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
-        tracing::info!("get_repo_info: running 'gh repo view' in {}", repo_path.display());
+        tracing::info!(
+            "get_repo_info: running 'gh repo view' in {}",
+            repo_path.display()
+        );
         let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
         tracing::debug!("get_repo_info: raw response: {}", raw);
 

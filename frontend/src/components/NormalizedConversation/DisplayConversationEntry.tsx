@@ -528,10 +528,7 @@ const ToolCallCard: React.FC<{
           )}
         </span>
         {formattedTime && (
-          <span
-            className="text-xs opacity-50 ml-auto"
-            title={fullTime}
-          >
+          <span className="text-xs opacity-50 ml-auto" title={fullTime}>
             {formattedTime}
           </span>
         )}

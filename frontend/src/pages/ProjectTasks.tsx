@@ -814,7 +814,7 @@ export function ProjectTasks() {
 
   const formatBreadcrumbTitle = (
     title: string | undefined,
-    branch?: string | null,
+    branch?: string | null
   ) => {
     if (!title) return 'Task';
     // Display branch first (if available) followed by full title
@@ -903,10 +903,7 @@ export function ProjectTasks() {
                     navigateWithSearch(paths.task(projectId!, taskId!))
                   }
                 >
-                  {formatBreadcrumbTitle(
-                    selectedTask?.title,
-                    attempt?.branch,
-                  )}
+                  {formatBreadcrumbTitle(selectedTask?.title, attempt?.branch)}
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>

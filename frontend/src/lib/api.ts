@@ -426,7 +426,10 @@ export const tasksApi = {
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 
-  update: async (taskId: string, data: UpdateTask): Promise<TaskUpdateResponse> => {
+  update: async (
+    taskId: string,
+    data: UpdateTask
+  ): Promise<TaskUpdateResponse> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

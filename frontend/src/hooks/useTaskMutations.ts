@@ -19,7 +19,10 @@ interface UseTaskMutationsOptions {
   redirectToAttemptOnCreate?: boolean;
 }
 
-export function useTaskMutations(projectId?: string, options?: UseTaskMutationsOptions) {
+export function useTaskMutations(
+  projectId?: string,
+  options?: UseTaskMutationsOptions
+) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
   const shouldRedirect = options?.redirectToAttemptOnCreate ?? true;

@@ -21,9 +21,7 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery,
-    git::GitRemote,
-    project::ProjectServiceError,
+    file_search_cache::SearchQuery, git::GitRemote, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -433,7 +431,10 @@ pub async fn open_project_in_terminal(
         }
         Err(e) => {
             tracing::error!("Failed to open terminal for project {}: {}", project.id, e);
-            Err(ApiError::BadRequest(format!("Failed to open terminal: {}", e)))
+            Err(ApiError::BadRequest(format!(
+                "Failed to open terminal: {}",
+                e
+            )))
         }
     }
 }

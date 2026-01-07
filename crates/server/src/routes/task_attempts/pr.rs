@@ -591,8 +591,15 @@ pub async fn auto_create_prs_for_workspace(
     };
 
     for workspace_repo in workspace_repos {
-        let result =
-            auto_create_pr_for_repo(deployment, workspace, task, &workspace_repo, is_draft, auto_generate_description).await;
+        let result = auto_create_pr_for_repo(
+            deployment,
+            workspace,
+            task,
+            &workspace_repo,
+            is_draft,
+            auto_generate_description,
+        )
+        .await;
         results.push(result);
     }
 
@@ -659,7 +666,11 @@ async fn auto_create_pr_for_repo(
     }
 
     // obtener container ref para el workspace
-    let container_ref = match deployment.container().ensure_container_exists(workspace).await {
+    let container_ref = match deployment
+        .container()
+        .ensure_container_exists(workspace)
+        .await
+    {
         Ok(c) => c,
         Err(e) => {
             return AutoPrResult {
@@ -743,8 +754,12 @@ async fn auto_create_pr_for_repo(
             pr_url: None,
             pr_number: None,
             error: Some(match e {
-                GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => AutoPrError::GitCliNotLoggedIn,
-                GitServiceError::GitCLI(GitCliError::NotAvailable) => AutoPrError::GitCliNotInstalled,
+                GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => {
+                    AutoPrError::GitCliNotLoggedIn
+                }
+                GitServiceError::GitCLI(GitCliError::NotAvailable) => {
+                    AutoPrError::GitCliNotInstalled
+                }
                 _ => AutoPrError::Other {
                     message: e.to_string(),
                 },

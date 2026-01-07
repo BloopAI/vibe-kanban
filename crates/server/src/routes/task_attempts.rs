@@ -628,7 +628,10 @@ pub async fn open_task_attempt_in_terminal(
                 workspace.id,
                 e
             );
-            Err(ApiError::BadRequest(format!("Failed to open terminal: {}", e)))
+            Err(ApiError::BadRequest(format!(
+                "Failed to open terminal: {}",
+                e
+            )))
         }
     }
 }

@@ -47,7 +47,9 @@ pub async fn commit_pending(
     // validar el título del commit
     let title = payload.title.trim();
     if title.is_empty() {
-        return Err(ApiError::BadRequest("Commit title cannot be empty".to_string()));
+        return Err(ApiError::BadRequest(
+            "Commit title cannot be empty".to_string(),
+        ));
     }
     if title.len() > 500 {
         return Err(ApiError::BadRequest(
@@ -61,15 +63,19 @@ pub async fn commit_pending(
         .ok_or(ApiError::BadRequest("Pending commit not found".to_string()))?;
 
     // obtener el workspace para acceder al container_ref
-    let workspace =
-        db::models::workspace::Workspace::find_by_id(&deployment.db().pool, pending_commit.workspace_id)
-            .await?
-            .ok_or(ApiError::BadRequest("Workspace not found".to_string()))?;
+    let workspace = db::models::workspace::Workspace::find_by_id(
+        &deployment.db().pool,
+        pending_commit.workspace_id,
+    )
+    .await?
+    .ok_or(ApiError::BadRequest("Workspace not found".to_string()))?;
 
     let container_ref = workspace
         .container_ref
         .as_ref()
-        .ok_or(ApiError::BadRequest("Workspace has no container reference".to_string()))?;
+        .ok_or(ApiError::BadRequest(
+            "Workspace has no container reference".to_string(),
+        ))?;
 
     let workspace_root = PathBuf::from(container_ref);
     let worktree_path = workspace_root.join(&pending_commit.repo_path);
@@ -81,14 +87,18 @@ pub async fn commit_pending(
     if let Err(e) = git.add_all(&worktree_path) {
         // limpiar el pending commit de la base de datos antes de retornar el error
         let _ = PendingCommit::delete(&deployment.db().pool, pending_commit_id).await;
-        return Err(ApiError::BadRequest(format!("git add failed (workspace may have been deleted): {e}")));
+        return Err(ApiError::BadRequest(format!(
+            "git add failed (workspace may have been deleted): {e}"
+        )));
     }
 
     // intentar hacer commit - si falla, limpiar el pending commit
     if let Err(e) = git.commit(&worktree_path, title) {
         // limpiar el pending commit de la base de datos antes de retornar el error
         let _ = PendingCommit::delete(&deployment.db().pool, pending_commit_id).await;
-        return Err(ApiError::BadRequest(format!("git commit failed (workspace may have been deleted): {e}")));
+        return Err(ApiError::BadRequest(format!(
+            "git commit failed (workspace may have been deleted): {e}"
+        )));
     }
 
     // eliminar el pending commit de la base de datos solo si el commit fue exitoso

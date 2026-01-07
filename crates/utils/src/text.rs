@@ -85,7 +85,10 @@ mod tests {
         assert_eq!(git_branch_id("12345678901234567890"), "1234567890123456");
 
         // trailing hyphens removed after truncation
-        assert_eq!(git_branch_id("this-is-a-very-long-branch-name"), "this-is-a-very-l");
+        assert_eq!(
+            git_branch_id("this-is-a-very-long-branch-name"),
+            "this-is-a-very-l"
+        );
     }
 
     #[test]

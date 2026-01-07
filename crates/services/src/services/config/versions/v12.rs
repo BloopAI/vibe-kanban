@@ -45,6 +45,10 @@ fn default_auto_pr_draft() -> bool {
     true
 }
 
+fn default_redirect_to_attempt_on_create() -> bool {
+    false
+}
+
 /// modo de generación del título de commit para auto-commits
 #[derive(Clone, Debug, Serialize, Deserialize, TS, Default, PartialEq)]
 pub enum GitCommitTitleMode {
@@ -112,6 +116,9 @@ pub struct Config {
     /// cuando está habilitado, los PRs automáticos se crean como draft
     #[serde(default = "default_auto_pr_draft")]
     pub auto_pr_draft: bool,
+    /// cuando está habilitado, redirige automáticamente al intento después de crear una tarea
+    #[serde(default = "default_redirect_to_attempt_on_create")]
+    pub redirect_to_attempt_on_create: bool,
 }
 
 impl Config {
@@ -143,6 +150,7 @@ impl Config {
             git_commit_title_prompt: None,
             auto_pr_on_review_enabled: false,
             auto_pr_draft: true,
+            redirect_to_attempt_on_create: false,
         }
     }
 
@@ -201,6 +209,7 @@ impl Default for Config {
             git_commit_title_prompt: None,
             auto_pr_on_review_enabled: false,
             auto_pr_draft: true,
+            redirect_to_attempt_on_create: false,
         }
     }
 }

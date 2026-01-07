@@ -99,9 +99,13 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
     }
   };
 
-
   const taskCounts = project.task_counts;
-  const totalTasks = Number(taskCounts.todo) + Number(taskCounts.inprogress) + Number(taskCounts.inreview) + Number(taskCounts.done) + Number(taskCounts.cancelled);
+  const totalTasks =
+    Number(taskCounts.todo) +
+    Number(taskCounts.inprogress) +
+    Number(taskCounts.inreview) +
+    Number(taskCounts.done) +
+    Number(taskCounts.cancelled);
 
   const handleUnlinkProject = () => {
     const confirmed = window.confirm(
@@ -212,7 +216,9 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
           </div>
           {totalTasks > 0 && (
             <div className="flex items-center gap-2">
-              {(['todo', 'inprogress', 'inreview', 'done', 'cancelled'] as const).map((status) => {
+              {(
+                ['todo', 'inprogress', 'inreview', 'done', 'cancelled'] as const
+              ).map((status) => {
                 const count = Number(taskCounts[status]);
                 if (count === 0) return null;
 

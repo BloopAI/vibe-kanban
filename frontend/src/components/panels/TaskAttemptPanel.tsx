@@ -49,11 +49,7 @@ const TaskAttemptPanel = ({
                   />
                 </div>
               )}
-              <VirtualizedList
-                key={attempt.id}
-                attempt={attempt}
-                task={task}
-              />
+              <VirtualizedList key={attempt.id} attempt={attempt} task={task} />
             </>
           ),
           followUp: (

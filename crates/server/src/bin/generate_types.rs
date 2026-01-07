@@ -241,8 +241,7 @@ fn generate_types_content() -> String {
         .replace('`', "\\`");
     let constants = format!(
         "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;\n\nexport const DEFAULT_COMMIT_TITLE_PROMPT = `{}`;",
-        pr_prompt_escaped,
-        commit_prompt_escaped
+        pr_prompt_escaped, commit_prompt_escaped
     );
 
     format!("{HEADER}\n\n{body}\n\n{constants}")

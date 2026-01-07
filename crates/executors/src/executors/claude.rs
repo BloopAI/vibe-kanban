@@ -880,9 +880,7 @@ impl ClaudeLogProcessor {
                             let entry = NormalizedEntry::with_metadata(
                                 NormalizedEntryType::UserMessage,
                                 text.clone(),
-                                Some(
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
-                                ),
+                                Some(serde_json::to_value(item).unwrap_or(serde_json::Value::Null)),
                             );
                             let id = entry_index_provider.next();
                             patches.push(ConversationPatch::add_normalized_entry(id, entry));
@@ -1032,9 +1030,7 @@ impl ClaudeLogProcessor {
                         status: ToolStatus::Created,
                     },
                     content,
-                    Some(
-                        serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
-                    ),
+                    Some(serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null)),
                 );
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
@@ -1106,11 +1102,8 @@ impl ClaudeLogProcessor {
                         NormalizedEntryType::ErrorMessage {
                             error_type: NormalizedEntryError::Other,
                         },
-                        serde_json::to_string(claude_json)
-                            .unwrap_or_else(|_| "error".to_string()),
-                        Some(
-                            serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
-                        ),
+                        serde_json::to_string(claude_json).unwrap_or_else(|_| "error".to_string()),
+                        Some(serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null)),
                     );
                     let idx = entry_index_provider.next();
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));

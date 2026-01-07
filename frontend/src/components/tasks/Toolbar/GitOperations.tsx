@@ -1,4 +1,8 @@
-import { GitBranch as GitBranchIcon, GitPullRequest, RefreshCw } from 'lucide-react';
+import {
+  GitBranch as GitBranchIcon,
+  GitPullRequest,
+  RefreshCw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import { useMemo, useState } from 'react';
 import type {

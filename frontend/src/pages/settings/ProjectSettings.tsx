@@ -63,7 +63,8 @@ function projectToFormState(project: Project): ProjectFormState {
     git_commit_title_mode: project.git_commit_title_mode ?? null,
     auto_pr_on_review_enabled: project.auto_pr_on_review_enabled ?? null,
     auto_pr_draft: project.auto_pr_draft ?? null,
-    redirect_to_attempt_on_create: project.redirect_to_attempt_on_create ?? null,
+    redirect_to_attempt_on_create:
+      project.redirect_to_attempt_on_create ?? null,
   };
 }
 
@@ -709,7 +710,9 @@ export function ProjectSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('settings.projects.git.commitTitleMode.label')}</Label>
+                <Label>
+                  {t('settings.projects.git.commitTitleMode.label')}
+                </Label>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center space-x-2">
                     <input
@@ -764,7 +767,9 @@ export function ProjectSettings() {
                     >
                       {t('settings.projects.git.commitTitleMode.aiGenerated')}
                       <Badge variant="outline" className="ml-2 text-xs">
-                        {t('settings.general.git.commitTitleMode.notImplemented')}
+                        {t(
+                          'settings.general.git.commitTitleMode.notImplemented'
+                        )}
                       </Badge>
                     </Label>
                   </div>
@@ -913,7 +918,9 @@ export function ProjectSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label>{t('settings.projects.tasks.redirectToAttempt.label')}</Label>
+                <Label>
+                  {t('settings.projects.tasks.redirectToAttempt.label')}
+                </Label>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center space-x-2">
                     <input

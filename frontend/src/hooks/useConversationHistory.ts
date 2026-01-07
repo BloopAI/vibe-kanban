@@ -150,13 +150,14 @@ export const useConversationHistory = ({
     });
   };
 
-  const getLiveExecutionProcess = (
-    executionProcessId: string
-  ): ExecutionProcess | undefined => {
-    return executionProcessesRaw.find(
-      (executionProcess) => executionProcess.id === executionProcessId
-    );
-  };
+  const getLiveExecutionProcess = useCallback(
+    (executionProcessId: string): ExecutionProcess | undefined => {
+      return executionProcessesRaw.find(
+        (executionProcess) => executionProcess.id === executionProcessId
+      );
+    },
+    [executionProcessesRaw]
+  );
 
   const patchWithKey = (
     patch: PatchType,
@@ -191,7 +192,7 @@ export const useConversationHistory = ({
       .flatMap((p) => p.entries);
   };
 
-  const getActiveAgentProcesses = (): ExecutionProcess[] => {
+  const getActiveAgentProcesses = useCallback((): ExecutionProcess[] => {
     return (
       executionProcessesRaw.filter(
         (p) =>
@@ -201,7 +202,7 @@ export const useConversationHistory = ({
           p.status === ExecutionProcessStatus.running
       ) ?? []
     );
-  };
+  }, [executionProcessesRaw]);
 
   const flattenEntriesForEmit = useCallback(
     (executionProcessState: ExecutionProcessStateStore): PatchTypeWithKey[] => {
@@ -425,7 +426,7 @@ export const useConversationHistory = ({
 
       return allEntries;
     },
-    []
+    [getLiveExecutionProcess]
   );
 
   const emitEntries = useCallback(
@@ -669,6 +670,7 @@ export const useConversationHistory = ({
     emitEntries,
     ensureProcessVisible,
     loadRunningAndEmitWithBackoff,
+    getActiveAgentProcesses,
   ]);
 
   // If an execution process is removed, remove it from the state

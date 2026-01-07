@@ -29,14 +29,18 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{api::oauth::LoginStatus, response::ApiResponse};
+use utils::{api::oauth::LoginStatus, response::ApiResponse, text::git_branch_id};
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_task_middleware,
-    routes::task_attempts::{WorkspaceRepoInput, pr::{AutoPrResult, auto_create_prs_for_workspace}},
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_task_middleware,
+    routes::task_attempts::{
+        WorkspaceRepoInput,
+        pr::{AutoPrResult, auto_create_prs_for_workspace},
+    },
 };
-use utils::text::git_branch_id;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
@@ -322,13 +326,12 @@ pub async fn update_task(
     }
 
     // intentar crear PRs automáticamente si la tarea pasó a InReview
-    let auto_pr_results = if existing_task.status != TaskStatus::InReview
-        && status == TaskStatus::InReview
-    {
-        try_auto_create_prs(&deployment, &task).await
-    } else {
-        None
-    };
+    let auto_pr_results =
+        if existing_task.status != TaskStatus::InReview && status == TaskStatus::InReview {
+            try_auto_create_prs(&deployment, &task).await
+        } else {
+            None
+        };
 
     Ok(ResponseJson(ApiResponse::success(TaskUpdateResponse {
         task,

@@ -1,18 +1,18 @@
-use crate::is_wsl2;
-use crate::shell::UnixShell;
 use std::path::Path;
 
+use crate::{is_wsl2, shell::UnixShell};
+
 /// Open terminal at the given path with cross-platform support
-pub async fn open_terminal(
-    path: &Path,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn open_terminal(path: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let path_str = path.to_string_lossy();
 
     if is_wsl2() {
         // In WSL2, use PowerShell to open Windows Terminal
         tokio::process::Command::new("powershell.exe")
             .arg("-Command")
-            .arg(format!("Start-Process wt.exe -ArgumentList '-d \"{path_str}\"'"))
+            .arg(format!(
+                "Start-Process wt.exe -ArgumentList '-d \"{path_str}\"'"
+            ))
             .spawn()?;
         Ok(())
     } else {
@@ -55,28 +55,24 @@ pub async fn open_terminal(
                             .arg(shell_path_str.as_ref())
                             .spawn()
                     }
-                    "konsole" => {
-                        tokio::process::Command::new(terminal)
-                            .arg("--workdir")
-                            .arg(path)
-                            .arg("-e")
-                            .arg(shell_path_str.as_ref())
-                            .spawn()
-                    }
-                    "xfce4-terminal" => {
-                        tokio::process::Command::new(terminal)
-                            .arg("--working-directory")
-                            .arg(path)
-                            .arg("-e")
-                            .arg(shell_path_str.as_ref())
-                            .spawn()
-                    }
+                    "konsole" => tokio::process::Command::new(terminal)
+                        .arg("--workdir")
+                        .arg(path)
+                        .arg("-e")
+                        .arg(shell_path_str.as_ref())
+                        .spawn(),
+                    "xfce4-terminal" => tokio::process::Command::new(terminal)
+                        .arg("--working-directory")
+                        .arg(path)
+                        .arg("-e")
+                        .arg(shell_path_str.as_ref())
+                        .spawn(),
                     "xterm" | "alacritty" | "kitty" | "wezterm" => {
                         // estos terminales no tienen un flag directo para working directory
                         // usamos un comando shell para cd al directorio
                         // escapamos el path para evitar problemas con caracteres especiales
-                        let escaped_path = shlex::try_quote(&path_str)
-                            .map_err(|_| "Failed to escape path")?;
+                        let escaped_path =
+                            shlex::try_quote(&path_str).map_err(|_| "Failed to escape path")?;
                         // fish usa sintaxis diferente a POSIX shells
                         let cd_command = if matches!(user_shell, UnixShell::Fish(_)) {
                             format!("cd {}; exec {}", escaped_path, shell_path_str)

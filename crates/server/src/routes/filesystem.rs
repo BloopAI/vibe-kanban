@@ -6,8 +6,10 @@ use axum::{
 };
 use deployment::Deployment;
 use serde::Deserialize;
-use services::services::filesystem::{DirectoryEntry, DirectoryListResponse, FilesystemError};
-use services::services::slash_commands::SlashCommandService;
+use services::services::{
+    filesystem::{DirectoryEntry, DirectoryListResponse, FilesystemError},
+    slash_commands::SlashCommandService,
+};
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError};

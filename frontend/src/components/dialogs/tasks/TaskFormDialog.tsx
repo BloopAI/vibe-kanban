@@ -107,7 +107,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const editMode = mode === 'edit';
   const modal = useModal();
   const { t } = useTranslation(['tasks', 'common']);
-  const { system, config, profiles, loading: userSystemLoading } = useUserSystem();
+  const {
+    system,
+    config,
+    profiles,
+    loading: userSystemLoading,
+  } = useUserSystem();
   const { projectsById } = useProjects();
 
   // calcula el setting efectivo para redirigir al intento después de crear una tarea
@@ -122,8 +127,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     return config?.redirect_to_attempt_on_create ?? true;
   }, [projectsById, projectId, config?.redirect_to_attempt_on_create]);
 
-  const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId, { redirectToAttemptOnCreate });
+  const { createTask, createAndStart, updateTask } = useTaskMutations(
+    projectId,
+    { redirectToAttemptOnCreate }
+  );
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
 

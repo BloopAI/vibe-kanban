@@ -104,7 +104,9 @@ export function McpSettings() {
         if (result.claude_code_servers) {
           // Filter out undefined values to satisfy TypeScript
           const servers: Record<string, McpServerWithSource> = {};
-          for (const [key, value] of Object.entries(result.claude_code_servers)) {
+          for (const [key, value] of Object.entries(
+            result.claude_code_servers
+          )) {
             if (value) {
               servers[key] = value;
             }

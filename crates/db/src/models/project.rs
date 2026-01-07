@@ -319,9 +319,7 @@ impl Project {
         let auto_pr_on_review_enabled = payload
             .auto_pr_on_review_enabled
             .unwrap_or(existing.auto_pr_on_review_enabled);
-        let auto_pr_draft = payload
-            .auto_pr_draft
-            .unwrap_or(existing.auto_pr_draft);
+        let auto_pr_draft = payload.auto_pr_draft.unwrap_or(existing.auto_pr_draft);
         let redirect_to_attempt_on_create = payload
             .redirect_to_attempt_on_create
             .unwrap_or(existing.redirect_to_attempt_on_create);

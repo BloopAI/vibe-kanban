@@ -565,23 +565,41 @@ export function GeneralSettings() {
                   className="space-y-2"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="AgentSummary" id="commit-title-agent" />
-                    <Label htmlFor="commit-title-agent" className="cursor-pointer font-normal">
-                      {t('settings.general.git.commitTitleMode.options.agentSummary')}
+                    <RadioGroupItem
+                      value="AgentSummary"
+                      id="commit-title-agent"
+                    />
+                    <Label
+                      htmlFor="commit-title-agent"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t(
+                        'settings.general.git.commitTitleMode.options.agentSummary'
+                      )}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="AiGenerated" id="commit-title-ai" />
-                    <Label htmlFor="commit-title-ai" className="cursor-pointer font-normal">
-                      {t('settings.general.git.commitTitleMode.options.aiGenerated')}
+                    <Label
+                      htmlFor="commit-title-ai"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t(
+                        'settings.general.git.commitTitleMode.options.aiGenerated'
+                      )}
                       <Badge variant="outline" className="ml-2 text-xs">
-                        {t('settings.general.git.commitTitleMode.notImplemented')}
+                        {t(
+                          'settings.general.git.commitTitleMode.notImplemented'
+                        )}
                       </Badge>
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="Manual" id="commit-title-manual" />
-                    <Label htmlFor="commit-title-manual" className="cursor-pointer font-normal">
+                    <Label
+                      htmlFor="commit-title-manual"
+                      className="cursor-pointer font-normal"
+                    >
                       {t('settings.general.git.commitTitleMode.options.manual')}
                     </Label>
                   </div>
@@ -600,15 +618,21 @@ export function GeneralSettings() {
                       onCheckedChange={(checked: boolean) => {
                         if (checked) {
                           updateDraft({
-                            git_commit_title_prompt: DEFAULT_COMMIT_TITLE_PROMPT,
+                            git_commit_title_prompt:
+                              DEFAULT_COMMIT_TITLE_PROMPT,
                           });
                         } else {
                           updateDraft({ git_commit_title_prompt: null });
                         }
                       }}
                     />
-                    <Label htmlFor="use-custom-commit-prompt" className="cursor-pointer">
-                      {t('settings.general.git.commitTitleMode.customPrompt.useCustom')}
+                    <Label
+                      htmlFor="use-custom-commit-prompt"
+                      className="cursor-pointer"
+                    >
+                      {t(
+                        'settings.general.git.commitTitleMode.customPrompt.useCustom'
+                      )}
                     </Label>
                   </div>
                   <textarea
@@ -619,7 +643,8 @@ export function GeneralSettings() {
                         : ''
                     }`}
                     value={
-                      draft?.git_commit_title_prompt ?? DEFAULT_COMMIT_TITLE_PROMPT
+                      draft?.git_commit_title_prompt ??
+                      DEFAULT_COMMIT_TITLE_PROMPT
                     }
                     disabled={draft?.git_commit_title_prompt == null}
                     onChange={(e) =>
@@ -629,7 +654,9 @@ export function GeneralSettings() {
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.general.git.commitTitleMode.customPrompt.helper')}
+                    {t(
+                      'settings.general.git.commitTitleMode.customPrompt.helper'
+                    )}
                   </p>
                 </div>
               )}

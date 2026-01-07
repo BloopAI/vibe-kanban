@@ -119,46 +119,46 @@ function TaskKanbanBoard({
             {!columnCollapsed && (
               <KanbanCards>
                 {items.map((item, index) => {
-                const isOwnTask =
-                  item.type === 'task' &&
-                  (!item.sharedTask?.assignee_user_id ||
-                    !userId ||
-                    item.sharedTask?.assignee_user_id === userId);
+                  const isOwnTask =
+                    item.type === 'task' &&
+                    (!item.sharedTask?.assignee_user_id ||
+                      !userId ||
+                      item.sharedTask?.assignee_user_id === userId);
 
-                if (isOwnTask) {
+                  if (isOwnTask) {
+                    return (
+                      <TaskCard
+                        key={item.task.id}
+                        task={item.task}
+                        index={index}
+                        status={statusKey}
+                        onViewDetails={onViewTaskDetails}
+                        isOpen={selectedTaskId === item.task.id}
+                        projectId={projectId}
+                        sharedTask={item.sharedTask}
+                        isCollapsed={isCollapsed(item.task.id)}
+                        onToggleCollapsed={toggleCollapsed}
+                      />
+                    );
+                  }
+
+                  const sharedTask =
+                    item.type === 'shared' ? item.task : item.sharedTask!;
+                  const cardId = getCardId(item);
+
                   return (
-                    <TaskCard
-                      key={item.task.id}
-                      task={item.task}
+                    <SharedTaskCard
+                      key={cardId}
+                      task={sharedTask}
                       index={index}
                       status={statusKey}
-                      onViewDetails={onViewTaskDetails}
-                      isOpen={selectedTaskId === item.task.id}
-                      projectId={projectId}
-                      sharedTask={item.sharedTask}
-                      isCollapsed={isCollapsed(item.task.id)}
+                      isSelected={selectedSharedTaskId === item.task.id}
+                      onViewDetails={onViewSharedTask}
+                      isCollapsed={isCollapsed(cardId)}
                       onToggleCollapsed={toggleCollapsed}
                     />
                   );
-                }
-
-                const sharedTask =
-                  item.type === 'shared' ? item.task : item.sharedTask!;
-                const cardId = getCardId(item);
-
-                return (
-                  <SharedTaskCard
-                    key={cardId}
-                    task={sharedTask}
-                    index={index}
-                    status={statusKey}
-                    isSelected={selectedSharedTaskId === item.task.id}
-                    onViewDetails={onViewSharedTask}
-                    isCollapsed={isCollapsed(cardId)}
-                    onToggleCollapsed={toggleCollapsed}
-                  />
-                );
-              })}
+                })}
               </KanbanCards>
             )}
           </KanbanBoard>

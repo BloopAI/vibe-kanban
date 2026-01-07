@@ -15,7 +15,8 @@ export function useRepoStatusOperations(
   branchStatus: RepoBranchStatus[] | null | undefined
 ) {
   const { setError } = useGitOperationsError();
-  const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(attemptId);
+  const { repos, selectedRepoId, setSelectedRepoId } =
+    useAttemptRepo(attemptId);
   const git = useGitOperations(attemptId ?? '', selectedRepoId ?? undefined);
   const { data: branches = [] } = useRepoBranches(selectedRepoId);
 
@@ -77,7 +78,11 @@ export function useRepoStatusOperations(
     } catch (error) {
       // User cancelled - do nothing
     }
-  }, [branches, git.states.changeTargetBranchPending, handleChangeTargetBranchClick]);
+  }, [
+    branches,
+    git.states.changeTargetBranchPending,
+    handleChangeTargetBranchClick,
+  ]);
 
   return {
     repos,

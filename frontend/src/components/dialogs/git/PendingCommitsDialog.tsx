@@ -14,7 +14,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
-import { Loader2, GitCommit, Trash2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Loader2,
+  GitCommit,
+  Trash2,
+  Check,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import {
   usePendingCommits,
   useCommitPending,
@@ -41,7 +48,9 @@ function CommitItem({
   isProcessing,
 }: CommitItemProps) {
   const { t } = useTranslation('pendingCommits');
-  const [title, setTitle] = useState(commit.agent_summary?.split('\n')[0] || '');
+  const [title, setTitle] = useState(
+    commit.agent_summary?.split('\n')[0] || ''
+  );
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 

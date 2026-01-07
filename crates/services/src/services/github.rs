@@ -1,9 +1,9 @@
 use std::{path::Path, time::Duration};
 
 use backon::{ExponentialBuilder, Retryable};
-use regex::Regex;
 use chrono::{DateTime, Utc};
 use db::models::merge::PullRequestInfo;
+use regex::Regex;
 use serde::Serialize;
 use thiserror::Error;
 use tokio::task;
@@ -113,8 +113,8 @@ impl GitHubRepoInfo {
         // Supports SSH, HTTPS and PR GitHub URLs. See tests for examples.
         let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
             .map_err(|e| {
-                GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
-            })?;
+            GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
+        })?;
 
         let caps = re.captures(remote_url).ok_or_else(|| {
             GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))

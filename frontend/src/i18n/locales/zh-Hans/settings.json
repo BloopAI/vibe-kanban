@@ -150,11 +150,33 @@
         "autoCommit": {
           "label": "自动提交更改",
           "helper": "启用后，代理将在任务执行成功后自动提交更改。"
+        },
+        "commitTitleMode": {
+          "label": "提交标题模式",
+          "helper": "选择如何为自动提交生成提交标题。",
+          "options": {
+            "agentSummary": "使用代理摘要（默认）",
+            "aiGenerated": "AI 生成（使用自定义提示）",
+            "manual": "手动（排队审查提交）"
+          },
+          "customPrompt": {
+            "useCustom": "使用自定义提示生成提交标题",
+            "helper": "自定义用于生成提交标题的提示。AI 将使用此提示创建常规提交消息。"
+          },
+          "notImplemented": "尚未实现"
         }
       },
       "pullRequests": {
         "title": "拉取请求",
         "description": "配置PR创建行为",
+        "autoPr": {
+          "label": "移至审查中时创建 PR",
+          "helper": "当任务移至审查中状态时自动创建拉取请求。"
+        },
+        "autoPrDraft": {
+          "label": "创建为草稿 PR",
+          "helper": "自动创建 PR 时，将其创建为草稿而不是准备审查。"
+        },
         "autoDescription": {
           "label": "默认自动生成PR描述",
           "helper": "启用后，AI代理将在创建PR后自动更新标题和描述。"
@@ -162,6 +184,14 @@
         "customPrompt": {
           "useCustom": "使用自定义提示",
           "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
+        }
+      },
+      "tasks": {
+        "title": "任务",
+        "description": "配置任务创建和导航行为。",
+        "redirectToAttempt": {
+          "label": "创建任务时重定向到尝试",
+          "helper": "启用后，创建并启动任务后自动导航到任务尝试详情视图。"
         }
       },
       "notifications": {
@@ -401,6 +431,37 @@
           "useGlobal": "使用全局设置",
           "enabled": "始终自动提交",
           "disabled": "永不自动提交"
+        },
+        "commitTitleMode": {
+          "label": "提交标题模式",
+          "helper": "覆盖此项目的全局提交标题模式。",
+          "useGlobal": "使用全局设置",
+          "agentSummary": "使用代理摘要",
+          "aiGenerated": "AI 生成",
+          "manual": "手动（排队审查）"
+        }
+      },
+      "autoPr": {
+        "label": "移至审查中时自动创建 PR",
+        "helper": "控制任务移至审查中状态时是否自动创建 PR。",
+        "useGlobal": "使用全局设置",
+        "enabled": "始终创建 PR",
+        "disabled": "永不自动创建 PR"
+      },
+      "autoPrDraft": {
+        "label": "创建为草稿 PR",
+        "helper": "控制自动创建的 PR 是否创建为草稿。",
+        "useGlobal": "使用全局设置",
+        "enabled": "始终创建为草稿",
+        "disabled": "创建为准备审查"
+      },
+      "tasks": {
+        "redirectToAttempt": {
+          "label": "创建任务时重定向到尝试",
+          "helper": "控制创建任务后是否导航到任务尝试详情视图。",
+          "useGlobal": "使用全局设置",
+          "enabled": "始终重定向",
+          "disabled": "永不重定向"
         }
       },
       "save": {

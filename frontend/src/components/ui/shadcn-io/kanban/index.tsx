@@ -54,7 +54,12 @@ export type KanbanBoardProps = {
   collapsed?: boolean;
 };
 
-export const KanbanBoard = ({ id, children, className, collapsed = false }: KanbanBoardProps) => {
+export const KanbanBoard = ({
+  id,
+  children,
+  className,
+  collapsed = false,
+}: KanbanBoardProps) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
@@ -188,7 +193,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
       className={cn(
         'sticky z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed transition-all duration-200',
         'bg-background',
-        props.columnCollapsed ? 'flex-col rotate-180 origin-center writing-mode-vertical-rl top-0 left-0' : 'flex-row top-0',
+        props.columnCollapsed
+          ? 'flex-col rotate-180 origin-center writing-mode-vertical-rl top-0 left-0'
+          : 'flex-row top-0',
         props.className
       )}
       style={{
@@ -200,10 +207,12 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         }),
       }}
     >
-      <span className={cn(
-        'flex items-center gap-2',
-        props.columnCollapsed ? 'flex-col' : 'flex-1'
-      )}>
+      <span
+        className={cn(
+          'flex items-center gap-2',
+          props.columnCollapsed ? 'flex-col' : 'flex-1'
+        )}
+      >
         {props.onToggleColumnCollapsed && (
           <TooltipProvider>
             <Tooltip>
@@ -211,8 +220,8 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
                 <Button
                   variant="ghost"
                   className={cn(
-                    "m-0 p-0 h-auto text-foreground/50 hover:text-foreground",
-                    props.columnCollapsed && "rotate-180"
+                    'm-0 p-0 h-auto text-foreground/50 hover:text-foreground',
+                    props.columnCollapsed && 'rotate-180'
                   )}
                   onClick={props.onToggleColumnCollapsed}
                   aria-label={
