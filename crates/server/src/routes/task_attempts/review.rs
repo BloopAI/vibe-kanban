@@ -8,6 +8,7 @@ use db::models::{
 use deployment::Deployment;
 use executors::{
     actions::{ExecutorAction, ExecutorActionType, review::ReviewRequest as ReviewAction},
+    executors::build_review_prompt,
     profile::ExecutorProfileId,
 };
 use serde::{Deserialize, Serialize};
@@ -123,12 +124,16 @@ pub async fn start_review(
             None
         };
 
+    // Build the full prompt for display and execution
+    let prompt = build_review_prompt(context.as_deref(), payload.additional_prompt.as_deref());
+
     // Build the review action
     let action = ExecutorAction::new(
         ExecutorActionType::ReviewRequest(ReviewAction {
             executor_profile_id: payload.executor_profile_id.clone(),
             context,
             additional_prompt: payload.additional_prompt,
+            prompt,
             working_dir: workspace.agent_working_dir.clone(),
         }),
         None,
