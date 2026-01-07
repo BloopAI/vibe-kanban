@@ -1,0 +1,53 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "vibe-frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    environment: dve
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: vibe-frontend/Dockerfile.frontend
+          push: true
+          tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest
+          build-args: |
+            VITE_CLERK_PUBLISHABLE_KEY=pk_test_d2VsY29tZS1zd2lmdC03Ni5jbGVyay5hY2NvdW50cy5kZXYk
+            VITE_API_URL=https://api.scho1ar.com
+            VITE_BASE_PATH=/
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Create Proxy Dockerfile
+        run: |
+          mkdir deploy_payload
+          # Since our image already includes Nginx and config, we just need to run it.
+          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest" > deploy_payload/Dockerfile
+          echo "ENV PORT=80" >> deploy_payload/Dockerfile
+          echo "EXPOSE 80" >> deploy_payload/Dockerfile
+
+      - name: Deploy
+        working-directory: ./deploy_payload
+        run: railway up --service vibe-kanban-frontend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

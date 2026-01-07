@@ -525,7 +525,7 @@ export function Sidebar() {
       {!isCollapsed && (
         <div className="p-3 border-t">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="truncate">vibe-kanban</span>
+            <span className="truncate">iKanban</span>
           </div>
         </div>
       )}

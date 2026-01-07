@@ -37,7 +37,7 @@ interface WorkspaceSwitcherProps {
 
 const defaultWorkspace: Workspace = {
   id: 'default',
-  name: 'vibe-kanban',
+  name: 'iKanban',
 };
 
 export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
