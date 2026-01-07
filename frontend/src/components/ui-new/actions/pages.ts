@@ -1,5 +1,6 @@
 import type { Icon } from '@phosphor-icons/react';
-import { Actions, type ActionDefinition } from './index';
+import { type ActionDefinition } from './index';
+import { Actions } from './index';
 
 // Define page IDs first to avoid circular reference
 export type PageId = 'root' | 'workspaceActions';
@@ -78,3 +79,19 @@ export const Pages: Record<PageId, CommandBarPage> = {
     ],
   },
 };
+
+// Get all actions from a specific page
+export function getPageActions(pageId: PageId): ActionDefinition[] {
+  const page = Pages[pageId];
+  const actions: ActionDefinition[] = [];
+
+  for (const group of page.items) {
+    for (const item of group.items) {
+      if (item.type === 'action') {
+        actions.push(item.action);
+      }
+    }
+  }
+
+  return actions;
+}

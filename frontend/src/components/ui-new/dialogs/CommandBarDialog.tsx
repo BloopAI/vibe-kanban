@@ -12,12 +12,14 @@ import { attemptKeys } from '@/hooks/useAttempt';
 import { type ActionDefinition } from '@/components/ui-new/actions';
 import {
   Pages,
+  getPageActions,
   type PageId,
   type CommandBarGroup,
   type CommandBarGroupItem,
   type ResolvedGroup,
   type ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
+import { resolveLabel } from '@/components/ui-new/actions';
 
 // Resolved page structure passed to CommandBar
 interface ResolvedCommandBarPage {
@@ -72,8 +74,9 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       : undefined;
 
     // Build resolved page by processing childPages markers within groups
+    // When searching on root page, also include actions from nested pages
     const getPageWithItems = useMemo(() => {
-      return (pageId: PageId): ResolvedCommandBarPage => {
+      return (pageId: PageId, searchQuery: string): ResolvedCommandBarPage => {
         const basePage = Pages[pageId];
 
         // Process each group, expanding childPages markers within
@@ -113,13 +116,38 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           })
           .filter((group): group is ResolvedGroup => group !== null);
 
+        // When searching on root page, inject matching actions from nested pages
+        if (pageId === 'root' && searchQuery.trim() && effectiveWorkspaceId) {
+          const workspaceActions = getPageActions('workspaceActions');
+          const searchLower = searchQuery.toLowerCase();
+
+          // Filter actions that match the search query by label
+          const matchingActions = workspaceActions.filter((action) => {
+            const label = resolveLabel(action, workspace);
+            return (
+              label.toLowerCase().includes(searchLower) ||
+              action.id.toLowerCase().includes(searchLower)
+            );
+          });
+
+          if (matchingActions.length > 0) {
+            resolvedGroups.push({
+              label: Pages.workspaceActions.title || 'Workspace Actions',
+              items: matchingActions.map((action) => ({
+                type: 'action' as const,
+                action,
+              })),
+            });
+          }
+        }
+
         return {
           id: basePage.id,
           title: basePage.title,
           groups: resolvedGroups,
         };
       };
-    }, [effectiveWorkspaceId]);
+    }, [effectiveWorkspaceId, workspace]);
 
     // Store the previously focused element when dialog opens
     useEffect(() => {
@@ -186,7 +214,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         onCloseAutoFocus={handleCloseAutoFocus}
       >
         <CommandBar
-          page={getPageWithItems(currentPage)}
+          page={getPageWithItems(currentPage, search)}
           canGoBack={canGoBack}
           onGoBack={goBack}
           onSelect={handleSelect}

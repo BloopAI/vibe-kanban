@@ -65,7 +65,7 @@ export function CommandBar({
       </div>
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        {canGoBack && (
+        {canGoBack && !search && (
           <CommandGroup>
             <CommandItem value="__back__" onSelect={onGoBack}>
               <CaretLeftIcon className="h-4 w-4" weight="bold" />
