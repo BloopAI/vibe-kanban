@@ -188,7 +188,7 @@ impl AzCli {
         })?;
 
         // Find the repo that matches our remote URL (check both HTTPS and SSH)
-        let is_ssh = remote_url.starts_with("git@");
+        let is_ssh = remote_url.starts_with("git@") || remote_url.starts_with("ssh://");
         let repo = repos
             .into_iter()
             .find(|r| {
