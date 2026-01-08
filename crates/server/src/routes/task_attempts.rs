@@ -1,6 +1,7 @@
 pub mod codex_setup;
 pub mod cursor_setup;
 pub mod gh_cli_setup;
+pub mod kiro_setup;
 pub mod images;
 pub mod pr;
 pub mod util;
@@ -221,6 +222,9 @@ pub async fn run_agent_setup(
         }
         CodingAgent::Codex(codex) => {
             codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
+        }
+        CodingAgent::Kiro(kiro) => {
+            kiro_setup::run_kiro_setup(&deployment, &workspace, &kiro).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }

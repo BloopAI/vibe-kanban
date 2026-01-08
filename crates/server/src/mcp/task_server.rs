@@ -220,7 +220,7 @@ pub struct StartWorkspaceSessionRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
     #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
+        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'KIRO', 'CURSOR_AGENT', 'OPENCODE')"
     )]
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]

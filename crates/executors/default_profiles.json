@@ -186,6 +186,13 @@
         }
       }
     },
+    "KIRO": {
+      "DEFAULT": {
+        "KIRO": {
+          "append_prompt": "NONE"
+        }
+      }
+    },
     "DROID": {
       "DEFAULT": {
         "DROID": {

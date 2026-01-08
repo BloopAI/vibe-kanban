@@ -32,6 +32,8 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Centralise configuration of coding agent MCP configs
 - Open projects remotely via SSH when running Vibe Kanban on a remote server
 
+Supported agents include Claude Code, Gemini CLI, Kiro CLI, Amp, Cursor Agent CLI, OpenAI Codex, GitHub Copilot, OpenCode, Droid CLI, Claude Code Router, and Qwen Code.
+
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
 ## Installation
