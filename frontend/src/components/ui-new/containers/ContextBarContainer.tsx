@@ -73,7 +73,7 @@ export function ContextBarContainer({
   const editorType = config?.editor?.editor_type ?? null;
 
   // Dev server state from hook (uses workspaceId from context)
-  const { isStarting, isStopping, runningDevServer } =
+  const { start, stop, isStarting, isStopping, runningDevServer } =
     useDevServer(workspaceId);
 
   // Compute dev server state
@@ -102,8 +102,10 @@ export function ContextBarContainer({
       ...executorContext,
       containerRef: containerPath,
       runningDevServerId: runningDevServer?.id,
+      startDevServer: start,
+      stopDevServer: stop,
     }),
-    [executorContext, containerPath, runningDevServer?.id]
+    [executorContext, containerPath, runningDevServer?.id, start, stop]
   );
 
   // Action handler - pass extended context

@@ -28,7 +28,7 @@ import {
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
-import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api';
+import { attemptsApi, tasksApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
@@ -61,6 +61,8 @@ export interface ActionExecutorContext {
   // ContextBar-specific state (optional, only set in ContextBar context)
   containerRef?: string; // For copy path (workspace.container_ref)
   runningDevServerId?: string; // For stopping dev server
+  startDevServer?: () => void; // For starting dev server with mutation tracking
+  stopDevServer?: () => void; // For stopping dev server with mutation tracking
 }
 
 // Context for evaluating action visibility and state conditions
@@ -537,28 +539,12 @@ export const Actions = {
     },
     getLabel: (ctx) =>
       ctx.devServerState === 'running' ? 'Stop Dev Server' : 'Start Dev Server',
-    execute: async (ctx) => {
-      if (!ctx.currentWorkspaceId) return;
-
-      if (ctx.runningDevServerId) {
-        // Stop the dev server
-        await executionProcessesApi.stopExecutionProcess(
-          ctx.runningDevServerId
-        );
-        await ctx.queryClient.invalidateQueries({
-          queryKey: ['executionProcesses', ctx.currentWorkspaceId],
-        });
-        await ctx.queryClient.invalidateQueries({
-          queryKey: ['processDetails', ctx.runningDevServerId],
-        });
-      } else {
-        // Start the dev server
-        await attemptsApi.startDevServer(ctx.currentWorkspaceId);
-        await ctx.queryClient.invalidateQueries({
-          queryKey: ['executionProcesses', ctx.currentWorkspaceId],
-        });
+    execute: (ctx) => {
+      if (ctx.runningDevServerId && ctx.stopDevServer) {
+        ctx.stopDevServer();
+      } else if (ctx.startDevServer) {
+        ctx.startDevServer();
       }
-      ctx.queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
     },
   },
 } as const satisfies Record<string, ActionDefinition>;
