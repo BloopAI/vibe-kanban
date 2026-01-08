@@ -208,8 +208,6 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
-    /// Spawn a review session. Default implementation delegates to spawn() or spawn_follow_up().
-    /// Executors with native review support (e.g., Codex) can override this.
     async fn spawn_review(
         &self,
         current_dir: &Path,
@@ -306,7 +304,6 @@ impl AppendPrompt {
     }
 }
 
-/// Build a natural language review prompt from context and additional instructions.
 pub fn build_review_prompt(
     context: Option<&[RepoReviewContext]>,
     additional_prompt: Option<&str>,

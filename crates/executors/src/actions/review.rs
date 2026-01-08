@@ -13,21 +13,17 @@ use crate::{
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
-/// Context for a repository in a review request
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct RepoReviewContext {
     pub repo_id: Uuid,
     pub repo_name: String,
-    /// The base commit - review all changes from here to HEAD
     pub base_commit: String,
 }
 
-/// Request to start a code review session
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub context: Option<Vec<RepoReviewContext>>,
-    /// The full prompt sent to the model
     pub prompt: String,
     /// Optional session ID to resume an existing session
     #[serde(default)]

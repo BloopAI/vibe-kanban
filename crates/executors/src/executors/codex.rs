@@ -229,7 +229,6 @@ impl StandardCodingAgentExecutor for Codex {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        // Use Custom review target with the pre-built prompt
         let review_target = ReviewTarget::Custom {
             instructions: prompt.to_string(),
         };

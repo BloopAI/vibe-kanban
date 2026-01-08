@@ -1869,49 +1869,4 @@ impl GitService {
 
         Ok(stats)
     }
-
-    /// Get commits on current_branch that are not on target_branch.
-    /// Returns list of commit SHAs (oldest first).
-    pub fn get_commits_since_branch(
-        &self,
-        repo_path: &Path,
-        current_branch: &str,
-        target_branch: &str,
-    ) -> Result<Vec<String>, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        // Find the current branch HEAD
-        let current_ref = repo
-            .find_branch(current_branch, BranchType::Local)?
-            .get()
-            .target()
-            .ok_or_else(|| GitServiceError::BranchNotFound(current_branch.to_string()))?;
-
-        // Find the target branch HEAD - try local first, then remote
-        let target_oid = if let Ok(branch) = repo.find_branch(target_branch, BranchType::Local) {
-            branch
-                .get()
-                .target()
-                .ok_or_else(|| GitServiceError::BranchNotFound(target_branch.to_string()))?
-        } else {
-            // Try as remote branch (e.g., "origin/main")
-            let remote_ref = format!("refs/remotes/{}", target_branch);
-            repo.refname_to_id(&remote_ref)
-                .map_err(|_| GitServiceError::BranchNotFound(target_branch.to_string()))?
-        };
-
-        // Set up revwalk
-        let mut revwalk = repo.revwalk()?;
-        revwalk.push(current_ref)?;
-        revwalk.hide(target_oid)?;
-        revwalk.set_sorting(Sort::REVERSE | Sort::TIME)?; // Oldest first
-
-        // Collect commit SHAs
-        let commits: Vec<String> = revwalk
-            .filter_map(|oid_result| oid_result.ok())
-            .map(|oid| oid.to_string())
-            .collect();
-
-        Ok(commits)
-    }
 }

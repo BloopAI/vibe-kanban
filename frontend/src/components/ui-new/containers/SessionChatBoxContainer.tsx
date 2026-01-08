@@ -156,7 +156,6 @@ export function SessionChatBoxContainer({
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
     useApprovalMutation();
 
-  // Review mutation for starting reviews
   const startReviewMutation = useStartReview(sessionId, workspaceId);
 
   // Branch status for edit retry and conflict detection

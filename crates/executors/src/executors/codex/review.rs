@@ -1,5 +1,3 @@
-//! Review-specific functionality for the Codex executor.
-
 use std::sync::Arc;
 
 use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
@@ -11,7 +9,6 @@ use super::{
 };
 use crate::{approvals::ExecutorApprovalService, executors::ExecutorError};
 
-/// Launch a Codex review session.
 #[allow(clippy::too_many_arguments)]
 pub async fn launch_codex_review(
     conversation_params: NewConversationParams,
