@@ -80,7 +80,7 @@ pub struct TaskWithAttemptStatus {
     pub task: Task,
     pub has_in_progress_attempt: bool,
     pub last_attempt_failed: bool,
-    pub executor: String,
+    pub executor: Option<String>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -257,7 +257,7 @@ impl Task {
       WHERE w.task_id = t.id
      ORDER BY s.created_at DESC
       LIMIT 1
-    )                               AS "executor!: String"
+    )                               AS "executor: String"
 
 FROM tasks t
 WHERE t.project_id = $1
@@ -345,7 +345,7 @@ ORDER BY t.created_at DESC"#,
       WHERE w.task_id = t.id
      ORDER BY s.created_at DESC
       LIMIT 1
-    )                               AS "executor!: String"
+    )                               AS "executor: String"
 
 FROM tasks t
 WHERE t.team_id = $1
