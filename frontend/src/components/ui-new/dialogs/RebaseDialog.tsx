@@ -69,10 +69,20 @@ function RebaseDialogContent({
       });
       modal.hide();
     } catch (err) {
-      const message =
-        err && typeof err === 'object' && 'message' in err
-          ? String(err.message)
-          : 'Failed to rebase';
+      let message = 'Failed to rebase';
+      if (err && typeof err === 'object') {
+        // Handle Result<void, GitOperationError> structure
+        if (
+          'error' in err &&
+          err.error &&
+          typeof err.error === 'object' &&
+          'message' in err.error
+        ) {
+          message = String(err.error.message);
+        } else if ('message' in err && err.message) {
+          message = String(err.message);
+        }
+      }
       setError(message);
     }
   };
