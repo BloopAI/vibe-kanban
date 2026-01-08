@@ -41,6 +41,7 @@ import {
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useTeams } from '@/hooks/useTeams';
+import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { cn } from '@/lib/utils';
 import { teamsApi } from '@/lib/api';
@@ -122,6 +123,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
   const modal = useModal();
   const queryClient = useQueryClient();
   const { teams, teamsById } = useTeams();
+  const { addProject } = useProjects();
   const isEditing = !!editProject;
 
   // Form state
@@ -145,6 +147,9 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(({ teamId
 
   const { createProject, updateProject } = useProjectMutations({
     onCreateSuccess: async (project: Project) => {
+      // Add project to optimistic cache immediately so it appears in lists
+      addProject(project);
+
       // If this is a team project, assign it to the team
       if (teamId) {
         try {
