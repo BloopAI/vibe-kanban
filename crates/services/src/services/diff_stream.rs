@@ -156,9 +156,7 @@ impl DiffStreamManager {
         self.reset_stream().await?;
 
         // Send Ready message to indicate initial data has been sent
-        if self.tx.send(Ok(LogMsg::Ready)).await.is_err() {
-            return;
-        }
+        let _ready_error = self.tx.send(Ok(LogMsg::Ready)).await;
 
         let (fs_debouncer, mut fs_rx, canonical_worktree) =
             filesystem_watcher::async_watcher(self.args.worktree_path.clone())
