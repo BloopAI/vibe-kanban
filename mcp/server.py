@@ -17,18 +17,31 @@ from urllib.error import URLError, HTTPError
 DEFAULT_PORT = 3003
 DEFAULT_HOST = "127.0.0.1"
 
+# Team registry with identifiers and default projects
+KNOWN_TEAMS = {
+    # By name (lowercase)
+    "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
+    "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
+    # By identifier (case-insensitive lookup handled in resolve_team_id)
+    "ika": "a263e43f-43d3-4af7-a947-5f70e6670921",
+    "sch": "a2f22deb-901e-436b-9755-644cb26753b7",
+}
+
+# Default project for each team (used when no project specified)
+TEAM_DEFAULT_PROJECTS = {
+    "c1a926de-0683-407d-81de-124e0d161ec5": "ba7fe592-42d0-43f5-add8-f653054c2944",  # vibe-kanban -> frontend
+    "a263e43f-43d3-4af7-a947-5f70e6670921": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",  # ikanban -> frontend
+    "a2f22deb-901e-436b-9755-644cb26753b7": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",  # schild -> backend
+}
+
+# Project name aliases per team
 KNOWN_PROJECTS = {
+    # vibe-kanban team projects
     "frontend": "ba7fe592-42d0-43f5-add8-f653054c2944",
     "backend": "de246043-3b27-45e4-bd7a-f0d685b317d0",
     "integration": "bde6ec12-2cf1-4784-9a0e-d03308ade450",
     "database": "731d6e37-9223-4595-93a0-412a38af4540",
     "ai": "ffa3f7db-bf84-4e88-b04d-59f5f98a0522",
-}
-
-KNOWN_TEAMS = {
-    "vibe-kanban": "c1a926de-0683-407d-81de-124e0d161ec5",
-    "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
-    "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
 }
 
 
@@ -72,8 +85,20 @@ def resolve_project_id(project_ref):
 
 
 def resolve_team_id(team_ref):
-    """Resolve team name or ID to actual ID."""
-    return KNOWN_TEAMS.get(team_ref, team_ref)
+    """Resolve team name, identifier, or ID to actual ID (case-insensitive)."""
+    # Try exact match first, then lowercase
+    if team_ref in KNOWN_TEAMS:
+        return KNOWN_TEAMS[team_ref]
+    lower_ref = team_ref.lower()
+    if lower_ref in KNOWN_TEAMS:
+        return KNOWN_TEAMS[lower_ref]
+    # Assume it's already a UUID
+    return team_ref
+
+
+def get_default_project_for_team(team_id):
+    """Get the default project ID for a team."""
+    return TEAM_DEFAULT_PROJECTS.get(team_id)
 
 
 # MCP Tool Handlers
@@ -157,17 +182,27 @@ def handle_get_task(params):
 
 def handle_create_issue(params):
     """Create a new team issue."""
-    project = params.get("project", "frontend")
     title = params.get("title")
     team = params.get("team", "vibe-kanban")
 
     if not title:
         return {"error": "title is required"}
 
+    team_id = resolve_team_id(team)
+
+    # Get project: use specified project, or default for the team
+    project = params.get("project")
+    if project:
+        project_id = resolve_project_id(project)
+    else:
+        project_id = get_default_project_for_team(team_id)
+        if not project_id:
+            return {"error": f"No default project configured for team '{team}'. Please specify a project."}
+
     data = {
-        "project_id": resolve_project_id(project),
+        "project_id": project_id,
         "title": title,
-        "team_id": resolve_team_id(team),
+        "team_id": team_id,
         "status": params.get("status", "todo"),
     }
 
@@ -251,7 +286,7 @@ TOOLS = [
             "properties": {
                 "team": {
                     "type": "string",
-                    "description": "Team name or ID (default: vibe-kanban)",
+                    "description": "Team name, identifier (IKA, SCH), or ID. Default: vibe-kanban",
                     "default": "vibe-kanban"
                 }
             },
@@ -300,15 +335,14 @@ TOOLS = [
                     "type": "string",
                     "description": "Issue title"
                 },
-                "project": {
-                    "type": "string",
-                    "description": "Project name (frontend, backend, integration) or ID",
-                    "default": "frontend"
-                },
                 "team": {
                     "type": "string",
-                    "description": "Team name or ID (default: vibe-kanban)",
+                    "description": "Team name, identifier (IKA, SCH), or ID. Default: vibe-kanban",
                     "default": "vibe-kanban"
+                },
+                "project": {
+                    "type": "string",
+                    "description": "Project name or ID. Optional - uses team's default project if not specified"
                 },
                 "description": {
                     "type": "string",
