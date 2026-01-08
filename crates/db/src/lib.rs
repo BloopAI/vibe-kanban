@@ -31,6 +31,13 @@ async fn run_migrations(pool: &Pool<Sqlite>) -> Result<(), Error> {
                     )));
                 }
 
+                if !cfg!(windows) {
+                    // On non-Windows platforms, we do not attempt to auto-fix checksum mismatches
+                    return Err(sqlx::Error::Migrate(Box::new(
+                        MigrateError::VersionMismatch(version),
+                    )));
+                }
+
                 // Guard against infinite loop
                 if !processed_versions.insert(version) {
                     return Err(sqlx::Error::Migrate(Box::new(
