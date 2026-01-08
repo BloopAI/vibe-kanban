@@ -11,6 +11,7 @@ pub mod containers;
 pub mod filesystem;
 // pub mod github;
 pub mod events;
+pub mod github_issues;
 pub mod execution_processes;
 pub mod frontend;
 pub mod health;
@@ -45,6 +46,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
+        .merge(github_issues::router(&deployment))
         .merge(sessions::router(&deployment))
         .nest("/images", images::routes())
         .with_state(deployment);

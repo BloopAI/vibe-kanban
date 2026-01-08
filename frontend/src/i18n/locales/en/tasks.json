@@ -17,7 +17,9 @@
     "noSearchResults": "No tasks match your search."
   },
   "actions": {
-    "addTask": "Add task"
+    "addTask": "Add task",
+    "clearColumn": "Clear done tasks",
+    "importIssues": "Import GitHub Issues"
   },
   "filters": {
     "sharedToggleAria": "Toggle shared tasks",

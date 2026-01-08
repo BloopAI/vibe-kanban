@@ -98,6 +98,7 @@ Analyze the changes in this branch and write:
    - What changes were made
    - Why they were made (based on the task context)
    - Any important implementation details
+   - IMPORTANT: Preserve any existing "Closes #X" or "Fixes #X" issue references from the current PR body
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps)."#;
@@ -310,10 +311,23 @@ pub async fn create_pr(
 
     let provider = git_host.provider_kind();
 
+    // Get the task to check for linked GitHub issue
+    let task = Task::find_by_id(pool, workspace.task_id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
+
+    // Build PR body, appending issue reference if available
+    // Use short format "Closes #123" for better GitHub auto-linking
+    let pr_body = match (&request.body, &task.github_issue_number) {
+        (Some(body), Some(issue_num)) => Some(format!("{}\n\nCloses #{}", body, issue_num)),
+        (None, Some(issue_num)) => Some(format!("Closes #{}", issue_num)),
+        (body, None) => body.clone(),
+    };
+
     // Create the PR
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
-        body: request.body.clone(),
+        body: pr_body,
         head_branch: workspace.branch.clone(),
         base_branch: norm_target_branch_name.clone(),
         draft: request.draft,
