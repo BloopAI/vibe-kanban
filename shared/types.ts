@@ -363,9 +363,9 @@ working_dir: string | null, };
 
 export type ScriptRequestLanguage = "Bash";
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
+export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID", EVERY_CODE = "EVERY_CODE" }
 
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
+export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "EVERY_CODE": EveryCode };
 
 export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
 
@@ -389,7 +389,7 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
+export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } | { "EVERY_CODE": EveryCode } };
 
 export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
@@ -430,6 +430,42 @@ export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: s
 export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
 
 export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium" | "high";
+
+export type EveryCode = { append_prompt: AppendPrompt, 
+/**
+ * Model to use (e.g., "gpt-5.1", "claude-sonnet-4", "gemini-3-pro")
+ */
+model?: string | null, 
+/**
+ * Orchestration mode for multi-agent commands
+ */
+orchestration_mode?: OrchestrationMode | null, 
+/**
+ * Reasoning effort level
+ */
+reasoning_effort?: ReasoningEffort | null, 
+/**
+ * Approval policy
+ */
+approval_policy?: ApprovalPolicy | null, 
+/**
+ * Skip approval prompts entirely (dangerous)
+ */
+no_approval: boolean, 
+/**
+ * Read-only mode (no file modifications)
+ */
+read_only: boolean, 
+/**
+ * Enable debug logging
+ */
+debug: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+
+export type ReasoningEffort = "low" | "medium" | "high";
+
+export type ApprovalPolicy = "untrusted" | "on-failure" | "on-request" | "never";
+
+export type OrchestrationMode = "normal" | "auto" | "plan" | "solve" | "code";
 
 export type AppendPrompt = string | null;
 

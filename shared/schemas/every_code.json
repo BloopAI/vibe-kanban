@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "textarea",
+      "default": null
+    },
+    "model": {
+      "description": "Model to use (e.g., \"gpt-5.1\", \"claude-sonnet-4\", \"gemini-3-pro\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "orchestration_mode": {
+      "description": "Orchestration mode for multi-agent commands",
+      "anyOf": [
+        {
+          "description": "Orchestration mode for multi-agent commands",
+          "oneOf": [
+            {
+              "description": "Normal single-agent mode",
+              "type": "string",
+              "const": "normal"
+            },
+            {
+              "description": "/auto - Multi-step automation with self-healing",
+              "type": "string",
+              "const": "auto"
+            },
+            {
+              "description": "/plan - Multi-agent consensus planning",
+              "type": "string",
+              "const": "plan"
+            },
+            {
+              "description": "/solve - Competitive racing (fastest wins)",
+              "type": "string",
+              "const": "solve"
+            },
+            {
+              "description": "/code - Consensus code generation",
+              "type": "string",
+              "const": "code"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reasoning_effort": {
+      "description": "Reasoning effort level",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        null
+      ]
+    },
+    "approval_policy": {
+      "description": "Approval policy",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "untrusted",
+        "on-failure",
+        "on-request",
+        "never",
+        null
+      ]
+    },
+    "no_approval": {
+      "description": "Skip approval prompts entirely (dangerous)",
+      "type": "boolean",
+      "default": false
+    },
+    "read_only": {
+      "description": "Read-only mode (no file modifications)",
+      "type": "boolean",
+      "default": false
+    },
+    "debug": {
+      "description": "Enable debug logging",
+      "type": "boolean",
+      "default": false
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "title": "Environment Variables",
+      "description": "Environment variables to set when running the executor",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "type": "object"
+}

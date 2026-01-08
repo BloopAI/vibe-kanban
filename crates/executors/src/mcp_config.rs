@@ -296,7 +296,7 @@ impl CodingAgent {
             CodingAgent::ClaudeCode(_) | CodingAgent::Amp(_) | CodingAgent::Droid(_) => Passthrough,
             CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
             CodingAgent::CursorAgent(_) => Cursor,
-            CodingAgent::Codex(_) => Codex,
+            CodingAgent::Codex(_) | CodingAgent::EveryCode(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
         };
