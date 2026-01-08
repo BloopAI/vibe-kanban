@@ -93,31 +93,47 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
   return (
     <LexicalTypeaheadMenuPlugin<FileTagOption>
       triggerFn={(text) => {
-        // Match @ followed by any non-whitespace characters
-        const match = /(?:^|\s)@([^\s@]*)$/.exec(text);
+        // Match @ or / followed by any non-whitespace characters
+        const match = /(?:^|\s)([@/])([^\s@/]*)$/.exec(text);
         if (!match) return null;
-        const offset = match.index + match[0].indexOf('@');
+        const offset = match.index + match[0].indexOf(match[1]);
         return {
           leadOffset: offset,
-          matchingString: match[1],
-          replaceableString: match[0].slice(match[0].indexOf('@')),
+          matchingString: match[2],
+          replaceableString: match[0].slice(match[0].indexOf(match[1])),
         };
       }}
       options={options}
       onQueryChange={onQueryChange}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
-          const textToInsert =
-            option.item.type === 'tag'
-              ? (option.item.tag?.content ?? '')
-              : (option.item.file?.path ?? '');
+          let textToInsert: string;
+          
+          // Get trigger character from text node
+          const nodeText = nodeToReplace?.getTextContent() || '';
+          const triggerChar = nodeText.match(/[@/]/)?.[0] || '@';
+          
+          if (option.item.type === 'tag') {
+            const tag = option.item.tag!;
+            
+            // If triggered by /, insert just /tag_name (for command syntax)
+            // If triggered by @, insert the full tag content
+            if (triggerChar === '/') {
+              textToInsert = `/${tag.tag_name} `;
+            } else {
+              textToInsert = tag.content || '';
+            }
+          } else {
+            // For files, insert path
+            textToInsert = option.item.file?.path || '';
+          }
 
           if (!nodeToReplace) return;
 
           // Create the node we want to insert
           const textNode = $createTextNode(textToInsert);
 
-          // Replace the trigger text (e.g., "@test") with selected content
+          // Replace the trigger text (e.g., "@test" or "/test") with selected content
           nodeToReplace.replace(textNode);
 
           // Move the cursor to the end of the inserted text

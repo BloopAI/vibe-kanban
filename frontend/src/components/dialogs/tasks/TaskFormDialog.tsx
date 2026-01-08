@@ -5,6 +5,8 @@ import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
 import { Image as ImageIcon } from 'lucide-react';
+import { tagsApi } from '@/lib/api';
+import { expandTagCommands } from '@/lib/tagExpansion';
 import {
   Dialog,
   DialogContent,
@@ -164,13 +166,20 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {
+    // Expand tag commands in description before submission
+    const tags = await tagsApi.list();
+    const expandedDescription = await expandTagCommands(
+      value.description,
+      tags
+    );
+
     if (editMode) {
       await updateTask.mutateAsync(
         {
           taskId: props.task.id,
           data: {
             title: value.title,
-            description: value.description,
+            description: expandedDescription,
             status: value.status,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
@@ -184,7 +193,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       const task = {
         project_id: projectId,
         title: value.title,
-        description: value.description,
+        description: expandedDescription,
         status: null,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
