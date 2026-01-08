@@ -234,6 +234,49 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "EVERY_CODE": {
+      "DEFAULT": {
+        "EVERY_CODE": {
+          "no_approval": true
+        }
+      },
+      "AUTO": {
+        "EVERY_CODE": {
+          "orchestration_mode": "auto",
+          "no_approval": true
+        }
+      },
+      "PLAN": {
+        "EVERY_CODE": {
+          "orchestration_mode": "plan",
+          "no_approval": true
+        }
+      },
+      "SOLVE": {
+        "EVERY_CODE": {
+          "orchestration_mode": "solve",
+          "no_approval": true
+        }
+      },
+      "CODE": {
+        "EVERY_CODE": {
+          "orchestration_mode": "code",
+          "no_approval": true
+        }
+      },
+      "APPROVALS": {
+        "EVERY_CODE": {
+          "no_approval": false,
+          "approval_policy": "on-request"
+        }
+      },
+      "HIGH_REASONING": {
+        "EVERY_CODE": {
+          "reasoning_effort": "high",
+          "no_approval": true
+        }
+      }
     }
   }
 }
