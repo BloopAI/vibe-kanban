@@ -1,7 +1,12 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { StackIcon, SlidersIcon, SquaresFourIcon } from '@phosphor-icons/react';
+import {
+  StackIcon,
+  SlidersIcon,
+  SquaresFourIcon,
+  GitBranchIcon,
+} from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@/components/ui-new/primitives/Command';
@@ -104,6 +109,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
                     workspaceActions: StackIcon,
                     diffOptions: SlidersIcon,
                     viewOptions: SquaresFourIcon,
+                    gitActions: GitBranchIcon,
                   };
                   return [
                     {
@@ -207,6 +213,30 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
                 action,
               })),
             });
+          }
+
+          // Inject git actions if workspace has git repos
+          if (visibilityContext.hasGitRepos) {
+            const gitActions = getPageActions('gitActions');
+            const matchingGitActions = gitActions
+              .filter((action) => isActionVisible(action, visibilityContext))
+              .filter((action) => {
+                const label = resolveLabel(action, workspace);
+                return (
+                  label.toLowerCase().includes(searchLower) ||
+                  action.id.toLowerCase().includes(searchLower)
+                );
+              });
+
+            if (matchingGitActions.length > 0) {
+              resolvedGroups.push({
+                label: Pages.gitActions.title || 'Git Actions',
+                items: matchingGitActions.map((action) => ({
+                  type: 'action' as const,
+                  action,
+                })),
+              });
+            }
           }
         }
 

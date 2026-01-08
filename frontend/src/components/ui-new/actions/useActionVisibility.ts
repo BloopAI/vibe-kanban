@@ -19,7 +19,7 @@ import type { CommandBarPage } from './pages';
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
   const layout = useLayoutStore();
-  const { workspace, isCreateMode } = useWorkspaceContext();
+  const { workspace, isCreateMode, repos } = useWorkspaceContext();
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
@@ -42,6 +42,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasDiffs: diffPaths.length > 0,
       diffViewMode,
       isAllDiffsExpanded,
+      hasGitRepos: repos.length > 0,
+      hasMultipleRepos: repos.length > 1,
     };
   }, [
     layout.isChangesMode,
@@ -51,6 +53,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     layout.isGitPanelVisible,
     isCreateMode,
     workspace,
+    repos,
     diffPaths,
     diffViewMode,
     expanded,

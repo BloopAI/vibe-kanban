@@ -24,15 +24,22 @@ import {
   PlayIcon,
   PauseIcon,
   SpinnerIcon,
+  GitPullRequestIcon,
+  GitMergeIcon,
+  ArrowsClockwiseIcon,
+  CrosshairIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
-import { attemptsApi, tasksApi } from '@/lib/api';
+import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
+import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
+import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 
@@ -63,6 +70,9 @@ export interface ActionExecutorContext {
   runningDevServerId?: string; // For stopping dev server
   startDevServer?: () => void; // For starting dev server with mutation tracking
   stopDevServer?: () => void; // For stopping dev server with mutation tracking
+
+  // Git-specific state (optional, only set when clicking from a specific RepoCard)
+  gitRepoId?: string;
 }
 
 // Context for evaluating action visibility and state conditions
@@ -88,6 +98,10 @@ export interface ActionVisibilityContext {
   editorType?: EditorType | null;
   devServerState?: DevServerState;
   runningDevServerId?: string;
+
+  // Git panel state
+  hasGitRepos: boolean;
+  hasMultipleRepos: boolean;
 }
 
 // Base properties shared by all actions
@@ -545,6 +559,130 @@ export const Actions = {
       } else if (ctx.startDevServer) {
         ctx.startDevServer();
       }
+    },
+  },
+
+  // === Git Actions ===
+  GitCreatePR: {
+    id: 'git-create-pr',
+    label: 'Create Pull Request',
+    icon: GitPullRequestIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId) => {
+      // Get repoId - either from context (RepoCard click) or fetch repos
+      let repoId = ctx.gitRepoId;
+      if (!repoId) {
+        const repos = await attemptsApi.getRepos(workspaceId);
+        if (repos.length === 0) throw new Error('No repositories found');
+        if (repos.length > 1) throw new Error('Please select a repository');
+        repoId = repos[0].id;
+      }
+
+      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const task = await tasksApi.getById(workspace.task_id);
+
+      const result = await CreatePRDialog.show({
+        attempt: workspace,
+        task: {
+          ...task,
+          has_in_progress_attempt: false,
+          last_attempt_failed: false,
+          executor: '',
+        },
+        repoId,
+      });
+
+      if (!result.success && result.error) {
+        throw new Error(result.error);
+      }
+    },
+  },
+
+  GitMerge: {
+    id: 'git-merge',
+    label: 'Merge',
+    icon: GitMergeIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId) => {
+      // Get repoId - either from context (RepoCard click) or fetch repos
+      let repoId = ctx.gitRepoId;
+      if (!repoId) {
+        const repos = await attemptsApi.getRepos(workspaceId);
+        if (repos.length === 0) throw new Error('No repositories found');
+        if (repos.length > 1) throw new Error('Please select a repository');
+        repoId = repos[0].id;
+      }
+
+      const confirmResult = await ConfirmDialog.show({
+        title: 'Merge Branch',
+        message:
+          'Are you sure you want to merge this branch into the target branch?',
+        confirmText: 'Merge',
+        cancelText: 'Cancel',
+      });
+
+      if (confirmResult === 'confirmed') {
+        await attemptsApi.merge(workspaceId, { repo_id: repoId });
+        invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+      }
+    },
+  },
+
+  GitRebase: {
+    id: 'git-rebase',
+    label: 'Rebase',
+    icon: ArrowsClockwiseIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId) => {
+      // Fetch repos to get target_branch info
+      const repos = await attemptsApi.getRepos(workspaceId);
+      if (repos.length === 0) throw new Error('No repositories found');
+
+      // Get repo - either from context (RepoCard click) or use first repo
+      let repo = ctx.gitRepoId
+        ? repos.find((r) => r.id === ctx.gitRepoId)
+        : repos[0];
+
+      if (!repo) {
+        if (repos.length > 1) throw new Error('Please select a repository');
+        repo = repos[0];
+      }
+
+      const branches = await repoApi.getBranches(repo.id);
+      await RebaseDialog.show({
+        attemptId: workspaceId,
+        repoId: repo.id,
+        branches,
+        initialTargetBranch: repo.target_branch,
+      });
+    },
+  },
+
+  GitChangeTarget: {
+    id: 'git-change-target',
+    label: 'Change Target Branch',
+    icon: CrosshairIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId) => {
+      // Get repoId - either from context (RepoCard click) or fetch repos
+      let repoId = ctx.gitRepoId;
+      if (!repoId) {
+        const repos = await attemptsApi.getRepos(workspaceId);
+        if (repos.length === 0) throw new Error('No repositories found');
+        if (repos.length > 1) throw new Error('Please select a repository');
+        repoId = repos[0].id;
+      }
+
+      const branches = await repoApi.getBranches(repoId);
+      await ChangeTargetDialog.show({
+        attemptId: workspaceId,
+        repoId,
+        branches,
+      });
     },
   },
 } as const satisfies Record<string, ActionDefinition>;

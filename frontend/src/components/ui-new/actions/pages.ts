@@ -7,7 +7,8 @@ export type PageId =
   | 'root'
   | 'workspaceActions'
   | 'diffOptions'
-  | 'viewOptions';
+  | 'viewOptions'
+  | 'gitActions';
 
 // Items that can appear inside a group
 export type CommandBarGroupItem =
@@ -60,6 +61,7 @@ export const Pages: Record<PageId, CommandBarPage> = {
           { type: 'action', action: Actions.ToggleDevServer },
           { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
+          { type: 'childPages', id: 'gitActions' },
         ],
       },
       {
@@ -133,6 +135,26 @@ export const Pages: Record<PageId, CommandBarPage> = {
           { type: 'action', action: Actions.ToggleGitPanel },
           { type: 'action', action: Actions.ToggleChangesMode },
           { type: 'action', action: Actions.ToggleLogsMode },
+        ],
+      },
+    ],
+  },
+
+  // Git actions page - git operations
+  gitActions: {
+    id: 'git-actions',
+    title: 'Git Actions',
+    parent: 'root',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    items: [
+      {
+        type: 'group',
+        label: 'Git',
+        items: [
+          { type: 'action', action: Actions.GitCreatePR },
+          { type: 'action', action: Actions.GitMerge },
+          { type: 'action', action: Actions.GitRebase },
+          { type: 'action', action: Actions.GitChangeTarget },
         ],
       },
     ],

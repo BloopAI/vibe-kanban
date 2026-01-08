@@ -19,10 +19,11 @@ import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface ActionsContextValue {
-  // Execute an action with optional workspaceId
+  // Execute an action with optional workspaceId and context override
   executeAction: (
     action: ActionDefinition,
-    workspaceId?: string
+    workspaceId?: string,
+    contextOverride?: Partial<ActionExecutorContext>
   ) => Promise<void>;
 
   // Get resolved label for an action (supports dynamic labels via visibility context)
@@ -63,17 +64,26 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Main action executor with centralized target validation and error handling
   const executeAction = useCallback(
-    async (action: ActionDefinition, workspaceId?: string) => {
+    async (
+      action: ActionDefinition,
+      workspaceId?: string,
+      contextOverride?: Partial<ActionExecutorContext>
+    ): Promise<void> => {
       try {
+        // Merge context with any overrides (e.g., gitRepoId from GitPanelContainer)
+        const ctx = contextOverride
+          ? { ...executorContext, ...contextOverride }
+          : executorContext;
+
         if (action.requiresTarget) {
           if (!workspaceId) {
             throw new Error(
               `Action "${action.id}" requires a workspace target`
             );
           }
-          await action.execute(executorContext, workspaceId);
+          await action.execute(ctx, workspaceId);
         } else {
-          await action.execute(executorContext);
+          await action.execute(ctx);
         }
       } catch (error) {
         // Show error to user via alert dialog

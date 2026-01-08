@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
@@ -26,11 +26,9 @@ import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateCha
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { repoApi } from '@/lib/api';
-import { useRepoBranches } from '@/hooks';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useMerge } from '@/hooks/useMerge';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import {
   usePaneSize,
@@ -39,12 +37,9 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
-import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
-import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
-import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
-import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
+import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 
@@ -62,25 +57,7 @@ function GitPanelContainer({
   repoInfos,
   onBranchNameChange,
 }: GitPanelContainerProps) {
-  const { t } = useTranslation(['tasks', 'common']);
-
-  // Fetch task data for PR dialog
-  const { data: task } = useTask(selectedWorkspace?.task_id, {
-    enabled: !!selectedWorkspace?.task_id,
-  });
-
-  // Track selected repo for git operations (default to first repo)
-  const [selectedRepoId, setSelectedRepoId] = useState<string | undefined>();
-
-  // Error state for git operations
-  const [error, setError] = useState<string | null>(null);
-  const activeRepoId = selectedRepoId ?? repos[0]?.id;
-
-  // Fetch branches for the selected repo
-  const { data: branches = [] } = useRepoBranches(activeRepoId);
-
-  // Merge hook for merge action
-  const merge = useMerge(selectedWorkspace?.id);
+  const { executeAction } = useActions();
 
   // Handle copying repo path to clipboard
   const handleCopyPath = useCallback(
@@ -107,83 +84,31 @@ function GitPanelContainer({
       }
     } catch (err) {
       console.error('Failed to open repo in editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to open editor');
     }
   }, []);
 
-  // Handle GitPanel actions
+  // Handle GitPanel actions using the action system
   const handleActionsClick = useCallback(
     async (repoId: string, action: RepoAction) => {
       if (!selectedWorkspace?.id) return;
 
-      // Update selected repo for git operations
-      if (repoId !== activeRepoId) {
-        setSelectedRepoId(repoId);
-      }
+      // Map RepoAction to Action definitions
+      const actionMap = {
+        'pull-request': Actions.GitCreatePR,
+        merge: Actions.GitMerge,
+        rebase: Actions.GitRebase,
+        'change-target': Actions.GitChangeTarget,
+      };
 
-      const repo = repos.find((r) => r.id === repoId);
-      const targetBranch = repo?.target_branch;
+      const actionDef = actionMap[action];
+      if (!actionDef) return;
 
-      switch (action) {
-        case 'change-target':
-          await ChangeTargetDialog.show({
-            attemptId: selectedWorkspace.id,
-            repoId,
-            branches,
-          });
-          break;
-
-        case 'rebase':
-          await RebaseDialog.show({
-            attemptId: selectedWorkspace.id,
-            repoId,
-            branches,
-            initialTargetBranch: targetBranch,
-          });
-          break;
-
-        case 'pull-request': {
-          if (!task) return;
-          setError(null);
-          const prResult = await CreatePRDialog.show({
-            attempt: selectedWorkspace,
-            task: {
-              ...task,
-              has_in_progress_attempt: false,
-              last_attempt_failed: false,
-              executor: '',
-            },
-            repoId,
-            targetBranch,
-          });
-          if (!prResult.success && prResult.error) {
-            setError(prResult.error);
-          }
-          break;
-        }
-
-        case 'merge': {
-          const result = await ConfirmDialog.show({
-            title: t('tasks:git.mergeDialog.title'),
-            message: t('tasks:git.mergeDialog.description'),
-            confirmText: t('tasks:git.states.merge'),
-            cancelText: t('common:buttons.cancel'),
-          });
-          if (result === 'confirmed') {
-            try {
-              setError(null);
-              await merge.mutateAsync({ repoId });
-            } catch (err) {
-              setError(
-                err instanceof Error ? err.message : t('tasks:git.errors.merge')
-              );
-            }
-          }
-          break;
-        }
-      }
+      // Execute action with pre-selected repoId
+      await executeAction(actionDef, selectedWorkspace.id, {
+        gitRepoId: repoId,
+      });
     },
-    [activeRepoId, repos, branches, selectedWorkspace, task, merge, t]
+    [selectedWorkspace, executeAction]
   );
 
   return (
@@ -195,7 +120,6 @@ function GitPanelContainer({
       onOpenInEditor={handleOpenInEditor}
       onCopyPath={handleCopyPath}
       onAddRepo={() => console.log('Add repo clicked')}
-      error={error}
     />
   );
 }
