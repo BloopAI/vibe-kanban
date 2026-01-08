@@ -630,7 +630,7 @@ impl ExecutionProcess {
                WHERE ep.session_id = $1 AND ep.run_reason = $2 AND ep.dropped = FALSE
                ORDER BY ep.created_at DESC LIMIT 1"#,
             session_id,
-            ExecutionProcessRunReason::CodingAgent
+            ExecutionProcessRunReason::CodingAgent.to_string()
         )
         .fetch_optional(pool)
         .await?

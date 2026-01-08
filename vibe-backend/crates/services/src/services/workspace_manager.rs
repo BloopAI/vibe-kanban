@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use db::models::{repo::Repo, workspace::Workspace as DbWorkspace};
-use sqlx::{Pool, Sqlite};
+use sqlx::{Pool, Postgres};
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -284,7 +284,7 @@ impl WorkspaceManager {
         }
     }
 
-    pub async fn cleanup_orphan_workspaces(db: &Pool<Sqlite>) {
+    pub async fn cleanup_orphan_workspaces(db: &Pool<Postgres>) {
         if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
             debug!(
                 "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"

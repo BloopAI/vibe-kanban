@@ -15,7 +15,7 @@ use moka::future::Cache;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{DebounceEventResult, new_debouncer};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -176,7 +176,7 @@ impl FileSearchCache {
     }
 
     /// Pre-warm cache for most active projects
-    pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
+    pub async fn warm_most_active(&self, db_pool: &PgPool, limit: i32) -> Result<(), String> {
         info!("Starting file search cache warming...");
 
         // Get most active projects

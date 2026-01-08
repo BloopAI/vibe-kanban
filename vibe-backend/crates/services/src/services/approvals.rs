@@ -15,7 +15,7 @@ use executors::{
     },
 };
 use futures::future::{BoxFuture, FutureExt, Shared};
-use sqlx::{Error as SqlxError, SqlitePool};
+use sqlx::{Error as SqlxError, PgPool};
 use thiserror::Error;
 use tokio::sync::{RwLock, oneshot};
 use utils::{
@@ -136,7 +136,7 @@ impl Approvals {
     #[tracing::instrument(skip(self, id, req))]
     pub async fn respond(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: &str,
         req: ApprovalResponse,
     ) -> Result<(ApprovalStatus, ToolContext), ApprovalError> {
@@ -258,7 +258,7 @@ impl Approvals {
     }
 }
 
-pub(crate) async fn ensure_task_in_review(pool: &SqlitePool, execution_process_id: Uuid) {
+pub(crate) async fn ensure_task_in_review(pool: &PgPool, execution_process_id: Uuid) {
     if let Ok(ctx) = ExecutionProcess::load_context(pool, execution_process_id).await
         && ctx.task.status == TaskStatus::InProgress
         && let Err(e) = Task::update_status(pool, ctx.task.id, TaskStatus::InReview).await

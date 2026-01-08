@@ -10,7 +10,7 @@ use db::models::{
     task::Task,
 };
 use ignore::WalkBuilder;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use thiserror::Error;
 use utils::api::projects::RemoteProject;
 use uuid::Uuid;
@@ -75,7 +75,7 @@ impl ProjectService {
 
     pub async fn create_project(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         repo_service: &RepoService,
         payload: CreateProject,
     ) -> Result<Project> {
@@ -151,7 +151,7 @@ impl ProjectService {
 
     pub async fn update_project(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         existing: &Project,
         payload: UpdateProject,
     ) -> Result<Project> {
@@ -163,7 +163,7 @@ impl ProjectService {
     /// Link a project to a remote project and sync shared tasks
     pub async fn link_to_remote(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         remote_project: RemoteProject,
     ) -> Result<Project> {
@@ -178,7 +178,7 @@ impl ProjectService {
 
     pub async fn unlink_from_remote(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         project: &Project,
     ) -> Result<Project> {
         if let Some(remote_project_id) = project.remote_project_id {
@@ -199,7 +199,7 @@ impl ProjectService {
 
     pub async fn add_repository(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         repo_service: &RepoService,
         project_id: Uuid,
         payload: &CreateProjectRepo,
@@ -253,7 +253,7 @@ impl ProjectService {
 
     pub async fn delete_repository(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<()> {
@@ -284,7 +284,7 @@ impl ProjectService {
         Ok(())
     }
 
-    pub async fn delete_project(&self, pool: &SqlitePool, project_id: Uuid) -> Result<u64> {
+    pub async fn delete_project(&self, pool: &PgPool, project_id: Uuid) -> Result<u64> {
         let rows_affected = Project::delete(pool, project_id).await?;
 
         if let Err(e) = Repo::delete_orphaned(pool).await {
@@ -294,7 +294,7 @@ impl ProjectService {
         Ok(rows_affected)
     }
 
-    pub async fn get_repositories(&self, pool: &SqlitePool, project_id: Uuid) -> Result<Vec<Repo>> {
+    pub async fn get_repositories(&self, pool: &PgPool, project_id: Uuid) -> Result<Vec<Repo>> {
         let repos = ProjectRepo::find_repos_for_project(pool, project_id).await?;
         Ok(repos)
     }

@@ -171,7 +171,7 @@ impl CreateTask {
         self
     }
 
-    pub fn with_due_date(mut self, due_date: String) -> Self {
+    pub fn with_due_date(mut self, due_date: DateTime<Utc>) -> Self {
         self.due_date = Some(due_date);
         self
     }
@@ -223,7 +223,7 @@ impl Task {
   t.team_id                       AS "team_id: Uuid",
   t.issue_number                  AS "issue_number: i32",
   t.priority                      AS "priority: i32",
-  t.due_date                      AS "due_date: String",
+  t.due_date                      AS "due_date: DateTime<Utc>",
   t.assignee_id                   AS "assignee_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
@@ -275,7 +275,7 @@ ORDER BY t.created_at DESC"#,
                     project_id: rec.project_id,
                     title: rec.title,
                     description: rec.description,
-                    status: rec.status.to_string(),
+                    status: rec.status,
                     parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
                     team_id: rec.team_id,
@@ -311,7 +311,7 @@ ORDER BY t.created_at DESC"#,
   t.team_id                       AS "team_id: Uuid",
   t.issue_number                  AS "issue_number: i32",
   t.priority                      AS "priority: i32",
-  t.due_date                      AS "due_date: String",
+  t.due_date                      AS "due_date: DateTime<Utc>",
   t.assignee_id                   AS "assignee_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
@@ -363,7 +363,7 @@ ORDER BY t.issue_number ASC"#,
                     project_id: rec.project_id,
                     title: rec.title,
                     description: rec.description,
-                    status: rec.status.to_string(),
+                    status: rec.status,
                     parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
                     team_id: rec.team_id,

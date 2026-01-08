@@ -71,6 +71,8 @@ pub enum DeploymentError {
     Event(#[from] EventError),
     #[error(transparent)]
     Config(#[from] ConfigError),
+    #[error(transparent)]
+    PoolManager(#[from] db::PoolManagerError),
     #[error("Remote client not configured")]
     RemoteClientNotConfigured,
     #[error(transparent)]

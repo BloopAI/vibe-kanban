@@ -392,7 +392,7 @@ impl LocalContainerService {
 
             let (exit_code, status) = match status_result {
                 Ok(exit_status) => {
-                    let code = exit_status.code().unwrap_or(-1) as i64;
+                    let code = exit_status.code().unwrap_or(-1) as i32;
                     let status = if exit_status.success() {
                         ExecutionProcessStatus::Completed
                     } else {

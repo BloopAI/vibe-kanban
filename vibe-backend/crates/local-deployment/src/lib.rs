@@ -121,7 +121,7 @@ impl Deployment for LocalDeployment {
 
         // Initialize registry and pool manager for multi-tenant database support
         let registry = Arc::new(RegistryService::new().await?);
-        let pool_manager = Arc::new(DBPoolManager::new(registry.clone()));
+        let pool_manager = Arc::new(DBPoolManager::new(registry.clone()).await?);
         tracing::info!("Multi-tenant database registry initialized");
 
         let image = ImageService::new(db.clone().pool)?;

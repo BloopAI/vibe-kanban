@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use db::models::repo::Repo as RepoModel;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use thiserror::Error;
 use utils::path::expand_tilde;
 use uuid::Uuid;
@@ -62,7 +62,7 @@ impl RepoService {
 
     pub async fn register(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         path: &str,
         display_name: Option<&str>,
     ) -> Result<RepoModel> {
@@ -80,12 +80,12 @@ impl RepoService {
         Ok(repo)
     }
 
-    pub async fn find_by_id(&self, pool: &SqlitePool, repo_id: Uuid) -> Result<Option<RepoModel>> {
+    pub async fn find_by_id(&self, pool: &PgPool, repo_id: Uuid) -> Result<Option<RepoModel>> {
         let repo = RepoModel::find_by_id(pool, repo_id).await?;
         Ok(repo)
     }
 
-    pub async fn get_by_id(&self, pool: &SqlitePool, repo_id: Uuid) -> Result<RepoModel> {
+    pub async fn get_by_id(&self, pool: &PgPool, repo_id: Uuid) -> Result<RepoModel> {
         self.find_by_id(pool, repo_id)
             .await?
             .ok_or(RepoError::NotFound)
@@ -93,7 +93,7 @@ impl RepoService {
 
     pub async fn init_repo(
         &self,
-        pool: &SqlitePool,
+        pool: &PgPool,
         git: &GitService,
         parent_path: &str,
         folder_name: &str,

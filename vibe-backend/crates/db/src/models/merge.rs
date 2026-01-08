@@ -14,6 +14,17 @@ pub enum MergeStatus {
     Unknown,
 }
 
+impl std::fmt::Display for MergeStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Open => write!(f, "open"),
+            Self::Merged => write!(f, "merged"),
+            Self::Closed => write!(f, "closed"),
+            Self::Unknown => write!(f, "unknown"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Merge {
@@ -104,7 +115,7 @@ impl Merge {
                 repo_id as "repo_id!: Uuid",
                 merge_type as "merge_type!: MergeType",
                 merge_commit,
-                pr_number as "pr_number: i64",
+                pr_number,
                 pr_url,
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
@@ -157,7 +168,7 @@ impl Merge {
             id,
             workspace_id,
             repo_id,
-            pr_number as "pr_number: i64",
+            pr_number,
             pr_url,
             now,
             target_branch_name
