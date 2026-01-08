@@ -219,10 +219,8 @@ export function SessionChatBoxContainer({
     [setLocalMessage]
   );
 
-  const { uploadFiles } = useSessionAttachments(
-    workspaceId,
-    handleInsertMarkdown
-  );
+  const { uploadFiles, localImages, clearUploadedImages } =
+    useSessionAttachments(workspaceId, handleInsertMarkdown);
 
   // Executor/variant selection
   const {
@@ -282,6 +280,7 @@ export function SessionChatBoxContainer({
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
+      clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
       // Clear review comments after successful send
       reviewContext?.clearComments();
@@ -293,6 +292,7 @@ export function SessionChatBoxContainer({
     selectedVariant,
     cancelDebouncedSave,
     setLocalMessage,
+    clearUploadedImages,
     isNewSessionMode,
     clearDraft,
     reviewContext,
@@ -591,6 +591,7 @@ export function SessionChatBoxContainer({
             }
           : undefined
       }
+      localImages={localImages}
     />
   );
 }

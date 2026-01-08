@@ -36,7 +36,7 @@ export function CreateChatBoxContainer() {
     [message, setMessage]
   );
 
-  const { uploadFiles, getImageIds, clearAttachments } =
+  const { uploadFiles, getImageIds, clearAttachments, localImages } =
     useCreateAttachments(handleInsertMarkdown);
 
   // Default to user's config profile or first available executor
@@ -198,6 +198,7 @@ export function CreateChatBoxContainer() {
           projectId={projectId}
           agent={effectiveProfile?.executor ?? null}
           onPasteFiles={uploadFiles}
+          localImages={localImages}
         />
       </div>
     </div>

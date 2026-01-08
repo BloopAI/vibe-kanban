@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { CheckIcon, PaperclipIcon } from '@phosphor-icons/react';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import {
   ChatBoxBase,
@@ -29,6 +30,8 @@ interface CreateChatBoxProps {
   projectId?: string;
   agent?: BaseCodingAgent | null;
   onPasteFiles?: (files: File[]) => void;
+  /** Local images for immediate preview (before saved to server) */
+  localImages?: LocalImageMetadata[];
 }
 
 /**
@@ -45,6 +48,7 @@ export function CreateChatBox({
   projectId,
   agent,
   onPasteFiles,
+  localImages,
 }: CreateChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canSend = editor.value.trim().length > 0 && !isSending;
@@ -85,6 +89,7 @@ export function CreateChatBox({
       error={error}
       visualVariant={VisualVariant.NORMAL}
       onPasteFiles={onPasteFiles}
+      localImages={localImages}
       headerLeft={
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />

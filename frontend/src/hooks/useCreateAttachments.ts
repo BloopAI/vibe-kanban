@@ -1,14 +1,17 @@
 import { useCallback, useState } from 'react';
 import { imagesApi } from '@/lib/api';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import type { ImageResponse } from 'shared/types';
 
 /**
  * Hook for handling image attachments during task creation.
  * Uploads images and tracks their IDs for association with the task.
+ * Also tracks uploaded images for immediate preview in the editor.
  */
 export function useCreateAttachments(
   onInsertMarkdown: (markdown: string) => void
 ) {
-  const [imageIds, setImageIds] = useState<string[]>([]);
+  const [uploadedImages, setUploadedImages] = useState<ImageResponse[]>([]);
 
   const uploadFiles = useCallback(
     async (files: File[]) => {
@@ -17,7 +20,7 @@ export function useCreateAttachments(
       for (const file of imageFiles) {
         try {
           const response = await imagesApi.upload(file);
-          setImageIds((prev) => [...prev, response.id]);
+          setUploadedImages((prev) => [...prev, response]);
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
           onInsertMarkdown(imageMarkdown);
         } catch (error) {
@@ -28,12 +31,21 @@ export function useCreateAttachments(
     [onInsertMarkdown]
   );
 
-  const getImageIds = useCallback(
-    () => (imageIds.length > 0 ? imageIds : null),
-    [imageIds]
-  );
+  const getImageIds = useCallback(() => {
+    const ids = uploadedImages.map((img) => img.id);
+    return ids.length > 0 ? ids : null;
+  }, [uploadedImages]);
 
-  const clearAttachments = useCallback(() => setImageIds([]), []);
+  const clearAttachments = useCallback(() => setUploadedImages([]), []);
 
-  return { uploadFiles, getImageIds, clearAttachments };
+  // Convert uploaded images to LocalImageMetadata format for WYSIWYG preview
+  const localImages: LocalImageMetadata[] = uploadedImages.map((img) => ({
+    path: img.file_path,
+    proxy_url: `/api/images/${img.id}/file`,
+    file_name: img.original_name,
+    size_bytes: Number(img.size_bytes),
+    format: img.mime_type?.split('/')[1] ?? 'png',
+  }));
+
+  return { uploadFiles, getImageIds, clearAttachments, localImages };
 }

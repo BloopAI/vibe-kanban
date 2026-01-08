@@ -3,6 +3,7 @@ import { CheckIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 
@@ -65,6 +66,9 @@ interface ChatBoxBaseProps {
 
   // Key to force editor remount (e.g., when entering feedback mode to trigger auto-focus)
   focusKey?: string;
+
+  // Local images for immediate preview (before saved to server)
+  localImages?: LocalImageMetadata[];
 }
 
 /**
@@ -89,6 +93,7 @@ export function ChatBoxBase({
   onPasteFiles,
   isRunning,
   focusKey,
+  localImages,
 }: ChatBoxBaseProps) {
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
@@ -138,6 +143,7 @@ export function ChatBoxBase({
           projectId={projectId}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
+          localImages={localImages}
         />
 
         {/* Footer - Controls */}

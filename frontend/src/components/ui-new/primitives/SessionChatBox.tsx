@@ -10,6 +10,7 @@ import {
   TrashIcon,
 } from '@phosphor-icons/react';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
@@ -121,6 +122,8 @@ interface SessionChatBoxProps {
   executor?: ExecutorProps;
   /** Currently in-progress todo item (shown when agent is running) */
   inProgressTodo?: TodoItem | null;
+  /** Local images for immediate preview (before saved to server) */
+  localImages?: LocalImageMetadata[];
 }
 
 /**
@@ -143,6 +146,7 @@ export function SessionChatBox({
   agent,
   executor,
   inProgressTodo,
+  localImages,
 }: SessionChatBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -471,6 +475,7 @@ export function SessionChatBox({
       visualVariant={getVisualVariant()}
       isRunning={showRunningAnimation}
       onPasteFiles={actions.onPasteFiles}
+      localImages={localImages}
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}
