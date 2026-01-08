@@ -1,3 +1,4 @@
+//! DB crate for iKanban - Migration to Postgres
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use sqlx::{
