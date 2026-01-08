@@ -3,8 +3,8 @@ use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     execution_process_repo_state::ExecutionProcessRepoState,
     repo::Repo,
-    session::{CreateSession, Session},
-    workspace::Workspace,
+    session::Session,
+    workspace::{Workspace, WorkspaceError},
 };
 use deployment::Deployment;
 use executors::{
@@ -46,11 +46,18 @@ pub enum ReviewError {
 
 #[axum::debug_handler]
 pub async fn start_review(
-    Extension(workspace): Extension<Workspace>,
+    Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<StartReviewRequest>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, ReviewError>>, ApiError> {
     let pool = &deployment.db().pool;
+
+    // Load workspace from session
+    let workspace = Workspace::find_by_id(pool, session.workspace_id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+            "Workspace not found".to_string(),
+        )))?;
 
     // Check if any non-dev-server processes are already running for this workspace
     if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
@@ -67,21 +74,9 @@ pub async fn start_review(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Use existing session if available (so review logs appear in same conversation view)
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
-        None => {
-            Session::create(
-                pool,
-                &CreateSession {
-                    executor: Some(payload.executor_profile_id.executor.to_string()),
-                },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
-        }
-    };
+    // Lookup agent session_id from previous execution in this session (for session resumption)
+    let agent_session_id =
+        ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
 
     // Build context - auto-populated from workspace commits when requested
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
@@ -122,13 +117,16 @@ pub async fn start_review(
     // Build the full prompt for display and execution
     let prompt = build_review_prompt(context.as_deref(), payload.additional_prompt.as_deref());
 
+    // Track whether we're resuming a session (before moving agent_session_id)
+    let resumed_session = agent_session_id.is_some();
+
     // Build the review action
     let action = ExecutorAction::new(
         ExecutorActionType::ReviewRequest(ReviewAction {
             executor_profile_id: payload.executor_profile_id.clone(),
             context,
             prompt,
-            session_id: None, // TODO: wire up from StartReviewRequest if needed
+            session_id: agent_session_id,
             working_dir: workspace.agent_working_dir.clone(),
         }),
         None,
@@ -151,8 +149,10 @@ pub async fn start_review(
             "review_started",
             serde_json::json!({
                 "workspace_id": workspace.id.to_string(),
+                "session_id": session.id.to_string(),
                 "executor": payload.executor_profile_id.executor.to_string(),
                 "variant": payload.executor_profile_id.variant,
+                "resumed_session": resumed_session,
             }),
         )
         .await;
