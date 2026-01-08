@@ -39,9 +39,11 @@ pub struct RepoReviewContext {
 pub struct ReviewRequest {
     pub executor_profile_id: ExecutorProfileId,
     pub context: Option<Vec<RepoReviewContext>>,
-    pub additional_prompt: Option<String>,
-    /// The full prompt sent to the model (built from context + additional_prompt)
+    /// The full prompt sent to the model
     pub prompt: String,
+    /// Optional session ID to resume an existing session
+    #[serde(default)]
+    pub session_id: Option<String>,
     /// Optional relative path to execute the agent in (relative to container_ref).
     #[serde(default)]
     pub working_dir: Option<String>,
@@ -79,8 +81,8 @@ impl Executable for ReviewRequest {
         agent
             .spawn_review(
                 &effective_dir,
-                self.context.as_deref(),
-                self.additional_prompt.as_deref(),
+                &self.prompt,
+                self.session_id.as_deref(),
                 env,
             )
             .await
