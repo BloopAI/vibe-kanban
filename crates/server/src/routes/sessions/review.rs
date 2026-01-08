@@ -2,9 +2,9 @@ use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     execution_process_repo_state::ExecutionProcessRepoState,
-    repo::Repo,
     session::Session,
     workspace::{Workspace, WorkspaceError},
+    workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
 use executors::{
@@ -19,7 +19,6 @@ use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -77,33 +76,24 @@ pub async fn start_review(
 
     // Build context - auto-populated from workspace commits when requested
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
-        // Auto-populate with initial commits for each repo in the workspace
-        let initial_commits =
-            ExecutionProcessRepoState::find_initial_commits_for_workspace(pool, workspace.id)
-                .await?;
-
-        if initial_commits.is_empty() {
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        let mut contexts = Vec::new();
+        for repo in repos {
+            if let Some(base_commit) =
+                ExecutionProcessRepoState::find_initial_commit_for_repo(pool, workspace.id, repo.id)
+                    .await?
+            {
+                contexts.push(ExecutorRepoReviewContext {
+                    repo_id: repo.id,
+                    repo_name: repo.display_name,
+                    base_commit,
+                });
+            }
+        }
+        if contexts.is_empty() {
             None
         } else {
-            // Look up repo names
-            let repo_ids: Vec<Uuid> = initial_commits.iter().map(|(id, _)| *id).collect();
-            let repos = Repo::find_by_ids(pool, &repo_ids).await?;
-            let repo_map: std::collections::HashMap<Uuid, &Repo> =
-                repos.iter().map(|r| (r.id, r)).collect();
-
-            Some(
-                initial_commits
-                    .into_iter()
-                    .filter_map(|(repo_id, initial_commit)| {
-                        let repo = repo_map.get(&repo_id)?;
-                        Some(ExecutorRepoReviewContext {
-                            repo_id,
-                            repo_name: repo.display_name.clone(),
-                            base_commit: initial_commit,
-                        })
-                    })
-                    .collect(),
-            )
+            Some(contexts)
         }
     } else {
         None
