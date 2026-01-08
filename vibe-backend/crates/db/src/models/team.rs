@@ -129,6 +129,29 @@ impl Team {
         .await
     }
 
+    pub async fn find_by_identifier(
+        pool: &PgPool,
+        identifier: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      slug,
+                      identifier,
+                      icon,
+                      color,
+                      document_storage_path,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM teams
+               WHERE identifier = $1"#,
+            identifier
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(pool: &PgPool, data: &CreateTeam) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         // Use provided identifier or auto-generate from name

@@ -172,30 +172,46 @@ pub async fn load_session_middleware(
 }
 
 // Middleware that loads and injects Team based on the team_id path parameter
+// Supports multiple lookup strategies: UUID, slug, or identifier
 pub async fn load_team_middleware(
     State(deployment): State<DeploymentImpl>,
     Path(params): Path<HashMap<String, String>>,
     request: axum::extract::Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Extract team_id from path params
-    let team_id = params
-        .get("team_id")
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .ok_or_else(|| {
-            tracing::error!("Missing or invalid team_id in path");
-            StatusCode::BAD_REQUEST
-        })?;
+    // Extract team_id string from path params
+    let team_id_str = params.get("team_id").ok_or_else(|| {
+        tracing::error!("Missing team_id in path");
+        StatusCode::BAD_REQUEST
+    })?;
 
-    // Load the team from the database
-    let team = match Team::find_by_id(&deployment.db().pool, team_id).await {
+    // Try to resolve team using multiple strategies:
+    // 1. UUID lookup (if parseable)
+    // 2. Slug lookup (e.g., "test-team")
+    // 3. Identifier lookup (e.g., "TES", "VIB")
+    let team = if let Ok(uuid) = Uuid::parse_str(team_id_str) {
+        // Try UUID lookup
+        Team::find_by_id(&deployment.db().pool, uuid).await
+    } else {
+        // Try slug lookup first
+        match Team::find_by_slug(&deployment.db().pool, team_id_str).await {
+            Ok(Some(team)) => Ok(Some(team)),
+            Ok(None) => {
+                // Fall back to identifier lookup
+                Team::find_by_identifier(&deployment.db().pool, team_id_str).await
+            }
+            Err(e) => Err(e),
+        }
+    };
+
+    let team = match team {
         Ok(Some(team)) => team,
         Ok(None) => {
-            tracing::warn!("Team {} not found", team_id);
+            tracing::warn!("Team not found: {}", team_id_str);
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch team {}: {}", team_id, e);
+            tracing::error!("Failed to fetch team {}: {}", team_id_str, e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
