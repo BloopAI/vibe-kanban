@@ -216,17 +216,19 @@ pub trait StandardCodingAgentExecutor {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 
-    /// Spawn a review session. Default implementation builds a prompt and delegates to spawn().
+    /// Spawn a review session. Default implementation delegates to spawn() or spawn_follow_up().
     /// Executors with native review support (e.g., Codex) can override this.
     async fn spawn_review(
         &self,
         current_dir: &Path,
-        context: Option<&[RepoReviewContext]>,
-        additional_prompt: Option<&str>,
+        prompt: &str,
+        session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let prompt = build_review_prompt(context, additional_prompt);
-        self.spawn(current_dir, &prompt, env).await
+        match session_id {
+            Some(id) => self.spawn_follow_up(current_dir, prompt, id, env).await,
+            None => self.spawn(current_dir, prompt, env).await,
+        }
     }
 
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);

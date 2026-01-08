@@ -127,8 +127,8 @@ pub async fn start_review(
         ExecutorActionType::ReviewRequest(ReviewAction {
             executor_profile_id: payload.executor_profile_id.clone(),
             context,
-            additional_prompt: payload.additional_prompt,
             prompt,
+            session_id: None, // TODO: wire up from StartReviewRequest if needed
             working_dir: workspace.agent_working_dir.clone(),
         }),
         None,

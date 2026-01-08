@@ -523,11 +523,15 @@ executor_profile_id: ExecutorProfileId,
  */
 working_dir: string | null, };
 
-export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, additional_prompt: string | null, 
+export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, 
 /**
- * The full prompt sent to the model (built from context + additional_prompt)
+ * The full prompt sent to the model
  */
 prompt: string, 
+/**
+ * Optional session ID to resume an existing session
+ */
+session_id: string | null, 
 /**
  * Optional relative path to execute the agent in (relative to container_ref).
  */
