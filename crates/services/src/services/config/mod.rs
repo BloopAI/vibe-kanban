@@ -21,6 +21,7 @@ pub type Config = versions::v8::Config;
 pub type NotificationConfig = versions::v8::NotificationConfig;
 pub type EditorConfig = versions::v8::EditorConfig;
 pub type ThemeMode = versions::v8::ThemeMode;
+pub type FontSize = versions::v8::FontSize;
 pub type SoundFile = versions::v8::SoundFile;
 pub type EditorType = versions::v8::EditorType;
 pub type GitHubConfig = versions::v8::GitHubConfig;

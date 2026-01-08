@@ -9,6 +9,7 @@
   /* Light defaults */
   :root {
     color-scheme: light;
+    --font-scale: 1;
     --_background: 48 33% 97%;
     --_foreground: 222.2 84% 4.9%;
     --_primary: var(--_muted);
@@ -198,6 +199,10 @@
 @layer base {
   * {
     @apply border-border;
+  }
+
+  html {
+    font-size: calc(16px * var(--font-scale));
   }
 
   html,

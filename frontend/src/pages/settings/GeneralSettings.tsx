@@ -24,6 +24,7 @@ import { Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
+  FontSize,
   SoundFile,
   ThemeMode,
   UiLanguage,
@@ -62,7 +63,7 @@ export function GeneralSettings() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
-  const { setTheme } = useTheme();
+  const { setTheme, setFontSize } = useTheme();
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
@@ -152,6 +153,7 @@ export function GeneralSettings() {
     try {
       await updateAndSaveConfig(draft); // Atomically apply + persist
       setTheme(draft.theme);
+      setFontSize(draft.font_size);
       setDirty(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -279,6 +281,36 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="font-size">
+              {t('settings.general.appearance.fontSize.label')}
+            </Label>
+            <Select
+              value={draft?.font_size}
+              onValueChange={(value: FontSize) =>
+                updateDraft({ font_size: value })
+              }
+            >
+              <SelectTrigger id="font-size">
+                <SelectValue
+                  placeholder={t(
+                    'settings.general.appearance.fontSize.placeholder'
+                  )}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(FontSize).map((size) => (
+                  <SelectItem key={size} value={size}>
+                    {toPrettyCase(size)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.fontSize.helper')}
             </p>
           </div>
         </CardContent>
