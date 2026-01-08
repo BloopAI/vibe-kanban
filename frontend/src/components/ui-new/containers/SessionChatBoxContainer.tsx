@@ -22,6 +22,7 @@ import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
+import { useStartReview } from '@/hooks/useStartReview';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import {
   SessionChatBox,
@@ -154,6 +155,9 @@ export function SessionChatBoxContainer({
   // Approval mutation for approve/deny actions
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
     useApprovalMutation();
+
+  // Review mutation for starting reviews
+  const startReviewMutation = useStartReview(sessionId, workspaceId);
 
   // Branch status for edit retry and conflict detection
   const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -493,6 +497,22 @@ export function SessionChatBoxContainer({
     ? new Date() > new Date(pendingApproval.timeoutAt)
     : false;
 
+  // Handle start review
+  const handleStartReview = useCallback(async () => {
+    if (!latestProfileId) return;
+
+    try {
+      await startReviewMutation.mutateAsync({
+        executorProfileId: {
+          executor: latestProfileId.executor,
+          variant: latestProfileId.variant,
+        },
+      });
+    } catch {
+      // Error is handled by mutation
+    }
+  }, [latestProfileId, startReviewMutation]);
+
   // Compute execution status
   const status = computeExecutionStatus({
     isInFeedbackMode,
@@ -549,6 +569,8 @@ export function SessionChatBoxContainer({
         onSelectSession: onSelectSession ?? (() => {}),
         isNewSessionMode,
         onNewSession: onStartNewSession,
+        onStartReview: handleStartReview,
+        isReviewStarting: startReviewMutation.isPending,
       }}
       stats={{
         filesChanged,
