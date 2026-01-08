@@ -31,9 +31,11 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest
           build-args: |
-            VITE_CLERK_PUBLISHABLE_KEY=pk_test_d2VsY29tZS1zd2lmdC03Ni5jbGVyay5hY2NvdW50cy5kZXYk
+            VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
             VITE_API_URL=https://api.scho1ar.com
             VITE_BASE_PATH=/
+            VITE_POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
+            VITE_POSTHOG_API_ENDPOINT=${{ secrets.POSTHOG_API_ENDPOINT }}
 
   deploy:
     runs-on: ubuntu-latest
