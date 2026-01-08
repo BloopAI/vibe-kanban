@@ -38,6 +38,7 @@ jobs:
         run: cargo build --release --bin server
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SQLX_OFFLINE: true
 
       # Upload Artifact for next job
       - name: Upload Binary
