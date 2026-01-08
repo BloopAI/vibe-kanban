@@ -58,14 +58,12 @@ interface SessionProps {
   sessions: Session[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
-  /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
-  /** Callback to start new session mode */
   onNewSession?: () => void;
-  /** Callback to start a review */
-  onStartReview?: () => void;
-  /** Whether review is currently starting */
-  isReviewStarting?: boolean;
+}
+
+interface ReviewModeProps {
+  onReviewClick: () => void;
 }
 
 interface StatsProps {
@@ -120,18 +118,14 @@ interface SessionChatBoxProps {
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
-  /** Approval mode for pending plan approvals */
   approvalMode?: ApprovalModeProps;
-  /** Review comments from diff viewer */
   reviewComments?: ReviewCommentsProps;
+  reviewMode: ReviewModeProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
-  /** Executor selection for new session mode */
   executor?: ExecutorProps;
-  /** Currently in-progress todo item (shown when agent is running) */
   inProgressTodo?: TodoItem | null;
-  /** Local images for immediate preview (before saved to server) */
   localImages?: LocalImageMetadata[];
 }
 
@@ -150,6 +144,7 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
+  reviewMode,
   error,
   projectId,
   agent,
@@ -192,7 +187,6 @@ export function SessionChatBox({
     !isInApprovalMode &&
     editor.value.trim().length === 0;
 
-  // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
     : isInEditMode
@@ -240,15 +234,12 @@ export function SessionChatBox({
     fileInputRef.current?.click();
   };
 
-  // Session dropdown
   const {
     sessions,
     selectedSessionId,
     onSelectSession,
     isNewSessionMode,
     onNewSession,
-    onStartReview,
-    isReviewStarting,
   } = session;
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
@@ -594,16 +585,6 @@ export function SessionChatBox({
             >
               {t('conversation.sessions.newSession')}
             </DropdownMenuItem>
-            {/* Start Review option */}
-            {onStartReview && !isNewSessionMode && (
-              <DropdownMenuItem
-                icon={MagnifyingGlassIcon}
-                onClick={() => onStartReview()}
-                disabled={isRunning || isReviewStarting}
-              >
-                {isReviewStarting ? 'Starting Review...' : 'Start Review'}
-              </DropdownMenuItem>
-            )}
             {sessions.length > 0 && <DropdownMenuSeparator />}
             {sessions.length > 0 ? (
               <>
@@ -649,6 +630,12 @@ export function SessionChatBox({
             multiple
             className="hidden"
             onChange={handleFileInputChange}
+          />
+          <ToolbarIconButton
+            icon={MagnifyingGlassIcon}
+            aria-label="Start review"
+            onClick={reviewMode.onReviewClick}
+            disabled={isDisabled || isRunning}
           />
         </>
       }
