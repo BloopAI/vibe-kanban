@@ -496,10 +496,10 @@
       "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
       "action": "Go to sign in"
     },
-    "githubRequired": {
-      "title": "Connect GitHub",
-      "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
-      "action": "Connect GitHub"
+    "gitProviderRequired": {
+      "title": "Connect Git Provider",
+      "description": "Connect your Git provider account to share tasks. This project must have a remote repository.",
+      "action": "Connect"
     },
     "linkProjectRequired": {
       "description": "Link this project to an organization before sharing tasks.",
@@ -513,8 +513,8 @@
     "closeButton": "Close"
   },
   "createPrDialog": {
-    "title": "Create GitHub Pull Request",
-    "description": "Create a pull request for this task attempt on GitHub.",
+    "title": "Create Pull Request",
+    "description": "Create a pull request for this task attempt.",
     "titleLabel": "Title",
     "titlePlaceholder": "Enter PR title",
     "descriptionLabel": "Description (optional)",
@@ -527,9 +527,9 @@
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {
-      "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
+      "insufficientPermissions": "Insufficient permissions. Please ensure the CLI has the necessary permissions.",
       "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
-      "failedToCreate": "Failed to create GitHub PR",
+      "failedToCreate": "Failed to create PR",
       "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
       "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
       "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
@@ -569,9 +569,9 @@
       "finish": "Finish"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "Select GitHub Comments",
+      "title": "Select PR Comments",
       "noComments": "No comments found on this PR",
       "selectAll": "Select All",
       "deselectAll": "Deselect All",
@@ -580,7 +580,7 @@
     },
     "card": {
       "review": "Review",
-      "tooltip": "Click to view on GitHub, double-click to edit"
+      "tooltip": "Click to view, double-click to edit"
     }
   },
   "taskFormDialog": {

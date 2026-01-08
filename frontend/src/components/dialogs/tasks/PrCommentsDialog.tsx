@@ -14,15 +14,15 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 import { usePrComments } from '@/hooks/usePrComments';
-import { GitHubCommentCard } from '@/components/ui/github-comment-card';
+import { PrCommentCard } from '@/components/ui/pr-comment-card';
 import type { UnifiedPrComment } from 'shared/types';
 
-export interface GitHubCommentsDialogProps {
+export interface PrCommentsDialogProps {
   attemptId: string;
   repoId: string;
 }
 
-export interface GitHubCommentsDialogResult {
+export interface PrCommentsDialogResult {
   comments: UnifiedPrComment[];
 }
 
@@ -32,7 +32,7 @@ function getCommentId(comment: UnifiedPrComment): string {
     : comment.id.toString();
 }
 
-const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
+const PrCommentsDialogImpl = NiceModal.create<PrCommentsDialogProps>(
   ({ attemptId, repoId }) => {
     const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
@@ -109,7 +109,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
           <DialogHeader className="px-4 py-3 border-b">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              {t('tasks:githubComments.dialog.title')}
+              {t('tasks:prComments.dialog.title')}
             </DialogTitle>
           </DialogHeader>
 
@@ -126,13 +126,13 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                 </div>
               ) : comments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  {t('tasks:githubComments.dialog.noComments')}
+                  {t('tasks:prComments.dialog.noComments')}
                 </p>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm text-muted-foreground">
-                      {t('tasks:githubComments.dialog.selectedCount', {
+                      {t('tasks:prComments.dialog.selectedCount', {
                         selected: selectedIds.size,
                         total: comments.length,
                       })}
@@ -143,8 +143,8 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                       onClick={isAllSelected ? deselectAll : selectAll}
                     >
                       {isAllSelected
-                        ? t('tasks:githubComments.dialog.deselectAll')
-                        : t('tasks:githubComments.dialog.selectAll')}
+                        ? t('tasks:prComments.dialog.deselectAll')
+                        : t('tasks:prComments.dialog.selectAll')}
                     </Button>
                   </div>
                   <div className="space-y-3">
@@ -160,7 +160,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                             onCheckedChange={() => toggleSelection(id)}
                             className="mt-3"
                           />
-                          <GitHubCommentCard
+                          <PrCommentCard
                             author={comment.author}
                             body={comment.body}
                             createdAt={comment.created_at}
@@ -201,7 +201,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                 {t('common:buttons.cancel')}
               </Button>
               <Button onClick={handleConfirm} disabled={selectedIds.size === 0}>
-                {t('tasks:githubComments.dialog.add')}
+                {t('tasks:prComments.dialog.add')}
                 {selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
               </Button>
             </DialogFooter>
@@ -219,17 +219,17 @@ function getErrorMessage(error: unknown): string {
     if (errorData?.type === 'no_pr_attached') {
       return 'No PR is attached to this task attempt. Create a PR first to see comments.';
     }
-    if (errorData?.type === 'github_cli_not_installed') {
-      return 'GitHub CLI is not installed. Please install it to fetch PR comments.';
+    if (errorData?.type === 'cli_not_installed') {
+      return 'CLI is not installed. Please install it to fetch PR comments.';
     }
-    if (errorData?.type === 'github_cli_not_logged_in') {
-      return 'GitHub CLI is not logged in. Please run "gh auth login" to authenticate.';
+    if (errorData?.type === 'cli_not_logged_in') {
+      return 'CLI is not logged in. Please authenticate to fetch PR comments.';
     }
   }
   return 'Failed to load PR comments. Please try again.';
 }
 
-export const GitHubCommentsDialog = defineModal<
-  GitHubCommentsDialogProps,
-  GitHubCommentsDialogResult
->(GitHubCommentsDialogImpl);
+export const PrCommentsDialog = defineModal<
+  PrCommentsDialogProps,
+  PrCommentsDialogResult
+>(PrCommentsDialogImpl);

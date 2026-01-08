@@ -2,7 +2,7 @@ import { MessageSquare, Code, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
-export interface GitHubCommentCardProps {
+export interface PrCommentCardProps {
   author: string;
   body: string;
   createdAt: string;
@@ -71,7 +71,7 @@ function CompactCard({
   onClick,
   onDoubleClick,
   className,
-}: GitHubCommentCardProps) {
+}: PrCommentCardProps) {
   const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
@@ -87,7 +87,7 @@ function CompactCard({
       onDoubleClick={onDoubleClick}
       role="button"
       tabIndex={0}
-      title={`@${author}: ${body}\n\n${t('githubComments.card.tooltip')}`}
+      title={`@${author}: ${body}\n\n${t('prComments.card.tooltip')}`}
     >
       <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
       <span className="text-xs font-medium flex-shrink-0">@{author}</span>
@@ -113,7 +113,7 @@ function FullCard({
   onClick,
   variant,
   className,
-}: GitHubCommentCardProps) {
+}: PrCommentCardProps) {
   const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
@@ -136,7 +136,7 @@ function FullCard({
           <span className="font-medium text-sm">@{author}</span>
           {isReview && (
             <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-              {t('githubComments.card.review')}
+              {t('prComments.card.review')}
             </span>
           )}
         </div>
@@ -150,7 +150,7 @@ function FullCard({
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
               className="hover:text-foreground transition-colors"
-              aria-label="Open in GitHub"
+              aria-label="Open in browser"
             >
               <ExternalLink className="w-3 h-3" />
             </button>
@@ -178,11 +178,11 @@ function FullCard({
 }
 
 /**
- * GitHubCommentCard - Shared presentational component for GitHub PR comments
+ * PrCommentCard - Shared presentational component for PR comments
  *
  * @param variant - 'compact' for inline chip, 'full' for inline card, 'list' for block card
  */
-export function GitHubCommentCard(props: GitHubCommentCardProps) {
+export function PrCommentCard(props: PrCommentCardProps) {
   if (props.variant === 'compact') {
     return <CompactCard {...props} />;
   }

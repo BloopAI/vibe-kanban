@@ -430,10 +430,10 @@
       "description": "您需要登录才能共享任务。我们将重定向您到登录页面。",
       "action": "前往登录"
     },
-    "githubRequired": {
-      "title": "连接 GitHub",
-      "description": "连接您的 GitHub 账户以共享任务。此项目必须在 GitHub 上有远程仓库。",
-      "action": "连接 GitHub"
+    "gitProviderRequired": {
+      "title": "连接 Git 提供商",
+      "description": "连接您的 Git 提供商账户以共享任务。此项目必须有远程仓库。",
+      "action": "连接"
     },
     "linkProjectRequired": {
       "description": "在共享任务之前，将此项目链接到组织。",
@@ -447,8 +447,8 @@
     "closeButton": "关闭"
   },
   "createPrDialog": {
-    "title": "创建 GitHub 拉取请求",
-    "description": "在 GitHub 上为此任务尝试创建拉取请求。",
+    "title": "创建拉取请求",
+    "description": "为此任务尝试创建拉取请求。",
     "titleLabel": "标题",
     "titlePlaceholder": "输入 PR 标题",
     "descriptionLabel": "描述（可选）",
@@ -461,9 +461,9 @@
     "creating": "创建中...",
     "createButton": "创建 PR",
     "errors": {
-      "insufficientPermissions": "权限不足。请确保 GitHub CLI 具有必要的权限。",
+      "insufficientPermissions": "权限不足。请确保 CLI 具有必要的权限。",
       "repoNotFoundOrNoAccess": "未找到仓库或无访问权限。请检查您的仓库访问权限并确保您已通过身份验证。",
-      "failedToCreate": "创建 GitHub PR 失败",
+      "failedToCreate": "创建 PR 失败",
       "gitCliNotLoggedIn": "Git 未通过身份验证。运行 gh auth login（或配置 Git 凭据）然后重试。",
       "gitCliNotInstalled": "未安装 Git CLI。安装 Git 以创建 PR。",
       "targetBranchNotFound": "远程上不存在目标分支 {{branch}}。请在创建拉取请求之前确保该分支存在。"
@@ -503,9 +503,9 @@
       "finish": "完成"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "选择 GitHub 评论",
+      "title": "选择 PR 评论",
       "noComments": "此 PR 未找到评论",
       "selectAll": "全选",
       "deselectAll": "取消全选",
@@ -514,7 +514,7 @@
     },
     "card": {
       "review": "审查",
-      "tooltip": "点击在 GitHub 上查看，双击编辑"
+      "tooltip": "点击查看，双击编辑"
     }
   },
   "taskFormDialog": {

@@ -8,10 +8,10 @@ import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPl
 import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { ImageNode, IMAGE_TRANSFORMER } from './wysiwyg/nodes/image-node';
 import {
-  GitHubCommentNode,
-  GITHUB_COMMENT_TRANSFORMER,
-  GITHUB_COMMENT_EXPORT_TRANSFORMER,
-} from './wysiwyg/nodes/github-comment-node';
+  PrCommentNode,
+  PR_COMMENT_TRANSFORMER,
+  PR_COMMENT_EXPORT_TRANSFORMER,
+} from './wysiwyg/nodes/pr-comment-node';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
@@ -161,7 +161,7 @@ function WYSIWYGEditor({
         CodeHighlightNode,
         LinkNode,
         ImageNode,
-        GitHubCommentNode,
+        PrCommentNode,
         TableNode,
         TableRowNode,
         TableCellNode,
@@ -170,13 +170,13 @@ function WYSIWYGEditor({
     []
   );
 
-  // Extended transformers with image, GitHub comment, and code block support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
       TABLE_TRANSFORMER,
       IMAGE_TRANSFORMER,
-      GITHUB_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
-      GITHUB_COMMENT_TRANSFORMER, // Import transformer for fenced code block
+      PR_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
+      PR_COMMENT_TRANSFORMER, // Import transformer for fenced code block
       CODE_BLOCK_TRANSFORMER,
       ...TRANSFORMERS,
     ],

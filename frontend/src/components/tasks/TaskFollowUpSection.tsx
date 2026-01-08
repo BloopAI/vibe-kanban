@@ -60,8 +60,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/lib/api';
 import type { QueueStatus } from 'shared/types';
 import { imagesApi, attemptsApi } from '@/lib/api';
-import { GitHubCommentsDialog } from '@/components/dialogs/tasks/GitHubCommentsDialog';
-import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/github-comment-node';
+import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
+import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
 
 interface TaskFollowUpSectionProps {
@@ -574,13 +574,13 @@ export function TaskFollowUpSection({
     [handlePasteFiles]
   );
 
-  // Handler for GitHub comments insertion
-  const handleGitHubCommentClick = useCallback(async () => {
+  // Handler for PR comments insertion
+  const handlePrCommentClick = useCallback(async () => {
     if (!workspaceId) return;
     const repoId = getSelectedRepoId();
     if (!repoId) return;
 
-    const result = await GitHubCommentsDialog.show({
+    const result = await PrCommentsDialog.show({
       attemptId: workspaceId,
       repoId,
     });
@@ -829,14 +829,14 @@ export function TaskFollowUpSection({
             <Paperclip className="h-4 w-4" />
           </Button>
 
-          {/* GitHub Comments button */}
+          {/* PR Comments button */}
           <Button
-            onClick={handleGitHubCommentClick}
+            onClick={handlePrCommentClick}
             disabled={!isEditable}
             size="sm"
             variant="outline"
-            title="Insert GitHub comment"
-            aria-label="Insert GitHub comment"
+            title="Insert PR comment"
+            aria-label="Insert PR comment"
           >
             <MessageSquare className="h-4 w-4" />
           </Button>

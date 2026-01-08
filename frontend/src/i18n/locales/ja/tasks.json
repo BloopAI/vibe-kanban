@@ -97,10 +97,10 @@
       "description": "タスクを共有する前にサインインが必要です。サインインページへリダイレクトします。",
       "action": "サインインへ移動"
     },
-    "githubRequired": {
-      "title": "GitHub を接続",
-      "description": "共有タスクを公開できるよう、GitHub アカウントを接続してください。",
-      "action": "GitHub を接続"
+    "gitProviderRequired": {
+      "title": "Git プロバイダーを接続",
+      "description": "タスクを共有するには、Git プロバイダーアカウントを接続してください。このプロジェクトにはリモートリポジトリが必要です。",
+      "action": "接続"
     },
     "linkProjectRequired": {
       "description": "タスクを共有する前に、このプロジェクトを組織にリンクしてください。",
@@ -114,8 +114,8 @@
     "closeButton": "閉じる"
   },
   "createPrDialog": {
-    "title": "GitHub プルリクエストを作成",
-    "description": "このタスク試行のプルリクエストをGitHubで作成します。",
+    "title": "プルリクエストを作成",
+    "description": "このタスク試行のプルリクエストを作成します。",
     "titleLabel": "タイトル",
     "titlePlaceholder": "PRタイトルを入力",
     "descriptionLabel": "説明 (オプション)",
@@ -128,9 +128,9 @@
     "creating": "作成中...",
     "createButton": "PRを作成",
     "errors": {
-      "insufficientPermissions": "権限が不足しています。GitHub CLIに必要な権限があることを確認してください。",
+      "insufficientPermissions": "権限が不足しています。CLIに必要な権限があることを確認してください。",
       "repoNotFoundOrNoAccess": "リポジトリが見つからないか、アクセス権がありません。リポジトリへのアクセス権を確認し、認証されていることを確認してください。",
-      "failedToCreate": "GitHub PRの作成に失敗しました",
+      "failedToCreate": "PRの作成に失敗しました",
       "gitCliNotLoggedIn": "Gitが認証されていません。\"gh auth login\" を実行するかGitの認証情報を設定してから再試行してください。",
       "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。",
       "targetBranchNotFound": "ターゲットブランチ '{{branch}}' がリモートに存在しません。プルリクエストを作成する前にブランチが存在することを確認してください。"
@@ -503,9 +503,9 @@
       "finish": "完了"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "GitHubコメントを選択",
+      "title": "PRコメントを選択",
       "noComments": "このPRにコメントはありません",
       "selectAll": "すべて選択",
       "deselectAll": "すべて選択解除",
@@ -514,7 +514,7 @@
     },
     "card": {
       "review": "レビュー",
-      "tooltip": "クリックでGitHubで表示、ダブルクリックで編集"
+      "tooltip": "クリックで表示、ダブルクリックで編集"
     }
   },
   "taskFormDialog": {

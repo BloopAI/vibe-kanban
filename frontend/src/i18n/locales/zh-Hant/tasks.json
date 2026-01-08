@@ -430,10 +430,10 @@
       "description": "您需要登入才能分享任務。我們會將您導向登入頁面。",
       "action": "前往登入"
     },
-    "githubRequired": {
-      "title": "連結 GitHub",
-      "description": "連結您的 GitHub 帳號以分享任務。此專案必須在 GitHub 上有遠端儲存庫。",
-      "action": "連結 GitHub"
+    "gitProviderRequired": {
+      "title": "連結 Git 提供者",
+      "description": "連結您的 Git 提供者帳號以分享任務。此專案必須有遠端儲存庫。",
+      "action": "連結"
     },
     "linkProjectRequired": {
       "description": "分享任務前，請先將此專案連結到組織。",
@@ -447,8 +447,8 @@
     "closeButton": "關閉"
   },
   "createPrDialog": {
-    "title": "建立 GitHub PR",
-    "description": "在 GitHub 上為此任務嘗試建立 PR。",
+    "title": "建立 PR",
+    "description": "為此任務嘗試建立 PR。",
     "titleLabel": "標題",
     "titlePlaceholder": "輸入 PR 標題",
     "descriptionLabel": "描述（選填）",
@@ -461,9 +461,9 @@
     "creating": "建立中...",
     "createButton": "建立 PR",
     "errors": {
-      "insufficientPermissions": "權限不足。請確認 GitHub CLI 具有必要權限。",
+      "insufficientPermissions": "權限不足。請確認 CLI 具有必要權限。",
       "repoNotFoundOrNoAccess": "找不到儲存庫或沒有存取權。請檢查儲存庫權限並確保已完成驗證。",
-      "failedToCreate": "建立 GitHub PR 失敗",
+      "failedToCreate": "建立 PR 失敗",
       "gitCliNotLoggedIn": "Git 尚未驗證。請執行 gh auth login（或設定 Git 憑證）後重試。",
       "gitCliNotInstalled": "未安裝 Git CLI。請安裝 Git 以建立 PR。",
       "targetBranchNotFound": "遠端不存在目標分支 {{branch}}。建立 PR 前請確認該分支存在。"
@@ -503,9 +503,9 @@
       "finish": "完成"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "選擇 GitHub 評論",
+      "title": "選擇 PR 評論",
       "noComments": "此 PR 沒有評論",
       "selectAll": "全選",
       "deselectAll": "取消全選",
@@ -514,7 +514,7 @@
     },
     "card": {
       "review": "審查",
-      "tooltip": "點擊在 GitHub 上查看，雙擊編輯"
+      "tooltip": "點擊查看，雙擊編輯"
     }
   },
   "taskFormDialog": {
