@@ -36,6 +36,7 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
+import { BackendErrorState } from '@/components/ui/BackendErrorState';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
@@ -48,7 +49,7 @@ import NiceModal from '@ebay/nice-modal-react';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, analyticsUserId, updateAndSaveConfig, loading } =
+  const { config, analyticsUserId, updateAndSaveConfig, loading, isError, error, reloadSystem } =
     useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
@@ -122,6 +123,16 @@ function AppContent() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader message="Loading..." size={32} />
       </div>
+    );
+  }
+
+  // Show error state when backend is unavailable
+  if (isError) {
+    return (
+      <BackendErrorState
+        error={error}
+        onRetry={() => reloadSystem()}
+      />
     );
   }
 

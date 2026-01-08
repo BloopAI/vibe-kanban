@@ -52,6 +52,8 @@ interface UserSystemContextType {
 
   // State
   loading: boolean;
+  isError: boolean;
+  error: Error | null;
 }
 
 const UserSystemContext = createContext<UserSystemContextType | undefined>(
@@ -65,10 +67,12 @@ interface UserSystemProviderProps {
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const queryClient = useQueryClient();
 
-  const { data: userSystemInfo, isLoading } = useQuery({
+  const { data: userSystemInfo, isLoading, isError, error } = useQuery({
     queryKey: ['user-system'],
     queryFn: configApi.getConfig,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3, // Retry failed requests 3 times
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
   });
 
   const config = userSystemInfo?.config || null;
@@ -203,6 +207,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setCapabilities,
       reloadSystem,
       loading: isLoading,
+      isError,
+      error: error as Error | null,
     }),
     [
       config,
@@ -216,6 +222,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateAndSaveConfig,
       reloadSystem,
       isLoading,
+      isError,
+      error,
       setEnvironment,
       setProfiles,
       setCapabilities,
