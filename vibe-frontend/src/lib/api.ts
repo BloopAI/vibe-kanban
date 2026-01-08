@@ -332,6 +332,25 @@ export const handleApiResponse = async <T, E = T>(
 
 // Project Management APIs
 export const projectsApi = {
+  get: async (id: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${id}`);
+    return handleApiResponse<Project>(response);
+  },
+
+  getMany: async (ids: string[]): Promise<Project[]> => {
+    // Fetch multiple projects in parallel
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          return await projectsApi.get(id);
+        } catch {
+          return null;
+        }
+      })
+    );
+    return results.filter((p): p is Project => p !== null);
+  },
+
   create: async (data: CreateProject): Promise<Project> => {
     const response = await makeRequest('/api/projects', {
       method: 'POST',
