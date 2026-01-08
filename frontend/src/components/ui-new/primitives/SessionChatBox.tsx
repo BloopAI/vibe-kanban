@@ -8,6 +8,7 @@ import {
   SpinnerIcon,
   ChatCircleIcon,
   TrashIcon,
+  WarningIcon,
 } from '@phosphor-icons/react';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
@@ -66,6 +67,8 @@ interface StatsProps {
   linesAdded?: number;
   linesRemoved?: number;
   onViewCode?: () => void;
+  hasConflicts?: boolean;
+  conflictedFilesCount?: number;
 }
 
 interface FeedbackModeProps {
@@ -513,25 +516,39 @@ export function SessionChatBox({
                   </span>
                 </span>
               ) : (
-                <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
-                  <span className="text-sm space-x-half">
-                    <span>
-                      {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
-                      changed
-                    </span>
-                    {(linesAdded !== undefined ||
-                      linesRemoved !== undefined) && (
-                      <span className="space-x-half">
-                        {linesAdded !== undefined && (
-                          <span className="text-success">+{linesAdded}</span>
-                        )}
-                        {linesRemoved !== undefined && (
-                          <span className="text-error">-{linesRemoved}</span>
-                        )}
+                <>
+                  {stats?.hasConflicts && (
+                    <span
+                      className="flex items-center gap-1 text-warning text-sm"
+                      title="Conflicted files need manual resolution"
+                    >
+                      <WarningIcon className="size-icon-sm" />
+                      <span>
+                        {stats.conflictedFilesCount} conflict
+                        {stats.conflictedFilesCount === 1 ? '' : 's'}
                       </span>
-                    )}
-                  </span>
-                </PrimaryButton>
+                    </span>
+                  )}
+                  <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+                    <span className="text-sm space-x-half">
+                      <span>
+                        {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
+                        changed
+                      </span>
+                      {(linesAdded !== undefined ||
+                        linesRemoved !== undefined) && (
+                        <span className="space-x-half">
+                          {linesAdded !== undefined && (
+                            <span className="text-success">+{linesAdded}</span>
+                          )}
+                          {linesRemoved !== undefined && (
+                            <span className="text-error">-{linesRemoved}</span>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </PrimaryButton>
+                </>
               )}
             </>
           )}

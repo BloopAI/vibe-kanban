@@ -52,8 +52,6 @@ interface SessionChatBoxContainerProps {
   session?: Session;
   /** Task ID for execution tracking */
   taskId?: string;
-  /** Attempt ID for branch status (required for edit mode) */
-  attemptId?: string;
   /** Number of files changed in current session */
   filesChanged?: number;
   /** Number of lines added */
@@ -79,7 +77,6 @@ interface SessionChatBoxContainerProps {
 export function SessionChatBoxContainer({
   session,
   taskId,
-  attemptId,
   filesChanged,
   linesAdded,
   linesRemoved,
@@ -157,8 +154,24 @@ export function SessionChatBoxContainer({
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
     useApprovalMutation();
 
-  // Branch status for edit retry
-  const { data: branchStatus } = useBranchStatus(attemptId);
+  // Branch status for edit retry and conflict detection
+  const { data: branchStatus } = useBranchStatus(workspaceId);
+
+  // Derive conflict state from branch status
+  const hasConflicts = useMemo(() => {
+    return (
+      branchStatus?.some((r) => (r.conflicted_files?.length ?? 0) > 0) ?? false
+    );
+  }, [branchStatus]);
+
+  const conflictedFilesCount = useMemo(() => {
+    return (
+      branchStatus?.reduce(
+        (sum, r) => sum + (r.conflicted_files?.length ?? 0),
+        0
+      ) ?? 0
+    );
+  }, [branchStatus]);
 
   // User profiles, config preference, and latest executor from processes
   const { profiles, config } = useUserSystem();
@@ -539,6 +552,8 @@ export function SessionChatBoxContainer({
         linesAdded,
         linesRemoved,
         onViewCode,
+        hasConflicts,
+        conflictedFilesCount,
       }}
       error={sendError}
       agent={latestProfileId?.executor}
