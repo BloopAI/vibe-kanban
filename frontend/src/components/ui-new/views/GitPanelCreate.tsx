@@ -82,12 +82,16 @@ export function GitPanelCreate({
       </div>
       <SectionHeader title={t('common:sections.addRepositories')} />
       <div className="flex flex-col p-base gap-half">
-        <p className="text-xs text-low font-medium">{t('common:sections.recent')}</p>
+        <p className="text-xs text-low font-medium">
+          {t('common:sections.recent')}
+        </p>
         <RecentReposListContainer
           registeredRepoPaths={registeredRepoPaths}
           onRepoRegistered={onRepoRegistered}
         />
-        <p className="text-xs text-low font-medium">{t('common:sections.other')}</p>
+        <p className="text-xs text-low font-medium">
+          {t('common:sections.other')}
+        </p>
         <BrowseRepoButtonContainer onRepoRegistered={onRepoRegistered} />
         <CreateRepoButtonContainer onRepoCreated={onRepoRegistered} />
       </div>

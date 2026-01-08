@@ -155,28 +155,28 @@ export function RepoCard({
 
       {/* PR status row */}
       {prNumber && (
-      <div className="flex items-center gap-half">
-        {prStatus === 'merged' ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
-            <CheckCircleIcon className="size-icon-xs" weight="fill" />
-            {t('git.pr.merged', { prNumber })}
-          </span>
-        ) : prUrl ? (
-          <button
-            onClick={() => window.open(prUrl, '_blank')}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline text-sm font-medium"
-          >
-            <GitPullRequestIcon className="size-icon-xs" weight="fill" />
-            {t('git.pr.open', { prNumber })}
-            <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-          </button>
-        ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
-            <GitPullRequestIcon className="size-icon-xs" weight="fill" />
-            {t('git.pr.open', { prNumber })}
-          </span>
-        )}
-      </div>
+        <div className="flex items-center gap-half">
+          {prStatus === 'merged' ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+              <CheckCircleIcon className="size-icon-xs" weight="fill" />
+              {t('git.pr.merged', { prNumber })}
+            </span>
+          ) : prUrl ? (
+            <button
+              onClick={() => window.open(prUrl, '_blank')}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline text-sm font-medium"
+            >
+              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+              {t('git.pr.open', { prNumber })}
+              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
+              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+              {t('git.pr.open', { prNumber })}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Actions row */}

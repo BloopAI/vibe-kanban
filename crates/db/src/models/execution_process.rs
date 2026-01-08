@@ -7,7 +7,7 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool, Type};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -692,36 +692,26 @@ impl ExecutionProcess {
         }
     }
 
-    /// Batch fetch latest execution process info for multiple workspaces.
+    /// Fetch latest execution process info for all workspaces with the given archived status.
     /// Returns a map of workspace_id -> LatestProcessInfo for the most recent
     /// non-dropped execution process (excluding dev servers).
-    pub async fn find_latest_by_workspace_ids(
+    pub async fn find_latest_for_workspaces(
         pool: &SqlitePool,
-        workspace_ids: &[Uuid],
+        archived: bool,
     ) -> Result<HashMap<Uuid, LatestProcessInfo>, sqlx::Error> {
-        if workspace_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-
-        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
+        let rows: Vec<LatestProcessInfo> = sqlx::query_as!(
+            LatestProcessInfo,
             r#"
             SELECT
-                s.workspace_id,
-                ep.id as execution_process_id,
-                ep.session_id,
-                ep.status,
-                ep.completed_at
+                s.workspace_id as "workspace_id!: Uuid",
+                ep.id as "execution_process_id!: Uuid",
+                ep.session_id as "session_id!: Uuid",
+                ep.status as "status!: ExecutionProcessStatus",
+                ep.completed_at as "completed_at?: DateTime<Utc>"
             FROM execution_processes ep
             JOIN sessions s ON ep.session_id = s.id
-            WHERE s.workspace_id IN ("#,
-        );
-
-        let mut separated = qb.separated(", ");
-        for id in workspace_ids {
-            separated.push_bind(*id);
-        }
-        separated.push_unseparated(
-            r#")
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE w.archived = $1
               AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
               AND ep.dropped = FALSE
               AND ep.created_at = (
@@ -733,9 +723,10 @@ impl ExecutionProcess {
                     AND ep2.dropped = FALSE
               )
             "#,
-        );
-
-        let rows: Vec<LatestProcessInfo> = qb.build_query_as().fetch_all(pool).await?;
+            archived
+        )
+        .fetch_all(pool)
+        .await?;
 
         let result = rows
             .into_iter()
@@ -745,36 +736,26 @@ impl ExecutionProcess {
         Ok(result)
     }
 
-    /// Batch check which workspaces have running dev servers.
+    /// Find all workspaces with running dev servers, filtered by archived status.
     /// Returns a set of workspace IDs that have at least one running dev server.
     pub async fn find_workspaces_with_running_dev_servers(
         pool: &SqlitePool,
-        workspace_ids: &[Uuid],
+        archived: bool,
     ) -> Result<HashSet<Uuid>, sqlx::Error> {
-        if workspace_ids.is_empty() {
-            return Ok(HashSet::new());
-        }
-
-        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
+        let rows: Vec<Uuid> = sqlx::query_scalar!(
             r#"
-            SELECT DISTINCT s.workspace_id
+            SELECT DISTINCT s.workspace_id as "workspace_id!: Uuid"
             FROM execution_processes ep
             JOIN sessions s ON ep.session_id = s.id
-            WHERE s.workspace_id IN ("#,
-        );
-
-        let mut separated = qb.separated(", ");
-        for id in workspace_ids {
-            separated.push_bind(*id);
-        }
-        separated.push_unseparated(
-            r#")
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE w.archived = $1
               AND ep.status = 'running'
               AND ep.run_reason = 'devserver'
             "#,
-        );
-
-        let rows: Vec<Uuid> = qb.build_query_scalar().fetch_all(pool).await?;
+            archived
+        )
+        .fetch_all(pool)
+        .await?;
 
         Ok(rows.into_iter().collect())
     }

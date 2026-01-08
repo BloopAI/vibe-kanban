@@ -19,7 +19,7 @@ use crate::{DeploymentImpl, error::ApiError};
 /// Request for fetching workspace summaries
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct WorkspaceSummaryRequest {
-    pub workspace_ids: Vec<Uuid>,
+    pub archived: bool,
 }
 
 /// Summary info for a single workspace
@@ -53,7 +53,14 @@ pub struct WorkspaceSummaryResponse {
     pub summaries: Vec<WorkspaceSummary>,
 }
 
-/// Fetch summary information for multiple workspaces.
+#[derive(Debug, Clone, Default)]
+struct DiffStats {
+    files_changed: usize,
+    lines_added: usize,
+    lines_removed: usize,
+}
+
+/// Fetch summary information for workspaces filtered by archived status.
 /// This endpoint returns data that cannot be efficiently included in the streaming endpoint.
 #[axum::debug_handler]
 pub async fn get_workspace_summaries(
@@ -61,23 +68,29 @@ pub async fn get_workspace_summaries(
     Json(request): Json<WorkspaceSummaryRequest>,
 ) -> Result<ResponseJson<ApiResponse<WorkspaceSummaryResponse>>, ApiError> {
     let pool = &deployment.db().pool;
-    let workspace_ids = &request.workspace_ids;
+    let archived = request.archived;
 
-    if workspace_ids.is_empty() {
+    // 1. Fetch all workspaces with the given archived status
+    let workspaces: Vec<Workspace> = Workspace::find_all_with_status(pool, Some(archived), None)
+        .await?
+        .into_iter()
+        .map(|ws| ws.workspace)
+        .collect();
+
+    if workspaces.is_empty() {
         return Ok(ResponseJson(ApiResponse::success(
             WorkspaceSummaryResponse { summaries: vec![] },
         )));
     }
 
-    // 1. Batch fetch latest process info for all workspaces
-    let latest_processes =
-        ExecutionProcess::find_latest_by_workspace_ids(pool, workspace_ids).await?;
+    // 2. Fetch latest process info for workspaces with this archived status
+    let latest_processes = ExecutionProcess::find_latest_for_workspaces(pool, archived).await?;
 
-    // 2. Batch check which workspaces have running dev servers
+    // 3. Check which workspaces have running dev servers
     let dev_server_workspaces =
-        ExecutionProcess::find_workspaces_with_running_dev_servers(pool, workspace_ids).await?;
+        ExecutionProcess::find_workspaces_with_running_dev_servers(pool, archived).await?;
 
-    // 3. Check pending approvals for running processes
+    // 4. Check pending approvals for running processes
     let running_ep_ids: Vec<_> = latest_processes
         .values()
         .filter(|info| info.status == ExecutionProcessStatus::Running)
@@ -87,62 +100,54 @@ pub async fn get_workspace_summaries(
         .approvals()
         .get_pending_execution_process_ids(&running_ep_ids);
 
-    // 4. Batch check which workspaces have unseen coding agent turns
-    let unseen_workspaces =
-        CodingAgentTurn::has_unseen_by_workspace_ids(pool, workspace_ids).await?;
-
-    // 5. Fetch workspaces for diff computation
-    let workspaces: HashMap<Uuid, Workspace> = {
-        let mut map = HashMap::new();
-        for id in workspace_ids {
-            if let Some(ws) = Workspace::find_by_id(pool, *id).await? {
-                map.insert(*id, ws);
-            }
-        }
-        map
-    };
+    // 5. Check which workspaces have unseen coding agent turns
+    let unseen_workspaces = CodingAgentTurn::find_workspaces_with_unseen(pool, archived).await?;
 
     // 6. Compute diff stats for each workspace (in parallel)
-    let diff_futures: Vec<_> = workspace_ids
+    let diff_futures: Vec<_> = workspaces
         .iter()
-        .map(|id| {
-            let workspace = workspaces.get(id).cloned();
+        .map(|ws| {
+            let workspace = ws.clone();
             let deployment = deployment.clone();
             async move {
-                match workspace {
-                    Some(ref ws) if ws.container_ref.is_some() => {
-                        compute_workspace_diff_stats(&deployment, ws).await.ok()
-                    }
-                    _ => None,
+                if workspace.container_ref.is_some() {
+                    compute_workspace_diff_stats(&deployment, &workspace)
+                        .await
+                        .ok()
+                        .map(|stats| (workspace.id, stats))
+                } else {
+                    None
                 }
             }
         })
         .collect();
 
-    let diff_stats: Vec<Option<(usize, usize, usize)>> =
+    let diff_results: Vec<Option<(Uuid, DiffStats)>> =
         futures_util::future::join_all(diff_futures).await;
+    let diff_stats: HashMap<Uuid, DiffStats> = diff_results.into_iter().flatten().collect();
 
     // 7. Assemble response
-    let summaries: Vec<WorkspaceSummary> = workspace_ids
+    let summaries: Vec<WorkspaceSummary> = workspaces
         .iter()
-        .zip(diff_stats.iter())
-        .map(|(id, stats)| {
-            let latest = latest_processes.get(id);
+        .map(|ws| {
+            let id = ws.id;
+            let latest = latest_processes.get(&id);
             let has_pending = latest
                 .map(|p| pending_approval_eps.contains(&p.execution_process_id))
                 .unwrap_or(false);
+            let stats = diff_stats.get(&id);
 
             WorkspaceSummary {
-                workspace_id: *id,
+                workspace_id: id,
                 latest_session_id: latest.map(|p| p.session_id),
                 has_pending_approval: has_pending,
-                files_changed: stats.map(|(f, _, _)| f),
-                lines_added: stats.map(|(_, a, _)| a),
-                lines_removed: stats.map(|(_, _, r)| r),
+                files_changed: stats.map(|s| s.files_changed),
+                lines_added: stats.map(|s| s.lines_added),
+                lines_removed: stats.map(|s| s.lines_removed),
                 latest_process_completed_at: latest.and_then(|p| p.completed_at),
                 latest_process_status: latest.map(|p| p.status.clone()),
-                has_running_dev_server: dev_server_workspaces.contains(id),
-                has_unseen_turns: unseen_workspaces.contains(id),
+                has_running_dev_server: dev_server_workspaces.contains(&id),
+                has_unseen_turns: unseen_workspaces.contains(&id),
             }
         })
         .collect();
@@ -152,11 +157,11 @@ pub async fn get_workspace_summaries(
     )))
 }
 
-/// Compute diff stats (files changed, lines added, lines removed) for a workspace.
+/// Compute diff stats for a workspace.
 async fn compute_workspace_diff_stats(
     deployment: &DeploymentImpl,
     workspace: &Workspace,
-) -> Result<(usize, usize, usize), ApiError> {
+) -> Result<DiffStats, ApiError> {
     let pool = &deployment.db().pool;
 
     let container_ref = workspace
@@ -167,9 +172,7 @@ async fn compute_workspace_diff_stats(
     let workspace_repos =
         WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id).await?;
 
-    let mut total_files = 0usize;
-    let mut total_added = 0usize;
-    let mut total_removed = 0usize;
+    let mut stats = DiffStats::default();
 
     for repo_with_branch in workspace_repos {
         let worktree_path = PathBuf::from(container_ref).join(&repo_with_branch.repo.name);
@@ -187,7 +190,7 @@ async fn compute_workspace_diff_stats(
 
         let base_commit = match base_commit_result {
             Ok(Ok(commit)) => commit,
-            _ => continue, // Skip this repo if we can't get base commit
+            _ => continue,
         };
 
         // Get diffs
@@ -208,12 +211,12 @@ async fn compute_workspace_diff_stats(
 
         if let Ok(Ok(diffs)) = diffs_result {
             for diff in diffs {
-                total_files += 1;
-                total_added += diff.additions.unwrap_or(0);
-                total_removed += diff.deletions.unwrap_or(0);
+                stats.files_changed += 1;
+                stats.lines_added += diff.additions.unwrap_or(0);
+                stats.lines_removed += diff.deletions.unwrap_or(0);
             }
         }
     }
 
-    Ok((total_files, total_added, total_removed))
+    Ok(stats)
 }

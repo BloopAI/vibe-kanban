@@ -38,7 +38,7 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
     if (selectedPath) {
       setParentPath(selectedPath);
     }
-  }, [parentPath]);
+  }, [parentPath, t]);
 
   const handleCreate = useCallback(async () => {
     const trimmedName = name.trim();
@@ -58,7 +58,9 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
       modal.hide();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : t('git.createRepo.errors.createFailed')
+        err instanceof Error
+          ? err.message
+          : t('git.createRepo.errors.createFailed')
       );
     } finally {
       setIsSubmitting(false);
@@ -77,13 +79,17 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{t('git.createRepo.dialog.title')}</DialogTitle>
-          <DialogDescription>{t('git.createRepo.dialog.description')}</DialogDescription>
+          <DialogDescription>
+            {t('git.createRepo.dialog.description')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-4">
           {/* Name input */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">{t('git.createRepo.form.nameLabel')}</label>
+            <label className="text-sm font-medium">
+              {t('git.createRepo.form.nameLabel')}
+            </label>
             <input
               type="text"
               value={name}
@@ -96,7 +102,9 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
 
           {/* Location input */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">{t('git.createRepo.form.locationLabel')}</label>
+            <label className="text-sm font-medium">
+              {t('git.createRepo.form.locationLabel')}
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"

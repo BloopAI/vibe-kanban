@@ -77,23 +77,19 @@ export const workspaceKeys = {
 // Query key factory for workspace summaries
 export const workspaceSummaryKeys = {
   all: ['workspace-summaries'] as const,
-  byIds: (ids: string[]) =>
-    ['workspace-summaries', ids.sort().join(',')] as const,
+  byArchived: (archived: boolean) =>
+    ['workspace-summaries', archived ? 'archived' : 'active'] as const,
 };
 
-// Fetch workspace summaries from the API
-async function fetchWorkspaceSummaries(
-  workspaceIds: string[]
+// Fetch workspace summaries from the API by archived status
+async function fetchWorkspaceSummariesByArchived(
+  archived: boolean
 ): Promise<Map<string, WorkspaceSummary>> {
-  if (workspaceIds.length === 0) {
-    return new Map();
-  }
-
   try {
     const response = await fetch('/api/task-attempts/summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workspace_ids: workspaceIds }),
+      body: JSON.stringify({ archived }),
     });
 
     if (!response.ok) {
@@ -147,34 +143,31 @@ export function useWorkspaces(): UseWorkspacesResult {
   );
 
   // Wait for both streams to be initialized before fetching summaries
-  // This prevents race conditions where the query key changes mid-fetch
-  const bothStreamsReady = activeIsInitialized && archivedIsInitialized;
+  // Fetch summaries for active workspaces
+  const { data: activeSummaries = new Map<string, WorkspaceSummary>() } =
+    useQuery({
+      queryKey: workspaceSummaryKeys.byArchived(false),
+      queryFn: () => fetchWorkspaceSummariesByArchived(false),
+      enabled: activeIsInitialized,
+      staleTime: 1000,
+      refetchInterval: 15000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: 'always',
+      placeholderData: keepPreviousData,
+    });
 
-  // Collect all workspace IDs from both active and archived
-  const allWorkspaceIds = useMemo(() => {
-    const ids: string[] = [];
-    if (activeData?.workspaces) {
-      ids.push(...Object.keys(activeData.workspaces));
-    }
-    if (archivedData?.workspaces) {
-      ids.push(...Object.keys(archivedData.workspaces));
-    }
-    return ids;
-  }, [activeData, archivedData]);
-
-  // Fetch summaries using TanStack Query with 30s auto-refresh
-  const { data: summaries = new Map<string, WorkspaceSummary>() } = useQuery({
-    queryKey: workspaceSummaryKeys.byIds(allWorkspaceIds),
-    queryFn: () => fetchWorkspaceSummaries(allWorkspaceIds),
-    enabled: bothStreamsReady && allWorkspaceIds.length > 0,
-    staleTime: 1000, // Consider data stale after 1s (prevents duplicate fetches)
-    refetchInterval: 15000, // Auto-refresh every 15s
-    refetchOnWindowFocus: false,
-    refetchOnMount: 'always', // Ensure fetch runs when IDs become available
-    // Preserve previous summaries when query key changes (workspace added/deleted)
-    // This prevents summary info from disappearing during refetch
-    placeholderData: keepPreviousData,
-  });
+  // Fetch summaries for archived workspaces
+  const { data: archivedSummaries = new Map<string, WorkspaceSummary>() } =
+    useQuery({
+      queryKey: workspaceSummaryKeys.byArchived(true),
+      queryFn: () => fetchWorkspaceSummariesByArchived(true),
+      enabled: archivedIsInitialized,
+      staleTime: 1000,
+      refetchInterval: 15000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: 'always',
+      placeholderData: keepPreviousData,
+    });
 
   const workspaces = useMemo(() => {
     if (!activeData?.workspaces) return [];
@@ -189,8 +182,8 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)));
-  }, [activeData, summaries]);
+      .map((ws) => toSidebarWorkspace(ws, activeSummaries.get(ws.id)));
+  }, [activeData, activeSummaries]);
 
   const archivedWorkspaces = useMemo(() => {
     if (!archivedData?.workspaces) return [];
@@ -205,8 +198,8 @@ export function useWorkspaces(): UseWorkspacesResult {
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
       })
-      .map((ws) => toSidebarWorkspace(ws, summaries.get(ws.id)));
-  }, [archivedData, summaries]);
+      .map((ws) => toSidebarWorkspace(ws, archivedSummaries.get(ws.id)));
+  }, [archivedData, archivedSummaries]);
 
   // isLoading is true when we haven't received initial data from either stream
   const isLoading = !activeIsInitialized || !archivedIsInitialized;

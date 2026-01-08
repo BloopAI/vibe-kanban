@@ -163,9 +163,7 @@ export function CreateChatBoxContainer() {
           <h2 className="text-lg font-medium text-high mb-2">
             {t('projects.noProjectFound')}
           </h2>
-          <p className="text-sm text-low">
-            {t('projects.createFirstPrompt')}
-          </p>
+          <p className="text-sm text-low">{t('projects.createFirstPrompt')}</p>
         </div>
       </div>
     );

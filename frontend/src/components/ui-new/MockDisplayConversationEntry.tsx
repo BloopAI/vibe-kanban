@@ -233,7 +233,9 @@ const ToolCallCard: React.FC<{
   const isCommand = actionType?.action === 'command_run';
   const isTool = actionType?.action === 'tool';
 
-  const label = isCommand ? t('conversation.ran') : entryType?.tool_name || t('conversation.tool');
+  const label = isCommand
+    ? t('conversation.ran')
+    : entryType?.tool_name || t('conversation.tool');
 
   const inlineText = entry.content.trim();
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);

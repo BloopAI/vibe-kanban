@@ -506,7 +506,9 @@ export function SessionChatBox({
                     : 'Select Executor'
                 }
               >
-                <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {t('conversation.executors')}
+                </DropdownMenuLabel>
                 {executor.options.map((exec) => (
                   <DropdownMenuItem
                     key={exec}
@@ -538,7 +540,9 @@ export function SessionChatBox({
                     >
                       <WarningIcon className="size-icon-sm" />
                       <span>
-                        {t('conversation.approval.conflicts', { count: stats.conflictedFilesCount })}
+                        {t('conversation.approval.conflicts', {
+                          count: stats.conflictedFilesCount,
+                        })}
                       </span>
                     </span>
                   )}

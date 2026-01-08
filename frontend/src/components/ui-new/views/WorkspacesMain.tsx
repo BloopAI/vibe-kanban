@@ -69,7 +69,9 @@ export function WorkspacesMain({
               </div>
             ) : !workspaceWithSession ? (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-low">{t('common:workspaces.selectToStart')}</p>
+                <p className="text-low">
+                  {t('common:workspaces.selectToStart')}
+                </p>
               </div>
             ) : (
               <div className="flex-1 min-h-0 overflow-hidden flex justify-center">

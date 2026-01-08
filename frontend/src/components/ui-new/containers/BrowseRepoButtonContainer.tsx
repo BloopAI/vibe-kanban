@@ -39,7 +39,7 @@ export function BrowseRepoButtonContainer({
         setIsRegistering(false);
       }
     }
-  }, [onRepoRegistered]);
+  }, [onRepoRegistered, t]);
 
   return (
     <>

@@ -84,15 +84,21 @@ function getToolSummary(
     case 'file_read':
       return t('conversation.toolSummary.read', { path: action_type.path });
     case 'search':
-      return t('conversation.toolSummary.searched', { query: action_type.query });
+      return t('conversation.toolSummary.searched', {
+        query: action_type.query,
+      });
     case 'web_fetch':
       return t('conversation.toolSummary.fetched', { url: action_type.url });
     case 'command_run':
       return action_type.command || t('conversation.toolSummary.ranCommand');
     case 'task_create':
-      return t('conversation.toolSummary.createdTask', { description: action_type.description });
+      return t('conversation.toolSummary.createdTask', {
+        description: action_type.description,
+      });
     case 'todo_management':
-      return t('conversation.toolSummary.todoOperation', { operation: action_type.operation });
+      return t('conversation.toolSummary.todoOperation', {
+        operation: action_type.operation,
+      });
     case 'tool':
       return tool_name || t('conversation.tool');
     default:

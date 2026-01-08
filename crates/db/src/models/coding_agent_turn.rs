@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, QueryBuilder, SqlitePool};
+use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -200,32 +200,22 @@ impl CodingAgentTurn {
         Ok(result)
     }
 
-    /// Batch check which workspaces have unseen coding agent turns
-    pub async fn has_unseen_by_workspace_ids(
+    /// Find all workspaces that have unseen coding agent turns, filtered by archived status
+    pub async fn find_workspaces_with_unseen(
         pool: &SqlitePool,
-        workspace_ids: &[Uuid],
+        archived: bool,
     ) -> Result<std::collections::HashSet<Uuid>, sqlx::Error> {
-        use std::collections::HashSet;
-
-        if workspace_ids.is_empty() {
-            return Ok(HashSet::new());
-        }
-
-        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
-            r#"SELECT DISTINCT s.workspace_id
+        let result: Vec<Uuid> = sqlx::query_scalar!(
+            r#"SELECT DISTINCT s.workspace_id as "workspace_id!: Uuid"
                FROM coding_agent_turns cat
                JOIN execution_processes ep ON cat.execution_process_id = ep.id
                JOIN sessions s ON ep.session_id = s.id
-               WHERE s.workspace_id IN ("#,
-        );
-
-        let mut separated = qb.separated(", ");
-        for id in workspace_ids {
-            separated.push_bind(*id);
-        }
-        separated.push_unseparated(") AND cat.seen = 0");
-
-        let result: Vec<Uuid> = qb.build_query_scalar().fetch_all(pool).await?;
+               JOIN workspaces w ON s.workspace_id = w.id
+               WHERE cat.seen = 0 AND w.archived = $1"#,
+            archived
+        )
+        .fetch_all(pool)
+        .await?;
 
         Ok(result.into_iter().collect())
     }

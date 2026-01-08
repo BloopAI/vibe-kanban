@@ -88,7 +88,9 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="project-name">{t('projects.create.form.nameLabel')}</Label>
+            <Label htmlFor="project-name">
+              {t('projects.create.form.nameLabel')}
+            </Label>
             <Input
               id="project-name"
               value={name}
@@ -123,7 +125,9 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
               onClick={handleCreate}
               disabled={!name.trim() || createProject.isPending}
             >
-              {createProject.isPending ? t('common:states.saving') : t('common:buttons.create')}
+              {createProject.isPending
+                ? t('common:states.saving')
+                : t('common:buttons.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

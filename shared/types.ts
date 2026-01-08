@@ -314,7 +314,7 @@ conflicted_files: Array<string>, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
 
-export type WorkspaceSummaryRequest = { workspace_ids: Array<string>, };
+export type WorkspaceSummaryRequest = { archived: boolean, };
 
 export type WorkspaceSummary = { workspace_id: string, 
 /**

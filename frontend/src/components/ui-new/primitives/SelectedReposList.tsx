@@ -28,7 +28,9 @@ export function SelectedReposList({
           weight="duotone"
         />
         <p className="text-sm text-low">{t('repos.noReposAdded')}</p>
-        <p className="text-xs text-low mt-half">{t('repos.noReposAddedHint')}</p>
+        <p className="text-xs text-low mt-half">
+          {t('repos.noReposAddedHint')}
+        </p>
       </div>
     );
   }

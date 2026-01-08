@@ -83,17 +83,20 @@ export function ProcessListContainer({
       onKeyDown={handleSearchKeyDown}
     >
       <InputField
-                value={searchQuery}
-                onChange={onSearchQueryChange}
-                placeholder={t('logs.searchLogs')}
-                variant="search"
-                className="flex-1"
-              />
+        value={searchQuery}
+        onChange={onSearchQueryChange}
+        placeholder={t('logs.searchLogs')}
+        variant="search"
+        className="flex-1"
+      />
       {searchQuery && (
         <>
           <span className="text-xs text-low whitespace-nowrap">
             {matchCount > 0
-              ? t('search.matchCount', { current: currentMatchIdx + 1, total: matchCount })
+              ? t('search.matchCount', {
+                  current: currentMatchIdx + 1,
+                  total: matchCount,
+                })
               : t('search.noMatches')}
           </span>
           <div className="flex items-center gap-1">
