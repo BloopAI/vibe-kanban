@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod coding_agent_turn;
 pub mod document;
 pub mod execution_process;

@@ -5,9 +5,11 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use db::models::api_key::ApiKey;
 use jsonwebtoken::{decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Validation};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -15,12 +17,15 @@ use std::{
 use tokio::sync::RwLock;
 use utils::response::ApiResponse;
 
-/// Authenticated user extracted from Clerk JWT
+/// Authenticated user extracted from Clerk JWT or API key
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClerkUser {
     pub user_id: String,
     pub email: Option<String>,
     pub session_id: Option<String>,
+    /// True if authenticated via API key instead of JWT
+    #[serde(default)]
+    pub is_api_key: bool,
 }
 
 /// JWT claims from Clerk token
@@ -48,6 +53,8 @@ pub struct AuthState {
     clerk_issuer: String,
     jwks_url: String,
     cache_duration: Duration,
+    /// Database pool for API key validation (optional)
+    db_pool: Option<PgPool>,
 }
 
 impl AuthState {
@@ -63,6 +70,46 @@ impl AuthState {
             clerk_issuer: format!("https://{}", clerk_domain),
             jwks_url: format!("https://{}/.well-known/jwks.json", clerk_domain),
             cache_duration: Duration::from_secs(3600), // 1 hour cache
+            db_pool: None,
+        }
+    }
+
+    /// Create auth state with database pool for API key support
+    pub fn with_db_pool(mut self, pool: PgPool) -> Self {
+        self.db_pool = Some(pool);
+        self
+    }
+
+    /// Check if a token looks like an API key (starts with "vk_")
+    fn is_api_key(token: &str) -> bool {
+        token.starts_with("vk_")
+    }
+
+    /// Validate an API key and return the user
+    async fn validate_api_key(&self, key: &str) -> Result<ClerkUser, AuthError> {
+        let pool = self.db_pool.as_ref().ok_or_else(|| {
+            tracing::warn!("API key provided but no database pool configured");
+            AuthError::InvalidToken
+        })?;
+
+        match ApiKey::validate(pool, key).await {
+            Ok(Some(user_id)) => {
+                tracing::debug!("API key validated for user: {}", user_id);
+                Ok(ClerkUser {
+                    user_id,
+                    email: None,
+                    session_id: None,
+                    is_api_key: true,
+                })
+            }
+            Ok(None) => {
+                tracing::debug!("Invalid or expired API key");
+                Err(AuthError::InvalidToken)
+            }
+            Err(e) => {
+                tracing::error!("Database error validating API key: {}", e);
+                Err(AuthError::InvalidToken)
+            }
         }
     }
 
@@ -147,7 +194,17 @@ impl AuthState {
             user_id: token_data.claims.sub,
             email: token_data.claims.email,
             session_id: token_data.claims.sid,
+            is_api_key: false,
         })
+    }
+
+    /// Authenticate a token (either JWT or API key)
+    pub async fn authenticate(&self, token: &str) -> Result<ClerkUser, AuthError> {
+        if Self::is_api_key(token) {
+            self.validate_api_key(token).await
+        } else {
+            self.validate_token(token).await
+        }
     }
 }
 
@@ -184,7 +241,7 @@ fn extract_bearer_token(auth_header: &str) -> Option<&str> {
     auth_header.strip_prefix("Bearer ").or_else(|| auth_header.strip_prefix("bearer "))
 }
 
-/// Auth middleware that validates JWT and injects ClerkUser
+/// Auth middleware that validates JWT or API key and injects ClerkUser
 pub async fn auth_middleware(
     State(auth_state): State<Arc<AuthState>>,
     mut request: Request,
@@ -202,8 +259,8 @@ pub async fn auth_middleware(
         }
     };
 
-    // Validate token and get user
-    let user = auth_state.validate_token(&token).await?;
+    // Authenticate (supports both JWT and API keys)
+    let user = auth_state.authenticate(&token).await?;
 
     // Inject user into request extensions
     request.extensions_mut().insert(user);
@@ -219,7 +276,8 @@ pub async fn optional_auth_middleware(
 ) -> Response {
     if let Some(auth_header) = request.headers().get(AUTHORIZATION).and_then(|h| h.to_str().ok()) {
         if let Some(token) = extract_bearer_token(auth_header) {
-            if let Ok(user) = auth_state.validate_token(token).await {
+            // Use authenticate which supports both JWT and API keys
+            if let Ok(user) = auth_state.authenticate(token).await {
                 request.extensions_mut().insert(user);
             }
         }

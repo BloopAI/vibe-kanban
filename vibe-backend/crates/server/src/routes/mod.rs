@@ -13,7 +13,9 @@ use crate::middleware::{
     auth::{auth_middleware, AuthState},
     rate_limit::{create_rate_limit_layer, rate_limit_middleware, RateLimitConfig},
 };
+use deployment::Deployment;
 
+pub mod api_keys;
 pub mod approvals;
 pub mod config;
 pub mod containers;
@@ -44,8 +46,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .map(|v| v == "true" || v == "1")
         .unwrap_or(false);
 
-    // Create auth state
-    let auth_state = Arc::new(AuthState::new());
+    // Create auth state with database pool for API key support
+    let auth_state = Arc::new(
+        AuthState::new().with_db_pool(deployment.db().pool.clone())
+    );
 
     // Create rate limiter (1000 requests per minute per IP)
     let rate_limiter = create_rate_limit_layer(RateLimitConfig {
@@ -61,6 +65,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     // Protected routes (auth required when enabled)
     let protected_routes = Router::new()
+        .merge(api_keys::router(&deployment))
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
         .merge(tasks::router(&deployment))

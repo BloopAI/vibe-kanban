@@ -12,7 +12,9 @@
         "mcp": "MCP Servers",
         "mcpDesc": "Model Context Protocol servers",
         "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "organizationsDesc": "Manage organization members and permissions",
+        "api-keys": "API Keys",
+        "api-keysDesc": "Manage API keys for programmatic access"
       }
     },
     "general": {
@@ -370,6 +372,69 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      }
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "description": "Create and manage API keys for programmatic access to the API. Use these keys with MCP servers, CLI tools, and other integrations.",
+      "loading": "Loading API keys...",
+      "createButton": "Create API Key",
+      "noKeys": "No API keys yet",
+      "noKeysHint": "Create an API key to enable programmatic access to the API.",
+      "neverUsed": "Never used",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daysAgo": "{{days}} days ago",
+      "revokeSuccess": "API key revoked successfully",
+      "deleteSuccess": "API key deleted successfully",
+      "table": {
+        "name": "Name",
+        "prefix": "Key Prefix",
+        "lastUsed": "Last Used",
+        "created": "Created",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "revoked": "Revoked",
+        "expired": "Expired"
+      },
+      "errors": {
+        "loadFailed": "Failed to load API keys",
+        "createFailed": "Failed to create API key",
+        "revokeFailed": "Failed to revoke API key",
+        "deleteFailed": "Failed to delete API key"
+      },
+      "usage": {
+        "title": "Using API Keys",
+        "description": "Include your API key in the Authorization header of your requests. API keys start with 'vk_' and provide the same access as your user account.",
+        "example": "Example header:",
+        "mcpHint": "For MCP servers, set the VIBE_API_TOKEN environment variable in your Claude Code settings."
+      },
+      "createDialog": {
+        "title": "Create API Key",
+        "description": "Give your API key a descriptive name so you can identify it later.",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g., Claude Code MCP, CI/CD Pipeline",
+        "nameHint": "Choose a name that describes how this key will be used.",
+        "cancel": "Cancel",
+        "create": "Create Key"
+      },
+      "createdDialog": {
+        "title": "API Key Created",
+        "description": "Your new API key has been created. Copy it now - you won't be able to see it again!",
+        "warning": "Make sure to copy your API key now. For security reasons, we won't show it again.",
+        "keyLabel": "Your API Key",
+        "done": "Done"
+      },
+      "deleteDialog": {
+        "title": "Delete API Key",
+        "description": "Are you sure you want to delete the API key \"{{name}}\"?",
+        "warning": "Any applications using this key will immediately lose access. This action cannot be undone.",
+        "cancel": "Cancel",
+        "revoke": "Revoke Only",
+        "delete": "Delete Permanently"
       }
     }
   },

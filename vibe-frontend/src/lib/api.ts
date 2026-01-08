@@ -144,6 +144,32 @@ export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
 
+// API Key types (defined locally since backend generates these via ts-rs)
+export interface ApiKeyInfo {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  last_used_at: string | null;
+  expires_at: string | null;
+  is_revoked: boolean;
+  created_at: string;
+}
+
+export interface ApiKeyWithSecret {
+  id: string;
+  name: string;
+  key_prefix: string;
+  key: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface CreateApiKeyRequest {
+  name: string;
+  expires_in_days?: number;
+}
+
 export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
@@ -2161,5 +2187,35 @@ export const documentsApi = {
       // Note: Don't set Content-Type header - browser sets it with boundary for multipart
     });
     return handleApiResponse<UploadResult>(response);
+  },
+};
+
+// API Keys API
+export const apiKeysApi = {
+  list: async (): Promise<ApiKeyInfo[]> => {
+    const response = await makeRequest('/api/api-keys');
+    return handleApiResponse<ApiKeyInfo[]>(response);
+  },
+
+  create: async (data: CreateApiKeyRequest): Promise<ApiKeyWithSecret> => {
+    const response = await makeRequest('/api/api-keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ApiKeyWithSecret>(response);
+  },
+
+  revoke: async (keyId: string): Promise<void> => {
+    const response = await makeRequest(`/api/api-keys/${keyId}/revoke`, {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  delete: async (keyId: string): Promise<void> => {
+    const response = await makeRequest(`/api/api-keys/${keyId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
