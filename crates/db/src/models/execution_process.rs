@@ -7,7 +7,7 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, QueryBuilder, SqlitePool, Type};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -104,8 +104,9 @@ pub struct ExecutionContext {
 }
 
 /// Summary info about the latest execution process for a workspace
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct LatestProcessInfo {
+    pub workspace_id: Uuid,
     pub execution_process_id: Uuid,
     pub session_id: Uuid,
     pub status: ExecutionProcessStatus,
@@ -702,11 +703,7 @@ impl ExecutionProcess {
             return Ok(HashMap::new());
         }
 
-        // Build placeholders for the IN clause
-        let placeholders: Vec<_> = workspace_ids.iter().map(|_| "?").collect();
-        let placeholders_str = placeholders.join(",");
-
-        let query = format!(
+        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
             r#"
             SELECT
                 s.workspace_id,
@@ -716,7 +713,15 @@ impl ExecutionProcess {
                 ep.completed_at
             FROM execution_processes ep
             JOIN sessions s ON ep.session_id = s.id
-            WHERE s.workspace_id IN ({})
+            WHERE s.workspace_id IN ("#,
+        );
+
+        let mut separated = qb.separated(", ");
+        for id in workspace_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(
+            r#")
               AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
               AND ep.dropped = FALSE
               AND ep.created_at = (
@@ -728,37 +733,14 @@ impl ExecutionProcess {
                     AND ep2.dropped = FALSE
               )
             "#,
-            placeholders_str
         );
 
-        let mut query_builder = sqlx::query_as::<
-            _,
-            (
-                Uuid,
-                Uuid,
-                Uuid,
-                ExecutionProcessStatus,
-                Option<DateTime<Utc>>,
-            ),
-        >(&query);
-        for id in workspace_ids {
-            query_builder = query_builder.bind(id);
-        }
+        let rows: Vec<LatestProcessInfo> = qb.build_query_as().fetch_all(pool).await?;
 
-        let rows = query_builder.fetch_all(pool).await?;
-
-        let mut result = HashMap::new();
-        for (workspace_id, execution_process_id, session_id, status, completed_at) in rows {
-            result.insert(
-                workspace_id,
-                LatestProcessInfo {
-                    execution_process_id,
-                    session_id,
-                    status,
-                    completed_at,
-                },
-            );
-        }
+        let result = rows
+            .into_iter()
+            .map(|info| (info.workspace_id, info))
+            .collect();
 
         Ok(result)
     }
@@ -773,28 +755,27 @@ impl ExecutionProcess {
             return Ok(HashSet::new());
         }
 
-        // Build placeholders for the IN clause
-        let placeholders: Vec<_> = workspace_ids.iter().map(|_| "?").collect();
-        let placeholders_str = placeholders.join(",");
-
-        let query = format!(
+        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
             r#"
             SELECT DISTINCT s.workspace_id
             FROM execution_processes ep
             JOIN sessions s ON ep.session_id = s.id
-            WHERE s.workspace_id IN ({})
+            WHERE s.workspace_id IN ("#,
+        );
+
+        let mut separated = qb.separated(", ");
+        for id in workspace_ids {
+            separated.push_bind(*id);
+        }
+        separated.push_unseparated(
+            r#")
               AND ep.status = 'running'
               AND ep.run_reason = 'devserver'
             "#,
-            placeholders_str
         );
 
-        let mut query_builder = sqlx::query_scalar::<_, Uuid>(&query);
-        for id in workspace_ids {
-            query_builder = query_builder.bind(id);
-        }
+        let rows: Vec<Uuid> = qb.build_query_scalar().fetch_all(pool).await?;
 
-        let rows = query_builder.fetch_all(pool).await?;
         Ok(rows.into_iter().collect())
     }
 }

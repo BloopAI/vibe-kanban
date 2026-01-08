@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, QueryBuilder, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -211,29 +211,22 @@ impl CodingAgentTurn {
             return Ok(HashSet::new());
         }
 
-        // Build placeholders for the IN clause
-        let placeholders: Vec<String> = workspace_ids
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("${}", i + 1))
-            .collect();
-        let placeholders_str = placeholders.join(", ");
-
-        let query = format!(
+        let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
             r#"SELECT DISTINCT s.workspace_id
                FROM coding_agent_turns cat
                JOIN execution_processes ep ON cat.execution_process_id = ep.id
                JOIN sessions s ON ep.session_id = s.id
-               WHERE s.workspace_id IN ({}) AND cat.seen = 0"#,
-            placeholders_str
+               WHERE s.workspace_id IN ("#,
         );
 
-        let mut query_builder = sqlx::query_scalar::<_, Uuid>(&query);
+        let mut separated = qb.separated(", ");
         for id in workspace_ids {
-            query_builder = query_builder.bind(id);
+            separated.push_bind(*id);
         }
+        separated.push_unseparated(") AND cat.seen = 0");
 
-        let result: Vec<Uuid> = query_builder.fetch_all(pool).await?;
+        let result: Vec<Uuid> = qb.build_query_scalar().fetch_all(pool).await?;
+
         Ok(result.into_iter().collect())
     }
 }
