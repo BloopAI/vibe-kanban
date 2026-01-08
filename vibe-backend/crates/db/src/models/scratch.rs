@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use strum_macros::{Display, EnumDiscriminants, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
@@ -114,7 +114,7 @@ pub struct UpdateScratch {
 
 impl Scratch {
     pub async fn create(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         data: &CreateScratch,
     ) -> Result<Self, ScratchError> {
@@ -144,7 +144,7 @@ impl Scratch {
     }
 
     pub async fn find_by_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         scratch_type: &ScratchType,
     ) -> Result<Option<Self>, ScratchError> {
@@ -171,7 +171,7 @@ impl Scratch {
         Ok(scratch)
     }
 
-    pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, ScratchError> {
+    pub async fn find_all(pool: &PgPool) -> Result<Vec<Self>, ScratchError> {
         let rows = sqlx::query_as!(
             ScratchRow,
             r#"
@@ -198,7 +198,7 @@ impl Scratch {
 
     /// Upsert a scratch record - creates if not exists, updates if exists.
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         scratch_type: &ScratchType,
         data: &UpdateScratch,
@@ -214,7 +214,7 @@ impl Scratch {
             VALUES ($1, $2, $3)
             ON CONFLICT(id, scratch_type) DO UPDATE SET
                 payload = excluded.payload,
-                updated_at = datetime('now', 'subsec')
+                updated_at = NOW()
             RETURNING
                 id              as "id!: Uuid",
                 scratch_type,
@@ -233,7 +233,7 @@ impl Scratch {
     }
 
     pub async fn delete(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         scratch_type: &ScratchType,
     ) -> Result<u64, sqlx::Error> {
@@ -248,28 +248,5 @@ impl Scratch {
         Ok(result.rows_affected())
     }
 
-    pub async fn find_by_rowid(
-        pool: &SqlitePool,
-        rowid: i64,
-    ) -> Result<Option<Self>, ScratchError> {
-        let row = sqlx::query_as!(
-            ScratchRow,
-            r#"
-            SELECT
-                id              as "id!: Uuid",
-                scratch_type,
-                payload,
-                created_at      as "created_at!: DateTime<Utc>",
-                updated_at      as "updated_at!: DateTime<Utc>"
-            FROM scratch
-            WHERE rowid = $1
-            "#,
-            rowid
-        )
-        .fetch_optional(pool)
-        .await?;
 
-        let scratch = row.map(Scratch::try_from).transpose()?;
-        Ok(scratch)
-    }
 }

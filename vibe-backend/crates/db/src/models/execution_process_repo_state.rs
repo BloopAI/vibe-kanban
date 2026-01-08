@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -28,7 +28,7 @@ pub struct CreateExecutionProcessRepoState {
 
 impl ExecutionProcessRepoState {
     pub async fn create_many(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_process_id: Uuid,
         entries: &[CreateExecutionProcessRepoState],
     ) -> Result<(), sqlx::Error> {
@@ -50,7 +50,7 @@ impl ExecutionProcessRepoState {
                         merge_commit,
                         created_at,
                         updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
                 id,
                 execution_process_id,
                 entry.repo_id,
@@ -68,7 +68,7 @@ impl ExecutionProcessRepoState {
     }
 
     pub async fn update_before_head_commit(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_process_id: Uuid,
         repo_id: Uuid,
         before_head_commit: &str,
@@ -90,7 +90,7 @@ impl ExecutionProcessRepoState {
     }
 
     pub async fn update_after_head_commit(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_process_id: Uuid,
         repo_id: Uuid,
         after_head_commit: &str,
@@ -112,7 +112,7 @@ impl ExecutionProcessRepoState {
     }
 
     pub async fn set_merge_commit(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_process_id: Uuid,
         repo_id: Uuid,
         merge_commit: &str,
@@ -134,7 +134,7 @@ impl ExecutionProcessRepoState {
     }
 
     pub async fn find_by_execution_process_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_process_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(

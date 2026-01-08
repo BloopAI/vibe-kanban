@@ -1,1 +1,0 @@
-console.warn("\u26A0\uFE0F The entrypoint 'simple-icons/icons' is deprecated and will be removed in version 17.0.0. Please, import icons from 'simple-icons' using `require('simple-icons')` instead of `require('simple-icons/icons')`."),module.exports=require("./index.js");

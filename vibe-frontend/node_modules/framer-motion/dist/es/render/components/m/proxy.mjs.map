@@ -1,1 +1,0 @@
-{"version":3,"file":"proxy.mjs","sources":["../../../../../src/render/components/m/proxy.ts"],"sourcesContent":["import { createMotionProxy } from \"../create-proxy\"\n\nexport const m = /*@__PURE__*/ createMotionProxy()\n"],"names":[],"mappings":";;MAEa,CAAC,iBAAiB,iBAAiB;;;;"}

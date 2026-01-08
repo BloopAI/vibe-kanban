@@ -1,0 +1,24 @@
+{
+    "name": "vibe-migration",
+    "version": "1.0.0",
+    "description": "Migration scripts for Vibe Kanban",
+    "main": "index.js",
+    "scripts": {
+        "introspect": "drizzle-kit introspect",
+        "generate": "drizzle-kit generate"
+    },
+    "dependencies": {
+        "better-sqlite3": "^11.0.0",
+        "dotenv": "^16.4.5",
+        "drizzle-orm": "^0.30.9",
+        "pg": "^8.11.5"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.10",
+        "@types/node": "^20.12.7",
+        "@types/pg": "^8.11.5",
+        "drizzle-kit": "^0.20.14",
+        "tsx": "^4.7.2",
+        "typescript": "^5.4.5"
+    }
+}

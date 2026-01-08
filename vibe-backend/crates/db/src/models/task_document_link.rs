@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -79,7 +79,7 @@ impl From<LinkedDocumentRow> for LinkedDocument {
 impl TaskDocumentLink {
     /// Find all document links for a task with document details
     pub async fn find_by_task_id_with_details(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
     ) -> Result<Vec<LinkedDocument>, sqlx::Error> {
         let rows = sqlx::query_as!(
@@ -105,7 +105,7 @@ impl TaskDocumentLink {
 
     /// Link multiple documents to a task
     pub async fn link_documents(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         document_ids: &[Uuid],
     ) -> Result<Vec<TaskDocumentLink>, sqlx::Error> {
@@ -130,7 +130,7 @@ impl TaskDocumentLink {
             let row = sqlx::query_as!(
                 TaskDocumentLinkRow,
                 r#"INSERT INTO task_document_links (id, task_id, document_id, created_at)
-                   VALUES ($1, $2, $3, datetime('now', 'subsec'))
+                   VALUES ($1, $2, $3, NOW())
                    RETURNING id as "id!: Uuid",
                              task_id as "task_id!: Uuid",
                              document_id as "document_id!: Uuid",
@@ -150,7 +150,7 @@ impl TaskDocumentLink {
 
     /// Unlink a document from a task
     pub async fn unlink_document(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         document_id: Uuid,
     ) -> Result<u64, sqlx::Error> {
@@ -166,7 +166,7 @@ impl TaskDocumentLink {
     }
 
     /// Delete all document links for a task
-    pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
             "DELETE FROM task_document_links WHERE task_id = $1",
             task_id

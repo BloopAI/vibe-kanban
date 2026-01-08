@@ -1,2 +1,0 @@
-import { inBrowser, isBrowserOnline, isValidBrowser, isValidBrowserOnline, userAgentIsRobot } from "./browser-CwBluoYn.mjs";
-export { inBrowser, isBrowserOnline, isValidBrowser, isValidBrowserOnline, userAgentIsRobot };

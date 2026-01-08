@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -43,7 +43,7 @@ impl From<MemberProjectAccessRow> for MemberProjectAccess {
 impl MemberProjectAccess {
     /// Get all project IDs that a member has access to
     pub async fn get_project_ids_for_member(
-        pool: &SqlitePool,
+        pool: &PgPool,
         member_id: Uuid,
     ) -> Result<Vec<Uuid>, sqlx::Error> {
         let rows = sqlx::query_scalar!(
@@ -60,7 +60,7 @@ impl MemberProjectAccess {
 
     /// Get all member IDs that have access to a project
     pub async fn get_member_ids_for_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<Uuid>, sqlx::Error> {
         let rows = sqlx::query_scalar!(
@@ -77,7 +77,7 @@ impl MemberProjectAccess {
 
     /// Set member's project access (replaces all existing)
     pub async fn set_for_member(
-        pool: &SqlitePool,
+        pool: &PgPool,
         member_id: Uuid,
         project_ids: &[Uuid],
     ) -> Result<Vec<Uuid>, sqlx::Error> {
@@ -110,7 +110,7 @@ impl MemberProjectAccess {
 
     /// Add access to a single project
     pub async fn add_project_access(
-        pool: &SqlitePool,
+        pool: &PgPool,
         member_id: Uuid,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -119,7 +119,7 @@ impl MemberProjectAccess {
             MemberProjectAccessRow,
             r#"INSERT INTO member_project_access (id, member_id, project_id)
                VALUES ($1, $2, $3)
-               ON CONFLICT(member_id, project_id) DO UPDATE SET id = id
+               ON CONFLICT(member_id, project_id) DO UPDATE SET id = member_project_access.id
                RETURNING id as "id!: Uuid",
                          member_id as "member_id!: Uuid",
                          project_id as "project_id!: Uuid",
@@ -136,7 +136,7 @@ impl MemberProjectAccess {
 
     /// Remove access to a single project
     pub async fn remove_project_access(
-        pool: &SqlitePool,
+        pool: &PgPool,
         member_id: Uuid,
         project_id: Uuid,
     ) -> Result<(), sqlx::Error> {
@@ -153,7 +153,7 @@ impl MemberProjectAccess {
 
     /// Check if member has access to a specific project
     pub async fn has_access(
-        pool: &SqlitePool,
+        pool: &PgPool,
         member_id: Uuid,
         project_id: Uuid,
     ) -> Result<bool, sqlx::Error> {

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -70,7 +70,7 @@ fn generate_identifier(name: &str) -> String {
 }
 
 impl Team {
-    pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_all(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Team,
             r#"SELECT id as "id!: Uuid",
@@ -89,7 +89,7 @@ impl Team {
         .await
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Team,
             r#"SELECT id as "id!: Uuid",
@@ -109,7 +109,7 @@ impl Team {
         .await
     }
 
-    pub async fn find_by_slug(pool: &SqlitePool, slug: &str) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_slug(pool: &PgPool, slug: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Team,
             r#"SELECT id as "id!: Uuid",
@@ -129,7 +129,7 @@ impl Team {
         .await
     }
 
-    pub async fn create(pool: &SqlitePool, data: &CreateTeam) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &PgPool, data: &CreateTeam) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         // Use provided identifier or auto-generate from name
         let identifier = data
@@ -162,7 +162,7 @@ impl Team {
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         data: &UpdateTeam,
     ) -> Result<Self, sqlx::Error> {
@@ -182,7 +182,7 @@ impl Team {
         sqlx::query_as!(
             Team,
             r#"UPDATE teams
-               SET name = $2, identifier = $3, icon = $4, color = $5, document_storage_path = $6, updated_at = datetime('now', 'subsec')
+               SET name = $2, identifier = $3, icon = $4, color = $5, document_storage_path = $6, updated_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -204,7 +204,7 @@ impl Team {
         .await
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM teams WHERE id = $1", id)
             .execute(pool)
             .await?;
@@ -212,7 +212,7 @@ impl Team {
     }
 
     /// Get all projects assigned to this team
-    pub async fn get_projects(pool: &SqlitePool, team_id: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
+    pub async fn get_projects(pool: &PgPool, team_id: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
         let rows = sqlx::query_scalar!(
             r#"SELECT project_id as "project_id!: Uuid"
                FROM team_projects
@@ -226,7 +226,7 @@ impl Team {
 
     /// Assign a project to this team
     pub async fn assign_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         project_id: Uuid,
     ) -> Result<TeamProject, sqlx::Error> {
@@ -234,7 +234,7 @@ impl Team {
             TeamProject,
             r#"INSERT INTO team_projects (team_id, project_id)
                VALUES ($1, $2)
-               ON CONFLICT (team_id, project_id) DO UPDATE SET team_id = team_id
+               ON CONFLICT (team_id, project_id) DO UPDATE SET team_id = team_projects.team_id
                RETURNING team_id as "team_id!: Uuid",
                          project_id as "project_id!: Uuid",
                          created_at as "created_at!: DateTime<Utc>""#,
@@ -247,7 +247,7 @@ impl Team {
 
     /// Remove a project from this team
     pub async fn remove_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         project_id: Uuid,
     ) -> Result<u64, sqlx::Error> {
@@ -263,7 +263,7 @@ impl Team {
 
     /// Get all teams that a project belongs to
     pub async fn find_by_project_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -288,7 +288,7 @@ impl Team {
     }
 
     /// Get the next issue number for a team
-    pub async fn get_next_issue_number(pool: &SqlitePool, team_id: Uuid) -> Result<i32, sqlx::Error> {
+    pub async fn get_next_issue_number(pool: &PgPool, team_id: Uuid) -> Result<i32, sqlx::Error> {
         let result = sqlx::query_scalar!(
             r#"SELECT COALESCE(MAX(issue_number), 0) + 1 as "next_number!: i32"
                FROM tasks

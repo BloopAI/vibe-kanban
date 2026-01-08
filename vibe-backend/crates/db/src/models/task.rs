@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Sqlite, SqlitePool, Type};
+use sqlx::{Executor, FromRow, Postgres, PgPool, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -203,12 +203,12 @@ impl Task {
         }
     }
 
-    pub async fn parent_project(&self, pool: &SqlitePool) -> Result<Option<Project>, sqlx::Error> {
+    pub async fn parent_project(&self, pool: &PgPool) -> Result<Option<Project>, sqlx::Error> {
         Project::find_by_id(pool, self.project_id).await
     }
 
     pub async fn find_by_project_id_with_attempt_status(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<TaskWithAttemptStatus>, sqlx::Error> {
         let records = sqlx::query!(
@@ -296,7 +296,7 @@ ORDER BY t.created_at DESC"#,
     }
 
     pub async fn find_by_team_id_with_attempt_status(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
     ) -> Result<Vec<TaskWithAttemptStatus>, sqlx::Error> {
         let records = sqlx::query!(
@@ -383,7 +383,7 @@ ORDER BY t.issue_number ASC"#,
         Ok(tasks)
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", issue_number as "issue_number: i32", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
@@ -395,24 +395,12 @@ ORDER BY t.issue_number ASC"#,
         .await
     }
 
-    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", issue_number as "issue_number: i32", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks
-               WHERE rowid = $1"#,
-            rowid
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     pub async fn find_by_shared_task_id<'e, E>(
         executor: E,
         shared_task_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         sqlx::query_as!(
             Task,
@@ -426,7 +414,7 @@ ORDER BY t.issue_number ASC"#,
         .await
     }
 
-    pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_all_shared(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", team_id as "team_id: Uuid", issue_number as "issue_number: i32", priority as "priority: i32", due_date as "due_date: String", assignee_id as "assignee_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
@@ -438,7 +426,7 @@ ORDER BY t.issue_number ASC"#,
     }
 
     pub async fn create(
-        pool: &SqlitePool,
+        pool: &PgPool,
         data: &CreateTask,
         task_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -483,7 +471,7 @@ ORDER BY t.issue_number ASC"#,
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         project_id: Uuid,
         title: String,
@@ -515,12 +503,12 @@ ORDER BY t.issue_number ASC"#,
     }
 
     pub async fn update_status(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         status: TaskStatus,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE tasks SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE tasks SET status = $2, updated_at = NOW() WHERE id = $1",
             id,
             status
         )
@@ -531,7 +519,7 @@ ORDER BY t.issue_number ASC"#,
 
     /// Move a task to a different project
     pub async fn move_to_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         new_project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -550,12 +538,12 @@ ORDER BY t.issue_number ASC"#,
 
     /// Update the parent_workspace_id field for a task
     pub async fn update_parent_workspace_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         parent_workspace_id: Option<Uuid>,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE tasks SET parent_workspace_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE tasks SET parent_workspace_id = $2, updated_at = NOW() WHERE id = $1",
             task_id,
             parent_workspace_id
         )
@@ -571,7 +559,7 @@ ORDER BY t.issue_number ASC"#,
         workspace_id: Uuid,
     ) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!(
             "UPDATE tasks SET parent_workspace_id = NULL WHERE parent_workspace_id = $1",
@@ -589,7 +577,7 @@ ORDER BY t.issue_number ASC"#,
         remote_project_id: Uuid,
     ) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!(
             r#"UPDATE tasks
@@ -606,7 +594,7 @@ ORDER BY t.issue_number ASC"#,
 
     pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
             .execute(executor)
@@ -620,10 +608,10 @@ ORDER BY t.issue_number ASC"#,
         shared_task_id: Option<Uuid>,
     ) -> Result<(), sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         sqlx::query!(
-            "UPDATE tasks SET shared_task_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE tasks SET shared_task_id = $2, updated_at = NOW() WHERE id = $1",
             id,
             shared_task_id
         )
@@ -637,14 +625,14 @@ ORDER BY t.issue_number ASC"#,
         shared_task_ids: &[Uuid],
     ) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         if shared_task_ids.is_empty() {
             return Ok(0);
         }
 
         let mut query_builder = sqlx::QueryBuilder::new(
-            "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id IN (",
+            "UPDATE tasks SET shared_task_id = NULL, updated_at = NOW() WHERE shared_task_id IN (",
         );
 
         let mut separated = query_builder.separated(", ");
@@ -659,7 +647,7 @@ ORDER BY t.issue_number ASC"#,
 
     /// Migrate a task to a team by setting team_id and auto-assigning issue_number
     pub async fn migrate_to_team(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         team_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -691,7 +679,7 @@ ORDER BY t.issue_number ASC"#,
     /// Migrate multiple tasks to a team in bulk
     /// Returns the list of migrated tasks
     pub async fn migrate_tasks_to_team(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_ids: &[Uuid],
         team_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -707,7 +695,7 @@ ORDER BY t.issue_number ASC"#,
 
     /// Migrate all tasks from a project to a team
     pub async fn migrate_project_tasks_to_team(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         team_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -728,7 +716,7 @@ ORDER BY t.issue_number ASC"#,
     }
 
     pub async fn find_children_by_workspace_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         // Find only child tasks that have this workspace as their parent
@@ -745,7 +733,7 @@ ORDER BY t.issue_number ASC"#,
     }
 
     pub async fn find_relationships_for_workspace(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace: &Workspace,
     ) -> Result<TaskRelationships, sqlx::Error> {
         // 1. Get the current task (task that owns this workspace)

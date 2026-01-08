@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -30,7 +30,7 @@ pub struct CreateSession {
 }
 
 impl Session {
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Session,
             r#"SELECT id AS "id!: Uuid",
@@ -47,7 +47,7 @@ impl Session {
     }
 
     pub async fn find_by_workspace_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -68,7 +68,7 @@ impl Session {
 
     /// Find the latest session for a workspace
     pub async fn find_latest_by_workspace_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -89,7 +89,7 @@ impl Session {
     }
 
     pub async fn create(
-        pool: &SqlitePool,
+        pool: &PgPool,
         data: &CreateSession,
         id: Uuid,
         workspace_id: Uuid,

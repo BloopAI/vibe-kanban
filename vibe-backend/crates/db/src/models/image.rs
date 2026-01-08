@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -40,7 +40,7 @@ pub struct CreateTaskImage {
 }
 
 impl Image {
-    pub async fn create(pool: &SqlitePool, data: &CreateImage) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &PgPool, data: &CreateImage) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             Image,
@@ -65,7 +65,7 @@ impl Image {
         .await
     }
 
-    pub async fn find_by_hash(pool: &SqlitePool, hash: &str) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_hash(pool: &PgPool, hash: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
             r#"SELECT id as "id!: Uuid",
@@ -84,7 +84,7 @@ impl Image {
         .await
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
             r#"SELECT id as "id!: Uuid",
@@ -104,7 +104,7 @@ impl Image {
     }
 
     pub async fn find_by_file_path(
-        pool: &SqlitePool,
+        pool: &PgPool,
         file_path: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -126,7 +126,7 @@ impl Image {
     }
 
     pub async fn find_by_task_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -149,14 +149,14 @@ impl Image {
         .await
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!(r#"DELETE FROM images WHERE id = $1"#, id)
             .execute(pool)
             .await?;
         Ok(())
     }
 
-    pub async fn find_orphaned_images(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_orphaned_images(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
             r#"SELECT i.id as "id!: Uuid",
@@ -179,7 +179,7 @@ impl Image {
 impl TaskImage {
     /// Associate multiple images with a task, skipping duplicates.
     pub async fn associate_many_dedup(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         image_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
@@ -201,7 +201,7 @@ impl TaskImage {
         Ok(())
     }
 
-    pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
+    pub async fn delete_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query!(r#"DELETE FROM task_images WHERE task_id = $1"#, task_id)
             .execute(pool)
             .await?;
@@ -210,7 +210,7 @@ impl TaskImage {
 
     /// Check if an image is associated with a specific task.
     pub async fn is_associated(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
         image_id: Uuid,
     ) -> Result<bool, sqlx::Error> {

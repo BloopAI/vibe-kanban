@@ -1,7 +1,7 @@
 //! Database Pool Manager
 //!
-//! Manages multiple SQLite connection pools for multi-tenant database architecture.
-//! Each team gets their own database file and connection pool.
+//! Manages the global Postgres connection pool.
+//! Previously managed multiple SQLite pools, now adapted for single-DB architecture.
 
 use std::{
     collections::HashMap,
@@ -9,125 +9,59 @@ use std::{
     sync::Arc,
 };
 
-use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
-use std::str::FromStr;
 use tokio::sync::RwLock;
 
 use crate::{DBService, registry::RegistryService};
 
 /// Manages database connection pools for multiple teams
+/// Adapted for Postgres: Holds one global pool shared by all.
 #[derive(Clone)]
 pub struct DBPoolManager {
-    /// Map of team_id -> DBService
-    pools: Arc<RwLock<HashMap<String, Arc<DBService>>>>,
-    /// Registry service for looking up team info
+    /// The global database connection
+    global_pool: Arc<DBService>,
+    /// Registry service (kept for API compatibility and team lookups)
     registry: Arc<RegistryService>,
 }
 
 impl DBPoolManager {
     /// Create a new pool manager with a registry service
-    pub fn new(registry: Arc<RegistryService>) -> Self {
-        Self {
-            pools: Arc::new(RwLock::new(HashMap::new())),
+    pub async fn new(registry: Arc<RegistryService>) -> Result<Self, crate::PoolManagerError> {
+        // Initialize the global connection pool
+        let global_pool = DBService::new().await.map_err(crate::PoolManagerError::Database)?;
+        
+        Ok(Self {
+            global_pool: Arc::new(global_pool),
             registry,
-        }
+        })
     }
 
-    /// Get or create a connection pool for a team
-    pub async fn get_pool(&self, team_id: &str) -> Result<Arc<DBService>, PoolManagerError> {
-        // First, check if we already have a pool
-        {
-            let pools = self.pools.read().await;
-            if let Some(pool) = pools.get(team_id) {
-                return Ok(pool.clone());
-            }
-        }
-
-        // Look up team in registry
-        let team_entry = self
-            .registry
-            .find_by_id(team_id)
-            .await
-            .map_err(PoolManagerError::Database)?
-            .ok_or_else(|| PoolManagerError::TeamNotFound(team_id.to_string()))?;
-
-        // Create new pool
-        let db_path = PathBuf::from(&team_entry.db_path);
-        let db_service = self.create_pool_for_path(db_path).await?;
-        let db_service = Arc::new(db_service);
-
-        // Store in cache
-        {
-            let mut pools = self.pools.write().await;
-            pools.insert(team_id.to_string(), db_service.clone());
-        }
-
-        Ok(db_service)
+    /// Get the connection pool (ignores team_id as we use single DB)
+    pub async fn get_pool(&self, _team_id: &str) -> Result<Arc<DBService>, crate::PoolManagerError> {
+        Ok(self.global_pool.clone())
     }
 
-    /// Get pool by team slug (alternative lookup method)
-    pub async fn get_pool_by_slug(&self, slug: &str) -> Result<Arc<DBService>, PoolManagerError> {
-        let team_entry = self
-            .registry
-            .find_by_slug(slug)
-            .await
-            .map_err(PoolManagerError::Database)?
-            .ok_or_else(|| PoolManagerError::TeamNotFound(slug.to_string()))?;
-
-        self.get_pool(&team_entry.id).await
+    /// Get pool by team slug (returns global pool)
+    pub async fn get_pool_by_slug(&self, _slug: &str) -> Result<Arc<DBService>, crate::PoolManagerError> {
+        Ok(self.global_pool.clone())
     }
 
-    /// Create a new pool for a team (used when creating a new team)
+    /// Create a new pool for a team (returns global pool)
     pub async fn create_pool_for_team(
         &self,
-        team_id: &str,
-        slug: &str,
-    ) -> Result<Arc<DBService>, PoolManagerError> {
-        let db_path = RegistryService::get_team_db_path(slug);
-        let db_service = self.create_pool_for_path(db_path).await?;
-        let db_service = Arc::new(db_service);
-
-        // Store in cache
-        {
-            let mut pools = self.pools.write().await;
-            pools.insert(team_id.to_string(), db_service.clone());
-        }
-
-        Ok(db_service)
+        _team_id: &str,
+        _slug: &str,
+    ) -> Result<Arc<DBService>, crate::PoolManagerError> {
+        Ok(self.global_pool.clone())
     }
 
-    /// Create a connection pool for a specific database path
-    async fn create_pool_for_path(&self, db_path: PathBuf) -> Result<DBService, PoolManagerError> {
-        tracing::info!("Creating pool for team database: {}", db_path.display());
-
-        let database_url = format!("sqlite://{}", db_path.to_string_lossy());
-        let options = SqliteConnectOptions::from_str(&database_url)
-            .map_err(|e| PoolManagerError::Database(e))?
-            .create_if_missing(true);
-
-        let pool = SqlitePool::connect_with(options)
-            .await
-            .map_err(PoolManagerError::Database)?;
-
-        // Run migrations on the team database
-        sqlx::migrate!("./migrations")
-            .run(&pool)
-            .await
-            .map_err(|e| PoolManagerError::Migration(e.to_string()))?;
-
-        Ok(DBService { pool })
+    /// Remove a pool (no-op)
+    pub async fn remove_pool(&self, _team_id: &str) {
+        // No-op
     }
 
-    /// Remove a pool from cache (e.g., when team is deleted)
-    pub async fn remove_pool(&self, team_id: &str) {
-        let mut pools = self.pools.write().await;
-        pools.remove(team_id);
-    }
-
-    /// Get the number of active pools
+    /// Get the number of active pools (always 1)
     pub async fn pool_count(&self) -> usize {
-        let pools = self.pools.read().await;
-        pools.len()
+        1
     }
 
     /// Get registry service
@@ -135,22 +69,8 @@ impl DBPoolManager {
         &self.registry
     }
 
-    /// Preload pools for all registered teams
-    pub async fn preload_all_pools(&self) -> Result<(), PoolManagerError> {
-        let teams = self
-            .registry
-            .find_all()
-            .await
-            .map_err(PoolManagerError::Database)?;
-
-        tracing::info!("Preloading pools for {} teams", teams.len());
-
-        for team in teams {
-            if let Err(e) = self.get_pool(&team.id).await {
-                tracing::warn!("Failed to preload pool for team {}: {}", team.slug, e);
-            }
-        }
-
+    /// Preload pools (no-op)
+    pub async fn preload_all_pools(&self) -> Result<(), crate::PoolManagerError> {
         Ok(())
     }
 }
@@ -168,50 +88,3 @@ pub enum PoolManagerError {
     Migration(String),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::registry::CreateTeamRegistry;
-    use tempfile::TempDir;
-
-    #[tokio::test]
-    async fn test_pool_manager() {
-        // Use temp directory for test
-        let temp_dir = TempDir::new().unwrap();
-        std::env::set_var("VK_ASSET_DIR", temp_dir.path().to_string_lossy().to_string());
-
-        // Create registry and register a team
-        let registry = Arc::new(RegistryService::new().await.unwrap());
-        registry
-            .create(&CreateTeamRegistry {
-                id: "team-123".to_string(),
-                slug: "test-team".to_string(),
-                name: "Test Team".to_string(),
-                turso_db: None,
-            })
-            .await
-            .unwrap();
-
-        // Create pool manager
-        let manager = DBPoolManager::new(registry);
-
-        // Get pool (should create it)
-        let pool1 = manager.get_pool("team-123").await.unwrap();
-        assert_eq!(manager.pool_count().await, 1);
-
-        // Get same pool again (should return cached)
-        let pool2 = manager.get_pool("team-123").await.unwrap();
-        assert_eq!(manager.pool_count().await, 1);
-
-        // Both should be the same Arc
-        assert!(Arc::ptr_eq(&pool1, &pool2));
-
-        // Get by slug
-        let pool3 = manager.get_pool_by_slug("test-team").await.unwrap();
-        assert!(Arc::ptr_eq(&pool1, &pool3));
-
-        // Remove pool
-        manager.remove_pool("team-123").await;
-        assert_eq!(manager.pool_count().await, 0);
-    }
-}

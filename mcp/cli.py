@@ -21,6 +21,18 @@ import sys
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
+from dotenv import load_dotenv
+
+# Load environment variables from project root
+script_dir = Path(__file__).parent
+root_dir = script_dir.parent
+env_path = root_dir / ".env"
+load_dotenv(dotenv_path=env_path)
+
+if os.environ.get("VIBE_API_TOKEN"):
+    print(f"Debug: Token found (starts with {os.environ['VIBE_API_TOKEN'][:10]}...)", file=sys.stderr)
+else:
+    print("Debug: No VIBE_API_TOKEN found in environment", file=sys.stderr)
 
 # Default configuration
 DEFAULT_PORT = 3003
@@ -66,6 +78,10 @@ def api_request(endpoint, method="GET", data=None):
     url = f"{base_url}/api{endpoint}"
 
     headers = {"Content-Type": "application/json"}
+    
+    # Add Authorization header if token is present
+    if os.environ.get("VIBE_API_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['VIBE_API_TOKEN']}"
 
     if data:
         body = json.dumps(data).encode("utf-8")

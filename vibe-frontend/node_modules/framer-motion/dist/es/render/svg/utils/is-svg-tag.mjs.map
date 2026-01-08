@@ -1,1 +1,0 @@
-{"version":3,"file":"is-svg-tag.mjs","sources":["../../../../../src/render/svg/utils/is-svg-tag.ts"],"sourcesContent":["export const isSVGTag = (tag: unknown) =>\n    typeof tag === \"string\" && tag.toLowerCase() === \"svg\"\n"],"names":[],"mappings":"MAAa,QAAQ,GAAG,CAAC,GAAY,KACjC,OAAO,GAAG,KAAK,QAAQ,IAAI,GAAG,CAAC,WAAW,EAAE,KAAK;;;;"}

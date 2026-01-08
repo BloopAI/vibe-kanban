@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ pub struct ExecutionProcessLogs {
 impl ExecutionProcessLogs {
     /// Find logs by execution process ID
     pub async fn find_by_execution_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -49,14 +49,14 @@ impl ExecutionProcessLogs {
 
     /// Append a JSONL line to the logs for an execution process
     pub async fn append_log_line(
-        pool: &SqlitePool,
+        pool: &PgPool,
         execution_id: Uuid,
         jsonl_line: &str,
     ) -> Result<(), sqlx::Error> {
         let byte_size = jsonl_line.len() as i64;
         sqlx::query!(
             r#"INSERT INTO execution_process_logs (execution_id, logs, byte_size, inserted_at)
-               VALUES ($1, $2, $3, datetime('now', 'subsec'))"#,
+               VALUES ($1, $2, $3, NOW())"#,
             execution_id,
             jsonl_line,
             byte_size

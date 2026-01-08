@@ -1,1 +1,0 @@
-{"version":3,"file":"is-browser.mjs","sources":["../../../src/utils/is-browser.ts"],"sourcesContent":["export const isBrowser = typeof window !== \"undefined\"\n"],"names":[],"mappings":"MAAa,SAAS,GAAG,OAAO,MAAM,KAAK;;;;"}

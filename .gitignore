@@ -1,0 +1,27 @@
+# Node.js
+node_modules/
+dist/
+.env*
+!.env.example
+npm-debug.log*
+
+# Rust
+target/
+**/*.rs.bk
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local Logs
+.logs/
+logs/
+
+# Temporary
+temp_deploy/

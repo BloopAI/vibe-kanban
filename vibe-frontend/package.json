@@ -46,6 +46,7 @@
     "@rjsf/shadcn": "6.1.1",
     "@sentry/react": "^9.34.0",
     "@sentry/vite-plugin": "^3.5.0",
+    "@supabase/supabase-js": "^2.90.0",
     "@tanstack/electric-db-collection": "^0.2.6",
     "@tanstack/react-db": "^0.1.50",
     "@tanstack/react-form": "^1.23.8",

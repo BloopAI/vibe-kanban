@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -164,7 +164,7 @@ pub struct UpdateDocument {
 
 impl DocumentFolder {
     pub async fn find_all_by_team(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -188,7 +188,7 @@ impl DocumentFolder {
         .await
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             DocumentFolder,
             r#"SELECT id as "id!: Uuid",
@@ -210,7 +210,7 @@ impl DocumentFolder {
     }
 
     pub async fn find_children(
-        pool: &SqlitePool,
+        pool: &PgPool,
         parent_id: Option<Uuid>,
         team_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -258,7 +258,7 @@ impl DocumentFolder {
         }
     }
 
-    pub async fn create(pool: &SqlitePool, data: &CreateDocumentFolder) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &PgPool, data: &CreateDocumentFolder) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
 
         // Get max position for ordering
@@ -311,7 +311,7 @@ impl DocumentFolder {
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         data: &UpdateDocumentFolder,
     ) -> Result<Self, sqlx::Error> {
@@ -334,7 +334,7 @@ impl DocumentFolder {
             DocumentFolder,
             r#"UPDATE document_folders
                SET parent_id = $2, name = $3, icon = $4, color = $5, local_path = $6, position = $7,
-                   updated_at = datetime('now', 'subsec')
+                   updated_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
@@ -358,7 +358,7 @@ impl DocumentFolder {
         .await
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query("DELETE FROM document_folders WHERE id = $1")
             .bind(id)
             .execute(pool)
@@ -368,7 +368,7 @@ impl DocumentFolder {
 
     /// Find a folder by name and parent_id within a team, or create it if it doesn't exist
     pub async fn find_or_create_by_name(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         parent_id: Option<Uuid>,
         name: &str,
@@ -435,7 +435,7 @@ impl DocumentFolder {
 
 impl Document {
     pub async fn find_all_by_team(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         include_archived: bool,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -497,7 +497,7 @@ impl Document {
     }
 
     pub async fn find_by_folder(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         folder_id: Option<Uuid>,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -559,7 +559,7 @@ impl Document {
         }
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Document,
             r#"SELECT id as "id!: Uuid",
@@ -589,7 +589,7 @@ impl Document {
 
     /// Find a document by slug within a team
     pub async fn find_by_slug(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         slug: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
@@ -622,7 +622,7 @@ impl Document {
     }
 
     pub async fn search(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         query: &str,
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -657,7 +657,7 @@ impl Document {
         .await
     }
 
-    pub async fn create(pool: &SqlitePool, data: &CreateDocument) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &PgPool, data: &CreateDocument) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         let file_type = data.file_type.clone().unwrap_or_else(|| "markdown".to_string());
         let slug = generate_slug(&data.title);
@@ -720,7 +720,7 @@ impl Document {
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         data: &UpdateDocument,
     ) -> Result<Self, sqlx::Error> {
@@ -750,7 +750,7 @@ impl Document {
             Document,
             r#"UPDATE documents
                SET folder_id = $2, title = $3, slug = $4, content = $5, icon = $6, is_pinned = $7,
-                   is_archived = $8, position = $9, updated_at = datetime('now', 'subsec')
+                   is_archived = $8, position = $9, updated_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
@@ -783,7 +783,7 @@ impl Document {
         .await
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query("DELETE FROM documents WHERE id = $1")
             .bind(id)
             .execute(pool)
@@ -793,7 +793,7 @@ impl Document {
 
     /// Update file metadata after upload
     pub async fn update_file_metadata(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         file_path: &str,
         file_size: i64,
@@ -804,7 +804,7 @@ impl Document {
             Document,
             r#"UPDATE documents
                SET file_path = $2, file_size = $3, mime_type = $4, file_type = $5,
-                   updated_at = datetime('now', 'subsec')
+                   updated_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",

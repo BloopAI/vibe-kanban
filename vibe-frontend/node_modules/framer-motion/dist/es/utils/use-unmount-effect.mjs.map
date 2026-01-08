@@ -1,1 +1,0 @@
-{"version":3,"file":"use-unmount-effect.mjs","sources":["../../../src/utils/use-unmount-effect.ts"],"sourcesContent":["\"use client\"\n\nimport { useEffect } from \"react\"\n\nexport function useUnmountEffect(callback: () => void) {\n    return useEffect(() => () => callback(), [])\n}\n"],"names":[],"mappings":";;;AAIM;AACF;AACJ;;"}

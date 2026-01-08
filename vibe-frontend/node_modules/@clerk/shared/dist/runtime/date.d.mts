@@ -1,2 +1,0 @@
-import { RelativeDateCase, addYears, dateTo12HourTime, differenceInCalendarDays, formatRelative, normalizeDate } from "./date-DIGfFkoy.mjs";
-export { RelativeDateCase, addYears, dateTo12HourTime, differenceInCalendarDays, formatRelative, normalizeDate };

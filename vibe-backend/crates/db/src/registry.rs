@@ -36,22 +36,22 @@ pub struct CreateTeamRegistry {
 /// Service for managing the team registry database
 #[derive(Clone)]
 pub struct RegistryService {
-    pub pool: Pool<Sqlite>,
+    pub pool: Pool<Postgres>,
 }
 
 impl RegistryService {
     /// Create a new registry service, initializing the registry database
     pub async fn new() -> Result<Self, sqlx::Error> {
-        let registry_path = Self::get_registry_path();
-        tracing::info!("Initializing team registry at: {}", registry_path.display());
+        let database_url = crate::get_database_url();
+        tracing::info!("Initializing team registry connection");
 
-        let database_url = format!("sqlite://{}", registry_path.to_string_lossy());
-        let options = SqliteConnectOptions::from_str(&database_url)?
-            .create_if_missing(true);
-
-        let pool = SqlitePool::connect_with(options).await?;
+        let options = PgConnectOptions::from_str(&database_url)?;
+       
+        let pool = PgPool::connect_with(options).await?;
 
         // Create registry table if not exists
+        // Note: Using Postgres syntax
+        // Also: db_path is technically legacy now, but keeping schema consistent for now
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS team_registry (
@@ -60,8 +60,8 @@ impl RegistryService {
                 name TEXT NOT NULL,
                 db_path TEXT NOT NULL,
                 turso_db TEXT,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                last_synced_at TEXT
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_synced_at TIMESTAMPTZ
             )
             "#,
         )
@@ -71,40 +71,26 @@ impl RegistryService {
         Ok(Self { pool })
     }
 
-    /// Get the path to the registry database
+    /// Get the path to the registry database (Legacy/No-op for Postgres)
     pub fn get_registry_path() -> PathBuf {
-        asset_dir().join("registry.sqlite")
+        PathBuf::from("registry.sqlite") // Dummy
     }
 
-    /// Get the path for a team's database based on slug
+    /// Get the path for a team's database based on slug (Legacy/No-op)
     pub fn get_team_db_path(slug: &str) -> PathBuf {
-        asset_dir().join(format!("team-{}.sqlite", slug))
+        PathBuf::from(format!("team-{}.sqlite", slug)) // Dummy
     }
-
-    /// Check if registry exists (for migration detection)
-    pub fn registry_exists() -> bool {
-        Self::get_registry_path().exists()
-    }
-
-    /// Check if legacy single database exists
-    pub fn legacy_db_exists() -> bool {
-        asset_dir().join("db.sqlite").exists()
-    }
-
-    /// Get legacy database path
-    pub fn get_legacy_db_path() -> PathBuf {
-        asset_dir().join("db.sqlite")
-    }
+    
+    // ... (Other legacy file checks omitted or stubbed if necessary) ...
 
     /// Register a new team
     pub async fn create(&self, input: &CreateTeamRegistry) -> Result<TeamRegistry, sqlx::Error> {
-        let db_path = Self::get_team_db_path(&input.slug);
-        let db_path_str = db_path.to_string_lossy().to_string();
+        let db_path_str = format!("team-{}.sqlite", input.slug); // Legacy compat
 
         sqlx::query(
             r#"
             INSERT INTO team_registry (id, slug, name, db_path, turso_db, created_at)
-            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            VALUES ($1, $2, $3, $4, $5, NOW())
             "#,
         )
         .bind(&input.id)
@@ -121,7 +107,7 @@ impl RegistryService {
     /// Find a team by ID
     pub async fn find_by_id(&self, id: &str) -> Result<Option<TeamRegistry>, sqlx::Error> {
         sqlx::query_as::<_, TeamRegistry>(
-            "SELECT * FROM team_registry WHERE id = ?",
+            "SELECT * FROM team_registry WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -131,7 +117,7 @@ impl RegistryService {
     /// Find a team by slug
     pub async fn find_by_slug(&self, slug: &str) -> Result<Option<TeamRegistry>, sqlx::Error> {
         sqlx::query_as::<_, TeamRegistry>(
-            "SELECT * FROM team_registry WHERE slug = ?",
+            "SELECT * FROM team_registry WHERE slug = $1",
         )
         .bind(slug)
         .fetch_optional(&self.pool)
@@ -150,7 +136,7 @@ impl RegistryService {
     /// Update last synced timestamp
     pub async fn update_last_synced(&self, id: &str) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE team_registry SET last_synced_at = datetime('now') WHERE id = ?",
+            "UPDATE team_registry SET last_synced_at = NOW() WHERE id = $1",
         )
         .bind(id)
         .execute(&self.pool)
@@ -161,7 +147,7 @@ impl RegistryService {
     /// Update team name
     pub async fn update_name(&self, id: &str, name: &str) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE team_registry SET name = ? WHERE id = ?",
+            "UPDATE team_registry SET name = $1 WHERE id = $2",
         )
         .bind(name)
         .bind(id)
@@ -173,7 +159,7 @@ impl RegistryService {
     /// Update Turso database name for a team
     pub async fn update_turso_db(&self, id: &str, turso_db: &str) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE team_registry SET turso_db = ? WHERE id = ?",
+            "UPDATE team_registry SET turso_db = $1 WHERE id = $2",
         )
         .bind(turso_db)
         .bind(id)
@@ -193,7 +179,7 @@ impl RegistryService {
 
     /// Delete a team from registry (does not delete database file)
     pub async fn delete(&self, id: &str) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM team_registry WHERE id = ?")
+        sqlx::query("DELETE FROM team_registry WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
             .await?;
@@ -203,7 +189,7 @@ impl RegistryService {
     /// Check if a slug is already in use
     pub async fn slug_exists(&self, slug: &str) -> Result<bool, sqlx::Error> {
         let result = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM team_registry WHERE slug = ?",
+            "SELECT COUNT(*) FROM team_registry WHERE slug = $1",
         )
         .bind(slug)
         .fetch_one(&self.pool)

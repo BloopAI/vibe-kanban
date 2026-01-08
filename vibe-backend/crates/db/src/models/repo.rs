@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
+use sqlx::{Executor, FromRow, PgPool, Postgres};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -30,7 +30,7 @@ pub struct Repo {
 impl Repo {
     /// Get repos that still have the migration sentinel as their name.
     /// Used by the startup backfill to fix repo names.
-    pub async fn list_needing_name_fix(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn list_needing_name_fix(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Repo,
             r#"SELECT id as "id!: Uuid",
@@ -47,13 +47,13 @@ impl Repo {
     }
 
     pub async fn update_name(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         name: &str,
         display_name: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE repos SET name = $1, display_name = $2, updated_at = datetime('now', 'subsec') WHERE id = $3",
+            "UPDATE repos SET name = $1, display_name = $2, updated_at = NOW() WHERE id = $3",
             name,
             display_name,
             id
@@ -63,7 +63,7 @@ impl Repo {
         Ok(())
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Repo,
             r#"SELECT id as "id!: Uuid",
@@ -86,7 +86,7 @@ impl Repo {
         display_name: &str,
     ) -> Result<Self, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let path_str = path.to_string_lossy().to_string();
         let id = Uuid::new_v4();
@@ -100,7 +100,7 @@ impl Repo {
             Repo,
             r#"INSERT INTO repos (id, path, name, display_name)
                VALUES ($1, $2, $3, $4)
-               ON CONFLICT(path) DO UPDATE SET updated_at = updated_at
+               ON CONFLICT(path) DO UPDATE SET updated_at = repos.updated_at
                RETURNING id as "id!: Uuid",
                          path,
                          name,
@@ -116,7 +116,7 @@ impl Repo {
         .await
     }
 
-    pub async fn delete_orphaned(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    pub async fn delete_orphaned(pool: &PgPool) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
             r#"DELETE FROM repos
                WHERE id NOT IN (SELECT repo_id FROM project_repos)

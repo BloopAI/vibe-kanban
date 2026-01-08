@@ -2127,8 +2127,15 @@ export const documentsApi = {
   // Upload documents via browser file picker
   upload: async (teamId: string, formData: FormData): Promise<UploadResult> => {
     // Use fetch directly since FormData needs special handling (no Content-Type header)
+    const headers: HeadersInit = {};
+    const token = await getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/documents/upload`, {
       method: 'POST',
+      headers,
       body: formData,
       // Note: Don't set Content-Type header - browser sets it with boundary for multipart
     });

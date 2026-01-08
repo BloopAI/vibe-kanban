@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -69,7 +69,7 @@ pub struct GitHubConnectionWithRepos {
 
 impl GitHubConnection {
     /// Find workspace-level connection (team_id IS NULL)
-    pub async fn find_workspace_connection(pool: &SqlitePool) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_workspace_connection(pool: &PgPool) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubConnection,
             r#"SELECT id as "id!: Uuid",
@@ -86,7 +86,7 @@ impl GitHubConnection {
     }
 
     pub async fn find_by_team_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -105,7 +105,7 @@ impl GitHubConnection {
         .await
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubConnection,
             r#"SELECT id as "id!: Uuid",
@@ -124,7 +124,7 @@ impl GitHubConnection {
 
     /// Create a workspace-level connection (no team_id)
     pub async fn create_workspace_connection(
-        pool: &SqlitePool,
+        pool: &PgPool,
         data: &CreateGitHubConnection,
     ) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
@@ -147,7 +147,7 @@ impl GitHubConnection {
     }
 
     pub async fn create(
-        pool: &SqlitePool,
+        pool: &PgPool,
         team_id: Uuid,
         data: &CreateGitHubConnection,
     ) -> Result<Self, sqlx::Error> {
@@ -172,7 +172,7 @@ impl GitHubConnection {
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         data: &UpdateGitHubConnection,
     ) -> Result<Self, sqlx::Error> {
@@ -186,7 +186,7 @@ impl GitHubConnection {
         sqlx::query_as!(
             GitHubConnection,
             r#"UPDATE github_connections
-               SET access_token = $2, github_username = $3, updated_at = datetime('now', 'subsec')
+               SET access_token = $2, github_username = $3, updated_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          team_id as "team_id: Uuid",
@@ -202,7 +202,7 @@ impl GitHubConnection {
         .await
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_connections WHERE id = $1", id)
             .execute(pool)
             .await?;
@@ -210,14 +210,14 @@ impl GitHubConnection {
     }
 
     /// Delete workspace-level connection
-    pub async fn delete_workspace_connection(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    pub async fn delete_workspace_connection(pool: &PgPool) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_connections WHERE team_id IS NULL")
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
     }
 
-    pub async fn delete_by_team_id(pool: &SqlitePool, team_id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete_by_team_id(pool: &PgPool, team_id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_connections WHERE team_id = $1", team_id)
             .execute(pool)
             .await?;
@@ -250,7 +250,7 @@ pub struct ConfigureMultiFolderSync {
 
 impl GitHubRepoSyncConfig {
     pub async fn find_by_repo_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         repo_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -270,7 +270,7 @@ impl GitHubRepoSyncConfig {
     }
 
     pub async fn upsert(
-        pool: &SqlitePool,
+        pool: &PgPool,
         repo_id: Uuid,
         folder_id: &str,
         github_path: Option<&str>,
@@ -295,14 +295,14 @@ impl GitHubRepoSyncConfig {
         .await
     }
 
-    pub async fn delete_by_repo_id(pool: &SqlitePool, repo_id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete_by_repo_id(pool: &PgPool, repo_id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_repo_sync_configs WHERE repo_id = $1", repo_id)
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
     }
 
-    pub async fn delete(pool: &SqlitePool, repo_id: Uuid, folder_id: &str) -> Result<u64, sqlx::Error> {
+    pub async fn delete(pool: &PgPool, repo_id: Uuid, folder_id: &str) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
             "DELETE FROM github_repo_sync_configs WHERE repo_id = $1 AND folder_id = $2",
             repo_id,
@@ -316,7 +316,7 @@ impl GitHubRepoSyncConfig {
 
 impl GitHubRepository {
     pub async fn find_by_connection_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         connection_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -342,7 +342,7 @@ impl GitHubRepository {
         .await
     }
 
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             GitHubRepository,
             r#"SELECT id as "id!: Uuid",
@@ -366,7 +366,7 @@ impl GitHubRepository {
     }
 
     pub async fn find_by_sync_folder(
-        pool: &SqlitePool,
+        pool: &PgPool,
         sync_folder_id: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -392,7 +392,7 @@ impl GitHubRepository {
     }
 
     pub async fn link(
-        pool: &SqlitePool,
+        pool: &PgPool,
         connection_id: Uuid,
         data: &LinkGitHubRepository,
     ) -> Result<Self, sqlx::Error> {
@@ -431,7 +431,7 @@ impl GitHubRepository {
 
     /// Configure sync settings for a repository
     pub async fn configure_sync(
-        pool: &SqlitePool,
+        pool: &PgPool,
         id: Uuid,
         sync_path: &str,
         sync_folder_id: &str,
@@ -462,11 +462,11 @@ impl GitHubRepository {
     }
 
     /// Update last synced timestamp
-    pub async fn update_last_synced(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
+    pub async fn update_last_synced(pool: &PgPool, id: Uuid) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             GitHubRepository,
             r#"UPDATE github_repositories
-               SET last_synced_at = datetime('now', 'subsec')
+               SET last_synced_at = NOW()
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          connection_id as "connection_id!: Uuid",
@@ -487,7 +487,7 @@ impl GitHubRepository {
     }
 
     /// Clear sync configuration for a repository
-    pub async fn clear_sync(pool: &SqlitePool, id: Uuid) -> Result<Self, sqlx::Error> {
+    pub async fn clear_sync(pool: &PgPool, id: Uuid) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             GitHubRepository,
             r#"UPDATE github_repositories
@@ -511,7 +511,7 @@ impl GitHubRepository {
         .await
     }
 
-    pub async fn unlink(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn unlink(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!("DELETE FROM github_repositories WHERE id = $1", id)
             .execute(pool)
             .await?;
@@ -519,7 +519,7 @@ impl GitHubRepository {
     }
 
     pub async fn unlink_by_full_name(
-        pool: &SqlitePool,
+        pool: &PgPool,
         connection_id: Uuid,
         repo_full_name: &str,
     ) -> Result<u64, sqlx::Error> {

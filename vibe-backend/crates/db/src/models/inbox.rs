@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Sqlite, SqlitePool, Type};
+use sqlx::{Executor, FromRow, PgPool, Postgres, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -58,7 +58,7 @@ pub struct InboxSummary {
 
 impl InboxItem {
     /// Find all inbox items, ordered by most recent first
-    pub async fn find_all(pool: &SqlitePool, limit: Option<i64>) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_all(pool: &PgPool, limit: Option<i64>) -> Result<Vec<Self>, sqlx::Error> {
         let limit = limit.unwrap_or(100);
         sqlx::query_as!(
             InboxItem,
@@ -84,7 +84,7 @@ impl InboxItem {
 
     /// Find all unread inbox items
     pub async fn find_unread(
-        pool: &SqlitePool,
+        pool: &PgPool,
         limit: Option<i64>,
     ) -> Result<Vec<Self>, sqlx::Error> {
         let limit = limit.unwrap_or(100);
@@ -112,7 +112,7 @@ impl InboxItem {
     }
 
     /// Find an inbox item by ID
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             InboxItem,
             r#"SELECT
@@ -135,7 +135,7 @@ impl InboxItem {
     }
 
     /// Create a new inbox item
-    pub async fn create(pool: &SqlitePool, data: &CreateInboxItem) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &PgPool, data: &CreateInboxItem) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             InboxItem,
@@ -165,11 +165,11 @@ impl InboxItem {
     }
 
     /// Mark an inbox item as read
-    pub async fn mark_as_read(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+    pub async fn mark_as_read(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             InboxItem,
             r#"UPDATE inbox_items
-            SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP
+            SET is_read = TRUE, updated_at = NOW()
             WHERE id = $1
             RETURNING
                 id as "id!: Uuid",
@@ -189,9 +189,9 @@ impl InboxItem {
     }
 
     /// Mark all inbox items as read
-    pub async fn mark_all_as_read(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    pub async fn mark_all_as_read(pool: &PgPool) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
-            "UPDATE inbox_items SET is_read = TRUE, updated_at = CURRENT_TIMESTAMP WHERE is_read = FALSE"
+            "UPDATE inbox_items SET is_read = TRUE, updated_at = NOW() WHERE is_read = FALSE"
         )
         .execute(pool)
         .await?;
@@ -201,7 +201,7 @@ impl InboxItem {
     /// Delete an inbox item
     pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!("DELETE FROM inbox_items WHERE id = $1", id)
             .execute(executor)
@@ -210,7 +210,7 @@ impl InboxItem {
     }
 
     /// Count unread inbox items
-    pub async fn count_unread(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
+    pub async fn count_unread(pool: &PgPool) -> Result<i64, sqlx::Error> {
         let result = sqlx::query_scalar!(
             r#"SELECT COUNT(*) as "count!: i64" FROM inbox_items WHERE is_read = FALSE"#
         )
@@ -220,7 +220,7 @@ impl InboxItem {
     }
 
     /// Get inbox summary (total and unread counts)
-    pub async fn get_summary(pool: &SqlitePool) -> Result<InboxSummary, sqlx::Error> {
+    pub async fn get_summary(pool: &PgPool) -> Result<InboxSummary, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT
                 COUNT(*) as "total_count!: i64",
@@ -239,7 +239,7 @@ impl InboxItem {
     /// Delete all inbox items related to a task
     pub async fn delete_by_task_id<'e, E>(executor: E, task_id: Uuid) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!("DELETE FROM inbox_items WHERE task_id = $1", task_id)
             .execute(executor)
@@ -253,7 +253,7 @@ impl InboxItem {
         project_id: Uuid,
     ) -> Result<u64, sqlx::Error>
     where
-        E: Executor<'e, Database = Sqlite>,
+        E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!("DELETE FROM inbox_items WHERE project_id = $1", project_id)
             .execute(executor)
@@ -263,7 +263,7 @@ impl InboxItem {
 
     /// Find inbox items by project ID
     pub async fn find_by_project_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         limit: Option<i64>,
     ) -> Result<Vec<Self>, sqlx::Error> {

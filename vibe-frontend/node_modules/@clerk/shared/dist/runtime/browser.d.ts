@@ -1,2 +1,0 @@
-import { inBrowser, isBrowserOnline, isValidBrowser, isValidBrowserOnline, userAgentIsRobot } from "./browser-CT1g0w-N.js";
-export { inBrowser, isBrowserOnline, isValidBrowser, isValidBrowserOnline, userAgentIsRobot };

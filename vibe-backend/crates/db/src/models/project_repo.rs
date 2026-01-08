@@ -2,7 +2,7 @@ use std::path::Path;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -60,7 +60,7 @@ pub struct UpdateProjectRepo {
 
 impl ProjectRepo {
     pub async fn find_by_project_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -81,7 +81,7 @@ impl ProjectRepo {
     }
 
     pub async fn find_by_repo_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         repo_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -102,7 +102,7 @@ impl ProjectRepo {
     }
 
     pub async fn find_by_project_id_with_names(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<ProjectRepoWithName>, sqlx::Error> {
         sqlx::query_as!(
@@ -126,7 +126,7 @@ impl ProjectRepo {
     }
 
     pub async fn find_repos_for_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
     ) -> Result<Vec<Repo>, sqlx::Error> {
         sqlx::query_as!(
@@ -148,7 +148,7 @@ impl ProjectRepo {
     }
 
     pub async fn find_by_project_and_repo(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
@@ -171,7 +171,7 @@ impl ProjectRepo {
     }
 
     pub async fn add_repo_to_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         repo_path: &str,
         repo_name: &str,
@@ -200,7 +200,7 @@ impl ProjectRepo {
     }
 
     pub async fn remove_repo_from_project(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<(), ProjectRepoError> {
@@ -220,7 +220,7 @@ impl ProjectRepo {
     }
 
     pub async fn create(
-        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Postgres>,
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -245,7 +245,7 @@ impl ProjectRepo {
     }
 
     pub async fn update(
-        pool: &SqlitePool,
+        pool: &PgPool,
         project_id: Uuid,
         repo_id: Uuid,
         payload: &UpdateProjectRepo,

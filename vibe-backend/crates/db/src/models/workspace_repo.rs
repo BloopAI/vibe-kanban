@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, PgPool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -45,7 +45,7 @@ pub struct RepoWithCopyFiles {
 
 impl WorkspaceRepo {
     pub async fn create_many(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
         repos: &[CreateWorkspaceRepo],
     ) -> Result<Vec<Self>, sqlx::Error> {
@@ -77,7 +77,7 @@ impl WorkspaceRepo {
     }
 
     pub async fn find_by_workspace_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -97,7 +97,7 @@ impl WorkspaceRepo {
     }
 
     pub async fn find_repos_for_workspace(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<Repo>, sqlx::Error> {
         sqlx::query_as!(
@@ -119,7 +119,7 @@ impl WorkspaceRepo {
     }
 
     pub async fn find_repos_with_target_branch_for_workspace(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<RepoWithTargetBranch>, sqlx::Error> {
         let rows = sqlx::query!(
@@ -156,7 +156,7 @@ impl WorkspaceRepo {
     }
 
     pub async fn find_by_workspace_and_repo_id(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
         repo_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
@@ -178,13 +178,13 @@ impl WorkspaceRepo {
     }
 
     pub async fn update_target_branch(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
         repo_id: Uuid,
         new_target_branch: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE workspace_repos SET target_branch = $1, updated_at = datetime('now') WHERE workspace_id = $2 AND repo_id = $3",
+            "UPDATE workspace_repos SET target_branch = $1, updated_at = NOW() WHERE workspace_id = $2 AND repo_id = $3",
             new_target_branch,
             workspace_id,
             repo_id
@@ -195,14 +195,14 @@ impl WorkspaceRepo {
     }
 
     pub async fn update_target_branch_for_children_of_workspace(
-        pool: &SqlitePool,
+        pool: &PgPool,
         parent_workspace_id: Uuid,
         old_branch: &str,
         new_branch: &str,
     ) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
             r#"UPDATE workspace_repos
-               SET target_branch = $1, updated_at = datetime('now')
+               SET target_branch = $1, updated_at = NOW()
                WHERE target_branch = $2
                  AND workspace_id IN (
                      SELECT w.id FROM workspaces w
@@ -219,7 +219,7 @@ impl WorkspaceRepo {
     }
 
     pub async fn find_unique_repos_for_task(
-        pool: &SqlitePool,
+        pool: &PgPool,
         task_id: Uuid,
     ) -> Result<Vec<Repo>, sqlx::Error> {
         sqlx::query_as!(
@@ -244,7 +244,7 @@ impl WorkspaceRepo {
     /// Find repos for a workspace with their copy_files configuration.
     /// Uses LEFT JOIN so repos without project_repo entries still appear (with NULL copy_files).
     pub async fn find_repos_with_copy_files(
-        pool: &SqlitePool,
+        pool: &PgPool,
         workspace_id: Uuid,
     ) -> Result<Vec<RepoWithCopyFiles>, sqlx::Error> {
         let rows = sqlx::query!(
