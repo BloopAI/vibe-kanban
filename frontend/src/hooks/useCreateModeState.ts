@@ -42,6 +42,7 @@ interface UseCreateModeStateResult {
   setSelectedProfile: (profile: ExecutorProfileId | null) => void;
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
+  clearRepos: () => void;
   setTargetBranch: (repoId: string, branch: string) => void;
   clearDraft: () => Promise<void>;
 }
@@ -348,6 +349,11 @@ export function useCreateModeState({
     });
   }, []);
 
+  const clearRepos = useCallback(() => {
+    setRepos([]);
+    setTargetBranches({});
+  }, []);
+
   const setTargetBranch = useCallback((repoId: string, branch: string) => {
     setTargetBranches((prev) => ({ ...prev, [repoId]: branch }));
   }, []);
@@ -373,6 +379,7 @@ export function useCreateModeState({
     setSelectedProfile,
     addRepo,
     removeRepo,
+    clearRepos,
     setTargetBranch,
     clearDraft,
   };

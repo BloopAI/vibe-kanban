@@ -12,6 +12,7 @@ interface CreateModeContextValue {
   repos: Repo[];
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
+  clearRepos: () => void;
   targetBranches: Record<string, string>;
   setTargetBranch: (repoId: string, branch: string) => void;
   selectedProfile: ExecutorProfileId | null;
@@ -45,6 +46,7 @@ export function CreateModeProvider({
       repos: state.repos,
       addRepo: state.addRepo,
       removeRepo: state.removeRepo,
+      clearRepos: state.clearRepos,
       targetBranches: state.targetBranches,
       setTargetBranch: state.setTargetBranch,
       selectedProfile: state.selectedProfile,
@@ -60,6 +62,7 @@ export function CreateModeProvider({
       state.repos,
       state.addRepo,
       state.removeRepo,
+      state.clearRepos,
       state.targetBranches,
       state.setTargetBranch,
       state.selectedProfile,
