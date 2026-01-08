@@ -19,7 +19,7 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        droid::Droid, gemini::Gemini, kiro::Kiro, opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
 };
@@ -32,6 +32,7 @@ pub mod copilot;
 pub mod cursor;
 pub mod droid;
 pub mod gemini;
+pub mod kiro;
 pub mod opencode;
 pub mod qwen;
 
@@ -91,6 +92,7 @@ pub enum CodingAgent {
     ClaudeCode,
     Amp,
     Gemini,
+    Kiro,
     Codex,
     Opencode,
     #[serde(alias = "CURSOR")]
@@ -158,6 +160,7 @@ impl CodingAgent {
             Self::ClaudeCode(_)
             | Self::Amp(_)
             | Self::Gemini(_)
+            | Self::Kiro(_)
             | Self::QwenCode(_)
             | Self::Droid(_)
             | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
@@ -320,5 +323,18 @@ mod tests {
         let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
         assert!(result.is_ok(), "CURSOR should deserialize via serde");
         assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+    }
+
+    #[test]
+    fn test_kiro_agent_integration() {
+        // Test that KIRO is accepted
+        let result = BaseCodingAgent::from_str("KIRO");
+        assert!(result.is_ok(), "KIRO should be valid");
+        assert_eq!(result.unwrap(), BaseCodingAgent::Kiro);
+
+        // Test serde deserialization for KIRO
+        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""KIRO""#);
+        assert!(result.is_ok(), "KIRO should deserialize via serde");
+        assert_eq!(result.unwrap(), BaseCodingAgent::Kiro);
     }
 }
