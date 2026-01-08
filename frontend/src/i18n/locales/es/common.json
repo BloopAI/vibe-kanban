@@ -159,7 +159,9 @@
     "browseRepos": "Explorar repos en disco",
     "createNewRepo": "Crear nuevo repo en disco",
     "viewInChangesPanel": "Ver en panel de cambios",
-    "copyPath": "Copiar ruta de worktree"
+    "copyPath": "Copiar ruta",
+    "copyWorktreePath": "Copiar ruta del worktree",
+    "openInIde": "Abrir en IDE"
   },
   "confirm": {
     "defaultConfirm": "Confirmar",
@@ -175,5 +177,11 @@
   },
   "chatBox": {
     "variants": "Variantes"
+  },
+  "projects": {
+    "noProjectFound": "No se encontró ningún proyecto",
+    "createFirstPrompt": "Crea un proyecto primero para comenzar a trabajar en tareas.",
+    "createNew": "Crear nuevo proyecto",
+    "noProjectsFound": "No se encontraron proyectos"
   }
 }

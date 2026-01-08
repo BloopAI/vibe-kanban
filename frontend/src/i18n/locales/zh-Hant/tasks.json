@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "請至少選擇一個儲存庫以開始"
+      }
+    },
+    "advanced": {
+      "workingBranch": "工作分支",
+      "placeholder": "例如：acme Corp"
+    }
+  },
   "loading": "載入任務中...",
   "empty": {
     "noTasks": "找不到此專案的任務。",
@@ -106,7 +117,17 @@
     "logs": {
       "title": "開發伺服器日誌",
       "hide": "隱藏",
-      "show": "顯示"
+      "show": "顯示",
+      "label": "日誌",
+      "viewFull": "查看完整日誌"
+    },
+    "noDevScript": "未設定開發指令碼",
+    "noDevScriptHint": "在專案設定中新增開發指令碼以啟用預覽。",
+    "browser": {
+      "title": "開發伺服器預覽",
+      "startButton": "啟動開發伺服器",
+      "stopButton": "停止",
+      "startingButton": "啟動"
     },
     "iframe": {
       "title": "開發伺服器預覽"
@@ -195,6 +216,21 @@
     "title_one": "待辦事項（{{count}}）",
     "title_other": "待辦事項（{{count}}）"
   },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "建立專案",
+        "description": "輸入新專案的名稱。"
+      },
+      "form": {
+        "nameLabel": "名稱",
+        "namePlaceholder": "我的專案"
+      },
+      "errors": {
+        "createFailed": "建立專案失敗"
+      }
+    }
+  },
   "attempt": {
     "actions": {
       "openInIde": "在 IDE 中開啟",
@@ -276,15 +312,47 @@
     },
     "pr": {
       "open": "開啟 PR #{{number}}",
-      "number": "PR #{{number}}"
+      "number": "PR #{{number}}",
+      "merged": "已合併PR #{{prNumber}}"
     },
     "actions": {
       "title": "Git 操作",
+      "changeTarget": "變更目標",
       "prMerged": "PR #{{number}} 已合併",
       "loginRequired": {
         "title": "登入以管理 Git 操作",
         "description": "登入 Vibe Kanban，才能推送分支、合併變更或為此任務建立 PR。",
         "action": "登入"
+      }
+    },
+    "mergeDialog": {
+      "title": "合併變更",
+      "description": "這將把您的變更合併到目標分支。確定要繼續嗎？"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "建立新儲存庫",
+        "description": "初始化新的 Git 儲存庫"
+      },
+      "form": {
+        "nameLabel": "名稱",
+        "namePlaceholder": "my-project",
+        "locationLabel": "位置",
+        "locationPlaceholder": "目前目錄"
+      },
+      "browseDialog": {
+        "title": "選擇父目錄",
+        "description": "選擇新儲存庫的建立位置"
+      },
+      "errors": {
+        "nameRequired": "儲存庫名稱為必填",
+        "createFailed": "建立儲存庫失敗"
+      },
+      "buttons": {
+        "createRepository": "建立儲存庫"
+      },
+      "states": {
+        "creating": "建立中..."
       }
     }
   },
@@ -546,11 +614,24 @@
       "cancelQueue": "取消佇列",
       "requestChanges": "請求變更",
       "approve": "核准",
-      "clearReviewComments": "清除審查評論"
+      "clearReviewComments": "清除審查評論",
+      "edit": "編輯訊息"
     },
     "approval": {
-      "conflictWarning": "衝突檔案需要手動解決"
+      "conflictWarning": "衝突檔案需要手動解決",
+      "conflicts_one": "{{count}}個衝突檔案需要手動解決",
+      "conflicts_other": "{{count}}個衝突檔案需要手動解決"
     },
+    "executors": "執行器",
+    "script": {
+      "clickToViewLogs": "點擊查看日誌",
+      "completedSuccessfully": "成功完成",
+      "exitCode": "結束代碼: {{code}}",
+      "running": "執行中..."
+    },
+    "unableToRenderDiff": "無法顯示差異。",
+    "updatedTodos": "更新的待辦事項",
+    "viewInChangesPanel": "在變更面板中檢視",
     "sessions": {
       "newSession": "新工作階段",
       "latest": "最新",

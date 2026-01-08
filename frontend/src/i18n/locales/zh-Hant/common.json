@@ -159,7 +159,9 @@
     "browseRepos": "瀏覽磁碟上的儲存庫",
     "createNewRepo": "在磁碟上建立新儲存庫",
     "viewInChangesPanel": "在變更面板中檢視",
-    "copyPath": "複製工作樹路徑"
+    "copyPath": "複製路徑",
+    "copyWorktreePath": "複製工作樹路徑",
+    "openInIde": "在IDE中開啟"
   },
   "confirm": {
     "defaultConfirm": "確認",
@@ -175,5 +177,11 @@
   },
   "chatBox": {
     "variants": "變體"
+  },
+  "projects": {
+    "noProjectFound": "找不到專案",
+    "createFirstPrompt": "請先建立專案以開始處理任務。",
+    "createNew": "建立新專案",
+    "noProjectsFound": "找不到專案"
   }
 }

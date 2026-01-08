@@ -159,7 +159,9 @@
     "browseRepos": "ディスク上のリポジトリを参照",
     "createNewRepo": "ディスク上に新しいリポジトリを作成",
     "viewInChangesPanel": "変更パネルで表示",
-    "copyPath": "ワークツリーパスをコピー"
+    "copyPath": "パスをコピー",
+    "copyWorktreePath": "ワークツリーパスをコピー",
+    "openInIde": "IDEで開く"
   },
   "confirm": {
     "defaultConfirm": "確認",
@@ -175,5 +177,11 @@
   },
   "chatBox": {
     "variants": "バリアント"
+  },
+  "projects": {
+    "noProjectFound": "プロジェクトが見つかりません",
+    "createFirstPrompt": "タスクを開始するには、まずプロジェクトを作成してください。",
+    "createNew": "新しいプロジェクトを作成",
+    "noProjectsFound": "プロジェクトが見つかりません"
   }
 }

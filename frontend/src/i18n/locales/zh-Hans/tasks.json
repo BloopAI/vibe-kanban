@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "请至少选择一个仓库以开始"
+      }
+    },
+    "advanced": {
+      "workingBranch": "工作分支",
+      "placeholder": "例如：Acme Corp"
+    }
+  },
   "loading": "加载任务中...",
   "empty": {
     "noTasks": "未找到此项目的任务。",
@@ -106,7 +117,17 @@
     "logs": {
       "title": "开发服务器日志",
       "hide": "隐藏",
-      "show": "显示"
+      "show": "显示",
+      "label": "日志",
+      "viewFull": "查看完整日志"
+    },
+    "noDevScript": "未配置开发脚本",
+    "noDevScriptHint": "在项目设置中添加开发脚本以启用预览。",
+    "browser": {
+      "title": "开发服务器预览",
+      "startButton": "启动开发服务器",
+      "stopButton": "停止",
+      "startingButton": "启动"
     },
     "iframe": {
       "title": "开发服务器预览"
@@ -195,6 +216,21 @@
     "title_one": "待办事项（{{count}}）",
     "title_other": "待办事项（{{count}}）"
   },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "创建项目",
+        "description": "输入新项目的名称。"
+      },
+      "form": {
+        "nameLabel": "名称",
+        "namePlaceholder": "我的项目"
+      },
+      "errors": {
+        "createFailed": "创建项目失败"
+      }
+    }
+  },
   "attempt": {
     "actions": {
       "openInIde": "在 IDE 中打开",
@@ -276,10 +312,12 @@
     },
     "pr": {
       "open": "打开 PR #{{number}}",
-      "number": "PR #{{number}}"
+      "number": "PR #{{number}}",
+      "merged": "已合并PR #{{prNumber}}"
     },
     "actions": {
       "title": "Git 操作",
+      "changeTarget": "更改目标",
       "prMerged": "PR #{{number}} 已合并",
       "loginRequired": {
         "title": "登录以管理 git 操作",
@@ -290,6 +328,32 @@
     "mergeDialog": {
       "title": "合并更改",
       "description": "这将把您的更改合并到目标分支。您确定要继续吗？"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "创建新仓库",
+        "description": "初始化新的git仓库"
+      },
+      "form": {
+        "nameLabel": "名称",
+        "namePlaceholder": "my-project",
+        "locationLabel": "位置",
+        "locationPlaceholder": "当前目录"
+      },
+      "browseDialog": {
+        "title": "选择父目录",
+        "description": "选择创建新仓库的位置"
+      },
+      "errors": {
+        "nameRequired": "仓库名称是必填的",
+        "createFailed": "创建仓库失败"
+      },
+      "buttons": {
+        "createRepository": "创建仓库"
+      },
+      "states": {
+        "creating": "创建中..."
+      }
     }
   },
   "createAttemptDialog": {
@@ -550,10 +614,13 @@
       "cancelQueue": "取消队列",
       "requestChanges": "请求更改",
       "approve": "批准",
-      "clearReviewComments": "清除审查评论"
+      "clearReviewComments": "清除审查评论",
+      "edit": "编辑消息"
     },
     "approval": {
-      "conflictWarning": "冲突文件需要手动解决"
+      "conflictWarning": "冲突文件需要手动解决",
+      "conflicts_one": "{{count}}个冲突",
+      "conflicts_other": "{{count}}个冲突"
     },
     "sessions": {
       "newSession": "新会话",
@@ -575,6 +642,16 @@
       "modified": "已修改",
       "deleted": "已删除",
       "renamed": "已重命名"
-    }
+    },
+    "script": {
+      "running": "运行中...",
+      "exitCode": "退出代码: {{code}}",
+      "completedSuccessfully": "成功完成",
+      "clickToViewLogs": "点击查看日志"
+    },
+    "executors": "执行器",
+    "updatedTodos": "更新的待办事项",
+    "viewInChangesPanel": "在更改面板中查看",
+    "unableToRenderDiff": "无法显示差异。"
   }
 }

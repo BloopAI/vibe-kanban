@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "Por favor selecciona al menos un repositorio para comenzar"
+      }
+    },
+    "advanced": {
+      "workingBranch": "Rama de trabajo",
+      "placeholder": "ej. acme Corp"
+    }
+  },
   "actions": {
     "addTask": "Agregar tarea"
   },
@@ -244,11 +255,39 @@
     },
     "pr": {
       "number": "PR #{{number}}",
-      "open": "Open PR #{{number}}"
+      "open": "Open PR #{{number}}",
+      "merged": "PR #{{prNumber}} fusionado"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Crear Nuevo Repositorio",
+        "description": "Inicializar un nuevo repositorio git"
+      },
+      "form": {
+        "nameLabel": "Nombre",
+        "namePlaceholder": "mi-proyecto",
+        "locationLabel": "Ubicación",
+        "locationPlaceholder": "Directorio actual"
+      },
+      "browseDialog": {
+        "title": "Seleccionar Directorio Principal",
+        "description": "Elige dónde crear el nuevo repositorio"
+      },
+      "errors": {
+        "nameRequired": "El nombre del repositorio es obligatorio",
+        "createFailed": "Error al crear el repositorio"
+      },
+      "buttons": {
+        "createRepository": "Crear Repositorio"
+      },
+      "states": {
+        "creating": "Creando..."
+      }
     },
     "actions": {
       "title": "Acciones de Git",
       "prMerged": "PR #{{number}} ya está fusionado",
+      "changeTarget": "Cambiar destino",
       "loginRequired": {
         "title": "Inicia sesión para gestionar acciones de Git",
         "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
@@ -300,7 +339,17 @@
     "logs": {
       "hide": "Ocultar",
       "show": "Mostrar",
-      "title": "Registros del Servidor de Desarrollo"
+      "title": "Registros del Servidor de Desarrollo",
+      "label": "Registros",
+      "viewFull": "Ver registros completos"
+    },
+    "noDevScript": "Script de desarrollo no configurado",
+    "noDevScriptHint": "Agrega un script de desarrollo en la configuración del proyecto para habilitar la vista previa.",
+    "browser": {
+      "title": "Vista previa del servidor de desarrollo",
+      "startButton": "Iniciar servidor de desarrollo",
+      "stopButton": "Detener",
+      "startingButton": "Iniciar"
     },
     "noServer": {
       "companionLink": "Ver guía de instalación",
@@ -389,6 +438,21 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "Crear Proyecto",
+        "description": "Ingresa un nombre para tu nuevo proyecto."
+      },
+      "form": {
+        "nameLabel": "Nombre",
+        "namePlaceholder": "Mi Proyecto"
+      },
+      "errors": {
+        "createFailed": "Error al crear el proyecto"
+      }
+    }
   },
   "toolbar": {
     "actions": "Actions",
@@ -550,11 +614,24 @@
       "cancelQueue": "Cancelar cola",
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
-      "clearReviewComments": "Limpiar comentarios de revisión"
+      "clearReviewComments": "Limpiar comentarios de revisión",
+      "edit": "Editar mensaje"
     },
     "approval": {
-      "conflictWarning": "Los archivos en conflicto necesitan resolución manual"
+      "conflictWarning": "Los archivos en conflicto necesitan resolución manual",
+      "conflicts_one": "{{count}} archivo en conflicto necesita resolución manual",
+      "conflicts_other": "{{count}} archivos en conflicto necesitan resolución manual"
     },
+    "executors": "Ejecutores",
+    "script": {
+      "clickToViewLogs": "Haz clic para ver registros",
+      "completedSuccessfully": "Completado exitosamente",
+      "exitCode": "Código de salida: {{code}}",
+      "running": "Ejecutando..."
+    },
+    "unableToRenderDiff": "No se puede mostrar la diferencia.",
+    "updatedTodos": "Tareas actualizadas",
+    "viewInChangesPanel": "Ver en panel de cambios",
     "sessions": {
       "newSession": "Nueva sesión",
       "latest": "Última",

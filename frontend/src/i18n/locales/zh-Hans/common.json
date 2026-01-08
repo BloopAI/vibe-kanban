@@ -159,7 +159,9 @@
     "browseRepos": "浏览磁盘上的仓库",
     "createNewRepo": "在磁盘上创建新仓库",
     "viewInChangesPanel": "在更改面板中查看",
-    "copyPath": "复制工作树路径"
+    "copyPath": "复制路径",
+    "copyWorktreePath": "复制工作树路径",
+    "openInIde": "在IDE中打开"
   },
   "confirm": {
     "defaultConfirm": "确认",
@@ -175,5 +177,11 @@
   },
   "chatBox": {
     "variants": "变体"
+  },
+  "projects": {
+    "noProjectFound": "未找到项目",
+    "createFirstPrompt": "请先创建项目以开始处理任务。",
+    "createNew": "创建新项目",
+    "noProjectsFound": "未找到项目"
   }
 }
