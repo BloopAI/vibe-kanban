@@ -160,10 +160,11 @@ impl DiffStreamManager {
                 .map_err(|e| io::Error::other(e.to_string()))?;
         let _fs_guard = fs_debouncer;
 
-        let (git_debouncer, mut git_rx) = match setup_git_watcher(&self.args.worktree_path) {
-            Some((d, rx)) => (Some(d), Some(rx)),
-            None => (None, None),
-        };
+        let (git_debouncer, mut git_rx) =
+            match setup_git_watcher(&self.args.git_service, &self.args.worktree_path) {
+                Some((d, rx)) => (Some(d), Some(rx)),
+                None => (None, None),
+            };
         let _git_guard = git_debouncer;
 
         let mut target_interval =
@@ -519,12 +520,13 @@ fn process_file_changes(
 /// Watches `.git/HEAD` and `.git/logs/HEAD` for changes.
 /// Correctly resolves gitdir even for worktrees.
 fn setup_git_watcher(
+    git: &GitService,
     worktree_path: &Path,
 ) -> Option<(
     Debouncer<RecommendedWatcher, RecommendedCache>,
     tokio::sync::watch::Receiver<()>,
 )> {
-    let Ok(repo) = git2::Repository::open(worktree_path) else {
+    let Ok(repo) = git.open_repo(worktree_path) else {
         tracing::warn!(
             "Failed to open git repo at {:?}, git events will be ignored",
             worktree_path
