@@ -22,8 +22,8 @@ import { useSessionAttachments } from '@/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
-import { useStartReview } from '@/hooks/useStartReview';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { StartReviewDialog } from '@/components/dialogs';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -155,8 +155,6 @@ export function SessionChatBoxContainer({
   // Approval mutation for approve/deny actions
   const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
     useApprovalMutation();
-
-  const startReviewMutation = useStartReview(sessionId, workspaceId);
 
   // Branch status for edit retry and conflict detection
   const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -291,7 +289,6 @@ export function SessionChatBoxContainer({
   });
 
   const handleSend = useCallback(async () => {
-    // Combine review comments with user message
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
@@ -301,7 +298,6 @@ export function SessionChatBoxContainer({
       setLocalMessage('');
       clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
-      // Clear review comments after successful send
       reviewContext?.clearComments();
     }
   }, [
@@ -442,6 +438,28 @@ export function SessionChatBoxContainer({
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
+  // Handle review button click - opens dialog
+  const handleReviewClick = useCallback(() => {
+    if (!workspaceId) return;
+    StartReviewDialog.show({
+      sessionId,
+      workspaceId,
+      reviewMarkdown: reviewMarkdown || undefined,
+      defaultProfile: latestProfileId,
+      onSuccess: (newSessionId) => {
+        if (newSessionId) onSelectSession?.(newSessionId);
+        reviewContext?.clearComments();
+      },
+    });
+  }, [
+    sessionId,
+    workspaceId,
+    reviewMarkdown,
+    latestProfileId,
+    reviewContext,
+    onSelectSession,
+  ]);
+
   // Handle approve action
   const handleApprove = useCallback(async () => {
     if (!pendingApproval) return;
@@ -496,23 +514,6 @@ export function SessionChatBoxContainer({
     ? new Date() > new Date(pendingApproval.timeoutAt)
     : false;
 
-  // Handle start review
-  const handleStartReview = useCallback(async () => {
-    if (!latestProfileId) return;
-
-    try {
-      await startReviewMutation.mutateAsync({
-        executorProfileId: {
-          executor: latestProfileId.executor,
-          variant: latestProfileId.variant,
-        },
-      });
-    } catch {
-      // Error is handled by mutation
-    }
-  }, [latestProfileId, startReviewMutation]);
-
-  // Compute execution status
   const status = computeExecutionStatus({
     isInFeedbackMode,
     isInEditMode,
@@ -568,8 +569,9 @@ export function SessionChatBoxContainer({
         onSelectSession: onSelectSession ?? (() => {}),
         isNewSessionMode,
         onNewSession: onStartNewSession,
-        onStartReview: handleStartReview,
-        isReviewStarting: startReviewMutation.isPending,
+      }}
+      reviewMode={{
+        onReviewClick: handleReviewClick,
       }}
       stats={{
         filesChanged,
