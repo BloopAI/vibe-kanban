@@ -12,6 +12,7 @@ import { TeamMembers } from '@/pages/TeamMembers';
 import { JoinTeam } from '@/pages/JoinTeam';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { About } from '@/pages/About';
+import { Views } from '@/pages/Views';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePostHog } from 'posthog-js/react';
@@ -169,6 +170,8 @@ function AppContent() {
                 <Route path="/" element={<Projects />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
+                <Route path="/views" element={<Views />} />
+                <Route path="/views/new" element={<Views />} />
                 <Route
                   path="/projects/:projectId/tasks"
                   element={<ProjectTasks />}
@@ -204,7 +207,7 @@ function AppContent() {
                 <Route path="/teams/:teamId/documents" element={<TeamDocuments />} />
                 <Route path="/teams/:teamId/members" element={<TeamMembers />} />
                 <Route path="/teams/:teamId/github" element={<Navigate to="/settings/organization" replace />} />
-                <Route path="/teams/:teamId/views" element={<div className="p-4">Team Views - Coming Soon</div>} />
+                <Route path="/teams/:teamId/views" element={<Views />} />
               </Route>
             </SentryRoutes>
           </div>
