@@ -200,20 +200,39 @@ pub async fn delete_team(
     Extension(team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let team_id_str = team.id.to_string();
+
+    // Delete from main teams table
     let rows_affected = Team::delete(&deployment.db().pool, team.id).await?;
     if rows_affected == 0 {
-        Err(ApiError::Database(sqlx::Error::RowNotFound))
-    } else {
-        deployment
-            .track_if_analytics_allowed(
-                "team_deleted",
-                serde_json::json!({
-                    "team_id": team.id.to_string(),
-                }),
-            )
-            .await;
-        Ok(ResponseJson(ApiResponse::success(())))
+        return Err(ApiError::Database(sqlx::Error::RowNotFound));
     }
+
+    // Also delete from team registry (multi-tenant database registry)
+    if let Err(e) = deployment.registry().delete(&team_id_str).await {
+        tracing::warn!(
+            "Failed to delete team {} from registry: {}. Registry may have orphan entry.",
+            team_id_str,
+            e
+        );
+        // Continue anyway - main team is already deleted
+    } else {
+        tracing::info!("Deleted team {} from registry", team_id_str);
+    }
+
+    // TODO: Optionally clean up the team's dedicated database file
+    // This could be done here or as a background task
+
+    deployment
+        .track_if_analytics_allowed(
+            "team_deleted",
+            serde_json::json!({
+                "team_id": team_id_str,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 /// Get all project IDs assigned to a team
