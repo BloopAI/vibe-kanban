@@ -344,7 +344,19 @@ export type UpdateDocumentFolder = { parent_id: string | null, name: string | nu
  */
 local_path: string | null, position: number | null, };
 
-export type CreateDocument = { team_id: string, folder_id: string | null, title: string, content: string | null, file_type: string | null, icon: string | null, };
+export type CreateDocument = { team_id: string, folder_id: string | null, title: string, content: string | null, file_type: string | null, icon: string | null,
+/**
+ * Storage URL (Supabase or external) for uploaded files
+ */
+file_path: string | null,
+/**
+ * Size in bytes
+ */
+file_size: number | null,
+/**
+ * MIME type for uploaded files
+ */
+mime_type: string | null, };
 
 export type UpdateDocument = { folder_id: string | null, title: string | null, content: string | null, icon: string | null, is_pinned: boolean | null, is_archived: boolean | null, position: number | null, };
 

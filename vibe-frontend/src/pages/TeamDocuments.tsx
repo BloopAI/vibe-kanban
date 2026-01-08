@@ -25,6 +25,7 @@ import {
   Pencil,
   Eye,
   Upload,
+  Download,
 } from 'lucide-react';
 import { DocumentOutline } from '@/components/documents/DocumentOutline';
 import { PdfViewer } from '@/components/documents/PdfViewer';
@@ -211,6 +212,9 @@ export function TeamDocuments() {
         folder_id: currentFolderId,
         file_type: 'markdown',
         icon: null,
+        file_path: null,
+        file_size: null,
+        mime_type: null,
       });
       setIsCreateDocOpen(false);
       setNewDocTitle('');
@@ -239,8 +243,29 @@ export function TeamDocuments() {
   }, [newFolderName, currentFolderId, createFolder]);
 
   const handleDeleteDocument = useCallback(
-    async (docId: string) => {
+    async (docId: string, filePath?: string | null) => {
       try {
+        // If file was stored in Supabase, delete from storage first
+        if (filePath && filePath.includes('supabase')) {
+          try {
+            // Extract the path from the Supabase URL
+            // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
+            const url = new URL(filePath);
+            const pathParts = url.pathname.split('/object/public/');
+            if (pathParts.length === 2) {
+              const [bucketAndPath] = pathParts[1].split('/', 1);
+              const storagePath = pathParts[1].substring(bucketAndPath.length + 1);
+              const { supabase } = await import('@/lib/supabase');
+              await supabase.storage
+                .from('ikanban-bucket')
+                .remove([decodeURIComponent(storagePath)]);
+            }
+          } catch (storageErr) {
+            console.warn('Failed to delete from Supabase storage:', storageErr);
+            // Continue with database deletion even if storage deletion fails
+          }
+        }
+        // Delete from database
         await deleteDocument(docId);
       } catch (err) {
         console.error('Failed to delete document:', err);
@@ -268,6 +293,51 @@ export function TeamDocuments() {
     },
     [setCurrentFolderId]
   );
+
+  // Handle document download
+  const handleDownloadDocument = useCallback(async (doc: Document) => {
+    try {
+      // If file has a storage URL (Supabase), download from there
+      if (doc.file_path) {
+        // Check if it's a full URL (Supabase) or local path
+        if (doc.file_path.startsWith('http')) {
+          // Direct download from Supabase URL
+          window.open(doc.file_path, '_blank');
+        } else {
+          // Download from backend file endpoint
+          const fileUrl = documentsApi.getFileUrl(teamId!, doc.id);
+          window.open(fileUrl, '_blank');
+        }
+      } else if (doc.content) {
+        // For text content stored in database, create a downloadable blob
+        const blob = new Blob([doc.content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${doc.title}.${doc.file_type || 'txt'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        // Fallback: try to get content from API
+        const content = await documentsApi.getContent(teamId!, doc.id);
+        if (content.content) {
+          const blob = new Blob([content.content], { type: content.mime_type || 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${doc.title}.${doc.file_type || 'txt'}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to download document:', err);
+    }
+  }, [teamId]);
 
   // Handle file upload from browser file picker
   const { uploadFolder, isUploading: isSupabaseUploading } = useFolderUpload(teamId || '', currentFolderId);
@@ -1126,18 +1196,32 @@ export function TeamDocuments() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteDocument(doc.id);
-                      }}
-                      title="Delete document"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadDocument(doc);
+                        }}
+                        title="Download document"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDocument(doc.id, doc.file_path);
+                        }}
+                        title="Delete document"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>
