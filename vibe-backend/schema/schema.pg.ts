@@ -271,7 +271,7 @@ export const projectRepos = pgTable("project_repos", {
     setupScript: text("setup_script"),
     cleanupScript: text("cleanup_script"),
     copyFiles: text("copy_files"),
-    parallelSetupScript: integer("parallel_setup_script").default(0).notNull(),
+    parallelSetupScript: boolean("parallel_setup_script").default(false).notNull(),
 }, (table) => ({
     idxProjectReposRepoId: index("idx_project_repos_repo_id").on(table.repoId),
     idxProjectReposProjectId: index("idx_project_repos_project_id").on(table.projectId),
@@ -298,7 +298,7 @@ export const teamRepos = pgTable("team_repos", {
     setupScript: text("setup_script"),
     cleanupScript: text("cleanup_script"),
     copyFiles: text("copy_files"),
-    parallelSetupScript: integer("parallel_setup_script").default(0).notNull(),
+    parallelSetupScript: boolean("parallel_setup_script").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
     idxTeamReposRepoId: index("idx_team_repos_repo_id").on(table.repoId),

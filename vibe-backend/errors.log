@@ -1,0 +1,158 @@
+    Checking db v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/vibe-backend/crates/db)
+error: expected one of: `for`, parentheses, `fn`, `unsafe`, `extern`, identifier, `::`, `<`, `dyn`, square brackets, `*`, `&`, `!`, `impl`, `_`, lifetime
+   --> crates/db/src/models/merge.rs:160:26
+    |
+160 |             pr_number as "pr_number: i64",
+    |                          ^^^^^^^^^^^^^^^^
+
+warning: unused import: `path::PathBuf`
+ --> crates/db/src/lib.rs:2:11
+  |
+2 | use std::{path::PathBuf, str::FromStr, sync::Arc};
+  |           ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `collections::HashMap` and `path::PathBuf`
+ --> crates/db/src/pool_manager.rs:7:5
+  |
+7 |     collections::HashMap,
+  |     ^^^^^^^^^^^^^^^^^^^^
+8 |     path::PathBuf,
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `tokio::sync::RwLock`
+  --> crates/db/src/pool_manager.rs:12:5
+   |
+12 | use tokio::sync::RwLock;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/execution_process.rs:633:13
+    |
+633 |             ExecutionProcessRunReason::CodingAgent
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |             |
+    |             expected `&str`, found `ExecutionProcessRunReason`
+    |             expected due to the type of this binding
+
+error[E0282]: type annotations needed
+   --> crates/db/src/models/merge.rs:138:9
+    |
+138 | /         sqlx::query_as!(
+139 | |             MergeRow,
+140 | |             r#"INSERT INTO merges (
+141 | |                 id, workspace_id, repo_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
+...   |
+165 | |         .fetch_one(pool)
+166 | |         .await
+    | |______________^ cannot infer type
+
+error[E0599]: `MergeStatus` doesn't implement `std::fmt::Display`
+    --> crates/db/src/models/merge.rs:216:23
+     |
+  10 | pub enum MergeStatus {
+     | -------------------- method `to_string` not found for this enum because it doesn't satisfy `MergeStatus: ToString` or `MergeStatus: std::fmt::Display`
+...
+ 216 |             pr_status.to_string(),
+     |                       ^^^^^^^^^ method cannot be called on `MergeStatus` due to unsatisfied trait bounds
+     |
+     = note: the following trait bounds were not satisfied:
+             `MergeStatus: std::fmt::Display`
+             which is required by `MergeStatus: ToString`
+note: the trait `std::fmt::Display` must be implemented
+    --> /Users/rupeshpanwar/.rustup/toolchains/nightly-2025-12-04-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:1186:1
+     |
+1186 | pub trait Display: PointeeSized {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: items from traits can only be used if the trait is implemented and in scope
+     = note: the following traits define an item `to_string`, perhaps you need to implement one of them:
+             candidate #1: `ToString`
+             candidate #2: `gimli::read::reader::Reader`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project_repo.rs:281:13
+    |
+281 |             parallel_setup_script,
+    |             ^^^^^^^^^^^^^^^^^^^^^
+    |             |
+    |             expected `i32`, found `bool`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:278:29
+    |
+278 |                     status: rec.status.to_string(),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^ expected `TaskStatus`, found `String`
+    |
+help: try removing the method call
+    |
+278 -                     status: rec.status.to_string(),
+278 +                     status: rec.status,
+    |
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:284:31
+    |
+284 |                     due_date: rec.due_date,
+    |                               ^^^^^^^^^^^^ expected `Option<DateTime<Utc>>`, found `Option<String>`
+    |
+    = note: expected enum `std::option::Option<DateTime<Utc>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:366:29
+    |
+366 |                     status: rec.status.to_string(),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^ expected `TaskStatus`, found `String`
+    |
+help: try removing the method call
+    |
+366 -                     status: rec.status.to_string(),
+366 +                     status: rec.status,
+    |
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:372:31
+    |
+372 |                     due_date: rec.due_date,
+    |                               ^^^^^^^^^^^^ expected `Option<DateTime<Utc>>`, found `Option<String>`
+    |
+    = note: expected enum `std::option::Option<DateTime<Utc>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:175:30
+    |
+175 |         self.due_date = Some(due_date);
+    |                         ---- ^^^^^^^^ expected `DateTime<Utc>`, found `String`
+    |                         |
+    |                         arguments to this enum variant are incorrect
+    |
+    = note: expected struct `DateTime<Utc>`
+               found struct `std::string::String`
+help: the type constructed contains `std::string::String` due to the type of the argument passed
+   --> crates/db/src/models/task.rs:175:25
+    |
+175 |         self.due_date = Some(due_date);
+    |                         ^^^^^--------^
+    |                              |
+    |                              this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /Users/rupeshpanwar/.rustup/toolchains/nightly-2025-12-04-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/option.rs:608:5
+    |
+608 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^^^
+
+warning: unused variable: `executor_action_json`
+   --> crates/db/src/models/execution_process.rs:428:13
+    |
+428 |         let executor_action_json = sqlx::types::Json(&data.executor_action);
+    |             ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_executor_action_json`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0282, E0308, E0599.
+For more information about an error, try `rustc --explain E0282`.
+warning: `db` (lib) generated 4 warnings
+error: could not compile `db` (lib) due to 10 previous errors; 4 warnings emitted

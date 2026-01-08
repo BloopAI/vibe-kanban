@@ -208,7 +208,7 @@ impl TaskComment {
 
     /// Delete all comments for a task
     pub async fn delete_by_task_id(pool: &PgPool, task_id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM task_comments WHERE task_id = $1", task_id)
+        let result = sqlx::query!("DELETE FROM task_comments WHERE task_id = $1::uuid", task_id)
             .execute(pool)
             .await?;
 
