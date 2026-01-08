@@ -200,7 +200,6 @@ fn generate_types_content() -> String {
         executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest::decl(),
         executors::actions::review::ReviewRequest::decl(),
         executors::actions::review::RepoReviewContext::decl(),
-        executors::actions::review::CommitRange::decl(),
         executors::logs::CommandExitStatus::decl(),
         executors::logs::CommandRunResult::decl(),
         executors::logs::NormalizedEntry::decl(),

@@ -13,25 +13,13 @@ use crate::{
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
-/// Specifies which commits to review
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
-#[serde(tag = "type", rename_all = "snake_case")]
-#[ts(tag = "type", rename_all = "snake_case")]
-pub enum CommitRange {
-    /// All commits from this base commit to HEAD
-    FromBase { commit: String },
-    /// Specific commits to review
-    Specific { commits: Vec<String> },
-    /// Range from one commit to another
-    Range { from: String, to: String },
-}
-
 /// Context for a repository in a review request
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct RepoReviewContext {
     pub repo_id: Uuid,
     pub repo_name: String,
-    pub commits: CommitRange,
+    /// The base commit - review all changes from here to HEAD
+    pub base_commit: String,
 }
 
 /// Request to start a code review session

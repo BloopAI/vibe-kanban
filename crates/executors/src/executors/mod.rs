@@ -319,42 +319,19 @@ pub fn build_review_prompt(
     context: Option<&[RepoReviewContext]>,
     additional_prompt: Option<&str>,
 ) -> String {
-    use crate::actions::review::CommitRange;
-
     let mut prompt = String::from("Please review the code changes.\n\n");
 
     if let Some(repos) = context {
         for repo in repos {
             prompt.push_str(&format!("Repository: {}\n", repo.repo_name));
-
-            match &repo.commits {
-                CommitRange::FromBase { commit } => {
-                    prompt.push_str(&format!(
-                        "Review all changes from base commit {} to HEAD.\n",
-                        commit
-                    ));
-                    prompt.push_str(&format!(
-                        "Use `git diff {}..HEAD` to see the changes.\n",
-                        commit
-                    ));
-                }
-                CommitRange::Specific { commits } => {
-                    prompt.push_str("Review the following commits:\n");
-                    for hash in commits {
-                        prompt.push_str(&format!("- {}\n", hash));
-                    }
-                }
-                CommitRange::Range { from, to } => {
-                    prompt.push_str(&format!(
-                        "Review all changes from commit {} to {}.\n",
-                        from, to
-                    ));
-                    prompt.push_str(&format!(
-                        "Use `git diff {}..{}` to see the changes.\n",
-                        from, to
-                    ));
-                }
-            }
+            prompt.push_str(&format!(
+                "Review all changes from base commit {} to HEAD.\n",
+                repo.base_commit
+            ));
+            prompt.push_str(&format!(
+                "Use `git diff {}..HEAD` to see the changes.\n",
+                repo.base_commit
+            ));
             prompt.push('\n');
         }
     }

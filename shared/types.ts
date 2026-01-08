@@ -537,9 +537,11 @@ session_id: string | null,
  */
 working_dir: string | null, };
 
-export type RepoReviewContext = { repo_id: string, repo_name: string, commits: CommitRange, };
-
-export type CommitRange = { "type": "from_base", commit: string, } | { "type": "specific", commits: Array<string>, } | { "type": "range", from: string, to: string, };
+export type RepoReviewContext = { repo_id: string, repo_name: string, 
+/**
+ * The base commit - review all changes from here to HEAD
+ */
+base_commit: string, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

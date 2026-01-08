@@ -10,10 +10,7 @@ use deployment::Deployment;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
-        review::{
-            CommitRange, RepoReviewContext as ExecutorRepoReviewContext,
-            ReviewRequest as ReviewAction,
-        },
+        review::{RepoReviewContext as ExecutorRepoReviewContext, ReviewRequest as ReviewAction},
     },
     executors::build_review_prompt,
     profile::ExecutorProfileId,
@@ -102,9 +99,7 @@ pub async fn start_review(
                         Some(ExecutorRepoReviewContext {
                             repo_id,
                             repo_name: repo.display_name.clone(),
-                            commits: CommitRange::FromBase {
-                                commit: initial_commit,
-                            },
+                            base_commit: initial_commit,
                         })
                     })
                     .collect(),
