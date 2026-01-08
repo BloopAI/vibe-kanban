@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, forwardRef } from 'react';
 import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
 import { DiffViewCardWithComments } from '../containers/DiffViewCardWithComments';
@@ -64,37 +64,37 @@ const DiffItem = memo(function DiffItem({
   );
 });
 
-export function ChangesPanel({
-  className,
-  diffItems,
-  onDiffRef,
-  projectId,
-  attemptId,
-}: ChangesPanelProps) {
-  return (
-    <div
-      className={cn(
-        'w-full h-full bg-secondary flex flex-col p-base overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent',
-        className
-      )}
-    >
-      <div className="space-y-base">
-        {diffItems.map(({ diff, initialExpanded }) => (
-          <DiffItem
-            key={diff.newPath || diff.oldPath || ''}
-            diff={diff}
-            initialExpanded={initialExpanded}
-            onRef={onDiffRef}
-            projectId={projectId}
-            attemptId={attemptId}
-          />
-        ))}
-      </div>
-      {diffItems.length === 0 && (
-        <div className="flex-1 flex items-center justify-center text-low">
-          <p className="text-sm">No changes to display</p>
+export const ChangesPanel = forwardRef<HTMLDivElement, ChangesPanelProps>(
+  function ChangesPanel(
+    { className, diffItems, onDiffRef, projectId, attemptId },
+    ref
+  ) {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'w-full h-full bg-secondary flex flex-col px-base overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent',
+          className
+        )}
+      >
+        <div className="space-y-base">
+          {diffItems.map(({ diff, initialExpanded }) => (
+            <DiffItem
+              key={diff.newPath || diff.oldPath || ''}
+              diff={diff}
+              initialExpanded={initialExpanded}
+              onRef={onDiffRef}
+              projectId={projectId}
+              attemptId={attemptId}
+            />
+          ))}
         </div>
-      )}
-    </div>
-  );
-}
+        {diffItems.length === 0 && (
+          <div className="flex-1 flex items-center justify-center text-low">
+            <p className="text-sm">No changes to display</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+);

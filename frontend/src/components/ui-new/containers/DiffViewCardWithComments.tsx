@@ -279,12 +279,13 @@ export function DiffViewCardWithComments({
   );
 
   return (
-    <div className={cn('rounded-sm border overflow-hidden', className)}>
+    <div className={cn('my-base rounded-sm border', className)}>
       {/* Header */}
       <div
         className={cn(
-          'w-full flex items-center bg-panel p-base gap-base',
-          onToggle && 'cursor-pointer'
+          'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent ',
+          onToggle && 'cursor-pointer',
+          expanded && 'border-inherit rounded-t-sm'
         )}
         onClick={onToggle}
       >

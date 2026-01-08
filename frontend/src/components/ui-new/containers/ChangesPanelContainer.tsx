@@ -41,6 +41,7 @@ function shouldAutoCollapse(diff: Diff): boolean {
 // Hook to observe which diff is currently in view and report it
 function useInViewObserver(
   diffRefs: MutableRefObject<Map<string, HTMLDivElement>>,
+  containerRef: MutableRefObject<HTMLDivElement | null>,
   onFileInViewChange?: (path: string) => void
 ) {
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -49,43 +50,60 @@ function useInViewObserver(
   useEffect(() => {
     if (!onFileInViewChange) return;
 
-    // Create observer that tracks which diffs are in the top portion of viewport
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const path = entry.target.getAttribute('data-diff-path');
-          if (!path) return;
+    const createObserver = () => {
+      // Disconnect existing observer if any
+      observerRef.current?.disconnect();
 
-          if (entry.isIntersecting) {
-            visiblePathsRef.current.add(path);
-          } else {
-            visiblePathsRef.current.delete(path);
-          }
-        });
+      // Create observer that tracks which diffs are in the top portion of the container
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const path = entry.target.getAttribute('data-diff-path');
+            if (!path) return;
 
-        // Report the first visible path (topmost in the list)
-        if (visiblePathsRef.current.size > 0) {
-          // Get all visible paths and find the one that appears first in the DOM
-          const allRefs = diffRefs.current;
-          for (const [path] of allRefs) {
-            if (visiblePathsRef.current.has(path)) {
-              onFileInViewChange(path);
-              break;
+            if (entry.isIntersecting) {
+              visiblePathsRef.current.add(path);
+            } else {
+              visiblePathsRef.current.delete(path);
+            }
+          });
+
+          // Report the first visible path (topmost in the list)
+          if (visiblePathsRef.current.size > 0) {
+            // Get all visible paths and find the one that appears first in the DOM
+            const allRefs = diffRefs.current;
+            for (const [path] of allRefs) {
+              if (visiblePathsRef.current.has(path)) {
+                onFileInViewChange(path);
+                break;
+              }
             }
           }
+        },
+        {
+          // Use the scrollable container as root (null = viewport)
+          root: containerRef.current,
+          // Observe intersection with the top 20% of the container
+          rootMargin: '0px 0px -80% 0px',
+          threshold: 0,
         }
-      },
-      {
-        // Observe intersection with the top 20% of the container
-        rootMargin: '0px 0px -80% 0px',
-        threshold: 0,
-      }
-    );
+      );
+
+      // Re-observe all currently registered elements
+      diffRefs.current.forEach((el) => {
+        observerRef.current?.observe(el);
+      });
+    };
+
+    // Create observer once container is available
+    if (containerRef.current) {
+      createObserver();
+    }
 
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [onFileInViewChange, diffRefs]);
+  }, [onFileInViewChange, diffRefs, containerRef]);
 
   // Callback to observe/unobserve elements
   const observeElement = useCallback(
@@ -129,11 +147,16 @@ export function ChangesPanelContainer({
   attemptId,
 }: ChangesPanelContainerProps) {
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const containerRef = useRef<HTMLDivElement | null>(null);
   // Track which diffs we've processed for auto-collapse
   const [processedPaths] = useState(() => new Set<string>());
 
   // Set up intersection observer to track which file is in view
-  const observeElement = useInViewObserver(diffRefs, onFileInViewChange);
+  const observeElement = useInViewObserver(
+    diffRefs,
+    containerRef,
+    onFileInViewChange
+  );
 
   useEffect(() => {
     if (!selectedFilePath) return;
@@ -181,6 +204,7 @@ export function ChangesPanelContainer({
 
   return (
     <ChangesPanel
+      ref={containerRef}
       className={className}
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
