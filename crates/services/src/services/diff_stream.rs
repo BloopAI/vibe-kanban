@@ -203,7 +203,6 @@ impl DiffStreamManager {
         Ok(())
     }
 
-
     async fn reset_stream(&mut self) -> Result<(), DiffStreamError> {
         let paths_to_clear: Vec<String> = {
             let mut guard = self.known_paths.write().unwrap();
@@ -242,7 +241,7 @@ impl DiffStreamManager {
                 },
                 None,
             )?;
-            
+
             let mut processed_diffs = Vec::with_capacity(diffs.len());
             for mut diff in diffs {
                 apply_stream_omit_policy(&mut diff, &cumulative, stats_only);
@@ -256,15 +255,15 @@ impl DiffStreamManager {
     async fn send_diffs(&self, diffs: Vec<Diff>) -> Result<(), DiffStreamError> {
         for mut diff in diffs {
             let raw_path = GitService::diff_path(&diff);
-            
+
             {
                 let mut guard = self.known_paths.write().unwrap();
                 guard.insert(raw_path.clone());
             }
-            
+
             if !diff.content_omitted {
-                 let mut guard = self.full_sent.write().unwrap();
-                 guard.insert(raw_path.clone());
+                let mut guard = self.full_sent.write().unwrap();
+                guard.insert(raw_path.clone());
             }
 
             let prefixed_entry = prefix_path(raw_path, self.args.path_prefix.as_deref());
@@ -275,7 +274,8 @@ impl DiffStreamManager {
                 diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
             }
 
-            let patch = ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
+            let patch =
+                ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
             if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
                 return Ok(());
             }
@@ -328,7 +328,10 @@ impl DiffStreamManager {
     }
 
     async fn handle_git_state_change(&mut self) -> Result<(), DiffStreamError> {
-        let Some(new_base) = self.recompute_base_commit(&self.current_target_branch).await else {
+        let Some(new_base) = self
+            .recompute_base_commit(&self.current_target_branch)
+            .await
+        else {
             return Ok(());
         };
 
@@ -345,16 +348,17 @@ impl DiffStreamManager {
             self.args.workspace_id,
             self.args.repo_id,
         )
-        .await else {
+        .await
+        else {
             return Ok(());
         };
 
-        if repo.target_branch != self.current_target_branch {
-            if let Some(new_base) = self.recompute_base_commit(&repo.target_branch).await {
-                self.current_target_branch = repo.target_branch;
-                self.current_base_commit = new_base;
-                self.reset_stream().await?;
-            }
+        if repo.target_branch != self.current_target_branch
+            && let Some(new_base) = self.recompute_base_commit(&repo.target_branch).await
+        {
+            self.current_target_branch = repo.target_branch;
+            self.current_base_commit = new_base;
+            self.reset_stream().await?;
         }
         Ok(())
     }
@@ -365,12 +369,10 @@ impl DiffStreamManager {
         let branch = self.args.branch.clone();
         let target = target_branch.to_string();
 
-        tokio::task::spawn_blocking(move || {
-            git.get_base_commit(&repo_path, &branch, &target).ok()
-        })
-        .await
-        .ok()
-        .flatten()
+        tokio::task::spawn_blocking(move || git.get_base_commit(&repo_path, &branch, &target).ok())
+            .await
+            .ok()
+            .flatten()
     }
 }
 
@@ -523,16 +525,16 @@ fn setup_git_watcher(
     tokio::sync::watch::Receiver<()>,
 )> {
     let Ok(repo) = git2::Repository::open(worktree_path) else {
-        tracing::warn!("Failed to open git repo at {:?}, git events will be ignored", worktree_path);
+        tracing::warn!(
+            "Failed to open git repo at {:?}, git events will be ignored",
+            worktree_path
+        );
         return None;
     };
 
     // For worktrees, repo.path() points to the actual gitdir (e.g. .git/worktrees/name or .git/)
     let gitdir = repo.path();
-    let paths_to_watch = vec![
-        gitdir.join("HEAD"),
-        gitdir.join("logs").join("HEAD"),
-    ];
+    let paths_to_watch = vec![gitdir.join("HEAD"), gitdir.join("logs").join("HEAD")];
 
     let (tx, rx) = tokio::sync::watch::channel(());
 
