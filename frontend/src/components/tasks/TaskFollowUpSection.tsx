@@ -599,8 +599,8 @@ export function TaskFollowUpSection({
   const editorPlaceholder = useMemo(
     () =>
       hasExtraContext
-        ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
-        : 'Continue working on this task attempt... Type @ to insert tags or search files.',
+        ? '(Optional) Add additional instructions... Type @ to insert tags or search files, / for commands.'
+        : 'Continue working on this task attempt... Type @ to insert tags or search files, / for commands.',
     [hasExtraContext]
   );
 
