@@ -36,6 +36,12 @@ pub struct Task {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct OpenPr {
+    pub number: i64,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct TaskWithAttemptStatus {
     #[serde(flatten)]
     #[ts(flatten)]
@@ -43,6 +49,7 @@ pub struct TaskWithAttemptStatus {
     pub has_in_progress_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
+    pub open_pr: Option<OpenPr>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -179,7 +186,27 @@ impl Task {
       WHERE w.task_id = t.id
      ORDER BY s.created_at DESC
       LIMIT 1
-    )                               AS "executor!: String"
+    )                               AS "executor!: String",
+
+  ( SELECT m.pr_number
+      FROM workspaces w
+      JOIN merges m ON m.workspace_id = w.id
+     WHERE w.task_id = t.id
+       AND m.merge_type = 'pr'
+       AND m.pr_status = 'open'
+     ORDER BY m.created_at DESC
+     LIMIT 1
+  )                               AS "open_pr_number: i64",
+
+  ( SELECT m.pr_url
+      FROM workspaces w
+      JOIN merges m ON m.workspace_id = w.id
+     WHERE w.task_id = t.id
+       AND m.merge_type = 'pr'
+       AND m.pr_status = 'open'
+     ORDER BY m.created_at DESC
+     LIMIT 1
+  )                               AS "open_pr_url: String"
 
 FROM tasks t
 WHERE t.project_id = $1
@@ -206,6 +233,10 @@ ORDER BY t.created_at DESC"#,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 last_attempt_failed: rec.last_attempt_failed != 0,
                 executor: rec.executor,
+                open_pr: match (rec.open_pr_number, rec.open_pr_url) {
+                    (Some(number), Some(url)) => Some(OpenPr { number, url }),
+                    _ => None,
+                },
             })
             .collect();
 
