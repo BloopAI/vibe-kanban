@@ -1070,7 +1070,8 @@ pub async fn scan_all_filesystem(
         )));
     }
 
-    let mut _folders_created = 0;
+    #[allow(unused_assignments)]
+    let mut folders_created = 0;
     let mut documents_created = 0;
     let mut total_scanned = 0;
     let mut folder_names = Vec::new();
