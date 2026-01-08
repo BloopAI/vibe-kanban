@@ -4,7 +4,9 @@ import { sql } from "drizzle-orm";
 // Projects Table
 export const projects = pgTable("projects", {
     id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id"),
     name: text("name").notNull(),
+    metadata: text("metadata").default("{}"),
     devScript: text("dev_script"),
     remoteProjectId: uuid("remote_project_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
