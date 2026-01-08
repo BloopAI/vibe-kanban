@@ -12,6 +12,7 @@ type Args = {
   clearComments: () => void;
   clearClickedElements?: () => void;
   onAfterSendCleanup: () => void;
+  refresh?: () => void;
 };
 
 export function useFollowUpSend({
@@ -24,6 +25,7 @@ export function useFollowUpSend({
   clearComments,
   clearClickedElements,
   onAfterSendCleanup,
+  refresh,
 }: Args) {
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function useFollowUpSend({
         perform_git_reset: null,
       };
       await sessionsApi.followUp(sessionId, body);
+      refresh?.();
       clearComments();
       clearClickedElements?.();
       onAfterSendCleanup();
@@ -73,6 +76,7 @@ export function useFollowUpSend({
     clearComments,
     clearClickedElements,
     onAfterSendCleanup,
+    refresh,
   ]);
 
   return {

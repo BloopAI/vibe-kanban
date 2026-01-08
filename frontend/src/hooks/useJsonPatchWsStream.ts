@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import useWebSocket, { ReadyState } from 'react-use-websocket';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
 
@@ -7,13 +8,7 @@ type WsFinishedMsg = { finished: boolean };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
 
 interface UseJsonPatchStreamOptions<T> {
-  /**
-   * Called once when the stream starts to inject initial data
-   */
   injectInitialEntry?: (data: T) => void;
-  /**
-   * Filter/deduplicate patches before applying them
-   */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
 }
 
@@ -21,6 +16,7 @@ interface UseJsonPatchStreamResult<T> {
   data: T | undefined;
   isConnected: boolean;
   error: string | null;
+  refresh: () => void;
 }
 
 /**
@@ -33,168 +29,91 @@ export const useJsonPatchWsStream = <T extends object>(
   options?: UseJsonPatchStreamOptions<T>
 ): UseJsonPatchStreamResult<T> => {
   const [data, setData] = useState<T | undefined>(undefined);
-  const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
-  const retryTimerRef = useRef<number | null>(null);
-  const retryAttemptsRef = useRef<number>(0);
-  const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+  const [reconnectKey, setReconnectKey] = useState(0);
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
 
-  function scheduleReconnect() {
-    if (retryTimerRef.current) return; // already scheduled
-    // Exponential backoff with cap: 1s, 2s, 4s, 8s (max), then stay at 8s
-    const attempt = retryAttemptsRef.current;
-    const delay = Math.min(8000, 1000 * Math.pow(2, attempt));
-    retryTimerRef.current = window.setTimeout(() => {
-      retryTimerRef.current = null;
-      setRetryNonce((n) => n + 1);
-    }, delay);
-  }
+  const wsUrl =
+    enabled && endpoint
+      ? `${endpoint.replace(/^http/, 'ws')}${endpoint.includes('?') ? '&' : '?'}_rk=${reconnectKey}`
+      : null;
+
+  const { lastJsonMessage, readyState } = useWebSocket<WsMsg>(
+    wsUrl,
+    {
+      shouldReconnect: (closeEvent) => {
+        if (finishedRef.current) return false;
+        if (closeEvent.code === 1000 && closeEvent.wasClean) return false;
+        return true;
+      },
+      reconnectAttempts: 20,
+      reconnectInterval: (attemptNumber) =>
+        Math.min(8000, 1000 * Math.pow(2, attemptNumber)),
+      retryOnError: true,
+      onOpen: () => setError(null),
+      onError: () => setError('Connection failed'),
+    },
+    enabled && !!endpoint
+  );
 
   useEffect(() => {
     if (!enabled || !endpoint) {
-      // Close connection and reset state
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (retryTimerRef.current) {
-        window.clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      retryAttemptsRef.current = 0;
-      finishedRef.current = false;
-      setData(undefined);
-      setIsConnected(false);
-      setError(null);
       dataRef.current = undefined;
+      setData(undefined);
+      finishedRef.current = false;
       return;
     }
 
-    // Initialize data
     if (!dataRef.current) {
       dataRef.current = initialData();
-
-      // Inject initial entry if provided
       if (injectInitialEntry) {
         injectInitialEntry(dataRef.current);
       }
     }
+  }, [enabled, endpoint, initialData, injectInitialEntry]);
 
-    // Create WebSocket if it doesn't exist
-    if (!wsRef.current) {
-      // Reset finished flag for new connection
+  useEffect(() => {
+    if (reconnectKey > 0) {
       finishedRef.current = false;
+    }
+  }, [reconnectKey]);
 
-      // Convert HTTP endpoint to WebSocket endpoint
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
-      const ws = new WebSocket(wsEndpoint);
+  useEffect(() => {
+    if (!lastJsonMessage) return;
 
-      ws.onopen = () => {
-        setError(null);
-        setIsConnected(true);
-        // Reset backoff on successful connection
-        retryAttemptsRef.current = 0;
-        if (retryTimerRef.current) {
-          window.clearTimeout(retryTimerRef.current);
-          retryTimerRef.current = null;
-        }
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const msg: WsMsg = JSON.parse(event.data);
-
-          // Handle JsonPatch messages (same as SSE json_patch event)
-          if ('JsonPatch' in msg) {
-            const patches: Operation[] = msg.JsonPatch;
-            const filtered = deduplicatePatches
-              ? deduplicatePatches(patches)
-              : patches;
-
-            const current = dataRef.current;
-            if (!filtered.length || !current) return;
-
-            // Deep clone the current state before mutating it
-            const next = structuredClone(current);
-
-            // Apply patch (mutates the clone in place)
-            applyPatch(next, filtered);
-
-            dataRef.current = next;
-            setData(next);
-          }
-
-          // Handle finished messages ({finished: true})
-          // Treat finished as terminal - do NOT reconnect
-          if ('finished' in msg) {
-            finishedRef.current = true;
-            ws.close(1000, 'finished');
-            wsRef.current = null;
-            setIsConnected(false);
-          }
-        } catch (err) {
-          console.error('Failed to process WebSocket message:', err);
-          setError('Failed to process stream update');
-        }
-      };
-
-      ws.onerror = () => {
-        setError('Connection failed');
-      };
-
-      ws.onclose = (evt) => {
-        setIsConnected(false);
-        wsRef.current = null;
-
-        // Do not reconnect if we received a finished message or clean close
-        if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
-          return;
-        }
-
-        // Otherwise, reconnect on unexpected/error closures
-        retryAttemptsRef.current += 1;
-        scheduleReconnect();
-      };
-
-      wsRef.current = ws;
+    if ('finished' in lastJsonMessage) {
+      finishedRef.current = true;
+      return;
     }
 
-    return () => {
-      if (wsRef.current) {
-        const ws = wsRef.current;
+    if ('JsonPatch' in lastJsonMessage) {
+      const patches = lastJsonMessage.JsonPatch;
+      const filtered = deduplicatePatches
+        ? deduplicatePatches(patches)
+        : patches;
 
-        // Clear all event handlers first to prevent callbacks after cleanup
-        ws.onopen = null;
-        ws.onmessage = null;
-        ws.onerror = null;
-        ws.onclose = null;
+      const current = dataRef.current;
+      if (!filtered.length || !current) return;
 
-        // Close regardless of state
-        ws.close();
-        wsRef.current = null;
-      }
-      if (retryTimerRef.current) {
-        window.clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      finishedRef.current = false;
-      dataRef.current = undefined;
-      setData(undefined);
-    };
-  }, [
-    endpoint,
-    enabled,
-    initialData,
-    injectInitialEntry,
-    deduplicatePatches,
-    retryNonce,
-  ]);
+      const next = structuredClone(current);
+      applyPatch(next, filtered);
+      dataRef.current = next;
+      setData(next);
+    }
+  }, [lastJsonMessage, deduplicatePatches]);
 
-  return { data, isConnected, error };
+  const refresh = useCallback(() => {
+    setReconnectKey((k) => k + 1);
+  }, []);
+
+  return {
+    data,
+    isConnected: readyState === ReadyState.OPEN,
+    error,
+    refresh,
+  };
 };

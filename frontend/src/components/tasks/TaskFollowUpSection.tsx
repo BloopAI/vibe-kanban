@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
@@ -80,6 +81,8 @@ export function TaskFollowUpSection({
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, task.id);
+
+  const { refresh } = useExecutionProcessesContext();
 
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(workspaceId);
@@ -331,6 +334,7 @@ export function TaskFollowUpSection({
         setLocalMessage(''); // Clear local state immediately
         // Scratch deletion is handled by the backend when the queued message is consumed
       },
+      refresh,
     });
 
   // Separate logic for when textarea should be disabled vs when send button should be disabled
