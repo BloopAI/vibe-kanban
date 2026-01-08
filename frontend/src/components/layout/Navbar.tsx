@@ -19,7 +19,6 @@ import {
   Plus,
   LogOut,
   LogIn,
-  Sparkles,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -234,13 +233,13 @@ export function Navbar() {
               </>
             ) : null}
 
-            <Button variant="ghost" size="sm" className="h-9 gap-1.5" asChild>
+            {/* <Button variant="ghost" size="sm" className="h-9 gap-1.5" asChild>
               <Link to="/workspaces">
                 <Sparkles className="h-4 w-4" />
                 {t('common:navbar.tryNewUI')}
               </Link>
             </Button>
-            <NavDivider />
+            <NavDivider /> */}
 
             <div className="flex items-center gap-1">
               <Button

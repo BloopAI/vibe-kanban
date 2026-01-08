@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Eye, FileDiff, X, Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Eye, FileDiff, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -103,7 +102,7 @@ export const AttemptHeaderActions = ({
                 {t('attemptHeaderActions.diffs')}
               </TooltipContent>
             </Tooltip>
-            {attempt?.id && (
+            {/* {attempt?.id && (
               <>
                 <div className="h-4 w-px bg-border" />
                 <Tooltip>
@@ -121,7 +120,7 @@ export const AttemptHeaderActions = ({
                   </TooltipContent>
                 </Tooltip>
               </>
-            )}
+            )} */}
           </ToggleGroup>
         </TooltipProvider>
       )}
