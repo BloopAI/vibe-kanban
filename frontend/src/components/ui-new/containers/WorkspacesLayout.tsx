@@ -421,19 +421,23 @@ export function WorkspacesLayout() {
   // Navigate to logs panel and select a specific process
   const handleViewProcessInPanel = useCallback(
     (processId: string) => {
-      setLogsMode(true);
+      if (!isLogsMode) {
+        setLogsMode(true);
+      }
       setLogsPanelContent({ type: 'process', processId });
     },
-    [setLogsMode]
+    [isLogsMode, setLogsMode]
   );
 
   // Navigate to logs panel and display static tool content
   const handleViewToolContentInPanel = useCallback(
     (toolName: string, content: string, command?: string) => {
-      setLogsMode(true);
+      if (!isLogsMode) {
+        setLogsMode(true);
+      }
       setLogsPanelContent({ type: 'tool', toolName, content, command });
     },
-    [setLogsMode]
+    [isLogsMode, setLogsMode]
   );
 
   // Navigate to changes panel and scroll to a specific file
