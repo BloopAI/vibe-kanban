@@ -27,22 +27,19 @@ KNOWN_PROJECTS = {
 
 KNOWN_TEAMS = {
     "vibe-kanban": "c1a926de-0683-407d-81de-124e0d161ec5",
+    "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
+    "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
 }
 
 
 def get_base_url():
     """Get the backend URL."""
+    # Use remote production API by default for data consistency
     if os.environ.get("VIBE_BACKEND_URL"):
         return os.environ["VIBE_BACKEND_URL"]
 
-    tmp_dir = os.environ.get("TMPDIR", "/tmp")
-    port_file = Path(tmp_dir) / "vibe-kanban" / "vibe-kanban.port"
-
-    if port_file.exists():
-        port = port_file.read_text().strip()
-        return f"http://{DEFAULT_HOST}:{port}"
-
-    return f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+    # Default to remote production API
+    return "https://api.scho1ar.com"
 
 
 def api_request(endpoint, method="GET", data=None):
@@ -50,6 +47,11 @@ def api_request(endpoint, method="GET", data=None):
     base_url = get_base_url()
     url = f"{base_url}/api{endpoint}"
     headers = {"Content-Type": "application/json"}
+
+    # Add authorization token if available
+    auth_token = os.environ.get("VIBE_API_TOKEN")
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
 
     try:
         if data:
