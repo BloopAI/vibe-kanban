@@ -157,32 +157,29 @@ impl ExecutionProcessRepoState {
         .await
     }
 
-    /// Find the initial before_head_commit for each repo in a workspace.
-    /// Returns the before_head_commit from the earliest execution process for each repo.
-    pub async fn find_initial_commits_for_workspace(
+    /// Find the initial before_head_commit for a specific repo in a workspace.
+    /// Returns the before_head_commit from the earliest execution process for that repo.
+    pub async fn find_initial_commit_for_repo(
         pool: &SqlitePool,
         workspace_id: Uuid,
-    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
-        // For each repo, find the before_head_commit from the earliest process
-        let rows = sqlx::query!(
-            r#"SELECT
-                    eprs.repo_id as "repo_id!: Uuid",
-                    eprs.before_head_commit as "before_head_commit!"
+        repo_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"SELECT eprs.before_head_commit as "before_head_commit!"
                FROM execution_process_repo_states eprs
                JOIN execution_processes ep ON ep.id = eprs.execution_process_id
                JOIN sessions s ON s.id = ep.session_id
                WHERE s.workspace_id = $1
+                 AND eprs.repo_id = $2
                  AND eprs.before_head_commit IS NOT NULL
-               GROUP BY eprs.repo_id
-               HAVING ep.created_at = MIN(ep.created_at)"#,
-            workspace_id
+               ORDER BY ep.created_at ASC
+               LIMIT 1"#,
+            workspace_id,
+            repo_id
         )
-        .fetch_all(pool)
+        .fetch_optional(pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| (r.repo_id, r.before_head_commit))
-            .collect())
+        Ok(row.map(|r| r.before_head_commit))
     }
 }

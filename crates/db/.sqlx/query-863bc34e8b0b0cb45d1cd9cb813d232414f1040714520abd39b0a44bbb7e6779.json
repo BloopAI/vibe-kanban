@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT eprs.before_head_commit as \"before_head_commit!\"\n               FROM execution_process_repo_states eprs\n               JOIN execution_processes ep ON ep.id = eprs.execution_process_id\n               JOIN sessions s ON s.id = ep.session_id\n               WHERE s.workspace_id = $1\n                 AND eprs.repo_id = $2\n                 AND eprs.before_head_commit IS NOT NULL\n               ORDER BY ep.created_at ASC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "before_head_commit!",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "863bc34e8b0b0cb45d1cd9cb813d232414f1040714520abd39b0a44bbb7e6779"
+}
