@@ -87,6 +87,8 @@ export function NoServerContent({
           dev_script: script,
           dev_script_working_dir: project.dev_script_working_dir ?? null,
           default_agent_working_dir: project.default_agent_working_dir ?? null,
+          dev_server_timeout: project.dev_server_timeout ?? null,
+          dev_server_port: project.dev_server_port ?? null,
         },
       },
       {
