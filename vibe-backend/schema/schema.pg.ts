@@ -535,6 +535,38 @@ export const memberProjectAccess = pgTable("member_project_access", {
     idxMemberProjectAccessUnique: uniqueIndex("idx_member_project_access_unique").on(table.memberId, table.projectId),
 }));
 
+// API Keys (for programmatic access - MCP servers, CLI tools, etc.)
+export const apiKeys = pgTable("api_keys", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    keyPrefix: text("key_prefix").notNull(), // First 11 chars for identification
+    keyHash: text("key_hash").notNull(), // SHA256 hash of the full key
+    scopes: text("scopes").array().default(sql`'{}'::text[]`).notNull(), // Permission scopes
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    isRevoked: boolean("is_revoked").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxApiKeysUserId: index("idx_api_keys_user_id").on(table.userId),
+    idxApiKeysKeyHash: uniqueIndex("idx_api_keys_key_hash").on(table.keyHash),
+    idxApiKeysKeyPrefix: index("idx_api_keys_key_prefix").on(table.keyPrefix),
+}));
+
+// Team Registry (for multi-tenant team management)
+export const teamRegistry = pgTable("team_registry", {
+    id: text("id").primaryKey(),
+    slug: text("slug").unique().notNull(),
+    name: text("name").notNull(),
+    dbPath: text("db_path").notNull(),
+    tursoDB: text("turso_db"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+}, (table) => ({
+    idxTeamRegistrySlug: uniqueIndex("idx_team_registry_slug").on(table.slug),
+}));
+
 
 
 
