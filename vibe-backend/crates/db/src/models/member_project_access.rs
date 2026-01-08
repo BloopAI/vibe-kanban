@@ -85,7 +85,7 @@ impl MemberProjectAccess {
         let mut tx = pool.begin().await?;
 
         // Delete all existing access for this member
-        sqlx::query!("DELETE FROM member_project_access WHERE member_id = $1", member_id)
+        sqlx::query!("DELETE FROM member_project_access WHERE member_id = $1::uuid", member_id)
             .execute(&mut *tx)
             .await?;
 
@@ -94,7 +94,7 @@ impl MemberProjectAccess {
             let id = Uuid::new_v4();
             sqlx::query!(
                 r#"INSERT INTO member_project_access (id, member_id, project_id)
-                   VALUES ($1, $2, $3)"#,
+                   VALUES ($1::uuid, $2::uuid, $3::uuid)"#,
                 id,
                 member_id,
                 project_id
@@ -118,7 +118,7 @@ impl MemberProjectAccess {
         let row = sqlx::query_as!(
             MemberProjectAccessRow,
             r#"INSERT INTO member_project_access (id, member_id, project_id)
-               VALUES ($1, $2, $3)
+               VALUES ($1::uuid, $2::uuid, $3::uuid)
                ON CONFLICT(member_id, project_id) DO UPDATE SET id = member_project_access.id
                RETURNING id as "id!: Uuid",
                          member_id as "member_id!: Uuid",
@@ -141,7 +141,7 @@ impl MemberProjectAccess {
         project_id: Uuid,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "DELETE FROM member_project_access WHERE member_id = $1 AND project_id = $2",
+            "DELETE FROM member_project_access WHERE member_id = $1::uuid AND project_id = $2",
             member_id,
             project_id
         )

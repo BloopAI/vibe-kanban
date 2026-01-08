@@ -116,7 +116,7 @@ impl TaskComment {
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM task_comments
-               WHERE id = $1"#,
+               WHERE id = $1::uuid"#,
             id
         )
         .fetch_optional(pool)
@@ -177,7 +177,7 @@ impl TaskComment {
             TaskCommentRow,
             r#"UPDATE task_comments
                SET content = $2, is_internal = $3, updated_at = NOW()
-               WHERE id = $1
+               WHERE id = $1::uuid
                RETURNING id as "id!: Uuid",
                          task_id as "task_id!: Uuid",
                          author_id as "author_id: Uuid",
@@ -199,7 +199,7 @@ impl TaskComment {
 
     /// Delete a comment
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM task_comments WHERE id = $1", id)
+        let result = sqlx::query!("DELETE FROM task_comments WHERE id = $1::uuid", id)
             .execute(pool)
             .await?;
 

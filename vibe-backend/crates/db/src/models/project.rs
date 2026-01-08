@@ -73,8 +73,8 @@ pub struct Project {
     /// Priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low
     pub priority: Option<i32>,
     pub lead_id: Option<Uuid>,
-    pub start_date: Option<String>,
-    pub target_date: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub target_date: Option<DateTime<Utc>>,
     pub status: Option<String>,
     /// Health percentage 0-100
     pub health: Option<i32>,
@@ -96,9 +96,9 @@ pub struct CreateProject {
     #[serde(default)]
     pub lead_id: Option<Uuid>,
     #[serde(default)]
-    pub start_date: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
     #[serde(default)]
-    pub target_date: Option<String>,
+    pub target_date: Option<DateTime<Utc>>,
     #[serde(default)]
     pub status: Option<String>,
     #[serde(default)]
@@ -117,8 +117,8 @@ pub struct UpdateProject {
     pub default_agent_working_dir: Option<String>,
     pub priority: Option<i32>,
     pub lead_id: Option<Uuid>,
-    pub start_date: Option<String>,
-    pub target_date: Option<String>,
+    pub start_date: Option<DateTime<Utc>>,
+    pub target_date: Option<DateTime<Utc>>,
     pub status: Option<String>,
     pub health: Option<i32>,
     pub description: Option<String>,
@@ -297,8 +297,8 @@ impl Project {
                           remote_project_id as "remote_project_id: Uuid",
                           priority as "priority: i32",
                           lead_id as "lead_id: Uuid",
-                          start_date,
-                          target_date,
+                          start_date as "start_date: DateTime<Utc>",
+                          target_date as "target_date: DateTime<Utc>",
                           status,
                           health as "health: i32",
                           description,
