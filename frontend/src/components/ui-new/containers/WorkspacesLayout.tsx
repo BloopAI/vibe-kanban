@@ -24,6 +24,8 @@ import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPan
 import { GitPanelCreateContainer } from '@/components/ui-new/containers/GitPanelCreateContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
+import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
+import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { repoApi } from '@/lib/api';
 import { useDiffStream } from '@/hooks/useDiffStream';
@@ -154,6 +156,7 @@ export function WorkspacesLayout() {
     isGitPanelVisible,
     isChangesMode,
     isLogsMode,
+    isPreviewMode,
     setChangesMode,
     setLogsMode,
     resetForCreateMode,
@@ -310,13 +313,16 @@ export function WorkspacesLayout() {
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
-  // Reset Allotment sizes when changes or logs panel becomes visible
+  // Reset Allotment sizes when changes, logs, or preview panel becomes visible
   // This re-applies preferredSize percentages based on current window size
   useEffect(() => {
-    if ((isChangesMode || isLogsMode) && allotmentRef.current) {
+    if (
+      (isChangesMode || isLogsMode || isPreviewMode) &&
+      allotmentRef.current
+    ) {
       allotmentRef.current.reset();
     }
-  }, [isChangesMode, isLogsMode]);
+  }, [isChangesMode, isLogsMode, isPreviewMode]);
 
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
@@ -515,6 +521,28 @@ export function WorkspacesLayout() {
       );
     }
 
+    if (isPreviewMode) {
+      // In preview mode, split git panel vertically: preview controls on top, git on bottom
+      return (
+        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
+          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+            <PreviewControlsContainer
+              attemptId={selectedWorkspace?.id}
+              onViewProcessInPanel={handleViewProcessInPanel}
+            />
+          </Allotment.Pane>
+          <Allotment.Pane minSize={200}>
+            <GitPanelContainer
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+              repoInfos={repoInfos}
+              onBranchNameChange={handleBranchNameChange}
+            />
+          </Allotment.Pane>
+        </Allotment>
+      );
+    }
+
     return (
       <GitPanelContainer
         selectedWorkspace={selectedWorkspace}
@@ -595,7 +623,7 @@ export function WorkspacesLayout() {
         <Allotment.Pane
           minSize={300}
           preferredSize={changesPanelWidth}
-          visible={isChangesMode || isLogsMode}
+          visible={isChangesMode || isLogsMode || isPreviewMode}
         >
           <div className="h-full overflow-hidden">
             {isChangesMode && (
@@ -614,6 +642,9 @@ export function WorkspacesLayout() {
                 currentMatchIndex={logCurrentMatchIdx}
                 onMatchIndicesChange={setLogMatchIndices}
               />
+            )}
+            {isPreviewMode && (
+              <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
             )}
           </div>
         </Allotment.Pane>

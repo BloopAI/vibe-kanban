@@ -28,6 +28,7 @@ import {
   GitMergeIcon,
   ArrowsClockwiseIcon,
   CrosshairIcon,
+  DesktopIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -80,6 +81,7 @@ export interface ActionVisibilityContext {
   // Layout state
   isChangesMode: boolean;
   isLogsMode: boolean;
+  isPreviewMode: boolean;
   isSidebarVisible: boolean;
   isMainPanelVisible: boolean;
   isGitPanelVisible: boolean;
@@ -418,6 +420,23 @@ export const Actions = {
     },
   },
 
+  TogglePreviewMode: {
+    id: 'toggle-preview-mode',
+    label: () =>
+      useLayoutStore.getState().isPreviewMode
+        ? 'Hide Preview Panel'
+        : 'Show Preview Panel',
+    icon: DesktopIcon,
+    shortcut: 'P',
+    requiresTarget: false,
+    isVisible: (ctx) => !ctx.isCreateMode,
+    isActive: (ctx) => ctx.isPreviewMode,
+    isEnabled: (ctx) => !ctx.isCreateMode,
+    execute: () => {
+      useLayoutStore.getState().togglePreviewMode();
+    },
+  },
+
   // === Navigation Actions ===
   OpenInOldUI: {
     id: 'open-in-old-ui',
@@ -712,6 +731,7 @@ export const NavbarActionGroups = {
     Actions.ToggleMainPanel,
     Actions.ToggleChangesMode,
     Actions.ToggleLogsMode,
+    Actions.TogglePreviewMode,
     Actions.ToggleGitPanel,
   ] as NavbarItem[],
 };
@@ -725,6 +745,7 @@ export const ContextBarActionGroups = {
   primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
   secondary: [
     Actions.ToggleDevServer,
+    Actions.TogglePreviewMode,
     Actions.ToggleChangesMode,
   ] as ActionDefinition[],
 };

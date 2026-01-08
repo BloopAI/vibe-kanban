@@ -33,6 +33,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     return {
       isChangesMode: layout.isChangesMode,
       isLogsMode: layout.isLogsMode,
+      isPreviewMode: layout.isPreviewMode,
       isSidebarVisible: layout.isSidebarVisible,
       isMainPanelVisible: layout.isMainPanelVisible,
       isGitPanelVisible: layout.isGitPanelVisible,
@@ -48,6 +49,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   }, [
     layout.isChangesMode,
     layout.isLogsMode,
+    layout.isPreviewMode,
     layout.isSidebarVisible,
     layout.isMainPanelVisible,
     layout.isGitPanelVisible,

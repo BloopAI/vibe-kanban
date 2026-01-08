@@ -8,6 +8,10 @@ type LayoutState = {
   isGitPanelVisible: boolean;
   isChangesMode: boolean;
   isLogsMode: boolean;
+  isPreviewMode: boolean;
+
+  // Preview refresh coordination
+  previewRefreshKey: number;
 
   // Toggle functions
   toggleSidebar: () => void;
@@ -15,11 +19,16 @@ type LayoutState = {
   toggleGitPanel: () => void;
   toggleChangesMode: () => void;
   toggleLogsMode: () => void;
+  togglePreviewMode: () => void;
 
   // Setters for direct state updates
   setChangesMode: (value: boolean) => void;
   setLogsMode: (value: boolean) => void;
+  setPreviewMode: (value: boolean) => void;
   setSidebarVisible: (value: boolean) => void;
+
+  // Preview actions
+  triggerPreviewRefresh: () => void;
 
   // Reset for create mode
   resetForCreateMode: () => void;
@@ -36,6 +45,8 @@ export const useLayoutStore = create<LayoutState>()(
       isGitPanelVisible: true,
       isChangesMode: false,
       isLogsMode: false,
+      isPreviewMode: false,
+      previewRefreshKey: 0,
 
       toggleSidebar: () =>
         set((s) => ({ isSidebarVisible: !s.isSidebarVisible })),
@@ -55,11 +66,12 @@ export const useLayoutStore = create<LayoutState>()(
         const newChangesMode = !isChangesMode;
 
         if (newChangesMode) {
-          // Changes and logs are mutually exclusive - turn off logs mode
+          // Changes, logs, and preview are mutually exclusive
           // Auto-hide sidebar when entering changes mode (unless screen is wide enough)
           set({
             isChangesMode: true,
             isLogsMode: false,
+            isPreviewMode: false,
             isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
           });
         } else {
@@ -76,11 +88,12 @@ export const useLayoutStore = create<LayoutState>()(
         const newLogsMode = !isLogsMode;
 
         if (newLogsMode) {
-          // Logs and changes are mutually exclusive - turn off changes mode
+          // Logs, changes, and preview are mutually exclusive
           // Auto-hide sidebar when entering logs mode (unless screen is wide enough)
           set({
             isLogsMode: true,
             isChangesMode: false,
+            isPreviewMode: false,
             isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
           });
         } else {
@@ -92,11 +105,34 @@ export const useLayoutStore = create<LayoutState>()(
         }
       },
 
+      togglePreviewMode: () => {
+        const { isPreviewMode } = get();
+        const newPreviewMode = !isPreviewMode;
+
+        if (newPreviewMode) {
+          // Preview, changes, and logs are mutually exclusive
+          // Auto-hide sidebar when entering preview mode (unless screen is wide enough)
+          set({
+            isPreviewMode: true,
+            isChangesMode: false,
+            isLogsMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          // Auto-show sidebar when exiting preview mode
+          set({
+            isPreviewMode: false,
+            isSidebarVisible: true,
+          });
+        }
+      },
+
       setChangesMode: (value) => {
         if (value) {
           set({
             isChangesMode: true,
             isLogsMode: false,
+            isPreviewMode: false,
             isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
           });
         } else {
@@ -109,6 +145,7 @@ export const useLayoutStore = create<LayoutState>()(
           set({
             isLogsMode: true,
             isChangesMode: false,
+            isPreviewMode: false,
             isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
           });
         } else {
@@ -116,12 +153,29 @@ export const useLayoutStore = create<LayoutState>()(
         }
       },
 
+      setPreviewMode: (value) => {
+        if (value) {
+          set({
+            isPreviewMode: true,
+            isChangesMode: false,
+            isLogsMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({ isPreviewMode: false });
+        }
+      },
+
       setSidebarVisible: (value) => set({ isSidebarVisible: value }),
+
+      triggerPreviewRefresh: () =>
+        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
 
       resetForCreateMode: () =>
         set({
           isChangesMode: false,
           isLogsMode: false,
+          isPreviewMode: false,
         }),
     }),
     {
@@ -145,3 +199,4 @@ export const useIsGitPanelVisible = () =>
   useLayoutStore((s) => s.isGitPanelVisible);
 export const useIsChangesMode = () => useLayoutStore((s) => s.isChangesMode);
 export const useIsLogsMode = () => useLayoutStore((s) => s.isLogsMode);
+export const useIsPreviewMode = () => useLayoutStore((s) => s.isPreviewMode);

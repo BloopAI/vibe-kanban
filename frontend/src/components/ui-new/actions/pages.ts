@@ -135,6 +135,7 @@ export const Pages: Record<PageId, CommandBarPage> = {
           { type: 'action', action: Actions.ToggleGitPanel },
           { type: 'action', action: Actions.ToggleChangesMode },
           { type: 'action', action: Actions.ToggleLogsMode },
+          { type: 'action', action: Actions.TogglePreviewMode },
         ],
       },
     ],
