@@ -8,9 +8,8 @@ use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, Sqlite, SqlitePool, sqlite::SqliteConnectOptions};
+use sqlx::{FromRow, Pool, Postgres, PgPool, postgres::PgConnectOptions};
 use std::str::FromStr;
-use utils::assets::asset_dir;
 
 /// Registry entry for a team's database
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -189,7 +188,7 @@ impl RegistryService {
     /// Check if a slug is already in use
     pub async fn slug_exists(&self, slug: &str) -> Result<bool, sqlx::Error> {
         let result = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM team_registry WHERE slug = $1",
+            "SELECT COUNT(*)::bigint FROM team_registry WHERE slug = $1",
         )
         .bind(slug)
         .fetch_one(&self.pool)

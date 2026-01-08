@@ -65,7 +65,7 @@ pub struct ExecutionProcess {
     #[ts(type = "ExecutorAction")]
     pub executor_action: sqlx::types::Json<ExecutorActionField>,
     pub status: ExecutionProcessStatus,
-    pub exit_code: Option<i64>,
+    pub exit_code: Option<i32>,
     /// dropped: true if this process is excluded from the current
     /// history view (due to restore/trimming). Hidden from logs/timeline;
     /// still listed in the Processes tab.
@@ -87,7 +87,7 @@ pub struct CreateExecutionProcess {
 #[allow(dead_code)]
 pub struct UpdateExecutionProcess {
     pub status: Option<ExecutionProcessStatus>,
-    pub exit_code: Option<i64>,
+    pub exit_code: Option<i32>,
     pub completed_at: Option<DateTime<Utc>>,
 }
 
@@ -374,7 +374,7 @@ impl ExecutionProcess {
                WHERE ep.session_id = $1 AND ep.run_reason = $2 AND ep.dropped = FALSE
                ORDER BY ep.created_at DESC LIMIT 1"#,
             session_id,
-            run_reason
+            run_reason.to_string()
         )
         .fetch_optional(pool)
         .await
@@ -405,7 +405,7 @@ impl ExecutionProcess {
                WHERE s.workspace_id = $1 AND ep.run_reason = $2 AND ep.dropped = FALSE
                ORDER BY ep.created_at DESC LIMIT 1"#,
             workspace_id,
-            run_reason
+            run_reason.to_string()
         )
         .fetch_optional(pool)
         .await
@@ -434,10 +434,10 @@ impl ExecutionProcess {
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
             process_id,
             data.session_id,
-            data.run_reason,
-            executor_action_json,
-            ExecutionProcessStatus::Running,
-            None::<i64>,
+            data.run_reason.to_string(),
+            serde_json::to_string(&data.executor_action).unwrap(),
+            ExecutionProcessStatus::Running.to_string(),
+            None::<i32>,
             now,
             None::<DateTime<Utc>>,
             now,
@@ -470,7 +470,7 @@ impl ExecutionProcess {
         pool: &PgPool,
         id: Uuid,
         status: ExecutionProcessStatus,
-        exit_code: Option<i64>,
+        exit_code: Option<i32>,
     ) -> Result<(), sqlx::Error> {
         let completed_at = if matches!(status, ExecutionProcessStatus::Running) {
             None
@@ -482,7 +482,7 @@ impl ExecutionProcess {
             r#"UPDATE execution_processes
                SET status = $1, exit_code = $2, completed_at = $3
                WHERE id = $4"#,
-            status,
+            status.to_string(),
             exit_code,
             completed_at,
             id
@@ -654,6 +654,28 @@ impl ExecutionProcess {
             _ => Err(ExecutionProcessError::ValidationError(
                 "Couldn't find profile from initial request".to_string(),
             )),
+        }
+    }
+}
+
+impl std::fmt::Display for ExecutionProcessStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Running => write!(f, "running"),
+            Self::Completed => write!(f, "completed"),
+            Self::Failed => write!(f, "failed"),
+            Self::Killed => write!(f, "killed"),
+        }
+    }
+}
+
+impl std::fmt::Display for ExecutionProcessRunReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SetupScript => write!(f, "setupscript"),
+            Self::CleanupScript => write!(f, "cleanupscript"),
+            Self::CodingAgent => write!(f, "codingagent"),
+            Self::DevServer => write!(f, "devserver"),
         }
     }
 }

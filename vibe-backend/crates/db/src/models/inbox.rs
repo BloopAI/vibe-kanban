@@ -153,7 +153,7 @@ impl InboxItem {
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             id,
-            data.notification_type,
+            data.notification_type.to_string(),
             data.title,
             data.message,
             data.task_id,

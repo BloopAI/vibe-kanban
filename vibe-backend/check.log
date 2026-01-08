@@ -1,0 +1,511 @@
+    Checking db v0.0.142 (/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/vibe-backend/crates/db)
+warning: unused import: `path::PathBuf`
+ --> crates/db/src/lib.rs:2:11
+  |
+2 | use std::{path::PathBuf, str::FromStr, sync::Arc};
+  |           ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `collections::HashMap` and `path::PathBuf`
+ --> crates/db/src/pool_manager.rs:7:5
+  |
+7 |     collections::HashMap,
+  |     ^^^^^^^^^^^^^^^^^^^^
+8 |     path::PathBuf,
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `tokio::sync::RwLock`
+  --> crates/db/src/pool_manager.rs:12:5
+   |
+12 | use tokio::sync::RwLock;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/execution_process.rs:633:13
+    |
+633 |             ExecutionProcessRunReason::CodingAgent
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |             |
+    |             expected `&str`, found `ExecutionProcessRunReason`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+  --> crates/db/src/models/member_project_access.rs:98:17
+   |
+98 |                 id,
+   |                 ^^
+   |                 |
+   |                 expected `&str`, found `Uuid`
+   |                 expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/member_project_access.rs:127:13
+    |
+127 |             id,
+    |             ^^
+    |             |
+    |             expected `&str`, found `Uuid`
+    |             expected due to the type of this binding
+
+error[E0277]: the trait bound `std::option::Option<i64>: From<std::option::Option<i32>>` is not satisfied
+   --> crates/db/src/models/merge.rs:96:9
+    |
+ 96 | /         sqlx::query_as!(
+ 97 | |             MergeRow,
+ 98 | |             r#"INSERT INTO merges (
+ 99 | |                 id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name
+...   |
+120 | |             target_branch_name
+121 | |         )
+    | |_________^ the trait `From<std::option::Option<i32>>` is not implemented for `std::option::Option<i64>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<i32>` to implement `Into<std::option::Option<i64>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/merge.rs:160:13
+    |
+160 |             pr_number,
+    |             ^^^^^^^^^
+    |             |
+    |             expected `i32`, found `i64`
+    |             expected due to the type of this binding
+
+error[E0277]: the trait bound `std::option::Option<i64>: From<std::option::Option<i32>>` is not satisfied
+   --> crates/db/src/models/merge.rs:138:9
+    |
+138 | /         sqlx::query_as!(
+139 | |             MergeRow,
+140 | |             r#"INSERT INTO merges (
+141 | |                 id, workspace_id, repo_id, merge_type, pr_number, pr_url, pr_status, created_at, target_branch_name
+...   |
+163 | |             target_branch_name
+164 | |         )
+    | |_________^ the trait `From<std::option::Option<i32>>` is not implemented for `std::option::Option<i64>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<i32>` to implement `Into<std::option::Option<i64>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<i64>: From<std::option::Option<i32>>` is not satisfied
+   --> crates/db/src/models/merge.rs:172:20
+    |
+172 |           let rows = sqlx::query_as!(
+    |  ____________________^
+173 | |             MergeRow,
+174 | |             r#"SELECT
+175 | |                 id as "id!: Uuid",
+...   |
+189 | |                ORDER BY created_at DESC"#,
+190 | |         )
+    | |_________^ the trait `From<std::option::Option<i32>>` is not implemented for `std::option::Option<i64>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<i32>` to implement `Into<std::option::Option<i64>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/merge.rs:216:13
+    |
+216 |             pr_status,
+    |             ^^^^^^^^^
+    |             |
+    |             expected `&str`, found `MergeStatus`
+    |             expected due to the type of this binding
+
+error[E0277]: the trait bound `std::option::Option<i64>: From<std::option::Option<i32>>` is not satisfied
+   --> crates/db/src/models/merge.rs:232:20
+    |
+232 |           let rows = sqlx::query_as!(
+    |  ____________________^
+233 | |             MergeRow,
+234 | |             r#"SELECT
+235 | |                 id as "id!: Uuid",
+...   |
+250 | |             workspace_id
+251 | |         )
+    | |_________^ the trait `From<std::option::Option<i32>>` is not implemented for `std::option::Option<i64>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<i32>` to implement `Into<std::option::Option<i64>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<i64>: From<std::option::Option<i32>>` is not satisfied
+   --> crates/db/src/models/merge.rs:265:20
+    |
+265 |           let rows = sqlx::query_as!(
+    |  ____________________^
+266 | |             MergeRow,
+267 | |             r#"SELECT
+268 | |                 id as "id!: Uuid",
+...   |
+284 | |             repo_id
+285 | |         )
+    | |_________^ the trait `From<std::option::Option<i32>>` is not implemented for `std::option::Option<i64>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<i32>` to implement `Into<std::option::Option<i64>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:151:9
+    |
+151 | /         sqlx::query_as!(
+152 | |             Project,
+153 | |             r#"SELECT id as "id!: Uuid",
+154 | |                       name,
+...   |
+171 | |                ORDER BY created_at DESC"#
+172 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:179:9
+    |
+179 | /         sqlx::query_as!(
+180 | |             Project,
+181 | |             r#"
+182 | |             SELECT p.id as "id!: Uuid", p.name, p.dev_script, p.dev_script_working_dir,
+...   |
+205 | |             limit as i64 // LIMIT in Postgres often wants i64 or generic int
+206 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:212:9
+    |
+212 | /         sqlx::query_as!(
+213 | |             Project,
+214 | |             r#"SELECT id as "id!: Uuid",
+215 | |                       name,
+...   |
+233 | |             id
+234 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:243:9
+    |
+243 | /         sqlx::query_as!(
+244 | |             Project,
+245 | |             r#"SELECT id as "id!: Uuid",
+246 | |                       name,
+...   |
+265 | |             remote_project_id
+266 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project.rs:313:13
+    |
+313 |             data.start_date,
+    |             ^^^^^^^^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project.rs:314:13
+    |
+314 |             data.target_date,
+    |             ^^^^^^^^^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:276:9
+    |
+276 | /         sqlx::query_as!(
+277 | |             Project,
+278 | |             r#"INSERT INTO projects (
+279 | |                     id,
+...   |
+318 | |             data.icon,
+319 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project.rs:379:13
+    |
+379 |             start_date,
+    |             ^^^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project.rs:380:13
+    |
+380 |             target_date,
+    |             ^^^^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0277]: the trait bound `std::option::Option<std::string::String>: From<std::option::Option<DateTime<Utc>>>` is not satisfied
+   --> crates/db/src/models/project.rs:347:9
+    |
+347 | /         sqlx::query_as!(
+348 | |             Project,
+349 | |             r#"UPDATE projects
+350 | |                SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5,
+...   |
+385 | |             icon,
+386 | |         )
+    | |_________^ the trait `From<std::option::Option<DateTime<Utc>>>` is not implemented for `std::option::Option<std::string::String>`
+    |
+    = help: the following other types implement trait `From<T>`:
+              `std::option::Option<&T>` implements `From<&std::option::Option<T>>`
+              `std::option::Option<&mut T>` implements `From<&mut std::option::Option<T>>`
+              `std::option::Option<&tracing::Id>` implements `From<&EnteredSpan>`
+              `std::option::Option<&tracing::Id>` implements `From<&Span>`
+              `std::option::Option<&tracing::Id>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<&tracing::Metadata<'_>>` implements `From<&tracing_core::span::Current>`
+              `std::option::Option<T>` implements `From<T>`
+              `std::option::Option<T>` implements `From<crypto_bigint::checked::Checked<T>>`
+            and 21 others
+    = note: required for `std::option::Option<DateTime<Utc>>` to implement `Into<std::option::Option<std::string::String>>`
+    = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/project_repo.rs:281:13
+    |
+281 |             parallel_setup_script,
+    |             ^^^^^^^^^^^^^^^^^^^^^
+    |             |
+    |             expected `i32`, found `bool`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:460:13
+    |
+460 |             status,
+    |             ^^^^^^
+    |             |
+    |             expected `&str`, found `TaskStatus`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:466:13
+    |
+466 |             data.due_date,
+    |             ^^^^^^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:495:13
+    |
+495 |             status,
+    |             ^^^^^^
+    |             |
+    |             expected `&str`, found `TaskStatus`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:498:13
+    |
+498 |             due_date,
+    |             ^^^^^^^^
+    |             |
+    |             expected `Option<DateTime<_>>`, found `Option<String>`
+    |             expected due to the type of this binding
+    |
+    = note: expected enum `std::option::Option<DateTime<_>>`
+               found enum `std::option::Option<std::string::String>`
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task.rs:513:13
+    |
+513 |             status
+    |             ^^^^^^
+    |             |
+    |             expected `&str`, found `TaskStatus`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task_comment.rs:120:13
+    |
+120 |             id
+    |             ^^
+    |             |
+    |             expected `&str`, found `Uuid`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task_comment.rs:149:13
+    |
+149 |             id,
+    |             ^^
+    |             |
+    |             expected `&str`, found `Uuid`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task_comment.rs:190:13
+    |
+190 |             id,
+    |             ^^
+    |             |
+    |             expected `&str`, found `Uuid`
+    |             expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task_comment.rs:202:78
+    |
+202 |         let result = sqlx::query!("DELETE FROM task_comments WHERE id = $1", id)
+    |                                                                              ^^
+    |                                                                              |
+    |                                                                              expected `&str`, found `Uuid`
+    |                                                                              expected due to the type of this binding
+
+error[E0308]: mismatched types
+   --> crates/db/src/models/task_document_link.rs:138:17
+    |
+138 |                 id,
+    |                 ^^
+    |                 |
+    |                 expected `&str`, found `Uuid`
+    |                 expected due to the type of this binding
+
+warning: unused variable: `executor_action_json`
+   --> crates/db/src/models/execution_process.rs:428:13
+    |
+428 |         let executor_action_json = sqlx::types::Json(&data.executor_action);
+    |             ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_executor_action_json`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
+warning: `db` (lib) generated 4 warnings
+error: could not compile `db` (lib) due to 31 previous errors; 4 warnings emitted
