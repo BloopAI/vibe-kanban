@@ -69,27 +69,14 @@ jobs:
       - name: Determine and update versions
         id: version
         run: |
-          # Get the latest version from npm registry
-          latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
-          echo "Latest npm version: $latest_npm_version"
-
           timestamp=$(date +%Y%m%d%H%M%S)
 
-          # Update root package.json based on npm version, not current package.json
-          if [[ "${{ github.event.inputs.version_type }}" == "prerelease" ]]; then
-            # For prerelease, use current package.json version and add branch suffix
-            npm version prerelease --preid="${{ steps.branch.outputs.suffix }}" --no-git-tag-version
+          # Hardcoded version
+          new_version="0.0.146"
+          new_tag="v${new_version}-${timestamp}"
 
-            new_version=$(node -p "require('./package.json').version")
-            new_tag="v${new_version}.${timestamp}"
-          else
-            # For regular releases, use npm version and bump it
-            npm version $latest_npm_version --no-git-tag-version --allow-same-version
-            npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
-
-            new_version=$(node -p "require('./package.json').version")
-            new_tag="v${new_version}-${timestamp}"
-          fi
+          # Update root package.json
+          npm version $new_version --no-git-tag-version --allow-same-version
 
           # Update npx-cli package.json to match
           cd npx-cli
