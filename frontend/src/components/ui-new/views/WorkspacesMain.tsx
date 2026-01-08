@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import type { Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
-import { ContextBar } from '@/components/ui-new/primitives/ContextBar';
+import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
 import { ConversationList } from '../ConversationList';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
@@ -22,9 +22,6 @@ interface WorkspacesMainProps {
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
   projectId?: string;
-  copied: boolean;
-  onOpen: () => void;
-  onCopy: () => void;
   onViewCode?: () => void;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
@@ -41,9 +38,6 @@ export function WorkspacesMain({
   isLoading,
   containerRef,
   projectId,
-  copied,
-  onOpen,
-  onCopy,
   onViewCode,
   isNewSessionMode,
   onStartNewSession,
@@ -105,13 +99,9 @@ export function WorkspacesMain({
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
       {workspaceWithSession && (
-        <ContextBar
+        <ContextBarContainer
           containerRef={containerRef}
-          copied={copied}
-          onOpen={onOpen}
-          onCopy={onCopy}
-          onViewCode={onViewCode}
-          attemptId={workspaceWithSession.id}
+          containerPath={workspaceWithSession.container_ref ?? undefined}
         />
       )}
     </main>

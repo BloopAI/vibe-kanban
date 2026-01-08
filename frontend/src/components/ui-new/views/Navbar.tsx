@@ -5,6 +5,7 @@ import {
   type ActionDefinition,
   type ActionVisibilityContext,
   type NavbarItem,
+  isSpecialIcon,
 } from '../actions';
 import {
   isActionActive,
@@ -87,14 +88,19 @@ export function Navbar({
     const action = item;
     const active = isActionActive(action, actionContext);
     const enabled = isActionEnabled(action, actionContext);
-    const IconComponent = getActionIcon(action, actionContext);
+    const iconOrSpecial = getActionIcon(action, actionContext);
     const tooltip = getActionTooltip(action, actionContext);
     const isDisabled = !enabled;
+
+    // Skip special icons in navbar (navbar only uses standard phosphor icons)
+    if (isSpecialIcon(iconOrSpecial)) {
+      return null;
+    }
 
     return (
       <NavbarIconButton
         key={key}
-        icon={IconComponent}
+        icon={iconOrSpecial}
         isActive={active}
         onClick={() => onExecuteAction(action)}
         aria-label={tooltip}

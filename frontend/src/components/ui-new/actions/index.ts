@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { Workspace } from 'shared/types';
+import type { EditorType, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import {
   CopyIcon,
@@ -21,20 +21,32 @@ import {
   ArrowSquareOutIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
+  PlayIcon,
+  PauseIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useLayoutStore } from '@/stores/useLayoutStore';
-import { attemptsApi, tasksApi } from '@/lib/api';
+import { attemptsApi, executionProcessesApi, tasksApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { getIdeName } from '@/components/ide/IdeIcon';
+import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
+
+// Special icon types for ContextBar
+export type SpecialIconType = 'ide-icon' | 'copy-icon';
+export type ActionIcon = Icon | SpecialIconType;
 
 // Workspace type for sidebar (minimal subset needed for workspace selection)
 interface SidebarWorkspace {
   id: string;
 }
+
+// Dev server state type for visibility context
+export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
@@ -45,6 +57,10 @@ export interface ActionExecutorContext {
   activeWorkspaces?: SidebarWorkspace[];
   // Current workspace ID (for actions that optionally use workspace context)
   currentWorkspaceId?: string;
+
+  // ContextBar-specific state (optional, only set in ContextBar context)
+  containerRef?: string; // For copy path (workspace.container_ref)
+  runningDevServerId?: string; // For stopping dev server
 }
 
 // Context for evaluating action visibility and state conditions
@@ -65,13 +81,18 @@ export interface ActionVisibilityContext {
   hasDiffs: boolean;
   diffViewMode: DiffViewMode;
   isAllDiffsExpanded: boolean;
+
+  // ContextBar-specific state (optional)
+  editorType?: EditorType | null;
+  devServerState?: DevServerState;
+  runningDevServerId?: string;
 }
 
 // Base properties shared by all actions
 interface ActionBase {
   id: string;
   label: string | ((workspace?: Workspace) => string);
-  icon: Icon;
+  icon: ActionIcon;
   shortcut?: string;
   variant?: 'default' | 'destructive';
   // Optional visibility condition - if omitted, action is always visible
@@ -81,9 +102,11 @@ interface ActionBase {
   // Optional enabled state - if omitted, action is enabled
   isEnabled?: (ctx: ActionVisibilityContext) => boolean;
   // Optional dynamic icon - if omitted, uses static icon property
-  getIcon?: (ctx: ActionVisibilityContext) => Icon;
+  getIcon?: (ctx: ActionVisibilityContext) => ActionIcon;
   // Optional dynamic tooltip - if omitted, uses label
   getTooltip?: (ctx: ActionVisibilityContext) => string;
+  // Optional dynamic label - if omitted, uses static label property
+  getLabel?: (ctx: ActionVisibilityContext) => string;
 }
 
 // Global action (no target needed)
@@ -440,6 +463,104 @@ export const Actions = {
       setExpandedAll(keys, !isAllExpanded);
     },
   },
+
+  // === ContextBar Actions ===
+  OpenInIDE: {
+    id: 'open-in-ide',
+    label: 'Open in IDE',
+    icon: 'ide-icon' as const,
+    requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    getTooltip: (ctx) => `Open in ${getIdeName(ctx.editorType)}`,
+    execute: async (ctx) => {
+      if (!ctx.currentWorkspaceId) return;
+      try {
+        const response = await attemptsApi.openEditor(ctx.currentWorkspaceId, {
+          editor_type: null,
+          file_path: null,
+        });
+        if (response.url) {
+          window.open(response.url, '_blank');
+        }
+      } catch {
+        // Show editor selection dialog on failure
+        EditorSelectionDialog.show({
+          selectedAttemptId: ctx.currentWorkspaceId,
+        });
+      }
+    },
+  },
+
+  CopyPath: {
+    id: 'copy-path',
+    label: 'Copy path',
+    icon: 'copy-icon' as const,
+    requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (ctx) => {
+      if (!ctx.containerRef) return;
+      await navigator.clipboard.writeText(ctx.containerRef);
+    },
+  },
+
+  ToggleDevServer: {
+    id: 'toggle-dev-server',
+    label: 'Dev Server',
+    icon: PlayIcon,
+    requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) =>
+      ctx.devServerState !== 'starting' && ctx.devServerState !== 'stopping',
+    getIcon: (ctx) => {
+      if (
+        ctx.devServerState === 'starting' ||
+        ctx.devServerState === 'stopping'
+      ) {
+        return SpinnerIcon;
+      }
+      if (ctx.devServerState === 'running') {
+        return PauseIcon;
+      }
+      return PlayIcon;
+    },
+    getTooltip: (ctx) => {
+      switch (ctx.devServerState) {
+        case 'starting':
+          return 'Starting dev server...';
+        case 'stopping':
+          return 'Stopping dev server...';
+        case 'running':
+          return 'Stop dev server';
+        default:
+          return 'Start dev server';
+      }
+    },
+    getLabel: (ctx) =>
+      ctx.devServerState === 'running' ? 'Stop Dev Server' : 'Start Dev Server',
+    execute: async (ctx) => {
+      if (!ctx.currentWorkspaceId) return;
+
+      if (ctx.runningDevServerId) {
+        // Stop the dev server
+        await executionProcessesApi.stopExecutionProcess(
+          ctx.runningDevServerId
+        );
+        await ctx.queryClient.invalidateQueries({
+          queryKey: ['executionProcesses', ctx.currentWorkspaceId],
+        });
+        await ctx.queryClient.invalidateQueries({
+          queryKey: ['processDetails', ctx.runningDevServerId],
+        });
+      } else {
+        // Start the dev server
+        await attemptsApi.startDevServer(ctx.currentWorkspaceId);
+        await ctx.queryClient.invalidateQueries({
+          queryKey: ['executionProcesses', ctx.currentWorkspaceId],
+        });
+      }
+      ctx.queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+    },
+  },
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label
@@ -470,3 +591,21 @@ export const NavbarActionGroups = {
     Actions.ToggleGitPanel,
   ] as NavbarItem[],
 };
+
+// Divider marker for context bar action groups
+export const ContextBarDivider = { type: 'divider' } as const;
+export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
+
+// ContextBar action groups define which actions appear in each section
+export const ContextBarActionGroups = {
+  primary: [Actions.OpenInIDE, Actions.CopyPath] as ActionDefinition[],
+  secondary: [
+    Actions.ToggleDevServer,
+    Actions.ToggleChangesMode,
+  ] as ActionDefinition[],
+};
+
+// Helper to check if an icon is a special type
+export function isSpecialIcon(icon: ActionIcon): icon is SpecialIconType {
+  return icon === 'ide-icon' || icon === 'copy-icon';
+}

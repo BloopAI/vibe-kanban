@@ -55,6 +55,9 @@ export const Pages: Record<PageId, CommandBarPage> = {
         label: 'Actions',
         items: [
           { type: 'action', action: Actions.NewWorkspace },
+          { type: 'action', action: Actions.OpenInIDE },
+          { type: 'action', action: Actions.CopyPath },
+          { type: 'action', action: Actions.ToggleDevServer },
           { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
         ],

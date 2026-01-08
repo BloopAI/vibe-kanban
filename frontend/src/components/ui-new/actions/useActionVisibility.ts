@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
-import type { Icon } from '@phosphor-icons/react';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import type { ActionVisibilityContext, ActionDefinition } from './index';
+import type { Workspace } from 'shared/types';
+import type {
+  ActionVisibilityContext,
+  ActionDefinition,
+  ActionIcon,
+} from './index';
 import { resolveLabel } from './index';
 import type { CommandBarPage } from './pages';
 
@@ -104,7 +108,7 @@ export function isActionEnabled(
 export function getActionIcon(
   action: ActionDefinition,
   ctx: ActionVisibilityContext
-): Icon {
+): ActionIcon {
   return action.getIcon ? action.getIcon(ctx) : action.icon;
 }
 
@@ -117,4 +121,18 @@ export function getActionTooltip(
   ctx: ActionVisibilityContext
 ): string {
   return action.getTooltip ? action.getTooltip(ctx) : resolveLabel(action);
+}
+
+/**
+ * Get the label for an action, considering dynamic label callbacks.
+ * Falls back to the resolved static label.
+ */
+export function getActionLabel(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext,
+  workspace?: Workspace
+): string {
+  return action.getLabel
+    ? action.getLabel(ctx)
+    : resolveLabel(action, workspace);
 }

@@ -256,10 +256,11 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       [navigateToPage, modal, executeAction, effectiveWorkspaceId]
     );
 
-    // Get label for an action
+    // Get label for an action (with visibility context for dynamic labels)
     const getLabelForAction = useCallback(
-      (action: ActionDefinition) => getLabel(action, workspace),
-      [getLabel, workspace]
+      (action: ActionDefinition) =>
+        getLabel(action, workspace, visibilityContext),
+      [getLabel, workspace, visibilityContext]
     );
 
     const handleOpenChange = (open: boolean) => {

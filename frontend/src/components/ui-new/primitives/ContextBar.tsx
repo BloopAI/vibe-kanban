@@ -1,19 +1,30 @@
 import type { RefObject } from 'react';
-import {
-  CheckIcon,
-  CopyIcon,
-  GitDiffIcon,
-  PlayIcon,
-  PauseIcon,
-  SpinnerIcon,
-  type Icon,
-} from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
+import type { EditorType } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { Tooltip } from './Tooltip';
-import { useUserSystem } from '@/components/ConfigProvider';
-import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
+import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
-import { useDevServer } from '@/hooks/useDevServer';
+import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  type ContextBarItem,
+  isSpecialIcon,
+} from '../actions';
+import {
+  isActionEnabled,
+  isActionVisible,
+  getActionIcon,
+  getActionTooltip,
+} from '../actions/useActionVisibility';
+import { CopyButton } from '../containers/CopyButton';
+
+/**
+ * Check if a ContextBarItem is a divider
+ */
+function isDivider(item: ContextBarItem): item is { readonly type: 'divider' } {
+  return 'type' in item && item.type === 'divider';
+}
 
 interface ContextBarButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -84,28 +95,141 @@ function DragHandle({
 
 export interface ContextBarProps {
   containerRef: RefObject<HTMLElement | null>;
-  copied?: boolean;
-  onOpen?: () => void;
-  onCopy?: () => void;
-  onViewCode?: () => void;
-  attemptId?: string;
+  // Items for primary group (top section)
+  primaryItems?: ContextBarItem[];
+  // Items for secondary group (below divider)
+  secondaryItems?: ContextBarItem[];
+  // Context for deriving action state
+  actionContext: ActionVisibilityContext;
+  // Handler to execute an action
+  onExecuteAction: (action: ActionDefinition) => void;
+  // IDE editor type for rendering IdeIcon
+  editorType?: EditorType | null;
+}
+
+/**
+ * Get the icon class name based on action state and type
+ */
+function getIconClassName(
+  action: ActionDefinition,
+  actionContext: ActionVisibilityContext,
+  isDisabled: boolean
+): string | undefined {
+  // Handle dev server running state (for ToggleDevServer action)
+  if (action.id === 'toggle-dev-server') {
+    const { devServerState } = actionContext;
+    if (devServerState === 'starting' || devServerState === 'stopping') {
+      return 'animate-spin';
+    }
+    if (devServerState === 'running') {
+      return 'text-error hover:text-error group-hover:text-error';
+    }
+  }
+
+  if (isDisabled) {
+    return 'opacity-40';
+  }
+
+  return undefined;
 }
 
 export function ContextBar({
   containerRef,
-  copied = false,
-  onOpen,
-  onCopy,
-  onViewCode,
-  attemptId,
+  primaryItems = [],
+  secondaryItems = [],
+  actionContext,
+  onExecuteAction,
+  editorType,
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
-  const { config } = useUserSystem();
-  const editorType = config?.editor?.editor_type ?? null;
-  const ideLabel = `Open in ${getIdeName(editorType)}`;
-  const { start, stop, isStarting, isStopping, runningDevServer } =
-    useDevServer(attemptId);
+
+  // Render a single action item
+  const renderActionItem = (action: ActionDefinition, key: string) => {
+    // Skip if not visible
+    if (!isActionVisible(action, actionContext)) {
+      return null;
+    }
+
+    const enabled = isActionEnabled(action, actionContext);
+    const tooltip = getActionTooltip(action, actionContext);
+    const iconType = action.icon;
+    const iconClassName = getIconClassName(action, actionContext, !enabled);
+
+    // Handle special icon types
+    if (isSpecialIcon(iconType)) {
+      if (iconType === 'ide-icon') {
+        // Render IDE icon
+        return (
+          <Tooltip key={key} content={tooltip} side="left">
+            <button
+              className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
+              aria-label={tooltip}
+              onClick={() => onExecuteAction(action)}
+              disabled={!enabled}
+            >
+              <IdeIcon
+                editorType={editorType}
+                className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
+              />
+            </button>
+          </Tooltip>
+        );
+      }
+
+      if (iconType === 'copy-icon') {
+        // Render copy button with self-contained feedback state
+        return (
+          <CopyButton
+            key={key}
+            onCopy={() => onExecuteAction(action)}
+            disabled={!enabled}
+          />
+        );
+      }
+    }
+
+    // Get dynamic icon if available
+    const resolvedIcon = getActionIcon(action, actionContext);
+
+    // For regular icons, use ContextBarButton
+    // Handle case where resolvedIcon might be a special type (shouldn't happen, but type-safe)
+    if (isSpecialIcon(resolvedIcon)) {
+      return null;
+    }
+
+    return (
+      <ContextBarButton
+        key={key}
+        icon={resolvedIcon}
+        label={tooltip}
+        tooltip={tooltip}
+        onClick={() => onExecuteAction(action)}
+        disabled={!enabled}
+        iconClassName={iconClassName}
+      />
+    );
+  };
+
+  // Render items array
+  const renderItems = (items: ContextBarItem[], prefix: string) => {
+    return items.map((item, index) => {
+      if (isDivider(item)) {
+        return (
+          <div key={`${prefix}-divider-${index}`} className="h-px bg-border" />
+        );
+      }
+      return renderActionItem(item, `${prefix}-${item.id}-${index}`);
+    });
+  };
+
+  // Filter visible items for rendering
+  const visiblePrimaryItems = primaryItems.filter(
+    (item) => isDivider(item) || isActionVisible(item, actionContext)
+  );
+  const visibleSecondaryItems = secondaryItems.filter(
+    (item) => isDivider(item) || isActionVisible(item, actionContext)
+  );
 
   return (
     <div
@@ -123,87 +247,24 @@ export function ContextBar({
 
         <div className="flex flex-col py-base">
           {/* Primary Icons */}
-          <div className="flex flex-col gap-base">
-            <Tooltip content={ideLabel} side="left">
-              <button
-                className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
-                aria-label={ideLabel}
-                onClick={onOpen}
-              >
-                <IdeIcon
-                  editorType={editorType}
-                  className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
-                />
-              </button>
-            </Tooltip>
-            <ContextBarButton
-              icon={copied ? CheckIcon : CopyIcon}
-              label={copied ? 'Copied!' : 'Copy path'}
-              tooltip={copied ? 'Copied!' : 'Copy path'}
-              onClick={onCopy}
-              iconClassName={
-                copied
-                  ? 'text-success hover:text-success group-hover:text-success'
-                  : undefined
-              }
-            />
-          </div>
+          {visiblePrimaryItems.length > 0 && (
+            <div className="flex flex-col gap-base">
+              {renderItems(primaryItems, 'primary')}
+            </div>
+          )}
 
-          {/* Separator */}
-          <div className="h-px bg-border my-base" />
+          {/* Separator - only show if both sections have items */}
+          {visiblePrimaryItems.length > 0 &&
+            visibleSecondaryItems.length > 0 && (
+              <div className="h-px bg-border my-base" />
+            )}
 
           {/* Secondary Icons */}
-          <div className="flex flex-col gap-base">
-            {attemptId && (
-              <ContextBarButton
-                icon={
-                  isStarting || isStopping
-                    ? SpinnerIcon
-                    : runningDevServer
-                      ? PauseIcon
-                      : PlayIcon
-                }
-                label={
-                  isStarting
-                    ? 'Starting dev server...'
-                    : isStopping
-                      ? 'Stopping dev server...'
-                      : runningDevServer
-                        ? 'Stop dev server'
-                        : 'Start dev server'
-                }
-                tooltip={
-                  isStarting
-                    ? 'Starting dev server...'
-                    : isStopping
-                      ? 'Stopping dev server...'
-                      : runningDevServer
-                        ? 'Stop dev server'
-                        : 'Start dev server'
-                }
-                onClick={() => {
-                  if (runningDevServer) {
-                    stop();
-                  } else {
-                    start();
-                  }
-                }}
-                disabled={isStarting || isStopping}
-                iconClassName={cn(
-                  isStarting || isStopping ? 'animate-spin' : undefined,
-                  runningDevServer && !isStopping
-                    ? 'text-error hover:text-error group-hover:text-error'
-                    : undefined
-                )}
-              />
-            )}
-            <ContextBarButton
-              icon={GitDiffIcon}
-              label="View Code"
-              tooltip="View Code"
-              onClick={onViewCode}
-            />
-          </div>
+          {visibleSecondaryItems.length > 0 && (
+            <div className="flex flex-col gap-base">
+              {renderItems(secondaryItems, 'secondary')}
+            </div>
+          )}
         </div>
       </div>
     </div>

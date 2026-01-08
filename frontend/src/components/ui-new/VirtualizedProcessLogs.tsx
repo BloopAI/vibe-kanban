@@ -125,8 +125,6 @@ export function VirtualizedProcessLogs({
           initialLocation={INITIAL_TOP_ITEM}
           computeItemKey={computeItemKey}
           ItemContent={ItemContent}
-          Header={() => <div className="h-2" />}
-          Footer={() => <div className="h-2" />}
         />
       </VirtuosoMessageListLicense>
     </div>

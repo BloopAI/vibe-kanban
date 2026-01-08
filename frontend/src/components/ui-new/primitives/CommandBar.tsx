@@ -1,4 +1,4 @@
-import { CaretLeftIcon } from '@phosphor-icons/react';
+import { CaretLeftIcon, CopyIcon } from '@phosphor-icons/react';
 import {
   Command,
   CommandInput,
@@ -8,8 +8,27 @@ import {
   CommandItem,
   CommandShortcut,
 } from './Command';
-import type { ActionDefinition } from '../actions';
+import type { ActionDefinition, ActionIcon } from '../actions';
+import { isSpecialIcon } from '../actions';
 import type { ResolvedGroup, ResolvedGroupItem } from '../actions/pages';
+import { IdeIcon } from '@/components/ide/IdeIcon';
+
+/**
+ * Render an action icon, handling special icon types
+ */
+function ActionItemIcon({ icon }: { icon: ActionIcon }) {
+  if (isSpecialIcon(icon)) {
+    if (icon === 'ide-icon') {
+      return <IdeIcon className="h-4 w-4" />;
+    }
+    if (icon === 'copy-icon') {
+      return <CopyIcon className="h-4 w-4" weight="regular" />;
+    }
+  }
+  // Regular phosphor icon
+  const IconComponent = icon;
+  return <IconComponent className="h-4 w-4" weight="regular" />;
+}
 
 // Resolved page structure with pre-processed groups
 interface ResolvedCommandBarPage {
@@ -90,7 +109,6 @@ export function CommandBar({
                   </CommandItem>
                 );
               } else if (item.type === 'action') {
-                const IconComponent = item.action.icon;
                 const label = getLabel(item.action);
                 return (
                   <CommandItem
@@ -103,7 +121,7 @@ export function CommandBar({
                         : undefined
                     }
                   >
-                    <IconComponent className="h-4 w-4" weight="regular" />
+                    <ActionItemIcon icon={item.action.icon} />
                     <span>{label}</span>
                     {item.action.shortcut && (
                       <CommandShortcut>{item.action.shortcut}</CommandShortcut>

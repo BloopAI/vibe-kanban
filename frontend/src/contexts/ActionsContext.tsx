@@ -12,8 +12,10 @@ import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
+  type ActionVisibilityContext,
   resolveLabel,
 } from '@/components/ui-new/actions';
+import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface ActionsContextValue {
@@ -23,8 +25,12 @@ interface ActionsContextValue {
     workspaceId?: string
   ) => Promise<void>;
 
-  // Get resolved label for an action
-  getLabel: (action: ActionDefinition, workspace?: Workspace) => string;
+  // Get resolved label for an action (supports dynamic labels via visibility context)
+  getLabel: (
+    action: ActionDefinition,
+    workspace?: Workspace,
+    ctx?: ActionVisibilityContext
+  ) => string;
 
   // The executor context (for components that need direct access)
   executorContext: ActionExecutorContext;
@@ -83,9 +89,16 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     [executorContext]
   );
 
-  // Get resolved label helper
+  // Get resolved label helper (supports dynamic labels via visibility context)
   const getLabel = useCallback(
-    (action: ActionDefinition, workspace?: Workspace) => {
+    (
+      action: ActionDefinition,
+      workspace?: Workspace,
+      ctx?: ActionVisibilityContext
+    ) => {
+      if (ctx) {
+        return getActionLabel(action, ctx, workspace);
+      }
       return resolveLabel(action, workspace);
     },
     []
