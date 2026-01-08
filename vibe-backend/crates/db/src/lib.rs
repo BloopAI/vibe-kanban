@@ -1,5 +1,5 @@
 //! DB crate for iKanban - Migration to Postgres
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
     Error, Pool, Postgres, PgPool,
@@ -75,8 +75,17 @@ impl DBService {
 
         let options = PgConnectOptions::from_str(database_url)?;
 
+        // Configure pool options for rate limiting protection
+        // - max_connections: Limit concurrent connections to avoid overwhelming Supabase
+        // - acquire_timeout: Timeout when waiting for a connection from the pool
+        // - idle_timeout: Close idle connections to free up Supabase connection slots
+        let pool_options = PgPoolOptions::new()
+            .max_connections(10)
+            .acquire_timeout(Duration::from_secs(30))
+            .idle_timeout(Duration::from_secs(600));
+
         let pool = if let Some(hook) = after_connect {
-            PgPoolOptions::new()
+            pool_options
                 .after_connect(move |conn, _meta| {
                     let hook = hook.clone();
                     Box::pin(async move {
@@ -87,7 +96,7 @@ impl DBService {
                 .connect_with(options)
                 .await?
         } else {
-            PgPool::connect_with(options).await?
+            pool_options.connect_with(options).await?
         };
 
         // sqlx::migrate!("./migrations").run(&pool).await?;

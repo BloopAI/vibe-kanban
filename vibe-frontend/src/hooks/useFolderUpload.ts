@@ -9,6 +9,29 @@ interface UploadProgress {
     errors: string[];
 }
 
+// Rate limiting configuration for file uploads
+const UPLOAD_CONFIG = {
+    batchSize: 5,           // Process files in batches of 5
+    batchDelayMs: 500,      // 500ms delay between batches
+    maxRetries: 3,          // Max retries per file
+    retryDelayMs: 1000,     // Base delay for retry (exponential backoff)
+};
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+const sleep = (ms: number): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Calculate exponential backoff delay with jitter
+ */
+const getRetryDelay = (attempt: number): number => {
+    const exponentialDelay = UPLOAD_CONFIG.retryDelayMs * Math.pow(2, attempt);
+    const jitter = Math.random() * 0.3 * exponentialDelay;
+    return exponentialDelay + jitter;
+};
+
 // Helper to get file extension
 function getFileExtension(filename: string): string {
     return filename.split('.').pop()?.toLowerCase() || '';
@@ -51,6 +74,80 @@ function getTitleFromFilename(filename: string): string {
         .join(' ');
 }
 
+/**
+ * Upload a single file with retry logic
+ */
+async function uploadSingleFile(
+    file: File,
+    teamId: string,
+    currentFolderId: string | null,
+    bucketName: string
+): Promise<void> {
+    const path = `${teamId}/${file.webkitRelativePath || file.name}`;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= UPLOAD_CONFIG.maxRetries; attempt++) {
+        try {
+            // 1. Upload to Supabase storage
+            const { error: uploadError } = await supabase.storage
+                .from(bucketName)
+                .upload(path, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) {
+                // Check if it's a rate limit error (429)
+                const errorMessage = uploadError.message?.toLowerCase() || '';
+                if (errorMessage.includes('rate') || errorMessage.includes('429') || errorMessage.includes('too many')) {
+                    throw uploadError; // Will be caught and retried
+                }
+                throw uploadError;
+            }
+
+            // 2. Get the public URL for the uploaded file
+            const { data: urlData } = supabase.storage
+                .from(bucketName)
+                .getPublicUrl(path);
+
+            const publicUrl = urlData?.publicUrl;
+
+            // 3. Create database record with file metadata
+            const extension = getFileExtension(file.name);
+            const title = getTitleFromFilename(file.name);
+            const mimeType = getMimeType(extension);
+
+            await documentsApi.create(teamId, {
+                team_id: teamId,
+                folder_id: currentFolderId,
+                title,
+                content: null,
+                file_type: extension || 'unknown',
+                icon: null,
+                file_path: publicUrl || path,
+                file_size: file.size,
+                mime_type: mimeType,
+            });
+
+            return; // Success - exit retry loop
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+
+            if (attempt < UPLOAD_CONFIG.maxRetries) {
+                const delay = getRetryDelay(attempt);
+                console.warn(
+                    `[Upload] Retry ${attempt + 1}/${UPLOAD_CONFIG.maxRetries} for ${file.name} in ${Math.round(delay)}ms`
+                );
+                await sleep(delay);
+            }
+        }
+    }
+
+    // All retries exhausted
+    throw lastError || new Error(`Failed to upload ${file.name} after ${UPLOAD_CONFIG.maxRetries} retries`);
+}
+
 export function useFolderUpload(teamId: string, currentFolderId: string | null) {
     const [isUploading, setIsUploading] = useState(false);
     const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -63,55 +160,39 @@ export function useFolderUpload(teamId: string, currentFolderId: string | null) 
         const errors: string[] = [];
         const BUCKET_NAME = 'ikanban-bucket';
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            // webkitRelativePath contains "folder/subfolder/file.txt"
-            // We store it as "team_id/{folder_structure}"
-            const path = `${teamId}/${file.webkitRelativePath || file.name}`;
+        // Convert FileList to array for batching
+        const fileArray = Array.from(files);
 
-            try {
-                // 1. Upload to Supabase storage
-                const { error: uploadError } = await supabase.storage
-                    .from(BUCKET_NAME)
-                    .upload(path, file, {
-                        cacheControl: '3600',
-                        upsert: true
-                    });
+        // Process files in batches
+        for (let batchStart = 0; batchStart < fileArray.length; batchStart += UPLOAD_CONFIG.batchSize) {
+            const batch = fileArray.slice(batchStart, batchStart + UPLOAD_CONFIG.batchSize);
 
-                if (uploadError) throw uploadError;
+            // Process batch concurrently
+            const batchResults = await Promise.allSettled(
+                batch.map(file => uploadSingleFile(file, teamId, currentFolderId, BUCKET_NAME))
+            );
 
-                // 2. Get the public URL for the uploaded file
-                const { data: urlData } = supabase.storage
-                    .from(BUCKET_NAME)
-                    .getPublicUrl(path);
-
-                const publicUrl = urlData?.publicUrl;
-
-                // 3. Create database record with file metadata
-                const extension = getFileExtension(file.name);
-                const title = getTitleFromFilename(file.name);
-                const mimeType = getMimeType(extension);
-
-                await documentsApi.create(teamId, {
-                    team_id: teamId,
-                    folder_id: currentFolderId,
-                    title,
-                    content: null,
-                    file_type: extension || 'unknown',
-                    icon: null,
-                    file_path: publicUrl || path,
-                    file_size: file.size,
-                    mime_type: mimeType,
-                });
-
-                uploadedCount++;
-            } catch (err: unknown) {
-                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-                console.error(`Failed to upload ${file.name}:`, err);
-                errors.push(`${file.name}: ${errorMessage}`);
-            }
+            // Process results
+            batchResults.forEach((result, index) => {
+                const file = batch[index];
+                if (result.status === 'fulfilled') {
+                    uploadedCount++;
+                } else {
+                    const errorMessage = result.reason instanceof Error
+                        ? result.reason.message
+                        : 'Unknown error';
+                    console.error(`Failed to upload ${file.name}:`, result.reason);
+                    errors.push(`${file.name}: ${errorMessage}`);
+                }
+            });
 
             setProgress(prev => prev ? { ...prev, uploaded: uploadedCount, errors } : null);
+
+            // Add delay between batches to avoid rate limiting
+            // Skip delay after the last batch
+            if (batchStart + UPLOAD_CONFIG.batchSize < fileArray.length) {
+                await sleep(UPLOAD_CONFIG.batchDelayMs);
+            }
         }
 
         setIsUploading(false);

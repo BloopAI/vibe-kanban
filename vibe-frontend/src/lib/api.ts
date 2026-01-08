@@ -225,6 +225,29 @@ export const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
+// Retry configuration for rate limiting
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 1000, // 1 second
+  maxDelayMs: 8000,  // 8 seconds max
+  retryableStatuses: [429, 503, 502, 504], // Rate limit and temporary errors
+};
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Calculate exponential backoff delay with jitter
+ */
+const getBackoffDelay = (attempt: number): number => {
+  const exponentialDelay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt);
+  const jitter = Math.random() * 0.3 * exponentialDelay; // Add up to 30% jitter
+  return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelayMs);
+};
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
@@ -238,10 +261,52 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
   }
 
   const fullUrl = buildApiUrl(url);
-  return fetch(fullUrl, {
-    ...options,
-    headers,
-  });
+
+  // Retry logic with exponential backoff for rate limiting
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers,
+      });
+
+      // If not a retryable status, return immediately
+      if (!RETRY_CONFIG.retryableStatuses.includes(response.status)) {
+        return response;
+      }
+
+      // If we've exhausted retries, return the response anyway
+      if (attempt >= RETRY_CONFIG.maxRetries) {
+        console.warn(
+          `[API] Max retries (${RETRY_CONFIG.maxRetries}) reached for ${url}, returning response with status ${response.status}`
+        );
+        return response;
+      }
+
+      // Calculate backoff delay
+      const delay = getBackoffDelay(attempt);
+      console.warn(
+        `[API] Received ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`
+      );
+      await sleep(delay);
+    } catch (error) {
+      lastError = error as Error;
+      // Network errors - also retry with backoff
+      if (attempt >= RETRY_CONFIG.maxRetries) {
+        throw error;
+      }
+      const delay = getBackoffDelay(attempt);
+      console.warn(
+        `[API] Network error for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries}):`,
+        error
+      );
+      await sleep(delay);
+    }
+  }
+
+  // This shouldn't be reached, but TypeScript needs it
+  throw lastError || new Error(`Failed to fetch ${url} after ${RETRY_CONFIG.maxRetries} retries`);
 };
 
 export type Ok<T> = { success: true; data: T };
