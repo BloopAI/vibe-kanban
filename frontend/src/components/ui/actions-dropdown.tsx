@@ -11,8 +11,6 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import { useStartReview } from '@/hooks/useStartReview';
-import { useUserSystem } from '@/components/ConfigProvider';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
 import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
@@ -46,8 +44,6 @@ export function ActionsDropdown({
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
-  const { config } = useUserSystem();
-  const startReview = useStartReview(attempt?.id);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -169,18 +165,6 @@ export function ActionsDropdown({
   const canStopShare =
     Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
-  const handleStartReview = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!attempt?.id || !config?.executor_profile) return;
-    try {
-      await startReview.mutateAsync({
-        executorProfileId: config.executor_profile,
-      });
-    } catch {
-      // Error handled in hook
-    }
-  };
-
   return (
     <>
       <DropdownMenu>
@@ -237,18 +221,6 @@ export function ActionsDropdown({
                 onClick={handleEditBranchName}
               >
                 {t('actionsMenu.editBranchName')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={
-                  !attempt?.id ||
-                  !config?.executor_profile ||
-                  startReview.isPending
-                }
-                onClick={handleStartReview}
-              >
-                {startReview.isPending
-                  ? t('actionsMenu.startingReview')
-                  : t('actionsMenu.startReview')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

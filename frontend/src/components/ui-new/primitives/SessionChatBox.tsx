@@ -9,6 +9,7 @@ import {
   ChatCircleIcon,
   TrashIcon,
   WarningIcon,
+  MagnifyingGlassIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
@@ -61,6 +62,10 @@ interface SessionProps {
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
   onNewSession?: () => void;
+  /** Callback to start a review */
+  onStartReview?: () => void;
+  /** Whether review is currently starting */
+  isReviewStarting?: boolean;
 }
 
 interface StatsProps {
@@ -242,6 +247,8 @@ export function SessionChatBox({
     onSelectSession,
     isNewSessionMode,
     onNewSession,
+    onStartReview,
+    isReviewStarting,
   } = session;
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
@@ -587,6 +594,16 @@ export function SessionChatBox({
             >
               {t('conversation.sessions.newSession')}
             </DropdownMenuItem>
+            {/* Start Review option */}
+            {onStartReview && !isNewSessionMode && (
+              <DropdownMenuItem
+                icon={MagnifyingGlassIcon}
+                onClick={() => onStartReview()}
+                disabled={isRunning || isReviewStarting}
+              >
+                {isReviewStarting ? 'Starting Review...' : 'Start Review'}
+              </DropdownMenuItem>
+            )}
             {sessions.length > 0 && <DropdownMenuSeparator />}
             {sessions.length > 0 ? (
               <>

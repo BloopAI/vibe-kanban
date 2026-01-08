@@ -478,6 +478,19 @@ export const sessionsApi = {
     });
     return handleApiResponse<ExecutionProcess>(response);
   },
+
+  startReview: async (
+    sessionId: string,
+    data: StartReviewRequest
+  ): Promise<ApiResponse<ExecutionProcess, ReviewError>> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ApiResponse<ExecutionProcess, ReviewError>>(
+      response
+    );
+  },
 };
 
 // Task Attempts APIs
@@ -538,22 +551,6 @@ export const attemptsApi = {
       method: 'POST',
     });
     return handleApiResponse<void>(response);
-  },
-
-  startReview: async (
-    attemptId: string,
-    data: StartReviewRequest
-  ): Promise<ApiResponse<ExecutionProcess, ReviewError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/review`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<ApiResponse<ExecutionProcess, ReviewError>>(
-      response
-    );
   },
 
   delete: async (attemptId: string): Promise<void> => {
