@@ -18,7 +18,7 @@ import {
   ChatsTeardropIcon,
   GitDiffIcon,
   TerminalIcon,
-  ArrowSquareOutIcon,
+  SignOutIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
   PlayIcon,
@@ -406,7 +406,7 @@ export const Actions = {
   OpenInOldUI: {
     id: 'open-in-old-ui',
     label: 'Open in Old UI',
-    icon: ArrowSquareOutIcon,
+    icon: SignOutIcon,
     requiresTarget: false,
     execute: async (ctx) => {
       // If no workspace is selected, navigate to root

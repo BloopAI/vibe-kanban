@@ -234,27 +234,15 @@ export function Navbar() {
               </>
             ) : null}
 
+            <Button variant="ghost" size="sm" className="h-9 gap-1.5" asChild>
+              <Link to="/workspaces">
+                <Sparkles className="h-4 w-4" />
+                {t('common:navbar.tryNewUI')}
+              </Link>
+            </Button>
+            <NavDivider />
+
             <div className="flex items-center gap-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      asChild
-                      aria-label="Try the new UI"
-                    >
-                      <Link to="/workspaces">
-                        <Sparkles className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t('common:navbar.tryNewUI')}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
               <Button
                 variant="ghost"
                 size="icon"
