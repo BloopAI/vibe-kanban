@@ -408,7 +408,7 @@ function GitOperations({
                 variant="ghost"
                 size="xs"
                 onClick={handleChangeTargetBranchDialogOpen}
-                disabled={isAttemptRunning}
+                disabled={isAttemptRunning || hasConflictsCalculated}
                 className={settingsBtnClasses}
                 aria-label={t('branches.changeTarget.dialog.title')}
               >
