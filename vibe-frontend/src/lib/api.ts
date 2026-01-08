@@ -2131,6 +2131,8 @@ export const documentsApi = {
     const token = await getAuthToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn('No auth token available for upload - user may need to sign in again');
     }
 
     const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/documents/upload`, {
