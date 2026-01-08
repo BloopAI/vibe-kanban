@@ -3,7 +3,6 @@ pub mod cursor_setup;
 pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
-pub mod review;
 pub mod util;
 pub mod workspace_summary;
 
@@ -1719,7 +1718,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/repos", get(get_task_attempt_repos))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
-        .route("/review", post(review::start_review))
         .route("/", put(update_workspace).delete(delete_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
