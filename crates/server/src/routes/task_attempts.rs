@@ -1720,7 +1720,12 @@ pub async fn mark_seen(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
-        .route("/", get(get_task_attempt))
+        .route(
+            "/",
+            get(get_task_attempt)
+                .put(update_workspace)
+                .delete(delete_workspace),
+        )
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route("/start-dev-server", post(start_dev_server))
@@ -1744,7 +1749,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/repos", get(get_task_attempt_repos))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
-        .route("/", put(update_workspace).delete(delete_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
