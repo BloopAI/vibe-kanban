@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO execution_process_repo_states (\n                        id,\n                        execution_process_id,\n                        repo_id,\n                        before_head_commit,\n                        after_head_commit,\n                        merge_commit,\n                        created_at,\n                        updated_at\n                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9433ab874e6f3a91bdd67a98687a7f6dc3631beb93475fb5cfc3ac5b5a60c32f"
+}

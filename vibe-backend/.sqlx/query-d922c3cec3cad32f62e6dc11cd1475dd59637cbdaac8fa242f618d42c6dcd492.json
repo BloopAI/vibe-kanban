@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace_repos\n               SET target_branch = $1, updated_at = NOW()\n               WHERE target_branch = $2\n                 AND workspace_id IN (\n                     SELECT w.id FROM workspaces w\n                     JOIN tasks t ON w.task_id = t.id\n                     WHERE t.parent_workspace_id = $3\n                 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d922c3cec3cad32f62e6dc11cd1475dd59637cbdaac8fa242f618d42c6dcd492"
+}

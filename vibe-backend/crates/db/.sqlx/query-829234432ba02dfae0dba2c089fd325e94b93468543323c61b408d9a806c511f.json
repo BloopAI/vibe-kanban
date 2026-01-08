@@ -1,0 +1,118 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.dev_script, p.dev_script_working_dir,\n                   p.default_agent_working_dir,\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.priority as \"priority: i32\",\n                   p.lead_id as \"lead_id: Uuid\",\n                   p.start_date,\n                   p.target_date,\n                   p.status,\n                   p.health as \"health: i32\",\n                   p.description,\n                   p.summary,\n                   p.icon,\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT t.project_id\n                FROM tasks t\n                INNER JOIN workspaces w ON w.task_id = t.id\n                GROUP BY t.project_id\n                ORDER BY MAX(w.updated_at) DESC\n            )\n            LIMIT $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "dev_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "dev_script_working_dir",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "default_agent_working_dir",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "remote_project_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "priority: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "lead_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "start_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "target_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "health: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 16,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "829234432ba02dfae0dba2c089fd325e94b93468543323c61b408d9a806c511f"
+}

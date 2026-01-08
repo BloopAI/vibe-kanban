@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO scratch (id, scratch_type, payload)\n            VALUES ($1, $2, $3)\n            ON CONFLICT(id, scratch_type) DO UPDATE SET\n                payload = excluded.payload,\n                updated_at = NOW()\n            RETURNING\n                id              as \"id!: Uuid\",\n                scratch_type,\n                payload,\n                created_at      as \"created_at!: DateTime<Utc>\",\n                updated_at      as \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "scratch_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "payload",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e2312ebf323128b6d2128e95afadb18324be1ae10a1077f9809a590873b6e3bd"
+}

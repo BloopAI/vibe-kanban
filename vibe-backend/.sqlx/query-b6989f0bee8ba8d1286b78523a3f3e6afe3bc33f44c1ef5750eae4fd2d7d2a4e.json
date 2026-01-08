@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6::timestamptz)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id!: Uuid\", container_ref, branch, agent_working_dir, setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "container_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "branch",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agent_working_dir",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "setup_completed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b6989f0bee8ba8d1286b78523a3f3e6afe3bc33f44c1ef5750eae4fd2d7d2a4e"
+}

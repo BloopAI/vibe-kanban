@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO member_project_access (id, member_id, project_id)\n               VALUES ($1::uuid, $2::uuid, $3::uuid)\n               ON CONFLICT(member_id, project_id) DO UPDATE SET id = member_project_access.id\n               RETURNING id as \"id!: Uuid\",\n                         member_id as \"member_id!: Uuid\",\n                         project_id as \"project_id!: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "member_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "79b912c1aead97baf2f24826a8c395f1352b5300952a16cd927ffaa7be461ab0"
+}

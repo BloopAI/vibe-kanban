@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE inbox_items SET is_read = TRUE, updated_at = NOW() WHERE is_read = FALSE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e239f15a9a4e3634efa298bb9b1b5804607532cc7db3de3f878f877d57066de0"
+}

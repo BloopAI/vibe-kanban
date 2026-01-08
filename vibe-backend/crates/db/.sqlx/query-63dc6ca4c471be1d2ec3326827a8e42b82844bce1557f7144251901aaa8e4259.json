@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO team_projects (team_id, project_id)\n               VALUES ($1, $2)\n               ON CONFLICT (team_id, project_id) DO UPDATE SET team_id = team_projects.team_id\n               RETURNING team_id as \"team_id!: Uuid\",\n                         project_id as \"project_id!: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "63dc6ca4c471be1d2ec3326827a8e42b82844bce1557f7144251901aaa8e4259"
+}
