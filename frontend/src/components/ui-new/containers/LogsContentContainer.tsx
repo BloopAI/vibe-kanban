@@ -1,7 +1,9 @@
 import { cn } from '@/lib/utils';
-import { VirtualizedProcessLogs } from '../VirtualizedProcessLogs';
+import {
+  VirtualizedProcessLogs,
+  type LogEntry,
+} from '../VirtualizedProcessLogs';
 import { useLogStream } from '@/hooks/useLogStream';
-import RawLogText from '@/components/common/RawLogText';
 
 export type LogsPanelContent =
   | { type: 'process'; processId: string }
@@ -29,25 +31,24 @@ export function LogsContentContainer({
     );
   }
 
-  // Tool content - render static content
+  // Tool content - render static content using VirtualizedProcessLogs
   if (content.type === 'tool') {
+    const toolLogs: LogEntry[] = content.content
+      .split('\n')
+      .map((line) => ({ type: 'STDOUT' as const, content: line }));
+
     return (
       <div className={cn('h-full bg-secondary flex flex-col', className)}>
         <div className="px-4 py-2 border-b border-border text-sm font-medium text-normal shrink-0">
           {content.toolName}
         </div>
-        <div className="flex-1 overflow-auto">
-          {content.command && (
-            <div className="px-4 py-2 font-mono text-xs text-low border-b border-border bg-tertiary">
-              $ {content.command}
-            </div>
-          )}
-          <RawLogText
-            content={content.content}
-            channel="stdout"
-            className="text-sm px-4 py-2"
-            linkifyUrls
-          />
+        {content.command && (
+          <div className="px-4 py-2 font-mono text-xs text-low border-b border-border bg-tertiary shrink-0">
+            $ {content.command}
+          </div>
+        )}
+        <div className="flex-1 min-h-0">
+          <VirtualizedProcessLogs logs={toolLogs} error={null} />
         </div>
       </div>
     );

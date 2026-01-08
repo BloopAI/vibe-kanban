@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActionType,
   NormalizedEntry,
@@ -542,6 +542,15 @@ function ToolSummaryEntry({
     false
   );
   const { viewToolContentInPanel } = useLogNavigation();
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (el && !expanded) {
+      setIsTruncated(el.scrollWidth > el.clientWidth);
+    }
+  }, [summary, expanded]);
 
   // Only Bash tools with output should open the logs panel
   const isBash = toolName === 'Bash';
@@ -553,12 +562,14 @@ function ToolSummaryEntry({
 
   return (
     <ChatToolSummary
+      ref={textRef}
       summary={summary}
       expanded={expanded}
       onToggle={toggle}
       status={status}
       onViewContent={hasOutput ? handleViewContent : undefined}
       toolName={toolName}
+      isTruncated={isTruncated}
     />
   );
 }

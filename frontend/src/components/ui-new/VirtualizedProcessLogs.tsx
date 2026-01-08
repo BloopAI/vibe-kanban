@@ -11,7 +11,10 @@ import { WarningCircleIcon } from '@phosphor-icons/react/dist/ssr';
 import RawLogText from '@/components/common/RawLogText';
 import type { PatchType } from 'shared/types';
 
-type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+export type LogEntry = Extract<
+  PatchType,
+  { type: 'STDOUT' } | { type: 'STDERR' }
+>;
 
 export interface VirtualizedProcessLogsProps {
   logs: LogEntry[];
@@ -33,6 +36,11 @@ const AutoScrollToBottom: ScrollModifier = {
   autoScroll: 'smooth',
 };
 
+const computeItemKey: VirtuosoMessageListProps<
+  LogEntryWithKey,
+  unknown
+>['computeItemKey'] = ({ data }) => data.key;
+
 const ItemContent: VirtuosoMessageListProps<
   LogEntryWithKey,
   unknown
@@ -42,14 +50,10 @@ const ItemContent: VirtuosoMessageListProps<
       content={data.content}
       channel={data.type === 'STDERR' ? 'stderr' : 'stdout'}
       className="text-sm px-4 py-1"
+      linkifyUrls
     />
   );
 };
-
-const computeItemKey: VirtuosoMessageListProps<
-  LogEntryWithKey,
-  unknown
->['computeItemKey'] = ({ data }) => data.key;
 
 export function VirtualizedProcessLogs({
   logs,

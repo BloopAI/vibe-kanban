@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import {
   ListMagnifyingGlassIcon,
   TerminalWindowIcon,
@@ -14,21 +15,33 @@ interface ChatToolSummaryProps {
   status?: ToolStatus;
   onViewContent?: () => void;
   toolName?: string;
+  isTruncated?: boolean;
 }
 
-export function ChatToolSummary({
-  summary,
-  className,
-  expanded,
-  onToggle,
-  status,
-  onViewContent,
-  toolName,
-}: ChatToolSummaryProps) {
+export const ChatToolSummary = forwardRef<
+  HTMLSpanElement,
+  ChatToolSummaryProps
+>(function ChatToolSummary(
+  {
+    summary,
+    className,
+    expanded,
+    onToggle,
+    status,
+    onViewContent,
+    toolName,
+    isTruncated,
+  },
+  ref
+) {
+  // Can expand if text is truncated and onToggle is provided
+  const canExpand = isTruncated && onToggle;
+  const isClickable = Boolean(onViewContent || canExpand);
+
   const handleClick = () => {
     if (onViewContent) {
       onViewContent();
-    } else if (onToggle) {
+    } else if (canExpand) {
       onToggle();
     }
   };
@@ -39,11 +52,12 @@ export function ChatToolSummary({
   return (
     <div
       className={cn(
-        'flex items-start gap-base text-sm text-low cursor-pointer',
+        'flex items-start gap-base text-sm text-low',
+        isClickable && 'cursor-pointer',
         className
       )}
-      onClick={handleClick}
-      role="button"
+      onClick={isClickable ? handleClick : undefined}
+      role={isClickable ? 'button' : undefined}
     >
       <span className="relative shrink-0 mt-0.5">
         <Icon className="size-icon-base" />
@@ -55,6 +69,7 @@ export function ChatToolSummary({
         )}
       </span>
       <span
+        ref={ref}
         className={cn(
           !expanded && 'truncate',
           expanded && 'whitespace-pre-wrap break-all'
@@ -64,4 +79,4 @@ export function ChatToolSummary({
       </span>
     </div>
   );
-}
+});
