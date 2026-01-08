@@ -74,20 +74,24 @@ export function useProjects(): UseProjectsResult {
     { token }
   );
 
+  // Clean up optimistic entries when WebSocket data arrives (in useEffect, not useMemo)
+  useEffect(() => {
+    const wsProjects = data?.projects ?? {};
+    const idsToClean = Object.keys(optimisticProjects).filter(id => wsProjects[id]);
+    if (idsToClean.length > 0) {
+      idsToClean.forEach(id => {
+        delete optimisticProjects[id];
+      });
+      // No need to notify - the data change will trigger re-render
+    }
+  }, [data]);
+
   // Merge WebSocket data with optimistic updates
   // WebSocket data takes precedence when it arrives
   const projectsById = useMemo(() => {
     const wsProjects = data?.projects ?? {};
-    // Only include optimistic projects that aren't in WebSocket data yet
-    const merged = { ...optimisticProjects };
-    Object.entries(wsProjects).forEach(([id, project]) => {
-      merged[id] = project;
-      // Clean up optimistic entry once WebSocket has the data
-      if (optimisticProjects[id]) {
-        delete optimisticProjects[id];
-      }
-    });
-    return merged;
+    // Merge: optimistic projects first, then WebSocket overwrites
+    return { ...optimisticProjects, ...wsProjects };
   }, [data]);
 
   const projects = useMemo(() => {
