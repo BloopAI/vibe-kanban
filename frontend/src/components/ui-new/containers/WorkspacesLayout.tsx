@@ -207,8 +207,8 @@ export function WorkspacesLayout() {
   const {
     workspace: selectedWorkspace,
     workspaceId: selectedWorkspaceId,
-    sidebarWorkspaces,
-    archivedSidebarWorkspaces,
+    activeWorkspaces,
+    archivedWorkspaces,
     isLoading,
     isCreateMode,
     selectWorkspace,
@@ -464,7 +464,8 @@ export function WorkspacesLayout() {
   }, [diffPaths]);
 
   // Get the most recent workspace to auto-select its project and repos in create mode
-  const mostRecentWorkspace = sidebarWorkspaces[0];
+  // Fall back to archived workspaces if no active workspaces exist
+  const mostRecentWorkspace = activeWorkspaces[0] ?? archivedWorkspaces[0];
 
   const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
     enabled: isCreateMode && !!mostRecentWorkspace?.taskId,
@@ -555,8 +556,8 @@ export function WorkspacesLayout() {
   // Render sidebar with persisted draft title
   const renderSidebar = () => (
     <WorkspacesSidebar
-      workspaces={sidebarWorkspaces}
-      archivedWorkspaces={archivedSidebarWorkspaces}
+      workspaces={activeWorkspaces}
+      archivedWorkspaces={archivedWorkspaces}
       selectedWorkspaceId={selectedWorkspaceId ?? null}
       onSelectWorkspace={selectWorkspace}
       searchQuery={searchQuery}

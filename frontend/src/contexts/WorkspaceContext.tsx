@@ -26,10 +26,10 @@ interface WorkspaceContextValue {
   workspaceId: string | undefined;
   /** Real workspace data from API */
   workspace: ApiWorkspace | undefined;
-  /** Sidebar workspaces (real IDs with mock display fields) */
-  sidebarWorkspaces: SidebarWorkspace[];
+  /** Active workspaces for sidebar display */
+  activeWorkspaces: SidebarWorkspace[];
   /** Archived workspaces for sidebar display */
-  archivedSidebarWorkspaces: SidebarWorkspace[];
+  archivedWorkspaces: SidebarWorkspace[];
   isLoading: boolean;
   isCreateMode: boolean;
   selectWorkspace: (id: string) => void;
@@ -65,10 +65,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
   const isCreateMode = location.pathname === '/workspaces/create';
 
-  // Fetch sidebar workspaces (real IDs with mock display fields)
+  // Fetch workspaces for sidebar display
   const {
-    workspaces: sidebarWorkspaces,
-    archivedWorkspaces: archivedSidebarWorkspaces,
+    workspaces: activeWorkspaces,
+    archivedWorkspaces,
     isLoading: isLoadingList,
   } = useWorkspaces();
 
@@ -126,8 +126,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     () => ({
       workspaceId,
       workspace,
-      sidebarWorkspaces,
-      archivedSidebarWorkspaces,
+      activeWorkspaces,
+      archivedWorkspaces,
       isLoading,
       isCreateMode,
       selectWorkspace,
@@ -146,8 +146,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [
       workspaceId,
       workspace,
-      sidebarWorkspaces,
-      archivedSidebarWorkspaces,
+      activeWorkspaces,
+      archivedWorkspaces,
       isLoading,
       isCreateMode,
       selectWorkspace,

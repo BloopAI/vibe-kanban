@@ -42,7 +42,7 @@ export interface ActionExecutorContext {
   queryClient: QueryClient;
   // Optional workspace selection context (for archive action)
   selectWorkspace?: (workspaceId: string) => void;
-  sidebarWorkspaces?: SidebarWorkspace[];
+  activeWorkspaces?: SidebarWorkspace[];
   // Current workspace ID (for actions that optionally use workspace context)
   currentWorkspaceId?: string;
 }
@@ -178,14 +178,14 @@ export const Actions = {
 
       // Calculate next workspace before archiving (if we have the context)
       let nextWorkspaceId: string | null = null;
-      if (!wasArchived && ctx.selectWorkspace && ctx.sidebarWorkspaces) {
-        const currentIndex = ctx.sidebarWorkspaces.findIndex(
+      if (!wasArchived && ctx.selectWorkspace && ctx.activeWorkspaces) {
+        const currentIndex = ctx.activeWorkspaces.findIndex(
           (ws) => ws.id === workspaceId
         );
-        if (currentIndex >= 0 && ctx.sidebarWorkspaces.length > 1) {
+        if (currentIndex >= 0 && ctx.activeWorkspaces.length > 1) {
           const nextWorkspace =
-            ctx.sidebarWorkspaces[currentIndex + 1] ||
-            ctx.sidebarWorkspaces[currentIndex - 1];
+            ctx.activeWorkspaces[currentIndex + 1] ||
+            ctx.activeWorkspaces[currentIndex - 1];
           nextWorkspaceId = nextWorkspace?.id ?? null;
         }
       }

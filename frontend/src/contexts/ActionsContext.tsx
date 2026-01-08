@@ -40,7 +40,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
-  const { selectWorkspace, sidebarWorkspaces, workspaceId } =
+  const { selectWorkspace, activeWorkspaces, workspaceId } =
     useWorkspaceContext();
 
   // Build executor context from hooks
@@ -49,10 +49,10 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       navigate,
       queryClient,
       selectWorkspace,
-      sidebarWorkspaces,
+      activeWorkspaces,
       currentWorkspaceId: workspaceId,
     }),
-    [navigate, queryClient, selectWorkspace, sidebarWorkspaces, workspaceId]
+    [navigate, queryClient, selectWorkspace, activeWorkspaces, workspaceId]
   );
 
   // Main action executor with centralized target validation and error handling
