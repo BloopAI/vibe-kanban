@@ -17,7 +17,8 @@
     "noSearchResults": "没有任务匹配您的搜索。"
   },
   "actions": {
-    "addTask": "添加任务"
+    "addTask": "添加任务",
+    "clearColumn": "清除已完成任务"
   },
   "filters": {
     "sharedToggleAria": "切换共享任务",

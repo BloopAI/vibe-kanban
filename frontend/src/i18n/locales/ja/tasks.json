@@ -11,7 +11,8 @@
     }
   },
   "actions": {
-    "addTask": "タスクを追加"
+    "addTask": "タスクを追加",
+    "clearColumn": "完了タスクをクリア"
   },
   "filters": {
     "sharedToggleAria": "共有タスクを切り替える",

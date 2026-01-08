@@ -3,6 +3,8 @@
 import {
   ApprovalStatus,
   ApiResponse,
+  BulkDeleteTasksRequest,
+  BulkDeleteTasksResponse,
   Config,
   CreateFollowUpAttempt,
   EditorType,
@@ -423,6 +425,16 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  bulkDelete: async (
+    data: BulkDeleteTasksRequest
+  ): Promise<BulkDeleteTasksResponse> => {
+    const response = await makeRequest(`/api/tasks/bulk-delete`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<BulkDeleteTasksResponse>(response);
   },
 
   share: async (taskId: string): Promise<ShareTaskResponse> => {

@@ -16,7 +16,7 @@ use db::models::{
     image::TaskImage,
     project::{Project, ProjectError},
     repo::Repo,
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -425,6 +425,171 @@ pub async fn delete_task(
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
+pub struct BulkDeleteTasksRequest {
+    pub project_id: Uuid,
+    pub status: TaskStatus,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct BulkDeleteTasksResponse {
+    pub deleted_count: u64,
+}
+
+pub async fn bulk_delete_tasks(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<BulkDeleteTasksRequest>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<BulkDeleteTasksResponse>>), ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Fetch all tasks with the specified status for the project
+    let all_tasks =
+        Task::find_by_project_id_with_attempt_status(pool, payload.project_id).await?;
+
+    let tasks_to_delete: Vec<_> = all_tasks
+        .into_iter()
+        .filter(|t| t.status == payload.status)
+        .collect();
+
+    if tasks_to_delete.is_empty() {
+        return Ok((
+            StatusCode::OK,
+            ResponseJson(ApiResponse::success(BulkDeleteTasksResponse {
+                deleted_count: 0,
+            })),
+        ));
+    }
+
+    // Check for any running processes
+    for task in &tasks_to_delete {
+        if deployment
+            .container()
+            .has_running_processes(task.id)
+            .await?
+        {
+            return Err(ApiError::Conflict(format!(
+                "Task '{}' has running execution processes. Please wait for them to complete or stop them first.",
+                task.title
+            )));
+        }
+    }
+
+    // Gather all data BEFORE starting the transaction to minimize lock time
+    let mut all_workspace_dirs: Vec<PathBuf> = Vec::new();
+    let mut all_repositories: Vec<Repo> = Vec::new();
+    let mut task_attempts: Vec<(Uuid, Vec<Workspace>)> = Vec::new();
+    let mut shared_task_ids: Vec<Uuid> = Vec::new();
+
+    for task in &tasks_to_delete {
+        // Gather task attempts data
+        let attempts = Workspace::fetch_all(pool, Some(task.id))
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
+                ApiError::Workspace(e)
+            })?;
+
+        let repositories = WorkspaceRepo::find_unique_repos_for_task(pool, task.id).await?;
+        all_repositories.extend(repositories);
+
+        // Collect workspace directories
+        let workspace_dirs: Vec<PathBuf> = attempts
+            .iter()
+            .filter_map(|attempt| attempt.container_ref.as_ref().map(PathBuf::from))
+            .collect();
+        all_workspace_dirs.extend(workspace_dirs);
+
+        // Collect shared task IDs for deletion
+        if let Some(shared_task_id) = task.shared_task_id {
+            shared_task_ids.push(shared_task_id);
+        }
+
+        task_attempts.push((task.id, attempts));
+    }
+
+    // Handle shared task deletions (external API calls, not DB writes)
+    if let Ok(publisher) = deployment.share_publisher() {
+        for shared_task_id in &shared_task_ids {
+            if let Err(e) = publisher.delete_shared_task(*shared_task_id).await {
+                tracing::warn!("Failed to delete shared task {}: {}", shared_task_id, e);
+            }
+        }
+    }
+
+    // Now do all DB writes in a single transaction
+    let mut deleted_count = 0u64;
+    let mut tx = pool.begin().await?;
+
+    for (task_id, attempts) in &task_attempts {
+        // Nullify parent_workspace_id for child tasks
+        for attempt in attempts {
+            Task::nullify_children_by_workspace_id(&mut *tx, attempt.id).await?;
+        }
+
+        // Delete the task
+        let rows_affected = Task::delete(&mut *tx, *task_id).await?;
+        deleted_count += rows_affected;
+    }
+
+    tx.commit().await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "tasks_bulk_deleted",
+            serde_json::json!({
+                "project_id": payload.project_id.to_string(),
+                "status": payload.status.to_string(),
+                "deleted_count": deleted_count,
+            }),
+        )
+        .await;
+
+    // Background cleanup
+    let project_id = payload.project_id;
+    let pool = pool.clone();
+    tokio::spawn(async move {
+        tracing::info!(
+            "Starting background cleanup for {} deleted tasks in project {}",
+            deleted_count,
+            project_id
+        );
+
+        for workspace_dir in &all_workspace_dirs {
+            if let Err(e) =
+                WorkspaceManager::cleanup_workspace(workspace_dir, &all_repositories).await
+            {
+                tracing::error!(
+                    "Background workspace cleanup failed at {}: {}",
+                    workspace_dir.display(),
+                    e
+                );
+            }
+        }
+
+        match Repo::delete_orphaned(&pool).await {
+            Ok(count) if count > 0 => {
+                tracing::info!("Deleted {} orphaned repo records", count);
+            }
+            Err(e) => {
+                tracing::error!("Failed to delete orphaned repos: {}", e);
+            }
+            _ => {}
+        }
+
+        tracing::info!(
+            "Background cleanup completed for bulk delete in project {}",
+            project_id
+        );
+    });
+
+    Ok((
+        StatusCode::ACCEPTED,
+        ResponseJson(ApiResponse::success(BulkDeleteTasksResponse {
+            deleted_count,
+        })),
+    ))
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct ShareTaskResponse {
     pub shared_task_id: Uuid,
 }
@@ -471,6 +636,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
+        .route("/bulk-delete", post(bulk_delete_tasks))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks
