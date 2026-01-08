@@ -1,11 +1,10 @@
 use axum::{
     extract::Path,
+    response::Json as ResponseJson,
     routing::{delete, get, post},
-    Json, Router,
+    Router,
 };
 use db::models::api_key::{ApiKey, ApiKeyInfo, ApiKeyWithSecret, CreateApiKey};
-use ts_rs::TS;
-use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -16,7 +15,7 @@ use crate::{
 };
 use axum::extract::State;
 use deployment::Deployment;
-use utils::extractor::ResponseJson;
+
 
 /// List all API keys for the current user
 pub async fn list_api_keys(
