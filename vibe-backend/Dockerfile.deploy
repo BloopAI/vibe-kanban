@@ -33,6 +33,7 @@ RUN mkdir -p /repos /data /seed && \
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV CLOUD_DEPLOYMENT=true
 EXPOSE 3000
 
 WORKDIR /repos
