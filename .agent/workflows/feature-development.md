@@ -10,7 +10,7 @@ This workflow enforces a structured, "Senior Architect" approach to feature deve
 - **Frontend Code:** `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/vibe-frontend`
 - **Backend Code:** `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/vibe-backend`
 - **Documentation:** `/Users/rupeshpanwar/Documents/docs/docs-ikanban`
-- **Rules & Standards:** `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/rules`
+- **Rules & Standards:** `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/.agent/rules`
 - **Tech Stack Reference:** `/Users/rupeshpanwar/Documents/docs/docs-ikanban/architecture/tech-stack.md`
 
 > [!CAUTION]
@@ -48,6 +48,28 @@ Act as a Principal Engineer. Do not write implementation code yet. Focus on data
 Execute the plan defined in phase 3. Work strictly in local environment initially.
 - [ ] Implement the feature in the respective folders (frontend/backend).
 - [ ] Maintain adherence to the `architecture-flow.txt`.
+
+## 4.5. SQLx Query Cache (If Database Changes)
+> [!IMPORTANT]
+> **Required when:** Adding/modifying SQL queries, changing database schema.
+> **Reference:** `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/.agent/rules/SQLxQueryCache.md`
+
+If you modified database queries or schema:
+- [ ] Push schema changes to Supabase:
+  ```bash
+  cd vibe-backend/schema
+  npx drizzle-kit push:pg
+  ```
+- [ ] Regenerate SQLx query cache:
+  ```bash
+  cd vibe-backend/crates/db
+  cargo sqlx prepare
+  ```
+- [ ] Commit the updated cache files:
+  ```bash
+  git add crates/db/.sqlx/
+  git commit -m "chore: update sqlx query cache"
+  ```
 
 ## 5. Verification & Quality Assurance (Local)
 - [ ] Perform manual or automated testing in the **local environment**.
