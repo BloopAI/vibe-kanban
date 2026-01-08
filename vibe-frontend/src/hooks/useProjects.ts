@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
@@ -20,6 +20,11 @@ export interface UseProjectsResult {
   removeProject: (projectId: string) => void;
 }
 
+// Detect if we're running in cloud mode (when VITE_API_URL is set to external API)
+// In cloud mode, WebSocket streaming is not available, so we use REST API polling
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const isCloudMode = !!API_BASE_URL;
+
 // Shared state for optimistic updates across all useProjects instances
 let optimisticProjects: Record<string, Project> = {};
 const listeners = new Set<() => void>();
@@ -39,7 +44,8 @@ function updateOptimisticProject(project: Project) {
 }
 
 function removeOptimisticProject(projectId: string) {
-  const { [projectId]: _, ...rest } = optimisticProjects;
+  const { [projectId]: _removed, ...rest } = optimisticProjects;
+  void _removed; // Ignore unused variable
   optimisticProjects = rest;
   notifyListeners();
 }
@@ -49,6 +55,12 @@ export function useProjects(): UseProjectsResult {
   const { getToken, isLoaded } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
+
+  // REST API polling state (for cloud mode)
+  const [restProjects, setRestProjects] = useState<Record<string, Project>>({});
+  const [restLoading, setRestLoading] = useState(isCloudMode);
+  const [restError, setRestError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (isLoaded) {
@@ -67,17 +79,73 @@ export function useProjects(): UseProjectsResult {
 
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 
-  const { data, isConnected, error } = useJsonPatchWsStream<ProjectsState>(
+  // In cloud mode, disable WebSocket and use REST polling instead
+  const { data: wsData, isConnected, error: wsError } = useJsonPatchWsStream<ProjectsState>(
     endpoint,
-    !!token, // Only enable when token is available
+    !isCloudMode && !!token, // Disable WebSocket in cloud mode
     initialData,
     { token }
   );
 
-  // Clean up optimistic entries when WebSocket data arrives (in useEffect, not useMemo)
+  // REST API polling for cloud mode
   useEffect(() => {
-    const wsProjects = data?.projects ?? {};
-    const idsToClean = Object.keys(optimisticProjects).filter(id => wsProjects[id]);
+    if (!isCloudMode || !token) return;
+
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/projects`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch projects: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success && Array.isArray(result.data)) {
+          const projectsMap: Record<string, Project> = {};
+          result.data.forEach((project: Project) => {
+            projectsMap[project.id] = project;
+          });
+          setRestProjects(projectsMap);
+          setRestError(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+        setRestError(err instanceof Error ? err.message : 'Failed to fetch projects');
+      } finally {
+        setRestLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchProjects();
+
+    // Poll every 30 seconds in cloud mode
+    pollingIntervalRef.current = window.setInterval(fetchProjects, 30000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [token]);
+
+  // Use REST data in cloud mode, WebSocket data otherwise
+  const data = useMemo(
+    () => (isCloudMode ? { projects: restProjects } : wsData),
+    [restProjects, wsData]
+  );
+  const error = isCloudMode ? restError : wsError;
+
+  // Clean up optimistic entries when data arrives (in useEffect, not useMemo)
+  useEffect(() => {
+    const fetchedProjects = data?.projects ?? {};
+    const idsToClean = Object.keys(optimisticProjects).filter(id => fetchedProjects[id]);
     if (idsToClean.length > 0) {
       idsToClean.forEach(id => {
         delete optimisticProjects[id];
@@ -86,12 +154,12 @@ export function useProjects(): UseProjectsResult {
     }
   }, [data]);
 
-  // Merge WebSocket data with optimistic updates
-  // WebSocket data takes precedence when it arrives
+  // Merge fetched data with optimistic updates
+  // Fetched data takes precedence when it arrives
   const projectsById = useMemo(() => {
-    const wsProjects = data?.projects ?? {};
-    // Merge: optimistic projects first, then WebSocket overwrites
-    return { ...optimisticProjects, ...wsProjects };
+    const fetchedProjects = data?.projects ?? {};
+    // Merge: optimistic projects first, then fetched data overwrites
+    return { ...optimisticProjects, ...fetchedProjects };
   }, [data]);
 
   const projects = useMemo(() => {
@@ -102,7 +170,8 @@ export function useProjects(): UseProjectsResult {
     );
   }, [projectsById]);
 
-  const projectsData = data ? projects : undefined;
+  const hasData = isCloudMode ? !restLoading : !!wsData;
+  const projectsData = hasData ? projects : undefined;
   const errorObj = useMemo(() => (error ? new Error(error) : null), [error]);
 
   const resolveProject = useMemo(
@@ -125,8 +194,8 @@ export function useProjects(): UseProjectsResult {
   return {
     projects: projectsData ?? [],
     projectsById,
-    isLoading: !data && !error,
-    isConnected,
+    isLoading: isCloudMode ? restLoading : (!wsData && !wsError),
+    isConnected: isCloudMode ? !restError : isConnected,
     error: errorObj,
     resolveProject,
     addProject,
