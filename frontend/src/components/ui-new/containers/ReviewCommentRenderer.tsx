@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
@@ -12,6 +13,7 @@ export function ReviewCommentRenderer({
   comment,
   projectId,
 }: ReviewCommentRendererProps) {
+  const { t } = useTranslation('common');
   const { deleteComment, updateComment } = useReview();
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
@@ -43,7 +45,7 @@ export function ReviewCommentRenderer({
         <WYSIWYGEditor
           value={editText}
           onChange={setEditText}
-          placeholder="Edit comment... (type @ to search files)"
+          placeholder={t('comments.editPlaceholder')}
           className="w-full text-normal min-h-[60px]"
           projectId={projectId}
           onCmdEnter={handleSave}
@@ -55,10 +57,10 @@ export function ReviewCommentRenderer({
             onClick={handleSave}
             disabled={!editText.trim()}
           >
-            Save changes
+            {t('actions.saveChanges')}
           </PrimaryButton>
           <PrimaryButton variant="tertiary" onClick={handleCancel}>
-            Cancel
+            {t('actions.cancel')}
           </PrimaryButton>
         </div>
       </div>

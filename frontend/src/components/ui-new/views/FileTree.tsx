@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
@@ -31,6 +32,8 @@ export function FileTree({
   onToggleExpandAll,
   className,
 }: FileTreeProps) {
+  const { t } = useTranslation(['tasks', 'common']);
+
   const renderNodes = (nodeList: TreeNode[], depth = 0) => {
     return nodeList.map((node) => (
       <div key={node.id}>
@@ -77,7 +80,7 @@ export function FileTree({
           renderNodes(nodes)
         ) : (
           <div className="p-base text-low text-sm">
-            {searchQuery ? 'No matching files' : 'No changed files'}
+            {searchQuery ? t('common:fileTree.noResults') : 'No changed files'}
           </div>
         )}
       </div>

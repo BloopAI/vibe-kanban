@@ -233,7 +233,7 @@ const ToolCallCard: React.FC<{
   const isCommand = actionType?.action === 'command_run';
   const isTool = actionType?.action === 'tool';
 
-  const label = isCommand ? 'Ran' : entryType?.tool_name || 'Tool';
+  const label = isCommand ? t('conversation.ran') : entryType?.tool_name || t('conversation.tool');
 
   const inlineText = entry.content.trim();
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
@@ -351,6 +351,7 @@ const ToolCallCard: React.FC<{
 };
 
 function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
+  const { t } = useTranslation('common');
   const entryType = entry.entry_type;
   const isSystem = entryType.type === 'system_message';
   const isError = entryType.type === 'error_message';
@@ -428,7 +429,7 @@ function MockDisplayConversationEntry({ entry, expansionKey }: Props) {
       <div className="px-4 py-2 text-base">
         <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
           <CheckCircleIcon className="size-icon-base" />
-          <span>Task completed</span>
+          <span>{t('conversation.taskCompleted')}</span>
         </div>
       </div>
     );

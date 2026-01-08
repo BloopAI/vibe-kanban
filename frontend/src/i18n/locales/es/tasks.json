@@ -332,6 +332,7 @@
     }
   },
   "processes": {
+    "noLogsAvailable": "No hay registros disponibles",
     "agent": "Agent:",
     "backToList": "Back to list",
     "completed": "Completed: {{date}}",
@@ -521,6 +522,59 @@
     },
     "buttons": {
       "retry": "Reintentar"
+    }
+  },
+  "conversation": {
+    "you": "Tú",
+    "thinking": "Pensando",
+    "todo": "Tarea pendiente",
+    "todos": "Tareas pendientes",
+    "completed": "completado",
+    "incomplete": "incompleto",
+    "pending": "pendiente",
+    "inProgress": "en progreso",
+    "skipped": "omitido",
+    "error": "Error",
+    "retry": "Reintentar",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "actions": {
+      "cancel": "Cancelar",
+      "submitFeedback": "Enviar comentarios",
+      "stop": "Detener",
+      "stopping": "Deteniendo",
+      "loading": "Cargando",
+      "send": "Enviar",
+      "sending": "Enviando",
+      "queue": "Poner en cola",
+      "cancelQueue": "Cancelar cola",
+      "requestChanges": "Solicitar cambios",
+      "approve": "Aprobar",
+      "clearReviewComments": "Limpiar comentarios de revisión"
+    },
+    "approval": {
+      "conflictWarning": "Los archivos en conflicto necesitan resolución manual"
+    },
+    "sessions": {
+      "newSession": "Nueva sesión",
+      "latest": "Última",
+      "previous": "Anterior",
+      "label": "Sesiones",
+      "noPreviousSessions": "No hay sesiones anteriores"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} comentario de revisión será incluido",
+      "count_other": "{{count}} comentarios de revisión serán incluidos"
+    },
+    "workspace": {
+      "create": "Crear",
+      "creating": "Creando..."
+    },
+    "fileEntry": {
+      "created": "Creado",
+      "modified": "Modificado",
+      "deleted": "Eliminado",
+      "renamed": "Renombrado"
     }
   }
 }

@@ -49,6 +49,17 @@
     "toolDetailsToggle": {
       "hide": "詳細を非表示",
       "show": "詳細を表示"
+    },
+    "taskCompleted": "タスク完了",
+    "ran": "実行",
+    "tool": "ツール",
+    "toolSummary": {
+      "read": "{{path}} を読み込み",
+      "searched": "「{{query}}」を検索",
+      "fetched": "{{url}} を取得",
+      "ranCommand": "コマンドを実行",
+      "createdTask": "タスクを作成: {{description}}",
+      "todoOperation": "{{operation}} Todo"
     }
   },
   "language": {
@@ -57,6 +68,7 @@
   "states": {
     "error": "エラー",
     "loading": "読み込み中...",
+    "loadingHistory": "履歴を読み込み中",
     "reconnecting": "再接続中",
     "saving": "保存中...",
     "success": "成功"
@@ -96,5 +108,72 @@
     "errorTitle": "認証失敗",
     "errorDescription": "アカウントの認証中に問題が発生しました",
     "tryAgain": "再試行"
+  },
+  "toolbar": {
+    "sortBy": "並べ替え",
+    "groupBy": "グループ化"
+  },
+  "sorting": {
+    "ascending": "昇順",
+    "descending": "降順"
+  },
+  "grouping": {
+    "date": "日付",
+    "assignee": "担当者",
+    "label": "ラベル"
+  },
+  "workspaces": {
+    "title": "ワークスペース",
+    "searchPlaceholder": "検索...",
+    "active": "アクティブ",
+    "archived": "アーカイブ済み",
+    "loading": "読み込み中...",
+    "selectToStart": "ワークスペースを選択して開始",
+    "draft": "下書き"
+  },
+  "fileTree": {
+    "searchPlaceholder": "ファイルを検索...",
+    "noResults": "一致するファイルがありません",
+    "title": "ファイル"
+  },
+  "sections": {
+    "changes": "変更",
+    "repositories": "リポジトリ",
+    "addRepositories": "リポジトリを追加",
+    "project": "プロジェクト",
+    "processes": "プロセス",
+    "devServer": "開発サーバー",
+    "advanced": "詳細設定",
+    "workingBranch": "作業ブランチ",
+    "recent": "最近",
+    "other": "その他",
+    "devServerPreview": "開発サーバープレビュー"
+  },
+  "repos": {
+    "loading": "リポジトリを読み込み中...",
+    "noRecentRepos": "最近のリポジトリが見つかりません",
+    "noReposAdded": "リポジトリが追加されていません",
+    "noReposAddedHint": "下のオプションからこのワークスペースにリポジトリを追加してください"
+  },
+  "actions": {
+    "browseRepos": "ディスク上のリポジトリを参照",
+    "createNewRepo": "ディスク上に新しいリポジトリを作成",
+    "viewInChangesPanel": "変更パネルで表示",
+    "copyPath": "ワークツリーパスをコピー"
+  },
+  "confirm": {
+    "defaultConfirm": "確認",
+    "defaultCancel": "キャンセル"
+  },
+  "empty": {
+    "noChanges": "表示する変更がありません"
+  },
+  "commandBar": {
+    "noResults": "結果が見つかりません。",
+    "back": "戻る",
+    "defaultPlaceholder": "コマンドを入力または検索..."
+  },
+  "chatBox": {
+    "variants": "バリアント"
   }
 }

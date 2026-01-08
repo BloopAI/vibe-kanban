@@ -12,6 +12,7 @@ import {
   GitMergeIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -71,6 +72,8 @@ export function RepoCard({
   onOpenInEditor,
   onCopyPath,
 }: RepoCardProps) {
+  const { t } = useTranslation('tasks');
+  const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
   return (
@@ -104,13 +107,13 @@ export function RepoCard({
                     icon={CrosshairIcon}
                     onClick={onChangeTarget}
                   >
-                    Change target
+                    {t('git.actions.changeTarget')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     icon={ArrowsClockwiseIcon}
                     onClick={onRebase}
                   >
-                    Rebase
+                    {t('rebase.common.action')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -137,7 +140,7 @@ export function RepoCard({
         <div className="flex items-center gap-half">
           <FileTextIcon className="size-icon-xs text-low" />
           <span className="text-sm font-medium text-low truncate">
-            {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
+            {t('diff.filesChanged', { count: filesChanged })}
           </span>
         </div>
         <span className="text-sm font-semibold text-right">
@@ -152,28 +155,28 @@ export function RepoCard({
 
       {/* PR status row */}
       {prNumber && (
-        <div className="flex items-center gap-half">
-          {prStatus === 'merged' ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
-              <CheckCircleIcon className="size-icon-xs" weight="fill" />
-              Merged PR #{prNumber}
-            </span>
-          ) : prUrl ? (
-            <button
-              onClick={() => window.open(prUrl, '_blank')}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline text-sm font-medium"
-            >
-              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
-              PR #{prNumber}
-              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-            </button>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
-              <GitPullRequestIcon className="size-icon-xs" weight="fill" />
-              PR #{prNumber}
-            </span>
-          )}
-        </div>
+      <div className="flex items-center gap-half">
+        {prStatus === 'merged' ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium">
+            <CheckCircleIcon className="size-icon-xs" weight="fill" />
+            {t('git.pr.merged', { prNumber })}
+          </span>
+        ) : prUrl ? (
+          <button
+            onClick={() => window.open(prUrl, '_blank')}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline text-sm font-medium"
+          >
+            <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+            {t('git.pr.open', { prNumber })}
+            <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-sm font-medium">
+            <GitPullRequestIcon className="size-icon-xs" weight="fill" />
+            {t('git.pr.open', { prNumber })}
+          </span>
+        )}
+      </div>
       )}
 
       {/* Actions row */}
@@ -195,10 +198,10 @@ export function RepoCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
-              Copy path
+              {tCommon('actions.copyPath')}
             </DropdownMenuItem>
             <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
-              Open in IDE
+              {tCommon('actions.openInIde')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

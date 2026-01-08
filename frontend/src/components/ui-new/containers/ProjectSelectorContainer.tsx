@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VirtuosoHandle } from 'react-virtuoso';
 import { PlusIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ export function ProjectSelectorContainer({
   onProjectSelect,
   onCreateProject,
 }: ProjectSelectorContainerProps) {
+  const { t } = useTranslation('common');
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -184,12 +186,12 @@ export function ProjectSelectorContainer({
             safeHighlightedIndex === 0 && 'bg-secondary'
           )}
         >
-          Create new project
+          {t('projects.createNew')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {filteredItems.length === 0 ? (
           <div className="px-base py-half text-sm text-low text-center">
-            No projects found
+            {t('projects.noProjectsFound')}
           </div>
         ) : (
           <Virtuoso

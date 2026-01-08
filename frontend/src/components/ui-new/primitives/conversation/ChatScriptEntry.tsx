@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { TerminalIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
@@ -19,6 +20,7 @@ export function ChatScriptEntry({
   className,
   status,
 }: ChatScriptEntryProps) {
+  const { t } = useTranslation('tasks');
   const { viewProcessInPanel } = useLogNavigation();
   const isRunning = status.status === 'created';
   const isSuccess = status.status === 'success';
@@ -30,15 +32,15 @@ export function ChatScriptEntry({
 
   const getSubtitle = () => {
     if (isRunning) {
-      return 'Running...';
+      return t('conversation.script.running');
     }
     if (isFailed && exitCode !== null && exitCode !== undefined) {
-      return `Exit code: ${exitCode}`;
+      return t('conversation.script.exitCode', { code: exitCode });
     }
     if (isSuccess) {
-      return 'Completed successfully';
+      return t('conversation.script.completedSuccessfully');
     }
-    return 'Click to view logs';
+    return t('conversation.script.clickToViewLogs');
   };
 
   return (

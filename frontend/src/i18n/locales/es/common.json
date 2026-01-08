@@ -49,6 +49,17 @@
     "toolDetailsToggle": {
       "hide": "Ocultar detalles",
       "show": "Mostrar detalles"
+    },
+    "taskCompleted": "Tarea completada",
+    "ran": "Ejecutó",
+    "tool": "Herramienta",
+    "toolSummary": {
+      "read": "Leyó {{path}}",
+      "searched": "Buscó \"{{query}}\"",
+      "fetched": "Obtuvo {{url}}",
+      "ranCommand": "Ejecutó comando",
+      "createdTask": "Creó tarea: {{description}}",
+      "todoOperation": "{{operation}} tareas pendientes"
     }
   },
   "language": {
@@ -57,6 +68,7 @@
   "states": {
     "error": "Error",
     "loading": "Cargando...",
+    "loadingHistory": "Cargando historial",
     "reconnecting": "Reconectando",
     "saving": "Guardando...",
     "success": "Éxito"
@@ -96,5 +108,72 @@
     "errorTitle": "Falló la autenticación",
     "errorDescription": "Hubo un problema al autenticar tu cuenta",
     "tryAgain": "Intentar de nuevo"
+  },
+  "toolbar": {
+    "sortBy": "Ordenar por",
+    "groupBy": "Agrupar por"
+  },
+  "sorting": {
+    "ascending": "Ascendente",
+    "descending": "Descendente"
+  },
+  "grouping": {
+    "date": "Fecha",
+    "assignee": "Asignado",
+    "label": "Etiqueta"
+  },
+  "workspaces": {
+    "title": "Espacios de trabajo",
+    "searchPlaceholder": "Buscar...",
+    "active": "Activo",
+    "archived": "Archivado",
+    "loading": "Cargando...",
+    "selectToStart": "Selecciona un espacio de trabajo para comenzar",
+    "draft": "Borrador"
+  },
+  "fileTree": {
+    "searchPlaceholder": "Buscar archivos...",
+    "noResults": "No hay archivos coincidentes",
+    "title": "Archivos"
+  },
+  "sections": {
+    "changes": "Cambios",
+    "repositories": "Repositorios",
+    "addRepositories": "Agregar repositorios",
+    "project": "Proyecto",
+    "processes": "Procesos",
+    "devServer": "Servidor de desarrollo",
+    "advanced": "Avanzado",
+    "workingBranch": "Rama de trabajo",
+    "recent": "Reciente",
+    "other": "Otro",
+    "devServerPreview": "Vista previa del servidor de desarrollo"
+  },
+  "repos": {
+    "loading": "Cargando repositorios...",
+    "noRecentRepos": "No se encontraron repositorios recientes",
+    "noReposAdded": "No se agregaron repositorios",
+    "noReposAddedHint": "Agregue uno o más repositorios a este espacio de trabajo desde las opciones a continuación"
+  },
+  "actions": {
+    "browseRepos": "Explorar repos en disco",
+    "createNewRepo": "Crear nuevo repo en disco",
+    "viewInChangesPanel": "Ver en panel de cambios",
+    "copyPath": "Copiar ruta de worktree"
+  },
+  "confirm": {
+    "defaultConfirm": "Confirmar",
+    "defaultCancel": "Cancelar"
+  },
+  "empty": {
+    "noChanges": "No hay cambios para mostrar"
+  },
+  "commandBar": {
+    "noResults": "No se encontraron resultados.",
+    "back": "Atrás",
+    "defaultPlaceholder": "Escribe un comando o busca..."
+  },
+  "chatBox": {
+    "variants": "Variantes"
   }
 }

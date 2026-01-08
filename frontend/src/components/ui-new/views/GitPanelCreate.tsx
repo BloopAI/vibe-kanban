@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposList';
@@ -39,6 +40,7 @@ export function GitPanelCreate({
   registeredRepoPaths,
   onRepoRegistered,
 }: GitPanelCreateProps) {
+  const { t } = useTranslation(['tasks', 'common']);
   const hasNoRepos = repos.length === 0;
 
   return (
@@ -48,7 +50,7 @@ export function GitPanelCreate({
         className
       )}
     >
-      <SectionHeader title="Project" />
+      <SectionHeader title={t('common:sections.project')} />
       <div className="p-base border-b">
         <ProjectSelectorContainer
           projects={projects}
@@ -59,13 +61,13 @@ export function GitPanelCreate({
         />
       </div>
 
-      <SectionHeader title="Repositories" />
+      <SectionHeader title={t('common:sections.repositories')} />
       <div className="p-base border-b">
         {hasNoRepos ? (
           <div className="flex items-center gap-2 p-base rounded bg-warning/10 border border-warning/20">
             <WarningIcon className="h-4 w-4 text-warning shrink-0" />
             <p className="text-sm text-warning">
-              Please select at least one repository to get started
+              {t('gitPanel.create.warnings.noReposSelected')}
             </p>
           </div>
         ) : (
@@ -78,14 +80,14 @@ export function GitPanelCreate({
           />
         )}
       </div>
-      <SectionHeader title="Add Repositories" />
+      <SectionHeader title={t('common:sections.addRepositories')} />
       <div className="flex flex-col p-base gap-half">
-        <p className="text-xs text-low font-medium">Recent</p>
+        <p className="text-xs text-low font-medium">{t('common:sections.recent')}</p>
         <RecentReposListContainer
           registeredRepoPaths={registeredRepoPaths}
           onRepoRegistered={onRepoRegistered}
         />
-        <p className="text-xs text-low font-medium">Other</p>
+        <p className="text-xs text-low font-medium">{t('common:sections.other')}</p>
         <BrowseRepoButtonContainer onRepoRegistered={onRepoRegistered} />
         <CreateRepoButtonContainer onRepoCreated={onRepoRegistered} />
       </div>

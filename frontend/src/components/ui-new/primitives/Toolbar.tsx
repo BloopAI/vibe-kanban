@@ -6,6 +6,7 @@ import {
   UserIcon,
   TagIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -66,6 +67,8 @@ function ToolbarDropdown({
   className,
   disabled,
 }: ToolbarDropdownProps) {
+  const { t } = useTranslation('common');
+
   return (
     <DropdownMenu>
       <DropdownMenuTriggerButton
@@ -77,18 +80,24 @@ function ToolbarDropdown({
       <DropdownMenuContent>
         {children ?? (
           <>
-            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('toolbar.sortBy')}</DropdownMenuLabel>
             <DropdownMenuItem icon={SortAscendingIcon}>
-              Ascending
+              {t('sorting.ascending')}
             </DropdownMenuItem>
             <DropdownMenuItem icon={SortDescendingIcon}>
-              Descending
+              {t('sorting.descending')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Group by</DropdownMenuLabel>
-            <DropdownMenuItem icon={CalendarIcon}>Date</DropdownMenuItem>
-            <DropdownMenuItem icon={UserIcon}>Assignee</DropdownMenuItem>
-            <DropdownMenuItem icon={TagIcon}>Label</DropdownMenuItem>
+            <DropdownMenuLabel>{t('toolbar.groupBy')}</DropdownMenuLabel>
+            <DropdownMenuItem icon={CalendarIcon}>
+              {t('grouping.date')}
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={UserIcon}>
+              {t('grouping.assignee')}
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={TagIcon}>
+              {t('grouping.label')}
+            </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>

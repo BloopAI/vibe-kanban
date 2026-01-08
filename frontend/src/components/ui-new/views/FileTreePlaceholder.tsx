@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 interface FileTreePlaceholderProps {
@@ -5,6 +6,8 @@ interface FileTreePlaceholderProps {
 }
 
 export function FileTreePlaceholder({ className }: FileTreePlaceholderProps) {
+  const { t } = useTranslation(['tasks', 'common']);
+
   return (
     <div
       className={cn(
@@ -12,7 +15,7 @@ export function FileTreePlaceholder({ className }: FileTreePlaceholderProps) {
         className
       )}
     >
-      <p className="text-base">File Tree</p>
+      <p className="text-base">{t('common:fileTree.title')}</p>
     </div>
   );
 }

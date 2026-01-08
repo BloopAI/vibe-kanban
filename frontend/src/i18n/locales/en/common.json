@@ -16,6 +16,7 @@
   },
   "states": {
     "loading": "Loading...",
+    "loadingHistory": "Loading History",
     "saving": "Saving...",
     "error": "Error",
     "success": "Success",
@@ -37,7 +38,18 @@
     "args": "Args",
     "output": "Output",
     "result": "Result",
-    "deniedByUser": "{{toolName}} denied by user"
+    "deniedByUser": "{{toolName}} denied by user",
+    "taskCompleted": "Task completed",
+    "ran": "Ran",
+    "tool": "Tool",
+    "toolSummary": {
+      "read": "Read {{path}}",
+      "searched": "Searched for \"{{query}}\"",
+      "fetched": "Fetched {{url}}",
+      "ranCommand": "Ran command",
+      "createdTask": "Created task: {{description}}",
+      "todoOperation": "{{operation}} todos"
+    }
   },
   "folderPicker": {
     "legend": "Click folder names to navigate • Use action buttons to select",
@@ -96,5 +108,80 @@
     "errorTitle": "Authentication Failed",
     "errorDescription": "There was a problem authenticating your account",
     "tryAgain": "Try Again"
+  },
+  "toolbar": {
+    "sortBy": "Sort by",
+    "groupBy": "Group by"
+  },
+  "sorting": {
+    "ascending": "Ascending",
+    "descending": "Descending"
+  },
+  "grouping": {
+    "date": "Date",
+    "assignee": "Assignee",
+    "label": "Label"
+  },
+  "workspaces": {
+    "title": "Workspaces",
+    "searchPlaceholder": "Search...",
+    "active": "Active",
+    "archived": "Archived",
+    "loading": "Loading...",
+    "selectToStart": "Select a workspace to get started",
+    "draft": "Draft"
+  },
+  "fileTree": {
+    "searchPlaceholder": "Search files...",
+    "noResults": "No matching files",
+    "title": "Files"
+  },
+  "sections": {
+    "changes": "Changes",
+    "repositories": "Repositories",
+    "addRepositories": "Add Repositories",
+    "project": "Project",
+    "processes": "Processes",
+    "devServer": "Dev Server",
+    "advanced": "Advanced",
+    "workingBranch": "Working Branch",
+    "recent": "Recent",
+    "other": "Other",
+    "devServerPreview": "Dev Server Preview"
+  },
+  "repos": {
+    "loading": "Loading repositories...",
+    "noRecentRepos": "No recent repositories found",
+    "noReposAdded": "No repositories added",
+    "noReposAddedHint": "Add one or more repositories to this workspace from the options below"
+  },
+  "actions": {
+    "browseRepos": "Browse repos on disk",
+    "createNewRepo": "Create new repo on disk",
+    "viewInChangesPanel": "View in changes panel",
+    "copyPath": "Copy path",
+    "copyWorktreePath": "Copy worktree path",
+    "openInIde": "Open in IDE"
+  },
+  "confirm": {
+    "defaultConfirm": "Confirm",
+    "defaultCancel": "Cancel"
+  },
+  "empty": {
+    "noChanges": "No changes to display"
+  },
+  "commandBar": {
+    "noResults": "No results found.",
+    "back": "Back",
+    "defaultPlaceholder": "Type a command or search..."
+  },
+  "chatBox": {
+    "variants": "Variants"
+  },
+  "projects": {
+    "noProjectFound": "No project found",
+    "createFirstPrompt": "Create a project first to start working on tasks.",
+    "createNew": "Create new project",
+    "noProjectsFound": "No projects found"
   }
 }

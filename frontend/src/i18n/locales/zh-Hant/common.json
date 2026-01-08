@@ -16,6 +16,7 @@
   },
   "states": {
     "loading": "載入中...",
+    "loadingHistory": "載入歷史紀錄",
     "saving": "儲存中...",
     "error": "錯誤",
     "success": "成功",
@@ -37,7 +38,18 @@
     "args": "參數",
     "output": "輸出",
     "result": "結果",
-    "deniedByUser": "使用者拒絕了 {{toolName}}"
+    "deniedByUser": "使用者拒絕了 {{toolName}}",
+    "taskCompleted": "任務完成",
+    "ran": "執行了",
+    "tool": "工具",
+    "toolSummary": {
+      "read": "讀取 {{path}}",
+      "searched": "搜尋 \"{{query}}\"",
+      "fetched": "取得 {{url}}",
+      "ranCommand": "執行命令",
+      "createdTask": "建立任務：{{description}}",
+      "todoOperation": "{{operation}} 待辦事項"
+    }
   },
   "folderPicker": {
     "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",
@@ -93,5 +105,75 @@
     "errorTitle": "身分驗證失敗",
     "errorDescription": "驗證您的帳號時發生問題",
     "tryAgain": "重試"
+  },
+  "navbar": {
+    "tryNewUI": "試用新界面"
+  },
+  "toolbar": {
+    "sortBy": "排序方式",
+    "groupBy": "分組方式"
+  },
+  "sorting": {
+    "ascending": "升序",
+    "descending": "降序"
+  },
+  "grouping": {
+    "date": "日期",
+    "assignee": "負責人",
+    "label": "標籤"
+  },
+  "workspaces": {
+    "title": "工作區",
+    "searchPlaceholder": "搜尋...",
+    "active": "活躍",
+    "archived": "已封存",
+    "loading": "載入中...",
+    "selectToStart": "選擇一個工作區開始",
+    "draft": "草稿"
+  },
+  "fileTree": {
+    "searchPlaceholder": "搜尋檔案...",
+    "noResults": "沒有匹配的檔案",
+    "title": "檔案"
+  },
+  "sections": {
+    "changes": "變更",
+    "repositories": "儲存庫",
+    "addRepositories": "新增儲存庫",
+    "project": "專案",
+    "processes": "程序",
+    "devServer": "開發伺服器",
+    "advanced": "進階",
+    "workingBranch": "工作分支",
+    "recent": "最近",
+    "other": "其他",
+    "devServerPreview": "開發伺服器預覽"
+  },
+  "repos": {
+    "loading": "正在載入儲存庫...",
+    "noRecentRepos": "找不到最近的儲存庫",
+    "noReposAdded": "尚未新增儲存庫",
+    "noReposAddedHint": "從下方選項中新增一個或多個儲存庫到此工作區"
+  },
+  "actions": {
+    "browseRepos": "瀏覽磁碟上的儲存庫",
+    "createNewRepo": "在磁碟上建立新儲存庫",
+    "viewInChangesPanel": "在變更面板中檢視",
+    "copyPath": "複製工作樹路徑"
+  },
+  "confirm": {
+    "defaultConfirm": "確認",
+    "defaultCancel": "取消"
+  },
+  "empty": {
+    "noChanges": "沒有要顯示的變更"
+  },
+  "commandBar": {
+    "noResults": "找不到結果。",
+    "back": "返回",
+    "defaultPlaceholder": "輸入命令或搜尋..."
+  },
+  "chatBox": {
+    "variants": "變體"
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ export type CreateProjectDialogResult =
 
 const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
   () => {
+    const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
     const [name, setName] = useState('');
 
@@ -79,20 +81,20 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Project</DialogTitle>
+            <DialogTitle>{t('projects.create.dialog.title')}</DialogTitle>
             <DialogDescription>
-              Enter a name for your new project.
+              {t('projects.create.dialog.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="project-name">Name</Label>
+            <Label htmlFor="project-name">{t('projects.create.form.nameLabel')}</Label>
             <Input
               id="project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="My Project"
+              placeholder={t('projects.create.form.namePlaceholder')}
               autoFocus
               disabled={createProject.isPending}
             />
@@ -104,7 +106,7 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
               <AlertDescription>
                 {createProject.error instanceof Error
                   ? createProject.error.message
-                  : 'Failed to create project'}
+                  : t('projects.create.errors.createFailed')}
               </AlertDescription>
             </Alert>
           )}
@@ -115,13 +117,13 @@ const CreateProjectDialogImpl = NiceModal.create<CreateProjectDialogProps>(
               onClick={handleCancel}
               disabled={createProject.isPending}
             >
-              Cancel
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleCreate}
               disabled={!name.trim() || createProject.isPending}
             >
-              {createProject.isPending ? 'Creating...' : 'Create'}
+              {createProject.isPending ? t('common:states.saving') : t('common:buttons.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

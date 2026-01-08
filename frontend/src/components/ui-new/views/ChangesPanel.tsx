@@ -1,4 +1,5 @@
 import { memo, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
 import { DiffViewCardWithComments } from '../containers/DiffViewCardWithComments';
@@ -69,6 +70,8 @@ export const ChangesPanel = forwardRef<HTMLDivElement, ChangesPanelProps>(
     { className, diffItems, onDiffRef, projectId, attemptId },
     ref
   ) {
+    const { t } = useTranslation(['tasks', 'common']);
+
     return (
       <div
         ref={ref}
@@ -91,7 +94,7 @@ export const ChangesPanel = forwardRef<HTMLDivElement, ChangesPanelProps>(
         </div>
         {diffItems.length === 0 && (
           <div className="flex-1 flex items-center justify-center text-low">
-            <p className="text-sm">No changes to display</p>
+            <p className="text-sm">{t('common:empty.noChanges')}</p>
           </div>
         )}
       </div>

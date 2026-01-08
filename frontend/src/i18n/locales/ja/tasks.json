@@ -332,6 +332,7 @@
     }
   },
   "processes": {
+    "noLogsAvailable": "ログがありません",
     "agent": "Agent:",
     "backToList": "Back to list",
     "completed": "Completed: {{date}}",
@@ -521,6 +522,59 @@
     },
     "buttons": {
       "retry": "リトライ"
+    }
+  },
+  "conversation": {
+    "you": "あなた",
+    "thinking": "考え中",
+    "todo": "タスク",
+    "todos": "タスク",
+    "completed": "完了",
+    "incomplete": "未完了",
+    "pending": "保留中",
+    "inProgress": "進行中",
+    "skipped": "スキップ",
+    "error": "エラー",
+    "retry": "再試行",
+    "showMore": "もっと見る",
+    "showLess": "少なく表示",
+    "actions": {
+      "cancel": "キャンセル",
+      "submitFeedback": "フィードバックを送信",
+      "stop": "停止",
+      "stopping": "停止中",
+      "loading": "読み込み中",
+      "send": "送信",
+      "sending": "送信中",
+      "queue": "キューに追加",
+      "cancelQueue": "キューをキャンセル",
+      "requestChanges": "変更を依頼",
+      "approve": "承認",
+      "clearReviewComments": "レビューコメントをクリア"
+    },
+    "approval": {
+      "conflictWarning": "競合するファイルは手動で解決する必要があります"
+    },
+    "sessions": {
+      "newSession": "新規セッション",
+      "latest": "最新",
+      "previous": "前へ",
+      "label": "セッション",
+      "noPreviousSessions": "以前のセッションはありません"
+    },
+    "reviewComments": {
+      "count_one": "{{count}}件のレビューコメントが含まれます",
+      "count_other": "{{count}}件のレビューコメントが含まれます"
+    },
+    "workspace": {
+      "create": "作成",
+      "creating": "作成中..."
+    },
+    "fileEntry": {
+      "created": "作成済み",
+      "modified": "変更済み",
+      "deleted": "削除済み",
+      "renamed": "名前変更済み"
     }
   }
 }

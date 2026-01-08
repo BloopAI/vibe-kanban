@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   VirtualizedProcessLogs,
@@ -25,6 +26,7 @@ export function LogsContentContainer({
   currentMatchIndex = 0,
   onMatchIndicesChange,
 }: LogsContentContainerProps) {
+  const { t } = useTranslation('common');
   // Get logs for process content (only when type is 'process')
   const processId = content?.type === 'process' ? content.processId : '';
   const { logs, error } = useLogStream(processId);
@@ -59,7 +61,7 @@ export function LogsContentContainer({
   if (!content) {
     return (
       <div className="w-full h-full bg-secondary flex items-center justify-center text-low">
-        <p className="text-sm">Select a process to view logs</p>
+        <p className="text-sm">{t('logs.selectProcessToView')}</p>
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
@@ -18,6 +19,7 @@ export function CommentWidgetLine({
   onCancel,
   projectId,
 }: CommentWidgetLineProps) {
+  const { t } = useTranslation('common');
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
 
@@ -45,7 +47,7 @@ export function CommentWidgetLine({
       <WYSIWYGEditor
         value={value}
         onChange={setValue}
-        placeholder="Add a comment... (type @ to search files)"
+        placeholder={t('comments.addPlaceholder')}
         className="w-full text-normal min-h-[60px]"
         projectId={projectId}
         onCmdEnter={handleSave}
@@ -57,10 +59,10 @@ export function CommentWidgetLine({
           onClick={handleSave}
           disabled={!value.trim()}
         >
-          Add review comment
+          {t('comments.addReviewComment')}
         </PrimaryButton>
         <PrimaryButton variant="secondary" onClick={handleCancel}>
-          Cancel
+          {t('actions.cancel')}
         </PrimaryButton>
       </div>
     </div>

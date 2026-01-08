@@ -1,4 +1,5 @@
 import { GitBranchIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   RepoCard,
@@ -45,6 +46,8 @@ export function GitPanel({
   className,
   error,
 }: GitPanelProps) {
+  const { t } = useTranslation(['tasks', 'common']);
+
   return (
     <div
       className={cn(
@@ -53,7 +56,7 @@ export function GitPanel({
       )}
     >
       {error && <ErrorAlert message={error} />}
-      <SectionHeader title="Repositories" />
+      <SectionHeader title={t('common:sections.repositories')} />
       <div className="flex flex-col p-base gap-base">
         <div className="flex flex-col gap-base">
           {repos.map((repo) => (
@@ -79,7 +82,7 @@ export function GitPanel({
         </div>
         <div className="flex flex-col gap-base w-full">
           <CollapsibleSection
-            title="Advanced"
+            title={t('common:sections.advanced')}
             persistKey={PERSIST_KEYS.gitAdvancedSettings}
             defaultExpanded={false}
             className="flex flex-col gap-half"
@@ -87,14 +90,14 @@ export function GitPanel({
             <div className="flex gap-base items-center">
               <GitBranchIcon className="size-icon-xs text-base" weight="fill" />
               <p className="text-sm font-medium text-low truncate">
-                Working Branch
+                {t('common:sections.workingBranch')}
               </p>
             </div>
             <InputField
               variant="editable"
               value={workingBranchName}
               onChange={onWorkingBranchNameChange}
-              placeholder="e.g acme Corp"
+              placeholder={t('gitPanel.advanced.placeholder')}
             />
           </CollapsibleSection>
         </div>

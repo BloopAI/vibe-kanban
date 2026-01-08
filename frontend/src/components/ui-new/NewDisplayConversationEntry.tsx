@@ -1,4 +1,6 @@
 import { useMemo, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   ActionType,
   NormalizedEntry,
@@ -73,27 +75,28 @@ function parseDiffStats(unifiedDiff: string): {
  * Generate tool summary text from action type
  */
 function getToolSummary(
-  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>
+  entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
+  t: TFunction<'common'>
 ): string {
   const { action_type, tool_name } = entryType;
 
   switch (action_type.action) {
     case 'file_read':
-      return `Read ${action_type.path}`;
+      return t('conversation.toolSummary.read', { path: action_type.path });
     case 'search':
-      return `Searched for "${action_type.query}"`;
+      return t('conversation.toolSummary.searched', { query: action_type.query });
     case 'web_fetch':
-      return `Fetched ${action_type.url}`;
+      return t('conversation.toolSummary.fetched', { url: action_type.url });
     case 'command_run':
-      return action_type.command || 'Ran command';
+      return action_type.command || t('conversation.toolSummary.ranCommand');
     case 'task_create':
-      return `Created task: ${action_type.description}`;
+      return t('conversation.toolSummary.createdTask', { description: action_type.description });
     case 'todo_management':
-      return `${action_type.operation} todos`;
+      return t('conversation.toolSummary.todoOperation', { operation: action_type.operation });
     case 'tool':
-      return tool_name || 'Tool';
+      return tool_name || t('conversation.tool');
     default:
-      return tool_name || 'Tool';
+      return tool_name || t('conversation.tool');
   }
 }
 
@@ -144,7 +147,8 @@ function getToolCommand(
  */
 function renderToolUseEntry(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
-  props: Props
+  props: Props,
+  t: TFunction<'common'>
 ): React.ReactNode {
   const { expansionKey, executionProcessId, taskAttempt } = props;
   const { action_type, status } = entryType;
@@ -230,7 +234,7 @@ function renderToolUseEntry(
   // Other tool uses - use ChatToolSummary
   return (
     <ToolSummaryEntry
-      summary={getToolSummary(entryType)}
+      summary={getToolSummary(entryType, t)}
       expansionKey={expansionKey}
       status={status}
       content={getToolOutput(entryType, props.entry.content)}
@@ -241,12 +245,13 @@ function renderToolUseEntry(
 }
 
 function NewDisplayConversationEntry(props: Props) {
+  const { t } = useTranslation('common');
   const { entry, expansionKey, executionProcessId, taskAttempt, task } = props;
   const entryType = entry.entry_type;
 
   switch (entryType.type) {
     case 'tool_use':
-      return renderToolUseEntry(entryType, props);
+      return renderToolUseEntry(entryType, props, t);
 
     case 'user_message':
       return (
@@ -406,6 +411,7 @@ function PlanEntry({
   workspaceId?: string;
   status: ToolStatus;
 }) {
+  const { t } = useTranslation('common');
   // Expand plans by default when pending approval
   const pendingApproval = status.status === 'pending_approval';
   const [expanded, toggle] = usePersistedExpanded(
@@ -418,8 +424,8 @@ function PlanEntry({
     const firstLine = plan.split('\n')[0];
     // Remove markdown heading markers
     const cleanTitle = firstLine.replace(/^#+\s*/, '').trim();
-    return cleanTitle || 'Plan';
-  }, [plan]);
+    return cleanTitle || t('conversation.plan');
+  }, [plan, t]);
 
   return (
     <ChatApprovalCard

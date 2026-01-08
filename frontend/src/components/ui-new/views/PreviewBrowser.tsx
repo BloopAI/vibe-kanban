@@ -1,4 +1,5 @@
 import { PlayIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../primitives/PrimaryButton';
 
@@ -19,6 +20,7 @@ export function PreviewBrowser({
   isServerRunning,
   className,
 }: PreviewBrowserProps) {
+  const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
   const showIframe = url && !isLoading && isServerRunning;
 
@@ -34,7 +36,7 @@ export function PreviewBrowser({
         {showIframe ? (
           <iframe
             src={url}
-            title="Dev Server Preview"
+            title={t('preview.browser.title')}
             className="w-full h-full border-0"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             referrerPolicy="no-referrer"
@@ -52,9 +54,9 @@ export function PreviewBrowser({
               </>
             ) : hasDevScript ? (
               <>
-                <p className="text-sm">No dev server running</p>
+                <p className="text-sm">{t('preview.noServer.title')}</p>
                 <PrimaryButton
-                  value="Start Dev Server"
+                  value={t('preview.browser.startButton')}
                   actionIcon={PlayIcon}
                   onClick={onStart}
                   disabled={isStarting}
@@ -62,9 +64,9 @@ export function PreviewBrowser({
               </>
             ) : (
               <>
-                <p className="text-sm">No dev script configured</p>
+                <p className="text-sm">{t('preview.noDevScript')}</p>
                 <p className="text-xs text-lowest">
-                  Configure a dev script in project settings to use the preview
+                  {t('preview.noDevScriptHint')}
                 </p>
               </>
             )}

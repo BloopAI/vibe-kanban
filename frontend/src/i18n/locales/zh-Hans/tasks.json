@@ -141,6 +141,7 @@
     "noAttempts": "还没有尝试"
   },
   "processes": {
+    "noLogsAvailable": "没有可用的日志",
     "selectAttempt": "选择尝试以查看执行进程。",
     "errorLoadingUpdates": "加载进程的实时更新失败。",
     "reconnecting": "重新连接中...",
@@ -521,6 +522,59 @@
     },
     "buttons": {
       "retry": "重试"
+    }
+  },
+  "conversation": {
+    "you": "你",
+    "thinking": "思考中",
+    "todo": "待办",
+    "todos": "待办事项",
+    "completed": "已完成",
+    "incomplete": "未完成",
+    "pending": "待处理",
+    "inProgress": "进行中",
+    "skipped": "已跳过",
+    "error": "错误",
+    "retry": "重试",
+    "showMore": "显示更多",
+    "showLess": "收起",
+    "actions": {
+      "cancel": "取消",
+      "submitFeedback": "提交反馈",
+      "stop": "停止",
+      "stopping": "停止中",
+      "loading": "加载中",
+      "send": "发送",
+      "sending": "发送中",
+      "queue": "加入队列",
+      "cancelQueue": "取消队列",
+      "requestChanges": "请求更改",
+      "approve": "批准",
+      "clearReviewComments": "清除审查评论"
+    },
+    "approval": {
+      "conflictWarning": "冲突文件需要手动解决"
+    },
+    "sessions": {
+      "newSession": "新会话",
+      "latest": "最新",
+      "previous": "上一个",
+      "label": "会话",
+      "noPreviousSessions": "没有以前的会话"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} 条审查评论将被包含",
+      "count_other": "{{count}} 条审查评论将被包含"
+    },
+    "workspace": {
+      "create": "创建",
+      "creating": "创建中..."
+    },
+    "fileEntry": {
+      "created": "已创建",
+      "modified": "已修改",
+      "deleted": "已删除",
+      "renamed": "已重命名"
     }
   }
 }

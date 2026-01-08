@@ -10,6 +10,7 @@ import {
   TrashIcon,
   WarningIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
@@ -151,6 +152,7 @@ export function SessionChatBox({
   inProgressTodo,
   localImages,
 }: SessionChatBoxProps) {
+  const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Determine if in feedback mode, edit mode, or approval mode
@@ -244,10 +246,10 @@ export function SessionChatBox({
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
   const sessionLabel = isNewSessionMode
-    ? 'New Session'
+    ? t('conversation.sessions.newSession')
     : isLatestSelected
-      ? 'Latest'
-      : 'Previous';
+      ? t('conversation.sessions.latest')
+      : t('conversation.sessions.previous');
 
   // Stats
   const filesChanged = stats?.filesChanged ?? 0;
@@ -263,7 +265,7 @@ export function SessionChatBox({
           <PrimaryButton
             variant="secondary"
             onClick={feedbackMode.onCancel}
-            value="Cancel"
+            value={t('conversation.actions.cancel')}
           />
         );
       }
@@ -272,13 +274,13 @@ export function SessionChatBox({
           <PrimaryButton
             variant="secondary"
             onClick={feedbackMode?.onCancel}
-            value="Cancel"
+            value={t('conversation.actions.cancel')}
           />
           <PrimaryButton
             onClick={feedbackMode?.onSubmitFeedback}
             disabled={!canSend || feedbackMode?.isSubmitting}
             actionIcon={feedbackMode?.isSubmitting ? 'spinner' : undefined}
-            value="Submit Feedback"
+            value={t('conversation.actions.submitFeedback')}
           />
         </>
       );
@@ -291,13 +293,13 @@ export function SessionChatBox({
           <PrimaryButton
             variant="secondary"
             onClick={editMode?.onCancel}
-            value="Cancel"
+            value={t('conversation.actions.cancel')}
           />
           <PrimaryButton
             onClick={editMode?.onSubmitEdit}
             disabled={!canSend || editMode?.isSubmitting}
             actionIcon={editMode?.isSubmitting ? 'spinner' : undefined}
-            value="Retry"
+            value={t('conversation.retry')}
           />
         </>
       );
@@ -310,7 +312,7 @@ export function SessionChatBox({
           <PrimaryButton
             variant="secondary"
             onClick={actions.onStop}
-            value="Stop"
+            value={t('conversation.actions.stop')}
           />
         );
       }
@@ -322,21 +324,21 @@ export function SessionChatBox({
           <PrimaryButton
             variant="secondary"
             onClick={actions.onStop}
-            value="Stop"
+            value={t('conversation.actions.stop')}
           />
           {hasMessage ? (
             <PrimaryButton
               onClick={approvalMode?.onRequestChanges}
               disabled={approvalMode?.isSubmitting}
               actionIcon={approvalMode?.isSubmitting ? 'spinner' : undefined}
-              value="Request Changes"
+              value={t('conversation.actions.requestChanges')}
             />
           ) : (
             <PrimaryButton
               onClick={approvalMode?.onApprove}
               disabled={approvalMode?.isSubmitting}
               actionIcon={approvalMode?.isSubmitting ? 'spinner' : undefined}
-              value="Approve"
+              value={t('conversation.actions.approve')}
             />
           )}
         </>
@@ -349,7 +351,7 @@ export function SessionChatBox({
           <PrimaryButton
             onClick={actions.onSend}
             disabled={!canSend}
-            value="Send"
+            value={t('conversation.actions.send')}
           />
         );
 
@@ -358,7 +360,7 @@ export function SessionChatBox({
           <PrimaryButton
             onClick={actions.onStop}
             actionIcon="spinner"
-            value="Sending"
+            value={t('conversation.actions.sending')}
           />
         );
 
@@ -368,12 +370,12 @@ export function SessionChatBox({
             <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
-              value="Queue"
+              value={t('conversation.actions.queue')}
             />
             <PrimaryButton
               onClick={actions.onStop}
               variant="secondary"
-              value="Stop"
+              value={t('conversation.actions.stop')}
               actionIcon="spinner"
             />
           </>
@@ -384,22 +386,34 @@ export function SessionChatBox({
           <>
             <PrimaryButton
               onClick={actions.onCancelQueue}
-              value="Cancel Queue"
+              value={t('conversation.actions.cancelQueue')}
               actionIcon={XIcon}
             />
             <PrimaryButton
               onClick={actions.onStop}
               variant="secondary"
-              value="Stop"
+              value={t('conversation.actions.stop')}
               actionIcon="spinner"
             />
           </>
         );
 
       case 'stopping':
-        return <PrimaryButton disabled value="Stopping" actionIcon="spinner" />;
+        return (
+          <PrimaryButton
+            disabled
+            value={t('conversation.actions.stopping')}
+            actionIcon="spinner"
+          />
+        );
       case 'queue-loading':
-        return <PrimaryButton disabled value="Loading" actionIcon="spinner" />;
+        return (
+          <PrimaryButton
+            disabled
+            value={t('conversation.actions.loading')}
+            actionIcon="spinner"
+          />
+        );
       case 'feedback':
       case 'edit':
         return null;
@@ -419,14 +433,14 @@ export function SessionChatBox({
         >
           <ChatCircleIcon className="h-4 w-4 text-brand flex-shrink-0" />
           <span className="text-sm text-normal flex-1">
-            {reviewComments.count} review{' '}
-            {reviewComments.count === 1 ? 'comment' : 'comments'} will be
-            included
+            {t('conversation.reviewComments.count', {
+              count: reviewComments.count,
+            })}
           </span>
           <button
             onClick={reviewComments.onClear}
             className="text-low hover:text-normal transition-colors p-1 -m-1"
-            title="Clear review comments"
+            title={t('conversation.actions.clearReviewComments')}
           >
             <TrashIcon className="h-4 w-4" />
           </button>
@@ -443,7 +457,7 @@ export function SessionChatBox({
         >
           <ClockIcon className="h-4 w-4 text-low" />
           <span className="text-sm text-low">
-            Message queued - will execute when current run finishes
+            {t('followUp.queuedMessage')}
           </span>
         </div>
       );
@@ -492,7 +506,7 @@ export function SessionChatBox({
                     : 'Select Executor'
                 }
               >
-                <DropdownMenuLabel>Executors</DropdownMenuLabel>
+                <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
                 {executor.options.map((exec) => (
                   <DropdownMenuItem
                     key={exec}
@@ -520,20 +534,18 @@ export function SessionChatBox({
                   {stats?.hasConflicts && (
                     <span
                       className="flex items-center gap-1 text-warning text-sm"
-                      title="Conflicted files need manual resolution"
+                      title={t('conversation.approval.conflictWarning')}
                     >
                       <WarningIcon className="size-icon-sm" />
                       <span>
-                        {stats.conflictedFilesCount} conflict
-                        {stats.conflictedFilesCount === 1 ? '' : 's'}
+                        {t('conversation.approval.conflicts', { count: stats.conflictedFilesCount })}
                       </span>
                     </span>
                   )}
                   <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
                     <span className="text-sm space-x-half">
                       <span>
-                        {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
-                        changed
+                        {t('diff.filesChanged', { count: filesChanged })}
                       </span>
                       {(linesAdded !== undefined ||
                         linesRemoved !== undefined) && (
@@ -569,12 +581,14 @@ export function SessionChatBox({
               icon={isNewSessionMode ? CheckIcon : PlusIcon}
               onClick={() => onNewSession?.()}
             >
-              New Session
+              {t('conversation.sessions.newSession')}
             </DropdownMenuItem>
             {sessions.length > 0 && <DropdownMenuSeparator />}
             {sessions.length > 0 ? (
               <>
-                <DropdownMenuLabel>Sessions</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {t('conversation.sessions.label')}
+                </DropdownMenuLabel>
                 {sessions.map((s, index) => (
                   <DropdownMenuItem
                     key={s.id}
@@ -586,13 +600,15 @@ export function SessionChatBox({
                     onClick={() => onSelectSession(s.id)}
                   >
                     {index === 0
-                      ? 'Latest'
+                      ? t('conversation.sessions.latest')
                       : formatDateShortWithTime(s.created_at)}
                   </DropdownMenuItem>
                 ))}
               </>
             ) : (
-              <DropdownMenuItem disabled>No previous sessions</DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                {t('conversation.sessions.noPreviousSessions')}
+              </DropdownMenuItem>
             )}
           </ToolbarDropdown>
         </>

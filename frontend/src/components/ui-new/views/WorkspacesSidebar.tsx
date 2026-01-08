@@ -1,4 +1,5 @@
 import { PlusIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { CollapsibleSection } from '@/components/ui-new/primitives/CollapsibleSection';
 import { InputField } from '@/components/ui-new/primitives/InputField';
@@ -34,6 +35,7 @@ export function WorkspacesSidebar({
   draftTitle,
   onSelectCreate,
 }: WorkspacesSidebarProps) {
+  const { t } = useTranslation(['tasks', 'common']);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
   const DISPLAY_LIMIT = 10;
@@ -50,7 +52,7 @@ export function WorkspacesSidebar({
     <div className="w-full h-full bg-secondary flex flex-col">
       <div className="flex flex-col gap-base">
         <SectionHeader
-          title="Workspaces"
+          title={t('common:workspaces.title')}
           icon={PlusIcon}
           onIconClick={onAddWorkspace}
         />
@@ -59,14 +61,14 @@ export function WorkspacesSidebar({
             variant="search"
             value={searchQuery}
             onChange={onSearchChange}
-            placeholder="Search..."
+            placeholder={t('common:workspaces.searchPlaceholder')}
           />
         </div>
       </div>
       <div className="flex flex-col flex-1 overflow-y-auto">
         <CollapsibleSection
           persistKey={PERSIST_KEYS.workspacesSidebarActive}
-          title="Active"
+          title={t('common:workspaces.active')}
           defaultExpanded
           className="p-base"
           contentClassName="flex flex-col gap-base min-h-[50vh]"
@@ -101,7 +103,7 @@ export function WorkspacesSidebar({
         </CollapsibleSection>
         <CollapsibleSection
           persistKey={PERSIST_KEYS.workspacesSidebarArchived}
-          title="Archived"
+          title={t('common:workspaces.archived')}
           defaultExpanded
           className="px-base pb-half"
         >

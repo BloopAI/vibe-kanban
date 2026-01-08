@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "Please select at least one repository to get started"
+      }
+    },
+    "advanced": {
+      "workingBranch": "Working Branch",
+      "placeholder": "e.g acme Corp"
+    }
+  },
   "loading": "Loading tasks...",
   "empty": {
     "noTasks": "No tasks found for this project.",
@@ -93,8 +104,12 @@
     "logs": {
       "title": "Dev Server Logs",
       "hide": "Hide",
-      "show": "Show"
+      "show": "Show",
+      "label": "Logs",
+      "viewFull": "View full logs"
     },
+    "noDevScript": "No dev script configured",
+    "noDevScriptHint": "Configure a dev script in project settings to use the preview",
     "iframe": {
       "title": "Dev server preview"
     },
@@ -105,6 +120,12 @@
       "stopDevServer": "Stop dev server",
       "clickToEdit": "Click to edit URL",
       "resetUrl": "Reset to detected URL"
+    },
+    "browser": {
+      "title": "Dev Server Preview",
+      "startButton": "Start Dev Server",
+      "stopButton": "Stop",
+      "startingButton": "Start"
     }
   },
   "diff": {
@@ -128,6 +149,7 @@
     "noAttempts": "No attempts yet"
   },
   "processes": {
+    "noLogsAvailable": "No logs available",
     "selectAttempt": "Select an attempt to view execution processes.",
     "errorLoadingUpdates": "Failed to load live updates for processes.",
     "reconnecting": "Reconnecting...",
@@ -180,6 +202,87 @@
   "todos": {
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
+  },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "Create Project",
+        "description": "Enter a name for your new project."
+      },
+      "form": {
+        "nameLabel": "Name",
+        "namePlaceholder": "My Project"
+      },
+      "errors": {
+        "createFailed": "Failed to create project"
+      }
+    }
+  },
+  "conversation": {
+    "executors": "Executors",
+    "you": "You",
+    "thinking": "Thinking",
+    "todo": "Todo",
+    "todos": "Todos",
+    "completed": "completed",
+    "incomplete": "incomplete",
+    "pending": "pending",
+    "inProgress": "in progress",
+    "skipped": "skipped",
+    "error": "Error",
+    "retry": "Retry",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "actions": {
+      "cancel": "Cancel",
+      "submitFeedback": "Submit Feedback",
+      "stop": "Stop",
+      "stopping": "Stopping",
+      "loading": "Loading",
+      "send": "Send",
+      "sending": "Sending",
+      "queue": "Queue",
+      "cancelQueue": "Cancel Queue",
+      "requestChanges": "Request Changes",
+      "approve": "Approve",
+      "clearReviewComments": "Clear review comments",
+      "edit": "Edit message"
+    },
+    "approval": {
+      "conflictWarning": "Conflicted files need manual resolution",
+      "conflicts_one": "{{count}} conflict",
+      "conflicts_other": "{{count}} conflicts"
+    },
+    "sessions": {
+      "newSession": "New Session",
+      "latest": "Latest",
+      "previous": "Previous",
+      "label": "Sessions",
+      "noPreviousSessions": "No previous sessions"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} review comment will be included",
+      "count_other": "{{count}} review comments will be included"
+    },
+    "workspace": {
+      "create": "Create",
+      "creating": "Creating..."
+    },
+    "fileEntry": {
+      "created": "Created",
+      "modified": "Modified",
+      "deleted": "Deleted",
+      "renamed": "Renamed"
+    },
+    "script": {
+      "running": "Running...",
+      "exitCode": "Exit code: {{code}}",
+      "completedSuccessfully": "Completed successfully",
+      "clickToViewLogs": "Click to view logs"
+    },
+    "updatedTodos": "Updated Todos",
+    "viewInChangesPanel": "View in changes panel",
+    "unableToRenderDiff": "Unable to render diff."
   },
   "attempt": {
     "actions": {
@@ -262,10 +365,12 @@
     },
     "pr": {
       "open": "Open PR #{{number}}",
-      "number": "PR #{{number}}"
+      "number": "PR #{{number}}",
+      "merged": "Merged PR #{{prNumber}}"
     },
     "actions": {
       "title": "Git Actions",
+      "changeTarget": "Change target",
       "prMerged": "PR #{{number}} is already merged",
       "loginRequired": {
         "title": "Sign in to manage git actions",
@@ -276,6 +381,32 @@
     "mergeDialog": {
       "title": "Merge Changes",
       "description": "This will merge your changes into the target branch. Are you sure you want to continue?"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Create New Repository",
+        "description": "Initialize a new git repository"
+      },
+      "form": {
+        "nameLabel": "Name",
+        "namePlaceholder": "my-project",
+        "locationLabel": "Location",
+        "locationPlaceholder": "Current directory"
+      },
+      "browseDialog": {
+        "title": "Select Parent Directory",
+        "description": "Choose where to create the new repository"
+      },
+      "errors": {
+        "nameRequired": "Repository name is required",
+        "createFailed": "Failed to create repository"
+      },
+      "buttons": {
+        "createRepository": "Create Repository"
+      },
+      "states": {
+        "creating": "Creating..."
+      }
     }
   },
   "createAttemptDialog": {

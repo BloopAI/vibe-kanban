@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CaretDownIcon, ChatCircleIcon } from '@phosphor-icons/react';
 import { DiffView, DiffModeEnum, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
@@ -403,10 +404,11 @@ function DiffViewBodyWithComments({
   }) => React.ReactNode;
   renderExtendLine: (lineData: { data: ReviewComment }) => React.ReactNode;
 }) {
+  const { t } = useTranslation('tasks');
   if (!isValid || !diffFile) {
     return (
       <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
-        Unable to render diff.
+        {t('conversation.unableToRenderDiff')}
       </div>
     );
   }

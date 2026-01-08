@@ -141,6 +141,7 @@
     "noAttempts": "尚無嘗試"
   },
   "processes": {
+    "noLogsAvailable": "沒有可用的日誌",
     "selectAttempt": "選擇嘗試以查看執行程序。",
     "errorLoadingUpdates": "載入程序的即時更新失敗。",
     "reconnecting": "重新連線中...",
@@ -314,7 +315,8 @@
   "attemptHeaderActions": {
     "preview": "預覽",
     "diffs": "差異",
-    "relatedTasks": "相關任務"
+    "relatedTasks": "相關任務",
+    "tryNewUI": "試用新界面"
   },
   "actionsMenu": {
     "attempt": "嘗試",
@@ -516,6 +518,59 @@
     },
     "buttons": {
       "retry": "重試"
+    }
+  },
+  "conversation": {
+    "you": "你",
+    "thinking": "思考中",
+    "todo": "待辦",
+    "todos": "待辦事項",
+    "completed": "已完成",
+    "incomplete": "未完成",
+    "pending": "待處理",
+    "inProgress": "進行中",
+    "skipped": "已跳過",
+    "error": "錯誤",
+    "retry": "重試",
+    "showMore": "顯示更多",
+    "showLess": "收起",
+    "actions": {
+      "cancel": "取消",
+      "submitFeedback": "提交回饋",
+      "stop": "停止",
+      "stopping": "停止中",
+      "loading": "載入中",
+      "send": "傳送",
+      "sending": "傳送中",
+      "queue": "加入佇列",
+      "cancelQueue": "取消佇列",
+      "requestChanges": "請求變更",
+      "approve": "核准",
+      "clearReviewComments": "清除審查評論"
+    },
+    "approval": {
+      "conflictWarning": "衝突檔案需要手動解決"
+    },
+    "sessions": {
+      "newSession": "新工作階段",
+      "latest": "最新",
+      "previous": "上一個",
+      "label": "工作階段",
+      "noPreviousSessions": "沒有先前的工作階段"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} 則審查評論將被包含",
+      "count_other": "{{count}} 則審查評論將被包含"
+    },
+    "workspace": {
+      "create": "建立",
+      "creating": "建立中..."
+    },
+    "fileEntry": {
+      "created": "已建立",
+      "modified": "已修改",
+      "deleted": "已刪除",
+      "renamed": "已重新命名"
     }
   }
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { CaretDownIcon, ArrowSquareUpRightIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getFileIcon } from '@/utils/fileTypeIcon';
@@ -32,6 +33,7 @@ export function ChatFileEntry({
   diffContent,
   onOpenInChanges,
 }: ChatFileEntryProps) {
+  const { t } = useTranslation('tasks');
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const hasStats = additions !== undefined || deletions !== undefined;
@@ -82,7 +84,7 @@ export function ChatFileEntry({
                   onOpenInChanges();
                 }}
                 className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-                title="View in changes panel"
+                title={t('conversation.viewInChangesPanel')}
               >
                 <ArrowSquareUpRightIcon className="size-icon-xs" />
               </button>
@@ -153,7 +155,7 @@ export function ChatFileEntry({
               onOpenInChanges();
             }}
             className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-            title="View in changes panel"
+            title={t('conversation.viewInChangesPanel')}
           >
             <ArrowSquareUpRightIcon className="size-icon-xs" />
           </button>

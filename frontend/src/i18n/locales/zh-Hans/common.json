@@ -16,6 +16,7 @@
   },
   "states": {
     "loading": "加载中...",
+    "loadingHistory": "加载历史记录",
     "saving": "保存中...",
     "error": "错误",
     "success": "成功",
@@ -37,7 +38,18 @@
     "args": "参数",
     "output": "输出",
     "result": "结果",
-    "deniedByUser": "用户拒绝了 {{toolName}}"
+    "deniedByUser": "用户拒绝了 {{toolName}}",
+    "taskCompleted": "任务完成",
+    "ran": "执行了",
+    "tool": "工具",
+    "toolSummary": {
+      "read": "读取 {{path}}",
+      "searched": "搜索 \"{{query}}\"",
+      "fetched": "获取 {{url}}",
+      "ranCommand": "执行命令",
+      "createdTask": "创建任务：{{description}}",
+      "todoOperation": "{{operation}} 待办事项"
+    }
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",
@@ -96,5 +108,72 @@
     "errorTitle": "身份验证失败",
     "errorDescription": "验证您的账户时出现问题",
     "tryAgain": "重试"
+  },
+  "toolbar": {
+    "sortBy": "排序方式",
+    "groupBy": "分组方式"
+  },
+  "sorting": {
+    "ascending": "升序",
+    "descending": "降序"
+  },
+  "grouping": {
+    "date": "日期",
+    "assignee": "负责人",
+    "label": "标签"
+  },
+  "workspaces": {
+    "title": "工作区",
+    "searchPlaceholder": "搜索...",
+    "active": "活跃",
+    "archived": "已归档",
+    "loading": "加载中...",
+    "selectToStart": "选择一个工作区开始",
+    "draft": "草稿"
+  },
+  "fileTree": {
+    "searchPlaceholder": "搜索文件...",
+    "noResults": "没有匹配的文件",
+    "title": "文件"
+  },
+  "sections": {
+    "changes": "更改",
+    "repositories": "仓库",
+    "addRepositories": "添加仓库",
+    "project": "项目",
+    "processes": "进程",
+    "devServer": "开发服务器",
+    "advanced": "高级",
+    "workingBranch": "工作分支",
+    "recent": "最近",
+    "other": "其他",
+    "devServerPreview": "开发服务器预览"
+  },
+  "repos": {
+    "loading": "正在加载仓库...",
+    "noRecentRepos": "未找到最近的仓库",
+    "noReposAdded": "未添加仓库",
+    "noReposAddedHint": "从下面的选项中添加一个或多个仓库到此工作区"
+  },
+  "actions": {
+    "browseRepos": "浏览磁盘上的仓库",
+    "createNewRepo": "在磁盘上创建新仓库",
+    "viewInChangesPanel": "在更改面板中查看",
+    "copyPath": "复制工作树路径"
+  },
+  "confirm": {
+    "defaultConfirm": "确认",
+    "defaultCancel": "取消"
+  },
+  "empty": {
+    "noChanges": "没有要显示的更改"
+  },
+  "commandBar": {
+    "noResults": "未找到结果。",
+    "back": "返回",
+    "defaultPlaceholder": "输入命令或搜索..."
+  },
+  "chatBox": {
+    "variants": "变体"
   }
 }

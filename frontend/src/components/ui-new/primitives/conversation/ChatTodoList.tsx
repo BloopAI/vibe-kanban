@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { ListChecksIcon, CaretDownIcon } from '@phosphor-icons/react';
 import { Circle, Check, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,8 @@ function getStatusIcon(status?: string) {
 }
 
 export function ChatTodoList({ todos, expanded, onToggle }: ChatTodoListProps) {
+  const { t } = useTranslation('tasks');
+
   return (
     <div className="text-sm">
       <div
@@ -29,7 +32,7 @@ export function ChatTodoList({ todos, expanded, onToggle }: ChatTodoListProps) {
         role="button"
       >
         <ListChecksIcon className="shrink-0 size-icon-base" />
-        <span className="flex-1">Updated Todos</span>
+        <span className="flex-1">{t('conversation.updatedTodos')}</span>
         <CaretDownIcon
           className={cn(
             'shrink-0 size-icon-base transition-transform',

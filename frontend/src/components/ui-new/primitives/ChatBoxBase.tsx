@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { CheckIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
@@ -95,6 +96,7 @@ export function ChatBoxBase({
   focusKey,
   localImages,
 }: ChatBoxBaseProps) {
+  const { t } = useTranslation('common');
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
 
@@ -154,7 +156,7 @@ export function ChatBoxBase({
               variant &&
               variantOptions.length > 0 && (
                 <ToolbarDropdown label={variantLabel} disabled={disabled}>
-                  <DropdownMenuLabel>Variants</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('chatBox.variants')}</DropdownMenuLabel>
                   {variantOptions.map((variantName) => (
                     <DropdownMenuItem
                       key={variantName}

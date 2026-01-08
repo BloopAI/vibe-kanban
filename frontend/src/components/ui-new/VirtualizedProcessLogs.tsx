@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DataWithScrollModifier,
   ScrollModifier,
@@ -78,6 +79,7 @@ export function VirtualizedProcessLogs({
   matchIndices,
   currentMatchIndex,
 }: VirtualizedProcessLogsProps) {
+  const { t } = useTranslation('tasks');
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<LogEntryWithKey> | null>(null);
   const messageListRef = useRef<VirtuosoMessageListMethods<
@@ -138,7 +140,7 @@ export function VirtualizedProcessLogs({
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-center text-muted-foreground text-sm">
-          No logs available
+          {t('processes.noLogsAvailable')}
         </p>
       </div>
     );

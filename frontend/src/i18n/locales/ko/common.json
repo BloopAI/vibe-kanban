@@ -49,6 +49,17 @@
     "toolDetailsToggle": {
       "hide": "세부 정보 숨기기",
       "show": "세부 정보 보기"
+    },
+    "taskCompleted": "작업 완료",
+    "ran": "실행함",
+    "tool": "도구",
+    "toolSummary": {
+      "read": "{{path}} 읽기",
+      "searched": "\"{{query}}\" 검색",
+      "fetched": "{{url}} 가져오기",
+      "ranCommand": "명령 실행",
+      "createdTask": "작업 생성: {{description}}",
+      "todoOperation": "{{operation}} 할 일"
     }
   },
   "language": {
@@ -57,6 +68,7 @@
   "states": {
     "error": "오류",
     "loading": "로딩 중...",
+    "loadingHistory": "기록 로딩 중",
     "reconnecting": "재연결 중",
     "saving": "저장 중...",
     "success": "성공"
@@ -96,5 +108,72 @@
     "errorTitle": "인증 실패",
     "errorDescription": "계정 인증 중 문제가 발생했습니다",
     "tryAgain": "다시 시도"
+  },
+  "toolbar": {
+    "sortBy": "정렬 기준",
+    "groupBy": "그룹화 기준"
+  },
+  "sorting": {
+    "ascending": "오름차순",
+    "descending": "내림차순"
+  },
+  "grouping": {
+    "date": "날짜",
+    "assignee": "담당자",
+    "label": "라벨"
+  },
+  "workspaces": {
+    "title": "워크스페이스",
+    "searchPlaceholder": "검색...",
+    "active": "활성",
+    "archived": "보관됨",
+    "loading": "로딩 중...",
+    "selectToStart": "워크스페이스를 선택하여 시작",
+    "draft": "초안"
+  },
+  "fileTree": {
+    "searchPlaceholder": "파일 검색...",
+    "noResults": "일치하는 파일 없음",
+    "title": "파일"
+  },
+  "sections": {
+    "changes": "변경사항",
+    "repositories": "저장소",
+    "addRepositories": "저장소 추가",
+    "project": "프로젝트",
+    "processes": "프로세스",
+    "devServer": "개발 서버",
+    "advanced": "고급",
+    "workingBranch": "작업 브랜치",
+    "recent": "최근",
+    "other": "기타",
+    "devServerPreview": "개발 서버 미리보기"
+  },
+  "repos": {
+    "loading": "저장소 로딩 중...",
+    "noRecentRepos": "최근 저장소를 찾을 수 없습니다",
+    "noReposAdded": "저장소가 추가되지 않았습니다",
+    "noReposAddedHint": "아래 옵션에서 이 워크스페이스에 저장소를 추가하세요"
+  },
+  "actions": {
+    "browseRepos": "디스크에서 저장소 찾아보기",
+    "createNewRepo": "디스크에 새 저장소 만들기",
+    "viewInChangesPanel": "변경사항 패널에서 보기",
+    "copyPath": "워크트리 경로 복사"
+  },
+  "confirm": {
+    "defaultConfirm": "확인",
+    "defaultCancel": "취소"
+  },
+  "empty": {
+    "noChanges": "표시할 변경사항이 없습니다"
+  },
+  "commandBar": {
+    "noResults": "결과를 찾을 수 없습니다.",
+    "back": "뒤로",
+    "defaultPlaceholder": "명령어를 입력하거나 검색..."
+  },
+  "chatBox": {
+    "variants": "변형"
   }
 }

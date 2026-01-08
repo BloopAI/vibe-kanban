@@ -332,6 +332,7 @@
     }
   },
   "processes": {
+    "noLogsAvailable": "로그가 없습니다",
     "agent": "Agent:",
     "backToList": "Back to list",
     "completed": "Completed: {{date}}",
@@ -521,6 +522,59 @@
     },
     "buttons": {
       "retry": "재시도"
+    }
+  },
+  "conversation": {
+    "you": "나",
+    "thinking": "생각 중",
+    "todo": "할 일",
+    "todos": "할 일",
+    "completed": "완료됨",
+    "incomplete": "미완료",
+    "pending": "대기 중",
+    "inProgress": "진행 중",
+    "skipped": "건너뜀",
+    "error": "오류",
+    "retry": "재시도",
+    "showMore": "더 보기",
+    "showLess": "간략히",
+    "actions": {
+      "cancel": "취소",
+      "submitFeedback": "피드백 제출",
+      "stop": "중지",
+      "stopping": "중지 중",
+      "loading": "로딩 중",
+      "send": "보내기",
+      "sending": "보내는 중",
+      "queue": "대기열에 추가",
+      "cancelQueue": "대기열 취소",
+      "requestChanges": "변경 요청",
+      "approve": "승인",
+      "clearReviewComments": "리뷰 댓글 지우기"
+    },
+    "approval": {
+      "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다"
+    },
+    "sessions": {
+      "newSession": "새 세션",
+      "latest": "최신",
+      "previous": "이전",
+      "label": "세션",
+      "noPreviousSessions": "이전 세션이 없습니다"
+    },
+    "reviewComments": {
+      "count_one": "{{count}}개의 리뷰 댓글이 포함됩니다",
+      "count_other": "{{count}}개의 리뷰 댓글이 포함됩니다"
+    },
+    "workspace": {
+      "create": "만들기",
+      "creating": "만드는 중..."
+    },
+    "fileEntry": {
+      "created": "생성됨",
+      "modified": "수정됨",
+      "deleted": "삭제됨",
+      "renamed": "이름 변경됨"
     }
   }
 }

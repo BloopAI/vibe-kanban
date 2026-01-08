@@ -1,4 +1,5 @@
 import { CaretLeftIcon, CopyIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import {
   Command,
   CommandInput,
@@ -63,6 +64,8 @@ export function CommandBar({
   search,
   onSearchChange,
 }: CommandBarProps) {
+  const { t } = useTranslation('common');
+
   return (
     <Command
       className="rounded-sm border border-border"
@@ -77,18 +80,18 @@ export function CommandBar({
     >
       <div className="flex items-center border-b border-border">
         <CommandInput
-          placeholder={page.title || 'Type a command or search...'}
+          placeholder={page.title || t('commandBar.defaultPlaceholder')}
           value={search}
           onValueChange={onSearchChange}
         />
       </div>
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{t('commandBar.noResults')}</CommandEmpty>
         {canGoBack && !search && (
           <CommandGroup>
             <CommandItem value="__back__" onSelect={onGoBack}>
               <CaretLeftIcon className="h-4 w-4" weight="bold" />
-              <span>Back</span>
+              <span>{t('commandBar.back')}</span>
             </CommandItem>
           </CommandGroup>
         )}

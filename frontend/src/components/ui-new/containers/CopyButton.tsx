@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckIcon, CopyIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -13,6 +14,7 @@ interface CopyButtonProps {
  * Shows a checkmark for 2 seconds after copying.
  */
 export function CopyButton({ onCopy, disabled }: CopyButtonProps) {
+  const { t } = useTranslation('common');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export function CopyButton({ onCopy, disabled }: CopyButtonProps) {
   };
 
   const IconComponent = copied ? CheckIcon : CopyIcon;
-  const tooltip = copied ? 'Copied!' : 'Copy path';
+  const tooltip = copied ? t('actions.copied') : t('actions.copyPath');
   const iconClassName = copied
     ? 'text-success hover:text-success group-hover:text-success'
     : undefined;

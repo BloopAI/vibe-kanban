@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { PencilSimpleIcon } from '@phosphor-icons/react';
 import { ChatEntryContainer } from './ChatEntryContainer';
 import { ChatMarkdown } from './ChatMarkdown';
@@ -21,10 +22,12 @@ export function ChatUserMessage({
   onEdit,
   isGreyed,
 }: ChatUserMessageProps) {
+  const { t } = useTranslation('tasks');
+
   return (
     <ChatEntryContainer
       variant="user"
-      title="You"
+      title={t('conversation.you')}
       expanded={expanded}
       onToggle={onToggle}
       className={className}
@@ -38,7 +41,7 @@ export function ChatUserMessage({
               onEdit();
             }}
             className="p-1 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-            aria-label="Edit message"
+            aria-label={t('conversation.actions.edit')}
           >
             <PencilSimpleIcon className="size-icon-xs" />
           </button>

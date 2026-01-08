@@ -7,6 +7,7 @@ import {
   FileIcon,
   CircleIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/utils/date';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
@@ -52,6 +53,7 @@ export function WorkspaceSummary({
   summary = false,
   isDraft = false,
 }: WorkspaceSummaryProps) {
+  const { t } = useTranslation('common');
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
   const isFailed =
     latestProcessStatus === 'failed' || latestProcessStatus === 'killed';
@@ -129,7 +131,9 @@ export function WorkspaceSummary({
             {/* Time elapsed OR "Draft" label (when not running) */}
             {!isRunning &&
               (isDraft ? (
-                <span className="min-w-0 flex-1 truncate">Draft</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {t('workspaces.draft')}
+                </span>
               ) : latestProcessCompletedAt ? (
                 <span className="min-w-0 flex-1 truncate">
                   {formatRelativeTime(latestProcessCompletedAt)}

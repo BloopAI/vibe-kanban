@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { repoApi } from '@/lib/api';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
@@ -14,13 +15,14 @@ export function BrowseRepoButtonContainer({
   disabled,
   onRepoRegistered,
 }: BrowseRepoButtonContainerProps) {
+  const { t } = useTranslation('common');
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleBrowse = useCallback(async () => {
     const selectedPath = await FolderPickerDialog.show({
-      title: 'Select Git Repository',
-      description: 'Choose an existing git repository',
+      title: t('dialogs.selectGitRepository'),
+      description: t('dialogs.chooseExistingRepo'),
     });
 
     if (selectedPath) {
@@ -43,7 +45,7 @@ export function BrowseRepoButtonContainer({
     <>
       <IconListItem
         icon={MagnifyingGlassIcon}
-        label="Browse repos on disk"
+        label={t('actions.browseRepos')}
         onClick={handleBrowse}
         disabled={disabled}
         loading={isRegistering}

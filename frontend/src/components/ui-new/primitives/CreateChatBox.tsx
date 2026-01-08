@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { CheckIcon, PaperclipIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
@@ -50,6 +51,7 @@ export function CreateChatBox({
   onPasteFiles,
   localImages,
 }: CreateChatBoxProps) {
+  const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canSend = editor.value.trim().length > 0 && !isSending;
 
@@ -94,7 +96,7 @@ export function CreateChatBox({
         <>
           <AgentIcon agent={agent} className="size-icon-xl" />
           <ToolbarDropdown label={executorLabel}>
-            <DropdownMenuLabel>Executors</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('conversation.executors')}</DropdownMenuLabel>
             {executor.options.map((exec) => (
               <DropdownMenuItem
                 key={exec}
@@ -130,7 +132,11 @@ export function CreateChatBox({
           onClick={onSend}
           disabled={!canSend}
           actionIcon={isSending ? 'spinner' : undefined}
-          value={isSending ? 'Creating...' : 'Create'}
+          value={
+            isSending
+              ? t('conversation.workspace.creating')
+              : t('conversation.workspace.create')
+          }
         />
       }
     />

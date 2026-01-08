@@ -6,6 +6,7 @@ import {
   SpinnerIcon,
   CopyIcon,
 } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '../primitives/SectionHeader';
 import { PrimaryButton } from '../primitives/PrimaryButton';
@@ -45,6 +46,7 @@ export function PreviewControls({
   isServerRunning,
   className,
 }: PreviewControlsProps) {
+  const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
 
   return (
@@ -94,33 +96,35 @@ export function PreviewControls({
           {isServerRunning ? (
             <PrimaryButton
               variant="tertiary"
-              value="Stop"
+              value={t('preview.browser.stopButton')}
               actionIcon={isStopping ? 'spinner' : StopIcon}
               onClick={onStop}
               disabled={isStopping}
             />
           ) : hasDevScript ? (
             <PrimaryButton
-              value="Start"
+              value={t('preview.browser.startingButton')}
               actionIcon={isStarting ? 'spinner' : PlayIcon}
               onClick={onStart}
               disabled={isStarting}
             />
           ) : (
-            <p className="text-sm text-low">No dev script configured</p>
+            <p className="text-sm text-low">{t('preview.noDevScript')}</p>
           )}
         </div>
 
         {/* Logs section */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-base pb-half">
-            <span className="text-xs font-medium text-low">Logs</span>
+            <span className="text-xs font-medium text-low">
+              {t('preview.logs.label')}
+            </span>
             <button
               type="button"
               onClick={onViewFullLogs}
               className="flex items-center gap-half text-xs text-brand hover:text-brand-hover"
             >
-              <span>View full logs</span>
+              <span>{t('preview.logs.viewFull')}</span>
               <ArrowSquareOutIcon className="size-icon-xs" />
             </button>
           </div>

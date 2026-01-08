@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import {
   DiffView,
@@ -261,6 +262,7 @@ export function DiffViewBody({
   hideLineNumbers?: boolean;
   theme: 'light' | 'dark';
 }) {
+  const { t } = useTranslation('tasks');
   const globalMode = useDiffViewMode();
   const diffMode =
     globalMode === 'split' ? DiffModeEnum.Split : DiffModeEnum.Unified;
@@ -268,7 +270,7 @@ export function DiffViewBody({
   if (!isValid) {
     return (
       <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
-        Unable to render diff.
+        {t('conversation.unableToRenderDiff')}
       </div>
     );
   }

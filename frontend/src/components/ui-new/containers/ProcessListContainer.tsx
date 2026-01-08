@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
 import { SectionHeader } from '../primitives/SectionHeader';
@@ -29,6 +30,7 @@ export function ProcessListContainer({
   onPrevMatch,
   onNextMatch,
 }: ProcessListContainerProps) {
+  const { t } = useTranslation('common');
   const { executionProcessesVisible } = useExecutionProcessesContext();
 
   // Sort processes by created_at descending (newest first)
@@ -81,18 +83,18 @@ export function ProcessListContainer({
       onKeyDown={handleSearchKeyDown}
     >
       <InputField
-        value={searchQuery}
-        onChange={onSearchQueryChange}
-        placeholder="Search logs..."
-        variant="search"
-        className="flex-1"
-      />
+                value={searchQuery}
+                onChange={onSearchQueryChange}
+                placeholder={t('logs.searchLogs')}
+                variant="search"
+                className="flex-1"
+              />
       {searchQuery && (
         <>
           <span className="text-xs text-low whitespace-nowrap">
             {matchCount > 0
-              ? `${currentMatchIdx + 1} of ${matchCount}`
-              : 'No matches'}
+              ? t('search.matchCount', { current: currentMatchIdx + 1, total: matchCount })
+              : t('search.noMatches')}
           </span>
           <div className="flex items-center gap-1">
             <button
@@ -119,11 +121,11 @@ export function ProcessListContainer({
 
   return (
     <div className="h-full w-full bg-secondary flex flex-col overflow-hidden">
-      <SectionHeader title="Processes" />
+      <SectionHeader title={t('sections.processes')} />
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent p-base min-h-0">
         {sortedProcesses.length === 0 ? (
           <div className="h-full flex items-center justify-center text-low">
-            <p className="text-sm">No processes to display</p>
+            <p className="text-sm">{t('processes.noProcesses')}</p>
           </div>
         ) : (
           <div className="space-y-0">

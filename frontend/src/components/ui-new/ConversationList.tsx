@@ -7,6 +7,7 @@ import {
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SpinnerGapIcon } from '@phosphor-icons/react';
 
 import NewDisplayConversationEntry from './NewDisplayConversationEntry';
@@ -85,6 +86,7 @@ const computeItemKey: VirtuosoMessageListProps<
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
 export function ConversationList({ attempt, task }: ConversationListProps) {
+  const { t } = useTranslation('common');
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,7 +147,7 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
       {loading && !channelData?.data?.length && (
         <div className="absolute inset-0 bg-primary flex flex-col gap-2 justify-center items-center">
           <SpinnerGapIcon className="h-8 w-8 animate-spin" />
-          <p>Loading History</p>
+          <p>{t('states.loadingHistory')}</p>
         </div>
       )}
     </ApprovalFormProvider>

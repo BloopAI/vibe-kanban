@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
@@ -9,6 +10,7 @@ import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 
 export function CreateChatBoxContainer() {
+  const { t } = useTranslation('common');
   const { profiles, config } = useUserSystem();
   const {
     repos,
@@ -159,10 +161,10 @@ export function CreateChatBoxContainer() {
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center max-w-md">
           <h2 className="text-lg font-medium text-high mb-2">
-            No project found
+            {t('projects.noProjectFound')}
           </h2>
           <p className="text-sm text-low">
-            Create a project first to start working on tasks.
+            {t('projects.createFirstPrompt')}
           </p>
         </div>
       </div>

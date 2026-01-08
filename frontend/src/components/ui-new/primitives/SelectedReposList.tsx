@@ -1,4 +1,5 @@
 import { FolderSimpleIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { RepoCardSimple } from './RepoCardSimple';
 import type { Repo, GitBranch } from 'shared/types';
 
@@ -17,6 +18,8 @@ export function SelectedReposList({
   selectedBranches,
   onBranchChange,
 }: SelectedReposListProps) {
+  const { t } = useTranslation('common');
+
   if (repos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-double text-center">
@@ -24,10 +27,8 @@ export function SelectedReposList({
           className="size-icon-xl text-low mb-base"
           weight="duotone"
         />
-        <p className="text-sm text-low">No repositories added</p>
-        <p className="text-xs text-low mt-half">
-          Add one or more repositories to this workspace from the options below
-        </p>
+        <p className="text-sm text-low">{t('repos.noReposAdded')}</p>
+        <p className="text-xs text-low mt-half">{t('repos.noReposAddedHint')}</p>
       </div>
     );
   }

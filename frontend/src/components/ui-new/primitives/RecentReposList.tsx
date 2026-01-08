@@ -1,4 +1,5 @@
 import { FolderSimpleStarIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import { IconListItem } from './IconListItem';
 
 export interface RecentRepoEntry {
@@ -20,17 +21,19 @@ export function RecentReposList({
   error,
   onSelect,
 }: RecentReposListProps) {
+  const { t } = useTranslation('common');
+
   return (
     <div className="flex flex-col gap-half">
       {loading && (
         <div className="flex items-center gap-base py-base">
           <SpinnerIcon className="size-icon-sm text-low animate-spin" />
-          <span className="text-sm text-low">Loading repositories...</span>
+          <span className="text-sm text-low">{t('repos.loading')}</span>
         </div>
       )}
       {error && <p className="text-xs text-error">{error}</p>}
       {!loading && repos.length === 0 && !error && (
-        <p className="text-xs text-low py-half">No recent repositories found</p>
+        <p className="text-xs text-low py-half">{t('repos.noRecentRepos')}</p>
       )}
       {!loading &&
         repos.map((entry) => (
