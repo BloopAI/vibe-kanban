@@ -1,7 +1,6 @@
 
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { documentsApi } from '@/lib/api';
 
 interface UploadProgress {
     total: number;
@@ -9,7 +8,7 @@ interface UploadProgress {
     errors: string[];
 }
 
-export function useFolderUpload(teamId: string, currentFolderId: string | null) {
+export function useFolderUpload(teamId: string, _currentFolderId: string | null) {
     const [isUploading, setIsUploading] = useState(false);
     const [progress, setProgress] = useState<UploadProgress | null>(null);
 
