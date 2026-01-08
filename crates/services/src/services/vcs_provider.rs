@@ -546,4 +546,99 @@ mod tests {
         let result = VcsRepoInfo::from_remote_url("https://gitlab.com/owner/repo.git");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_parse_github_https_no_git_suffix() {
+        let info = VcsRepoInfo::from_remote_url("https://github.com/owner/repo").unwrap();
+        assert_eq!(info.provider_type, VcsProviderType::GitHub);
+        assert_eq!(info.owner_or_project, "owner");
+        assert_eq!(info.repo_name, "repo");
+    }
+
+    #[test]
+    fn test_parse_github_nested_path() {
+        // GitHub URLs with extra path components
+        let info = VcsRepoInfo::from_remote_url("https://github.com/org/repo/tree/main").unwrap();
+        assert_eq!(info.provider_type, VcsProviderType::GitHub);
+        assert_eq!(info.owner_or_project, "org");
+        assert_eq!(info.repo_name, "repo");
+    }
+
+    #[test]
+    fn test_parse_bitbucket_lowercase_project() {
+        // Project keys should be normalized to uppercase
+        let info = VcsRepoInfo::from_remote_url(
+            "ssh://git@git.taboolasyndication.com:7998/myproject/myrepo.git",
+        )
+        .unwrap();
+        assert_eq!(info.provider_type, VcsProviderType::BitbucketServer);
+        assert_eq!(info.owner_or_project, "MYPROJECT");
+        assert_eq!(info.repo_name, "myrepo");
+    }
+
+    #[test]
+    fn test_vcs_provider_type_display() {
+        assert_eq!(format!("{}", VcsProviderType::GitHub), "GitHub");
+        assert_eq!(format!("{}", VcsProviderType::BitbucketServer), "Bitbucket Server");
+    }
+
+    #[test]
+    fn test_vcs_provider_error_display() {
+        let err = VcsProviderError::AuthRequired("Bitbucket".to_string());
+        assert!(format!("{}", err).contains("Bitbucket"));
+
+        let err = VcsProviderError::AuthFailed("Invalid token".to_string());
+        assert!(format!("{}", err).contains("Invalid token"));
+
+        let err = VcsProviderError::PullRequest("PR creation failed".to_string());
+        assert!(format!("{}", err).contains("PR creation failed"));
+    }
+
+    #[test]
+    fn test_create_pr_request_fields() {
+        let request = CreatePrRequest {
+            title: "My PR".to_string(),
+            body: Some("Description".to_string()),
+            head_branch: "feature".to_string(),
+            base_branch: "main".to_string(),
+            draft: Some(true),
+        };
+        assert_eq!(request.title, "My PR");
+        assert_eq!(request.body, Some("Description".to_string()));
+        assert_eq!(request.head_branch, "feature");
+        assert_eq!(request.base_branch, "main");
+        assert_eq!(request.draft, Some(true));
+    }
+
+    #[test]
+    fn test_vcs_repo_info_equality() {
+        let info1 = VcsRepoInfo {
+            provider_type: VcsProviderType::GitHub,
+            base_url: "https://api.github.com".to_string(),
+            owner_or_project: "owner".to_string(),
+            repo_name: "repo".to_string(),
+        };
+        let info2 = VcsRepoInfo {
+            provider_type: VcsProviderType::GitHub,
+            base_url: "https://api.github.com".to_string(),
+            owner_or_project: "owner".to_string(),
+            repo_name: "repo".to_string(),
+        };
+        assert_eq!(info1.provider_type, info2.provider_type);
+        assert_eq!(info1.base_url, info2.base_url);
+        assert_eq!(info1.owner_or_project, info2.owner_or_project);
+        assert_eq!(info1.repo_name, info2.repo_name);
+    }
+
+    #[test]
+    fn test_parse_empty_url() {
+        let result = VcsRepoInfo::from_remote_url("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_invalid_url() {
+        let result = VcsRepoInfo::from_remote_url("not-a-valid-url");
+        assert!(result.is_err());
+    }
 }

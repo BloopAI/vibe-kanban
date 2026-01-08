@@ -252,3 +252,151 @@ impl KeychainBackend {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_credentials_struct() {
+        let creds = BitbucketCredentials {
+            access_token: "test-token".to_string(),
+            base_url: "https://bitbucket.example.com".to_string(),
+        };
+        assert_eq!(creds.access_token, "test-token");
+        assert_eq!(creds.base_url, "https://bitbucket.example.com");
+    }
+
+    #[test]
+    fn test_credentials_clone() {
+        let creds = BitbucketCredentials {
+            access_token: "token123".to_string(),
+            base_url: "https://bb.example.com".to_string(),
+        };
+        let cloned = creds.clone();
+        assert_eq!(creds.access_token, cloned.access_token);
+        assert_eq!(creds.base_url, cloned.base_url);
+    }
+
+    #[test]
+    fn test_credentials_serialization() {
+        let creds = BitbucketCredentials {
+            access_token: "my-token".to_string(),
+            base_url: "https://bitbucket.example.com".to_string(),
+        };
+        let json = serde_json::to_string(&creds).unwrap();
+        assert!(json.contains("my-token"));
+        assert!(json.contains("https://bitbucket.example.com"));
+
+        let deserialized: BitbucketCredentials = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.access_token, "my-token");
+        assert_eq!(deserialized.base_url, "https://bitbucket.example.com");
+    }
+
+    #[test]
+    fn test_default_path() {
+        let path = BitbucketCredentialStore::default_path();
+        assert!(path.to_string_lossy().contains("bitbucket_credentials.json"));
+        assert!(path.to_string_lossy().contains(".vibe-kanban"));
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_empty_initially() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("creds.json");
+        let store = BitbucketCredentialStore::new(path);
+
+        assert!(!store.is_configured().await);
+        assert!(store.get().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_save_and_load() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("creds.json");
+        let store = BitbucketCredentialStore::new(path.clone());
+
+        let creds = BitbucketCredentials {
+            access_token: "test-token-123".to_string(),
+            base_url: "https://git.example.com".to_string(),
+        };
+
+        // Save credentials
+        store.save(&creds).await.unwrap();
+        assert!(store.is_configured().await);
+
+        // Verify we can get them back
+        let loaded = store.get().await.unwrap();
+        assert_eq!(loaded.access_token, "test-token-123");
+        assert_eq!(loaded.base_url, "https://git.example.com");
+
+        // Verify file exists
+        assert!(path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_load_from_file() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("creds.json");
+
+        // Write credentials file directly
+        let json = r#"{"access_token":"file-token","base_url":"https://bb.test.com"}"#;
+        std::fs::write(&path, json).unwrap();
+
+        let store = BitbucketCredentialStore::new(path);
+        store.load().await.unwrap();
+
+        let loaded = store.get().await.unwrap();
+        assert_eq!(loaded.access_token, "file-token");
+        assert_eq!(loaded.base_url, "https://bb.test.com");
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_load_nonexistent() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("nonexistent.json");
+        let store = BitbucketCredentialStore::new(path);
+
+        // Load should succeed but not set credentials
+        store.load().await.unwrap();
+        assert!(!store.is_configured().await);
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_clear() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("creds.json");
+        let store = BitbucketCredentialStore::new(path.clone());
+
+        let creds = BitbucketCredentials {
+            access_token: "token".to_string(),
+            base_url: "https://example.com".to_string(),
+        };
+
+        store.save(&creds).await.unwrap();
+        assert!(store.is_configured().await);
+
+        store.clear().await.unwrap();
+        assert!(!store.is_configured().await);
+        assert!(store.get().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_credential_store_invalid_json() {
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path().join("bad_creds.json");
+
+        // Write invalid JSON
+        std::fs::write(&path, "not valid json").unwrap();
+
+        let store = BitbucketCredentialStore::new(path.clone());
+        store.load().await.unwrap(); // Should not fail
+
+        // Credentials should not be loaded
+        assert!(!store.is_configured().await);
+
+        // Bad file should be renamed
+        assert!(path.with_extension("bad").exists());
+    }
+}

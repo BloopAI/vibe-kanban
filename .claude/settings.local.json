@@ -11,7 +11,11 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add Bitbucket Server support for PR operations\n\nAdd support for Bitbucket Server \\(on-premise\\) alongside existing GitHub\nintegration using a VCS provider abstraction layer.\n\nNew features:\n- VcsProvider trait for unified VCS operations\n- VcsProviderRegistry for auto-detection from remote URL\n- BitbucketService implementing create PR, get status, list PRs, fetch comments\n- Secure credential storage \\(file-based with macOS Keychain integration\\)\n- Bitbucket REST API v1.0 client with retry logic\n\nThe system auto-detects whether a repository uses GitHub or Bitbucket\nbased on the remote URL and routes operations accordingly.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
       "Bash(curl:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: resolve merge conflicts with main branch\n\n- Add missing GitHubRepoInfo import in git.rs\n- Add GitHubRepoInfo::from_remote_url\\(\\) method for URL parsing\n- Update get_pr_status to use new single-argument update_pr_status signature\n- Fix Bitbucket test to avoid TLS provider requirement\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: resolve merge conflicts with main branch\n\n- Add missing GitHubRepoInfo import in git.rs\n- Add GitHubRepoInfo::from_remote_url\\(\\) method for URL parsing\n- Update get_pr_status to use new single-argument update_pr_status signature\n- Fix Bitbucket test to avoid TLS provider requirement\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh pr checks:*)",
+      "WebFetch(domain:api.vibekanban.com)",
+      "Bash(gh api repos/BloopAI/vibe-kanban/pulls/1842/reviews)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ntest: add comprehensive tests for Bitbucket integration\n\nAdd extensive test coverage for:\n- Bitbucket models: PR state conversion, comment conversion, serialization\n- Credentials: storage, loading, saving, invalid JSON handling\n- VcsProvider: URL parsing edge cases, error display, type display\n\n41 total tests for the Bitbucket/VcsProvider functionality.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

@@ -322,3 +322,279 @@ impl std::fmt::Display for BitbucketError {
         write!(f, "{}", messages.join("; "))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pr_state_to_merge_status_open() {
+        let pr = create_test_pr("OPEN", false, false);
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert!(matches!(info.status, MergeStatus::Open));
+        assert!(info.merged_at.is_none());
+    }
+
+    #[test]
+    fn test_pr_state_to_merge_status_merged() {
+        let pr = create_test_pr("MERGED", false, true);
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert!(matches!(info.status, MergeStatus::Merged));
+    }
+
+    #[test]
+    fn test_pr_state_to_merge_status_declined() {
+        let pr = create_test_pr("DECLINED", false, true);
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert!(matches!(info.status, MergeStatus::Closed));
+    }
+
+    #[test]
+    fn test_pr_state_to_merge_status_unknown() {
+        let pr = create_test_pr("INVALID", false, false);
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert!(matches!(info.status, MergeStatus::Unknown));
+    }
+
+    #[test]
+    fn test_pr_url_from_links() {
+        let mut pr = create_test_pr("OPEN", false, false);
+        pr.links.self_links = vec![BitbucketLink {
+            href: "https://bitbucket.example.com/projects/PROJ/repos/repo/pull-requests/123".to_string(),
+        }];
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert_eq!(info.url, "https://bitbucket.example.com/projects/PROJ/repos/repo/pull-requests/123");
+    }
+
+    #[test]
+    fn test_pr_number_preserved() {
+        let pr = create_test_pr("OPEN", false, false);
+        let info = pr.to_pull_request_info("https://bitbucket.example.com");
+        assert_eq!(info.number, 42);
+    }
+
+    #[test]
+    fn test_general_comment_conversion() {
+        let comment = BitbucketComment {
+            id: 100,
+            text: "This is a general comment".to_string(),
+            author: BitbucketUser {
+                name: "testuser".to_string(),
+                display_name: "Test User".to_string(),
+                email_address: Some("test@example.com".to_string()),
+            },
+            created_date: 1704067200000, // 2024-01-01 00:00:00 UTC
+            updated_date: None,
+            comments: vec![],
+            anchor: None,
+        };
+
+        let unified = comment.to_unified_comment("https://bitbucket.example.com/pr/1");
+
+        match unified {
+            UnifiedPrComment::General { id, author, body, url, .. } => {
+                assert_eq!(id, "100");
+                assert_eq!(author, "Test User");
+                assert_eq!(body, "This is a general comment");
+                assert!(url.contains("commentId=100"));
+            }
+            _ => panic!("Expected General comment"),
+        }
+    }
+
+    #[test]
+    fn test_inline_comment_conversion() {
+        let comment = BitbucketComment {
+            id: 200,
+            text: "This is an inline comment".to_string(),
+            author: BitbucketUser {
+                name: "reviewer".to_string(),
+                display_name: "Code Reviewer".to_string(),
+                email_address: None,
+            },
+            created_date: 1704067200000,
+            updated_date: Some(1704153600000),
+            comments: vec![],
+            anchor: Some(CommentAnchor {
+                path: "src/main.rs".to_string(),
+                line: Some(42),
+                line_type: Some("ADDED".to_string()),
+                file_type: Some("TO".to_string()),
+                diff_type: Some("@@ -10,5 +10,10 @@".to_string()),
+            }),
+        };
+
+        let unified = comment.to_unified_comment("https://bitbucket.example.com/pr/1");
+
+        match unified {
+            UnifiedPrComment::Review { id, author, body, path, line, diff_hunk, .. } => {
+                assert_eq!(id, 200);
+                assert_eq!(author, "Code Reviewer");
+                assert_eq!(body, "This is an inline comment");
+                assert_eq!(path, "src/main.rs");
+                assert_eq!(line, Some(42));
+                assert_eq!(diff_hunk, "@@ -10,5 +10,10 @@");
+            }
+            _ => panic!("Expected Review comment"),
+        }
+    }
+
+    #[test]
+    fn test_diff_comment_general_conversion() {
+        let comment = BitbucketDiffComment {
+            id: 300,
+            text: "Diff comment without anchor".to_string(),
+            author: BitbucketUser {
+                name: "user".to_string(),
+                display_name: "User Name".to_string(),
+                email_address: None,
+            },
+            created_date: 1704067200000,
+            updated_date: None,
+            anchor: None,
+        };
+
+        let unified = comment.to_unified_comment("https://bitbucket.example.com/pr/2");
+        assert!(matches!(unified, UnifiedPrComment::General { .. }));
+    }
+
+    #[test]
+    fn test_bitbucket_error_display_single() {
+        let error = BitbucketError {
+            errors: vec![BitbucketErrorDetail {
+                context: None,
+                message: "Something went wrong".to_string(),
+                exception_name: None,
+            }],
+        };
+        assert_eq!(format!("{}", error), "Something went wrong");
+    }
+
+    #[test]
+    fn test_bitbucket_error_display_multiple() {
+        let error = BitbucketError {
+            errors: vec![
+                BitbucketErrorDetail {
+                    context: Some("field1".to_string()),
+                    message: "Error 1".to_string(),
+                    exception_name: None,
+                },
+                BitbucketErrorDetail {
+                    context: Some("field2".to_string()),
+                    message: "Error 2".to_string(),
+                    exception_name: Some("ValidationException".to_string()),
+                },
+            ],
+        };
+        assert_eq!(format!("{}", error), "Error 1; Error 2");
+    }
+
+    #[test]
+    fn test_paged_response_deserialization() {
+        let json = r#"{
+            "values": [{"name": "test", "displayName": "Test", "emailAddress": "test@example.com"}],
+            "size": 1,
+            "isLastPage": true
+        }"#;
+
+        let response: PagedResponse<BitbucketUser> = serde_json::from_str(json).unwrap();
+        assert_eq!(response.size, 1);
+        assert!(response.is_last_page);
+        assert_eq!(response.values.len(), 1);
+        assert_eq!(response.values[0].name, "test");
+    }
+
+    #[test]
+    fn test_create_pr_request_serialization() {
+        let request = CreatePullRequestRequest {
+            title: "Test PR".to_string(),
+            description: Some("Description".to_string()),
+            from_ref: RefSpec {
+                id: "refs/heads/feature".to_string(),
+                repository: RepositorySpec {
+                    slug: "repo".to_string(),
+                    project: ProjectSpec {
+                        key: "PROJ".to_string(),
+                    },
+                },
+            },
+            to_ref: RefSpec {
+                id: "refs/heads/main".to_string(),
+                repository: RepositorySpec {
+                    slug: "repo".to_string(),
+                    project: ProjectSpec {
+                        key: "PROJ".to_string(),
+                    },
+                },
+            },
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(json.contains("\"title\":\"Test PR\""));
+        assert!(json.contains("\"description\":\"Description\""));
+        assert!(json.contains("\"fromRef\""));
+        assert!(json.contains("\"toRef\""));
+    }
+
+    #[test]
+    fn test_create_pr_request_no_description() {
+        let request = CreatePullRequestRequest {
+            title: "Test PR".to_string(),
+            description: None,
+            from_ref: RefSpec {
+                id: "refs/heads/feature".to_string(),
+                repository: RepositorySpec {
+                    slug: "repo".to_string(),
+                    project: ProjectSpec { key: "PROJ".to_string() },
+                },
+            },
+            to_ref: RefSpec {
+                id: "refs/heads/main".to_string(),
+                repository: RepositorySpec {
+                    slug: "repo".to_string(),
+                    project: ProjectSpec { key: "PROJ".to_string() },
+                },
+            },
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(!json.contains("description")); // skipped when None
+    }
+
+    // Helper function to create test PR
+    fn create_test_pr(state: &str, open: bool, closed: bool) -> BitbucketPullRequest {
+        BitbucketPullRequest {
+            id: 42,
+            title: "Test PR".to_string(),
+            description: Some("Test description".to_string()),
+            state: state.to_string(),
+            open,
+            closed,
+            from_ref: BitbucketRef {
+                id: "refs/heads/feature".to_string(),
+                display_id: "feature".to_string(),
+                latest_commit: Some("abc123".to_string()),
+            },
+            to_ref: BitbucketRef {
+                id: "refs/heads/main".to_string(),
+                display_id: "main".to_string(),
+                latest_commit: Some("def456".to_string()),
+            },
+            author: BitbucketParticipant {
+                user: BitbucketUser {
+                    name: "author".to_string(),
+                    display_name: "Author Name".to_string(),
+                    email_address: Some("author@example.com".to_string()),
+                },
+                role: "AUTHOR".to_string(),
+                approved: false,
+                status: None,
+            },
+            reviewers: vec![],
+            created_date: 1704067200000,
+            updated_date: 1704153600000,
+            closed_date: if closed { Some(1704240000000) } else { None },
+            links: BitbucketLinks { self_links: vec![] },
+        }
+    }
+}
