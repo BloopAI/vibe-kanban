@@ -126,10 +126,62 @@ Reference `.agent/rules/` for detailed guidelines:
 - **ui-components.md**: shadcn/ui only
 - **authentication-clerk.md**: Clerk auth patterns
 
-## MCP Tools
+## MCP Tools & Task Management
 
-Custom MCP tools in `/mcp/`:
-- `vk` - Task management (create issues, update status)
-- `supabase_db_util` - Database utilities
+Custom MCP tools in `/mcp/` for task management. Two interfaces available:
 
-Use team identifiers (IKA, SCH) when creating tasks.
+### CLI Interface (Recommended)
+
+```bash
+cd mcp/
+
+# List teams and issues
+python cli.py teams                              # List all teams
+python cli.py issues IKA                         # List iKanban issues
+python cli.py issues SCH --status inprogress    # List Schild in-progress
+
+# Create issues
+python cli.py create IKA "Fix login bug"                    # Create in iKanban
+python cli.py create SCH "Add feature" --project backend    # Create in Schild
+python cli.py create IKA "Urgent fix" -p 1 -s inprogress   # Priority 1, in-progress
+
+# Update tasks
+python cli.py update <task-id> --status done               # Mark done
+python cli.py update <task-id> -s inprogress -d "WIP"     # Status + description
+
+# Get task details
+python cli.py task <task-id>                               # Get task info
+python cli.py task <task-id> --json                        # JSON output
+```
+
+### JSON-RPC Interface (Alternative)
+
+For programmatic access or when CLI has issues:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"vk_create_issue","arguments":{"team":"IKA","title":"My task","status":"inprogress"}}}' | \
+VIBE_API_TOKEN="vk_..." python3 mcp/server.py
+```
+
+Available tools via JSON-RPC:
+- `vk_list_teams` - List all teams
+- `vk_list_projects` - List all projects
+- `vk_list_issues` - List issues for a team
+- `vk_create_issue` - Create new issue
+- `vk_update_task` - Update task status/description
+- `vk_get_task` - Get task details
+
+### Teams Reference
+
+| Team | Identifier | Default Project |
+|------|------------|-----------------|
+| iKanban | `IKA` | frontend |
+| Schild | `SCH` | backend |
+
+### Environment Setup
+
+Ensure `VIBE_API_TOKEN` is set in `.env`:
+```
+VIBE_API_TOKEN=vk_your_token_here
+```
