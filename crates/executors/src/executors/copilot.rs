@@ -56,7 +56,7 @@ pub struct Copilot {
 
 impl Copilot {
     fn build_command_builder(&self, log_dir: &str) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.367").params([
+        let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.375").params([
             "--no-color",
             "--log-level",
             "debug",
@@ -271,21 +271,24 @@ impl Copilot {
 
     // Scan the log directory for a file named `<UUID>.log` or `session-<UUID>.log` and extract the UUID as session ID.
     async fn watch_session_id(log_dir_path: PathBuf) -> Result<String, String> {
-        let mut ticker = interval(Duration::from_millis(200));
-        let re =
-            Regex::new(r"^(?:session-)?([0-9a-fA-F-]{36})\.log$").map_err(|e| e.to_string())?;
+        let session_regex =
+            Regex::new(r"events to session ([0-9a-fA-F-]{36})").map_err(|e| e.to_string())?;
 
-        timeout(Duration::from_secs(600), async {
+        let log_dir_clone = log_dir_path.clone();
+        timeout(Duration::from_secs(600), async move {
+            let mut ticker = interval(Duration::from_millis(200));
             loop {
-                if let Ok(mut rd) = fs::read_dir(&log_dir_path).await {
-                    while let Ok(Some(e)) = rd.next_entry().await {
-                        if let Some(file_name) = e.file_name().to_str()
-                            && let Some(caps) = re.captures(file_name)
+                if let Ok(mut rd) = fs::read_dir(&log_dir_clone).await {
+                    while let Ok(Some(entry)) = rd.next_entry().await {
+                        let path = entry.path();
+                        if path.extension().map(|e| e == "log").unwrap_or(false)
+                            && let Ok(content) = fs::read_to_string(&path).await
+                            && let Some(caps) = session_regex.captures(&content)
                             && let Some(matched) = caps.get(1)
                         {
                             let uuid_str = matched.as_str();
                             if Uuid::parse_str(uuid_str).is_ok() {
-                                return uuid_str.to_string();
+                                return Ok(uuid_str.to_string());
                             }
                         }
                     }
@@ -294,7 +297,7 @@ impl Copilot {
             }
         })
         .await
-        .map_err(|_| format!("No [session-]<uuid>.log found in {log_dir_path:?}"))
+        .map_err(|_| format!("No session ID found in log files at {log_dir_path:?}"))?
     }
 
     const SESSION_PREFIX: &'static str = "[copilot-session] ";

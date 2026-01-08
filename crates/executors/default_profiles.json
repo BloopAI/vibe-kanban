@@ -167,16 +167,76 @@
           "allow_all_tools": true
         }
       },
-      "GPT_5": {
+      "GPT_5_2": {
         "COPILOT": {
           "allow_all_tools": true,
-          "model": "gpt-5"
+          "model": "gpt-5.2"
+        }
+      },
+      "GEMINI_3_PRO_PREVIEW": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gemini-3-pro-preview"
+        }
+      },
+      "CLAUDE_OPUS_4_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-opus-4.5"
         }
       },
       "CLAUDE_SONNET_4_5": {
         "COPILOT": {
           "allow_all_tools": true,
           "model": "claude-sonnet-4.5"
+        }
+      },
+      "CLAUDE_HAIKU_4_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-haiku-4.5"
+        }
+      },
+      "GPT_5_1_CODEX_MAX": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex-max"
+        }
+      },
+      "GPT_5_1_CODEX": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex"
+        }
+      },
+      "GPT_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5"
+        }
+      },
+      "GPT_5_1": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1"
+        }
+      },
+      "GPT_5_1_CODEX_MINI": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex-mini"
+        }
+      },
+      "GPT_5_MINI": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5-mini"
+        }
+      },
+      "GPT_4_1": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-4.1"
         }
       },
       "CLAUDE_SONNET_4": {
