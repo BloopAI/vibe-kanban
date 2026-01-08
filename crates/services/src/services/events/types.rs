@@ -32,6 +32,8 @@ pub enum HookTables {
     Scratch,
     #[strum(to_string = "projects")]
     Projects,
+    #[strum(to_string = "workspace_repos")]
+    WorkspaceRepos,
 }
 
 #[derive(Serialize, Deserialize, TS)]
