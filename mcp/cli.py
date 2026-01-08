@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
 vibe-kanban CLI - Direct API client for vibe-kanban task management.
-Bypasses MCP and communicates directly with the backend API.
 
 Usage:
-    ./vk-cli.py projects                                    # List all projects
-    ./vk-cli.py tasks <project_id>                          # List tasks in a project
-    ./vk-cli.py task <task_id>                              # Get task details
-    ./vk-cli.py create <project_id> "title" --team <team>   # Create team issue
-    ./vk-cli.py create <project_id> "title"                 # Create project task
-    ./vk-cli.py update <task_id> --status inprogress
-    ./vk-cli.py teams                                       # List all teams
-    ./vk-cli.py issues <team_id>                            # List issues for a team
+    ./cli.py teams                                    # List all teams
+    ./cli.py issues IKA                               # List issues for iKanban team
+    ./cli.py issues SCH                               # List issues for Schild team
+    ./cli.py create IKA "title"                       # Create issue in iKanban
+    ./cli.py create SCH "title" --project backend     # Create issue in Schild
+    ./cli.py update <task_id> --status done           # Update task status
+    ./cli.py task <task_id>                           # Get task details
 """
 
 import argparse
@@ -21,308 +19,144 @@ import sys
 from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
-from dotenv import load_dotenv
 
 # Load environment variables from project root
-script_dir = Path(__file__).parent
-root_dir = script_dir.parent
-env_path = root_dir / ".env"
-load_dotenv(dotenv_path=env_path)
+try:
+    from dotenv import load_dotenv
+    script_dir = Path(__file__).parent
+    root_dir = script_dir.parent
+    env_path = root_dir / ".env"
+    load_dotenv(dotenv_path=env_path)
+except ImportError:
+    pass  # dotenv not required if env vars are set
 
-if os.environ.get("VIBE_API_TOKEN"):
-    print(f"Debug: Token found (starts with {os.environ['VIBE_API_TOKEN'][:10]}...)", file=sys.stderr)
-else:
-    print("Debug: No VIBE_API_TOKEN found in environment", file=sys.stderr)
+# ============================================================================
+# CONFIGURATION - Shared with server.py
+# ============================================================================
 
-# Default configuration
-DEFAULT_PORT = 3003
-DEFAULT_HOST = "127.0.0.1"
-
-# Known project IDs for convenience
-KNOWN_PROJECTS = {
-    "frontend": "5b8810bc-b52f-464f-b87c-4a10542c14d3",
-    "backend": "270d5829-6691-44b8-af81-594e70e88f15",
-    "vibe-kanban": "1277542c-2247-4c9d-a236-c38173459694",
-}
-
-# Known team IDs for convenience
+# Team registry with identifiers and default projects
 KNOWN_TEAMS = {
-    "vibe-kanban": "ea68ef91-e9b7-4c28-9f53-077cf6a08fd3",
+    # By name (lowercase)
+    "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
+    "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
+    # By identifier (case-insensitive lookup)
+    "ika": "a263e43f-43d3-4af7-a947-5f70e6670921",
+    "sch": "a2f22deb-901e-436b-9755-644cb26753b7",
 }
 
-# Status mappings
+# Default project for each team (used when no project specified)
+TEAM_DEFAULT_PROJECTS = {
+    "a263e43f-43d3-4af7-a947-5f70e6670921": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",  # ikanban -> frontend
+    "a2f22deb-901e-436b-9755-644cb26753b7": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",  # schild -> backend
+}
+
+# Project name aliases (IKA team)
+IKA_PROJECTS = {
+    "frontend": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",
+    "backend": "use-vk_list_projects",  # Look up dynamically
+    "integration": "use-vk_list_projects",
+}
+
+# Project name aliases (SCH team)
+SCH_PROJECTS = {
+    "backend": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",
+    "frontend": "a0838686-0c56-4492-bf6d-65847451496a",
+    "data-layer": "20f980e2-9cd8-427d-a11f-99cbff31acad",
+    "temporal": "0ea3cbc6-11c3-4d68-bb99-7493a40de833",
+    "elevenlabs": "e09697e8-c605-46a0-9dbc-877918fdca08",
+    "infra": "b40b5eca-1856-4b69-928f-0ec3ecd2737b",
+}
+
 STATUSES = ["todo", "inprogress", "inreview", "done", "cancelled"]
 
+# ============================================================================
+# API HELPERS
+# ============================================================================
 
 def get_base_url():
-    """Get the backend URL from environment or port file."""
-    # Check environment variable first
+    """Get the backend URL - defaults to production API."""
     if os.environ.get("VIBE_BACKEND_URL"):
         return os.environ["VIBE_BACKEND_URL"]
+    return "https://api.scho1ar.com"
 
-    # Check port file
-    tmp_dir = os.environ.get("TMPDIR", "/tmp")
-    port_file = Path(tmp_dir) / "vibe-kanban" / "vibe-kanban.port"
 
-    if port_file.exists():
-        port = port_file.read_text().strip()
-        return f"http://{DEFAULT_HOST}:{port}"
-
-    # Fall back to default
-    return f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+def get_auth_token():
+    """Get the API token from environment."""
+    return os.environ.get("VIBE_API_TOKEN")
 
 
 def api_request(endpoint, method="GET", data=None):
     """Make an API request and return JSON response."""
     base_url = get_base_url()
     url = f"{base_url}/api{endpoint}"
-
     headers = {"Content-Type": "application/json"}
-    
-    # Add Authorization header if token is present
-    if os.environ.get("VIBE_API_TOKEN"):
-        headers["Authorization"] = f"Bearer {os.environ['VIBE_API_TOKEN']}"
 
-    if data:
-        body = json.dumps(data).encode("utf-8")
-        req = Request(url, data=body, headers=headers, method=method)
-    else:
-        req = Request(url, headers=headers, method=method)
+    auth_token = get_auth_token()
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
 
     try:
-        with urlopen(req, timeout=10) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            return result
+        if data:
+            body = json.dumps(data).encode("utf-8")
+            req = Request(url, data=body, headers=headers, method=method)
+        else:
+            req = Request(url, headers=headers, method=method)
+
+        with urlopen(req, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
     except HTTPError as e:
         error_body = e.read().decode("utf-8")
-        print(f"HTTP Error {e.code}: {error_body}", file=sys.stderr)
+        try:
+            error_json = json.loads(error_body)
+            msg = error_json.get("message", error_body)
+        except:
+            msg = error_body
+        print(f"HTTP {e.code}: {msg}", file=sys.stderr)
         sys.exit(1)
     except URLError as e:
         print(f"Connection error: {e.reason}", file=sys.stderr)
-        print(f"Is the backend running? Try: curl {base_url}/api/projects", file=sys.stderr)
         sys.exit(1)
-
-
-def resolve_project_id(project_ref):
-    """Resolve project name or ID to actual ID."""
-    if project_ref in KNOWN_PROJECTS:
-        return KNOWN_PROJECTS[project_ref]
-    return project_ref
 
 
 def resolve_team_id(team_ref):
-    """Resolve team name or ID to actual ID."""
-    if team_ref in KNOWN_TEAMS:
-        return KNOWN_TEAMS[team_ref]
-    return team_ref
+    """Resolve team name, identifier, or ID to actual ID (case-insensitive)."""
+    if not team_ref:
+        return None
+    lower_ref = team_ref.lower()
+    return KNOWN_TEAMS.get(lower_ref, team_ref)
 
 
-def format_task(task, verbose=False):
-    """Format a task for display."""
-    status_icons = {
-        "todo": "○",
-        "inprogress": "◐",
-        "inreview": "◑",
-        "done": "●",
-        "cancelled": "✗",
-    }
-    icon = status_icons.get(task.get("status", ""), "?")
-    title = task.get("title", "Untitled")
-    task_id = task.get("id", "")[:8]
-    status = task.get("status", "unknown")
+def resolve_project_id(project_ref, team_id=None):
+    """Resolve project name or ID to actual ID."""
+    if not project_ref:
+        return TEAM_DEFAULT_PROJECTS.get(team_id) if team_id else None
 
-    line = f"{icon} [{task_id}] {title}"
+    # Check team-specific projects first
+    if team_id == "a263e43f-43d3-4af7-a947-5f70e6670921":  # IKA
+        if project_ref.lower() in IKA_PROJECTS:
+            return IKA_PROJECTS[project_ref.lower()]
+    elif team_id == "a2f22deb-901e-436b-9755-644cb26753b7":  # SCH
+        if project_ref.lower() in SCH_PROJECTS:
+            return SCH_PROJECTS[project_ref.lower()]
 
-    if verbose:
-        line += f"\n   Status: {status}"
-        if task.get("description"):
-            desc = task["description"][:100] + "..." if len(task.get("description", "")) > 100 else task.get("description", "")
-            line += f"\n   Description: {desc}"
-        if task.get("priority"):
-            line += f"\n   Priority: {task['priority']}"
-
-    return line
+    return project_ref  # Assume it's a UUID
 
 
-def cmd_projects(args):
-    """List all projects."""
-    result = api_request("/projects")
-
-    if not result.get("success"):
-        print("Failed to fetch projects", file=sys.stderr)
-        sys.exit(1)
-
-    projects = result.get("data", [])
-
-    if args.json:
-        print(json.dumps(projects, indent=2))
-        return
-
-    print(f"\n{'='*60}")
-    print("PROJECTS")
-    print(f"{'='*60}")
-
-    for project in projects:
-        name = project.get("name", "Untitled")
-        pid = project.get("id", "")
-        print(f"  {name}")
-        print(f"    ID: {pid}")
-        print()
+def get_team_identifier(team_id):
+    """Get the team identifier (IKA, SCH) from team ID."""
+    for key, value in KNOWN_TEAMS.items():
+        if value == team_id and len(key) == 3:  # Only return 3-letter identifiers
+            return key.upper()
+    return None
 
 
-def cmd_tasks(args):
-    """List tasks in a project."""
-    project_id = resolve_project_id(args.project_id)
-    result = api_request(f"/tasks?project_id={project_id}")
-
-    if not result.get("success"):
-        print("Failed to fetch tasks", file=sys.stderr)
-        sys.exit(1)
-
-    tasks = result.get("data", [])
-
-    if args.json:
-        print(json.dumps(tasks, indent=2))
-        return
-
-    # Filter by status if specified
-    if args.status:
-        tasks = [t for t in tasks if t.get("status") == args.status]
-
-    # Group by status
-    by_status = {}
-    for task in tasks:
-        status = task.get("status", "unknown")
-        if status not in by_status:
-            by_status[status] = []
-        by_status[status].append(task)
-
-    print(f"\n{'='*60}")
-    print(f"TASKS ({len(tasks)} total)")
-    print(f"{'='*60}")
-
-    for status in STATUSES:
-        if status in by_status:
-            print(f"\n## {status.upper()} ({len(by_status[status])})")
-            for task in by_status[status]:
-                print(f"  {format_task(task, args.verbose)}")
-
-
-def cmd_task(args):
-    """Get details of a specific task."""
-    result = api_request(f"/tasks/{args.task_id}")
-
-    if not result.get("success"):
-        print("Failed to fetch task", file=sys.stderr)
-        sys.exit(1)
-
-    task = result.get("data", {})
-
-    if args.json:
-        print(json.dumps(task, indent=2))
-        return
-
-    print(f"\n{'='*60}")
-    print(f"TASK: {task.get('title', 'Untitled')}")
-    print(f"{'='*60}")
-    print(f"  ID:          {task.get('id', '')}")
-    print(f"  Status:      {task.get('status', 'unknown')}")
-    print(f"  Project ID:  {task.get('project_id', '')}")
-    print(f"  Created:     {task.get('created_at', '')}")
-    print(f"  Updated:     {task.get('updated_at', '')}")
-
-    if task.get("priority"):
-        print(f"  Priority:    {task['priority']}")
-    if task.get("assignee_id"):
-        print(f"  Assignee:    {task['assignee_id']}")
-    if task.get("due_date"):
-        print(f"  Due Date:    {task['due_date']}")
-
-    if task.get("description"):
-        print(f"\n  Description:")
-        for line in task["description"].split("\n"):
-            print(f"    {line}")
-
-
-def cmd_create(args):
-    """Create a new task (or team issue if --team is specified)."""
-    project_id = resolve_project_id(args.project_id)
-
-    data = {
-        "project_id": project_id,
-        "title": args.title,
-    }
-
-    if args.description:
-        data["description"] = args.description
-    if args.status:
-        data["status"] = args.status
-    if args.priority:
-        data["priority"] = args.priority
-    if args.team:
-        data["team_id"] = resolve_team_id(args.team)
-
-    result = api_request("/tasks", method="POST", data=data)
-
-    if not result.get("success"):
-        print("Failed to create task", file=sys.stderr)
-        sys.exit(1)
-
-    task = result.get("data", {})
-
-    if args.json:
-        print(json.dumps(task, indent=2))
-        return
-
-    # Show issue number if it's a team issue
-    issue_number = task.get("issue_number")
-    if issue_number:
-        print(f"✓ Created team issue: {task.get('id', '')}")
-        print(f"  Issue #: {issue_number}")
-    else:
-        print(f"✓ Created task: {task.get('id', '')}")
-    print(f"  Title: {task.get('title', '')}")
-    print(f"  Status: {task.get('status', '')}")
-
-
-def cmd_update(args):
-    """Update an existing task."""
-    data = {}
-
-    if args.status:
-        data["status"] = args.status
-    if args.title:
-        data["title"] = args.title
-    if args.description:
-        data["description"] = args.description
-    if args.priority:
-        data["priority"] = args.priority
-
-    if not data:
-        print("No updates specified. Use --status, --title, --description, or --priority", file=sys.stderr)
-        sys.exit(1)
-
-    result = api_request(f"/tasks/{args.task_id}", method="PUT", data=data)
-
-    if not result.get("success"):
-        print("Failed to update task", file=sys.stderr)
-        sys.exit(1)
-
-    task = result.get("data", {})
-
-    if args.json:
-        print(json.dumps(task, indent=2))
-        return
-
-    print(f"✓ Updated task: {task.get('id', '')}")
-    print(f"  Title: {task.get('title', '')}")
-    print(f"  Status: {task.get('status', '')}")
-
+# ============================================================================
+# COMMAND HANDLERS
+# ============================================================================
 
 def cmd_teams(args):
     """List all teams."""
     result = api_request("/teams")
-
     if not result.get("success"):
         print("Failed to fetch teams", file=sys.stderr)
         sys.exit(1)
@@ -333,125 +167,226 @@ def cmd_teams(args):
         print(json.dumps(teams, indent=2))
         return
 
-    print(f"\n{'='*60}")
-    print("TEAMS")
-    print(f"{'='*60}")
-
+    print(f"\nTeams:")
+    print(f"{'ID':<38} {'Name':<12} {'Identifier'}")
+    print("-" * 60)
     for team in teams:
-        name = team.get("name", "Untitled")
-        tid = team.get("id", "")
-        identifier = team.get("identifier", "")
-        print(f"  {name} ({identifier})")
-        print(f"    ID: {tid}")
-        print()
+        print(f"{team.get('id', ''):<38} {team.get('name', ''):<12} {team.get('identifier', '')}")
 
 
 def cmd_issues(args):
     """List issues for a team."""
-    result = api_request(f"/teams/{args.team_id}/issues")
+    team_id = resolve_team_id(args.team)
+    if not team_id:
+        print("Team is required. Use: IKA, SCH, or team UUID", file=sys.stderr)
+        sys.exit(1)
 
+    result = api_request(f"/teams/{team_id}/issues")
     if not result.get("success"):
         print("Failed to fetch issues", file=sys.stderr)
         sys.exit(1)
 
     issues = result.get("data", [])
+    team_identifier = get_team_identifier(team_id) or "?"
 
     if args.json:
         print(json.dumps(issues, indent=2))
         return
 
-    print(f"\n{'='*60}")
-    print(f"TEAM ISSUES ({len(issues)} total)")
-    print(f"{'='*60}")
+    # Filter by status if specified
+    if args.status:
+        issues = [i for i in issues if i.get("status") == args.status]
+
+    print(f"\n{team_identifier} Issues ({len(issues)}):")
+    print(f"{'#':<8} {'Status':<12} {'Title'}")
+    print("-" * 70)
 
     for issue in issues:
-        print(f"  {format_task(issue, args.verbose)}")
+        num = f"{team_identifier}-{issue.get('issue_number', '?')}"
+        status = issue.get("status", "?")
+        title = issue.get("title", "Untitled")[:50]
+        print(f"{num:<8} {status:<12} {title}")
 
 
-def cmd_health(args):
-    """Check backend health."""
-    base_url = get_base_url()
-    print(f"Backend URL: {base_url}")
-
-    try:
-        result = api_request("/projects")
-        if result.get("success"):
-            print("✓ Backend is healthy")
-            print(f"  Projects: {len(result.get('data', []))}")
-        else:
-            print("✗ Backend returned error")
-            sys.exit(1)
-    except SystemExit:
-        print("✗ Backend is not reachable")
+def cmd_create(args):
+    """Create a new team issue."""
+    team_id = resolve_team_id(args.team)
+    if not team_id:
+        print("Team is required. Use: IKA, SCH, or team UUID", file=sys.stderr)
         sys.exit(1)
 
+    project_id = resolve_project_id(args.project, team_id)
+    if not project_id:
+        print(f"No default project for team. Specify --project", file=sys.stderr)
+        sys.exit(1)
+
+    data = {
+        "project_id": project_id,
+        "title": args.title,
+        "team_id": team_id,
+        "status": args.status or "todo",
+    }
+
+    if args.description:
+        data["description"] = args.description
+    if args.priority is not None:
+        data["priority"] = args.priority
+
+    result = api_request("/tasks", method="POST", data=data)
+    if not result.get("success"):
+        print("Failed to create issue", file=sys.stderr)
+        sys.exit(1)
+
+    task = result.get("data", {})
+    team_identifier = get_team_identifier(team_id) or "?"
+
+    if args.json:
+        print(json.dumps(task, indent=2))
+        return
+
+    print(f"Created {team_identifier}-{task.get('issue_number')}: {task.get('title')}")
+    print(f"  ID: {task.get('id')}")
+    print(f"  Status: {task.get('status')}")
+
+
+def cmd_update(args):
+    """Update an existing task."""
+    data = {}
+    if args.status:
+        data["status"] = args.status
+    if args.title:
+        data["title"] = args.title
+    if args.description:
+        data["description"] = args.description
+    if args.priority is not None:
+        data["priority"] = args.priority
+
+    if not data:
+        print("No updates specified. Use --status, --title, --description, or --priority", file=sys.stderr)
+        sys.exit(1)
+
+    result = api_request(f"/tasks/{args.task_id}", method="PUT", data=data)
+    if not result.get("success"):
+        print("Failed to update task", file=sys.stderr)
+        sys.exit(1)
+
+    task = result.get("data", {})
+
+    if args.json:
+        print(json.dumps(task, indent=2))
+        return
+
+    print(f"Updated: {task.get('title')}")
+    print(f"  Status: {task.get('status')}")
+
+
+def cmd_task(args):
+    """Get details of a specific task."""
+    result = api_request(f"/tasks/{args.task_id}")
+    if not result.get("success"):
+        print("Failed to fetch task", file=sys.stderr)
+        sys.exit(1)
+
+    task = result.get("data", {})
+
+    if args.json:
+        print(json.dumps(task, indent=2))
+        return
+
+    team_id = task.get("team_id")
+    team_identifier = get_team_identifier(team_id) if team_id else None
+    issue_num = task.get("issue_number")
+
+    if team_identifier and issue_num:
+        print(f"\n{team_identifier}-{issue_num}: {task.get('title', 'Untitled')}")
+    else:
+        print(f"\n{task.get('title', 'Untitled')}")
+
+    print(f"  ID:      {task.get('id', '')}")
+    print(f"  Status:  {task.get('status', 'unknown')}")
+    if task.get("priority"):
+        print(f"  Priority: {task['priority']}")
+    if task.get("description"):
+        print(f"  Description: {task['description'][:100]}...")
+
+
+def cmd_projects(args):
+    """List all projects."""
+    result = api_request("/projects")
+    if not result.get("success"):
+        print("Failed to fetch projects", file=sys.stderr)
+        sys.exit(1)
+
+    projects = result.get("data", [])
+
+    if args.json:
+        print(json.dumps(projects, indent=2))
+        return
+
+    print(f"\nProjects ({len(projects)}):")
+    print(f"{'ID':<38} {'Name'}")
+    print("-" * 60)
+    for project in projects:
+        print(f"{project.get('id', ''):<38} {project.get('name', 'Untitled')}")
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="vibe-kanban CLI - Direct API client",
+        description="vibe-kanban CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s projects                           List all projects
-  %(prog)s tasks vibe-kanban                  List tasks (use project name)
-  %(prog)s tasks 1277542c-2247-4c9d-a236-c38173459694  List tasks (use ID)
-  %(prog)s task abc123                        Get task details
-  %(prog)s create frontend "My task" --team vibe-kanban   Create team issue
-  %(prog)s create vibe-kanban "My task"       Create project task (no team)
-  %(prog)s update abc123 --status done        Update task status
   %(prog)s teams                              List all teams
-  %(prog)s issues ea68ef91-...                List issues for a team
-  %(prog)s health                             Check backend connection
+  %(prog)s issues IKA                         List iKanban issues
+  %(prog)s issues SCH --status inprogress     List Schild in-progress issues
+  %(prog)s create IKA "Fix bug"               Create issue in iKanban
+  %(prog)s create SCH "Add feature" -p 1      Create urgent issue in Schild
+  %(prog)s update <id> --status done          Mark task done
+  %(prog)s task <id>                          Get task details
 
-Known project names: frontend, backend, vibe-kanban
-Known team names: vibe-kanban
+Teams: IKA (iKanban), SCH (Schild)
+Statuses: todo, inprogress, inreview, done, cancelled
         """
     )
 
     parser.add_argument("--json", action="store_true", help="Output as JSON")
+    subparsers = parser.add_subparsers(dest="command", help="Command")
 
-    subparsers = parser.add_subparsers(dest="command", help="Command to run")
-
-    # projects command
-    subparsers.add_parser("projects", help="List all projects")
-
-    # tasks command
-    tasks_parser = subparsers.add_parser("tasks", help="List tasks in a project")
-    tasks_parser.add_argument("project_id", help="Project ID or name (frontend, backend, vibe-kanban)")
-    tasks_parser.add_argument("--status", choices=STATUSES, help="Filter by status")
-    tasks_parser.add_argument("-v", "--verbose", action="store_true", help="Show more details")
-
-    # task command
-    task_parser = subparsers.add_parser("task", help="Get task details")
-    task_parser.add_argument("task_id", help="Task ID")
-
-    # create command
-    create_parser = subparsers.add_parser("create", help="Create a new task or team issue")
-    create_parser.add_argument("project_id", help="Project ID or name (frontend, backend, vibe-kanban)")
-    create_parser.add_argument("title", help="Task title")
-    create_parser.add_argument("-d", "--description", help="Task description")
-    create_parser.add_argument("-s", "--status", choices=STATUSES, default="todo", help="Initial status")
-    create_parser.add_argument("-p", "--priority", type=int, help="Priority (0-4)")
-    create_parser.add_argument("-t", "--team", help="Team ID or name to create as team issue (e.g., vibe-kanban)")
-
-    # update command
-    update_parser = subparsers.add_parser("update", help="Update a task")
-    update_parser.add_argument("task_id", help="Task ID")
-    update_parser.add_argument("-s", "--status", choices=STATUSES, help="New status")
-    update_parser.add_argument("-t", "--title", help="New title")
-    update_parser.add_argument("-d", "--description", help="New description")
-    update_parser.add_argument("-p", "--priority", type=int, help="New priority (0-4)")
-
-    # teams command
+    # teams
     subparsers.add_parser("teams", help="List all teams")
 
-    # issues command
-    issues_parser = subparsers.add_parser("issues", help="List issues for a team")
-    issues_parser.add_argument("team_id", help="Team ID")
-    issues_parser.add_argument("-v", "--verbose", action="store_true", help="Show more details")
+    # projects
+    subparsers.add_parser("projects", help="List all projects")
 
-    # health command
-    subparsers.add_parser("health", help="Check backend health")
+    # issues
+    issues_p = subparsers.add_parser("issues", help="List issues for a team")
+    issues_p.add_argument("team", help="Team: IKA, SCH, or UUID")
+    issues_p.add_argument("--status", "-s", choices=STATUSES, help="Filter by status")
+
+    # create
+    create_p = subparsers.add_parser("create", help="Create a new issue")
+    create_p.add_argument("team", help="Team: IKA, SCH, or UUID")
+    create_p.add_argument("title", help="Issue title")
+    create_p.add_argument("--project", help="Project name or ID (optional)")
+    create_p.add_argument("--description", "-d", help="Description")
+    create_p.add_argument("--status", "-s", choices=STATUSES, default="todo")
+    create_p.add_argument("--priority", "-p", type=int, help="Priority: 0-4")
+
+    # update
+    update_p = subparsers.add_parser("update", help="Update a task")
+    update_p.add_argument("task_id", help="Task UUID")
+    update_p.add_argument("--status", "-s", choices=STATUSES, help="New status")
+    update_p.add_argument("--title", "-t", help="New title")
+    update_p.add_argument("--description", "-d", help="New description")
+    update_p.add_argument("--priority", "-p", type=int, help="New priority")
+
+    # task
+    task_p = subparsers.add_parser("task", help="Get task details")
+    task_p.add_argument("task_id", help="Task UUID")
 
     args = parser.parse_args()
 
@@ -459,16 +394,17 @@ Known team names: vibe-kanban
         parser.print_help()
         sys.exit(1)
 
-    # Dispatch to command handler
+    # Check for token
+    if not get_auth_token():
+        print("Warning: VIBE_API_TOKEN not set. Set it in .env or environment.", file=sys.stderr)
+
     commands = {
+        "teams": cmd_teams,
         "projects": cmd_projects,
-        "tasks": cmd_tasks,
-        "task": cmd_task,
+        "issues": cmd_issues,
         "create": cmd_create,
         "update": cmd_update,
-        "teams": cmd_teams,
-        "issues": cmd_issues,
-        "health": cmd_health,
+        "task": cmd_task,
     }
 
     handler = commands.get(args.command)
