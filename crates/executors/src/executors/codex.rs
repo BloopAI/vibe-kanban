@@ -31,7 +31,6 @@ use self::{
     session::SessionHandler,
 };
 use crate::{
-    actions::review::RepoReviewContext,
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
@@ -225,16 +224,19 @@ impl StandardCodingAgentExecutor for Codex {
     async fn spawn_review(
         &self,
         current_dir: &Path,
-        context: Option<&[RepoReviewContext]>,
-        additional_prompt: Option<&str>,
+        prompt: &str,
+        session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        let review_target = review::map_to_review_target(context, additional_prompt);
+        // Use Custom review target with the pre-built prompt
+        let review_target = ReviewTarget::Custom {
+            instructions: prompt.to_string(),
+        };
         let action = CodexSessionAction::Review {
             target: review_target,
         };
-        self.spawn_inner(current_dir, command_parts, action, None, env)
+        self.spawn_inner(current_dir, command_parts, action, session_id, env)
             .await
     }
 }
