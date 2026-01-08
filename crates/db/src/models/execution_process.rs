@@ -446,6 +446,25 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Count failed cleanup scripts in a session (for retry limiting)
+    pub async fn count_failed_cleanup_scripts_in_session(
+        pool: &SqlitePool,
+        session_id: Uuid,
+    ) -> Result<i64, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64"
+               FROM execution_processes ep
+               WHERE ep.session_id = $1
+                 AND ep.run_reason = 'cleanupscript'
+                 AND ep.status = 'failed'
+                 AND ep.dropped = FALSE"#,
+            session_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(count)
+    }
+
     /// Create a new execution process
     ///
     /// Note: We intentionally avoid using a transaction here. SQLite update

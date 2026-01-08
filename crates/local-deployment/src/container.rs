@@ -65,6 +65,11 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
+/// Maximum number of times the agent will be automatically triggered to fix cleanup script failures.
+/// After this many failed attempts, the task will be finalized without further retries.
+/// This prevents infinite loops when the cleanup script has a persistent issue.
+const MAX_CLEANUP_RETRY_ATTEMPTS: i64 = 3;
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -431,7 +436,46 @@ impl LocalContainerService {
                     ExecutionProcessStatus::Running
                 );
 
-                if success || cleanup_done {
+                let cleanup_failed = matches!(
+                    ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::CleanupScript
+                ) && matches!(
+                    ctx.execution_process.status,
+                    ExecutionProcessStatus::Failed
+                );
+
+                if cleanup_failed {
+                    // Check how many times we've already retried
+                    let failed_count = ExecutionProcess::count_failed_cleanup_scripts_in_session(
+                        &db.pool,
+                        ctx.session.id,
+                    )
+                    .await
+                    .unwrap_or(0);
+
+                    if failed_count < MAX_CLEANUP_RETRY_ATTEMPTS {
+                        // Cleanup script failed - trigger agent to fix the issue
+                        tracing::info!(
+                            "Cleanup script failed for workspace {} (attempt {}/{}) - triggering agent to fix",
+                            ctx.workspace.id,
+                            failed_count,
+                            MAX_CLEANUP_RETRY_ATTEMPTS
+                        );
+                        if let Err(e) = container.start_agent_on_cleanup_failure(&ctx).await {
+                            tracing::error!("Failed to start agent on cleanup failure: {}", e);
+                            // Fall back to finalization if we can't start the agent
+                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        }
+                    } else {
+                        // Max retries exceeded - finalize and let the user know
+                        tracing::warn!(
+                            "Cleanup script failed {} times for workspace {} - max retries exceeded, finalizing task",
+                            failed_count,
+                            ctx.workspace.id
+                        );
+                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                    }
+                } else if success || cleanup_done {
                     // Commit changes (if any) and get feedback about whether changes were made
                     let changes_committed = match container.try_commit_changes(&ctx).await {
                         Ok(committed) => committed,
@@ -785,6 +829,68 @@ impl LocalContainerService {
         }
 
         Ok(())
+    }
+
+    /// Start an agent follow-up to fix a cleanup script failure
+    async fn start_agent_on_cleanup_failure(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<ExecutionProcess, ContainerError> {
+        // Get executor profile from the latest CodingAgent process in this session
+        let executor_profile_id =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await
+                .map_err(|e| {
+                    ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
+                })?
+                .ok_or_else(|| {
+                    ContainerError::Other(anyhow!("No executor profile found for cleanup agent"))
+                })?;
+
+        // Get latest agent session ID for session continuity (from coding agent turns)
+        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await?;
+
+        let project_repos =
+            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+
+        let working_dir = ctx
+            .workspace
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+
+        let prompt = "The cleanup script failed. Please fix the issues and try again.".to_string();
+
+        let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                prompt,
+                session_id: agent_session_id,
+                executor_profile_id: executor_profile_id.clone(),
+                working_dir: working_dir.clone(),
+            })
+        } else {
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt,
+                executor_profile_id: executor_profile_id.clone(),
+                working_dir,
+            })
+        };
+
+        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
+
+        self.start_execution(
+            &ctx.workspace,
+            &ctx.session,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await
     }
 
     /// Start a follow-up execution from a queued message
