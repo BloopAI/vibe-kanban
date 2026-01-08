@@ -1,5 +1,5 @@
 //! DB crate for iKanban - Migration to Postgres
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use sqlx::{
     Error, Pool, Postgres, PgPool,

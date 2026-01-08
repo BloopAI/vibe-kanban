@@ -3,13 +3,7 @@
 //! Manages the global Postgres connection pool.
 //! Previously managed multiple SQLite pools, now adapted for single-DB architecture.
 
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::Arc,
-};
-
-use tokio::sync::RwLock;
+use std::sync::Arc;
 
 use crate::{DBService, registry::RegistryService};
 

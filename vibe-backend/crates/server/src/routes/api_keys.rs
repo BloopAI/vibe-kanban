@@ -5,8 +5,6 @@ use axum::{
     Json, Router,
 };
 use db::models::api_key::{ApiKey, ApiKeyInfo, ApiKeyWithSecret, CreateApiKey};
-use ts_rs::TS;
-use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -66,7 +64,7 @@ pub async fn delete_api_key(
     }
 }
 
-pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route("/api-keys", get(list_api_keys))
         .route("/api-keys", post(create_api_key))

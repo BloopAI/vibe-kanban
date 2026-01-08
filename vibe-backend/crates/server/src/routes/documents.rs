@@ -1070,7 +1070,7 @@ pub async fn scan_all_filesystem(
         )));
     }
 
-    let mut folders_created = 0;
+    let mut _folders_created = 0;
     let mut documents_created = 0;
     let mut total_scanned = 0;
     let mut folder_names = Vec::new();
@@ -1121,7 +1121,7 @@ pub async fn scan_all_filesystem(
 
                 // Check if this folder was just created (crude check: if it's new, we add to count)
                 // We track by checking if we already had this folder
-                let was_created = {
+                let _was_created = {
                     let existing = DocumentFolder::find_all_by_team(&deployment.db().pool, team.id).await?;
                     !existing.iter().any(|f| f.id == folder.id && f.created_at < folder.created_at)
                 };

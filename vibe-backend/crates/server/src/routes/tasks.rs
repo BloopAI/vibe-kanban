@@ -244,7 +244,7 @@ pub async fn create_task_and_start(
         task,
         has_in_progress_attempt: is_attempt_running,
         last_attempt_failed: false,
-        executor: payload.executor_profile_id.executor.to_string(),
+        executor: Some(payload.executor_profile_id.executor.to_string()),
     })))
 }
 

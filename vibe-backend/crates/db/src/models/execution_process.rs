@@ -425,7 +425,7 @@ impl ExecutionProcess {
         repo_states: &[CreateExecutionProcessRepoState],
     ) -> Result<Self, sqlx::Error> {
         let now = Utc::now();
-        let executor_action_json = sqlx::types::Json(&data.executor_action);
+        let _executor_action_json = sqlx::types::Json(&data.executor_action);
 
         sqlx::query!(
             r#"INSERT INTO execution_processes (

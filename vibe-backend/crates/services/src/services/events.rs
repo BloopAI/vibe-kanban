@@ -1,17 +1,8 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use db::{
-    DBService,
-    models::{
-        execution_process::ExecutionProcess, project::Project, scratch::Scratch, task::Task,
-        workspace::Workspace,
-    },
-};
-use serde_json::json;
-use sqlx::{Error as SqlxError, Postgres, PgPool}; // Removed Sqlite imports
+use db::DBService;
 use tokio::sync::RwLock;
 use utils::msg_store::MsgStore;
-use uuid::Uuid;
 
 #[path = "events/patches.rs"]
 pub mod patches;
@@ -47,9 +38,9 @@ impl EventService {
     /// NOTE: Postgres does not support sqlite-style hooks. This is currently valid but does nothing.
     /// Realtime updates should be handled via app-level events or Postgres LISTEN/NOTIFY.
     pub fn create_hook(
-        msg_store: Arc<MsgStore>,
-        entry_count: Arc<RwLock<usize>>,
-        db_service: DBService,
+        _msg_store: Arc<MsgStore>,
+        _entry_count: Arc<RwLock<usize>>,
+        _db_service: DBService,
     ) -> impl for<'a> Fn(
         &'a mut sqlx::PgConnection,
     ) -> std::pin::Pin<
@@ -57,7 +48,7 @@ impl EventService {
     > + Send
     + Sync
     + 'static {
-        move |conn: &mut sqlx::PgConnection| {
+        move |_conn: &mut sqlx::PgConnection| {
             // No-op for Postgres migration
             Box::pin(async move {
                 Ok(())
