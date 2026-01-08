@@ -443,13 +443,14 @@ impl VcsProvider for GitHubProviderAdapter {
         repo_info: &VcsRepoInfo,
         pr_number: i64,
     ) -> Result<PullRequestInfo, VcsProviderError> {
-        let github_repo_info = super::github::GitHubRepoInfo {
-            owner: repo_info.owner_or_project.clone(),
-            repo_name: repo_info.repo_name.clone(),
-        };
+        // Construct GitHub PR URL from repo info and PR number
+        let pr_url = format!(
+            "https://github.com/{}/{}/pull/{}",
+            repo_info.owner_or_project, repo_info.repo_name, pr_number
+        );
 
         self.inner
-            .update_pr_status(&github_repo_info, pr_number)
+            .update_pr_status(&pr_url)
             .await
             .map_err(|e| VcsProviderError::PullRequest(e.to_string()))
     }

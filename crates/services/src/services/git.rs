@@ -16,6 +16,7 @@ use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
 use super::file_ranker::FileStat;
+use super::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
