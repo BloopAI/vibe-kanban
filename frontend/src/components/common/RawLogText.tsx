@@ -9,6 +9,8 @@ interface RawLogTextProps {
   as?: 'div' | 'span';
   className?: string;
   linkifyUrls?: boolean;
+  searchQuery?: string;
+  isCurrentMatch?: boolean;
 }
 
 const RawLogText = memo(
@@ -18,14 +20,43 @@ const RawLogText = memo(
     as: Component = 'div',
     className,
     linkifyUrls = false,
+    searchQuery,
+    isCurrentMatch = false,
   }: RawLogTextProps) => {
     // Only apply stderr fallback color when no ANSI codes are present
     const hasAnsiCodes = hasAnsi(content);
     const shouldApplyStderrFallback = channel === 'stderr' && !hasAnsiCodes;
 
+    const highlightClass = isCurrentMatch
+      ? 'bg-yellow-500/60 ring-1 ring-yellow-500 rounded-sm'
+      : 'bg-yellow-500/30 rounded-sm';
+
+    const highlightMatches = (text: string, key: string | number) => {
+      if (!searchQuery) {
+        return <AnsiHtml key={key} text={text} />;
+      }
+
+      const regex = new RegExp(
+        `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+        'gi'
+      );
+      const parts = text.split(regex);
+
+      return parts.map((part, idx) => {
+        if (part.toLowerCase() === searchQuery.toLowerCase()) {
+          return (
+            <mark key={`${key}-${idx}`} className={highlightClass}>
+              <AnsiHtml text={part} />
+            </mark>
+          );
+        }
+        return <AnsiHtml key={`${key}-${idx}`} text={part} />;
+      });
+    };
+
     const renderContent = () => {
       if (!linkifyUrls) {
-        return <AnsiHtml text={content} />;
+        return highlightMatches(content, 'content');
       }
 
       const urlRegex = /(https?:\/\/\S+)/g;
@@ -46,8 +77,8 @@ const RawLogText = memo(
             </a>
           );
         }
-        // For non-URL parts, apply ANSI formatting
-        return <AnsiHtml key={index} text={part} />;
+        // For non-URL parts, apply ANSI formatting with highlighting
+        return highlightMatches(part, index);
       });
     };
 

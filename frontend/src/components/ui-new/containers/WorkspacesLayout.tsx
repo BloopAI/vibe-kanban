@@ -269,6 +269,44 @@ export function WorkspacesLayout() {
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);
 
+  // Log search state (lifted from LogsContentContainer)
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+  const [logMatchIndices, setLogMatchIndices] = useState<number[]>([]);
+  const [logCurrentMatchIdx, setLogCurrentMatchIdx] = useState(0);
+
+  // Reset search when content changes
+  const logContentId =
+    logsPanelContent?.type === 'process'
+      ? logsPanelContent.processId
+      : logsPanelContent?.type === 'tool'
+        ? logsPanelContent.toolName
+        : null;
+
+  useEffect(() => {
+    setLogSearchQuery('');
+    setLogCurrentMatchIdx(0);
+  }, [logContentId]);
+
+  // Reset current match index when search query changes
+  useEffect(() => {
+    setLogCurrentMatchIdx(0);
+  }, [logSearchQuery]);
+
+  // Navigation handlers for log search
+  const handleLogPrevMatch = useCallback(() => {
+    if (logMatchIndices.length === 0) return;
+    setLogCurrentMatchIdx((prev) =>
+      prev > 0 ? prev - 1 : logMatchIndices.length - 1
+    );
+  }, [logMatchIndices.length]);
+
+  const handleLogNextMatch = useCallback(() => {
+    if (logMatchIndices.length === 0) return;
+    setLogCurrentMatchIdx((prev) =>
+      prev < logMatchIndices.length - 1 ? prev + 1 : 0
+    );
+  }, [logMatchIndices.length]);
+
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
@@ -457,6 +495,12 @@ export function WorkspacesLayout() {
               selectedProcessId={selectedProcessId}
               onSelectProcess={handleViewProcessInPanel}
               disableAutoSelect={logsPanelContent?.type === 'tool'}
+              searchQuery={logSearchQuery}
+              onSearchQueryChange={setLogSearchQuery}
+              matchCount={logMatchIndices.length}
+              currentMatchIdx={logCurrentMatchIdx}
+              onPrevMatch={handleLogPrevMatch}
+              onNextMatch={handleLogNextMatch}
             />
           </Allotment.Pane>
           <Allotment.Pane minSize={200}>
@@ -563,7 +607,14 @@ export function WorkspacesLayout() {
                 attemptId={selectedWorkspace?.id}
               />
             )}
-            {isLogsMode && <LogsContentContainer content={logsPanelContent} />}
+            {isLogsMode && (
+              <LogsContentContainer
+                content={logsPanelContent}
+                searchQuery={logSearchQuery}
+                currentMatchIndex={logCurrentMatchIdx}
+                onMatchIndicesChange={setLogMatchIndices}
+              />
+            )}
           </div>
         </Allotment.Pane>
 

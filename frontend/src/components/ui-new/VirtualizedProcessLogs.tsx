@@ -19,9 +19,18 @@ export type LogEntry = Extract<
 export interface VirtualizedProcessLogsProps {
   logs: LogEntry[];
   error: string | null;
+  searchQuery?: string;
+  matchIndices?: number[];
+  currentMatchIndex?: number;
 }
 
-type LogEntryWithKey = LogEntry & { key: string };
+type LogEntryWithKey = LogEntry & { key: string; originalIndex: number };
+
+interface SearchContext {
+  searchQuery?: string;
+  matchIndices?: number[];
+  currentMatchIndex?: number;
+}
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
 
@@ -38,19 +47,26 @@ const AutoScrollToBottom: ScrollModifier = {
 
 const computeItemKey: VirtuosoMessageListProps<
   LogEntryWithKey,
-  unknown
+  SearchContext
 >['computeItemKey'] = ({ data }) => data.key;
 
 const ItemContent: VirtuosoMessageListProps<
   LogEntryWithKey,
-  unknown
->['ItemContent'] = ({ data }) => {
+  SearchContext
+>['ItemContent'] = ({ data, context }) => {
+  const isMatch = context?.matchIndices?.includes(data.originalIndex) ?? false;
+  const isCurrentMatch =
+    context?.matchIndices?.[context?.currentMatchIndex ?? -1] ===
+    data.originalIndex;
+
   return (
     <RawLogText
       content={data.content}
       channel={data.type === 'STDERR' ? 'stderr' : 'stdout'}
       className="text-sm px-4 py-1"
       linkifyUrls
+      searchQuery={isMatch ? context?.searchQuery : undefined}
+      isCurrentMatch={isCurrentMatch}
     />
   );
 };
@@ -58,18 +74,26 @@ const ItemContent: VirtuosoMessageListProps<
 export function VirtualizedProcessLogs({
   logs,
   error,
+  searchQuery,
+  matchIndices,
+  currentMatchIndex,
 }: VirtualizedProcessLogsProps) {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<LogEntryWithKey> | null>(null);
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const messageListRef = useRef<VirtuosoMessageListMethods<
+    LogEntryWithKey,
+    SearchContext
+  > | null>(null);
   const prevLogsLengthRef = useRef(0);
+  const prevCurrentMatchRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      // Add keys to log entries
+      // Add keys and original index to log entries
       const logsWithKeys: LogEntryWithKey[] = logs.map((entry, index) => ({
         ...entry,
         key: `log-${index}`,
+        originalIndex: index,
       }));
 
       // Determine scroll modifier based on whether this is initial load or update
@@ -92,6 +116,24 @@ export function VirtualizedProcessLogs({
     return () => clearTimeout(timeoutId);
   }, [logs]);
 
+  // Scroll to current match when it changes
+  useEffect(() => {
+    if (
+      matchIndices &&
+      matchIndices.length > 0 &&
+      currentMatchIndex !== undefined &&
+      currentMatchIndex !== prevCurrentMatchRef.current
+    ) {
+      const logIndex = matchIndices[currentMatchIndex];
+      messageListRef.current?.scrollToItem({
+        index: logIndex,
+        align: 'center',
+        behavior: 'smooth',
+      });
+      prevCurrentMatchRef.current = currentMatchIndex;
+    }
+  }, [currentMatchIndex, matchIndices]);
+
   if (logs.length === 0 && !error) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -113,15 +155,22 @@ export function VirtualizedProcessLogs({
     );
   }
 
+  const context: SearchContext = {
+    searchQuery,
+    matchIndices,
+    currentMatchIndex,
+  };
+
   return (
     <div className="h-full">
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >
-        <VirtuosoMessageList<LogEntryWithKey, unknown>
+        <VirtuosoMessageList<LogEntryWithKey, SearchContext>
           ref={messageListRef}
           className="h-full"
           data={channelData}
+          context={context}
           initialLocation={INITIAL_TOP_ITEM}
           computeItemKey={computeItemKey}
           ItemContent={ItemContent}
