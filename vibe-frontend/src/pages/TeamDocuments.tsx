@@ -116,6 +116,14 @@ export function TeamDocuments() {
   const [newDocContent, setNewDocContent] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
 
+  // Clear editingDoc when URL doesn't have doc param (e.g., sidebar navigation)
+  useEffect(() => {
+    if (!docIdFromUrl && editingDoc) {
+      setEditingDoc(null);
+      setDocContent(null);
+    }
+  }, [docIdFromUrl]);
+
   // Handle URL query param for direct document linking
   useEffect(() => {
     if (docIdFromUrl && teamId && !editingDoc && !isLoading) {
