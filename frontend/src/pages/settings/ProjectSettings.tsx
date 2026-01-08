@@ -30,7 +30,7 @@ import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
-import { repoBranchKeys } from '@/hooks/useRepoBranches';
+import { repoBranchKeys, useRepoBranches } from '@/hooks/useRepoBranches';
 import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -45,6 +45,7 @@ interface RepoScriptsFormState {
   parallel_setup_script: boolean;
   cleanup_script: string;
   copy_files: string;
+  default_branch: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -64,6 +65,7 @@ function projectRepoToScriptsFormState(
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
+    default_branch: projectRepo?.default_branch ?? null,
   };
 }
 
@@ -115,6 +117,11 @@ export function ProjectSettings() {
 
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
+
+  // Fetch branches for selected repo
+  const { data: branches = [], isLoading: loadingBranches } = useRepoBranches(
+    selectedScriptsRepoId ?? undefined
+  );
 
   // Check for unsaved changes (project name)
   const hasUnsavedProjectChanges = useMemo(() => {
@@ -426,6 +433,7 @@ export function ProjectSettings() {
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
+          default_branch: scriptsDraft.default_branch || null,
         }
       );
       setSelectedProjectRepo(updatedRepo);
@@ -813,6 +821,44 @@ export function ProjectSettings() {
                     </div>
                   ) : scriptsDraft ? (
                     <>
+                      <div className="space-y-2">
+                        <Label htmlFor="default-branch">Default Branch</Label>
+                        <Select
+                          value={scriptsDraft.default_branch ?? ''}
+                          onValueChange={(value) =>
+                            updateScriptsDraft({
+                              default_branch: value || null,
+                            })
+                          }
+                          disabled={loadingBranches}
+                        >
+                          <SelectTrigger id="default-branch">
+                            <SelectValue
+                              placeholder={
+                                loadingBranches
+                                  ? 'Loading branches...'
+                                  : 'Auto-detect from remote'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">
+                              Auto-detect from remote
+                            </SelectItem>
+                            {branches.map((branch) => (
+                              <SelectItem key={branch.name} value={branch.name}>
+                                {branch.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          The default branch to use when starting new task
+                          attempts. If not set, it will be auto-detected from
+                          the remote.
+                        </p>
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="setup-script">
                           {t('settings.projects.scripts.setup.label')}

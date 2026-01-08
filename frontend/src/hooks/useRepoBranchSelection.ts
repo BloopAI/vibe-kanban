@@ -11,8 +11,14 @@ export type RepoBranchConfig = {
   branches: GitBranch[];
 };
 
+/** Repo with optional configured default branch from project settings */
+export type RepoWithDefaultBranch = Repo & {
+  /** User-configured default branch for this repo (from ProjectRepo.default_branch) */
+  configuredDefaultBranch?: string | null;
+};
+
 type UseRepoBranchSelectionOptions = {
-  repos: Repo[];
+  repos: RepoWithDefaultBranch[];
   initialBranch?: string | null;
   enabled?: boolean;
 };
@@ -55,11 +61,42 @@ export function useRepoBranchSelection({
       let targetBranch: string | null = userOverrides[repo.id] ?? null;
 
       if (targetBranch === null) {
+        // Priority order:
+        // 1. initialBranch (e.g., from parent attempt)
+        // 2. User-configured default branch from project settings
+        // 3. Auto-detected default branch from remote (is_default)
+        // 4. Currently checked out branch (is_current)
+        // 5. First branch in the list
         if (initialBranch && branches.some((b) => b.name === initialBranch)) {
           targetBranch = initialBranch;
-        } else {
+        } else if (repo.configuredDefaultBranch) {
+          // Check for exact match first
+          const exactMatch = branches.find(
+            (b) => b.name === repo.configuredDefaultBranch
+          );
+          if (exactMatch) {
+            targetBranch = exactMatch.name;
+          } else {
+            // Try matching without origin/ prefix (e.g., "origin/main" -> "main")
+            const withoutPrefix = repo.configuredDefaultBranch.replace(
+              /^origin\//,
+              ''
+            );
+            const prefixMatch = branches.find((b) => b.name === withoutPrefix);
+            if (prefixMatch) {
+              targetBranch = prefixMatch.name;
+            }
+          }
+        }
+
+        if (targetBranch === null) {
+          const defaultBranch = branches.find((b) => b.is_default && !b.is_remote);
           const currentBranch = branches.find((b) => b.is_current);
-          targetBranch = currentBranch?.name ?? branches[0]?.name ?? null;
+          targetBranch =
+            defaultBranch?.name ??
+            currentBranch?.name ??
+            branches[0]?.name ??
+            null;
         }
       }
 

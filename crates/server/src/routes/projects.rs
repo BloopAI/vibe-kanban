@@ -431,6 +431,14 @@ pub async fn get_project_repositories(
     Ok(ResponseJson(ApiResponse::success(repositories)))
 }
 
+pub async fn get_project_repository_configs(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<ProjectRepo>>>, ApiError> {
+    let configs = ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
+    Ok(ResponseJson(ApiResponse::success(configs)))
+}
+
 pub async fn add_project_repository(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -600,6 +608,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/repositories",
             get(get_project_repositories).post(add_project_repository),
         )
+        .route("/repository-configs", get(get_project_repository_configs))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,

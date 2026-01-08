@@ -61,6 +61,8 @@ pub struct GitBranch {
     pub name: String,
     pub is_current: bool,
     pub is_remote: bool,
+    /// True if this is the default branch (detected from origin/HEAD)
+    pub is_default: bool,
     #[ts(type = "Date")]
     pub last_commit_date: DateTime<Utc>,
 }
@@ -1212,6 +1214,9 @@ impl GitService {
         let current_branch = self.get_current_branch(repo_path).unwrap_or_default();
         let mut branches = Vec::new();
 
+        // Detect the default branch from origin/HEAD symbolic reference
+        let default_branch = self.get_default_branch_from_remote(&repo);
+
         // Helper function to get last commit date for a branch
         let get_last_commit_date = |branch: &git2::Branch| -> Result<DateTime<Utc>, git2::Error> {
             if let Some(target) = branch.get().target()
@@ -1229,10 +1234,14 @@ impl GitService {
             let (branch, _) = branch_result?;
             if let Some(name) = branch.name()? {
                 let last_commit_date = get_last_commit_date(&branch)?;
+                let is_default = default_branch
+                    .as_ref()
+                    .is_some_and(|default| default == name);
                 branches.push(GitBranch {
                     name: name.to_string(),
                     is_current: name == current_branch,
                     is_remote: false,
+                    is_default,
                     last_commit_date,
                 });
             }
@@ -1246,21 +1255,30 @@ impl GitService {
                 // Skip remote HEAD references
                 if !name.ends_with("/HEAD") {
                     let last_commit_date = get_last_commit_date(&branch)?;
+                    // Check if this remote branch is the default (e.g., origin/main matches "main")
+                    let is_default = default_branch.as_ref().is_some_and(|default| {
+                        name.ends_with(&format!("/{}", default))
+                    });
                     branches.push(GitBranch {
                         name: name.to_string(),
                         is_current: false,
                         is_remote: true,
+                        is_default,
                         last_commit_date,
                     });
                 }
             }
         }
 
-        // Sort branches: current first, then by most recent commit date
+        // Sort branches: current first, then default, then by most recent commit date
         branches.sort_by(|a, b| {
             if a.is_current && !b.is_current {
                 std::cmp::Ordering::Less
             } else if !a.is_current && b.is_current {
+                std::cmp::Ordering::Greater
+            } else if a.is_default && !b.is_default {
+                std::cmp::Ordering::Less
+            } else if !a.is_default && b.is_default {
                 std::cmp::Ordering::Greater
             } else {
                 // Sort by most recent commit date (newest first)
@@ -1269,6 +1287,21 @@ impl GitService {
         });
 
         Ok(branches)
+    }
+
+    /// Detect the default branch from origin/HEAD symbolic reference.
+    /// Returns the branch name (e.g., "main" or "master") if detectable.
+    fn get_default_branch_from_remote(&self, repo: &Repository) -> Option<String> {
+        // Try to resolve origin/HEAD symbolic reference
+        if let Ok(reference) = repo.find_reference("refs/remotes/origin/HEAD") {
+            if let Ok(resolved) = reference.resolve() {
+                if let Some(name) = resolved.shorthand() {
+                    // name will be like "origin/main", strip the "origin/" prefix
+                    return name.strip_prefix("origin/").map(String::from);
+                }
+            }
+        }
+        None
     }
 
     /// Perform a squash merge of task branch into base branch, but fail on conflicts
