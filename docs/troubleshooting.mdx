@@ -29,12 +29,12 @@ RUST_LOG=debug npx vibe-kanban
 
 This will provide verbose logging output that can help identify the root cause of issues.
 
-## Resetting the Project Cache
+## DANGER: Wiping Your Database 
 
-If you encounter persistent issues or need to completely reset Vibe Kanban's cached data, you can delete the application data directory for your operating system.
+If you encounter irrecoverable errors and need to completely wipe your Vibe Kanban database, you can delete the application data directory for your operating system. 
 
 <Warning>
-Deleting these directories will remove all cached data and settings. Make sure to back up any important information before proceeding.
+This action is irreversible and will result in the loss of ALL your tasks and settings. Make sure to back up any important information before proceeding.
 </Warning>
 
 **Delete the following directory based on your OS:**
@@ -61,4 +61,4 @@ Typically: `C:\Users\<username>\AppData\Roaming\bloop\vibe-kanban\`
 </Tab>
 </Tabs>
 
-After deleting the cache directory, restart Vibe Kanban to reinitialize with fresh settings.
+After deleting the application data directory, restart Vibe Kanban to reset with an empty database and default settings.
