@@ -1003,6 +1003,9 @@ pub async fn scan_filesystem(
                 content,
                 file_type: Some(file_type.clone()),
                 icon: None,
+                file_path: None,
+                file_size: None,
+                mime_type: None,
             };
 
             let document = Document::create(&deployment.db().pool, &create_payload).await?;
@@ -1188,6 +1191,9 @@ pub async fn scan_all_filesystem(
                     content,
                     file_type: Some(file_type.clone()),
                     icon: None,
+                    file_path: None,
+                    file_size: None,
+                    mime_type: None,
                 };
 
                 let document = Document::create(&deployment.db().pool, &create_payload).await?;
@@ -1358,6 +1364,9 @@ pub async fn upload_documents(
                 content,
                 file_type: Some(file_type.clone()),
                 icon: None,
+                file_path: None,
+                file_size: None,
+                mime_type: None,
             };
 
             match Document::create(&deployment.db().pool, &create_payload).await {

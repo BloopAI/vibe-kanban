@@ -1170,6 +1170,9 @@ pub async fn pull_documents_from_github(
                                     content: Some(content),
                                     file_type: Some("markdown".to_string()),
                                     icon: None,
+                                    file_path: None,
+                                    file_size: None,
+                                    mime_type: None,
                                 };
                                 Document::create(&deployment.db().pool, &create).await?;
                             }
