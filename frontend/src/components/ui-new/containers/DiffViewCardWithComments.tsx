@@ -14,8 +14,8 @@ import {
   type ReviewDraft,
   type ReviewComment,
 } from '@/contexts/ReviewProvider';
-import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
-import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
+import { CommentWidgetLine } from './CommentWidgetLine';
+import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import type { ToolStatus, DiffChangeKind } from 'shared/types';
 import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';

@@ -1,0 +1,68 @@
+import { useState, useCallback } from 'react';
+import { PrimaryButton } from '../primitives/PrimaryButton';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+
+interface CommentWidgetLineProps {
+  draft: ReviewDraft;
+  widgetKey: string;
+  onSave: () => void;
+  onCancel: () => void;
+  projectId?: string;
+}
+
+export function CommentWidgetLine({
+  draft,
+  widgetKey,
+  onSave,
+  onCancel,
+  projectId,
+}: CommentWidgetLineProps) {
+  const { setDraft, addComment } = useReview();
+  const [value, setValue] = useState(draft.text);
+
+  const handleCancel = useCallback(() => {
+    setDraft(widgetKey, null);
+    onCancel();
+  }, [setDraft, widgetKey, onCancel]);
+
+  const handleSave = useCallback(() => {
+    if (value.trim()) {
+      addComment({
+        filePath: draft.filePath,
+        side: draft.side,
+        lineNumber: draft.lineNumber,
+        text: value.trim(),
+        codeLine: draft.codeLine,
+      });
+    }
+    setDraft(widgetKey, null);
+    onSave();
+  }, [value, draft, setDraft, widgetKey, onSave, addComment]);
+
+  return (
+    <div className="p-base rounded-sm border border-brand bg-brand/10 font-sans">
+      <WYSIWYGEditor
+        value={value}
+        onChange={setValue}
+        placeholder="Add a comment... (type @ to search files)"
+        className="w-full text-normal min-h-[60px]"
+        projectId={projectId}
+        onCmdEnter={handleSave}
+        autoFocus
+      />
+      <div className="mt-half flex gap-half">
+        <PrimaryButton
+          variant="default"
+          onClick={handleSave}
+          disabled={!value.trim()}
+        >
+          Add review comment
+        </PrimaryButton>
+        <PrimaryButton variant="secondary" onClick={handleCancel}>
+          Cancel
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+}
