@@ -504,7 +504,7 @@ export function SessionChatBox({
           )}
           {/* Existing session mode: show in-progress todo when running, otherwise file stats */}
           {!isNewSessionMode && (
-            <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+            <>
               {isRunning && inProgressTodo ? (
                 <span className="text-sm flex items-center gap-1">
                   <SpinnerIcon className="size-icon-sm animate-spin flex-shrink-0" />
@@ -513,24 +513,27 @@ export function SessionChatBox({
                   </span>
                 </span>
               ) : (
-                <span className="text-sm space-x-half">
-                  <span>
-                    {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
-                    changed
-                  </span>
-                  {(linesAdded !== undefined || linesRemoved !== undefined) && (
-                    <span className="space-x-half">
-                      {linesAdded !== undefined && (
-                        <span className="text-success">+{linesAdded}</span>
-                      )}
-                      {linesRemoved !== undefined && (
-                        <span className="text-error">-{linesRemoved}</span>
-                      )}
+                <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+                  <span className="text-sm space-x-half">
+                    <span>
+                      {filesChanged} {filesChanged === 1 ? 'File' : 'Files'}{' '}
+                      changed
                     </span>
-                  )}
-                </span>
+                    {(linesAdded !== undefined ||
+                      linesRemoved !== undefined) && (
+                      <span className="space-x-half">
+                        {linesAdded !== undefined && (
+                          <span className="text-success">+{linesAdded}</span>
+                        )}
+                        {linesRemoved !== undefined && (
+                          <span className="text-error">-{linesRemoved}</span>
+                        )}
+                      </span>
+                    )}
+                  </span>
+                </PrimaryButton>
               )}
-            </PrimaryButton>
+            </>
           )}
         </>
       }
