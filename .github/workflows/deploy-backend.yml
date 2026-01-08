@@ -36,6 +36,8 @@ jobs:
       - name: Build Binary
         working-directory: vibe-backend
         run: cargo build --release --bin server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # Upload Artifact for next job
       - name: Upload Binary
