@@ -70,6 +70,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route("/api-keys", get(list_api_keys))
         .route("/api-keys", post(create_api_key))
-        .route("/api-keys/:key_id/revoke", post(revoke_api_key))
-        .route("/api-keys/:key_id", delete(delete_api_key))
+        .route("/api-keys/{key_id}/revoke", post(revoke_api_key))
+        .route("/api-keys/{key_id}", delete(delete_api_key))
 }
