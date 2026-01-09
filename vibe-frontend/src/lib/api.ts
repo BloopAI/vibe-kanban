@@ -252,7 +252,7 @@ const getBackoffDelay = (attempt: number): number => {
 class RequestQueue {
   private queue: Array<() => Promise<void>> = [];
   private activeCount = 0;
-  private readonly MAX_CONCURRENT = 5;
+  private readonly MAX_CONCURRENT = 2;
 
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {

@@ -51,9 +51,14 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         AuthState::new().with_db_pool(deployment.db().pool.clone())
     );
 
-    // Create rate limiter (1000 requests per minute per IP)
+    // Create rate limiter (default 1000 requests per minute per IP, configurable)
+    let requests_per_minute = std::env::var("API_RATE_LIMIT_REQUESTS")
+        .ok()
+        .and_then(|v| v.parse::<u32>().ok())
+        .unwrap_or(1000);
+
     let rate_limiter = create_rate_limit_layer(RateLimitConfig {
-        requests_per_window: 1000,
+        requests_per_window: requests_per_minute,
         window_seconds: 60,
     });
 
