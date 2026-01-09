@@ -24,6 +24,10 @@ export const PERSIST_KEYS = {
   gitPanelAddRepositories: 'git-panel-add-repositories',
   // Process panel sections
   processesSection: 'processes-section',
+  // Changes panel sections
+  changesSection: 'changes-section',
+  // Preview panel sections
+  devServerSection: 'dev-server-section',
   // Context bar
   contextBarPosition: 'context-bar-position',
   // Pane sizes
@@ -44,6 +48,8 @@ export type PersistKey =
   | typeof PERSIST_KEYS.gitPanelProject
   | typeof PERSIST_KEYS.gitPanelAddRepositories
   | typeof PERSIST_KEYS.processesSection
+  | typeof PERSIST_KEYS.changesSection
+  | typeof PERSIST_KEYS.devServerSection
   | typeof PERSIST_KEYS.sidebarWidth
   | typeof PERSIST_KEYS.gitPanelWidth
   | typeof PERSIST_KEYS.changesPanelWidth
