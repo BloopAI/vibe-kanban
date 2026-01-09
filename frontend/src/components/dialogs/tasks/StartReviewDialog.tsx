@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ExecutorProfileSelector } from '@/components/settings';
+import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { sessionsApi } from '@/lib/api';
@@ -111,6 +111,13 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       if (!open) modal.hide();
     };
 
+    const handleNewSessionChange = (checked: boolean) => {
+      setCreateNewSession(checked);
+      if (!checked && defaultProfile) {
+        setSelectedProfile(defaultProfile);
+      }
+    };
+
     const hasReviewComments = Boolean(reviewMarkdown);
 
     return (
@@ -175,22 +182,20 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
             </div>
 
             {profiles && (
-              <div className="space-y-2">
-                {createNewSession ? (
-                  <ExecutorProfileSelector
-                    profiles={profiles}
-                    selectedProfile={effectiveProfile}
-                    onProfileSelect={setSelectedProfile}
-                    showLabel={false}
-                  />
-                ) : (
-                  <ConfigSelector
-                    profiles={profiles}
-                    selectedExecutorProfile={effectiveProfile}
-                    onChange={setSelectedProfile}
-                    showLabel={false}
-                  />
-                )}
+              <div className="flex gap-3 flex-col sm:flex-row">
+                <AgentSelector
+                  profiles={profiles}
+                  selectedExecutorProfile={effectiveProfile}
+                  onChange={setSelectedProfile}
+                  disabled={!createNewSession}
+                  showLabel={false}
+                />
+                <ConfigSelector
+                  profiles={profiles}
+                  selectedExecutorProfile={effectiveProfile}
+                  onChange={setSelectedProfile}
+                  showLabel={false}
+                />
               </div>
             )}
           </div>
@@ -208,7 +213,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 <Switch
                   id="new-session-switch"
                   checked={createNewSession}
-                  onCheckedChange={setCreateNewSession}
+                  onCheckedChange={handleNewSessionChange}
                   disabled={!sessionId}
                   className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
                   aria-label={t('startReviewDialog.newSession')}
