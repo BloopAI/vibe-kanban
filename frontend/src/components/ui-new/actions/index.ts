@@ -30,6 +30,7 @@ import {
   CrosshairIcon,
   DesktopIcon,
   PencilSimpleIcon,
+  HighlighterIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -45,6 +46,7 @@ import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspa
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
+import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -285,6 +287,19 @@ export const Actions = {
           queryKey: workspaceSummaryKeys.all,
         });
       }
+    },
+  },
+
+  StartReview: {
+    id: 'start-review',
+    label: 'Start Review',
+    icon: HighlighterIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    execute: async (_ctx, workspaceId) => {
+      await StartReviewDialog.show({
+        workspaceId,
+      });
     },
   },
 
