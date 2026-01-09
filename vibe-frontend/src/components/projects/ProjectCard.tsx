@@ -23,7 +23,7 @@ import {
   Unlink,
 } from 'lucide-react';
 import { Project } from 'shared/types';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
 import { projectsApi } from '@/lib/api';
@@ -45,7 +45,9 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
   const handleOpenInEditor = useOpenProjectInEditor(project);
   const { t } = useTranslation('projects');
 
-  const { data: repos } = useProjectRepos(project.id);
+  // Lazy-load repos only when dropdown is opened to prevent N+1 queries
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { data: repos } = useProjectRepos(project.id, { enabled: dropdownOpen });
   const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({
@@ -125,7 +127,7 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg">{project.name}</CardTitle>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreHorizontal className="h-4 w-4" />

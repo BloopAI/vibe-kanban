@@ -1,6 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inboxApi } from '@/lib/api';
 import type { InboxItem, CreateInboxItem, InboxSummary } from 'shared/types';
+
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
+// Query keys for consistent caching
+export const inboxKeys = {
+  all: ['inbox'] as const,
+  items: () => [...inboxKeys.all, 'items'] as const,
+  summary: () => [...inboxKeys.all, 'summary'] as const,
+};
 
 export interface UseInboxResult {
   items: InboxItem[];
@@ -15,81 +31,120 @@ export interface UseInboxResult {
   deleteItem: (itemId: string) => Promise<void>;
 }
 
+/**
+ * Hook for managing inbox items with TanStack Query for request deduplication.
+ */
 export function useInbox(): UseInboxResult {
-  const [items, setItems] = useState<InboxItem[]>([]);
-  const [summary, setSummary] = useState<InboxSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
+
+  // Query for inbox items
+  const {
+    data: items = [],
+    isLoading,
+    error: itemsError,
+  } = useQuery<InboxItem[]>({
+    queryKey: inboxKeys.items(),
+    queryFn: () => inboxApi.list(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
+
+  // Query for inbox summary
+  const { data: summary = null } = useQuery<InboxSummary>({
+    queryKey: inboxKeys.summary(),
+    queryFn: () => inboxApi.getSummary(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
 
   const refresh = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await inboxApi.list();
-      setItems(data);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch inbox'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: inboxKeys.items() });
+  }, [queryClient]);
 
   const refreshSummary = useCallback(async () => {
-    try {
-      const data = await inboxApi.getSummary();
-      setSummary(data);
-    } catch (err) {
-      console.error('Failed to fetch inbox summary:', err);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+  }, [queryClient]);
 
-  useEffect(() => {
-    refresh();
-    refreshSummary();
-  }, [refresh, refreshSummary]);
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: (data: CreateInboxItem) => inboxApi.create(data),
+    onSuccess: (newItem) => {
+      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
+        old ? [newItem, ...old] : [newItem]
+      );
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+    },
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (itemId: string) => inboxApi.markAsRead(itemId),
+    onSuccess: (updatedItem) => {
+      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
+        old?.map((item) => (item.id === updatedItem.id ? updatedItem : item)) ?? []
+      );
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => inboxApi.markAllAsRead(),
+    onSuccess: () => {
+      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
+        old?.map((item) => ({ ...item, is_read: true })) ?? []
+      );
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (itemId: string) => inboxApi.delete(itemId),
+    onSuccess: (_, itemId) => {
+      queryClient.setQueryData<InboxItem[]>(inboxKeys.items(), (old) =>
+        old?.filter((item) => item.id !== itemId) ?? []
+      );
+      queryClient.invalidateQueries({ queryKey: inboxKeys.summary() });
+    },
+  });
 
   const createItem = useCallback(
-    async (data: CreateInboxItem) => {
-      const newItem = await inboxApi.create(data);
-      setItems((prev) => [newItem, ...prev]);
-      refreshSummary();
-      return newItem;
-    },
-    [refreshSummary]
+    async (data: CreateInboxItem) => createMutation.mutateAsync(data),
+    [createMutation]
   );
 
   const markAsRead = useCallback(
-    async (itemId: string) => {
-      const updatedItem = await inboxApi.markAsRead(itemId);
-      setItems((prev) =>
-        prev.map((item) => (item.id === itemId ? updatedItem : item))
-      );
-      refreshSummary();
-      return updatedItem;
-    },
-    [refreshSummary]
+    async (itemId: string) => markAsReadMutation.mutateAsync(itemId),
+    [markAsReadMutation]
   );
 
-  const markAllAsRead = useCallback(async () => {
-    await inboxApi.markAllAsRead();
-    setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
-    refreshSummary();
-  }, [refreshSummary]);
+  const markAllAsRead = useCallback(
+    async () => { await markAllAsReadMutation.mutateAsync(); },
+    [markAllAsReadMutation]
+  );
 
   const deleteItem = useCallback(
-    async (itemId: string) => {
-      await inboxApi.delete(itemId);
-      setItems((prev) => prev.filter((item) => item.id !== itemId));
-      refreshSummary();
-    },
-    [refreshSummary]
+    async (itemId: string) => { await deleteMutation.mutateAsync(itemId); },
+    [deleteMutation]
   );
 
   return {
     items,
     summary,
     isLoading,
-    error,
+    error: itemsError ? (itemsError instanceof Error ? itemsError : new Error('Failed to fetch inbox')) : null,
     refresh,
     refreshSummary,
     createItem,

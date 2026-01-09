@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi } from '@/lib/api';
 import type {
   Document,
@@ -11,6 +12,22 @@ import type {
   ScanAllResponse,
   DiscoverFoldersResponse,
 } from 'shared/types';
+
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
+// Query keys for consistent caching
+export const documentsKeys = {
+  all: ['documents'] as const,
+  team: (teamId: string) => [...documentsKeys.all, teamId] as const,
+  list: (teamId: string, folderId: string | null) => [...documentsKeys.team(teamId), 'list', folderId] as const,
+  folders: (teamId: string) => [...documentsKeys.team(teamId), 'folders'] as const,
+};
 
 export interface UseDocumentsResult {
   documents: Document[];
@@ -38,136 +55,185 @@ export interface UseDocumentsResult {
   discoverFolders: () => Promise<DiscoverFoldersResponse>;
 }
 
+/**
+ * Hook for managing documents with TanStack Query for request deduplication.
+ */
 export function useDocuments(teamId: string): UseDocumentsResult {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [folders, setFolders] = useState<DocumentFolder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+
+  // Query for documents in current folder
+  const {
+    data: documents = [],
+    isLoading: docsLoading,
+    error: docsError,
+  } = useQuery<Document[]>({
+    queryKey: documentsKeys.list(teamId, currentFolderId),
+    queryFn: () => documentsApi.list(teamId, { folderId: currentFolderId ?? undefined }),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
+
+  // Query for all folders
+  const {
+    data: folders = [],
+    isLoading: foldersLoading,
+  } = useQuery<DocumentFolder[]>({
+    queryKey: documentsKeys.folders(teamId),
+    queryFn: () => documentsApi.listFolders(teamId),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000,
+  });
 
   const refresh = useCallback(async () => {
     if (!teamId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: documentsKeys.list(teamId, currentFolderId) }),
+      queryClient.invalidateQueries({ queryKey: documentsKeys.folders(teamId) }),
+    ]);
+  }, [teamId, currentFolderId, queryClient]);
 
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [docsData, foldersData] = await Promise.all([
-        documentsApi.list(teamId, { folderId: currentFolderId ?? undefined }),
-        documentsApi.listFolders(teamId),
-      ]);
-
-      setDocuments(docsData);
-      setFolders(foldersData);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch documents'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [teamId, currentFolderId]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  // Document operations
-  const createDocument = useCallback(
-    async (data: Omit<CreateDocument, 'team_id'>) => {
-      const newDoc = await documentsApi.create(teamId, {
+  // Document mutations
+  const createDocMutation = useMutation({
+    mutationFn: (data: Omit<CreateDocument, 'team_id'>) =>
+      documentsApi.create(teamId, {
         ...data,
         team_id: teamId,
         folder_id: data.folder_id ?? currentFolderId,
-      });
-      setDocuments((prev) => [...prev, newDoc]);
-      return newDoc;
-    },
-    [teamId, currentFolderId]
-  );
-
-  const updateDocument = useCallback(
-    async (documentId: string, data: UpdateDocument) => {
-      const updatedDoc = await documentsApi.update(teamId, documentId, data);
-      setDocuments((prev) =>
-        prev.map((doc) => (doc.id === documentId ? updatedDoc : doc))
+      }),
+    onSuccess: (newDoc) => {
+      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
+        old ? [...old, newDoc] : [newDoc]
       );
-      return updatedDoc;
     },
-    [teamId]
-  );
+  });
 
-  const deleteDocument = useCallback(
-    async (documentId: string) => {
-      await documentsApi.delete(teamId, documentId);
-      setDocuments((prev) => prev.filter((doc) => doc.id !== documentId));
+  const updateDocMutation = useMutation({
+    mutationFn: ({ documentId, data }: { documentId: string; data: UpdateDocument }) =>
+      documentsApi.update(teamId, documentId, data),
+    onSuccess: (updatedDoc) => {
+      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
+        old?.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc)) ?? []
+      );
     },
-    [teamId]
-  );
+  });
 
-  // Folder operations
-  const createFolder = useCallback(
-    async (data: Omit<CreateDocumentFolder, 'team_id'>) => {
-      const newFolder = await documentsApi.createFolder(teamId, {
+  const deleteDocMutation = useMutation({
+    mutationFn: (documentId: string) => documentsApi.delete(teamId, documentId),
+    onSuccess: (_, documentId) => {
+      queryClient.setQueryData<Document[]>(documentsKeys.list(teamId, currentFolderId), (old) =>
+        old?.filter((doc) => doc.id !== documentId) ?? []
+      );
+    },
+  });
+
+  // Folder mutations
+  const createFolderMutation = useMutation({
+    mutationFn: (data: Omit<CreateDocumentFolder, 'team_id'>) =>
+      documentsApi.createFolder(teamId, {
         ...data,
         team_id: teamId,
         parent_id: data.parent_id ?? currentFolderId,
-      });
-      setFolders((prev) => [...prev, newFolder]);
-      return newFolder;
+      }),
+    onSuccess: (newFolder) => {
+      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
+        old ? [...old, newFolder] : [newFolder]
+      );
     },
-    [teamId, currentFolderId]
+  });
+
+  const updateFolderMutation = useMutation({
+    mutationFn: ({ folderId, data }: { folderId: string; data: UpdateDocumentFolder }) =>
+      documentsApi.updateFolder(teamId, folderId, data),
+    onSuccess: (updatedFolder) => {
+      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
+        old?.map((folder) => (folder.id === updatedFolder.id ? updatedFolder : folder)) ?? []
+      );
+    },
+  });
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (folderId: string) => documentsApi.deleteFolder(teamId, folderId),
+    onSuccess: (_, folderId) => {
+      queryClient.setQueryData<DocumentFolder[]>(documentsKeys.folders(teamId), (old) =>
+        old?.filter((folder) => folder.id !== folderId) ?? []
+      );
+    },
+  });
+
+  // Callbacks
+  const createDocument = useCallback(
+    async (data: Omit<CreateDocument, 'team_id'>) => createDocMutation.mutateAsync(data),
+    [createDocMutation]
+  );
+
+  const updateDocument = useCallback(
+    async (documentId: string, data: UpdateDocument) =>
+      updateDocMutation.mutateAsync({ documentId, data }),
+    [updateDocMutation]
+  );
+
+  const deleteDocument = useCallback(
+    async (documentId: string) => { await deleteDocMutation.mutateAsync(documentId); },
+    [deleteDocMutation]
+  );
+
+  const createFolder = useCallback(
+    async (data: Omit<CreateDocumentFolder, 'team_id'>) => createFolderMutation.mutateAsync(data),
+    [createFolderMutation]
   );
 
   const updateFolder = useCallback(
-    async (folderId: string, data: UpdateDocumentFolder) => {
-      const updatedFolder = await documentsApi.updateFolder(teamId, folderId, data);
-      setFolders((prev) =>
-        prev.map((folder) => (folder.id === folderId ? updatedFolder : folder))
-      );
-      return updatedFolder;
-    },
-    [teamId]
+    async (folderId: string, data: UpdateDocumentFolder) =>
+      updateFolderMutation.mutateAsync({ folderId, data }),
+    [updateFolderMutation]
   );
 
   const deleteFolder = useCallback(
-    async (folderId: string) => {
-      await documentsApi.deleteFolder(teamId, folderId);
-      setFolders((prev) => prev.filter((folder) => folder.id !== folderId));
-    },
-    [teamId]
+    async (folderId: string) => { await deleteFolderMutation.mutateAsync(folderId); },
+    [deleteFolderMutation]
   );
 
-  // Search
+  // Search - doesn't need mutation, just a simple query
   const searchDocuments = useCallback(
-    async (query: string) => {
-      const results = await documentsApi.list(teamId, { search: query });
-      return results;
-    },
+    async (query: string) => documentsApi.list(teamId, { search: query }),
     [teamId]
   );
 
-  // Scan filesystem for new documents
+  // Scan operations - these trigger refresh after completion
   const scanFilesystem = useCallback(
     async (folderId: string) => {
       const result = await documentsApi.scanFilesystem(teamId, folderId);
-      // Refresh documents after scan
       await refresh();
       return result;
     },
     [teamId, refresh]
   );
 
-  // Recursive scan: create all nested folders and documents
   const scanAll = useCallback(async () => {
     const result = await documentsApi.scanAll(teamId);
-    // Refresh after full scan
     await refresh();
     return result;
   }, [teamId, refresh]);
 
-  // Discover folders from filesystem
   const discoverFolders = useCallback(async () => {
     const result = await documentsApi.discoverFolders(teamId);
-    // Refresh folders after discovery
     await refresh();
     return result;
   }, [teamId, refresh]);
@@ -175,8 +241,8 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   return {
     documents,
     folders,
-    isLoading,
-    error,
+    isLoading: docsLoading || foldersLoading,
+    error: docsError ? (docsError instanceof Error ? docsError : new Error('Failed to fetch documents')) : null,
     currentFolderId,
     setCurrentFolderId,
     refresh,

@@ -1,6 +1,21 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from '@/lib/api';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
+
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
+// Query key factory for consistent caching
+export const teamIssuesKeys = {
+  all: ['teamIssues'] as const,
+  team: (teamId: string) => [...teamIssuesKeys.all, teamId] as const,
+};
 
 export interface UseTeamIssuesResult {
   issues: TaskWithAttemptStatus[];
@@ -11,33 +26,34 @@ export interface UseTeamIssuesResult {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Hook for fetching team issues with TanStack Query for request deduplication.
+ * Multiple components using this hook with the same teamId will share the cache
+ * and NOT make duplicate API requests.
+ */
 export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
-  const [issues, setIssues] = useState<TaskWithAttemptStatus[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: issues = [], isLoading, error } = useQuery<TaskWithAttemptStatus[]>({
+    queryKey: teamIssuesKeys.team(teamId!),
+    queryFn: () => teamsApi.getIssues(teamId!),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - issues don't change frequently
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      // Never retry rate limit errors - this amplifies the problem
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000, // 60 seconds - respect rate limit window
+  });
 
   const refresh = useCallback(async () => {
-    if (!teamId) {
-      setIssues([]);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await teamsApi.getIssues(teamId);
-      setIssues(data);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch team issues'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [teamId]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!teamId) return;
+    await queryClient.invalidateQueries({ queryKey: teamIssuesKeys.team(teamId) });
+  }, [teamId, queryClient]);
 
   const issuesById = useMemo(() => {
     return issues.reduce(
@@ -78,7 +94,7 @@ export function useTeamIssues(teamId: string | undefined): UseTeamIssuesResult {
     issuesById,
     issuesByStatus,
     isLoading,
-    error,
+    error: error ? (error instanceof Error ? error : new Error('Failed to fetch team issues')) : null,
     refresh,
   };
 }

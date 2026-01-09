@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { teamsApi, projectsApi } from '../lib/api';
 import type { Project } from 'shared/types';
 
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
 export function useTeamProjects(teamId: string | undefined) {
   // Fetch full project data for this team directly from API
   // This ensures refresh button works properly
@@ -23,7 +31,16 @@ export function useTeamProjects(teamId: string | undefined) {
       );
     },
     enabled: Boolean(teamId),
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    staleTime: 5 * 60 * 1000, // 5 minutes - team projects don't change frequently
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      // Never retry rate limit errors - this amplifies the problem
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000, // 60 seconds - respect rate limit window
   });
 
   return {

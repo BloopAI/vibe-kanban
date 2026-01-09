@@ -225,12 +225,12 @@ export const getAuthToken = async (): Promise<string | null> => {
   }
 };
 
-// Retry configuration for rate limiting
+// Retry configuration - DO NOT retry 429 rate limits (it amplifies the problem)
 const RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelayMs: 1000, // 1 second
-  maxDelayMs: 8000,  // 8 seconds max
-  retryableStatuses: [429, 503, 502, 504], // Rate limit and temporary errors
+  maxRetries: 1, // Only 1 retry for server errors
+  baseDelayMs: 2000, // 2 seconds
+  maxDelayMs: 5000,  // 5 seconds max
+  retryableStatuses: [503, 502, 504], // Server errors only - NOT 429!
 };
 
 /**

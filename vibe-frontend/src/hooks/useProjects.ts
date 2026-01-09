@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
@@ -21,9 +22,17 @@ export interface UseProjectsResult {
 }
 
 // Detect if we're running in cloud mode (when VITE_API_URL is set to external API)
-// In cloud mode, WebSocket streaming is not available, so we use REST API polling
+// In cloud mode, WebSocket streaming is not available, so we use REST API with TanStack Query
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 const isCloudMode = !!API_BASE_URL;
+
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
 
 // Shared state for optimistic updates across all useProjects instances
 let optimisticProjects: Record<string, Project> = {};
@@ -50,17 +59,44 @@ function removeOptimisticProject(projectId: string) {
   notifyListeners();
 }
 
+// Query key for TanStack Query (cloud mode)
+export const projectsKeys = {
+  all: ['projects'] as const,
+  list: () => [...projectsKeys.all, 'list'] as const,
+};
+
+// Fetch function for TanStack Query (cloud mode)
+async function fetchProjects(token: string | null): Promise<Record<string, Project>> {
+  if (!token) return {};
+
+  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch projects: ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (result.success && Array.isArray(result.data)) {
+    const projectsMap: Record<string, Project> = {};
+    result.data.forEach((project: Project) => {
+      projectsMap[project.id] = project;
+    });
+    return projectsMap;
+  }
+  return {};
+}
+
 export function useProjects(): UseProjectsResult {
   const endpoint = '/api/projects/stream/ws';
   const { getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
-
-  // REST API polling state (for cloud mode)
-  const [restProjects, setRestProjects] = useState<Record<string, Project>>({});
-  const [restLoading, setRestLoading] = useState(isCloudMode);
-  const [restError, setRestError] = useState<string | null>(null);
-  const pollingIntervalRef = useRef<number | null>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isLoaded) {
@@ -79,7 +115,7 @@ export function useProjects(): UseProjectsResult {
 
   const initialData = useCallback((): ProjectsState => ({ projects: {} }), []);
 
-  // In cloud mode, disable WebSocket and use REST polling instead
+  // In cloud mode, disable WebSocket and use TanStack Query instead
   const { data: wsData, isConnected, error: wsError } = useJsonPatchWsStream<ProjectsState>(
     endpoint,
     !isCloudMode && !!token, // Disable WebSocket in cloud mode
@@ -87,60 +123,36 @@ export function useProjects(): UseProjectsResult {
     { token }
   );
 
-  // REST API polling for cloud mode
-  useEffect(() => {
-    if (!isCloudMode || !token) return;
-
-    const fetchProjects = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/projects`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch projects: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success && Array.isArray(result.data)) {
-          const projectsMap: Record<string, Project> = {};
-          result.data.forEach((project: Project) => {
-            projectsMap[project.id] = project;
-          });
-          setRestProjects(projectsMap);
-          setRestError(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch projects:', err);
-        setRestError(err instanceof Error ? err.message : 'Failed to fetch projects');
-      } finally {
-        setRestLoading(false);
-      }
-    };
-
-    // Initial fetch
-    fetchProjects();
-
-    // Poll every 30 seconds in cloud mode
-    pollingIntervalRef.current = window.setInterval(fetchProjects, 30000);
-
-    return () => {
-      if (pollingIntervalRef.current) {
-        window.clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [token]);
+  // TanStack Query for cloud mode - provides request deduplication and caching
+  const {
+    data: restProjects = {},
+    isLoading: restLoading,
+    error: restError
+  } = useQuery({
+    queryKey: projectsKeys.list(),
+    queryFn: () => fetchProjects(token),
+    enabled: isCloudMode && !!token,
+    staleTime: 5 * 60 * 1000, // 5 minutes - projects don't change frequently
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes (not 30 seconds!)
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      // Never retry rate limit errors - this amplifies the problem
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000, // 60 seconds - respect rate limit window
+  });
 
   // Use REST data in cloud mode, WebSocket data otherwise
   const data = useMemo(
     () => (isCloudMode ? { projects: restProjects } : wsData),
     [restProjects, wsData]
   );
-  const error = isCloudMode ? restError : wsError;
+  const error = isCloudMode
+    ? (restError instanceof Error ? restError.message : restError ? String(restError) : null)
+    : wsError;
 
   // Clean up optimistic entries when data arrives (in useEffect, not useMemo)
   useEffect(() => {
@@ -181,15 +193,34 @@ export function useProjects(): UseProjectsResult {
 
   const addProject = useCallback((project: Project) => {
     addOptimisticProject(project);
-  }, []);
+    // Also update TanStack Query cache for immediate UI update
+    if (isCloudMode) {
+      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+        return { ...old, [project.id]: project };
+      });
+    }
+  }, [queryClient]);
 
   const updateProject = useCallback((project: Project) => {
     updateOptimisticProject(project);
-  }, []);
+    if (isCloudMode) {
+      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+        return { ...old, [project.id]: project };
+      });
+    }
+  }, [queryClient]);
 
   const removeProject = useCallback((projectId: string) => {
     removeOptimisticProject(projectId);
-  }, []);
+    if (isCloudMode) {
+      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+        if (!old) return {};
+        const { [projectId]: _removed, ...rest } = old;
+        void _removed;
+        return rest;
+      });
+    }
+  }, [queryClient]);
 
   return {
     projects: projectsData ?? [],

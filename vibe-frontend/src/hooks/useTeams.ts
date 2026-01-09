@@ -6,6 +6,14 @@ import { resolveTeamFromParam } from '@/lib/url-utils';
 
 const TEAMS_QUERY_KEY = ['teams'];
 
+// Helper to check if error is a rate limit (429)
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
 export interface UseTeamsResult {
   teams: Team[];
   teamsById: Record<string, Team>;
@@ -24,6 +32,16 @@ export function useTeams(): UseTeamsResult {
   const { data: teams = [], isLoading, error } = useQuery<Team[], Error>({
     queryKey: TEAMS_QUERY_KEY,
     queryFn: () => teamsApi.list(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - teams rarely change
+    gcTime: 15 * 60 * 1000, // 15 minutes cache retention
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: (failureCount, error) => {
+      // Never retry rate limit errors - this amplifies the problem
+      if (isRateLimitError(error)) return false;
+      return failureCount < 1;
+    },
+    retryDelay: 60000, // 60 seconds - respect rate limit window
   });
 
   const teamsById = useMemo(() =>
