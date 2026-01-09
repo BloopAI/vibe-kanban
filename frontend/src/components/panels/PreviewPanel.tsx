@@ -41,11 +41,12 @@ export function PreviewPanel() {
     stop: stopDevServer,
     isStarting: isStartingDevServer,
     isStopping: isStoppingDevServer,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   } = useDevServer(attemptId);
 
-  const logStream = useLogStream(latestDevServerProcess?.id ?? '');
+  const primaryDevServer = runningDevServers[0];
+  const logStream = useLogStream(primaryDevServer?.id ?? '');
   const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
 
   const previewState = useDevserverPreview(attemptId, {
@@ -109,28 +110,35 @@ export function PreviewPanel() {
     startTimer();
   }, []);
 
+  const hasRunningDevServer = runningDevServers.length > 0;
+
   useEffect(() => {
     if (
       loadingTimeFinished &&
       !isReady &&
-      latestDevServerProcess &&
-      runningDevServer
+      devServerProcesses.length > 0 &&
+      hasRunningDevServer
     ) {
       setShowHelp(true);
       setShowLogs(true);
       setLoadingTimeFinished(false);
     }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
+  }, [
+    loadingTimeFinished,
+    isReady,
+    devServerProcesses.length,
+    hasRunningDevServer,
+  ]);
 
   const isPreviewReady =
     (previewState.status === 'ready' && Boolean(previewState.url)) ||
-    (customUrl !== null && runningDevServer);
+    (customUrl !== null && hasRunningDevServer);
   const isPreviewReadyWithoutError = isPreviewReady && !iframeError;
   const mode = iframeError
     ? 'error'
     : isPreviewReadyWithoutError
       ? 'ready'
-      : runningDevServer
+      : hasRunningDevServer
         ? 'searching'
         : 'noServer';
   const toggleLogs = () => {
@@ -189,7 +197,7 @@ export function PreviewPanel() {
         ) : (
           <NoServerContent
             projectHasDevScript={projectHasDevScript}
-            runningDevServer={runningDevServer}
+            runningDevServer={hasRunningDevServer}
             isStartingDevServer={isStartingDevServer}
             startDevServer={handleStartDevServer}
             stopDevServer={stopDevServer}
@@ -244,12 +252,10 @@ export function PreviewPanel() {
           </Alert>
         )}
         <DevServerLogsView
-          latestDevServerProcess={latestDevServerProcess}
+          devServerProcesses={devServerProcesses}
           showLogs={showLogs}
           onToggle={toggleLogs}
           showToggleText
-          logs={logStream.logs}
-          error={logStream.error}
         />
       </div>
     </div>

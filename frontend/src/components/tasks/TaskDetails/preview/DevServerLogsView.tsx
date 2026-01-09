@@ -1,34 +1,42 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Terminal, ChevronDown } from 'lucide-react';
-import ProcessLogsViewer, {
-  ProcessLogsViewerContent,
-} from '../ProcessLogsViewer';
+import ProcessLogsViewer from '../ProcessLogsViewer';
+import { getDevServerWorkingDir } from '@/lib/devServerUtils';
+import { cn } from '@/lib/utils';
 import { ExecutionProcess } from 'shared/types';
 
 interface DevServerLogsViewProps {
-  latestDevServerProcess: ExecutionProcess | undefined;
+  devServerProcesses: ExecutionProcess[];
   showLogs: boolean;
   onToggle: () => void;
   height?: string;
   showToggleText?: boolean;
-  logs?: Array<{ type: 'STDOUT' | 'STDERR'; content: string }>;
-  error?: string | null;
 }
 
 export function DevServerLogsView({
-  latestDevServerProcess,
+  devServerProcesses,
   showLogs,
   onToggle,
   height = 'h-60',
   showToggleText = true,
-  logs,
-  error,
 }: DevServerLogsViewProps) {
   const { t } = useTranslation('tasks');
+  const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
 
-  if (!latestDevServerProcess) {
+  useEffect(() => {
+    if (devServerProcesses.length > 0 && !activeProcessId) {
+      setActiveProcessId(devServerProcesses[0].id);
+    }
+  }, [devServerProcesses, activeProcessId]);
+
+  if (devServerProcesses.length === 0) {
     return null;
   }
+
+  const activeProcess =
+    devServerProcesses.find((p) => p.id === activeProcessId) ??
+    devServerProcesses[0];
 
   return (
     <details
@@ -63,11 +71,25 @@ export function DevServerLogsView({
 
       {showLogs && (
         <div className={height}>
-          {logs ? (
-            <ProcessLogsViewerContent logs={logs} error={error ?? null} />
-          ) : (
-            <ProcessLogsViewer processId={latestDevServerProcess.id} />
+          {devServerProcesses.length > 1 && (
+            <div className="flex border-b bg-muted/30">
+              {devServerProcesses.map((process) => (
+                <button
+                  key={process.id}
+                  className={cn(
+                    'px-3 py-1.5 text-sm border-b-2 transition-colors',
+                    activeProcessId === process.id
+                      ? 'border-primary text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  )}
+                  onClick={() => setActiveProcessId(process.id)}
+                >
+                  {getDevServerWorkingDir(process) ?? 'Dev Server'}
+                </button>
+              ))}
+            </div>
           )}
+          <ProcessLogsViewer processId={activeProcess.id} />
         </div>
       )}
     </details>

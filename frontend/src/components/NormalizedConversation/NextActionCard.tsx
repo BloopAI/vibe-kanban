@@ -78,9 +78,11 @@ export function NextActionCard({
     stop,
     isStarting,
     isStopping,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   } = useDevServer(attemptId);
+
+  const hasRunningDevServer = runningDevServers.length > 0;
 
   const { data: projectHasDevScript = false } =
     useHasDevServerScript(projectId);
@@ -105,10 +107,10 @@ export function NextActionCard({
     if (sessionId) {
       ViewProcessesDialog.show({
         sessionId,
-        initialProcessId: latestDevServerProcess?.id,
+        initialProcessId: devServerProcesses[0]?.id,
       });
     }
-  }, [sessionId, latestDevServerProcess?.id]);
+  }, [sessionId, devServerProcesses]);
 
   const handleOpenDiffs = useCallback(() => {
     navigate({ search: '?view=diffs' });
@@ -304,19 +306,21 @@ export function NextActionCard({
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={runningDevServer ? () => stop() : () => start()}
+                      onClick={
+                        hasRunningDevServer ? () => stop() : () => start()
+                      }
                       disabled={
-                        (runningDevServer ? isStopping : isStarting) ||
+                        (hasRunningDevServer ? isStopping : isStarting) ||
                         !attemptId ||
                         !projectHasDevScript
                       }
                       aria-label={
-                        runningDevServer
+                        hasRunningDevServer
                           ? t('attempt.pauseDev')
                           : t('attempt.startDev')
                       }
                     >
-                      {runningDevServer ? (
+                      {hasRunningDevServer ? (
                         <Pause className="h-3.5 w-3.5 text-destructive" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -327,13 +331,13 @@ export function NextActionCard({
                 <TooltipContent>
                   {!projectHasDevScript
                     ? t('attempt.devScriptMissingTooltip')
-                    : runningDevServer
+                    : hasRunningDevServer
                       ? t('attempt.pauseDev')
                       : t('attempt.startDev')}
                 </TooltipContent>
               </Tooltip>
 
-              {latestDevServerProcess && (
+              {devServerProcesses.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

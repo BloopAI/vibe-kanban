@@ -16,10 +16,11 @@ export function PreviewBrowserContainer({
 }: PreviewBrowserContainerProps) {
   const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
 
-  const { start, isStarting, runningDevServer, latestDevServerProcess } =
+  const { start, isStarting, runningDevServers } =
     usePreviewDevServer(attemptId);
 
-  const { logs } = useLogStream(latestDevServerProcess?.id ?? '');
+  const primaryDevServer = runningDevServers[0];
+  const { logs } = useLogStream(primaryDevServer?.id ?? '');
   const urlInfo = usePreviewUrl(logs);
 
   const handleStart = useCallback(() => {
@@ -37,7 +38,7 @@ export function PreviewBrowserContainer({
       onStart={handleStart}
       isStarting={isStarting}
       hasDevScript={true}
-      isServerRunning={Boolean(runningDevServer)}
+      isServerRunning={runningDevServers.length > 0}
       className={className}
     />
   );

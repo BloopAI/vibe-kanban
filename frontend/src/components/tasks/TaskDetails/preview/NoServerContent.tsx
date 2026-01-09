@@ -8,7 +8,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ExecutionProcess, Project } from 'shared/types';
+import { Project } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProjectRepos } from '@/hooks';
@@ -19,7 +19,7 @@ import {
 
 interface NoServerContentProps {
   projectHasDevScript: boolean;
-  runningDevServer: ExecutionProcess | undefined;
+  runningDevServer: boolean;
   isStartingDevServer: boolean;
   startDevServer: () => void;
   stopDevServer: () => void;

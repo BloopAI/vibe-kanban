@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
@@ -24,22 +24,43 @@ export function PreviewControlsContainer({
     stop,
     isStarting,
     isStopping,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   } = usePreviewDevServer(attemptId);
 
-  const { logs } = useLogStream(latestDevServerProcess?.id ?? '');
-  const urlInfo = usePreviewUrl(logs);
+  const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
 
-  const handleViewFullLogs = useCallback(() => {
-    if (latestDevServerProcess?.id && onViewProcessInPanel) {
-      // Switch to logs mode and select the dev server process
-      onViewProcessInPanel(latestDevServerProcess.id);
-    } else {
-      // Just switch to logs mode if no process to select
-      setLogsMode(true);
+  useEffect(() => {
+    if (devServerProcesses.length > 0 && !activeProcessId) {
+      setActiveProcessId(devServerProcesses[0].id);
     }
-  }, [latestDevServerProcess?.id, onViewProcessInPanel, setLogsMode]);
+  }, [devServerProcesses, activeProcessId]);
+
+  const activeProcess =
+    devServerProcesses.find((p) => p.id === activeProcessId) ??
+    devServerProcesses[0];
+
+  const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
+
+  const primaryDevServer = runningDevServers[0];
+  const { logs: primaryLogs } = useLogStream(primaryDevServer?.id ?? '');
+  const urlInfo = usePreviewUrl(primaryLogs);
+
+  const handleViewFullLogs = useCallback(
+    (processId?: string) => {
+      const targetId = processId ?? activeProcess?.id;
+      if (targetId && onViewProcessInPanel) {
+        onViewProcessInPanel(targetId);
+      } else {
+        setLogsMode(true);
+      }
+    },
+    [activeProcess?.id, onViewProcessInPanel, setLogsMode]
+  );
+
+  const handleTabChange = useCallback((processId: string) => {
+    setActiveProcessId(processId);
+  }, []);
 
   const handleStart = useCallback(() => {
     start();
@@ -67,9 +88,13 @@ export function PreviewControlsContainer({
 
   return (
     <PreviewControls
+      devServerProcesses={devServerProcesses}
+      activeProcessId={activeProcess?.id ?? null}
       logs={logs}
+      logsError={logsError}
       url={urlInfo?.url}
       onViewFullLogs={handleViewFullLogs}
+      onTabChange={handleTabChange}
       onStart={handleStart}
       onStop={handleStop}
       onRefresh={handleRefresh}
@@ -78,7 +103,7 @@ export function PreviewControlsContainer({
       isStarting={isStarting}
       isStopping={isStopping}
       hasDevScript={true}
-      isServerRunning={Boolean(runningDevServer)}
+      isServerRunning={runningDevServers.length > 0}
       className={className}
     />
   );
