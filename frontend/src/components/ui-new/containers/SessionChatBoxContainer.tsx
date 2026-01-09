@@ -6,6 +6,7 @@ import {
   type BaseCodingAgent,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
@@ -184,13 +185,29 @@ export function SessionChatBoxContainer({
     return mostRecentSession?.executor ?? null;
   }, [sessions]);
 
-  // Compute latestProfileId: from processes, or fall back to last session's executor
+  // Get last session's ID for fetching its processes (only in new session mode)
+  const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
+
+  // Fetch processes from last session to get the full profile (executor + variant)
+  const { executionProcesses: lastSessionProcesses } =
+    useExecutionProcesses(lastSessionId);
+
+  // Extract full profile from last session's processes
+  const lastSessionProfile = useMemo(() => {
+    if (!lastSessionProcesses?.length) return null;
+    return getLatestProfileFromProcesses(lastSessionProcesses);
+  }, [lastSessionProcesses]);
+
+  // Compute latestProfileId: from processes, or fall back to last session's profile/executor
   const latestProfileId = useMemo(() => {
     // If we have processes (existing session), use them
     const fromProcesses = getLatestProfileFromProcesses(processes);
     if (fromProcesses) return fromProcesses;
 
-    // Fall back to last session's executor (useful for new session mode)
+    // Use full profile from last session (includes variant)
+    if (lastSessionProfile) return lastSessionProfile;
+
+    // Fallback: just executor from session metadata, no variant
     if (lastSessionExecutor) {
       return {
         executor: lastSessionExecutor as BaseCodingAgent,
@@ -199,7 +216,7 @@ export function SessionChatBoxContainer({
     }
 
     return null;
-  }, [processes, lastSessionExecutor]);
+  }, [processes, lastSessionProfile, lastSessionExecutor]);
 
   // Message editor state
   const {
