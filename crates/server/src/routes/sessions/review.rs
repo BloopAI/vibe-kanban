@@ -65,6 +65,13 @@ pub async fn start_review(
         .ensure_container_exists(&workspace)
         .await?;
 
+    // Re-fetch workspace to get updated container_ref after ensure_container_exists
+    let workspace = Workspace::find_by_id(pool, session.workspace_id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+            "Workspace not found".to_string(),
+        )))?;
+
     let agent_session_id =
         ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
 
