@@ -79,12 +79,13 @@ const IssueDetailDialogImpl = NiceModal.create<IssueDetailDialogProps>(
         profile.email?.split('@')[0] ||
         'Unknown';
 
-      // Try to find matching team member to get their member ID
+      // Try to find matching team member to get their member ID and name
       const matchingMember = members?.find(m => m.email === profile.email);
 
       return {
         id: matchingMember?.id ?? null,
-        name: displayName,
+        // Use team member's display_name first (contains actual name like "rupesh panwar")
+        name: matchingMember?.display_name || displayName,
         email: profile.email || '',
       };
     }, [loginStatus, members]);
