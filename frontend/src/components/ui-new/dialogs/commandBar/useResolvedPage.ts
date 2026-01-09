@@ -16,7 +16,10 @@ import {
   type RepoItem,
 } from '@/components/ui-new/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
-import { isActionVisible, isPageVisible } from '@/components/ui-new/actions/useActionVisibility';
+import {
+  isActionVisible,
+  isPageVisible,
+} from '@/components/ui-new/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {
@@ -41,19 +44,24 @@ function expandGroupItems(
     if (item.type === 'childPages') {
       const page = Pages[item.id as StaticPageId];
       if (!isPageVisible(page, ctx)) return [];
-      return [{
-        type: 'page' as const,
-        pageId: item.id,
-        label: page.title ?? item.id,
-        icon: PAGE_ICONS[item.id as StaticPageId],
-      }];
+      return [
+        {
+          type: 'page' as const,
+          pageId: item.id,
+          label: page.title ?? item.id,
+          icon: PAGE_ICONS[item.id as StaticPageId],
+        },
+      ];
     }
     if (item.type === 'action' && !isActionVisible(item.action, ctx)) return [];
     return [item];
   });
 }
 
-function buildPageGroups(pageId: StaticPageId, ctx: ActionVisibilityContext): ResolvedGroup[] {
+function buildPageGroups(
+  pageId: StaticPageId,
+  ctx: ActionVisibilityContext
+): ResolvedGroup[] {
   return Pages[pageId].items
     .map((group) => {
       const items = expandGroupItems(group.items, ctx);
@@ -74,10 +82,12 @@ export function useResolvedPage(
       return {
         id: 'selectRepo',
         title: 'Select Repository',
-        groups: [{
-          label: 'Repositories',
-          items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
-        }],
+        groups: [
+          {
+            label: 'Repositories',
+            items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
+          },
+        ],
       };
     }
 
