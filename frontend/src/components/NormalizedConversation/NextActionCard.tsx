@@ -38,6 +38,7 @@ import {
 
 type NextActionCardProps = {
   attemptId?: string;
+  sessionId?: string;
   containerRef?: string | null;
   failed: boolean;
   execution_processes: number;
@@ -47,6 +48,7 @@ type NextActionCardProps = {
 
 export function NextActionCard({
   attemptId,
+  sessionId,
   containerRef,
   failed,
   execution_processes,
@@ -98,13 +100,13 @@ export function NextActionCard({
   }, [openInEditor]);
 
   const handleViewLogs = useCallback(() => {
-    if (attemptId) {
+    if (sessionId) {
       ViewProcessesDialog.show({
-        attemptId,
+        sessionId,
         initialProcessId: latestDevServerProcess?.id,
       });
     }
-  }, [attemptId, latestDevServerProcess?.id]);
+  }, [sessionId, latestDevServerProcess?.id]);
 
   const handleOpenDiffs = useCallback(() => {
     navigate({ search: '?view=diffs' });

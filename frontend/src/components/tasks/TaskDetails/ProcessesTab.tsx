@@ -20,10 +20,10 @@ import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 
 interface ProcessesTabProps {
-  attemptId?: string;
+  sessionId?: string;
 }
 
-function ProcessesTab({ attemptId }: ProcessesTabProps) {
+function ProcessesTab({ sessionId }: ProcessesTabProps) {
   const { t } = useTranslation('tasks');
   const {
     executionProcesses,
@@ -31,7 +31,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     isLoading: processesLoading,
     isConnected,
     error: processesError,
-  } = useExecutionProcesses(attemptId ?? '', { showSoftDeleted: true });
+  } = useExecutionProcesses(sessionId ?? '', { showSoftDeleted: true });
   const { selectedProcessId, setSelectedProcessId } = useProcessSelection();
   const [loadingProcessId, setLoadingProcessId] = useState<string | null>(null);
   const [localProcessDetails, setLocalProcessDetails] = useState<
@@ -49,7 +49,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
   useEffect(() => {
     setLocalProcessDetails({});
     setLoadingProcessId(null);
-  }, [attemptId]);
+  }, [sessionId]);
 
   const handleCopyLogs = useCallback(async () => {
     if (logs.length === 0) return;
@@ -121,7 +121,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
 
   // Automatically fetch process details when selectedProcessId changes
   useEffect(() => {
-    if (!attemptId || !selectedProcessId) {
+    if (!sessionId || !selectedProcessId) {
       return;
     }
 
@@ -132,7 +132,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
       fetchProcessDetails(selectedProcessId);
     }
   }, [
-    attemptId,
+    sessionId,
     selectedProcessId,
     localProcessDetails,
     loadingProcessId,
@@ -150,7 +150,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
 
   const { isProcessGreyed } = useRetryUi();
 
-  if (!attemptId) {
+  if (!sessionId) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center">
