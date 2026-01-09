@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
@@ -43,6 +43,7 @@ function projectToFormState(project: Project): ProjectFormState {
 
 export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const projectIdParam = searchParams.get('projectId') ?? '';
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
@@ -510,7 +511,10 @@ export function ProjectSettings() {
                   {repositories.map((repo) => (
                     <div
                       key={repo.id}
-                      className="flex items-center justify-between p-3 border rounded-md"
+                      className="flex items-center justify-between p-3 border rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() =>
+                        navigate(`/settings/repos?repoId=${repo.id}`)
+                      }
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium">{repo.display_name}</div>
@@ -521,7 +525,10 @@ export function ProjectSettings() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteRepository(repo.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRepository(repo.id);
+                        }}
                         disabled={deletingRepoId === repo.id}
                         title="Delete repository"
                       >
