@@ -75,8 +75,12 @@
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
     "runSetup": "설정 실행",
-    "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
-    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+    "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치 및 로그인을 진행하세요.",
+    "devScriptMissingTooltip": "개발 서버를 시작하려면 이 프로젝트에 개발 스크립트를 추가하세요",
+    "tokenUsage": {
+      "title": "컨텍스트 사용량",
+      "tokens": "토큰"
+    }
   },
   "stopShareDialog": {
     "title": "작업 공유 중지",

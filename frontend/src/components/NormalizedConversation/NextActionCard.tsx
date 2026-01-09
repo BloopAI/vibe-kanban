@@ -15,6 +15,7 @@ import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDia
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { cn } from '@/lib/utils';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useTokenUsage } from '@/contexts/EntriesContext';
 
 type NextActionCardProps = {
   attemptId?: string;
@@ -58,6 +60,7 @@ export function NextActionCard({
   const { project } = useProject();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const tokenUsageInfo = useTokenUsage();
 
   const { data: attempt } = useQuery({
     queryKey: ['attemptWithSession', attemptId],
@@ -229,141 +232,221 @@ export function NextActionCard({
               )
             ))}
 
-          {/* Right: Icon buttons */}
-          {fileCount > 0 && (
-            <div className="flex items-center gap-1 shrink-0 sm:ml-auto">
+          {/* Right: Icon buttons & Info */}
+          <div className="flex items-center gap-3 shrink-0 sm:ml-auto">
+            {tokenUsageInfo && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleOpenDiffs}
-                    aria-label={t('attempt.diffs')}
-                  >
-                    <FileDiff className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-2 cursor-help py-1 px-2 rounded-md hover:bg-muted/50 transition-colors">
+                    <div className="w-16 h-1 bg-muted rounded-full overflow-hidden border border-border shadow-inner">
+                      <div
+                        className={cn(
+                          'h-full transition-all duration-500 ease-out rounded-full',
+                          (tokenUsageInfo.total_tokens /
+                            tokenUsageInfo.model_context_window) *
+                            100 >
+                            90
+                            ? 'bg-destructive'
+                            : (tokenUsageInfo.total_tokens /
+                                  tokenUsageInfo.model_context_window) *
+                                  100 >
+                                70
+                              ? 'bg-warning'
+                              : 'bg-success'
+                        )}
+                        style={{
+                          width: `${Math.min(
+                            (tokenUsageInfo.total_tokens /
+                              tokenUsageInfo.model_context_window) *
+                              100,
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </TooltipTrigger>
-                <TooltipContent>{t('attempt.diffs')}</TooltipContent>
+                <TooltipContent
+                  side="top"
+                  className="p-3 text-xs font-mono shadow-xl border-border bg-popover text-popover-foreground"
+                >
+                  <div className="flex flex-col gap-2 min-w-[120px]">
+                    <div className="font-bold flex justify-between gap-4 border-b border-border pb-1">
+                      <span>{t('attempt.tokenUsage.title')}</span>
+                      <span
+                        className={cn(
+                          (tokenUsageInfo.total_tokens /
+                            tokenUsageInfo.model_context_window) *
+                            100 >
+                            90
+                            ? 'text-destructive'
+                            : (tokenUsageInfo.total_tokens /
+                                  tokenUsageInfo.model_context_window) *
+                                  100 >
+                                70
+                              ? 'text-warning'
+                              : 'text-success'
+                        )}
+                      >
+                        {Math.round(
+                          (tokenUsageInfo.total_tokens /
+                            tokenUsageInfo.model_context_window) *
+                            100
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <div className="opacity-90 flex justify-between gap-4">
+                      <span className="opacity-60">
+                        {t('attempt.tokenUsage.tokens')}
+                      </span>
+                      <span>
+                        {tokenUsageInfo.total_tokens.toLocaleString()} /{' '}
+                        {tokenUsageInfo.model_context_window.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </TooltipContent>
               </Tooltip>
+            )}
 
-              {containerRef && (
+            {fileCount > 0 && (
+              <div className="flex items-center gap-1 shrink-0 sm:ml-auto">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={handleCopy}
-                      aria-label={t('attempt.clickToCopy')}
+                      onClick={handleOpenDiffs}
+                      aria-label={t('attempt.diffs')}
                     >
-                      {copied ? (
-                        <Check className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
+                      <FileDiff className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('attempt.diffs')}</TooltipContent>
+                </Tooltip>
+
+                {containerRef && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={handleCopy}
+                        aria-label={t('attempt.clickToCopy')}
+                      >
+                        {copied ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {copied ? t('attempt.copied') : t('attempt.clickToCopy')}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={handleOpenInEditor}
+                      disabled={!attemptId}
+                      aria-label={t('attempt.openInEditor', {
+                        editor: editorName,
+                      })}
+                    >
+                      <IdeIcon
+                        editorType={config?.editor?.editor_type}
+                        className="h-3.5 w-3.5"
+                      />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {copied ? t('attempt.copied') : t('attempt.clickToCopy')}
+                    {t('attempt.openInEditor', { editor: editorName })}
                   </TooltipContent>
                 </Tooltip>
-              )}
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleOpenInEditor}
-                    disabled={!attemptId}
-                    aria-label={t('attempt.openInEditor', {
-                      editor: editorName,
-                    })}
-                  >
-                    <IdeIcon
-                      editorType={config?.editor?.editor_type}
-                      className="h-3.5 w-3.5"
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t('attempt.openInEditor', { editor: editorName })}
-                </TooltipContent>
-              </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={
+                          runningDevServer ? () => stop() : () => start()
+                        }
+                        disabled={
+                          (runningDevServer ? isStopping : isStarting) ||
+                          !attemptId ||
+                          !projectHasDevScript
+                        }
+                        aria-label={
+                          runningDevServer
+                            ? t('attempt.pauseDev')
+                            : t('attempt.startDev')
+                        }
+                      >
+                        {runningDevServer ? (
+                          <Pause className="h-3.5 w-3.5 text-destructive" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!projectHasDevScript
+                      ? t('attempt.devScriptMissingTooltip')
+                      : runningDevServer
+                        ? t('attempt.pauseDev')
+                        : t('attempt.startDev')}
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-block">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={runningDevServer ? () => stop() : () => start()}
-                      disabled={
-                        (runningDevServer ? isStopping : isStarting) ||
-                        !attemptId ||
-                        !projectHasDevScript
-                      }
-                      aria-label={
-                        runningDevServer
-                          ? t('attempt.pauseDev')
-                          : t('attempt.startDev')
-                      }
-                    >
-                      {runningDevServer ? (
-                        <Pause className="h-3.5 w-3.5 text-destructive" />
-                      ) : (
-                        <Play className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {!projectHasDevScript
-                    ? t('attempt.devScriptMissingTooltip')
-                    : runningDevServer
-                      ? t('attempt.pauseDev')
-                      : t('attempt.startDev')}
-                </TooltipContent>
-              </Tooltip>
+                {latestDevServerProcess && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={handleViewLogs}
+                        disabled={!attemptId}
+                        aria-label={t('attempt.viewDevLogs')}
+                      >
+                        <Terminal className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('attempt.viewDevLogs')}</TooltipContent>
+                  </Tooltip>
+                )}
 
-              {latestDevServerProcess && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={handleViewLogs}
+                      onClick={handleGitActions}
                       disabled={!attemptId}
-                      aria-label={t('attempt.viewDevLogs')}
+                      aria-label={t('attempt.gitActions')}
                     >
-                      <Terminal className="h-3.5 w-3.5" />
+                      <GitBranch className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{t('attempt.viewDevLogs')}</TooltipContent>
+                  <TooltipContent>{t('attempt.gitActions')}</TooltipContent>
                 </Tooltip>
-              )}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={handleGitActions}
-                    disabled={!attemptId}
-                    aria-label={t('attempt.gitActions')}
-                  >
-                    <GitBranch className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('attempt.gitActions')}</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </TooltipProvider>

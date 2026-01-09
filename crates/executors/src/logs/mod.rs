@@ -95,6 +95,10 @@ pub enum NormalizedEntryType {
         execution_processes: usize,
         needs_setup: bool,
     },
+    TokenUsageInfo {
+        total_tokens: u32,
+        model_context_window: u32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

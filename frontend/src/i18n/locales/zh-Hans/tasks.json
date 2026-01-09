@@ -264,8 +264,12 @@
     "gitActions": "Git 操作",
     "tryAgain": "重试",
     "runSetup": "运行设置",
-    "setupHelpText": "{{agent}} 未正确设置。点击运行设置以安装并登录。",
-    "devScriptMissingTooltip": "要启动开发服务器，请为此项目添加开发脚本"
+    "setupHelpText": "{{agent}} 未正确设置。点击“运行设置”进行安装并登录。",
+    "devScriptMissingTooltip": "要启动开发服务器，请为此项目添加开发脚本",
+    "tokenUsage": {
+      "title": "上下文使用量",
+      "tokens": "Tokens"
+    }
   },
   "git": {
     "labels": {

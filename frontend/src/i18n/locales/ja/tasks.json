@@ -75,8 +75,12 @@
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
     "runSetup": "セットアップを実行",
-    "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
-    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+    "setupHelpText": "{{agent}} が正しくセットアップされていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
+    "devScriptMissingTooltip": "デーブサーバーを起動するには、このプロジェクトにデーブスクリプトを追加してください",
+    "tokenUsage": {
+      "title": "コンテキスト使用量",
+      "tokens": "トークン"
+    }
   },
   "stopShareDialog": {
     "title": "タスクの共有を停止",
