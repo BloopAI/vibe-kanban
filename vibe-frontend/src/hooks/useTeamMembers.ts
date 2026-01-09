@@ -25,7 +25,8 @@ export const teamMembersKeys = {
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
   if (error instanceof Error) {
-    return error.message.includes('429') || error.message.includes('Too Many Requests');
+    const msg = error.message.toLowerCase();
+    return msg.includes('429') || msg.includes('too many requests');
   }
   return false;
 }
