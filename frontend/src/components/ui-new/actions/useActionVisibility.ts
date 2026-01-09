@@ -27,7 +27,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
   const { config } = useUserSystem();
-  const { isStarting, isStopping, runningDevServer } = useDevServer(workspaceId);
+  const { isStarting, isStopping, runningDevServer } =
+    useDevServer(workspaceId);
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
