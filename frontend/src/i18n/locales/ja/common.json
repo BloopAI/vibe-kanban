@@ -169,7 +169,15 @@
     "viewInChangesPanel": "変更パネルで表示",
     "copyPath": "パスをコピー",
     "copyWorktreePath": "ワークツリーパスをコピー",
-    "openInIde": "IDEで開く"
+    "openInIde": "IDEで開く",
+    "cancel": "キャンセル",
+    "saveChanges": "変更を保存",
+    "copied": "コピーしました"
+  },
+  "comments": {
+    "addReviewComment": "レビューコメントを追加",
+    "addPlaceholder": "コメントを追加...",
+    "editPlaceholder": "コメントを編集..."
   },
   "confirm": {
     "defaultConfirm": "確認",
