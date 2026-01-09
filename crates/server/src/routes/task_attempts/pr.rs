@@ -48,7 +48,7 @@ pub struct CreatePrApiRequest {
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
-pub enum CreatePrError {
+pub enum PrError {
     CliNotInstalled { provider: ProviderKind },
     CliNotLoggedIn { provider: ProviderKind },
     GitCliNotLoggedIn,
@@ -197,7 +197,7 @@ pub async fn create_pr(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreatePrApiRequest>,
-) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<String, PrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -229,19 +229,19 @@ pub async fn create_pr(
     {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreatePrError::TargetBranchNotFound {
+                PrError::TargetBranchNotFound {
                     branch: target_branch.clone(),
                 },
             )));
         }
         Err(GitServiceError::GitCLI(GitCliError::AuthFailed(_))) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreatePrError::GitCliNotLoggedIn,
+                PrError::GitCliNotLoggedIn,
             )));
         }
         Err(GitServiceError::GitCLI(GitCliError::NotAvailable)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreatePrError::GitCliNotInstalled,
+                PrError::GitCliNotInstalled,
             )));
         }
         Err(e) => return Err(ApiError::GitService(e)),
@@ -257,12 +257,12 @@ pub async fn create_pr(
         match e {
             GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => {
                 return Ok(ResponseJson(ApiResponse::error_with_data(
-                    CreatePrError::GitCliNotLoggedIn,
+                    PrError::GitCliNotLoggedIn,
                 )));
             }
             GitServiceError::GitCLI(GitCliError::NotAvailable) => {
                 return Ok(ResponseJson(ApiResponse::error_with_data(
-                    CreatePrError::GitCliNotInstalled,
+                    PrError::GitCliNotInstalled,
                 )));
             }
             _ => return Err(ApiError::GitService(e)),
@@ -297,12 +297,12 @@ pub async fn create_pr(
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreatePrError::UnsupportedProvider,
+                PrError::UnsupportedProvider,
             )));
         }
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreatePrError::CliNotInstalled { provider },
+                PrError::CliNotInstalled { provider },
             )));
         }
         Err(e) => return Err(ApiError::GitHost(e)),
@@ -381,12 +381,12 @@ pub async fn create_pr(
             );
             match &e {
                 GitHostError::CliNotInstalled { provider } => Ok(ResponseJson(
-                    ApiResponse::error_with_data(CreatePrError::CliNotInstalled {
+                    ApiResponse::error_with_data(PrError::CliNotInstalled {
                         provider: *provider,
                     }),
                 )),
                 GitHostError::AuthFailed(_) => Ok(ResponseJson(ApiResponse::error_with_data(
-                    CreatePrError::CliNotLoggedIn { provider },
+                    PrError::CliNotLoggedIn { provider },
                 ))),
                 _ => Err(ApiError::GitHost(e)),
             }
@@ -398,7 +398,7 @@ pub async fn attach_existing_pr(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<AttachExistingPrRequest>,
-) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<AttachPrResponse, PrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let task = workspace
@@ -429,12 +429,42 @@ pub async fn attach_existing_pr(
     let remote_url = deployment
         .git()
         .get_remote_url_from_branch_or_default(&repo.path, &workspace_repo.target_branch)?;
-    let git_host = git_host::GitHostService::from_url(&remote_url)?;
+
+    let git_host = match git_host::GitHostService::from_url(&remote_url) {
+        Ok(host) => host,
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::UnsupportedProvider,
+            )));
+        }
+        Err(GitHostError::CliNotInstalled { provider }) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::CliNotInstalled { provider },
+            )));
+        }
+        Err(e) => return Err(ApiError::GitHost(e)),
+    };
+
+    let provider = git_host.provider_kind();
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = git_host
+    let prs = match git_host
         .list_prs_for_branch(&repo.path, &remote_url, &workspace.branch)
-        .await?;
+        .await
+    {
+        Ok(prs) => prs,
+        Err(GitHostError::CliNotInstalled { provider }) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::CliNotInstalled { provider },
+            )));
+        }
+        Err(GitHostError::AuthFailed(_)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::CliNotLoggedIn { provider },
+            )));
+        }
+        Err(e) => return Err(ApiError::GitHost(e)),
+    };
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {
