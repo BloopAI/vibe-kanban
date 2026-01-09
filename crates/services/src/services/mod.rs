@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod approvals;
 pub mod auth;
+pub mod bitbucket;
 pub mod config;
 pub mod container;
 pub mod diff_stream;
@@ -20,5 +21,6 @@ pub mod queued_message;
 pub mod remote_client;
 pub mod repo;
 pub mod share;
+pub mod vcs_provider;
 pub mod workspace_manager;
 pub mod worktree_manager;

@@ -16,6 +16,7 @@ use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
 use super::file_ranker::FileStat;
+use super::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1593,6 +1594,51 @@ impl GitService {
             }
         }
     }
+
+    /// Extract GitHub owner and repo name from git repo path
+    pub fn get_github_repo_info(
+        &self,
+        repo_path: &Path,
+    ) -> Result<GitHubRepoInfo, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let remote_name = self.default_remote_name(&repo);
+        let remote = repo.find_remote(&remote_name).map_err(|_| {
+            GitServiceError::InvalidRepository(format!("No '{remote_name}' remote found"))
+        })?;
+
+        let url = remote
+            .url()
+            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
+        GitHubRepoInfo::from_remote_url(url).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
+        })
+    }
+
+    /// Get the remote URL for a repository
+    pub fn get_remote_url(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let remote_name = self.default_remote_name(&repo);
+        let remote = repo.find_remote(&remote_name).map_err(|_| {
+            GitServiceError::InvalidRepository(format!("No '{remote_name}' remote found"))
+        })?;
+
+        remote
+            .url()
+            .map(|s| s.to_string())
+            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))
+    }
+
+    /// Extract VCS provider repo info from git repo path (auto-detects GitHub/Bitbucket)
+    pub fn get_vcs_repo_info(
+        &self,
+        repo_path: &Path,
+    ) -> Result<super::vcs_provider::VcsRepoInfo, GitServiceError> {
+        let url = self.get_remote_url(repo_path)?;
+        super::vcs_provider::VcsRepoInfo::from_remote_url(&url).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
+        })
+    }
+
 
     pub fn get_remote_name_from_branch_name(
         &self,

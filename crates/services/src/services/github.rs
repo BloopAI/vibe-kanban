@@ -107,6 +107,38 @@ pub struct GitHubRepoInfo {
     pub repo_name: String,
 }
 
+impl GitHubRepoInfo {
+    /// Parse a GitHub remote URL and extract owner and repo name.
+    /// Supports SSH (git@github.com:owner/repo.git) and HTTPS (https://github.com/owner/repo.git) formats.
+    pub fn from_remote_url(url: &str) -> Result<Self, String> {
+        // Try SSH format: git@github.com:owner/repo.git
+        if let Some(rest) = url.strip_prefix("git@github.com:") {
+            let path = rest.trim_end_matches(".git");
+            let parts: Vec<&str> = path.split('/').collect();
+            if parts.len() >= 2 {
+                return Ok(Self {
+                    owner: parts[0].to_string(),
+                    repo_name: parts[1].to_string(),
+                });
+            }
+        }
+
+        // Try HTTPS format: https://github.com/owner/repo.git
+        if url.contains("github.com") {
+            let re = regex::Regex::new(r"github\.com[/:]([^/]+)/([^/]+?)(?:\.git)?$")
+                .map_err(|e| e.to_string())?;
+            if let Some(caps) = re.captures(url) {
+                return Ok(Self {
+                    owner: caps.get(1).unwrap().as_str().to_string(),
+                    repo_name: caps.get(2).unwrap().as_str().to_string(),
+                });
+            }
+        }
+
+        Err(format!("Could not parse GitHub URL: {url}"))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CreatePrRequest {
     pub title: String,
