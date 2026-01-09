@@ -232,11 +232,7 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, 
-/**
- * If true, automatically include all workspace commits from initial state
- */
-use_all_workspace_commits: boolean, };
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, };
 
 export type ReviewError = { "type": "process_already_running" };
 
@@ -523,11 +519,7 @@ executor_profile_id: ExecutorProfileId,
  */
 working_dir: string | null, };
 
-export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, 
-/**
- * The full prompt sent to the model
- */
-prompt: string, 
+export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
 /**
  * Optional session ID to resume an existing session
  */
@@ -537,11 +529,7 @@ session_id: string | null,
  */
 working_dir: string | null, };
 
-export type RepoReviewContext = { repo_id: string, repo_name: string, 
-/**
- * The base commit - review all changes from here to HEAD
- */
-base_commit: string, };
+export type RepoReviewContext = { repo_id: string, repo_name: string, base_commit: string, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 
