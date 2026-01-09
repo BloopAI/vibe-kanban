@@ -130,8 +130,8 @@ module.exports = {
         half: getSize('base', 0.5),
       },
       fontFamily: {
-        'ibm-plex-sans': ['IBM Plex Sans', 'Noto Emoji', 'sans-serif'],
-        'ibm-plex-mono': ['IBM Plex Mono', 'Noto Emoji', 'monospace'],
+        'ibm-plex-sans': ['"IBM Plex Sans"', '"Noto Emoji"', 'sans-serif'],
+        'ibm-plex-mono': ['"IBM Plex Mono"', 'monospace'],
       },
       keyframes: {
         "accordion-down": {
