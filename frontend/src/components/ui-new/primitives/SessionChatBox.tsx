@@ -10,7 +10,6 @@ import {
   TrashIcon,
   WarningIcon,
 } from '@phosphor-icons/react';
-import type { Icon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
@@ -25,6 +24,12 @@ import {
 } from './ChatBoxBase';
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
+import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  isSpecialIcon,
+} from '../actions';
+import { isActionEnabled } from '../actions/useActionVisibility';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -62,10 +67,10 @@ interface SessionProps {
   onNewSession?: () => void;
 }
 
-interface ToolbarActionProps {
-  icon: Icon;
-  label: string;
-  onClick: () => void;
+interface ToolbarActionsProps {
+  actions: ActionDefinition[];
+  context: ActionVisibilityContext;
+  onExecuteAction: (action: ActionDefinition) => void;
 }
 
 interface StatsProps {
@@ -122,7 +127,7 @@ interface SessionChatBoxProps {
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
-  toolbarActions?: ToolbarActionProps[];
+  toolbarActions?: ToolbarActionsProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
@@ -633,15 +638,26 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
-          {toolbarActions?.map((action) => (
-            <ToolbarIconButton
-              key={action.label}
-              icon={action.icon}
-              aria-label={action.label}
-              onClick={action.onClick}
-              disabled={isDisabled || isRunning}
-            />
-          ))}
+          {toolbarActions?.actions.map((action) => {
+            const icon = action.icon;
+            // Skip special icons in toolbar (only standard phosphor icons)
+            if (isSpecialIcon(icon)) return null;
+            const actionEnabled = isActionEnabled(action, toolbarActions.context);
+            const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
+            const label =
+              typeof action.label === 'function'
+                ? action.label()
+                : action.label;
+            return (
+              <ToolbarIconButton
+                key={action.id}
+                icon={icon}
+                aria-label={label}
+                onClick={() => toolbarActions.onExecuteAction(action)}
+                disabled={isButtonDisabled}
+              />
+            );
+          })}
         </>
       }
       footerRight={renderActionButtons()}
