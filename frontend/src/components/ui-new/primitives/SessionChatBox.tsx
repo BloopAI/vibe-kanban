@@ -9,7 +9,7 @@ import {
   ChatCircleIcon,
   TrashIcon,
   WarningIcon,
-  MagnifyingGlassIcon,
+  HighlighterIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
@@ -632,7 +632,7 @@ export function SessionChatBox({
             onChange={handleFileInputChange}
           />
           <ToolbarIconButton
-            icon={MagnifyingGlassIcon}
+            icon={HighlighterIcon}
             aria-label="Start review"
             onClick={reviewMode.onReviewClick}
             disabled={isDisabled || isRunning}
