@@ -18,8 +18,6 @@ pub struct ContainerQuery {
     pub container_ref: String,
 }
 
-/// Minimal container info for VSCode extension compatibility.
-/// Maps workspace_id to attempt_id since the extension expects the old naming.
 #[derive(Debug, Serialize)]
 pub struct ContainerInfo {
     pub project_id: Uuid,
@@ -66,6 +64,9 @@ pub async fn get_context(
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
+        // NOTE: /containers/info is required by the VSCode extension (vibe-kanban-vscode)
+        // to auto-detect workspaces. It maps workspace_id to attempt_id for compatibility.
+        // Do not remove this endpoint without updating the extension.
         .route("/containers/info", get(get_container_info))
         .route("/containers/attempt-context", get(get_context))
 }
