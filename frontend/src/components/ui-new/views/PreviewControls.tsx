@@ -65,7 +65,7 @@ export function PreviewControls({
         {/* Controls row: URL bar + Start/Stop button */}
         <div className="flex items-center gap-half p-base">
           {url && (
-            <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1">
+            <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
               <span className="flex-1 font-mono text-sm text-low truncate">
                 {url}
               </span>
