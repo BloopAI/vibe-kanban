@@ -1,3 +1,31 @@
+.light .legacy-design {
+  --line-added: 160 77% 88%;
+  --line-removed: 10 100% 90%;
+  --line-unchanged: var(--bg-primary);
+  --line-number-color: var(--text-low);
+}
+
+.dark .legacy-design {
+  --line-added: 130 30% 20%;
+  --line-removed: 12 30% 18%;
+  --line-unchanged: var(--bg-panel);
+  --line-number-color: var(--text-low);
+}
+
+.light .new-design {
+  --line-added: 160 77% 88%;
+  --line-removed: 10 100% 90%;
+  --line-unchanged: var(--bg-primary);
+  --line-number-color: var(--text-low);
+}
+
+.dark .new-design {
+  --line-added: 130 30% 20%;
+  --line-removed: 12 30% 18%;
+  --line-unchanged: var(--bg-panel);
+  --line-number-color: var(--text-low);
+}
+
 .diff-tailwindcss-wrapper .container {
   width: 100%;
 }
@@ -364,29 +392,21 @@
 
 .diff-tailwindcss-wrapper .diff-style-root {
   --diff-border--: var(--border);
-  --diff-add-content--: hsl(var(--console-success) / 0.2);
-  --diff-del-content--: hsl(var(--console-error) / 0.2);
-  --diff-add-lineNumber--: color-mix(
-    in srgb,
-    hsl(var(--console-success)) 20%,
-    hsl(var(--background)) 80%
-  );
-  --diff-del-lineNumber--: color-mix(
-    in srgb,
-    hsl(var(--console-error)) 20%,
-    hsl(var(--background)) 80%
-  );
-  --diff-plain-content--: hsl(var(--muted));
+  --diff-add-content--: hsl(var(--line-added));
+  --diff-del-content--: hsl(var(--line-removed));
+  --diff-add-lineNumber--: hsl(var(--line-added));
+  --diff-del-lineNumber--: hsl(var(--line-removed));
+  --diff-plain-content--: hsl(var(--line-unchanged));
   --diff-expand-content--: hsl(var(--muted));
-  --diff-plain-lineNumber--: hsl(var(--muted));
+  --diff-plain-lineNumber--: hsl(var(--line-unchanged));
   --diff-expand-lineNumber--: hsl(var(--muted));
-  --diff-plain-lineNumber-color--: hsl(var(--muted-foreground) / 0.7);
-  --diff-expand-lineNumber-color--: hsl(var(--muted-foreground) / 0.7);
+  --diff-plain-lineNumber-color--: hsl(var(--line-number-color));
+  --diff-expand-lineNumber-color--: hsl(var(--muted-foreground));
   --diff-hunk-content--: hsl(var(--muted));
   --diff-hunk-lineNumber--: hsl(var(--muted));
   --diff-hunk-lineNumber-hover--: hsl(var(--muted-foreground) / 0.7);
-  --diff-add-content-highlight--: hsl(var(--console-success) / 0.4);
-  --diff-del-content-highlight--: hsl(var(--console-error) / 0.4);
+  --diff-add-content-highlight--: hsl(var(--line-added) / 0.4);
+  --diff-del-content-highlight--: hsl(var(--line-removed) / 0.4);
   --diff-add-widget--: hsl(var(--muted-foreground) / 0.7);
   --diff-add-widget-color--: hsl(var(--muted));
   --diff-empty-content--: hsl(var(--background));
