@@ -8,6 +8,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListFilter, X, AlertCircle, ArrowUp, ArrowRight, ArrowDown, Minus, User, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { TaskWithAttemptStatus } from 'shared/types';
 
 export interface FilterState {
   priority: number[] | null;
@@ -31,6 +32,7 @@ interface IssueFilterDropdownProps {
   onFiltersChange: (filters: FilterState) => void;
   teamMembers: TeamMember[];
   projects: Project[];
+  issues?: TaskWithAttemptStatus[];
 }
 
 const PRIORITY_OPTIONS = [
@@ -46,6 +48,7 @@ export function IssueFilterDropdown({
   onFiltersChange,
   teamMembers,
   projects,
+  issues = [],
 }: IssueFilterDropdownProps) {
   // Count active filters
   const activeFilterCount = useMemo(() => {
@@ -55,6 +58,17 @@ export function IssueFilterDropdown({
     if (filters.projectId) count += 1;
     return count;
   }, [filters]);
+
+  // Count issues per assignee
+  const assigneeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    issues.forEach(issue => {
+      if (issue.assignee_id) {
+        counts[issue.assignee_id] = (counts[issue.assignee_id] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [issues]);
 
   const handlePriorityToggle = (priority: number) => {
     const current = filters.priority || [];
@@ -173,6 +187,7 @@ export function IssueFilterDropdown({
               <div className="space-y-1">
                 {teamMembers.map((member) => {
                   const isChecked = filters.assigneeId?.includes(member.id) || false;
+                  const issueCount = assigneeCounts[member.id] || 0;
                   return (
                     <label
                       key={member.id}
@@ -183,7 +198,10 @@ export function IssueFilterDropdown({
                         onCheckedChange={() => handleAssigneeToggle(member.id)}
                         className="border-muted-foreground"
                       />
-                      <span className="text-sm">{member.name}</span>
+                      <span className="text-sm flex-1">{member.name}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {issueCount}
+                      </span>
                     </label>
                   );
                 })}

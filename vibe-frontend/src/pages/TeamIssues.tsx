@@ -416,6 +416,7 @@ export function TeamIssues() {
               onFiltersChange={setFilters}
               teamMembers={teamMembers}
               projects={teamProjectsForDropdown}
+              issues={issues}
             />
           </div>
 

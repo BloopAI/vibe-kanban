@@ -14,6 +14,7 @@ import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { About } from '@/pages/About';
 import { Views } from '@/pages/Views';
 import { LandingPage } from '@/pages/LandingPage';
+import { MyIssues } from '@/pages/MyIssues';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePostHog } from 'posthog-js/react';
@@ -176,6 +177,7 @@ function AppContent() {
               >
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
+                <Route path="/my-issues" element={<MyIssues />} />
                 <Route path="/views" element={<Views />} />
                 <Route path="/views/new" element={<Views />} />
                 <Route
