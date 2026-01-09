@@ -1054,9 +1054,6 @@ impl GitService {
         Ok(oid)
     }
 
-    /// Get the fork point (merge base) between two branches.
-    /// Uses `git merge-base --fork-point` first, which survives rebasing by
-    /// consulting the reflog. Falls back to regular merge-base if fork-point fails.
     pub fn get_fork_point(
         &self,
         worktree_path: &Path,
