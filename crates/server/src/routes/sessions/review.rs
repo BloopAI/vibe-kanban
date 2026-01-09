@@ -84,8 +84,6 @@ pub async fn start_review(
         let mut contexts = Vec::new();
         for repo in repos {
             let repo_path = worktree_path.join(&repo.repo.name);
-            // Use fork-point to find where this branch diverged from target.
-            // This survives rebasing because it uses reflog, not stored commit SHAs.
             if let Ok(base_commit) =
                 deployment
                     .git()

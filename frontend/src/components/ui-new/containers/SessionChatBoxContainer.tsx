@@ -438,7 +438,6 @@ export function SessionChatBoxContainer({
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
-  // Handle review button click - opens dialog
   const handleReviewClick = useCallback(() => {
     if (!workspaceId) return;
     StartReviewDialog.show({
