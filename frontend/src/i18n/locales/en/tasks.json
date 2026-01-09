@@ -462,6 +462,7 @@
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
     "task": "Task",
+    "preview": "Preview",
     "share": "Share",
     "reassign": "Reassign",
     "stopShare": "Stop share",

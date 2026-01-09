@@ -29,6 +29,7 @@
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
+    "preview": "Vista previa",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
   },
