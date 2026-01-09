@@ -268,7 +268,8 @@ async fn status(
 async fn get_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
+    // Return Unauthorized if remote client is not configured (no credentials stored)
+    let remote_client = deployment.remote_client().map_err(|_| ApiError::Unauthorized)?;
 
     // This will auto-refresh the token if expired
     let access_token = remote_client
@@ -288,7 +289,8 @@ async fn get_token(
 async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
-    let remote_client = deployment.remote_client()?;
+    // Return Unauthorized if remote client is not configured (no credentials stored)
+    let remote_client = deployment.remote_client().map_err(|_| ApiError::Unauthorized)?;
 
     // Get the access token from remote client
     let access_token = remote_client
