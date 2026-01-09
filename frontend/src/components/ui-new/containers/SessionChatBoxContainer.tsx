@@ -461,9 +461,10 @@ export function SessionChatBoxContainer({
 
   // Define which actions appear in the toolbar
   const toolbarActionsList = useMemo(
-    () => [Actions.StartReview].filter((action) =>
-      isActionVisible(action, actionCtx)
-    ),
+    () =>
+      [Actions.StartReview].filter((action) =>
+        isActionVisible(action, actionCtx)
+      ),
     [actionCtx]
   );
 
