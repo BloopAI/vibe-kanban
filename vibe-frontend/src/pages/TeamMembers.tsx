@@ -1,6 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useRegistrations } from '@/hooks/useRegistrations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -39,13 +40,18 @@ import {
   CheckCircle2,
   Hourglass,
   FolderKanban,
+  UserCheck,
+  Building2,
+  Calendar,
 } from 'lucide-react';
 import { InvitePeopleDialog } from '@/components/dialogs/teams/InvitePeopleDialog';
 import { MemberProjectsDialog } from '@/components/dialogs/teams/MemberProjectsDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
-import type { TeamMember, TeamMemberRole, TeamInvitation } from 'shared/types';
+import type { TeamMember, TeamMemberRole, TeamInvitation, UserRegistration } from 'shared/types';
 import { format } from 'date-fns';
 import { useState, useMemo } from 'react';
+
+type TabValue = 'members' | 'pending';
 
 const ROLE_OPTIONS: { value: TeamMemberRole; label: string; icon: React.ElementType }[] = [
   { value: 'viewer', label: 'Viewer', icon: Eye },
@@ -464,6 +470,139 @@ Best regards`
   );
 }
 
+// Component for displaying pending user registrations (users who signed up via Clerk)
+interface PendingRegistrationRowProps {
+  registration: UserRegistration;
+  onApprove: (registrationId: string) => Promise<void>;
+  onReject: (registrationId: string, reason?: string) => Promise<void>;
+  isApproving: boolean;
+  isRejecting: boolean;
+}
+
+function PendingRegistrationRow({
+  registration,
+  onApprove,
+  onReject,
+  isApproving,
+  isRejecting,
+}: PendingRegistrationRowProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleApprove = async () => {
+    setIsProcessing(true);
+    try {
+      await onApprove(registration.id);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    const confirmed = await ConfirmDialog.show({
+      title: 'Reject registration',
+      message: `Are you sure you want to reject ${registration.email}'s registration request? They will not be able to access the platform.`,
+      confirmText: 'Reject',
+      variant: 'destructive',
+    });
+    if (confirmed === 'confirmed') {
+      setIsProcessing(true);
+      try {
+        await onReject(registration.id, 'Registration rejected by owner');
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  const displayName = registration.first_name && registration.last_name
+    ? `${registration.first_name} ${registration.last_name}`
+    : registration.email.split('@')[0];
+  const avatarColor = getAvatarPattern(registration.email);
+  const createdAt = new Date(registration.created_at);
+
+  return (
+    <tr className="border-b hover:bg-muted/50">
+      {/* Account */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-full ${avatarColor} flex items-center justify-center`}>
+            <span className="text-sm font-medium text-white">
+              {displayName.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{displayName}</span>
+              <Badge variant="outline" className="text-xs border-amber-500 text-amber-600 dark:text-amber-400">
+                Awaiting approval
+              </Badge>
+            </div>
+            <span className="text-sm text-muted-foreground">{registration.email}</span>
+          </div>
+        </div>
+      </td>
+
+      {/* Workspace */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{registration.workspace_name}</span>
+        </div>
+      </td>
+
+      {/* Plans */}
+      <td className="py-4 px-4">
+        <div className="text-sm text-muted-foreground">
+          <div>{registration.planned_teams || 1} team{(registration.planned_teams || 1) !== 1 ? 's' : ''}</div>
+          <div>{registration.planned_projects || 1} project{(registration.planned_projects || 1) !== 1 ? 's' : ''}</div>
+        </div>
+      </td>
+
+      {/* Submitted */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>{format(createdAt, 'MMM dd, yyyy')}</span>
+        </div>
+      </td>
+
+      {/* Actions */}
+      <td className="py-4 px-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleApprove}
+            disabled={isProcessing || isApproving}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isApproving && isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Check className="h-4 w-4 mr-1" />
+            )}
+            Approve
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReject}
+            disabled={isProcessing || isRejecting}
+            className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            {isRejecting && isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <X className="h-4 w-4 mr-1" />
+            )}
+            Reject
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function TeamMembers() {
   const { teamId } = useParams<{ teamId: string }>();
   const { resolveTeam } = useTeams();
@@ -481,12 +620,28 @@ export function TeamMembers() {
     updateInvitationRole,
     cancelInvitation,
   } = useTeamMembers(actualTeamId);
+
+  // Check if current user is an owner (required for viewing/approving registrations)
+  const isOwner = currentMember?.role === 'owner';
+
+  // Fetch pending registrations only if user is an owner
+  const {
+    pendingRegistrations,
+    isLoading: isLoadingRegistrations,
+    approveRegistration,
+    rejectRegistration,
+    isApproving,
+    isRejecting,
+  } = useRegistrations(isOwner);
+
   const [isUpdating, setIsUpdating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('account');
   const [sortAsc, setSortAsc] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabValue>('members');
 
   const totalCount = members.length + invitations.filter(i => i.status === 'pending').length;
+  const pendingCount = pendingRegistrations.length;
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
@@ -574,6 +729,14 @@ export function TeamMembers() {
     }
   };
 
+  const handleApproveRegistration = async (registrationId: string) => {
+    await approveRegistration(registrationId);
+  };
+
+  const handleRejectRegistration = async (registrationId: string, reason?: string) => {
+    await rejectRegistration(registrationId, reason);
+  };
+
   const toggleSortDirection = () => {
     setSortAsc(!sortAsc);
   };
@@ -605,57 +768,82 @@ export function TeamMembers() {
       </div>
 
       {/* Tab Bar */}
-      <div className="px-6 border-b">
-        <button className="px-4 py-3 border-b-2 border-primary text-sm font-medium">
+      <div className="px-6 border-b flex gap-0">
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`px-4 py-3 border-b-2 text-sm font-medium transition-colors ${
+            activeTab === 'members'
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
           Members <Badge variant="secondary" className="ml-2">{totalCount}</Badge>
         </button>
+        {isOwner && (
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-4 py-3 border-b-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'pending'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <UserCheck className="h-4 w-4" />
+            Pending Approvals
+            {pendingCount > 0 && (
+              <Badge variant="destructive" className="ml-1">{pendingCount}</Badge>
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Filter Bar */}
-      <div className="px-6 py-4 flex items-center gap-4 border-b">
-        {/* Time Filter */}
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[110px]">
-            <Clock className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All time</SelectItem>
-            <SelectItem value="week">Last week</SelectItem>
-            <SelectItem value="month">Last month</SelectItem>
-            <SelectItem value="year">Last year</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Filter Bar - only show for members tab */}
+      {activeTab === 'members' && (
+        <div className="px-6 py-4 flex items-center gap-4 border-b">
+          {/* Time Filter */}
+          <Select defaultValue="all">
+            <SelectTrigger className="w-[110px]">
+              <Clock className="h-4 w-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="week">Last week</SelectItem>
+              <SelectItem value="month">Last month</SelectItem>
+              <SelectItem value="year">Last year</SelectItem>
+            </SelectContent>
+          </Select>
 
-        {/* Search */}
-        <div className="flex-1 relative">
-          <Input
-            placeholder="Filter members"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-10"
-          />
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Input
+              placeholder="Filter members"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
+
+          {/* Sort By */}
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="account">Account</SelectItem>
+              <SelectItem value="role">Role</SelectItem>
+              <SelectItem value="created">User created</SelectItem>
+              <SelectItem value="activity">Last activity</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort Direction */}
+          <Button variant="outline" size="icon" onClick={toggleSortDirection}>
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
         </div>
-
-        {/* Sort By */}
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortField)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="account">Account</SelectItem>
-            <SelectItem value="role">Role</SelectItem>
-            <SelectItem value="created">User created</SelectItem>
-            <SelectItem value="activity">Last activity</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Sort Direction */}
-        <Button variant="outline" size="icon" onClick={toggleSortDirection}>
-          <ArrowUpDown className="h-4 w-4" />
-        </Button>
-      </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
@@ -665,55 +853,104 @@ export function TeamMembers() {
           </Alert>
         )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b text-left text-sm text-muted-foreground">
-                <th className="py-3 px-4 font-medium">Account</th>
-                <th className="py-3 px-4 font-medium">Source</th>
-                <th className="py-3 px-4 font-medium">Role</th>
-                <th className="py-3 px-4 font-medium">Joined</th>
-                <th className="py-3 px-4 font-medium">Activity</th>
-                <th className="py-3 px-4 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMembers.map((member) => (
-                <MemberTableRow
-                  key={member.id}
-                  teamId={team.id}
-                  member={member}
-                  isCurrentUser={currentMember?.id === member.id}
-                  onRoleChange={handleRoleChange}
-                  onRemove={handleRemoveMember}
-                  isUpdating={isUpdating}
-                />
-              ))}
-              {filteredInvitations.map((invitation) => (
-                <InvitationTableRow
-                  key={invitation.id}
-                  invitation={invitation}
-                  teamName={team.name}
-                  onRoleChange={handleInvitationRoleChange}
-                  onCancel={handleCancelInvitation}
-                  isUpdating={isUpdating}
-                />
-              ))}
-              {filteredMembers.length === 0 && filteredInvitations.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                    <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No members found</p>
-                    <p className="text-sm">Invite people to join this team</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {/* Members Tab Content */}
+        {activeTab === 'members' && (
+          <>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-left text-sm text-muted-foreground">
+                    <th className="py-3 px-4 font-medium">Account</th>
+                    <th className="py-3 px-4 font-medium">Source</th>
+                    <th className="py-3 px-4 font-medium">Role</th>
+                    <th className="py-3 px-4 font-medium">Joined</th>
+                    <th className="py-3 px-4 font-medium">Activity</th>
+                    <th className="py-3 px-4 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMembers.map((member) => (
+                    <MemberTableRow
+                      key={member.id}
+                      teamId={team.id}
+                      member={member}
+                      isCurrentUser={currentMember?.id === member.id}
+                      onRoleChange={handleRoleChange}
+                      onRemove={handleRemoveMember}
+                      isUpdating={isUpdating}
+                    />
+                  ))}
+                  {filteredInvitations.map((invitation) => (
+                    <InvitationTableRow
+                      key={invitation.id}
+                      invitation={invitation}
+                      teamName={team.name}
+                      onRoleChange={handleInvitationRoleChange}
+                      onCancel={handleCancelInvitation}
+                      isUpdating={isUpdating}
+                    />
+                  ))}
+                  {filteredMembers.length === 0 && filteredInvitations.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No members found</p>
+                        <p className="text-sm">Invite people to join this team</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </>
+        )}
+
+        {/* Pending Approvals Tab Content */}
+        {activeTab === 'pending' && isOwner && (
+          <>
+            {isLoadingRegistrations ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-left text-sm text-muted-foreground">
+                    <th className="py-3 px-4 font-medium">Account</th>
+                    <th className="py-3 px-4 font-medium">Workspace</th>
+                    <th className="py-3 px-4 font-medium">Plans</th>
+                    <th className="py-3 px-4 font-medium">Submitted</th>
+                    <th className="py-3 px-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRegistrations.map((registration) => (
+                    <PendingRegistrationRow
+                      key={registration.id}
+                      registration={registration}
+                      onApprove={handleApproveRegistration}
+                      onReject={handleRejectRegistration}
+                      isApproving={isApproving}
+                      isRejecting={isRejecting}
+                    />
+                  ))}
+                  {pendingRegistrations.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                        <UserCheck className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No pending registrations</p>
+                        <p className="text-sm">All sign-up requests have been reviewed</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </>
         )}
       </div>
     </div>
