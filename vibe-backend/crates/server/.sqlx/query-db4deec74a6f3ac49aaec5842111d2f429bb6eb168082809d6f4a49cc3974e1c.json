@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.id as \"id!: Uuid\",\n                      m.team_id as \"team_id!: Uuid\",\n                      m.email,\n                      m.display_name,\n                      m.role,\n                      m.invited_by as \"invited_by: Uuid\",\n                      m.clerk_user_id,\n                      m.avatar_url,\n                      COALESCE(COUNT(t.id), 0) as \"assigned_task_count!: i32\",\n                      m.joined_at as \"joined_at!: DateTime<Utc>\",\n                      m.created_at as \"created_at!: DateTime<Utc>\",\n                      m.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM team_members m\n               LEFT JOIN tasks t ON t.assignee_id = m.id\n               WHERE m.team_id = $1\n               GROUP BY m.id\n               ORDER BY\n                   CASE m.role\n                       WHEN 'owner' THEN 1\n                       WHEN 'maintainer' THEN 2\n                       WHEN 'contributor' THEN 3\n                       WHEN 'viewer' THEN 4\n                   END,\n                   m.display_name ASC, m.email ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "clerk_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "assigned_task_count!: i32",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "joined_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      null,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "db4deec74a6f3ac49aaec5842111d2f429bb6eb168082809d6f4a49cc3974e1c"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE team_invitations SET status = 'expired' WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "beb037bf503ce70b9b85dd1f6605c4ba420b2ed2b56923ca2577502975cf205d"
+}

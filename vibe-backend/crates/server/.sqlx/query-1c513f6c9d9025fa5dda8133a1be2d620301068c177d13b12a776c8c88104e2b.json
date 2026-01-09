@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO project_repos (id, project_id, repo_id)\n               VALUES ($1, $2, $3)\n               RETURNING id as \"id!: Uuid\",\n                         project_id as \"project_id!: Uuid\",\n                         repo_id as \"repo_id!: Uuid\",\n                         setup_script,\n                         cleanup_script,\n                         copy_files,\n                         parallel_setup_script as \"parallel_setup_script!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "setup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "cleanup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "copy_files",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "parallel_setup_script!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "1c513f6c9d9025fa5dda8133a1be2d620301068c177d13b12a776c8c88104e2b"
+}

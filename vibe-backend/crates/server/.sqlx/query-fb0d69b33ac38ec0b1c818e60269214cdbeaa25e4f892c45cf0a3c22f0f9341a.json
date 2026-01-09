@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.id as \"id!: Uuid\",\n                      i.file_path as \"file_path!\",\n                      i.original_name as \"original_name!\",\n                      i.mime_type,\n                      i.size_bytes as \"size_bytes!\",\n                      i.hash as \"hash!\",\n                      i.created_at as \"created_at!: DateTime<Utc>\",\n                      i.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM images i\n               JOIN task_images ti ON i.id = ti.image_id\n               WHERE ti.task_id = $1\n               ORDER BY ti.created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "original_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "mime_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fb0d69b33ac38ec0b1c818e60269214cdbeaa25e4f892c45cf0a3c22f0f9341a"
+}

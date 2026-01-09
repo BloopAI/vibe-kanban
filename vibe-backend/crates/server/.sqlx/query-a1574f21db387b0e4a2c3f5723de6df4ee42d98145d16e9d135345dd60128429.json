@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \n                execution_id as \"execution_id!: Uuid\",\n                logs,\n                byte_size,\n                inserted_at as \"inserted_at!: DateTime<Utc>\"\n               FROM execution_process_logs \n               WHERE execution_id = $1\n               ORDER BY inserted_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "execution_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "logs",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "byte_size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "inserted_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a1574f21db387b0e4a2c3f5723de6df4ee42d98145d16e9d135345dd60128429"
+}

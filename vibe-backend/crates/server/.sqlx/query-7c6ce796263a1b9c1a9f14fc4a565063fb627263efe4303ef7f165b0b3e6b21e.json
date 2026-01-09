@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT  w.id                AS \"id!: Uuid\",\n                       w.task_id           AS \"task_id!: Uuid\",\n                       w.container_ref,\n                       w.branch,\n                       w.agent_working_dir,\n                       w.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       w.created_at        AS \"created_at!: DateTime<Utc>\",\n                       w.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    workspaces w\n               JOIN    tasks t ON w.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   w.id = $1 AND t.id = $2 AND p.id = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "container_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "branch",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agent_working_dir",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "setup_completed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7c6ce796263a1b9c1a9f14fc4a565063fb627263efe4303ef7f165b0b3e6b21e"
+}

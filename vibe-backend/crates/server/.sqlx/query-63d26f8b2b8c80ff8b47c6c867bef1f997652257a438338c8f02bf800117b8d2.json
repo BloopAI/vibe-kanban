@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO github_repo_sync_configs (id, repo_id, folder_id, github_path)\n               VALUES ($1, $2, $3, $4)\n               ON CONFLICT (repo_id, folder_id) DO UPDATE SET github_path = $4\n               RETURNING id as \"id!: Uuid\",\n                         repo_id as \"repo_id!: Uuid\",\n                         folder_id,\n                         github_path,\n                         created_at as \"created_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "63d26f8b2b8c80ff8b47c6c867bef1f997652257a438338c8f02bf800117b8d2"
+}

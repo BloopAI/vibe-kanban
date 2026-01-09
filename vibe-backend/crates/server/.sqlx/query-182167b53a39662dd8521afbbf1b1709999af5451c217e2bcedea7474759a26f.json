@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                  tdl.id as \"id!: Uuid\",\n                  tdl.document_id as \"document_id!: Uuid\",\n                  d.title as \"document_title!\",\n                  df.name as \"folder_name\",\n                  tdl.created_at as \"linked_at!: DateTime<Utc>\"\n               FROM task_document_links tdl\n               JOIN documents d ON d.id = tdl.document_id\n               LEFT JOIN document_folders df ON df.id = d.folder_id\n               WHERE tdl.task_id = $1\n               ORDER BY tdl.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "document_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "document_title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "folder_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "linked_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "182167b53a39662dd8521afbbf1b1709999af5451c217e2bcedea7474759a26f"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM github_repositories WHERE connection_id = $1 AND repo_full_name = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "612cd935a73052b8936fc5c2092afb215142e9308b2f702e71e19103fc9e6959"
+}

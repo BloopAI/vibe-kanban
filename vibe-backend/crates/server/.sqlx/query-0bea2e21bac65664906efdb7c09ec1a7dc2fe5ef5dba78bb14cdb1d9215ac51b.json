@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM inbox_items WHERE task_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0bea2e21bac65664906efdb7c09ec1a7dc2fe5ef5dba78bb14cdb1d9215ac51b"
+}

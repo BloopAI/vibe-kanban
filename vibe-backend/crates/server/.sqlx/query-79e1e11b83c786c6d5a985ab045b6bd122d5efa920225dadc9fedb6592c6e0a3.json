@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE execution_process_repo_states\n               SET after_head_commit = $1, updated_at = $2\n             WHERE execution_process_id = $3\n               AND repo_id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79e1e11b83c786c6d5a985ab045b6bd122d5efa920225dadc9fedb6592c6e0a3"
+}

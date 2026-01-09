@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE execution_processes\n               SET status = $1, exit_code = $2, completed_at = $3\n               WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5d9739705372b113b1bb45d441ebdf2846dc4cd83b8547128c733cd282b5b4f2"
+}

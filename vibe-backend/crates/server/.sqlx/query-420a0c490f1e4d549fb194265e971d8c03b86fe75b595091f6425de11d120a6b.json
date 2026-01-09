@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE execution_processes\n               SET dropped = TRUE\n             WHERE session_id = $1\n               AND created_at >= (SELECT created_at FROM execution_processes WHERE id = $2)\n               AND dropped = FALSE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "420a0c490f1e4d549fb194265e971d8c03b86fe75b595091f6425de11d120a6b"
+}

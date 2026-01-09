@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      email,\n                      role,\n                      status,\n                      invited_by as \"invited_by: Uuid\",\n                      token,\n                      expires_at as \"expires_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\"\n               FROM team_invitations\n               WHERE team_id = $1 AND status = 'pending'\n               ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "expires_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "81e8a0b471ff5bf1eaa44a9741fcd84be2bec6b5c6c8de02a6b843c6b1dbfd10"
+}

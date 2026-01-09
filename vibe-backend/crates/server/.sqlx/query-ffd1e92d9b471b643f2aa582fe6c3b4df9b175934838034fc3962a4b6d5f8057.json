@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      folder_id,\n                      github_path,\n                      created_at as \"created_at!: DateTime<Utc>\"\n               FROM github_repo_sync_configs\n               WHERE repo_id = $1\n               ORDER BY folder_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ffd1e92d9b471b643f2aa582fe6c3b4df9b175934838034fc3962a4b6d5f8057"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM github_repo_sync_configs WHERE repo_id = $1 AND folder_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6aa6ee9c8efa7874ee649890661e2903dc48a7ace7b1e28a3e9db335109e0e44"
+}

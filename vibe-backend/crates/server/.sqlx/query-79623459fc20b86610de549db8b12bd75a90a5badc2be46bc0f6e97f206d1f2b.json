@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE(MAX(position), -1) + 1 as \"pos!: i32\"\n                   FROM documents\n                   WHERE folder_id = $1 AND team_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pos!: i32",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "79623459fc20b86610de549db8b12bd75a90a5badc2be46bc0f6e97f206d1f2b"
+}

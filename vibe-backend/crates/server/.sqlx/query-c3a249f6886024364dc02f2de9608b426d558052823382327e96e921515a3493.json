@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                COUNT(*) as \"total_count!: i64\",\n                SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as \"unread_count!: i64\"\n            FROM inbox_items",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_count!: i64",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "unread_count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "c3a249f6886024364dc02f2de9608b426d558052823382327e96e921515a3493"
+}

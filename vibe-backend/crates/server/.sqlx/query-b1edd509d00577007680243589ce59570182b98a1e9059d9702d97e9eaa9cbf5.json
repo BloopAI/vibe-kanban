@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as \"count!: i64\"\n               FROM execution_processes ep\n               JOIN sessions s ON ep.session_id = s.id\n               WHERE s.workspace_id = $1\n                 AND ep.status = 'running'\n                 AND ep.run_reason != 'devserver'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!: i64",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b1edd509d00577007680243589ce59570182b98a1e9059d9702d97e9eaa9cbf5"
+}

@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT ti.id as \"id!: Uuid\",\n                      ti.team_id as \"team_id!: Uuid\",\n                      ti.email,\n                      ti.role,\n                      ti.status,\n                      ti.invited_by as \"invited_by: Uuid\",\n                      ti.token,\n                      ti.expires_at as \"expires_at!: DateTime<Utc>\",\n                      ti.created_at as \"created_at!: DateTime<Utc>\",\n                      t.name as team_name\n               FROM team_invitations ti\n               INNER JOIN teams t ON ti.team_id = t.id\n               WHERE ti.email = $1 AND ti.status = 'pending'\n               ORDER BY ti.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "expires_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "team_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e34aaeea877b6d077e748adc094df9d4aaf558f4497ea2cd4c2236a48b8583a0"
+}

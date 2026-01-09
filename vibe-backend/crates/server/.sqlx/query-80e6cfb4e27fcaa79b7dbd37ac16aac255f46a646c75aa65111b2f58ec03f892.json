@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                    ep.id as \"id!: Uuid\",\n                    ep.session_id as \"session_id!: Uuid\",\n                    ep.run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                    ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                    ep.status as \"status!: ExecutionProcessStatus\",\n                    ep.exit_code,\n                    ep.dropped as \"dropped!: bool\",\n                    ep.started_at as \"started_at!: DateTime<Utc>\",\n                    ep.completed_at as \"completed_at?: DateTime<Utc>\",\n                    ep.created_at as \"created_at!: DateTime<Utc>\",\n                    ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep WHERE ep.status = 'running' ORDER BY ep.created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "run_reason!: ExecutionProcessRunReason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "executor_action!: sqlx::types::Json<ExecutorActionField>",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status!: ExecutionProcessStatus",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "exit_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "dropped!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "started_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "completed_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "80e6cfb4e27fcaa79b7dbd37ac16aac255f46a646c75aa65111b2f58ec03f892"
+}

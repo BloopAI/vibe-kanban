@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE team_invitations SET status = 'declined' WHERE id = $1 AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "04382ef92c7ca82b7a3f821f4eb521004fbe77c91748241609f3c88e9928ba28"
+}

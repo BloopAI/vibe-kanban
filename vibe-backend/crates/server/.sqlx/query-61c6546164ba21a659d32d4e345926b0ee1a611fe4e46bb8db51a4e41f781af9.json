@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE coding_agent_turns\n               SET summary = $1, updated_at = $2\n               WHERE execution_process_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "61c6546164ba21a659d32d4e345926b0ee1a611fe4e46bb8db51a4e41f781af9"
+}

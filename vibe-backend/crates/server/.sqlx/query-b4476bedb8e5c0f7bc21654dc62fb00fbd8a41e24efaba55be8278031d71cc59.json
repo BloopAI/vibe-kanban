@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO merges (\n                id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name\n            ) VALUES ($1, $2, $3, 'direct', $4, $5, $6)\n            RETURNING\n                id as \"id!: Uuid\",\n                workspace_id as \"workspace_id!: Uuid\",\n                repo_id as \"repo_id!: Uuid\",\n                merge_type as \"merge_type!: MergeType\",\n                merge_commit,\n                pr_number,\n                pr_url,\n                pr_status as \"pr_status?: MergeStatus\",\n                pr_merged_at as \"pr_merged_at?: DateTime<Utc>\",\n                pr_merge_commit_sha,\n                created_at as \"created_at!: DateTime<Utc>\",\n                target_branch_name as \"target_branch_name!: String\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workspace_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "merge_type!: MergeType",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "merge_commit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "pr_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "pr_status?: MergeStatus",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "pr_merged_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "pr_merge_commit_sha",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "target_branch_name!: String",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "b4476bedb8e5c0f7bc21654dc62fb00fbd8a41e24efaba55be8278031d71cc59"
+}

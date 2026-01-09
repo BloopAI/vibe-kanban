@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      connection_id as \"connection_id!: Uuid\",\n                      repo_full_name,\n                      repo_name,\n                      repo_owner,\n                      repo_url,\n                      default_branch,\n                      is_private as \"is_private!: bool\",\n                      linked_at as \"linked_at!: DateTime<Utc>\",\n                      sync_path,\n                      sync_folder_id,\n                      last_synced_at as \"last_synced_at: DateTime<Utc>\"\n               FROM github_repositories\n               WHERE sync_folder_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connection_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "repo_owner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "repo_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "default_branch",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "is_private!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "linked_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "sync_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "sync_folder_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_synced_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "90da580ae95cf81fb206ef1d914c3212c2dcccee5adf93ea0aae93a803d51a8d"
+}

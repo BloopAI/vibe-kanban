@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\",\n                      wr.target_branch\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1\n               ORDER BY r.display_name ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "target_branch",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "64b5d84eb77fbd8dd733cd92faad07842b1093ec3e8120fefac5c5f7cd7f2f8e"
+}

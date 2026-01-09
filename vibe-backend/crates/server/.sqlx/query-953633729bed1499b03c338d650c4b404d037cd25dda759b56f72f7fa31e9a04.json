@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO coding_agent_turns (\n                id, execution_process_id, agent_session_id, prompt, summary,\n                created_at, updated_at\n               )\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING\n                id as \"id!: Uuid\",\n                execution_process_id as \"execution_process_id!: Uuid\",\n                agent_session_id,\n                prompt,\n                summary,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "execution_process_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "agent_session_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "prompt",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "summary",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "953633729bed1499b03c338d650c4b404d037cd25dda759b56f72f7fa31e9a04"
+}

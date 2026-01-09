@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE execution_process_repo_states\n               SET merge_commit = $1, updated_at = $2\n             WHERE execution_process_id = $3\n               AND repo_id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4d84b308a2cc7677da65111d080bf02e5e35c052048360d3dbea656bbbcd3edb"
+}

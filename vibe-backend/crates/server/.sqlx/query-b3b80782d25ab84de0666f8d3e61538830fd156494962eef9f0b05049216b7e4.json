@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tm.id, t.name as team_name\n           FROM team_members tm\n           JOIN teams t ON t.id = tm.team_id\n           WHERE tm.clerk_user_id = $1\n           LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "b3b80782d25ab84de0666f8d3e61538830fd156494962eef9f0b05049216b7e4"
+}

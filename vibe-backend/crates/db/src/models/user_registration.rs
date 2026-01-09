@@ -236,6 +236,52 @@ impl UserRegistration {
         Ok(row.into())
     }
 
+    /// Create a new user registration with auto-approved status (for existing team members)
+    pub async fn create_auto_approved(
+        pool: &PgPool,
+        data: &CreateUserRegistration,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+        let status = RegistrationStatus::Approved.to_string();
+        let planned_teams = data.planned_teams.unwrap_or(1);
+        let planned_projects = data.planned_projects.unwrap_or(1);
+        let now = Utc::now();
+
+        let row = sqlx::query_as!(
+            UserRegistrationRow,
+            r#"INSERT INTO user_registrations (id, clerk_user_id, email, first_name, last_name, workspace_name, planned_teams, planned_projects, status, reviewed_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               RETURNING id as "id!: Uuid",
+                         clerk_user_id,
+                         email,
+                         first_name,
+                         last_name,
+                         workspace_name,
+                         planned_teams,
+                         planned_projects,
+                         status,
+                         reviewed_by as "reviewed_by: Uuid",
+                         reviewed_at as "reviewed_at: DateTime<Utc>",
+                         rejection_reason,
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            data.clerk_user_id,
+            data.email,
+            data.first_name,
+            data.last_name,
+            data.workspace_name,
+            planned_teams,
+            planned_projects,
+            status,
+            now
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(row.into())
+    }
+
     /// List all pending registrations (for admin review)
     pub async fn list_pending(pool: &PgPool) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as!(

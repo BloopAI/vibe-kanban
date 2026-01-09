@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE project_repos\n               SET setup_script = $1,\n                   cleanup_script = $2,\n                   copy_files = $3,\n                   parallel_setup_script = $4\n               WHERE project_id = $5 AND repo_id = $6\n               RETURNING id as \"id!: Uuid\",\n                         project_id as \"project_id!: Uuid\",\n                         repo_id as \"repo_id!: Uuid\",\n                         setup_script,\n                         cleanup_script,\n                         copy_files,\n                         parallel_setup_script as \"parallel_setup_script!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "setup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "cleanup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "copy_files",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "parallel_setup_script!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c00f47bc6ad969ae325c15a5ade865489b8b90309f68101b7ed39a517cf473cb"
+}

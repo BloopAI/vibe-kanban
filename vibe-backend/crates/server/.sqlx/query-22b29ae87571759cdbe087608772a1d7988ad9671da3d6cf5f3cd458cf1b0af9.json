@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                          clerk_user_id,\n                          email,\n                          first_name,\n                          last_name,\n                          workspace_name,\n                          planned_teams,\n                          planned_projects,\n                          status,\n                          reviewed_by as \"reviewed_by: Uuid\",\n                          reviewed_at as \"reviewed_at: DateTime<Utc>\",\n                          rejection_reason,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"\n                   FROM user_registrations\n                   ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "clerk_user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "first_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "workspace_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "planned_teams",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "planned_projects",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "reviewed_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "reviewed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "rejection_reason",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "22b29ae87571759cdbe087608772a1d7988ad9671da3d6cf5f3cd458cf1b0af9"
+}

@@ -1,0 +1,111 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, team_id, issue_number, priority, due_date, assignee_id)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", team_id as \"team_id: Uuid\", issue_number as \"issue_number: i32\", priority as \"priority: i32\", due_date as \"due_date: DateTime<Utc>\", assignee_id as \"assignee_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "status!: TaskStatus",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "parent_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "shared_task_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "team_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "issue_number: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "priority: i32",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "due_date: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "assignee_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Int4",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5b159320fd0a5daf585b3365c3b37f856bad2acb9c51532add51da7b34d943aa"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE merges\n            SET pr_status = $1,\n                pr_merge_commit_sha = $2,\n                pr_merged_at = $3\n            WHERE id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5785a10c3d51ff9b001aa455f6296a4dcba61cec700a4b72031c5c643b273938"
+}

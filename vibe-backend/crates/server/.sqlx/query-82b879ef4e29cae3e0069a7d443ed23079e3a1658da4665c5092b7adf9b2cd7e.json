@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                w.id as \"id!: Uuid\",\n                w.task_id as \"task_id!: Uuid\",\n                w.container_ref,\n                w.branch as \"branch!\",\n                w.agent_working_dir,\n                w.setup_completed_at as \"setup_completed_at: DateTime<Utc>\",\n                w.created_at as \"created_at!: DateTime<Utc>\",\n                w.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM workspaces w\n            LEFT JOIN sessions s ON w.id = s.workspace_id\n            LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL\n            WHERE w.container_ref IS NOT NULL\n                AND w.id NOT IN (\n                    SELECT DISTINCT s2.workspace_id\n                    FROM sessions s2\n                    JOIN execution_processes ep2 ON s2.id = ep2.session_id\n                    WHERE ep2.completed_at IS NULL\n                )\n            GROUP BY w.id, w.container_ref, w.updated_at\n            HAVING (NOW() - INTERVAL '72 hours') > MAX(\n                CASE\n                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                    ELSE w.updated_at\n                END\n            )\n            ORDER BY MAX(\n                CASE\n                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                    ELSE w.updated_at\n                END\n            ) ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "task_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "container_ref",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "branch!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "agent_working_dir",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "setup_completed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "82b879ef4e29cae3e0069a7d443ed23079e3a1658da4665c5092b7adf9b2cd7e"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM github_connections WHERE team_id IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "daea3a0e09bc32789de4d2a2f7f8956a46ec6951f80a6c7c694e324e3f2bdc73"
+}

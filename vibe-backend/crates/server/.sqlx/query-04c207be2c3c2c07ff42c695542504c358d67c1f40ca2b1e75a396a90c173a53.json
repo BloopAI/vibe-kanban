@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT eprs.after_head_commit\n               FROM execution_process_repo_states eprs\n               JOIN execution_processes ep ON ep.id = eprs.execution_process_id\n              WHERE ep.session_id = $1\n                AND eprs.repo_id = $2\n                AND ep.created_at < (SELECT created_at FROM execution_processes WHERE id = $3)\n              ORDER BY ep.created_at DESC\n              LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "after_head_commit",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "04c207be2c3c2c07ff42c695542504c358d67c1f40ca2b1e75a396a90c173a53"
+}

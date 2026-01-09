@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: uuid::Uuid\"\n           FROM team_members\n           WHERE clerk_user_id = $1 AND role = 'owner'\n           LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: uuid::Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ce0db9452c3c7b6265df3bf43bccdaecbe34c6aa79a791aeef4c816dadc43511"
+}

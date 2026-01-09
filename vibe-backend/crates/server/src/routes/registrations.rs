@@ -19,13 +19,53 @@ pub struct ListRegistrationsQuery {
 }
 
 /// Get current user's registration status by Clerk user ID
+/// For existing team members without a registration, auto-create an approved registration
 pub async fn get_my_registration(
     State(deployment): State<DeploymentImpl>,
     Extension(user): Extension<ClerkUser>,
 ) -> Result<ResponseJson<ApiResponse<Option<UserRegistration>>>, ApiError> {
+    // First check for existing registration
     let registration =
         UserRegistration::find_by_clerk_id(&deployment.db().pool, &user.user_id).await?;
-    Ok(ResponseJson(ApiResponse::success(registration)))
+
+    if registration.is_some() {
+        return Ok(ResponseJson(ApiResponse::success(registration)));
+    }
+
+    // No registration - check if user is already a team member (existing user before registration system)
+    let existing_member = sqlx::query!(
+        r#"SELECT tm.id, t.name as team_name
+           FROM team_members tm
+           JOIN teams t ON t.id = tm.team_id
+           WHERE tm.clerk_user_id = $1
+           LIMIT 1"#,
+        &user.user_id
+    )
+    .fetch_optional(&deployment.db().pool)
+    .await?;
+
+    if let Some(member) = existing_member {
+        // Existing team member - auto-create an approved registration
+        let auto_registration = CreateUserRegistration {
+            clerk_user_id: user.user_id.clone(),
+            email: user.email.clone().unwrap_or_default(),
+            first_name: None, // Will be populated from Clerk on next login
+            last_name: None,
+            workspace_name: member.team_name,
+            planned_teams: Some(1),
+            planned_projects: Some(3),
+        };
+
+        // Create the registration as auto-approved
+        let new_registration =
+            UserRegistration::create_auto_approved(&deployment.db().pool, &auto_registration)
+                .await?;
+
+        return Ok(ResponseJson(ApiResponse::success(Some(new_registration))));
+    }
+
+    // No registration and not an existing team member
+    Ok(ResponseJson(ApiResponse::success(None)))
 }
 
 /// Create a new user registration

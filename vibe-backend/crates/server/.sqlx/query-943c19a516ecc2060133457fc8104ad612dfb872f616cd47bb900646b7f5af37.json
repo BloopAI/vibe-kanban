@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\", \n                         file_path as \"file_path!\", \n                         original_name as \"original_name!\", \n                         mime_type,\n                         size_bytes as \"size_bytes!\",\n                         hash as \"hash!\",\n                         created_at as \"created_at!: DateTime<Utc>\", \n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "original_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "mime_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "943c19a516ecc2060133457fc8104ad612dfb872f616cd47bb900646b7f5af37"
+}

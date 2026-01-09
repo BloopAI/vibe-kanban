@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pr.id as \"id!: Uuid\",\n                      pr.project_id as \"project_id!: Uuid\",\n                      pr.repo_id as \"repo_id!: Uuid\",\n                      r.name as \"repo_name!\",\n                      pr.setup_script,\n                      pr.cleanup_script,\n                      pr.copy_files,\n                      pr.parallel_setup_script as \"parallel_setup_script!: bool\"\n               FROM project_repos pr\n               JOIN repos r ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.display_name ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "repo_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "setup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "cleanup_script",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "copy_files",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "parallel_setup_script!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "0c9ee0273c78ae47634deb65dba5c052d7d21810b34bcd0bd498e4fc3de0b259"
+}

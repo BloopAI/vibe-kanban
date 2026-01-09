@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                    id               as \"id!: Uuid\",\n                    execution_process_id as \"execution_process_id!: Uuid\",\n                    repo_id as \"repo_id!: Uuid\",\n                    before_head_commit,\n                    after_head_commit,\n                    merge_commit,\n                    created_at as \"created_at!: DateTime<Utc>\",\n                    updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_process_repo_states\n               WHERE execution_process_id = $1\n               ORDER BY created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "execution_process_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repo_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "before_head_commit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "after_head_commit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "merge_commit",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fb1ab168509b38eccf3064e2a90690a3fdef67a98fee7e5943689e61818d34f0"
+}
