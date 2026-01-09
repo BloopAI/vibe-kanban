@@ -10,6 +10,7 @@ on:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend
+  RAILWAY_SERVICE_NAME: vibe-kanban-api
 
 jobs:
   build-binary:
@@ -90,7 +91,9 @@ jobs:
           context: ./vibe-backend
           file: ./vibe-backend/Dockerfile.deploy  # Use the specialized Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
+          tags: |
+            ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest
 
   deploy-railway:
     name: Deploy to Railway
@@ -104,12 +107,28 @@ jobs:
       - name: Create Proxy Dockerfile
         run: |
           mkdir deploy_payload
-          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:latest" > deploy_payload/Dockerfile
+          # Use commit SHA tag for traceability
+          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}" > deploy_payload/Dockerfile
           echo "ENV PORT=3000" >> deploy_payload/Dockerfile
           echo "EXPOSE 3000" >> deploy_payload/Dockerfile
 
-      - name: Deploy
+      - name: Deploy to Railway
+        id: deploy
         working-directory: ./deploy_payload
-        run: railway up --service vibe-kanban-api --detach
+        continue-on-error: true
+        run: railway up --service ${{ env.RAILWAY_SERVICE_NAME }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Check Deployment Result
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "::error::Railway deployment failed! Check Railway dashboard for details."
+          echo "Deployment of commit ${{ github.sha }} failed."
+          exit 1
+
+      - name: Deployment Success
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Successfully deployed commit ${{ github.sha }} to Railway"
+          echo "Image: ${{ secrets.DOCKER_USER }}/vibe-kanban-backend:${{ github.sha }}"

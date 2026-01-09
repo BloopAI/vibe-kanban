@@ -8,7 +8,8 @@ on:
       - ".github/workflows/deploy-frontend.yml"
 
 env:
-  CARGO_TERM_COLOR: always
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend
+  RAILWAY_SERVICE_ID: fd827df3-1f51-483c-a798-7c5d39610c46
 
 jobs:
   build-and-push:
@@ -29,7 +30,9 @@ jobs:
           context: .
           file: vibe-frontend/Dockerfile.frontend
           push: true
-          tags: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest
+          tags: |
+            ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest
           build-args: |
             VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}
             VITE_API_URL=https://api.scho1ar.com
@@ -48,13 +51,28 @@ jobs:
       - name: Create Proxy Dockerfile
         run: |
           mkdir deploy_payload
-          # Since our image already includes Nginx and config, we just need to run it.
-          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:latest" > deploy_payload/Dockerfile
+          # Use commit SHA tag for traceability
+          echo "FROM ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}" > deploy_payload/Dockerfile
           echo "ENV PORT=80" >> deploy_payload/Dockerfile
           echo "EXPOSE 80" >> deploy_payload/Dockerfile
 
-      - name: Deploy
+      - name: Deploy to Railway
+        id: deploy
         working-directory: ./deploy_payload
-        run: railway up --service fd827df3-1f51-483c-a798-7c5d39610c46 --detach
+        continue-on-error: true
+        run: railway up --service ${{ env.RAILWAY_SERVICE_ID }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_FRONTEND_TOKEN }}
+
+      - name: Check Deployment Result
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "::error::Railway deployment failed! Check Railway dashboard for details."
+          echo "Deployment of commit ${{ github.sha }} failed."
+          exit 1
+
+      - name: Deployment Success
+        if: steps.deploy.outcome == 'success'
+        run: |
+          echo "Successfully deployed commit ${{ github.sha }} to Railway"
+          echo "Image: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend:${{ github.sha }}"
