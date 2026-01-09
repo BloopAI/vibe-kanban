@@ -13,6 +13,7 @@ import { JoinTeam } from '@/pages/JoinTeam';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { About } from '@/pages/About';
 import { Views } from '@/pages/Views';
+import { LandingPage } from '@/pages/LandingPage';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { usePostHog } from 'posthog-js/react';
@@ -150,6 +151,7 @@ function AppContent() {
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
               {/* Public routes - no authentication required */}
+              <Route path="/" element={<LandingPage />} />
               <Route path="/about" element={<About />} />
 
               {/* Join team via invite link (standalone page) */}
@@ -172,7 +174,6 @@ function AppContent() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="/" element={<Projects />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
                 <Route path="/views" element={<Views />} />
