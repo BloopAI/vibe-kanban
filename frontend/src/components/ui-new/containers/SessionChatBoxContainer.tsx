@@ -177,37 +177,23 @@ export function SessionChatBoxContainer({
   // User profiles, config preference, and latest executor from processes
   const { profiles, config } = useUserSystem();
 
-  // Get last used executor from the most recently used session in this workspace
-  const lastSessionExecutor = useMemo(() => {
-    if (!sessions?.length) return null;
-    // Sessions are sorted by most recently used (first is most recent)
-    const mostRecentSession = sessions[0];
-    return mostRecentSession?.executor ?? null;
-  }, [sessions]);
-
-  // Get last session's ID for fetching its processes (only in new session mode)
+  // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
-
-  // Fetch processes from last session to get the full profile (executor + variant)
   const { executionProcesses: lastSessionProcesses } =
     useExecutionProcesses(lastSessionId);
 
-  // Extract full profile from last session's processes
-  const lastSessionProfile = useMemo(() => {
-    if (!lastSessionProcesses?.length) return null;
-    return getLatestProfileFromProcesses(lastSessionProcesses);
-  }, [lastSessionProcesses]);
-
-  // Compute latestProfileId: from processes, or fall back to last session's profile/executor
+  // Compute latestProfileId: current processes > last session processes > session metadata
   const latestProfileId = useMemo(() => {
-    // If we have processes (existing session), use them
+    // Current session's processes take priority
     const fromProcesses = getLatestProfileFromProcesses(processes);
     if (fromProcesses) return fromProcesses;
 
-    // Use full profile from last session (includes variant)
-    if (lastSessionProfile) return lastSessionProfile;
+    // Try full profile from last session's processes (includes variant)
+    const fromLastSession = getLatestProfileFromProcesses(lastSessionProcesses);
+    if (fromLastSession) return fromLastSession;
 
     // Fallback: just executor from session metadata, no variant
+    const lastSessionExecutor = sessions?.[0]?.executor;
     if (lastSessionExecutor) {
       return {
         executor: lastSessionExecutor as BaseCodingAgent,
@@ -216,7 +202,7 @@ export function SessionChatBoxContainer({
     }
 
     return null;
-  }, [processes, lastSessionProfile, lastSessionExecutor]);
+  }, [processes, lastSessionProcesses, sessions]);
 
   // Message editor state
   const {
