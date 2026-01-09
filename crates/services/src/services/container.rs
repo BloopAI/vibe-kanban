@@ -1122,9 +1122,10 @@ pub trait ContainerService {
                     &request.executor_profile_id,
                     request.effective_dir(&workspace_root),
                 )),
-                ExecutorActionType::ReviewRequest(request) => {
-                    Some((&request.executor_profile_id, workspace_root.clone()))
-                }
+                ExecutorActionType::ReviewRequest(request) => Some((
+                    &request.executor_profile_id,
+                    request.effective_dir(&workspace_root),
+                )),
                 _ => None,
             }
         {
