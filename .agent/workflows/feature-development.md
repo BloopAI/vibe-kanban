@@ -44,10 +44,54 @@ Act as a Principal Engineer. Do not write implementation code yet. Focus on data
   - Content: Detailed breakdown of execution phases (e.g., Database, API, Frontend, Integration). Discuss pros/cons of approaches.
   - **Constraint:** NO CODE SNIPPETS.
 
+## 3.5. Test-Driven Development (TDD)
+> [!IMPORTANT]
+> **Philosophy:** Write tests BEFORE implementation to define expected behavior and ensure correctness.
+
+Define test cases based on the implementation plan:
+- [ ] **Create Test File:** In `/Users/rupeshpanwar/Documents/AI-Projects/ai-pack/vibe-kanban/vibe-testing/tests/`
+  - Name: `<feature-name>.spec.ts`
+  - Location: `vibe-testing/tests/<feature-name>.spec.ts`
+  
+- [ ] **Write Test Cases:** Using Playwright for E2E testing
+  ```typescript
+  // Example structure (do NOT copy verbatim):
+  test.describe('Feature Name', () => {
+    test('should handle success case', async ({ page }) => {
+      // Arrange, Act, Assert
+    });
+    
+    test('should handle error case', async ({ page }) => {
+      // Arrange, Act, Assert
+    });
+  });
+  ```
+
+- [ ] **Test Coverage Requirements:**
+  - Happy path (success scenarios)
+  - Error handling (validation failures, network errors)
+  - Edge cases (empty states, boundary conditions)
+  - Authentication/Authorization (if applicable)
+
+- [ ] **Run Tests (Expect Failures):**
+  ```bash
+  cd vibe-testing
+  npx playwright test tests/<feature-name>.spec.ts
+  ```
+  *Tests should FAIL initially - this confirms they're testing real behavior.*
+
 ## 4. Implementation (Local First)
+
 Execute the plan defined in phase 3. Work strictly in local environment initially.
 - [ ] Implement the feature in the respective folders (frontend/backend).
 - [ ] Maintain adherence to the `architecture-flow.txt`.
+- [ ] **Verify Tests Pass:** Run the tests written in TDD phase (3.5):
+  ```bash
+  cd vibe-testing
+  npx playwright test tests/<feature-name>.spec.ts
+  ```
+  *All tests should PASS now. If any fail, debug and fix the implementation.*
+
 
 ## 4.5. SQLx Query Cache (If Database Changes)
 > [!IMPORTANT]
@@ -72,8 +116,44 @@ If you modified database queries or schema:
   ```
 
 ## 5. Verification & Quality Assurance (Local)
-- [ ] Perform manual or automated testing in the **local environment**.
+Verify the implementation works correctly before deployment.
+
+### 5.1. Manual Testing
+- [ ] Test the feature manually in the **local environment**.
 - [ ] Verify against acceptance criteria.
+- [ ] Check edge cases and error handling.
+
+### 5.2. Automated Browser Testing (UI Features)
+> [!IMPORTANT]
+> **Required for:** Any feature with frontend/UI components or API authentication changes.
+
+Use the `browser_subagent` tool to automate browser validation:
+- [ ] **Authentication Verification:** If the feature involves auth, verify tokens are sent correctly:
+  ```
+  Navigate to the feature page, check Authorization headers in Network tab,
+  confirm API requests succeed without 401 errors.
+  ```
+- [ ] **Functional Testing:** Automate user flows through the browser:
+  ```
+  Open the page, click through the feature workflow, verify expected
+  behavior, check console for errors.
+  ```
+- [ ] **API Integration:** For backend changes, verify API responses:
+  ```
+  Trigger API calls from UI, inspect responses, confirm data integrity.
+  ```
+- [ ] **Save Recording:** All browser tests are automatically recorded as `.webp` videos in the artifacts directory for documentation.
+
+### 5.3. CLI/API Testing (Backend Features)
+For backend-only features or API endpoints:
+- [ ] Test using `mcp/cli.py` with API token authentication.
+- [ ] Verify API responses match expected schema.
+- [ ] Check error handling and validation.
+  ```bash
+  # Example: Test issues API
+  VIBE_API_TOKEN=vk_xxx python3 mcp/cli.py issues IKA
+  ```
+
 
 ## 6. Deployment & Closure
 - [ ] Merge feature branch into main locally:

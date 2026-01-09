@@ -93,16 +93,20 @@ async function fetchProjects(token: string | null): Promise<Record<string, Proje
 
 export function useProjects(): UseProjectsResult {
   const endpoint = '/api/projects/stream/ws';
-  const { getToken, isLoaded } = useClerkAuth();
+  const { getToken, isLoaded, isSignedIn } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (isLoaded) {
+    // Only fetch token when user is loaded AND signed in
+    if (isLoaded && isSignedIn) {
       getToken().then(setToken).catch(console.error);
+    } else if (isLoaded && !isSignedIn) {
+      // Clear token if user signs out
+      setToken(null);
     }
-  }, [getToken, isLoaded]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   // Subscribe to optimistic updates
   useEffect(() => {
@@ -118,7 +122,7 @@ export function useProjects(): UseProjectsResult {
   // In cloud mode, disable WebSocket and use TanStack Query instead
   const { data: wsData, isConnected, error: wsError } = useJsonPatchWsStream<ProjectsState>(
     endpoint,
-    !isCloudMode && !!token, // Disable WebSocket in cloud mode
+    !isCloudMode && isSignedIn && !!token, // Disable WebSocket in cloud mode or when not signed in
     initialData,
     { token }
   );
@@ -131,7 +135,7 @@ export function useProjects(): UseProjectsResult {
   } = useQuery({
     queryKey: projectsKeys.list(),
     queryFn: () => fetchProjects(token),
-    enabled: isCloudMode && !!token,
+    enabled: isCloudMode && isSignedIn && !!token,
     staleTime: 5 * 60 * 1000, // 5 minutes - projects don't change frequently
     gcTime: 15 * 60 * 1000, // 15 minutes cache retention
     refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes (not 30 seconds!)
