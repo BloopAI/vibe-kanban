@@ -5,13 +5,9 @@ import {
   type StaticPageId,
   type ResolvedGroup,
 } from '@/components/ui-new/actions/pages';
-import {
-  resolveLabel,
-  type ActionVisibilityContext,
-} from '@/components/ui-new/actions';
+import { resolveLabel, type ActionVisibilityContext } from '@/components/ui-new/actions';
 import { isActionVisible } from '@/components/ui-new/actions/useActionVisibility';
 
-/** Pages to inject when searching from root */
 const INJECTABLE_PAGES: Array<{
   id: StaticPageId;
   condition: (ctx: ActionVisibilityContext) => boolean;
@@ -22,38 +18,25 @@ const INJECTABLE_PAGES: Array<{
   { id: 'gitActions', condition: (ctx) => ctx.hasGitRepos },
 ];
 
-/**
- * Inject matching actions from nested pages when searching on root.
- * Replaces 100+ lines of duplicated code with a single loop.
- */
 export function injectSearchMatches(
   searchQuery: string,
-  visibilityContext: ActionVisibilityContext,
+  ctx: ActionVisibilityContext,
   workspace: Workspace | undefined
 ): ResolvedGroup[] {
-  const groups: ResolvedGroup[] = [];
   const searchLower = searchQuery.toLowerCase();
 
-  for (const { id, condition } of INJECTABLE_PAGES) {
-    if (!condition(visibilityContext)) continue;
+  return INJECTABLE_PAGES.reduce<ResolvedGroup[]>((groups, { id, condition }) => {
+    if (!condition(ctx)) return groups;
 
-    const actions = getPageActions(id)
-      .filter((action) => isActionVisible(action, visibilityContext))
-      .filter((action) => {
-        const label = resolveLabel(action, workspace);
-        return (
-          label.toLowerCase().includes(searchLower) ||
-          action.id.toLowerCase().includes(searchLower)
-        );
-      });
+    const items = getPageActions(id)
+      .filter((a) => isActionVisible(a, ctx))
+      .filter((a) => {
+        const label = resolveLabel(a, workspace);
+        return label.toLowerCase().includes(searchLower) || a.id.toLowerCase().includes(searchLower);
+      })
+      .map((action) => ({ type: 'action' as const, action }));
 
-    if (actions.length > 0) {
-      groups.push({
-        label: Pages[id].title || id,
-        items: actions.map((action) => ({ type: 'action' as const, action })),
-      });
-    }
-  }
-
-  return groups;
+    if (items.length) groups.push({ label: Pages[id].title || id, items });
+    return groups;
+  }, []);
 }

@@ -10,145 +10,86 @@ import {
   Pages,
   type PageId,
   type StaticPageId,
-  type CommandBarGroup,
   type CommandBarGroupItem,
   type ResolvedGroup,
   type ResolvedGroupItem,
+  type RepoItem,
 } from '@/components/ui-new/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
-import {
-  isActionVisible,
-  isPageVisible,
-} from '@/components/ui-new/actions/useActionVisibility';
+import { isActionVisible, isPageVisible } from '@/components/ui-new/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
-/** Resolved page structure passed to CommandBar */
 export interface ResolvedCommandBarPage {
   id: string;
   title?: string;
   groups: ResolvedGroup[];
 }
 
-/** Repo type from workspace context */
-interface Repo {
-  id: string;
-  display_name: string;
-}
-
-/** Icons for each page type */
-const PAGE_ICONS: Record<StaticPageId, typeof StackIcon> = {
+const PAGE_ICONS = {
   root: SquaresFourIcon,
   workspaceActions: StackIcon,
   diffOptions: SlidersIcon,
   viewOptions: SquaresFourIcon,
   gitActions: GitBranchIcon,
-};
+} as const satisfies Record<StaticPageId, typeof StackIcon>;
 
-/**
- * Build the dynamic selectRepo page
- */
-function buildSelectRepoPage(repos: Repo[]): ResolvedCommandBarPage {
-  return {
-    id: 'selectRepo',
-    title: 'Select Repository',
-    groups: [
-      {
-        label: 'Repositories',
-        items: repos.map((repo) => ({
-          type: 'repo' as const,
-          repo: { id: repo.id, display_name: repo.display_name },
-        })),
-      },
-    ],
-  };
-}
-
-/**
- * Expand a single group's items, handling childPages markers
- */
 function expandGroupItems(
   items: CommandBarGroupItem[],
-  visibilityContext: ActionVisibilityContext
+  ctx: ActionVisibilityContext
 ): ResolvedGroupItem[] {
-  return items.flatMap((item): ResolvedGroupItem[] => {
+  return items.flatMap((item) => {
     if (item.type === 'childPages') {
-      const childPage = Pages[item.id as StaticPageId];
-      if (!isPageVisible(childPage, visibilityContext)) {
-        return [];
-      }
-      return [
-        {
-          type: 'page' as const,
-          pageId: item.id,
-          label: childPage.title ?? item.id,
-          icon: PAGE_ICONS[item.id as StaticPageId],
-        },
-      ];
+      const page = Pages[item.id as StaticPageId];
+      if (!isPageVisible(page, ctx)) return [];
+      return [{
+        type: 'page' as const,
+        pageId: item.id,
+        label: page.title ?? item.id,
+        icon: PAGE_ICONS[item.id as StaticPageId],
+      }];
     }
-
-    if (item.type === 'action') {
-      if (!isActionVisible(item.action, visibilityContext)) {
-        return [];
-      }
-    }
-
+    if (item.type === 'action' && !isActionVisible(item.action, ctx)) return [];
     return [item];
   });
 }
 
-/**
- * Build resolved groups from a static page
- */
-function buildPageGroups(
-  pageId: StaticPageId,
-  visibilityContext: ActionVisibilityContext
-): ResolvedGroup[] {
-  const basePage = Pages[pageId];
-
-  return basePage.items
-    .map((group: CommandBarGroup): ResolvedGroup | null => {
-      const resolvedItems = expandGroupItems(group.items, visibilityContext);
-      if (resolvedItems.length === 0) return null;
-      return { label: group.label, items: resolvedItems };
+function buildPageGroups(pageId: StaticPageId, ctx: ActionVisibilityContext): ResolvedGroup[] {
+  return Pages[pageId].items
+    .map((group) => {
+      const items = expandGroupItems(group.items, ctx);
+      return items.length ? { label: group.label, items } : null;
     })
-    .filter((group): group is ResolvedGroup => group !== null);
+    .filter((g): g is ResolvedGroup => g !== null);
 }
 
-/**
- * Hook to resolve the current page into renderable data.
- * Handles static pages, dynamic selectRepo page, and search injection.
- */
 export function useResolvedPage(
   pageId: PageId,
   search: string,
-  visibilityContext: ActionVisibilityContext,
+  ctx: ActionVisibilityContext,
   workspace: Workspace | undefined,
-  repos: Repo[]
+  repos: RepoItem[]
 ): ResolvedCommandBarPage {
   return useMemo(() => {
-    // Dynamic repo selection page
     if (pageId === 'selectRepo') {
-      return buildSelectRepoPage(repos);
+      return {
+        id: 'selectRepo',
+        title: 'Select Repository',
+        groups: [{
+          label: 'Repositories',
+          items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
+        }],
+      };
     }
 
-    const staticPageId = pageId as StaticPageId;
-    const basePage = Pages[staticPageId];
-    const groups = buildPageGroups(staticPageId, visibilityContext);
-
-    // Inject search results from nested pages when on root
+    const groups = buildPageGroups(pageId as StaticPageId, ctx);
     if (pageId === 'root' && search.trim()) {
-      const injected = injectSearchMatches(
-        search,
-        visibilityContext,
-        workspace
-      );
-      groups.push(...injected);
+      groups.push(...injectSearchMatches(search, ctx, workspace));
     }
 
     return {
-      id: basePage.id,
-      title: basePage.title,
+      id: Pages[pageId as StaticPageId].id,
+      title: Pages[pageId as StaticPageId].title,
       groups,
     };
-  }, [pageId, search, visibilityContext, workspace, repos]);
+  }, [pageId, search, ctx, workspace, repos]);
 }
