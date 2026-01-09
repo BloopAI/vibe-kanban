@@ -1,4 +1,4 @@
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useRef } from 'react';
 import type {
   PageId,
   ResolvedGroupItem,
@@ -107,18 +107,31 @@ function reducer(
 }
 
 export function useCommandBarState(initialPage: PageId, repoCount: number) {
+  // Use refs to avoid stale closures and keep dispatch stable
+  const stateRef = useRef<CommandBarState>(browsing(initialPage));
+  const repoCountRef = useRef(repoCount);
+  repoCountRef.current = repoCount;
+
   const [state, rawDispatch] = useReducer(
-    (s: CommandBarState, e: CommandBarEvent) => reducer(s, e, repoCount)[0],
+    (s: CommandBarState, e: CommandBarEvent) => {
+      const [newState] = reducer(s, e, repoCountRef.current);
+      stateRef.current = newState;
+      return newState;
+    },
     browsing(initialPage)
   );
 
+  // Keep stateRef in sync
+  stateRef.current = state;
+
+  // Stable dispatch that doesn't change on every render
   const dispatch = useCallback(
     (event: CommandBarEvent): CommandBarEffect => {
-      const [, effect] = reducer(state, event, repoCount);
+      const [, effect] = reducer(stateRef.current, event, repoCountRef.current);
       rawDispatch(event);
       return effect;
     },
-    [state, repoCount]
+    [] // No dependencies - uses refs for current values
   );
 
   return {
