@@ -1,4 +1,4 @@
-import { CaretLeftIcon, CopyIcon } from '@phosphor-icons/react';
+import { CaretLeftIcon, CopyIcon, FolderIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -109,6 +109,17 @@ export function CommandBar({
                   >
                     <IconComponent className="h-4 w-4" weight="regular" />
                     <span>{item.label}</span>
+                  </CommandItem>
+                );
+              } else if (item.type === 'repo') {
+                return (
+                  <CommandItem
+                    key={item.repo.id}
+                    value={`${item.repo.id} ${item.repo.display_name}`}
+                    onSelect={() => onSelect(item)}
+                  >
+                    <FolderIcon className="h-4 w-4" weight="regular" />
+                    <span>{item.repo.display_name}</span>
                   </CommandItem>
                 );
               } else if (item.type === 'action') {

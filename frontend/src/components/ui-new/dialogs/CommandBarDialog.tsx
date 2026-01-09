@@ -14,11 +14,15 @@ import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
-import { type ActionDefinition } from '@/components/ui-new/actions';
+import {
+  type ActionDefinition,
+  type GitActionDefinition,
+} from '@/components/ui-new/actions';
 import {
   Pages,
   getPageActions,
   type PageId,
+  type StaticPageId,
   type CommandBarGroup,
   type CommandBarGroupItem,
   type ResolvedGroup,
@@ -51,7 +55,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     const previousFocusRef = useRef<HTMLElement | null>(null);
     const queryClient = useQueryClient();
     const { executeAction, getLabel } = useActions();
-    const { workspaceId: contextWorkspaceId } = useWorkspaceContext();
+    const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
 
     // Use prop workspaceId if provided, otherwise fall back to context
     const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
@@ -64,6 +68,9 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     const [pageStack, setPageStack] = useState<PageId[]>([]);
     // Search state - cleared when page changes
     const [search, setSearch] = useState('');
+    // Pending git action waiting for repo selection
+    const [pendingGitAction, setPendingGitAction] =
+      useState<GitActionDefinition | null>(null);
 
     // Reset page state when dialog opens
     useEffect(() => {
@@ -71,6 +78,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         setCurrentPage(page);
         setPageStack([]);
         setSearch('');
+        setPendingGitAction(null);
       }
     }, [modal.visible, page]);
 
@@ -90,7 +98,24 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     // When searching on root page, also include actions from nested pages
     const getPageWithItems = useMemo(() => {
       return (pageId: PageId, searchQuery: string): ResolvedCommandBarPage => {
-        const basePage = Pages[pageId];
+        // Handle dynamic selectRepo page
+        if (pageId === 'selectRepo') {
+          return {
+            id: 'selectRepo',
+            title: 'Select Repository',
+            groups: [
+              {
+                label: 'Repositories',
+                items: repos.map((repo) => ({
+                  type: 'repo' as const,
+                  repo: { id: repo.id, display_name: repo.display_name },
+                })),
+              },
+            ],
+          };
+        }
+
+        const basePage = Pages[pageId as StaticPageId];
 
         // Process each group, expanding childPages markers within
         const resolvedGroups: ResolvedGroup[] = basePage.items
@@ -98,13 +123,13 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
             const resolvedItems = group.items.flatMap(
               (item: CommandBarGroupItem): ResolvedGroupItem[] => {
                 if (item.type === 'childPages') {
-                  const childPage = Pages[item.id];
+                  const childPage = Pages[item.id as StaticPageId];
                   // Check page visibility condition
                   if (!isPageVisible(childPage, visibilityContext)) {
                     return [];
                   }
                   // Get icon based on page type
-                  const pageIcons: Record<PageId, typeof StackIcon> = {
+                  const pageIcons: Record<StaticPageId, typeof StackIcon> = {
                     root: SquaresFourIcon,
                     workspaceActions: StackIcon,
                     diffOptions: SlidersIcon,
@@ -116,7 +141,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
                       type: 'page' as const,
                       pageId: item.id,
                       label: childPage.title ?? item.id,
-                      icon: pageIcons[item.id],
+                      icon: pageIcons[item.id as StaticPageId],
                     },
                   ];
                 }
@@ -246,7 +271,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
           groups: resolvedGroups,
         };
       };
-    }, [visibilityContext, workspace]);
+    }, [visibilityContext, workspace, repos]);
 
     // Store the previously focused element when dialog opens
     useEffect(() => {
@@ -270,20 +295,60 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       if (prevPage) {
         setPageStack((prev) => prev.slice(0, -1));
         setCurrentPage(prevPage);
+        // Clear pending git action when navigating back from selectRepo
+        if (currentPage === 'selectRepo') {
+          setPendingGitAction(null);
+        }
       }
-    }, [pageStack]);
+    }, [pageStack, currentPage]);
 
     // Handle item selection
     const handleSelect = useCallback(
       async (item: ResolvedGroupItem) => {
         if (item.type === 'page') {
           navigateToPage(item.pageId);
+        } else if (item.type === 'repo') {
+          // User selected a repo - execute the pending git action
+          if (pendingGitAction && effectiveWorkspaceId) {
+            modal.hide();
+            await executeAction(
+              pendingGitAction,
+              effectiveWorkspaceId,
+              item.repo.id
+            );
+            setPendingGitAction(null);
+          }
         } else if (item.type === 'action') {
-          modal.hide();
-          await executeAction(item.action, effectiveWorkspaceId);
+          // Check if this is a git action that needs repo selection
+          if (item.action.requiresTarget === 'git') {
+            if (repos.length === 1) {
+              // Single repo - execute immediately
+              modal.hide();
+              await executeAction(
+                item.action,
+                effectiveWorkspaceId,
+                repos[0].id
+              );
+            } else if (repos.length > 1) {
+              // Multiple repos - show repo selection page
+              setPendingGitAction(item.action as GitActionDefinition);
+              navigateToPage('selectRepo');
+            }
+          } else {
+            // Non-git action - execute normally
+            modal.hide();
+            await executeAction(item.action, effectiveWorkspaceId);
+          }
         }
       },
-      [navigateToPage, modal, executeAction, effectiveWorkspaceId]
+      [
+        navigateToPage,
+        modal,
+        executeAction,
+        effectiveWorkspaceId,
+        repos,
+        pendingGitAction,
+      ]
     );
 
     // Get label for an action (with visibility context for dynamic labels)
