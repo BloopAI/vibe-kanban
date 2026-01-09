@@ -1,11 +1,17 @@
 /**
- * Wrapper hook for Clerk's useAuth that works safely when Clerk is not configured.
+ * Wrapper hooks for Clerk's useAuth/useUser that work safely when Clerk is not configured.
  *
  * When VITE_CLERK_PUBLISHABLE_KEY is not set, the app renders without ClerkProvider,
  * and calling Clerk hooks directly would crash. This wrapper provides safe fallbacks.
+ *
+ * IMPORTANT: We use static imports here. The key insight is that when hasClerk is false,
+ * we return the noop functions BEFORE calling the Clerk hooks, so they never execute.
+ * This is safe because React hooks rules only apply to hooks that are actually called.
  */
 
-// Check if Clerk is configured at module level (before any hooks are called)
+import { useAuth, useUser } from '@clerk/clerk-react';
+
+// Check if Clerk is configured at module level
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const hasClerk = !!CLERK_PUBLISHABLE_KEY;
 
@@ -25,27 +31,6 @@ const noopClerkAuth: ClerkAuthReturn = {
   userId: null,
 };
 
-// Implementation function that will be set based on Clerk availability
-let useClerkAuthImpl: () => ClerkAuthReturn;
-
-if (hasClerk) {
-  // Only import Clerk when it's configured (module-level check is safe)
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useAuth } = require('@clerk/clerk-react');
-  useClerkAuthImpl = () => {
-    const auth = useAuth();
-    return {
-      getToken: auth.getToken,
-      isLoaded: auth.isLoaded ?? true,
-      isSignedIn: !!auth.isSignedIn,
-      userId: auth.userId ?? null,
-    };
-  };
-} else {
-  // Return safe defaults when Clerk is not available
-  useClerkAuthImpl = () => noopClerkAuth;
-}
-
 /**
  * Safe wrapper for Clerk's useAuth hook.
  *
@@ -53,7 +38,19 @@ if (hasClerk) {
  * in any hook that might be called when ClerkProvider is not rendered.
  */
 export function useClerkAuth(): ClerkAuthReturn {
-  return useClerkAuthImpl();
+  // Return noop BEFORE calling any hooks when Clerk is not configured
+  if (!hasClerk) {
+    return noopClerkAuth;
+  }
+
+  // Safe to call useAuth here because we're inside ClerkProvider when hasClerk is true
+  const auth = useAuth();
+  return {
+    getToken: auth.getToken,
+    isLoaded: auth.isLoaded ?? true,
+    isSignedIn: !!auth.isSignedIn,
+    userId: auth.userId ?? null,
+  };
 }
 
 // Define the return type for useClerkUser (subset of Clerk's useUser return)
@@ -76,32 +73,6 @@ const noopClerkUser: ClerkUserReturn = {
   isSignedIn: false,
 };
 
-// Implementation for useClerkUser
-let useClerkUserImpl: () => ClerkUserReturn;
-
-if (hasClerk) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useUser } = require('@clerk/clerk-react');
-  useClerkUserImpl = () => {
-    const { user, isLoaded, isSignedIn } = useUser();
-    return {
-      user: user
-        ? {
-            id: user.id,
-            primaryEmailAddress: user.primaryEmailAddress,
-            fullName: user.fullName,
-            firstName: user.firstName,
-            imageUrl: user.imageUrl,
-          }
-        : null,
-      isLoaded: isLoaded ?? true,
-      isSignedIn: !!isSignedIn,
-    };
-  };
-} else {
-  useClerkUserImpl = () => noopClerkUser;
-}
-
 /**
  * Safe wrapper for Clerk's useUser hook.
  *
@@ -109,5 +80,24 @@ if (hasClerk) {
  * in any hook that might be called when ClerkProvider is not rendered.
  */
 export function useClerkUser(): ClerkUserReturn {
-  return useClerkUserImpl();
+  // Return noop BEFORE calling any hooks when Clerk is not configured
+  if (!hasClerk) {
+    return noopClerkUser;
+  }
+
+  // Safe to call useUser here because we're inside ClerkProvider when hasClerk is true
+  const { user, isLoaded, isSignedIn } = useUser();
+  return {
+    user: user
+      ? {
+          id: user.id,
+          primaryEmailAddress: user.primaryEmailAddress,
+          fullName: user.fullName,
+          firstName: user.firstName,
+          imageUrl: user.imageUrl,
+        }
+      : null,
+    isLoaded: isLoaded ?? true,
+    isSignedIn: !!isSignedIn,
+  };
 }
