@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +28,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
     const modal = useModal();
     const queryClient = useQueryClient();
     const { profiles } = useUserSystem();
+    const { t } = useTranslation(['tasks', 'common']);
 
     const [selectedProfile, setSelectedProfile] =
       useState<ExecutorProfileId | null>(defaultProfile ?? null);
@@ -120,7 +122,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 htmlFor="additional-prompt"
                 className="text-sm font-medium"
               >
-                Additional Instructions (optional)
+                {t('startReviewDialog.additionalInstructions')}
               </Label>
               <Textarea
                 id="additional-prompt"
@@ -134,10 +136,11 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
             {hasReviewComments && (
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Review Comments (
-                  {reviewMarkdown?.split('\n').filter((l) => l.startsWith('-'))
-                    .length ?? 0}
-                  )
+                  {t('startReviewDialog.reviewComments', {
+                    count:
+                      reviewMarkdown?.split('\n').filter((l) => l.startsWith('-'))
+                        .length ?? 0,
+                  })}
                 </Label>
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
                   <pre className="whitespace-pre-wrap font-sans text-xs">
@@ -161,7 +164,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 htmlFor="include-git-context"
                 className="cursor-pointer text-sm"
               >
-                Include git context
+                {t('startReviewDialog.includeGitContext')}
               </Label>
             </div>
 
@@ -192,7 +195,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
               onClick={() => modal.hide()}
               disabled={isSubmitting}
             >
-              Cancel
+              {t('common:buttons.cancel')}
             </Button>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
@@ -202,17 +205,19 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                   onCheckedChange={setCreateNewSession}
                   disabled={!sessionId}
                   className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
-                  aria-label="New Session"
+                  aria-label={t('startReviewDialog.newSession')}
                 />
                 <Label
                   htmlFor="new-session-switch"
                   className="text-sm cursor-pointer"
                 >
-                  New Session
+                  {t('startReviewDialog.newSession')}
                 </Label>
               </div>
               <Button onClick={handleSubmit} disabled={!canSubmit}>
-                {isSubmitting ? 'Starting...' : 'Start Review'}
+                {isSubmitting
+                  ? t('actionsMenu.startingReview')
+                  : t('actionsMenu.startReview')}
               </Button>
             </div>
           </DialogFooter>
