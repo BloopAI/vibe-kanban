@@ -129,7 +129,15 @@
     "archived": "Archivado",
     "loading": "Cargando...",
     "selectToStart": "Selecciona un espacio de trabajo para comenzar",
-    "draft": "Borrador"
+    "draft": "Borrador",
+    "rename": {
+      "title": "Renombrar espacio de trabajo",
+      "description": "Ingresa un nuevo nombre para este espacio de trabajo.",
+      "nameLabel": "Nombre",
+      "placeholder": "Ingresa el nombre del espacio de trabajo",
+      "action": "Renombrar",
+      "renaming": "Renombrando..."
+    }
   },
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",

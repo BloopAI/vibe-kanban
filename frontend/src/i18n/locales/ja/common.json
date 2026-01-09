@@ -129,7 +129,15 @@
     "archived": "アーカイブ済み",
     "loading": "読み込み中...",
     "selectToStart": "ワークスペースを選択して開始",
-    "draft": "下書き"
+    "draft": "下書き",
+    "rename": {
+      "title": "ワークスペースの名前を変更",
+      "description": "このワークスペースの新しい名前を入力してください。",
+      "nameLabel": "名前",
+      "placeholder": "ワークスペース名を入力",
+      "action": "名前を変更",
+      "renaming": "名前を変更中..."
+    }
   },
   "fileTree": {
     "searchPlaceholder": "ファイルを検索...",

@@ -129,7 +129,15 @@
     "archived": "보관됨",
     "loading": "로딩 중...",
     "selectToStart": "워크스페이스를 선택하여 시작",
-    "draft": "초안"
+    "draft": "초안",
+    "rename": {
+      "title": "워크스페이스 이름 변경",
+      "description": "이 워크스페이스의 새 이름을 입력하세요.",
+      "nameLabel": "이름",
+      "placeholder": "워크스페이스 이름 입력",
+      "action": "이름 변경",
+      "renaming": "이름 변경 중..."
+    }
   },
   "fileTree": {
     "searchPlaceholder": "파일 검색...",

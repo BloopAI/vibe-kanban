@@ -129,7 +129,15 @@
     "archived": "已封存",
     "loading": "載入中...",
     "selectToStart": "選擇一個工作區開始",
-    "draft": "草稿"
+    "draft": "草稿",
+    "rename": {
+      "title": "重新命名工作區",
+      "description": "輸入此工作區的新名稱。",
+      "nameLabel": "名稱",
+      "placeholder": "輸入工作區名稱",
+      "action": "重新命名",
+      "renaming": "正在重新命名..."
+    }
   },
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",
