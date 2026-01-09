@@ -6,9 +6,9 @@ import {
   type RepoAction,
 } from '@/components/ui-new/primitives/RepoCard';
 import { InputField } from '@/components/ui-new/primitives/InputField';
-import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
 import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 import { CollapsibleSection } from '../primitives/CollapsibleSection';
+import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 export interface RepoInfo {
@@ -56,8 +56,11 @@ export function GitPanel({
       )}
     >
       {error && <ErrorAlert message={error} />}
-      <SectionHeader title={t('common:sections.repositories')} />
-      <div className="flex flex-col p-base gap-base">
+      <CollapsibleSectionHeader
+        title={t('common:sections.repositories')}
+        persistKey={PERSIST_KEYS.gitPanelRepositories}
+        contentClassName="flex flex-col p-base gap-base"
+      >
         <div className="flex flex-col gap-base">
           {repos.map((repo) => (
             <RepoCard
@@ -101,7 +104,7 @@ export function GitPanel({
             />
           </CollapsibleSection>
         </div>
-      </div>
+      </CollapsibleSectionHeader>
     </div>
   );
 }

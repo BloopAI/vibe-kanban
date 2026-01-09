@@ -2,9 +2,10 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
-import { SectionHeader } from '../primitives/SectionHeader';
+import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 import { InputField } from '../primitives/InputField';
 import { CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 interface ProcessListContainerProps {
   selectedProcessId: string | null;
@@ -124,8 +125,11 @@ export function ProcessListContainer({
 
   return (
     <div className="h-full w-full bg-secondary flex flex-col overflow-hidden">
-      <SectionHeader title={t('sections.processes')} />
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent p-base min-h-0">
+      <CollapsibleSectionHeader
+        title={t('sections.processes')}
+        persistKey={PERSIST_KEYS.processesSection}
+        contentClassName="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent p-base min-h-0"
+      >
         {sortedProcesses.length === 0 ? (
           <div className="h-full flex items-center justify-center text-low">
             <p className="text-sm">{t('processes.noProcesses')}</p>
@@ -144,7 +148,7 @@ export function ProcessListContainer({
             ))}
           </div>
         )}
-      </div>
+      </CollapsibleSectionHeader>
       {searchBar}
     </div>
   );

@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { SectionHeader } from '@/components/ui-new/primitives/SectionHeader';
+import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposList';
 import { ProjectSelectorContainer } from '@/components/ui-new/containers/ProjectSelectorContainer';
 import { RecentReposListContainer } from '@/components/ui-new/containers/RecentReposListContainer';
 import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
 import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
 import { WarningIcon } from '@phosphor-icons/react';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { Project, GitBranch, Repo } from 'shared/types';
 
 interface GitPanelCreateProps {
@@ -50,8 +51,11 @@ export function GitPanelCreate({
         className
       )}
     >
-      <SectionHeader title={t('common:sections.project')} />
-      <div className="p-base border-b">
+      <CollapsibleSectionHeader
+        title={t('common:sections.project')}
+        persistKey={PERSIST_KEYS.gitPanelProject}
+        contentClassName="p-base border-b"
+      >
         <ProjectSelectorContainer
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -59,10 +63,13 @@ export function GitPanelCreate({
           onProjectSelect={onProjectSelect}
           onCreateProject={onCreateProject}
         />
-      </div>
+      </CollapsibleSectionHeader>
 
-      <SectionHeader title={t('common:sections.repositories')} />
-      <div className="p-base border-b">
+      <CollapsibleSectionHeader
+        title={t('common:sections.repositories')}
+        persistKey={PERSIST_KEYS.gitPanelRepositories}
+        contentClassName="p-base border-b"
+      >
         {hasNoRepos ? (
           <div className="flex items-center gap-2 p-base rounded bg-warning/10 border border-warning/20">
             <WarningIcon className="h-4 w-4 text-warning shrink-0" />
@@ -79,9 +86,12 @@ export function GitPanelCreate({
             onBranchChange={onBranchChange}
           />
         )}
-      </div>
-      <SectionHeader title={t('common:sections.addRepositories')} />
-      <div className="flex flex-col p-base gap-half">
+      </CollapsibleSectionHeader>
+      <CollapsibleSectionHeader
+        title={t('common:sections.addRepositories')}
+        persistKey={PERSIST_KEYS.gitPanelAddRepositories}
+        contentClassName="flex flex-col p-base gap-half"
+      >
         <p className="text-xs text-low font-medium">
           {t('common:sections.recent')}
         </p>
@@ -94,7 +104,7 @@ export function GitPanelCreate({
         </p>
         <BrowseRepoButtonContainer onRepoRegistered={onRepoRegistered} />
         <CreateRepoButtonContainer onRepoCreated={onRepoRegistered} />
-      </div>
+      </CollapsibleSectionHeader>
     </div>
   );
 }
