@@ -3,13 +3,38 @@ use std::sync::Arc;
 use agent_client_protocol::{self as acp, ErrorCode};
 use async_trait::async_trait;
 use tokio::sync::{Mutex, mpsc};
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 use workspace_utils::approvals::ApprovalStatus;
 
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     executors::acp::{AcpEvent, ApprovalResponse},
 };
+
+/// Check if a Meta object contains isReplay: true
+fn is_replay_meta(meta: &Option<serde_json::Map<String, serde_json::Value>>) -> bool {
+    meta.as_ref()
+        .and_then(|m| m.get("isReplay"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
+
+/// Check if a SessionUpdate has isReplay: true in its _meta field.
+/// This is used to filter out replay events when resuming a session.
+fn is_replay_update(update: &acp::SessionUpdate) -> bool {
+    match update {
+        acp::SessionUpdate::UserMessageChunk(chunk) => is_replay_meta(&chunk.meta),
+        acp::SessionUpdate::AgentMessageChunk(chunk) => is_replay_meta(&chunk.meta),
+        acp::SessionUpdate::AgentThoughtChunk(chunk) => is_replay_meta(&chunk.meta),
+        acp::SessionUpdate::ToolCall(tc) => is_replay_meta(&tc.meta),
+        acp::SessionUpdate::ToolCallUpdate(update) => is_replay_meta(&update.meta),
+        acp::SessionUpdate::Plan(plan) => is_replay_meta(&plan.meta),
+        acp::SessionUpdate::AvailableCommandsUpdate(update) => is_replay_meta(&update.meta),
+        acp::SessionUpdate::CurrentModeUpdate(update) => is_replay_meta(&update.meta),
+        // For unknown variants, assume not a replay
+        _ => false,
+    }
+}
 
 /// ACP client that handles agent-client protocol communication
 #[derive(Clone)]
@@ -170,6 +195,13 @@ impl acp::Client for AcpClient {
     }
 
     async fn session_notification(&self, args: acp::SessionNotification) -> Result<(), acp::Error> {
+        // Skip replay events - these are historical messages being replayed when a session is resumed
+        // and should not be displayed as new output to avoid duplication
+        if is_replay_update(&args.update) {
+            trace!("Skipping replay event");
+            return Ok(());
+        }
+
         // Convert to typed events
         let event = match args.update {
             acp::SessionUpdate::AgentMessageChunk(chunk) => Some(AcpEvent::Message(chunk.content)),
