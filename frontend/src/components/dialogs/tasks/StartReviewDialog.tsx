@@ -138,8 +138,9 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 <Label className="text-sm font-medium">
                   {t('startReviewDialog.reviewComments', {
                     count:
-                      reviewMarkdown?.split('\n').filter((l) => l.startsWith('-'))
-                        .length ?? 0,
+                      reviewMarkdown
+                        ?.split('\n')
+                        .filter((l) => l.startsWith('-')).length ?? 0,
                   })}
                 </Label>
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3 max-h-32 overflow-y-auto">
