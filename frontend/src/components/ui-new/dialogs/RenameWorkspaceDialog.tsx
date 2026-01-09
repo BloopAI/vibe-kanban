@@ -45,7 +45,9 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
         return attemptsApi.update(workspaceId, { name: newName });
       },
       onSuccess: (_, newName) => {
-        queryClient.invalidateQueries({ queryKey: attemptKeys.byId(workspaceId) });
+        queryClient.invalidateQueries({
+          queryKey: attemptKeys.byId(workspaceId),
+        });
         queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
         modal.resolve({
           action: 'confirmed',
@@ -128,10 +130,7 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
             >
               {t('buttons.cancel')}
             </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={renameMutation.isPending}
-            >
+            <Button onClick={handleConfirm} disabled={renameMutation.isPending}>
               {renameMutation.isPending
                 ? t('workspaces.rename.renaming')
                 : t('workspaces.rename.action')}
