@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, RefreshCw, ListFilter, SlidersHorizontal, CircleDot, PlayCircle, Circle, BarChart3 } from 'lucide-react';
+import { AlertTriangle, Plus, RefreshCw, SlidersHorizontal, CircleDot, PlayCircle, Circle, BarChart3 } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi, teamsApi } from '@/lib/api';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -17,10 +17,13 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { TeamKanbanBoard } from '@/components/tasks/TeamKanbanBoard';
 import { InsightsPanel } from '@/components/tasks/InsightsPanel';
 import { IssueDetailPanel } from '@/components/tasks/IssueDetailPanel';
+import { IssueFilterDropdown, FilterState } from '@/components/filters/IssueFilterDropdown';
 import type { DragEndEvent } from '@dnd-kit/core';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { TeamMember } from '@/components/selectors';
+
+type ViewFilter = 'all' | 'active' | 'backlog';
 
 const TASK_STATUSES = [
   'todo',
@@ -43,6 +46,14 @@ export function TeamIssues() {
   const [teamProjectIds, setTeamProjectIds] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+
+  // Filter state
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
+  const [filters, setFilters] = useState<FilterState>({
+    priority: null,
+    assigneeId: null,
+    projectId: null,
+  });
 
   // Use actual team ID for API calls
   const actualTeamId = team?.id;
@@ -97,6 +108,41 @@ export function TeamIssues() {
     return map;
   }, [projects]);
 
+  // Apply filters to issues
+  const filteredIssues = useMemo(() => {
+    let result = issues;
+
+    // Apply view filter (status-based)
+    if (viewFilter === 'active') {
+      result = result.filter((i) =>
+        ['inprogress', 'inreview'].includes(i.status)
+      );
+    } else if (viewFilter === 'backlog') {
+      result = result.filter((i) => i.status === 'todo');
+    }
+
+    // Apply priority filter
+    if (filters.priority?.length) {
+      result = result.filter((i) =>
+        filters.priority!.includes(i.priority ?? 0)
+      );
+    }
+
+    // Apply assignee filter
+    if (filters.assigneeId?.length) {
+      result = result.filter(
+        (i) => i.assignee_id && filters.assigneeId!.includes(i.assignee_id)
+      );
+    }
+
+    // Apply project filter
+    if (filters.projectId) {
+      result = result.filter((i) => i.project_id === filters.projectId);
+    }
+
+    return result;
+  }, [issues, viewFilter, filters]);
+
   const kanbanColumns = useMemo(() => {
     const columns: Record<TaskStatus, { task: TaskWithAttemptStatus; issueKey?: string; projectName?: string }[]> = {
       todo: [],
@@ -106,7 +152,7 @@ export function TeamIssues() {
       cancelled: [],
     };
 
-    issues.forEach((issue) => {
+    filteredIssues.forEach((issue) => {
       const statusKey = normalizeStatus(issue.status);
       // Generate issue key from team identifier and issue_number
       let issueKey: string | undefined;
@@ -131,7 +177,7 @@ export function TeamIssues() {
     });
 
     return columns;
-  }, [issues, team, projectNamesById]);
+  }, [filteredIssues, team, projectNamesById]);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -306,6 +352,8 @@ export function TeamIssues() {
   }
 
   const hasIssues = issues.length > 0;
+  const hasFilteredIssues = filteredIssues.length > 0;
+  const hasActiveFilters = viewFilter !== 'all' || filters.priority?.length || filters.assigneeId?.length || filters.projectId;
 
   return (
     <div className="h-full flex flex-col">
@@ -338,7 +386,8 @@ export function TeamIssues() {
             <Button
               variant="outline"
               size="sm"
-              className="bg-background border-border gap-1.5"
+              className={`gap-1.5 ${viewFilter === 'all' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+              onClick={() => setViewFilter('all')}
             >
               <CircleDot className="h-4 w-4" />
               All issues
@@ -346,7 +395,8 @@ export function TeamIssues() {
             <Button
               variant="outline"
               size="sm"
-              className="bg-background border-border gap-1.5"
+              className={`gap-1.5 ${viewFilter === 'active' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+              onClick={() => setViewFilter('active')}
             >
               <PlayCircle className="h-4 w-4" />
               Active
@@ -354,16 +404,19 @@ export function TeamIssues() {
             <Button
               variant="outline"
               size="sm"
-              className="bg-background border-border gap-1.5"
+              className={`gap-1.5 ${viewFilter === 'backlog' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+              onClick={() => setViewFilter('backlog')}
             >
               <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
               Backlog
             </Button>
             <div className="w-px h-5 bg-border mx-1" />
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
-              <ListFilter className="h-4 w-4" />
-              Filter
-            </Button>
+            <IssueFilterDropdown
+              filters={filters}
+              onFiltersChange={setFilters}
+              teamMembers={teamMembers}
+              projects={teamProjectsForDropdown}
+            />
           </div>
 
           {/* Right side: Insight and Display */}
@@ -396,6 +449,24 @@ export function TeamIssues() {
                   <Button className="mt-4" onClick={handleCreateIssue}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create First Issue
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          ) : !hasFilteredIssues && hasActiveFilters ? (
+            <div className="max-w-7xl mx-auto mt-8 px-4">
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-muted-foreground">No issues match your filters</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => {
+                      setViewFilter('all');
+                      setFilters({ priority: null, assigneeId: null, projectId: null });
+                    }}
+                  >
+                    Clear all filters
                   </Button>
                 </CardContent>
               </Card>
