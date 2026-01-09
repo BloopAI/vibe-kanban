@@ -94,7 +94,7 @@ export function RepoCard({
         <div className="flex items-center justify-center">
           <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex">
           <DropdownMenu>
             <DropdownMenuTriggerButton
               label={targetBranch}
@@ -117,6 +117,24 @@ export function RepoCard({
                   </DropdownMenuItem>
                 </>
               )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
+                title="Repo actions"
+              >
+                <ArrowSquareOutIcon className="size-icon-base" weight="bold" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
+                {tCommon('actions.copyPath')}
+              </DropdownMenuItem>
+              <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
+                {tCommon('actions.openInIde')}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -155,7 +173,7 @@ export function RepoCard({
 
       {/* PR status row */}
       {prNumber && (
-        <div className="flex items-center gap-half mt-half">
+        <div className="flex items-center gap-half my-base">
           {prStatus === 'merged' ? (
             prUrl ? (
               <button
@@ -191,31 +209,13 @@ export function RepoCard({
       )}
 
       {/* Actions row */}
-      <div className="flex items-center gap-half">
+      <div className="my-base">
         <SplitButton
           options={repoActionOptions}
           selectedValue={selectedAction}
           onSelectionChange={setSelectedAction}
           onAction={(action) => onActionsClick?.(action)}
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
-              title="Repo actions"
-            >
-              <ArrowSquareOutIcon className="size-icon-base" weight="bold" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
-              {tCommon('actions.copyPath')}
-            </DropdownMenuItem>
-            <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
-              {tCommon('actions.openInIde')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </CollapsibleSection>
   );
