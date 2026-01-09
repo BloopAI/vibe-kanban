@@ -72,7 +72,7 @@ pub async fn start_review(
         let mut contexts = Vec::new();
         for repo in repos {
             if let Some(base_commit) =
-                ExecutionProcessRepoState::find_initial_commit_for_repo(pool, workspace.id, repo.id)
+                ExecutionProcessRepoState::find_first_commit_for_repo(pool, workspace.id, repo.id)
                     .await?
             {
                 contexts.push(ExecutorRepoReviewContext {
