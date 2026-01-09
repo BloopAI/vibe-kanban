@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTaskComments } from '@/hooks/useTaskComments';
 import { useTaskDocumentLinks } from '@/hooks/useTaskDocumentLinks';
 import { tasksApi } from '@/lib/api';
@@ -65,47 +65,29 @@ export function IssueDetailPanel({
   const { teamsById } = useTeams();
   const team = teamId ? teamsById[teamId] : null;
 
-  // Get login status which contains full user profile
-  const { loginStatus } = useUserSystem();
+  // Get user info directly from Clerk (more reliable than loginStatus.profile)
+  const { user } = useClerkUser();
   const { members } = useTeamMembers(teamId);
 
-  // Extract user info from login status profile
+  // Extract user info from Clerk user
   const currentUser = useMemo(() => {
-    if (loginStatus?.status !== 'loggedin') {
+    if (!user) {
       return { id: null, name: 'Unknown', email: '' };
     }
 
-    const profile = loginStatus.profile;
+    const userEmail = user.primaryEmailAddress?.emailAddress || '';
+    const userName = user.fullName || user.firstName || userEmail.split('@')[0] || 'Unknown';
 
-    // Get display name from providers or fallback to username/email prefix
-    const displayName =
-      profile.providers?.[0]?.display_name ||
-      profile.username ||
-      profile.email?.split('@')[0] ||
-      'Unknown';
-
-    // Try to find matching team member to get their member ID and name
-    const matchingMember = members?.find(m => m.email === profile.email);
-
-    // DEBUG: Log what we have
-    console.log('[DEBUG currentUser]', {
-      profileEmail: profile.email,
-      profileProviders: profile.providers,
-      profileUsername: profile.username,
-      displayName,
-      membersCount: members?.length,
-      memberEmails: members?.map(m => m.email),
-      matchingMember: matchingMember ? { id: matchingMember.id, email: matchingMember.email, display_name: matchingMember.display_name } : null,
-      finalName: matchingMember?.display_name || displayName,
-    });
+    // Try to find matching team member to get their member ID
+    const matchingMember = members?.find(m => m.email === userEmail);
 
     return {
       id: matchingMember?.id ?? null,
-      // Use team member's display_name first (contains actual name like "rupesh panwar")
-      name: matchingMember?.display_name || displayName,
-      email: profile.email || '',
+      // Use team member's display_name if available, otherwise Clerk's name
+      name: matchingMember?.display_name || userName,
+      email: userEmail,
     };
-  }, [loginStatus, members]);
+  }, [user, members]);
 
   const [title, setTitle] = useState(issue.title);
   const [description, setDescription] = useState(issue.description || '');
