@@ -1,14 +1,17 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Copy package files
-COPY vibe-frontend/package.json vibe-frontend/package-lock.json ./vibe-frontend/
+COPY vibe-frontend/package.json vibe-frontend/pnpm-lock.yaml ./vibe-frontend/
 COPY shared/ ./shared/
 
 # Install dependencies
-RUN cd vibe-frontend && npm ci
+RUN cd vibe-frontend && pnpm install --frozen-lockfile
 
 # Copy frontend source
 COPY vibe-frontend/ ./vibe-frontend/
@@ -23,7 +26,7 @@ ENV VITE_BASE_PATH=$VITE_BASE_PATH
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Build
-RUN cd vibe-frontend && npm run build
+RUN cd vibe-frontend && pnpm run build
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine
