@@ -1,15 +1,15 @@
 .light .legacy-design {
   --line-added: 160 77% 88%;
   --line-removed: 10 100% 90%;
-  --line-unchanged: var(--bg-primary);
-  --line-number-color: var(--text-low);
+  --line-unchanged: var(--secondary);
+  --line-number-color: var(--primary-foreground);
 }
 
 .dark .legacy-design {
   --line-added: 130 30% 20%;
   --line-removed: 12 30% 18%;
-  --line-unchanged: var(--bg-panel);
-  --line-number-color: var(--text-low);
+  --line-unchanged: var(--secondary);
+  --line-number-color: var(--primary-foreground);
 }
 
 .light .new-design {
