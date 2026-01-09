@@ -6,6 +6,7 @@ on:
     paths:
       - "vibe-frontend/**"
       - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USER }}/vibe-kanban-frontend
