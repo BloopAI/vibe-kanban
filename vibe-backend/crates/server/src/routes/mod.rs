@@ -31,6 +31,7 @@ pub mod inbox;
 pub mod oauth;
 pub mod organizations;
 pub mod projects;
+pub mod registrations;
 pub mod repo;
 pub mod scratch;
 pub mod sessions;
@@ -89,7 +90,8 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(sessions::router(&deployment))
-        .nest("/images", images::routes());
+        .nest("/images", images::routes())
+        .nest("/registrations", registrations::router(&deployment));
 
     // Apply auth middleware only if enabled
     let protected_routes = if auth_enabled {

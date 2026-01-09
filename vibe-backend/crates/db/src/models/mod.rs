@@ -20,5 +20,6 @@ pub mod task_comment;
 pub mod task_document_link;
 pub mod team;
 pub mod team_member;
+pub mod user_registration;
 pub mod workspace;
 pub mod workspace_repo;

@@ -139,6 +139,8 @@ import {
   LinkedDocument,
   LinkDocumentsRequest,
   UploadResult,
+  UserRegistration,
+  CreateUserRegistration,
 } from 'shared/types';
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -2338,5 +2340,53 @@ export const apiKeysApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// User Registrations API (for onboarding flow)
+export const registrationsApi = {
+  // Get current user's registration status
+  getMyRegistration: async (): Promise<UserRegistration | null> => {
+    const response = await makeRequest('/api/registrations/me');
+    return handleApiResponse<UserRegistration | null>(response);
+  },
+
+  // Create a new user registration
+  create: async (data: CreateUserRegistration): Promise<UserRegistration> => {
+    const response = await makeRequest('/api/registrations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<UserRegistration>(response);
+  },
+
+  // List all pending registrations (admin only)
+  listPending: async (): Promise<UserRegistration[]> => {
+    const response = await makeRequest('/api/registrations');
+    return handleApiResponse<UserRegistration[]>(response);
+  },
+
+  // List registrations with optional status filter
+  list: async (status?: string): Promise<UserRegistration[]> => {
+    const queryParam = status ? `?status=${status}` : '';
+    const response = await makeRequest(`/api/registrations${queryParam}`);
+    return handleApiResponse<UserRegistration[]>(response);
+  },
+
+  // Approve a registration (admin only)
+  approve: async (registrationId: string): Promise<UserRegistration> => {
+    const response = await makeRequest(`/api/registrations/${registrationId}/approve`, {
+      method: 'POST',
+    });
+    return handleApiResponse<UserRegistration>(response);
+  },
+
+  // Reject a registration (admin only)
+  reject: async (registrationId: string, reason?: string): Promise<UserRegistration> => {
+    const response = await makeRequest(`/api/registrations/${registrationId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+    return handleApiResponse<UserRegistration>(response);
   },
 };

@@ -865,3 +865,38 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
+
+// User Registration types for onboarding flow
+export type RegistrationStatus = "pending" | "approved" | "rejected";
+
+export type UserRegistration = {
+  id: string;
+  clerk_user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  workspace_name: string;
+  planned_teams: number;
+  planned_projects: number;
+  status: RegistrationStatus;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
+  rejection_reason: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+export type CreateUserRegistration = {
+  clerk_user_id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  workspace_name: string;
+  planned_teams: number | null;
+  planned_projects: number | null;
+};
+
+export type ReviewUserRegistration = {
+  status: RegistrationStatus;
+  rejection_reason: string | null;
+};

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SignInButton, SignUpButton, useUser } from '@clerk/clerk-react';
@@ -10,7 +11,10 @@ import {
   Shield,
   Globe,
   Terminal,
+  Loader2,
 } from 'lucide-react';
+import NiceModal from '@ebay/nice-modal-react';
+import { useUserRegistration } from '@/hooks/useUserRegistration';
 
 // Check if Clerk is configured
 const CLERK_ENABLED = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -20,11 +24,74 @@ export function About() {
 }
 
 function AboutWithClerk() {
-  const { isSignedIn } = useUser();
-  return <AboutContent isSignedIn={!!isSignedIn} />;
+  const { isSignedIn, user } = useUser();
+  const {
+    registration,
+    isLoading: isLoadingRegistration,
+    hasRegistration,
+    isApproved,
+    isPending,
+    isRejected,
+    refresh,
+  } = useUserRegistration();
+
+  // Show onboarding wizard for first-time sign-ups
+  useEffect(() => {
+    if (isSignedIn && user && !isLoadingRegistration && !hasRegistration) {
+      // First-time user - show onboarding wizard
+      import('@/components/dialogs/OnboardingWizard').then(() => {
+        NiceModal.show('onboarding-wizard', {
+          clerkUserId: user.id,
+          email: user.primaryEmailAddress?.emailAddress || '',
+          firstName: user.firstName,
+          lastName: user.lastName,
+        });
+      });
+    }
+  }, [isSignedIn, user, isLoadingRegistration, hasRegistration]);
+
+  // Show pending/rejected dialog
+  useEffect(() => {
+    if (isSignedIn && registration && (isPending || isRejected)) {
+      import('@/components/dialogs/PendingApprovalDialog').then(() => {
+        NiceModal.show('pending-approval-dialog', {
+          registration,
+          onRefresh: refresh,
+        });
+      });
+    }
+  }, [isSignedIn, registration, isPending, isRejected, refresh]);
+
+  // Determine welcome message
+  const welcomeMessage = isSignedIn && user?.firstName ? `Welcome back, ${user.firstName}!` : null;
+
+  // Show loading state while checking registration
+  if (isSignedIn && isLoadingRegistration) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <AboutContent
+      isSignedIn={!!isSignedIn}
+      isApproved={isApproved}
+      welcomeMessage={welcomeMessage}
+    />
+  );
 }
 
-function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
+interface AboutContentProps {
+  isSignedIn: boolean;
+  isApproved?: boolean;
+  welcomeMessage?: string | null;
+}
+
+function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutContentProps) {
+  // If user is signed in but not approved, they can see the page but not access dashboard
+  const canAccessDashboard = isSignedIn && isApproved;
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,10 +103,19 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
             <span className="text-xl font-bold">Vibe Kanban</span>
           </div>
           <nav className="flex items-center gap-4">
-            {isSignedIn ? (
+            {welcomeMessage && (
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {welcomeMessage}
+              </span>
+            )}
+            {canAccessDashboard ? (
               <Link to="/projects">
                 <Button>Go to Dashboard</Button>
               </Link>
+            ) : isSignedIn ? (
+              <Button disabled variant="outline">
+                Awaiting Approval
+              </Button>
             ) : (
               <>
                 <SignInButton mode="modal">
@@ -57,6 +133,9 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
+          {welcomeMessage && (
+            <p className="text-lg text-primary mb-4">{welcomeMessage}</p>
+          )}
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
             Task Management for
             <span className="text-primary"> AI Coding Agents</span>
@@ -67,10 +146,14 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
             development workflows.
           </p>
           <div className="flex gap-4 justify-center">
-            {isSignedIn ? (
+            {canAccessDashboard ? (
               <Link to="/projects">
                 <Button size="lg">Open Dashboard</Button>
               </Link>
+            ) : isSignedIn ? (
+              <Button size="lg" disabled variant="outline">
+                Registration Pending
+              </Button>
             ) : (
               <>
                 <SignUpButton mode="modal">
@@ -190,10 +273,14 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
             Join developers who are using Vibe Kanban to orchestrate AI coding
             agents and ship faster.
           </p>
-          {isSignedIn ? (
+          {canAccessDashboard ? (
             <Link to="/projects">
               <Button size="lg">Go to Dashboard</Button>
             </Link>
+          ) : isSignedIn ? (
+            <Button size="lg" disabled variant="outline">
+              Awaiting Approval
+            </Button>
           ) : (
             <SignUpButton mode="modal">
               <Button size="lg">Get Started Free</Button>

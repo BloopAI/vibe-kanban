@@ -554,6 +554,28 @@ export const apiKeys = pgTable("api_keys", {
     idxApiKeysKeyPrefix: index("idx_api_keys_key_prefix").on(table.keyPrefix),
 }));
 
+// User Registrations (for owner approval workflow)
+export const userRegistrations = pgTable("user_registrations", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clerkUserId: text("clerk_user_id").notNull().unique(),
+    email: text("email").notNull(),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    workspaceName: text("workspace_name").notNull(),
+    plannedTeams: integer("planned_teams").default(1),
+    plannedProjects: integer("planned_projects").default(1),
+    status: text("status").notNull().default("pending"), // pending, approved, rejected
+    reviewedBy: uuid("reviewed_by").references(() => teamMembers.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxUserRegistrationsClerkUserId: uniqueIndex("idx_user_registrations_clerk_user_id").on(table.clerkUserId),
+    idxUserRegistrationsStatus: index("idx_user_registrations_status").on(table.status),
+    idxUserRegistrationsEmail: index("idx_user_registrations_email").on(table.email),
+}));
+
 // Team Registry (for multi-tenant team management)
 export const teamRegistry = pgTable("team_registry", {
     id: text("id").primaryKey(),
