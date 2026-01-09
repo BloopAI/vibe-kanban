@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 
 type ProjectsState = {
   projects: Record<string, Project>;
@@ -52,7 +52,7 @@ function removeOptimisticProject(projectId: string) {
 
 export function useProjects(): UseProjectsResult {
   const endpoint = '/api/projects/stream/ws';
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
 

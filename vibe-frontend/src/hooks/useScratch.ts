@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import { scratchApi } from '@/lib/api';
 import { ScratchType, type Scratch, type UpdateScratch } from 'shared/types';
 
@@ -26,7 +26,7 @@ export const useScratch = (
   id: string
 ): UseScratchResult => {
   const endpoint = scratchApi.getStreamUrl(scratchType, id);
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {

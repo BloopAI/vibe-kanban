@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { teamsApi, userInvitationsApi } from '@/lib/api';
-import { useUser } from '@clerk/clerk-react';
+import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import type {
   TeamMember,
   TeamMemberRole,
@@ -31,7 +31,7 @@ export interface UseTeamMembersResult {
  * Hook for managing team members and invitations (for team owners/maintainers)
  */
 export function useTeamMembers(teamId: string | undefined): UseTeamMembersResult {
-  const { user, isLoaded: isClerkLoaded } = useUser();
+  const { user, isLoaded: isClerkLoaded } = useClerkUser();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [currentMember, setCurrentMember] = useState<TeamMember | null>(null);

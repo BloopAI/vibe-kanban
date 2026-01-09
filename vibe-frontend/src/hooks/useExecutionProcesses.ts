@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {
@@ -36,7 +36,7 @@ export const useExecutionProcesses = (
     endpoint = `/api/execution-processes/stream/ws?${params.toString()}`;
   }
 
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {

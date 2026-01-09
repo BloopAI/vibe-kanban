@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import { useProject } from '@/contexts/ProjectContext';
 import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
 import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
@@ -41,7 +41,7 @@ export interface UseProjectTasksResult {
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const { project } = useProject();
-  const { isSignedIn, getToken, isLoaded } = useAuth();
+  const { isSignedIn, getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {

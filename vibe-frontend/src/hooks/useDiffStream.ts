@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import type { Diff, PatchType } from 'shared/types';
-import { useAuth } from '@clerk/clerk-react';
+import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 
 interface DiffEntries {
@@ -37,7 +37,7 @@ export const useDiffStream = (
     }
   })();
 
-  const { getToken, isLoaded } = useAuth();
+  const { getToken, isLoaded } = useClerkAuth();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
