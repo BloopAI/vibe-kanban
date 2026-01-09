@@ -87,6 +87,18 @@ export function IssueDetailPanel({
     // Try to find matching team member to get their member ID and name
     const matchingMember = members?.find(m => m.email === profile.email);
 
+    // DEBUG: Log what we have
+    console.log('[DEBUG currentUser]', {
+      profileEmail: profile.email,
+      profileProviders: profile.providers,
+      profileUsername: profile.username,
+      displayName,
+      membersCount: members?.length,
+      memberEmails: members?.map(m => m.email),
+      matchingMember: matchingMember ? { id: matchingMember.id, email: matchingMember.email, display_name: matchingMember.display_name } : null,
+      finalName: matchingMember?.display_name || displayName,
+    });
+
     return {
       id: matchingMember?.id ?? null,
       // Use team member's display_name first (contains actual name like "rupesh panwar")
