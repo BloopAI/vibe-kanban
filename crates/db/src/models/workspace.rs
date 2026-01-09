@@ -446,7 +446,7 @@ impl Workspace {
         }
 
         // Then try prefix match - find workspace where path starts with container_ref
-        // Use glob pattern: container_ref || '%' to match paths under the workspace
+        // Handle both Unix (/) and Windows (\) path separators
         let result = sqlx::query!(
             r#"SELECT w.id as "workspace_id!: Uuid",
                       w.task_id as "task_id!: Uuid",
@@ -454,9 +454,11 @@ impl Workspace {
                FROM workspaces w
                JOIN tasks t ON w.task_id = t.id
                WHERE w.container_ref IS NOT NULL
-                 AND ? GLOB w.container_ref || '/*'
+                 AND (? GLOB w.container_ref || '/*'
+                      OR ? GLOB w.container_ref || '\*')
                ORDER BY length(w.container_ref) DESC
                LIMIT 1"#,
+            path,
             path
         )
         .fetch_optional(pool)

@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT w.id as \"workspace_id!: Uuid\",\n                      w.task_id as \"task_id!: Uuid\",\n                      t.project_id as \"project_id!: Uuid\"\n               FROM workspaces w\n               JOIN tasks t ON w.task_id = t.id\n               WHERE w.container_ref IS NOT NULL\n                 AND (? GLOB w.container_ref || '/*'\n                      OR ? GLOB w.container_ref || '\\*')\n               ORDER BY length(w.container_ref) DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "172e66bc2e06dca48bfc169295f3b71e5d37b6b65cf75a7230d10ffec0154031"
+}
