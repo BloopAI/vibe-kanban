@@ -2,6 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Mandatory Workflow Rules
+
+> **⚠️ CRITICAL: These rules are NON-NEGOTIABLE when `/full-stack-dev` is invoked ⚠️**
+
+When `/full-stack-dev` skill is invoked:
+
+1. **STOP** - Do not write any code immediately
+2. **Create task in iKanban FIRST** - Use CLI: `python cli.py create IKA "task title" -s inprogress`
+3. **Create planning docs BEFORE coding**:
+   - ASCII Flow Diagram: `docs-ikanban/planning/<type>/<task-id>-<feature>-flow.md`
+   - Implementation Plan: `docs-ikanban/planning/<type>/<task-id>-<feature>-plan.md`
+4. **Write failing tests BEFORE implementation** (TDD Red phase)
+5. **Never skip phases** - All 6 phases must be completed in order
+
+```
+Phase 1: Task Setup     → Create task in iKanban
+Phase 2: Planning Docs  → Create flow diagram + implementation plan
+Phase 3: TDD            → 🔴 Write failing tests → 🟢 Implement → 🔵 Refactor
+Phase 4: E2E Testing    → Test API with curl + Test UI flow
+Phase 5: Git Workflow   → Branch, commit, merge
+Phase 6: Task Done      → Link docs, mark complete
+```
+
+**Violations result in:**
+- Task marked INCOMPLETE regardless of code status
+- Must complete missing phases before closure
+- Rework required if TDD was skipped
+
+---
+
 ## Project Overview
 
 Vibe Kanban (iKanban) is a full-stack kanban board application with AI-powered task execution. The project uses a Rust/Axum backend with React/Vite frontend.
@@ -16,13 +46,9 @@ cd vibe-backend
 cargo run --bin server              # Start backend (default port 3003)
 cargo check                         # Type check without building
 cargo build --release --bin server  # Build release binary
-
-# Using Makefile (recommended for local dev)
-make start                          # Start both frontend and backend
-make stop                           # Stop all services
-make status                         # Check service status
-make logs                           # View logs
 ```
+
+> **Note:** For cloud deployment, the backend runs at `api.scho1ar.com`. Local backend is only needed for local-only development.
 
 ### Frontend (React/Vite)
 ```bash
