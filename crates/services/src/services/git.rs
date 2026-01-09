@@ -1054,6 +1054,19 @@ impl GitService {
         Ok(oid)
     }
 
+    /// Get the fork point (merge base) between two branches.
+    /// Uses `git merge-base --fork-point` first, which survives rebasing by
+    /// consulting the reflog. Falls back to regular merge-base if fork-point fails.
+    pub fn get_fork_point(
+        &self,
+        worktree_path: &Path,
+        target_branch: &str,
+        task_branch: &str,
+    ) -> Result<String, GitServiceError> {
+        let git = GitCli::new();
+        Ok(git.merge_base(worktree_path, target_branch, task_branch)?)
+    }
+
     /// Get the subject/summary line for a given commit OID
     pub fn get_commit_subject(
         &self,
