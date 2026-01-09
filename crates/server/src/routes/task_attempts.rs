@@ -1570,34 +1570,19 @@ pub async fn get_first_user_message(
     Ok(ResponseJson(ApiResponse::success(message)))
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(tag = "type", rename_all = "snake_case")]
-#[ts(tag = "type", rename_all = "snake_case")]
-pub enum DeleteWorkspaceError {
-    HasRunningProcesses,
-}
-
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<
-    (
-        StatusCode,
-        ResponseJson<ApiResponse<(), DeleteWorkspaceError>>,
-    ),
-    ApiError,
-> {
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
 
     // Check for running execution processes
     if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
         .await?
     {
-        return Ok((
-            StatusCode::CONFLICT,
-            ResponseJson(ApiResponse::error_with_data(
-                DeleteWorkspaceError::HasRunningProcesses,
-            )),
+        return Err(ApiError::Conflict(
+            "Cannot delete workspace while processes are running. Stop all processes first."
+                .to_string(),
         ));
     }
 

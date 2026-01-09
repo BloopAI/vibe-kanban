@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -30,18 +30,6 @@ pub struct ContainerInfo {
     pub workspace_id: Uuid,
     pub task_id: Uuid,
     pub project_id: Uuid,
-}
-
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
-#[sqlx(type_name = "workspace_status", rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-pub enum WorkspaceStatus {
-    SetupRunning,
-    SetupComplete,
-    SetupFailed,
-    ExecutorRunning,
-    ExecutorComplete,
-    ExecutorFailed,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
