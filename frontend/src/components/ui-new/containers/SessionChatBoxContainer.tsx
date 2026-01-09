@@ -5,7 +5,6 @@ import {
   type ToolStatus,
   type BaseCodingAgent,
 } from 'shared/types';
-import { HighlighterIcon } from '@phosphor-icons/react';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -13,6 +12,7 @@ import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext'
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
+import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
@@ -24,11 +24,13 @@ import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
-import { StartReviewDialog } from '@/components/dialogs';
 import {
   SessionChatBox,
   type ExecutionStatus,
 } from '../primitives/SessionChatBox';
+import { Actions, type ActionDefinition } from '../actions';
+import { useActionVisibilityContext } from '../actions/useActionVisibility';
+
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -94,6 +96,10 @@ export function SessionChatBoxContainer({
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+
+  // Actions system
+  const { executeAction } = useActions();
+  const actionCtx = useActionVisibilityContext();
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -439,26 +445,25 @@ export function SessionChatBoxContainer({
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
-  const handleReviewClick = useCallback(() => {
-    if (!workspaceId) return;
-    StartReviewDialog.show({
-      sessionId,
-      workspaceId,
-      reviewMarkdown: reviewMarkdown || undefined,
-      defaultProfile: latestProfileId,
-      onSuccess: (newSessionId) => {
-        if (newSessionId) onSelectSession?.(newSessionId);
-        reviewContext?.clearComments();
-      },
-    });
-  }, [
-    sessionId,
-    workspaceId,
-    reviewMarkdown,
-    latestProfileId,
-    reviewContext,
-    onSelectSession,
-  ]);
+  // Toolbar actions handler - intercepts action execution to provide extra context
+  const handleToolbarAction = useCallback(
+    (action: ActionDefinition) => {
+      if (action.id === 'start-review' && workspaceId) {
+        executeAction(action, workspaceId);
+      } else if (action.requiresTarget && workspaceId) {
+        executeAction(action, workspaceId);
+      } else {
+        executeAction(action);
+      }
+    },
+    [executeAction, workspaceId]
+  );
+
+  // Define which actions appear in the toolbar
+  const toolbarActionsList = useMemo(
+    () => [Actions.StartReview],
+    []
+  );
 
   // Handle approve action
   const handleApprove = useCallback(async () => {
@@ -570,13 +575,11 @@ export function SessionChatBoxContainer({
         isNewSessionMode,
         onNewSession: onStartNewSession,
       }}
-      toolbarActions={[
-        {
-          icon: HighlighterIcon,
-          label: 'Start Review',
-          onClick: handleReviewClick,
-        },
-      ]}
+      toolbarActions={{
+        actions: toolbarActionsList,
+        context: actionCtx,
+        onExecuteAction: handleToolbarAction,
+      }}
       stats={{
         filesChanged,
         linesAdded,
