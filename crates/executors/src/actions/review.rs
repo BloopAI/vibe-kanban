@@ -37,6 +37,13 @@ impl ReviewRequest {
     pub fn base_executor(&self) -> BaseCodingAgent {
         self.executor_profile_id.executor
     }
+
+    pub fn effective_dir(&self, current_dir: &Path) -> std::path::PathBuf {
+        match &self.working_dir {
+            Some(rel_path) => current_dir.join(rel_path),
+            None => current_dir.to_path_buf(),
+        }
+    }
 }
 
 #[async_trait]
