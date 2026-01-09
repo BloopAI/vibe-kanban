@@ -9,15 +9,15 @@
     },
     "dependencies": {
         "better-sqlite3": "^11.0.0",
-        "dotenv": "^16.4.5",
-        "drizzle-orm": "^0.30.9",
-        "pg": "^8.11.5"
+        "drizzle-orm": "^0.30.9"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.10",
         "@types/node": "^20.12.7",
         "@types/pg": "^8.11.5",
+        "dotenv": "^17.2.3",
         "drizzle-kit": "^0.20.14",
+        "pg": "^8.16.3",
         "tsx": "^4.7.2",
         "typescript": "^5.4.5"
     }
