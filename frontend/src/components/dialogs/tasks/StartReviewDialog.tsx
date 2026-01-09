@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -31,6 +32,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       useState<ExecutorProfileId | null>(defaultProfile ?? null);
     const [additionalPrompt, setAdditionalPrompt] = useState('');
     const [createNewSession, setCreateNewSession] = useState(!sessionId);
+    const [includeGitContext, setIncludeGitContext] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +73,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
         await sessionsApi.startReview(targetSessionId, {
           executor_profile_id: effectiveProfile,
           additional_prompt: combinedPrompt || null,
-          use_all_workspace_commits: true,
+          use_all_workspace_commits: includeGitContext,
         });
 
         queryClient.invalidateQueries({
@@ -95,6 +97,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       sessionId,
       workspaceId,
       createNewSession,
+      includeGitContext,
       reviewMarkdown,
       additionalPrompt,
       queryClient,
@@ -145,6 +148,22 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
             )}
 
             {error && <div className="text-sm text-destructive">{error}</div>}
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="include-git-context"
+                checked={includeGitContext}
+                onCheckedChange={(checked) =>
+                  setIncludeGitContext(checked === true)
+                }
+              />
+              <Label
+                htmlFor="include-git-context"
+                className="cursor-pointer text-sm"
+              >
+                Include git context
+              </Label>
+            </div>
 
             {profiles && (
               <div className="space-y-2">
