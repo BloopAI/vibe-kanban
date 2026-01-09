@@ -71,15 +71,15 @@ pub async fn start_review(
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
         let repos =
             WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id).await?;
-        let worktree_path = PathBuf::from(container_ref.as_str());
+        let workspace_path = PathBuf::from(container_ref.as_str());
 
         let mut contexts = Vec::new();
         for repo in repos {
-            let repo_path = worktree_path.join(&repo.repo.name);
+            let worktree_path = workspace_path.join(&repo.repo.name);
             if let Ok(base_commit) =
                 deployment
                     .git()
-                    .get_fork_point(&repo_path, &repo.target_branch, &workspace.branch)
+                    .get_fork_point(&worktree_path, &repo.target_branch, &workspace.branch)
             {
                 contexts.push(ExecutorRepoReviewContext {
                     repo_id: repo.repo.id,
