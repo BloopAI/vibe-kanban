@@ -28,7 +28,7 @@ pub struct LinkDocumentsRequest {
 pub struct LinkedDocument {
     pub id: Uuid,
     pub document_id: Uuid,
-    pub document_title: String,
+    pub document_title: String,  // Will default to "Untitled" if null
     pub folder_name: Option<String>,
     #[ts(type = "Date")]
     pub linked_at: DateTime<Utc>,
@@ -87,7 +87,7 @@ impl TaskDocumentLink {
             r#"SELECT
                   tdl.id as "id!: Uuid",
                   tdl.document_id as "document_id!: Uuid",
-                  d.title as "document_title!",
+                  COALESCE(d.title, 'Untitled') as "document_title!",
                   df.name as "folder_name",
                   tdl.created_at as "linked_at!: DateTime<Utc>"
                FROM task_document_links tdl

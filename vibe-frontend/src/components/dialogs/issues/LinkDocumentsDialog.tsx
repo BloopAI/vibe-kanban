@@ -123,8 +123,14 @@ export function LinkDocumentsDialog({
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) return;
-    await onLink(Array.from(selectedIds));
-    onOpenChange(false);
+    try {
+      await onLink(Array.from(selectedIds));
+      onOpenChange(false);
+    } catch (err) {
+      console.error('Failed to link documents:', err);
+      // Still close the dialog - user can retry
+      onOpenChange(false);
+    }
   };
 
   return (

@@ -37,21 +37,33 @@ export function useTaskDocumentLinks(taskId: string | undefined) {
   const linkDocumentsMutation = useMutation({
     mutationFn: async (documentIds: string[]) => {
       if (!taskId) throw new Error("Task ID required");
-      return tasksApi.linkDocuments(taskId, { document_ids: documentIds });
+      console.log('[linkDocuments] Linking documents to task:', taskId, documentIds);
+      const result = await tasksApi.linkDocuments(taskId, { document_ids: documentIds });
+      console.log('[linkDocuments] API response:', result);
+      return result;
     },
     onSuccess: (newLinks) => {
+      console.log('[linkDocuments] onSuccess - new links:', newLinks);
       queryClient.setQueryData<LinkedDocument[]>(
         ["task-document-links", taskId],
         (old) => {
+          console.log('[linkDocuments] setQueryData - old:', old, 'new:', newLinks);
           if (!old) return newLinks;
           // Merge new links avoiding duplicates
           const existingIds = new Set(old.map((l) => l.document_id));
           const uniqueNewLinks = newLinks.filter(
             (l) => !existingIds.has(l.document_id)
           );
-          return [...old, ...uniqueNewLinks];
+          const merged = [...old, ...uniqueNewLinks];
+          console.log('[linkDocuments] setQueryData - merged:', merged);
+          return merged;
         }
       );
+      // Also invalidate to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["task-document-links", taskId] });
+    },
+    onError: (error) => {
+      console.error('[linkDocuments] Mutation error:', error);
     },
   });
 
