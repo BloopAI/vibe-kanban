@@ -169,7 +169,15 @@
     "viewInChangesPanel": "Ver en panel de cambios",
     "copyPath": "Copiar ruta",
     "copyWorktreePath": "Copiar ruta del worktree",
-    "openInIde": "Abrir en IDE"
+    "openInIde": "Abrir en IDE",
+    "cancel": "Cancelar",
+    "saveChanges": "Guardar cambios",
+    "copied": "Copiado"
+  },
+  "comments": {
+    "addReviewComment": "Agregar comentario de revisión",
+    "addPlaceholder": "Agregar un comentario...",
+    "editPlaceholder": "Editar comentario..."
   },
   "confirm": {
     "defaultConfirm": "Confirmar",

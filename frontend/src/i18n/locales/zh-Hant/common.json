@@ -169,7 +169,15 @@
     "viewInChangesPanel": "在變更面板中檢視",
     "copyPath": "複製路徑",
     "copyWorktreePath": "複製工作樹路徑",
-    "openInIde": "在IDE中開啟"
+    "openInIde": "在IDE中開啟",
+    "cancel": "取消",
+    "saveChanges": "儲存變更",
+    "copied": "已複製"
+  },
+  "comments": {
+    "addReviewComment": "新增審查評論",
+    "addPlaceholder": "新增評論...",
+    "editPlaceholder": "編輯評論..."
   },
   "confirm": {
     "defaultConfirm": "確認",

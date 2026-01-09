@@ -169,7 +169,15 @@
     "viewInChangesPanel": "View in changes panel",
     "copyPath": "Copy path",
     "copyWorktreePath": "Copy worktree path",
-    "openInIde": "Open in IDE"
+    "openInIde": "Open in IDE",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "copied": "Copied"
+  },
+  "comments": {
+    "addReviewComment": "Add Review Comment",
+    "addPlaceholder": "Add a comment...",
+    "editPlaceholder": "Edit comment..."
   },
   "confirm": {
     "defaultConfirm": "Confirm",
