@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
     migrate::MigrateError,
-    sqlite::{SqliteConnectOptions, SqliteConnection, SqlitePoolOptions},
+    sqlite::{SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions},
 };
 use utils::assets::asset_dir;
 
@@ -78,7 +78,9 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Delete);
         let pool = SqlitePool::connect_with(options).await?;
         run_migrations(&pool).await?;
         Ok(DBService { pool })
@@ -112,7 +114,9 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Delete);
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()
