@@ -79,7 +79,7 @@
     "banner": "Development Mode - This is a development build"
   },
   "oauth": {
-    "title": "Sign in to Vibe Kanban",
+    "title": "Sign in to iKanban",
     "description": "Sign in to join organizations and share tasks with your team",
     "continueWithGitHub": "Continue with GitHub",
     "continueWithGoogle": "Continue with Google",

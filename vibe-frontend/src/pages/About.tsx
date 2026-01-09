@@ -100,7 +100,7 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Layers className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">Vibe Kanban</span>
+            <span className="text-xl font-bold">iKanban</span>
           </div>
           <nav className="flex items-center gap-4">
             {welcomeMessage && (
@@ -270,7 +270,7 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
             Ready to Supercharge Your Workflow?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join developers who are using Vibe Kanban to orchestrate AI coding
+            Join developers who are using iKanban to orchestrate AI coding
             agents and ship faster.
           </p>
           {canAccessDashboard ? (
@@ -295,12 +295,12 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
           <div className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              Vibe Kanban - Task Management for AI Agents
+              iKanban - Task Management for AI Agents
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a
-              href="https://github.com/AviKKi/vibe-kanban"
+              href="https://github.com/rupeedev/vibe-kanban"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors"

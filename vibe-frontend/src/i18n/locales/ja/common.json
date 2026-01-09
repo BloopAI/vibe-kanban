@@ -79,7 +79,7 @@
     "banner": "開発モード - これは開発ビルドです"
   },
   "oauth": {
-    "title": "Vibe Kanbanにサインイン",
+    "title": "iKanbanにサインイン",
     "description": "サインインして組織に参加し、チームとタスクを共有します",
     "continueWithGitHub": "GitHubで続行",
     "continueWithGoogle": "Googleで続行",

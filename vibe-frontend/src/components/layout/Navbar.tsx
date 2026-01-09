@@ -76,7 +76,7 @@ const EXTERNAL_LINKS = [
   {
     label: 'Support',
     icon: MessageCircleQuestion,
-    href: 'https://github.com/BloopAI/vibe-kanban/issues',
+    href: 'https://github.com/rupeedev/vibe-kanban/issues',
   },
   {
     label: 'Discord',

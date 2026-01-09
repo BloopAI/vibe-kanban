@@ -253,7 +253,7 @@ export function JoinTeam() {
           </div>
           <CardTitle>You're Invited!</CardTitle>
           <CardDescription>
-            You've been invited to join a team on Vibe Kanban.
+            You've been invited to join a team on iKanban.
           </CardDescription>
         </CardHeader>
 

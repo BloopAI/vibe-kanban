@@ -81,10 +81,10 @@ function OnboardingWizardImpl(props: OnboardingWizardProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Welcome to Vibe Kanban
+            Welcome to iKanban
           </DialogTitle>
           <DialogDescription>
-            Let's set up your workspace. Tell us a bit about how you plan to use Vibe Kanban.
+            Let's set up your workspace. Tell us a bit about how you plan to use iKanban.
           </DialogDescription>
         </DialogHeader>
 

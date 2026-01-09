@@ -249,7 +249,7 @@
       "prMerged": "PR #{{number}}은(는) 이미 병합되었습니다",
       "loginRequired": {
         "title": "Git 작업을 관리하려면 로그인하세요",
-        "description": "이 작업에서 브랜치를 푸시하고 변경 사항을 병합하거나 풀 리퀘스트를 만들려면 Vibe Kanban에 로그인하세요.",
+        "description": "이 작업에서 브랜치를 푸시하고 변경 사항을 병합하거나 풀 리퀘스트를 만들려면 iKanban에 로그인하세요.",
         "action": "로그인"
       }
     },
@@ -404,12 +404,12 @@
   "showcases": {
     "taskPanel": {
       "companion": {
-        "title": "Vibe Kanban Companion 포인트 앤 클릭",
+        "title": "iKanban Companion 포인트 앤 클릭",
         "description": "미리보기 창에서 UI 구성 요소를 클릭하여 정확하게 선택하세요. 코딩 에이전트는 정확한 DOM 선택자와 구성 요소 계층을 수신하여 모호한 피드백을 제거합니다."
       },
       "installation": {
         "title": "개발 서버 및 Companion 설치",
-        "description": "미리보기를 위한 개발 서버 명령을 설정하고 설정에서 구성 가능한 설정 스크립트를 사용하세요. 코딩 에이전트를 사용하여 Vibe Kanban 웹 컴패니언을 자동으로 설치합니다."
+        "description": "미리보기를 위한 개발 서버 명령을 설정하고 설정에서 구성 가능한 설정 스크립트를 사용하세요. 코딩 에이전트를 사용하여 iKanban 웹 컴패니언을 자동으로 설치합니다."
       },
       "codeReview": {
         "title": "내장 코드 리뷰",

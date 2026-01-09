@@ -249,7 +249,7 @@
       "prMerged": "PR #{{number}} は既にマージされています",
       "loginRequired": {
         "title": "Git アクションを管理するにはサインインしてください",
-        "description": "このタスクでブランチのプッシュ、変更のマージ、プルリクエストの作成を行うには Vibe Kanban にサインインしてください。",
+        "description": "このタスクでブランチのプッシュ、変更のマージ、プルリクエストの作成を行うには iKanban にサインインしてください。",
         "action": "サインイン"
       }
     },
@@ -404,12 +404,12 @@
   "showcases": {
     "taskPanel": {
       "companion": {
-        "title": "Vibe Kanban Companion ポイント＆クリック",
+        "title": "iKanban Companion ポイント＆クリック",
         "description": "プレビューウィンドウ内の任意のUIコンポーネントをクリックして正確に選択できます。コーディングエージェントは正確なDOMセレクタとコンポーネント階層を受け取り、曖昧なフィードバックを排除します。"
       },
       "installation": {
         "title": "開発サーバーとCompanionのインストール",
-        "description": "プレビュー用に開発サーバーコマンドを設定します。設定でセットアップスクリプトを構成できます。コーディングエージェントを使用してVibe Kanban Webコンパニオンを自動的にインストールします。"
+        "description": "プレビュー用に開発サーバーコマンドを設定します。設定でセットアップスクリプトを構成できます。コーディングエージェントを使用してiKanban Webコンパニオンを自動的にインストールします。"
       },
       "codeReview": {
         "title": "組み込みコードレビュー",

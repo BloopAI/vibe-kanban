@@ -279,7 +279,7 @@
       "prMerged": "PR #{{number}} 已合并",
       "loginRequired": {
         "title": "登录以管理 git 操作",
-        "description": "登录 Vibe Kanban，以便您可以推送分支、合并更改或为此任务打开拉取请求。",
+        "description": "登录 iKanban，以便您可以推送分支、合并更改或为此任务打开拉取请求。",
         "action": "登录"
       }
     }
@@ -404,12 +404,12 @@
   "showcases": {
     "taskPanel": {
       "companion": {
-        "title": "Vibe Kanban Companion 点选功能",
+        "title": "iKanban Companion 点选功能",
         "description": "点击预览窗口中的任何 UI 组件以精确选择它。编码代理接收确切的 DOM 选择器和组件层次结构，消除模糊的反馈。"
       },
       "installation": {
         "title": "开发服务器和 Companion 安装",
-        "description": "为预览设置开发服务器命令，在设置中可配置设置脚本。使用编码代理自动安装 Vibe Kanban Web Companion。"
+        "description": "为预览设置开发服务器命令，在设置中可配置设置脚本。使用编码代理自动安装 iKanban Web Companion。"
       },
       "codeReview": {
         "title": "内置代码审查",

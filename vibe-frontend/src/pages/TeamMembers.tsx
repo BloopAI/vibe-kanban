@@ -321,7 +321,7 @@ function InvitationTableRow({ invitation, teamName, onRoleChange, onCancel, isUp
     const inviteUrl = `${window.location.origin}/join?token=${invitation.token}`;
     const daysUntilExpiry = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
-    const subject = encodeURIComponent(`You're invited to join ${teamName} on Vibe Kanban`);
+    const subject = encodeURIComponent(`You're invited to join ${teamName} on iKanban`);
     const body = encodeURIComponent(
 `Hi,
 

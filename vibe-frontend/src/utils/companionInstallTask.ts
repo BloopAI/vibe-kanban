@@ -1,5 +1,5 @@
 export const COMPANION_INSTALL_TASK_TITLE =
-  'Install and integrate Vibe Kanban Web Companion';
+  'Install and integrate iKanban Web Companion';
 
 export const COMPANION_INSTALL_TASK_DESCRIPTION = `Goal: Install and integrate the vibe-kanban-web-companion so it renders at the app root in development.
 

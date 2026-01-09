@@ -79,7 +79,7 @@
     "banner": "开发模式 - 这是开发版本"
   },
   "oauth": {
-    "title": "登录 Vibe Kanban",
+    "title": "登录 iKanban",
     "description": "登录以加入组织并与团队共享任务",
     "continueWithGitHub": "使用 GitHub 继续",
     "continueWithGoogle": "使用 Google 继续",

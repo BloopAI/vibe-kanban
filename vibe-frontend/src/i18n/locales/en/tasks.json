@@ -266,7 +266,7 @@
       "prMerged": "PR #{{number}} is already merged",
       "loginRequired": {
         "title": "Sign in to manage git actions",
-        "description": "Sign in to Vibe Kanban so you can push branches, merge changes, or open pull requests for this task.",
+        "description": "Sign in to iKanban so you can push branches, merge changes, or open pull requests for this task.",
         "action": "Sign in"
       }
     }
@@ -404,12 +404,12 @@
   "showcases": {
     "taskPanel": {
       "companion": {
-        "title": "Vibe Kanban Companion Point-and-Click",
+        "title": "iKanban Companion Point-and-Click",
         "description": "Click any UI component in the preview window to select it precisely. The coding agent receives exact DOM selectors and component hierarchy, eliminating ambiguous feedback."
       },
       "installation": {
         "title": "Dev Server & Companion Installation",
-        "description": "Set a dev server command for previews, with a setup script configurable in settings. Use a coding agent to automatically install the Vibe Kanban web companion."
+        "description": "Set a dev server command for previews, with a setup script configurable in settings. Use a coding agent to automatically install the iKanban web companion."
       },
       "codeReview": {
         "title": "Built-in Code Review",
