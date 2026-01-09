@@ -155,12 +155,23 @@ export function RepoCard({
 
       {/* PR status row */}
       {prNumber && (
-        <div className="flex items-center gap-half">
+        <div className="flex items-center gap-half mt-half">
           {prStatus === 'merged' ? (
-            <span className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-success text-sm font-medium">
-              <CheckCircleIcon className="size-icon-xs" weight="fill" />
-              {t('git.pr.merged', { prNumber })}
-            </span>
+            prUrl ? (
+              <button
+                onClick={() => window.open(prUrl, '_blank')}
+                className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-success hover:bg-tertiary text-sm font-medium transition-colors"
+              >
+                <CheckCircleIcon className="size-icon-xs" weight="fill" />
+                {t('git.pr.merged', { prNumber })}
+                <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-success text-sm font-medium">
+                <CheckCircleIcon className="size-icon-xs" weight="fill" />
+                {t('git.pr.merged', { prNumber })}
+              </span>
+            )
           ) : prUrl ? (
             <button
               onClick={() => window.open(prUrl, '_blank')}
