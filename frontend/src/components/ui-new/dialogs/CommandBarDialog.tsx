@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useCallback, useMemo, useReducer } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -35,6 +35,171 @@ import {
   isPageVisible,
 } from '@/components/ui-new/actions/useActionVisibility';
 
+// ============================================================================
+// State Machine Types
+// ============================================================================
+
+/** Discriminated union for command bar state */
+type CommandBarState =
+  | { status: 'browsing'; page: PageId; stack: PageId[]; search: string }
+  | {
+      status: 'selectingRepo';
+      stack: PageId[];
+      search: string;
+      pendingAction: GitActionDefinition;
+    };
+
+/** All possible events the state machine can handle */
+type CommandBarEvent =
+  | { type: 'RESET'; page: PageId }
+  | { type: 'SEARCH_CHANGE'; query: string }
+  | { type: 'GO_BACK' }
+  | { type: 'SELECT_ITEM'; item: ResolvedGroupItem };
+
+/** Side effects returned from the reducer */
+type CommandBarEffect =
+  | { type: 'none' }
+  | { type: 'execute'; action: ActionDefinition; repoId?: string };
+
+/** Context needed for state transitions */
+interface ReducerContext {
+  repos: Array<{ id: string }>;
+}
+
+// ============================================================================
+// State Machine Reducer
+// ============================================================================
+
+function commandBarReducer(
+  state: CommandBarState,
+  event: CommandBarEvent,
+  context: ReducerContext
+): [CommandBarState, CommandBarEffect] {
+  switch (state.status) {
+    case 'browsing': {
+      switch (event.type) {
+        case 'RESET':
+          return [
+            { status: 'browsing', page: event.page, stack: [], search: '' },
+            { type: 'none' },
+          ];
+
+        case 'SEARCH_CHANGE':
+          return [{ ...state, search: event.query }, { type: 'none' }];
+
+        case 'GO_BACK': {
+          if (state.stack.length === 0) return [state, { type: 'none' }];
+          const prevPage = state.stack[state.stack.length - 1];
+          return [
+            {
+              ...state,
+              page: prevPage,
+              stack: state.stack.slice(0, -1),
+              search: '',
+            },
+            { type: 'none' },
+          ];
+        }
+
+        case 'SELECT_ITEM': {
+          const { item } = event;
+
+          // Navigate to page
+          if (item.type === 'page') {
+            return [
+              {
+                ...state,
+                page: item.pageId,
+                stack: [...state.stack, state.page],
+                search: '',
+              },
+              { type: 'none' },
+            ];
+          }
+
+          // Execute action
+          if (item.type === 'action') {
+            // Git actions need repo selection
+            if (item.action.requiresTarget === 'git') {
+              if (context.repos.length === 1) {
+                // Single repo - execute immediately
+                return [
+                  state,
+                  {
+                    type: 'execute',
+                    action: item.action,
+                    repoId: context.repos[0].id,
+                  },
+                ];
+              }
+              if (context.repos.length > 1) {
+                // Multiple repos - transition to repo selection
+                return [
+                  {
+                    status: 'selectingRepo',
+                    stack: [...state.stack, state.page],
+                    search: '',
+                    pendingAction: item.action as GitActionDefinition,
+                  },
+                  { type: 'none' },
+                ];
+              }
+            }
+            // Non-git action - execute directly
+            return [state, { type: 'execute', action: item.action }];
+          }
+
+          return [state, { type: 'none' }];
+        }
+      }
+      break;
+    }
+
+    case 'selectingRepo': {
+      switch (event.type) {
+        case 'RESET':
+          return [
+            { status: 'browsing', page: event.page, stack: [], search: '' },
+            { type: 'none' },
+          ];
+
+        case 'SEARCH_CHANGE':
+          return [{ ...state, search: event.query }, { type: 'none' }];
+
+        case 'GO_BACK': {
+          const prevPage = state.stack[state.stack.length - 1] ?? 'root';
+          return [
+            {
+              status: 'browsing',
+              page: prevPage,
+              stack: state.stack.slice(0, -1),
+              search: '',
+            },
+            { type: 'none' },
+          ];
+        }
+
+        case 'SELECT_ITEM': {
+          if (event.item.type === 'repo') {
+            return [
+              { status: 'browsing', page: 'root', stack: [], search: '' },
+              {
+                type: 'execute',
+                action: state.pendingAction,
+                repoId: event.item.repo.id,
+              },
+            ];
+          }
+          return [state, { type: 'none' }];
+        }
+      }
+      break;
+    }
+  }
+
+  return [state, { type: 'none' }];
+}
+
 // Resolved page structure passed to CommandBar
 interface ResolvedCommandBarPage {
   id: string;
@@ -63,29 +228,26 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
     // Get visibility context for filtering actions
     const visibilityContext = useActionVisibilityContext();
 
-    // Page navigation state (lifted from CommandBar)
-    const [currentPage, setCurrentPage] = useState<PageId>(page);
-    const [pageStack, setPageStack] = useState<PageId[]>([]);
-    // Search state - cleared when page changes
-    const [search, setSearch] = useState('');
-    // Pending git action waiting for repo selection
-    const [pendingGitAction, setPendingGitAction] =
-      useState<GitActionDefinition | null>(null);
+    // Reducer context (stable reference for repos)
+    const reducerContext = useMemo(() => ({ repos }), [repos]);
 
-    // Reset page state when dialog opens
+    // State machine with useReducer
+    const [state, dispatch] = useReducer(
+      (s: CommandBarState, e: CommandBarEvent) =>
+        commandBarReducer(s, e, reducerContext)[0],
+      { status: 'browsing', page, stack: [], search: '' } as CommandBarState
+    );
+
+    // Reset state when dialog opens
     useEffect(() => {
       if (modal.visible) {
-        setCurrentPage(page);
-        setPageStack([]);
-        setSearch('');
-        setPendingGitAction(null);
+        dispatch({ type: 'RESET', page });
       }
     }, [modal.visible, page]);
 
-    // Clear search when navigating to a new page
-    useEffect(() => {
-      setSearch('');
-    }, [currentPage]);
+    // Derive current page from state
+    const currentPage =
+      state.status === 'selectingRepo' ? ('selectRepo' as PageId) : state.page;
 
     // Get workspace from cache for label resolution
     const workspace = effectiveWorkspaceId
@@ -280,75 +442,36 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       }
     }, [modal.visible]);
 
-    // Navigate to another page
-    const navigateToPage = useCallback(
-      (pageId: PageId) => {
-        setPageStack((prev) => [...prev, currentPage]);
-        setCurrentPage(pageId);
-      },
-      [currentPage]
-    );
-
     // Go back to previous page
     const goBack = useCallback(() => {
-      const prevPage = pageStack[pageStack.length - 1];
-      if (prevPage) {
-        setPageStack((prev) => prev.slice(0, -1));
-        setCurrentPage(prevPage);
-        // Clear pending git action when navigating back from selectRepo
-        if (currentPage === 'selectRepo') {
-          setPendingGitAction(null);
-        }
-      }
-    }, [pageStack, currentPage]);
+      dispatch({ type: 'GO_BACK' });
+    }, []);
 
-    // Handle item selection
+    // Handle search changes
+    const handleSearchChange = useCallback((query: string) => {
+      dispatch({ type: 'SEARCH_CHANGE', query });
+    }, []);
+
+    // Handle item selection with side effects
     const handleSelect = useCallback(
-      async (item: ResolvedGroupItem) => {
-        if (item.type === 'page') {
-          navigateToPage(item.pageId);
-        } else if (item.type === 'repo') {
-          // User selected a repo - execute the pending git action
-          if (pendingGitAction && effectiveWorkspaceId) {
-            modal.hide();
-            await executeAction(
-              pendingGitAction,
-              effectiveWorkspaceId,
-              item.repo.id
-            );
-            setPendingGitAction(null);
-          }
-        } else if (item.type === 'action') {
-          // Check if this is a git action that needs repo selection
-          if (item.action.requiresTarget === 'git') {
-            if (repos.length === 1) {
-              // Single repo - execute immediately
-              modal.hide();
-              await executeAction(
-                item.action,
-                effectiveWorkspaceId,
-                repos[0].id
-              );
-            } else if (repos.length > 1) {
-              // Multiple repos - show repo selection page
-              setPendingGitAction(item.action as GitActionDefinition);
-              navigateToPage('selectRepo');
-            }
-          } else {
-            // Non-git action - execute normally
-            modal.hide();
-            await executeAction(item.action, effectiveWorkspaceId);
-          }
+      (item: ResolvedGroupItem) => {
+        // Compute next state and effect
+        const [, effect] = commandBarReducer(
+          state,
+          { type: 'SELECT_ITEM', item },
+          reducerContext
+        );
+
+        // Dispatch the event to update state
+        dispatch({ type: 'SELECT_ITEM', item });
+
+        // Handle side effects
+        if (effect.type === 'execute') {
+          modal.hide();
+          executeAction(effect.action, effectiveWorkspaceId, effect.repoId);
         }
       },
-      [
-        navigateToPage,
-        modal,
-        executeAction,
-        effectiveWorkspaceId,
-        repos,
-        pendingGitAction,
-      ]
+      [state, reducerContext, modal, executeAction, effectiveWorkspaceId]
     );
 
     // Get label for an action (with visibility context for dynamic labels)
@@ -370,7 +493,7 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
       previousFocusRef.current?.focus();
     };
 
-    const canGoBack = pageStack.length > 0;
+    const canGoBack = state.stack.length > 0;
 
     return (
       <CommandDialog
@@ -379,13 +502,13 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
         onCloseAutoFocus={handleCloseAutoFocus}
       >
         <CommandBar
-          page={getPageWithItems(currentPage, search)}
+          page={getPageWithItems(currentPage, state.search)}
           canGoBack={canGoBack}
           onGoBack={goBack}
           onSelect={handleSelect}
           getLabel={getLabelForAction}
-          search={search}
-          onSearchChange={setSearch}
+          search={state.search}
+          onSearchChange={handleSearchChange}
         />
       </CommandDialog>
     );
