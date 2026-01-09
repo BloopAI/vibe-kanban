@@ -9,8 +9,8 @@ import {
   ChatCircleIcon,
   TrashIcon,
   WarningIcon,
-  HighlighterIcon,
 } from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
@@ -62,8 +62,10 @@ interface SessionProps {
   onNewSession?: () => void;
 }
 
-interface ReviewModeProps {
-  onReviewClick: () => void;
+interface ToolbarActionProps {
+  icon: Icon;
+  label: string;
+  onClick: () => void;
 }
 
 interface StatsProps {
@@ -120,7 +122,7 @@ interface SessionChatBoxProps {
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
-  reviewMode: ReviewModeProps;
+  toolbarActions?: ToolbarActionProps[];
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
@@ -144,7 +146,7 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
-  reviewMode,
+  toolbarActions,
   error,
   projectId,
   agent,
@@ -631,12 +633,15 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
-          <ToolbarIconButton
-            icon={HighlighterIcon}
-            aria-label="Start review"
-            onClick={reviewMode.onReviewClick}
-            disabled={isDisabled || isRunning}
-          />
+          {toolbarActions?.map((action) => (
+            <ToolbarIconButton
+              key={action.label}
+              icon={action.icon}
+              aria-label={action.label}
+              onClick={action.onClick}
+              disabled={isDisabled || isRunning}
+            />
+          ))}
         </>
       }
       footerRight={renderActionButtons()}
