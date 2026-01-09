@@ -642,7 +642,10 @@ export function SessionChatBox({
             const icon = action.icon;
             // Skip special icons in toolbar (only standard phosphor icons)
             if (isSpecialIcon(icon)) return null;
-            const actionEnabled = isActionEnabled(action, toolbarActions.context);
+            const actionEnabled = isActionEnabled(
+              action,
+              toolbarActions.context
+            );
             const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
             const label =
               typeof action.label === 'function'
