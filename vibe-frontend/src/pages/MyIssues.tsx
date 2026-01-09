@@ -7,7 +7,7 @@ import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useClerkUser } from '@/hooks/auth/useClerkAuth';
 import { useTeams } from '@/hooks/useTeams';
 import { useTeamIssues } from '@/hooks/useTeamIssues';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -51,25 +51,22 @@ function TeamIssuesLoader({
 
 export function MyIssues() {
   const navigate = useNavigate();
-  const { loginStatus } = useUserSystem();
+  const { user } = useClerkUser();
   const { teams, isLoading: teamsLoading, error: teamsError } = useTeams();
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [allIssues, setAllIssues] = useState<Record<string, TaskWithAttemptStatus[]>>({});
 
-  // Get current user email
-  const userEmail = loginStatus?.status === 'loggedin'
-    ? loginStatus.profile.email
-    : null;
+  // Get current user email from Clerk (reliable source)
+  const userEmail = user?.primaryEmailAddress?.emailAddress || null;
 
-  // Get display name for header
+  // Get display name for header from Clerk
   const userName = useMemo(() => {
-    if (loginStatus?.status !== 'loggedin') return null;
-    const profile = loginStatus.profile;
-    return profile.providers?.[0]?.display_name ||
-      profile.username ||
-      profile.email?.split('@')[0] ||
+    if (!user) return null;
+    return user.fullName ||
+      user.firstName ||
+      userEmail?.split('@')[0] ||
       'User';
-  }, [loginStatus]);
+  }, [user, userEmail]);
 
   // Handle issues loaded from each team
   const handleIssuesLoaded = useCallback((teamId: string, issues: TaskWithAttemptStatus[]) => {
