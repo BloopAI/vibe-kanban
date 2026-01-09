@@ -289,7 +289,6 @@ export const Actions = {
     id: 'new-workspace',
     label: 'New Workspace',
     icon: PlusIcon,
-    shortcut: 'N',
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/workspaces/create');
@@ -300,7 +299,6 @@ export const Actions = {
     id: 'settings',
     label: 'Settings',
     icon: GearIcon,
-    shortcut: ',',
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/settings');
@@ -364,7 +362,6 @@ export const Actions = {
         ? 'Hide Sidebar'
         : 'Show Sidebar',
     icon: SidebarSimpleIcon,
-    shortcut: '[',
     requiresTarget: false,
     isActive: (ctx) => ctx.isSidebarVisible,
     execute: () => {
@@ -394,7 +391,6 @@ export const Actions = {
         ? 'Hide Git Panel'
         : 'Show Git Panel',
     icon: SidebarSimpleIcon,
-    shortcut: ']',
     requiresTarget: false,
     isActive: (ctx) => ctx.isGitPanelVisible,
     execute: () => {
@@ -409,7 +405,6 @@ export const Actions = {
         ? 'Hide Changes Panel'
         : 'Show Changes Panel',
     icon: GitDiffIcon,
-    shortcut: 'C',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) => ctx.isChangesMode,
@@ -426,7 +421,6 @@ export const Actions = {
         ? 'Hide Logs Panel'
         : 'Show Logs Panel',
     icon: TerminalIcon,
-    shortcut: 'L',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) => ctx.isLogsMode,
@@ -443,7 +437,6 @@ export const Actions = {
         ? 'Hide Preview Panel'
         : 'Show Preview Panel',
     icon: DesktopIcon,
-    shortcut: 'P',
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) => ctx.isPreviewMode,
