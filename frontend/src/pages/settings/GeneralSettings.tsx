@@ -631,6 +631,105 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="browser-notifications"
+              checked={draft?.notifications.browser_enabled}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({
+                  notifications: {
+                    ...draft!.notifications,
+                    browser_enabled: checked,
+                  },
+                })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="browser-notifications" className="cursor-pointer">
+                {t('settings.general.notifications.browser.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.notifications.browser.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="script-enabled"
+              checked={draft?.notifications.script_enabled}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({
+                  notifications: {
+                    ...draft!.notifications,
+                    script_enabled: checked,
+                  },
+                })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="script-enabled" className="cursor-pointer">
+                {t('settings.general.notifications.script.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.notifications.script.helper')}
+              </p>
+            </div>
+          </div>
+          {draft?.notifications.script_enabled && (
+            <div className="ml-6 space-y-2">
+              <Label htmlFor="script-command">
+                {t('settings.general.notifications.script.commandLabel')}
+              </Label>
+              <textarea
+                id="script-command"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-mono"
+                value={draft.notifications.script_command ?? ''}
+                placeholder={t(
+                  'settings.general.notifications.script.commandPlaceholder'
+                )}
+                onChange={(e) =>
+                  updateDraft({
+                    notifications: {
+                      ...draft.notifications,
+                      script_command: e.target.value || null,
+                    },
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.notifications.script.commandHelper')}
+              </p>
+              <div className="text-xs text-muted-foreground bg-muted p-2 rounded-md font-mono">
+                <p className="font-semibold mb-1">
+                  {t('settings.general.notifications.script.variables')}
+                </p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {[
+                    'varTitle',
+                    'varMessage',
+                    'varEvent',
+                    'varTaskTitle',
+                    'varTaskBranch',
+                    'varExecutor',
+                    'varToolName',
+                  ].map((key) => {
+                    const text = t(
+                      `settings.general.notifications.script.${key}`
+                    );
+                    const [varName, ...descParts] = text.split(' - ');
+                    return (
+                      <li key={key}>
+                        <span className="font-semibold">{varName}</span>
+                        {descParts.length > 0 && (
+                          <> - {descParts.join(' - ')}</>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

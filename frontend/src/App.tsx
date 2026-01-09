@@ -10,6 +10,7 @@ import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useBrowserNotifications } from '@/hooks/useBrowserNotifications';
 
 import {
   AgentSettings,
@@ -51,6 +52,9 @@ function AppContent() {
 
   // Track previous path for back navigation
   usePreviousPath();
+
+  // Subscribe to browser notifications
+  useBrowserNotifications();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
