@@ -5,6 +5,14 @@ import type {
   UpdateTaskComment,
 } from "../../../shared/types";
 
+// Helper to detect rate limit errors
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message.includes('429') || error.message.includes('Too Many Requests');
+  }
+  return false;
+}
+
 export function useTaskComments(taskId: string | null) {
   const queryClient = useQueryClient();
 
@@ -15,12 +23,19 @@ export function useTaskComments(taskId: string | null) {
       return tasksApi.getComments(taskId);
     },
     enabled: !!taskId,
-    // Cache comments for 30 seconds - show stale data immediately
-    staleTime: 30 * 1000,
-    // Keep in cache for 5 minutes
-    gcTime: 5 * 60 * 1000,
+    // Cache comments for 5 minutes to reduce API calls
+    staleTime: 5 * 60 * 1000,
+    // Keep in cache for 15 minutes
+    gcTime: 15 * 60 * 1000,
     // Keep previous data while fetching new task's comments
     placeholderData: keepPreviousData,
+    // Don't retry rate limit errors
+    retry: (failureCount, error) => {
+      if (isRateLimitError(error)) return false;
+      return failureCount < 2;
+    },
+    // Don't refetch on window focus to reduce unnecessary calls
+    refetchOnWindowFocus: false,
   });
 
   const createCommentMutation = useMutation({
