@@ -20,6 +20,7 @@ import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { paths } from '@/lib/paths';
+import { getProjectSlug, getTaskSlug, resolveTaskFromParam } from '@/lib/url-utils';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
@@ -147,6 +148,7 @@ export function ProjectTasks() {
 
   const {
     projectId,
+    project,
     isLoading: projectLoading,
     error: projectError,
   } = useProject();
@@ -176,8 +178,8 @@ export function ProjectTasks() {
   } = useProjectTasks(projectId || '');
 
   const selectedTask = useMemo(
-    () => (taskId ? (tasksById[taskId] ?? null) : null),
-    [taskId, tasksById]
+    () => (taskId ? (resolveTaskFromParam(taskId, tasks, tasksById) ?? null) : null),
+    [taskId, tasks, tasksById]
   );
 
   const selectedSharedTask = useMemo(() => {
@@ -251,21 +253,27 @@ export function ProjectTasks() {
   );
 
   useEffect(() => {
-    if (!projectId || !taskId) return;
+    if (!projectId || !taskId || !selectedTask) return;
     if (!isLatest) return;
     if (isAttemptsLoading) return;
 
+    // Use slugs for URL display
+    const projectSlug = project ? getProjectSlug(project) : projectId;
+    const taskSlug = getTaskSlug(selectedTask);
+
     if (!latestAttemptId) {
-      navigateWithSearch(paths.task(projectId, taskId), { replace: true });
+      navigateWithSearch(paths.task(projectSlug, taskSlug), { replace: true });
       return;
     }
 
-    navigateWithSearch(paths.attempt(projectId, taskId, latestAttemptId), {
+    navigateWithSearch(paths.attempt(projectSlug, taskSlug, latestAttemptId), {
       replace: true,
     });
   }, [
     projectId,
+    project,
     taskId,
+    selectedTask,
     isLatest,
     isAttemptsLoading,
     latestAttemptId,
@@ -276,9 +284,10 @@ export function ProjectTasks() {
   useEffect(() => {
     if (!projectId || !taskId || isLoading) return;
     if (selectedTask === null) {
-      navigate(`/projects/${projectId}/tasks`, { replace: true });
+      const projectSlug = project ? getProjectSlug(project) : projectId;
+      navigate(`/projects/${projectSlug}/tasks`, { replace: true });
     }
-  }, [projectId, taskId, isLoading, selectedTask, navigate]);
+  }, [projectId, project, taskId, isLoading, selectedTask, navigate]);
 
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
   const isTaskView = !!taskId && !effectiveAttemptId;
@@ -627,22 +636,27 @@ export function ProjectTasks() {
 
   const handleClosePanel = useCallback(() => {
     if (projectId) {
-      navigate(`/projects/${projectId}/tasks`, { replace: true });
+      const projectSlug = project ? getProjectSlug(project) : projectId;
+      navigate(`/projects/${projectSlug}/tasks`, { replace: true });
     }
-  }, [projectId, navigate]);
+  }, [projectId, project, navigate]);
 
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
       if (!projectId) return;
       setSelectedSharedTaskId(null);
 
+      // Use slugs for URL display
+      const projectSlug = project ? getProjectSlug(project) : projectId;
+      const taskSlug = getTaskSlug(task);
+
       if (attemptIdToShow) {
-        navigateWithSearch(paths.attempt(projectId, task.id, attemptIdToShow));
+        navigateWithSearch(paths.attempt(projectSlug, taskSlug, attemptIdToShow));
       } else {
-        navigateWithSearch(`${paths.task(projectId, task.id)}/attempts/latest`);
+        navigateWithSearch(`${paths.task(projectSlug, taskSlug)}/attempts/latest`);
       }
     },
-    [projectId, navigateWithSearch]
+    [projectId, project, navigateWithSearch]
   );
 
   const handleViewSharedTask = useCallback(
@@ -874,9 +888,10 @@ export function ProjectTasks() {
           <TaskPanelHeaderActions
             task={selectedTask}
             sharedTask={getSharedTask(selectedTask)}
-            onClose={() =>
-              navigate(`/projects/${projectId}/tasks`, { replace: true })
-            }
+            onClose={() => {
+              const projectSlug = project ? getProjectSlug(project) : projectId;
+              navigate(`/projects/${projectSlug}/tasks`, { replace: true });
+            }}
           />
         ) : (
           <AttemptHeaderActions
@@ -885,9 +900,10 @@ export function ProjectTasks() {
             task={selectedTask}
             sharedTask={getSharedTask(selectedTask)}
             attempt={attempt ?? null}
-            onClose={() =>
-              navigate(`/projects/${projectId}/tasks`, { replace: true })
-            }
+            onClose={() => {
+              const projectSlug = project ? getProjectSlug(project) : projectId;
+              navigate(`/projects/${projectSlug}/tasks`, { replace: true });
+            }}
           />
         )
       }
@@ -903,9 +919,11 @@ export function ProjectTasks() {
               ) : (
                 <BreadcrumbLink
                   className="cursor-pointer hover:underline"
-                  onClick={() =>
-                    navigateWithSearch(paths.task(projectId!, taskId!))
-                  }
+                  onClick={() => {
+                    const projectSlug = project ? getProjectSlug(project) : projectId!;
+                    const taskSlug = selectedTask ? getTaskSlug(selectedTask) : taskId!;
+                    navigateWithSearch(paths.task(projectSlug, taskSlug));
+                  }}
                 >
                   {truncateTitle(selectedTask?.title)}
                 </BreadcrumbLink>

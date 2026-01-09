@@ -67,3 +67,30 @@ export function resolveProjectFromParam(
   // Then try as generated slug
   return projects.find((p) => generateSlug(p.name) === param);
 }
+
+/**
+ * Get the URL slug for a task
+ * Generates from the task title
+ */
+export function getTaskSlug(task: Pick<{ title: string }, 'title'>): string {
+  return generateSlug(task.title);
+}
+
+/**
+ * Resolve a task from a URL parameter (can be UUID or slug)
+ */
+export function resolveTaskFromParam<T extends { id: string; title: string }>(
+  param: string,
+  tasks: T[],
+  tasksById?: Record<string, T>
+): T | undefined {
+  // First try as UUID
+  if (isUUID(param)) {
+    if (tasksById && tasksById[param]) {
+      return tasksById[param];
+    }
+    return tasks.find((t) => t.id === param);
+  }
+  // Then try as generated slug
+  return tasks.find((t) => generateSlug(t.title) === param);
+}
