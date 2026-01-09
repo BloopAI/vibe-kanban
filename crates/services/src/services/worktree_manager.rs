@@ -187,6 +187,11 @@ impl WorktreeManager {
         git_repo_path: &Path,
         worktree_path: &Path,
     ) -> Result<Option<String>, WorktreeError> {
+        fn canonicalize_for_compare(path: &Path) -> PathBuf {
+            dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+        }
+
+        let worktree_root = canonicalize_for_compare(&normalize_macos_private_alias(worktree_path));
         let worktree_metadata_path = git_repo_path.join(".git").join("worktrees");
         let worktree_metadata_folders = fs::read_dir(&worktree_metadata_path)
             .map_err(|e| {
@@ -205,7 +210,8 @@ impl WorktreeManager {
                 && let Ok(gitdir_content) = fs::read_to_string(&gitdir_path)
                 && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
                     .parent()
-                    .map(|p| p == worktree_path)
+                    .map(canonicalize_for_compare)
+                    .map(|p| p == worktree_root)
                     .unwrap_or(false)
             {
                 return Ok(Some(entry.file_name().to_string_lossy().to_string()));
