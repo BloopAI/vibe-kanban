@@ -29,7 +29,10 @@ import {
   type ExecutionStatus,
 } from '../primitives/SessionChatBox';
 import { Actions, type ActionDefinition } from '../actions';
-import { useActionVisibilityContext } from '../actions/useActionVisibility';
+import {
+  isActionVisible,
+  useActionVisibilityContext,
+} from '../actions/useActionVisibility';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -457,7 +460,12 @@ export function SessionChatBoxContainer({
   );
 
   // Define which actions appear in the toolbar
-  const toolbarActionsList = useMemo(() => [Actions.StartReview], []);
+  const toolbarActionsList = useMemo(
+    () => [Actions.StartReview].filter((action) =>
+      isActionVisible(action, actionCtx)
+    ),
+    [actionCtx]
+  );
 
   // Handle approve action
   const handleApprove = useCallback(async () => {
