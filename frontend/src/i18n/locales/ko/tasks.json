@@ -48,6 +48,7 @@
     "additionalInstructions": "추가 지침 (선택 사항)",
     "reviewComments": "리뷰 댓글 ({{count}})",
     "includeGitContext": "Git 컨텍스트 포함",
+    "includeGitContextDescription": "이 브랜치에서 수행된 모든 변경 사항을 확인하는 방법을 에이전트에게 알려줍니다",
     "newSession": "새 세션"
   },
   "attempt": {

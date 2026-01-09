@@ -153,20 +153,25 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
 
             {error && <div className="text-sm text-destructive">{error}</div>}
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="include-git-context"
-                checked={includeGitContext}
-                onCheckedChange={(checked) =>
-                  setIncludeGitContext(checked === true)
-                }
-              />
-              <Label
-                htmlFor="include-git-context"
-                className="cursor-pointer text-sm"
-              >
-                {t('startReviewDialog.includeGitContext')}
-              </Label>
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="include-git-context"
+                  checked={includeGitContext}
+                  onCheckedChange={(checked) =>
+                    setIncludeGitContext(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="include-git-context"
+                  className="cursor-pointer text-sm"
+                >
+                  {t('startReviewDialog.includeGitContext')}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground ml-6">
+                {t('startReviewDialog.includeGitContextDescription')}
+              </p>
             </div>
 
             {profiles && (
