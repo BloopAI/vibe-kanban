@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { sessionsApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import type { ExecutorProfileId } from 'shared/types';
+import type { BaseCodingAgent, ExecutorProfileId } from 'shared/types';
 
 export interface StartReviewDialogProps {
   sessionId?: string;
@@ -27,18 +28,45 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
   ({ sessionId, workspaceId, reviewMarkdown, defaultProfile, onSuccess }) => {
     const modal = useModal();
     const queryClient = useQueryClient();
-    const { profiles } = useUserSystem();
+    const { profiles, config } = useUserSystem();
+    const { sessions, selectedSession, selectedSessionId } =
+      useWorkspaceContext();
     const { t } = useTranslation(['tasks', 'common']);
 
-    const [selectedProfile, setSelectedProfile] =
-      useState<ExecutorProfileId | null>(defaultProfile ?? null);
+    const resolvedSessionId = sessionId ?? selectedSessionId;
+    const resolvedSession = useMemo(() => {
+      if (!resolvedSessionId) return selectedSession ?? null;
+      return (
+        sessions.find((session) => session.id === resolvedSessionId) ??
+        selectedSession ??
+        null
+      );
+    }, [sessions, resolvedSessionId, selectedSession]);
+    const sessionExecutor = resolvedSession?.executor as BaseCodingAgent | null;
+
+    const resolvedDefaultProfile = useMemo(() => {
+      if (defaultProfile) return defaultProfile;
+      if (sessionExecutor) {
+        const variant =
+          config?.executor_profile?.executor === sessionExecutor
+            ? config.executor_profile.variant
+            : null;
+        return { executor: sessionExecutor, variant };
+      }
+      return config?.executor_profile ?? null;
+    }, [defaultProfile, sessionExecutor, config?.executor_profile]);
+
+    const [userSelectedProfile, setUserSelectedProfile] =
+      useState<ExecutorProfileId | null>(null);
     const [additionalPrompt, setAdditionalPrompt] = useState('');
-    const [createNewSession, setCreateNewSession] = useState(!sessionId);
+    const [createNewSession, setCreateNewSession] = useState(
+      () => !resolvedSessionId
+    );
     const [includeGitContext, setIncludeGitContext] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const effectiveProfile = selectedProfile ?? defaultProfile ?? null;
+    const effectiveProfile = userSelectedProfile ?? resolvedDefaultProfile;
 
     const canSubmit = Boolean(effectiveProfile && !isSubmitting);
 
@@ -49,9 +77,9 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       setError(null);
 
       try {
-        let targetSessionId = sessionId;
+        let targetSessionId = resolvedSessionId;
 
-        if (createNewSession || !sessionId) {
+        if (createNewSession || !resolvedSessionId) {
           const session = await sessionsApi.create({
             workspace_id: workspaceId,
             executor: effectiveProfile.executor,
@@ -96,7 +124,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       }
     }, [
       effectiveProfile,
-      sessionId,
+      resolvedSessionId,
       workspaceId,
       createNewSession,
       includeGitContext,
@@ -113,8 +141,8 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
 
     const handleNewSessionChange = (checked: boolean) => {
       setCreateNewSession(checked);
-      if (!checked && defaultProfile) {
-        setSelectedProfile(defaultProfile);
+      if (!checked && resolvedDefaultProfile) {
+        setUserSelectedProfile(resolvedDefaultProfile);
       }
     };
 
@@ -186,14 +214,14 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                 <AgentSelector
                   profiles={profiles}
                   selectedExecutorProfile={effectiveProfile}
-                  onChange={setSelectedProfile}
+                  onChange={setUserSelectedProfile}
                   disabled={!createNewSession}
                   showLabel={false}
                 />
                 <ConfigSelector
                   profiles={profiles}
                   selectedExecutorProfile={effectiveProfile}
-                  onChange={setSelectedProfile}
+                  onChange={setUserSelectedProfile}
                   showLabel={false}
                 />
               </div>
@@ -214,7 +242,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                   id="new-session-switch"
                   checked={createNewSession}
                   onCheckedChange={handleNewSessionChange}
-                  disabled={!sessionId}
+                  disabled={!resolvedSessionId}
                   className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
                   aria-label={t('startReviewDialog.newSession')}
                 />
