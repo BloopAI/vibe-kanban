@@ -447,9 +447,7 @@ export function SessionChatBoxContainer({
   // Toolbar actions handler - intercepts action execution to provide extra context
   const handleToolbarAction = useCallback(
     (action: ActionDefinition) => {
-      if (action.id === 'start-review' && workspaceId) {
-        executeAction(action, workspaceId);
-      } else if (action.requiresTarget && workspaceId) {
+      if (action.requiresTarget && workspaceId) {
         executeAction(action, workspaceId);
       } else {
         executeAction(action);
