@@ -248,65 +248,106 @@ const getBackoffDelay = (attempt: number): number => {
   return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelayMs);
 };
 
-const makeRequest = async (url: string, options: RequestInit = {}) => {
-  const headers = new Headers(options.headers ?? {});
-  if (!headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+// Global Request Queue to prevent 429 Rate Limits
+class RequestQueue {
+  private queue: Array<() => Promise<void>> = [];
+  private activeCount = 0;
+  private readonly MAX_CONCURRENT = 5;
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const execute = async () => {
+        this.activeCount++;
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (err) {
+          reject(err);
+        } finally {
+          this.activeCount--;
+          this.processNext();
+        }
+      };
+
+      if (this.activeCount < this.MAX_CONCURRENT) {
+        execute();
+      } else {
+        this.queue.push(execute);
+      }
+    });
   }
 
-  // Add Authorization header if token is available
-  const token = await getAuthToken();
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const fullUrl = buildApiUrl(url);
-
-  // Retry logic with exponential backoff for rate limiting
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
-    try {
-      const response = await fetch(fullUrl, {
-        ...options,
-        headers,
-      });
-
-      // If not a retryable status, return immediately
-      if (!RETRY_CONFIG.retryableStatuses.includes(response.status)) {
-        return response;
-      }
-
-      // If we've exhausted retries, return the response anyway
-      if (attempt >= RETRY_CONFIG.maxRetries) {
-        console.warn(
-          `[API] Max retries (${RETRY_CONFIG.maxRetries}) reached for ${url}, returning response with status ${response.status}`
-        );
-        return response;
-      }
-
-      // Calculate backoff delay
-      const delay = getBackoffDelay(attempt);
-      console.warn(
-        `[API] Received ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`
-      );
-      await sleep(delay);
-    } catch (error) {
-      lastError = error as Error;
-      // Network errors - also retry with backoff
-      if (attempt >= RETRY_CONFIG.maxRetries) {
-        throw error;
-      }
-      const delay = getBackoffDelay(attempt);
-      console.warn(
-        `[API] Network error for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries}):`,
-        error
-      );
-      await sleep(delay);
+  private processNext() {
+    if (this.queue.length > 0 && this.activeCount < this.MAX_CONCURRENT) {
+      const next = this.queue.shift();
+      next?.();
     }
   }
+}
 
-  // This shouldn't be reached, but TypeScript needs it
-  throw lastError || new Error(`Failed to fetch ${url} after ${RETRY_CONFIG.maxRetries} retries`);
+const globalQueue = new RequestQueue();
+
+const makeRequest = async (url: string, options: RequestInit = {}) => {
+  return globalQueue.add(async () => {
+    const headers = new Headers(options.headers ?? {});
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    // Add Authorization header if token is available
+    const token = await getAuthToken();
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const fullUrl = buildApiUrl(url);
+
+    // Retry logic with exponential backoff for rate limiting
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        const response = await fetch(fullUrl, {
+          ...options,
+          headers,
+        });
+
+        // If not a retryable status, return immediately
+        if (!RETRY_CONFIG.retryableStatuses.includes(response.status)) {
+          return response;
+        }
+
+        // If we've exhausted retries, return the response anyway
+        if (attempt >= RETRY_CONFIG.maxRetries) {
+          console.warn(
+            `[API] Max retries (${RETRY_CONFIG.maxRetries}) reached for ${url}, returning response with status ${response.status}`
+          );
+          return response;
+        }
+
+        // Calculate backoff delay
+        const delay = getBackoffDelay(attempt);
+        console.warn(
+          `[API] Received ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`
+        );
+        await sleep(delay);
+      } catch (error) {
+        lastError = error as Error;
+        // Network errors - also retry with backoff
+        if (attempt >= RETRY_CONFIG.maxRetries) {
+          throw error;
+        }
+        const delay = getBackoffDelay(attempt);
+        console.warn(
+          `[API] Network error for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries}):`,
+          error
+        );
+        await sleep(delay);
+      }
+    }
+
+    // This shouldn't be reached, but TypeScript needs it
+    throw lastError || new Error(`Failed to fetch ${url} after ${RETRY_CONFIG.maxRetries} retries`);
+  });
 };
 
 export type Ok<T> = { success: true; data: T };
@@ -429,16 +470,25 @@ export const projectsApi = {
   },
 
   getMany: async (ids: string[]): Promise<Project[]> => {
-    // Fetch multiple projects in parallel
-    const results = await Promise.all(
-      ids.map(async (id) => {
-        try {
-          return await projectsApi.get(id);
-        } catch {
-          return null;
-        }
-      })
-    );
+    // Throttle requests to avoid rate limits (429)
+    // Process in batches of 3
+    const BATCH_SIZE = 3;
+    const results: (Project | null)[] = [];
+
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (id) => {
+          try {
+            return await projectsApi.get(id);
+          } catch {
+            return null;
+          }
+        })
+      );
+      results.push(...batchResults);
+    }
+
     return results.filter((p): p is Project => p !== null);
   },
 

@@ -1,0 +1,88 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - img [ref=e8]
+        - generic [ref=e12]: Vibe Kanban
+      - navigation [ref=e13]:
+        - button "Sign In" [ref=e14] [cursor=pointer]
+        - button "Get Started" [ref=e15] [cursor=pointer]
+  - generic [ref=e17]:
+    - heading "Task Management for AI Coding Agents" [level=1] [ref=e18]
+    - paragraph [ref=e19]: Orchestrate Claude Code, Gemini CLI, Codex, Cursor, and other AI assistants with a unified kanban board designed for modern development workflows.
+    - generic [ref=e20]:
+      - button "Start Free" [ref=e21] [cursor=pointer]
+      - button "Sign In" [ref=e22] [cursor=pointer]
+  - generic [ref=e24]:
+    - heading "Built for AI-Assisted Development" [level=2] [ref=e25]
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - img [ref=e29]
+        - heading "Kanban Boards" [level=3] [ref=e33]
+        - paragraph [ref=e34]: Visual task management with drag-and-drop. Track issues through todo, in-progress, review, and done stages.
+      - generic [ref=e35]:
+        - img [ref=e37]
+        - heading "GitHub Integration" [level=3] [ref=e41]
+        - paragraph [ref=e42]: Sync documents with repositories. Push and pull markdown files directly from your GitHub repos.
+      - generic [ref=e43]:
+        - img [ref=e45]
+        - heading "Team Collaboration" [level=3] [ref=e50]
+        - paragraph [ref=e51]: Invite team members, assign tasks, and collaborate in real-time with role-based permissions.
+      - generic [ref=e52]:
+        - img [ref=e54]
+        - heading "Document Management" [level=3] [ref=e57]
+        - paragraph [ref=e58]: Create and organize planning documents. Support for markdown, PDF, CSV, and more.
+      - generic [ref=e59]:
+        - img [ref=e61]
+        - heading "MCP Integration" [level=3] [ref=e63]
+        - paragraph [ref=e64]: Model Context Protocol support for seamless AI agent interaction via CLI tools.
+      - generic [ref=e65]:
+        - img [ref=e67]
+        - heading "Distributed Sync" [level=3] [ref=e69]
+        - paragraph [ref=e70]: Turso-powered distributed SQLite keeps your data in sync across all devices.
+      - generic [ref=e71]:
+        - img [ref=e73]
+        - heading "Secure by Design" [level=3] [ref=e75]
+        - paragraph [ref=e76]: Clerk authentication, encrypted secrets, and per-team data isolation.
+      - generic [ref=e77]:
+        - img [ref=e79]
+        - heading "Self-Hostable" [level=3] [ref=e82]
+        - paragraph [ref=e83]: Run locally via npx or deploy to your own infrastructure with Docker.
+  - generic [ref=e85]:
+    - heading "How It Works" [level=2] [ref=e86]
+    - generic [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]: "1"
+        - heading "Create a Team" [level=3] [ref=e90]
+        - paragraph [ref=e91]: Set up your workspace with custom projects and invite collaborators.
+      - generic [ref=e92]:
+        - generic [ref=e93]: "2"
+        - heading "Add Tasks" [level=3] [ref=e94]
+        - paragraph [ref=e95]: Create issues on your kanban board with descriptions, priorities, and assignees.
+      - generic [ref=e96]:
+        - generic [ref=e97]: "3"
+        - heading "Let AI Work" [level=3] [ref=e98]
+        - paragraph [ref=e99]: Use MCP tools to let AI agents pick up tasks and update progress automatically.
+  - generic [ref=e101]:
+    - heading "Quick Start" [level=2] [ref=e102]
+    - paragraph [ref=e103]: Get up and running in seconds with npx
+    - code [ref=e105]: $ npx vibe-kanban
+    - paragraph [ref=e106]: No installation required. Just run and start managing tasks.
+  - generic [ref=e108]:
+    - heading "Ready to Supercharge Your Workflow?" [level=2] [ref=e109]
+    - paragraph [ref=e110]: Join developers who are using Vibe Kanban to orchestrate AI coding agents and ship faster.
+    - button "Get Started Free" [ref=e111] [cursor=pointer]
+  - contentinfo [ref=e112]:
+    - generic [ref=e113]:
+      - generic [ref=e114]:
+        - img [ref=e115]
+        - generic [ref=e119]: Vibe Kanban - Task Management for AI Agents
+      - generic [ref=e120]:
+        - link "GitHub" [ref=e121] [cursor=pointer]:
+          - /url: https://github.com/AviKKi/vibe-kanban
+        - link "npm" [ref=e122] [cursor=pointer]:
+          - /url: https://www.npmjs.com/package/vibe-kanban
+```
