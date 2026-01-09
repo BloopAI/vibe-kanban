@@ -420,6 +420,7 @@
     "additionalInstructions": "附加说明（可选）",
     "reviewComments": "审查评论（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
+    "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
     "newSession": "新会话"
   },
   "stopShareDialog": {

@@ -487,6 +487,7 @@
     "additionalInstructions": "Additional Instructions (optional)",
     "reviewComments": "Review Comments ({{count}})",
     "includeGitContext": "Include git context",
+    "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
     "newSession": "New Session"
   },
   "stopShareDialog": {

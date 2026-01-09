@@ -48,6 +48,7 @@
     "additionalInstructions": "Instrucciones adicionales (opcional)",
     "reviewComments": "Comentarios de revisión ({{count}})",
     "includeGitContext": "Incluir contexto de git",
+    "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
     "newSession": "Nueva sesión"
   },
   "attempt": {

@@ -48,6 +48,7 @@
     "additionalInstructions": "追加の指示（オプション）",
     "reviewComments": "レビューコメント（{{count}}）",
     "includeGitContext": "Gitコンテキストを含める",
+    "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
     "newSession": "新しいセッション"
   },
   "attempt": {
