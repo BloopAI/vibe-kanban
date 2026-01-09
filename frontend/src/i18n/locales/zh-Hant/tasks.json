@@ -101,7 +101,7 @@
       "companionPrompt": "要使用點擊編輯功能，請將瀏覽器 Companion 加到您的專案。",
       "companionLink": "查看安裝指南",
       "startButton": "啟動開發伺服器",
-      "editButton": "編輯開發腳本",
+      "configureButton": "設定",
       "stopAndEditButton": "停止開發伺服器並解決問題"
     },
     "devScript": {
