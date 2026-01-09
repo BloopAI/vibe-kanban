@@ -31,7 +31,6 @@ import {
 import { Actions, type ActionDefinition } from '../actions';
 import { useActionVisibilityContext } from '../actions/useActionVisibility';
 
-
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
   isInFeedbackMode: boolean;
@@ -460,10 +459,7 @@ export function SessionChatBoxContainer({
   );
 
   // Define which actions appear in the toolbar
-  const toolbarActionsList = useMemo(
-    () => [Actions.StartReview],
-    []
-  );
+  const toolbarActionsList = useMemo(() => [Actions.StartReview], []);
 
   // Handle approve action
   const handleApprove = useCallback(async () => {
