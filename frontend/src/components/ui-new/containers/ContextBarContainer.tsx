@@ -1,15 +1,12 @@
 import { useMemo, useCallback, type RefObject } from 'react';
 import { useActions } from '@/contexts/ActionsContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useDevServer } from '@/hooks/useDevServer';
 import { ContextBar } from '../primitives/ContextBar';
 import {
   ContextBarActionGroups,
   type ActionDefinition,
   type ActionVisibilityContext,
   type ContextBarItem,
-  type DevServerState,
 } from '../actions';
 import {
   useActionVisibilityContext,
@@ -60,62 +57,26 @@ function filterContextBarItems(
 
 export interface ContextBarContainerProps {
   containerRef: RefObject<HTMLElement | null>;
-  containerPath?: string; // workspace.container_ref for copy path
 }
 
 export function ContextBarContainer({
   containerRef,
-  containerPath,
 }: ContextBarContainerProps) {
   const { executorContext } = useActions();
-  const { workspaceId } = useWorkspaceContext();
   const { config } = useUserSystem();
   const editorType = config?.editor?.editor_type ?? null;
 
-  // Dev server state from hook (uses workspaceId from context)
-  const { start, stop, isStarting, isStopping, runningDevServer } =
-    useDevServer(workspaceId);
+  // Get visibility context (now includes dev server state)
+  const actionCtx = useActionVisibilityContext();
 
-  // Compute dev server state
-  const devServerState: DevServerState = useMemo(() => {
-    if (isStarting) return 'starting';
-    if (isStopping) return 'stopping';
-    if (runningDevServer) return 'running';
-    return 'stopped';
-  }, [isStarting, isStopping, runningDevServer]);
-
-  // Build extended visibility context
-  const baseCtx = useActionVisibilityContext();
-  const actionCtx = useMemo<ActionVisibilityContext>(
-    () => ({
-      ...baseCtx,
-      editorType,
-      devServerState,
-      runningDevServerId: runningDevServer?.id,
-    }),
-    [baseCtx, editorType, devServerState, runningDevServer?.id]
-  );
-
-  // Build extended executor context with ContextBar-specific data
-  const extendedExecutorCtx = useMemo(
-    () => ({
-      ...executorContext,
-      containerRef: containerPath,
-      runningDevServerId: runningDevServer?.id,
-      startDevServer: start,
-      stopDevServer: stop,
-    }),
-    [executorContext, containerPath, runningDevServer?.id, start, stop]
-  );
-
-  // Action handler - pass extended context
+  // Action handler - use executor context directly from provider
   const handleExecuteAction = useCallback(
     async (action: ActionDefinition) => {
-      if (!action.requiresTarget) {
-        await action.execute(extendedExecutorCtx);
+      if (action.requiresTarget === false) {
+        await action.execute(executorContext);
       }
     },
-    [extendedExecutorCtx]
+    [executorContext]
   );
 
   // Filter visible actions

@@ -17,13 +17,14 @@ import {
 } from '@/components/ui-new/actions';
 import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useDevServer } from '@/hooks/useDevServer';
 
 interface ActionsContextValue {
-  // Execute an action with optional workspaceId and context override
+  // Execute an action with optional workspaceId and repoId (for git actions)
   executeAction: (
     action: ActionDefinition,
     workspaceId?: string,
-    contextOverride?: Partial<ActionExecutorContext>
+    repoId?: string
   ) => Promise<void>;
 
   // Get resolved label for an action (supports dynamic labels via visibility context)
@@ -47,8 +48,11 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
-  const { selectWorkspace, activeWorkspaces, workspaceId } =
+  const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
     useWorkspaceContext();
+
+  // Get dev server state
+  const { start, stop, runningDevServer } = useDevServer(workspaceId);
 
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
@@ -57,9 +61,23 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       queryClient,
       selectWorkspace,
       activeWorkspaces,
-      currentWorkspaceId: workspaceId,
+      currentWorkspaceId: workspaceId ?? null,
+      containerRef: workspace?.container_ref ?? null,
+      runningDevServerId: runningDevServer?.id ?? null,
+      startDevServer: start,
+      stopDevServer: stop,
     }),
-    [navigate, queryClient, selectWorkspace, activeWorkspaces, workspaceId]
+    [
+      navigate,
+      queryClient,
+      selectWorkspace,
+      activeWorkspaces,
+      workspaceId,
+      workspace?.container_ref,
+      runningDevServer?.id,
+      start,
+      stop,
+    ]
   );
 
   // Main action executor with centralized target validation and error handling
@@ -67,23 +85,25 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     async (
       action: ActionDefinition,
       workspaceId?: string,
-      contextOverride?: Partial<ActionExecutorContext>
+      repoId?: string
     ): Promise<void> => {
       try {
-        // Merge context with any overrides (e.g., gitRepoId from GitPanelContainer)
-        const ctx = contextOverride
-          ? { ...executorContext, ...contextOverride }
-          : executorContext;
-
-        if (action.requiresTarget) {
+        if (action.requiresTarget === 'git') {
+          if (!workspaceId || !repoId) {
+            throw new Error(
+              `Action "${action.id}" requires both workspace and repository`
+            );
+          }
+          await action.execute(executorContext, workspaceId, repoId);
+        } else if (action.requiresTarget === true) {
           if (!workspaceId) {
             throw new Error(
               `Action "${action.id}" requires a workspace target`
             );
           }
-          await action.execute(ctx, workspaceId);
+          await action.execute(executorContext, workspaceId);
         } else {
-          await action.execute(ctx);
+          await action.execute(executorContext);
         }
       } catch (error) {
         // Show error to user via alert dialog

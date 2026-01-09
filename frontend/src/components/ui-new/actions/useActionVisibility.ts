@@ -3,11 +3,14 @@ import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useUserSystem } from '@/components/ConfigProvider';
+import { useDevServer } from '@/hooks/useDevServer';
 import type { Workspace } from 'shared/types';
 import type {
   ActionVisibilityContext,
   ActionDefinition,
   ActionIcon,
+  DevServerState,
 } from './index';
 import { resolveLabel } from './index';
 import type { CommandBarPage } from './pages';
@@ -19,16 +22,27 @@ import type { CommandBarPage } from './pages';
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
   const layout = useLayoutStore();
-  const { workspace, isCreateMode, repos } = useWorkspaceContext();
+  const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
+  const { config } = useUserSystem();
+  const { isStarting, isStopping, runningDevServer } = useDevServer(workspaceId);
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
     const diffKeys = diffPaths.map((p) => `diff:${p}`);
     const isAllDiffsExpanded =
       diffKeys.length > 0 && diffKeys.every((k) => expanded[k] !== false);
+
+    // Compute dev server state
+    const devServerState: DevServerState = isStarting
+      ? 'starting'
+      : isStopping
+        ? 'stopping'
+        : runningDevServer
+          ? 'running'
+          : 'stopped';
 
     return {
       isChangesMode: layout.isChangesMode,
@@ -43,6 +57,9 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasDiffs: diffPaths.length > 0,
       diffViewMode,
       isAllDiffsExpanded,
+      editorType: config?.editor?.editor_type ?? null,
+      devServerState,
+      runningDevServerId: runningDevServer?.id ?? null,
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
     };
@@ -59,6 +76,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     diffPaths,
     diffViewMode,
     expanded,
+    config?.editor?.editor_type,
+    isStarting,
+    isStopping,
+    runningDevServer,
   ]);
 }
 

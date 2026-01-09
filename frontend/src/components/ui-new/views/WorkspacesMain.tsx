@@ -103,10 +103,7 @@ export function WorkspacesMain({
       </ApprovalFeedbackProvider>
       {/* Context Bar - floating toolbar */}
       {workspaceWithSession && (
-        <ContextBarContainer
-          containerRef={containerRef}
-          containerPath={workspaceWithSession.container_ref ?? undefined}
-        />
+        <ContextBarContainer containerRef={containerRef} />
       )}
     </main>
   );
