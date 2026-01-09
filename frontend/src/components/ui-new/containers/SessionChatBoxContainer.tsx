@@ -5,6 +5,7 @@ import {
   type ToolStatus,
   type BaseCodingAgent,
 } from 'shared/types';
+import { HighlighterIcon } from '@phosphor-icons/react';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -569,9 +570,13 @@ export function SessionChatBoxContainer({
         isNewSessionMode,
         onNewSession: onStartNewSession,
       }}
-      reviewMode={{
-        onReviewClick: handleReviewClick,
-      }}
+      toolbarActions={[
+        {
+          icon: HighlighterIcon,
+          label: 'Start Review',
+          onClick: handleReviewClick,
+        },
+      ]}
       stats={{
         filesChanged,
         linesAdded,
