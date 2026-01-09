@@ -8,7 +8,10 @@ import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
-import type { PageId, ResolvedGroupItem } from '@/components/ui-new/actions/pages';
+import type {
+  PageId,
+  ResolvedGroupItem,
+} from '@/components/ui-new/actions/pages';
 import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
@@ -29,7 +32,9 @@ const CommandBarDialogImpl = NiceModal.create<CommandBarDialogProps>(
 
     const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
     const workspace = effectiveWorkspaceId
-      ? queryClient.getQueryData<Workspace>(attemptKeys.byId(effectiveWorkspaceId))
+      ? queryClient.getQueryData<Workspace>(
+          attemptKeys.byId(effectiveWorkspaceId)
+        )
       : undefined;
 
     // State machine

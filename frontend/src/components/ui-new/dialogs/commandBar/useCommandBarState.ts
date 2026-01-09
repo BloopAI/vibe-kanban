@@ -1,5 +1,8 @@
 import { useReducer, useCallback } from 'react';
-import type { PageId, ResolvedGroupItem } from '@/components/ui-new/actions/pages';
+import type {
+  PageId,
+  ResolvedGroupItem,
+} from '@/components/ui-new/actions/pages';
 import type {
   ActionDefinition,
   GitActionDefinition,
@@ -56,7 +59,12 @@ function reducer(
           if (state.stack.length === 0) return [state, { type: 'none' }];
           const prevPage = state.stack[state.stack.length - 1];
           return [
-            { ...state, page: prevPage, stack: state.stack.slice(0, -1), search: '' },
+            {
+              ...state,
+              page: prevPage,
+              stack: state.stack.slice(0, -1),
+              search: '',
+            },
             { type: 'none' },
           ];
         }
@@ -66,7 +74,12 @@ function reducer(
 
           if (item.type === 'page') {
             return [
-              { ...state, page: item.pageId, stack: [...state.stack, state.page], search: '' },
+              {
+                ...state,
+                page: item.pageId,
+                stack: [...state.stack, state.page],
+                search: '',
+              },
               { type: 'none' },
             ];
           }
@@ -75,7 +88,14 @@ function reducer(
             if (item.action.requiresTarget === 'git') {
               if (repoCount === 1) {
                 // Single repo - effect will provide repoId from context
-                return [state, { type: 'execute', action: item.action, repoId: '__single__' }];
+                return [
+                  state,
+                  {
+                    type: 'execute',
+                    action: item.action,
+                    repoId: '__single__',
+                  },
+                ];
               }
               if (repoCount > 1) {
                 return [
@@ -112,7 +132,12 @@ function reducer(
         case 'GO_BACK': {
           const prevPage = state.stack[state.stack.length - 1] ?? 'root';
           return [
-            { status: 'browsing', page: prevPage, stack: state.stack.slice(0, -1), search: '' },
+            {
+              status: 'browsing',
+              page: prevPage,
+              stack: state.stack.slice(0, -1),
+              search: '',
+            },
             { type: 'none' },
           ];
         }
@@ -121,7 +146,11 @@ function reducer(
           if (event.item.type === 'repo') {
             return [
               { status: 'browsing', page: 'root', stack: [], search: '' },
-              { type: 'execute', action: state.pendingAction, repoId: event.item.repo.id },
+              {
+                type: 'execute',
+                action: state.pendingAction,
+                repoId: event.item.repo.id,
+              },
             ];
           }
           return [state, { type: 'none' }];
@@ -155,7 +184,12 @@ export function useCommandBarState(
 ): UseCommandBarStateReturn {
   const [state, rawDispatch] = useReducer(
     (s: CommandBarState, e: CommandBarEvent) => reducer(s, e, repoCount)[0],
-    { status: 'browsing', page: initialPage, stack: [], search: '' } as CommandBarState
+    {
+      status: 'browsing',
+      page: initialPage,
+      stack: [],
+      search: '',
+    } as CommandBarState
   );
 
   // Dispatch that also returns the effect

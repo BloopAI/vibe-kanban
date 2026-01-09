@@ -137,7 +137,11 @@ export function useResolvedPage(
 
     // Inject search results from nested pages when on root
     if (pageId === 'root' && search.trim()) {
-      const injected = injectSearchMatches(search, visibilityContext, workspace);
+      const injected = injectSearchMatches(
+        search,
+        visibilityContext,
+        workspace
+      );
       groups.push(...injected);
     }
 
