@@ -29,6 +29,7 @@ import {
   ArrowsClockwiseIcon,
   CrosshairIcon,
   DesktopIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -40,6 +41,7 @@ import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
+import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
@@ -188,6 +190,20 @@ export const Actions = {
         // Fallback to creating without the prompt
         ctx.navigate('/workspaces/create');
       }
+    },
+  },
+
+  RenameWorkspace: {
+    id: 'rename-workspace',
+    label: 'Rename',
+    icon: PencilSimpleIcon,
+    requiresTarget: true,
+    execute: async (ctx, workspaceId) => {
+      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      await RenameWorkspaceDialog.show({
+        workspaceId,
+        currentName: workspace.name || workspace.branch,
+      });
     },
   },
 

@@ -91,6 +91,7 @@ export const Pages: Record<PageId, CommandBarPage> = {
         type: 'group',
         label: 'Workspace',
         items: [
+          { type: 'action', action: Actions.RenameWorkspace },
           { type: 'action', action: Actions.DuplicateWorkspace },
           { type: 'action', action: Actions.PinWorkspace },
           { type: 'action', action: Actions.ArchiveWorkspace },

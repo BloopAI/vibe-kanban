@@ -129,7 +129,15 @@
     "archived": "Archived",
     "loading": "Loading...",
     "selectToStart": "Select a workspace to get started",
-    "draft": "Draft"
+    "draft": "Draft",
+    "rename": {
+      "title": "Rename Workspace",
+      "description": "Enter a new name for this workspace.",
+      "nameLabel": "Name",
+      "placeholder": "Enter workspace name",
+      "action": "Rename",
+      "renaming": "Renaming..."
+    }
   },
   "fileTree": {
     "searchPlaceholder": "Search files...",
