@@ -459,7 +459,10 @@ export function SessionChatBoxContainer({
   );
 
   // Define which actions appear in the toolbar
-  const toolbarActionsList = useMemo(() => [Actions.StartReview], []);
+  const toolbarActionsList = useMemo(
+    () => [Actions.StartReview, Actions.ToggleChangesMode],
+    []
+  );
 
   // Handle approve action
   const handleApprove = useCallback(async () => {
