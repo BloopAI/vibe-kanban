@@ -39,6 +39,7 @@ import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 import { BackendErrorState } from '@/components/ui/BackendErrorState';
+import { ConnectionStatusBar } from '@/components/ui/connection-status-bar';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
@@ -128,8 +129,9 @@ function AppContent() {
     );
   }
 
-  // Show error state when backend is unavailable
-  if (isError) {
+  // Only show full error state if we have no cached config at all
+  // If we have cached data, show the app in degraded mode instead
+  if (isError && !config) {
     return (
       <BackendErrorState
         error={error}
@@ -143,6 +145,8 @@ function AppContent() {
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
           <GlobalKeyboardShortcuts />
+          {/* Connection status bar - shows when degraded or offline */}
+          <ConnectionStatusBar />
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
               {/* Public routes - no authentication required */}

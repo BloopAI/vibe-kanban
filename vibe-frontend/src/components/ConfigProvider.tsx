@@ -17,6 +17,7 @@ import {
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
 import { updateLanguageFromConfig } from '../i18n/config';
+import { useConnectionSafe } from '@/contexts/ConnectionContext';
 
 interface UserSystemState {
   config: Config | null;
@@ -66,11 +67,22 @@ interface UserSystemProviderProps {
 
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const queryClient = useQueryClient();
+  const { reportSuccess, reportFailure } = useConnectionSafe();
 
   const { data: userSystemInfo, isLoading, isError, error } = useQuery({
     queryKey: ['user-system'],
-    queryFn: configApi.getConfig,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryFn: async () => {
+      try {
+        const result = await configApi.getConfig();
+        reportSuccess();
+        return result;
+      } catch (err) {
+        reportFailure(err instanceof Error ? err : new Error('Failed to fetch config'));
+        throw err;
+      }
+    },
+    staleTime: 30 * 60 * 1000, // 30 minutes (increased for better offline support)
+    gcTime: 60 * 60 * 1000, // 1 hour cache retention
     retry: 3, // Retry failed requests 3 times
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff
   });

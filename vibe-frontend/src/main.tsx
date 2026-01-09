@@ -4,13 +4,17 @@ import App from './App.tsx';
 import './styles/index.css';
 import { ClickToComponent } from 'click-to-react-component';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import * as Sentry from '@sentry/react';
 import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { AuthInitializer } from '@/components/auth/AuthInitializer';
+import { createIndexedDBPersister } from '@/lib/indexedDBPersister';
+import { ConnectionProvider } from '@/contexts/ConnectionContext';
+import { SyncQueueProvider } from '@/contexts/SyncQueueContext';
 // Import modal type definitions
 import './types/modals';
 
@@ -67,7 +71,8 @@ if (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 30, // 30 minutes (increased for better offline support)
+      gcTime: 1000 * 60 * 60, // 1 hour (was cacheTime, for persistence)
       refetchOnWindowFocus: false,
       retry: 2, // Retry failed requests twice
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff, max 30s
@@ -75,23 +80,40 @@ const queryClient = new QueryClient({
   },
 });
 
+// Create IndexedDB persister for offline cache survival
+const persister = createIndexedDBPersister();
+
+// Persistence configuration
+const persistOptions = {
+  persister,
+  maxAge: 1000 * 60 * 60 * 24, // 24 hours
+  buster: 'v1', // Change this to invalidate all caches
+};
+
 // Render app with optional ClerkProvider wrapper
 const AppWithProviders = () => (
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <PostHogProvider client={posthog}>
-        <Sentry.ErrorBoundary
-          fallback={<p>{i18n.t('common:states.error')}</p>}
-          showDialog
-        >
-          <ClickToComponent />
-          <VibeKanbanWebCompanion />
-          <App />
-          {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
-          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-        </Sentry.ErrorBoundary>
-      </PostHogProvider>
-    </QueryClientProvider>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={persistOptions}
+    >
+      <ConnectionProvider>
+        <SyncQueueProvider>
+          <PostHogProvider client={posthog}>
+            <Sentry.ErrorBoundary
+              fallback={<p>{i18n.t('common:states.error')}</p>}
+              showDialog
+            >
+              <ClickToComponent />
+              <VibeKanbanWebCompanion />
+              <App />
+              {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
+              {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+            </Sentry.ErrorBoundary>
+          </PostHogProvider>
+        </SyncQueueProvider>
+      </ConnectionProvider>
+    </PersistQueryClientProvider>
   </React.StrictMode>
 );
 
