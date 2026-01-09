@@ -187,15 +187,13 @@ export function AssigneeSelector({
             <X className="h-3 w-3 text-muted-foreground" />
           </div>
           <span>No assignee</span>
-          <span className="ml-auto text-xs text-muted-foreground font-mono">0</span>
         </DropdownMenuItem>
 
         {teamMembers.length > 0 && <DropdownMenuSeparator />}
 
         {/* Team members */}
-        {teamMembers.map((member, index) => {
+        {teamMembers.map((member) => {
           const isSelected = value === member.id;
-          const shortcut = index < 9 ? String(index + 1) : undefined;
           return (
             <DropdownMenuItem
               key={member.id}
@@ -209,9 +207,6 @@ export function AssigneeSelector({
                   <span className="text-xs text-muted-foreground truncate">{member.email}</span>
                 )}
               </div>
-              {shortcut && (
-                <span className="text-xs text-muted-foreground font-mono">{shortcut}</span>
-              )}
             </DropdownMenuItem>
           );
         })}
