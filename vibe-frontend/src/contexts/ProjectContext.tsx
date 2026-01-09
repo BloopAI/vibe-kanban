@@ -26,14 +26,22 @@ interface ProjectProviderProps {
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const location = useLocation();
 
-  // Extract projectId from current route path
-  const projectId = useMemo(() => {
+  // Extract project param (can be UUID or slug) from current route path
+  const projectParam = useMemo(() => {
     const match = location.pathname.match(/^\/projects\/([^/]+)/);
     return match ? match[1] : undefined;
   }, [location.pathname]);
 
-  const { projectsById, isLoading, error } = useProjects();
-  const project = projectId ? projectsById[projectId] : undefined;
+  const { resolveProject, isLoading, error } = useProjects();
+
+  // Resolve the project - handles both UUID and slug lookups
+  const project = useMemo(
+    () => projectParam ? resolveProject(projectParam) : undefined,
+    [projectParam, resolveProject]
+  );
+
+  // The actual project ID (UUID) - use resolved project's ID
+  const projectId = project?.id;
 
   const value = useMemo(
     () => ({

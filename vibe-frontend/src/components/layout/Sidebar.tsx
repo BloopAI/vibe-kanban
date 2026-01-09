@@ -22,7 +22,6 @@ import {
   Layers,
   Users,
   UserPlus,
-  Hash,
   Plus,
   CircleDot,
   MoreHorizontal,
@@ -472,7 +471,7 @@ export function Sidebar() {
               {projects.map((project) => (
                 <SidebarItem
                   key={project.id}
-                  icon={Hash}
+                  icon={FolderKanban}
                   label={project.name}
                   to={`/projects/${getProjectSlug(project)}/tasks`}
                   isActive={isProjectActive(project.id)}

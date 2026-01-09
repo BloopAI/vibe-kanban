@@ -397,6 +397,13 @@ export function Navbar() {
                     appearance={{
                       elements: {
                         avatarBox: 'h-8 w-8',
+                        userButtonPopoverCard: 'shadow-lg border border-border rounded-lg',
+                        userButtonPopoverMain: 'p-0',
+                        userButtonPopoverActions: 'p-1',
+                        userButtonPopoverActionButton: 'rounded-md text-sm',
+                        userButtonPopoverActionButtonText: 'text-foreground',
+                        userButtonPopoverActionButtonIcon: 'text-muted-foreground',
+                        userButtonPopoverFooter: 'border-t border-border pt-2 pb-2 px-3',
                       },
                     }}
                   />
