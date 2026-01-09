@@ -433,6 +433,43 @@ impl Workspace {
         })
     }
 
+    /// Find workspace by a path that starts with the container_ref.
+    /// Used by VSCode extension which opens a repo worktree subfolder,
+    /// not the workspace root directory.
+    pub async fn resolve_container_ref_by_prefix(
+        pool: &SqlitePool,
+        path: &str,
+    ) -> Result<ContainerInfo, sqlx::Error> {
+        // First try exact match
+        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
+            return Ok(info);
+        }
+
+        // Then try prefix match - find workspace where path starts with container_ref
+        // Use glob pattern: container_ref || '%' to match paths under the workspace
+        let result = sqlx::query!(
+            r#"SELECT w.id as "workspace_id!: Uuid",
+                      w.task_id as "task_id!: Uuid",
+                      t.project_id as "project_id!: Uuid"
+               FROM workspaces w
+               JOIN tasks t ON w.task_id = t.id
+               WHERE w.container_ref IS NOT NULL
+                 AND ? GLOB w.container_ref || '/*'
+               ORDER BY length(w.container_ref) DESC
+               LIMIT 1"#,
+            path
+        )
+        .fetch_optional(pool)
+        .await?
+        .ok_or(sqlx::Error::RowNotFound)?;
+
+        Ok(ContainerInfo {
+            workspace_id: result.workspace_id,
+            task_id: result.task_id,
+            project_id: result.project_id,
+        })
+    }
+
     pub async fn set_archived(
         pool: &SqlitePool,
         workspace_id: Uuid,
