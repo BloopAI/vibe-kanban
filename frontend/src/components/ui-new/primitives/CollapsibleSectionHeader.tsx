@@ -35,7 +35,7 @@ export function CollapsibleSectionHeader({
   };
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn('flex flex-col min-h-0 h-full', className)}>
       <button
         type="button"
         onClick={() => toggle()}
