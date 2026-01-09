@@ -2,7 +2,21 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, RefreshCw, Circle, PlayCircle, CircleDot, ListTodo } from 'lucide-react';
+import {
+  AlertTriangle,
+  RefreshCw,
+  Circle,
+  PlayCircle,
+  CircleDot,
+  ListTodo,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  Minus,
+} from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +30,7 @@ import { cn } from '@/lib/utils';
 
 import type { TaskWithAttemptStatus, TaskStatus, Team } from 'shared/types';
 
-type ViewFilter = 'all' | 'active' | 'backlog';
+type ViewFilter = 'all' | 'active' | 'backlog' | 'done';
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
   todo: 'Backlog',
@@ -24,6 +38,23 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   inreview: 'In Review',
   done: 'Done',
   cancelled: 'Cancelled',
+};
+
+const STATUS_COLORS: Record<TaskStatus, string> = {
+  todo: 'text-gray-500',
+  inprogress: 'text-yellow-500',
+  inreview: 'text-blue-500',
+  done: 'text-green-500',
+  cancelled: 'text-red-500',
+};
+
+// Priority icons and colors
+const PRIORITY_CONFIG: Record<number, { icon: typeof AlertCircle; color: string; label: string }> = {
+  1: { icon: AlertCircle, color: 'text-red-500', label: 'Urgent' },
+  2: { icon: ArrowUp, color: 'text-orange-500', label: 'High' },
+  3: { icon: ArrowRight, color: 'text-yellow-500', label: 'Medium' },
+  4: { icon: ArrowDown, color: 'text-blue-500', label: 'Low' },
+  0: { icon: Minus, color: 'text-muted-foreground', label: 'None' },
 };
 
 // Component to fetch and display issues for a single team
@@ -87,6 +118,14 @@ export function MyIssues() {
     return allIssuesList;
   }, [allIssues]);
 
+  // Count by filter type
+  const counts = useMemo(() => ({
+    all: aggregatedIssues.length,
+    active: aggregatedIssues.filter((i) => ['inprogress', 'inreview'].includes(i.status)).length,
+    backlog: aggregatedIssues.filter((i) => i.status === 'todo').length,
+    done: aggregatedIssues.filter((i) => i.status === 'done').length,
+  }), [aggregatedIssues]);
+
   // Apply view filter
   const filteredIssues = useMemo(() => {
     let result = aggregatedIssues;
@@ -95,12 +134,23 @@ export function MyIssues() {
       result = result.filter((i) => ['inprogress', 'inreview'].includes(i.status));
     } else if (viewFilter === 'backlog') {
       result = result.filter((i) => i.status === 'todo');
+    } else if (viewFilter === 'done') {
+      result = result.filter((i) => i.status === 'done');
     }
 
-    // Sort by created_at descending (newest first)
-    return result.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    // Sort: active issues by priority, then by created_at
+    return result.sort((a, b) => {
+      // Active issues first, sorted by priority
+      if (a.status !== 'done' && b.status !== 'done') {
+        const priorityA = a.priority ?? 0;
+        const priorityB = b.priority ?? 0;
+        if (priorityA !== priorityB) {
+          // Lower priority number = higher priority (1 is urgent)
+          return (priorityA || 5) - (priorityB || 5);
+        }
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   }, [aggregatedIssues, viewFilter]);
 
   // Group by status for display
@@ -167,7 +217,7 @@ export function MyIssues() {
   const hasIssues = filteredIssues.length > 0;
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Load issues from each team using team members to find current user */}
       {teams.map((team) => (
         <TeamMemberIssueLoader
@@ -179,108 +229,158 @@ export function MyIssues() {
       ))}
 
       {/* Header */}
-      <div className="shrink-0 border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ListTodo className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-lg font-semibold">My Issues</h1>
-            {userName && (
-              <span className="text-muted-foreground">/ {userName}</span>
-            )}
+      <div className="shrink-0 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950">
+              <ListTodo className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold">My Issues</h1>
+              {userName && (
+                <p className="text-sm text-muted-foreground">{userName}</p>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button size="sm" variant="outline" onClick={handleRefresh} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Sub-header: View tabs */}
-      <div className="shrink-0 border-b px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className={`gap-1.5 ${viewFilter === 'all' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+      {/* Filter tabs */}
+      <div className="shrink-0 border-b bg-muted/30 px-6 py-3">
+        <div className="flex items-center gap-2 max-w-6xl mx-auto">
+          <FilterTab
+            active={viewFilter === 'all'}
             onClick={() => setViewFilter('all')}
-          >
-            <CircleDot className="h-4 w-4" />
-            All
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-              {aggregatedIssues.length}
-            </Badge>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`gap-1.5 ${viewFilter === 'active' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+            icon={CircleDot}
+            label="All"
+            count={counts.all}
+          />
+          <FilterTab
+            active={viewFilter === 'active'}
             onClick={() => setViewFilter('active')}
-          >
-            <PlayCircle className="h-4 w-4" />
-            Active
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`gap-1.5 ${viewFilter === 'backlog' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300' : 'bg-background border-border'}`}
+            icon={PlayCircle}
+            label="Active"
+            count={counts.active}
+            highlight
+          />
+          <FilterTab
+            active={viewFilter === 'backlog'}
             onClick={() => setViewFilter('backlog')}
-          >
-            <Circle className="h-4 w-4 opacity-50" strokeDasharray="2 2" />
-            Backlog
-          </Button>
+            icon={Circle}
+            label="Backlog"
+            count={counts.backlog}
+          />
+          <FilterTab
+            active={viewFilter === 'done'}
+            onClick={() => setViewFilter('done')}
+            icon={CheckCircle2}
+            label="Done"
+            count={counts.done}
+          />
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
-        {!hasIssues ? (
-          <div className="max-w-2xl mx-auto mt-8">
-            <Card>
-              <CardContent className="text-center py-8">
-                <ListTodo className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No issues assigned to you</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  When you get assigned to issues, they will appear here
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6">
+          {!hasIssues ? (
+            <Card className="border-dashed">
+              <CardContent className="text-center py-12">
+                <div className="p-4 rounded-full bg-muted inline-block mb-4">
+                  <ListTodo className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-1">No issues found</h3>
+                <p className="text-sm text-muted-foreground">
+                  {viewFilter === 'all'
+                    ? 'When you get assigned to issues, they will appear here'
+                    : `No ${viewFilter} issues assigned to you`}
                 </p>
               </CardContent>
             </Card>
-          </div>
-        ) : (
-          <div className="max-w-4xl mx-auto space-y-6">
-            {/* Render issues grouped by status */}
-            {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map((status) => {
-              const statusIssues = issuesByStatus[status];
-              if (statusIssues.length === 0) return null;
+          ) : (
+            <div className="space-y-8">
+              {/* Render issues grouped by status */}
+              {(['inprogress', 'inreview', 'todo', 'done'] as TaskStatus[]).map((status) => {
+                const statusIssues = issuesByStatus[status];
+                if (statusIssues.length === 0) return null;
 
-              return (
-                <div key={status}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <StatusIcon status={status} />
-                    <h2 className="text-sm font-medium text-muted-foreground">
-                      {STATUS_LABELS[status]}
-                    </h2>
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                      {statusIssues.length}
-                    </Badge>
+                return (
+                  <div key={status}>
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b">
+                      <StatusIcon status={status} className={cn('h-5 w-5', STATUS_COLORS[status])} />
+                      <h2 className="font-medium">
+                        {STATUS_LABELS[status]}
+                      </h2>
+                      <Badge variant="secondary" className="rounded-full">
+                        {statusIssues.length}
+                      </Badge>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
+                      {statusIssues.map((issue) => (
+                        <IssueCard
+                          key={issue.id}
+                          issue={issue}
+                          teams={teams}
+                          onClick={() => handleIssueClick(issue)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {statusIssues.map((issue) => (
-                      <IssueCard
-                        key={issue.id}
-                        issue={issue}
-                        teams={teams}
-                        onClick={() => handleIssueClick(issue)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+// Filter tab component
+function FilterTab({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  count,
+  highlight,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof CircleDot;
+  label: string;
+  count: number;
+  highlight?: boolean;
+}) {
+  return (
+    <Button
+      variant={active ? 'default' : 'ghost'}
+      size="sm"
+      onClick={onClick}
+      className={cn(
+        'gap-2 transition-all',
+        active
+          ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+          : 'hover:bg-muted',
+        highlight && !active && count > 0 && 'text-yellow-600 dark:text-yellow-400'
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+      <Badge
+        variant={active ? 'outline' : 'secondary'}
+        className={cn(
+          'rounded-full h-5 min-w-[20px] px-1.5',
+          active && 'bg-white/20 text-white border-white/30'
+        )}
+      >
+        {count}
+      </Badge>
+    </Button>
   );
 }
 
@@ -326,36 +426,69 @@ function IssueCard({
     ? `${team.identifier || team.name.slice(0, 3).toUpperCase()}-${issue.issue_number}`
     : undefined;
 
+  const priority = issue.priority ?? 0;
+  const priorityConfig = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG[0];
+  const PriorityIcon = priorityConfig.icon;
+
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all duration-150',
-        'hover:bg-accent/30 border border-border/50'
+        'cursor-pointer transition-all duration-200 group',
+        'hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800',
+        'border-l-4',
+        issue.status === 'inprogress' && 'border-l-yellow-500',
+        issue.status === 'inreview' && 'border-l-blue-500',
+        issue.status === 'todo' && 'border-l-gray-300 dark:border-l-gray-600',
+        issue.status === 'done' && 'border-l-green-500'
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3">
+      <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <StatusIcon status={issue.status} className="mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            {/* Top row: Issue key + Team badge */}
+            <div className="flex items-center gap-2 mb-2">
               {issueKey && (
-                <span className="text-xs font-mono text-muted-foreground">
+                <code className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted">
                   {issueKey}
-                </span>
+                </code>
               )}
               {team && (
-                <span className="text-xs text-muted-foreground">
-                  {team.icon || ''} {team.name}
-                </span>
+                <Badge variant="outline" className="text-xs font-normal gap-1">
+                  {team.icon && <span>{team.icon}</span>}
+                  {team.name}
+                </Badge>
+              )}
+              {priority > 0 && priority <= 2 && (
+                <PriorityIcon className={cn('h-4 w-4 ml-auto', priorityConfig.color)} />
               )}
             </div>
-            <h3 className="text-sm font-medium line-clamp-2">{issue.title}</h3>
+
+            {/* Title */}
+            <h3 className="font-medium line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              {issue.title}
+            </h3>
+
+            {/* Description */}
             {issue.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+              <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">
                 {issue.description}
               </p>
             )}
+
+            {/* Bottom row: metadata */}
+            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {new Date(issue.created_at).toLocaleDateString()}
+              </span>
+              {priority > 0 && (
+                <span className={cn('flex items-center gap-1', priorityConfig.color)}>
+                  <PriorityIcon className="h-3 w-3" />
+                  {priorityConfig.label}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
