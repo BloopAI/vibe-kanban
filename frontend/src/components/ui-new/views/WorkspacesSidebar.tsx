@@ -97,6 +97,7 @@ export function WorkspacesSidebar({
               hasUnseenActivity={workspace.hasUnseenActivity}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
+              prStatus={workspace.prStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
@@ -124,6 +125,7 @@ export function WorkspacesSidebar({
               hasUnseenActivity={workspace.hasUnseenActivity}
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
+              prStatus={workspace.prStatus}
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}

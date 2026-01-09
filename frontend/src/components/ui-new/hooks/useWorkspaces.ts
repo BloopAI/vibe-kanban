@@ -25,6 +25,7 @@ export interface SidebarWorkspace {
   hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
 }
 
 // Keep the old export name for backwards compatibility
@@ -67,6 +68,7 @@ function toSidebarWorkspace(
     hasUnseenActivity: summary?.has_unseen_turns,
     latestProcessCompletedAt: summary?.latest_process_completed_at ?? undefined,
     latestProcessStatus: summary?.latest_process_status ?? undefined,
+    prStatus: summary?.pr_status ?? undefined,
   };
 }
 

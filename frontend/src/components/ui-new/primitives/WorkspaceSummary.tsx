@@ -6,6 +6,7 @@ import {
   PlayIcon,
   FileIcon,
   CircleIcon,
+  GitPullRequestIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,7 @@ interface WorkspaceSummaryProps {
   hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   onClick?: () => void;
   className?: string;
   summary?: boolean;
@@ -48,6 +50,7 @@ export function WorkspaceSummary({
   hasUnseenActivity = false,
   latestProcessCompletedAt,
   latestProcessStatus,
+  prStatus,
   onClick,
   className,
   summary = false,
@@ -116,6 +119,20 @@ export function WorkspaceSummary({
             {hasUnseenActivity && !isRunning && !isFailed && (
               <CircleIcon
                 className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
+
+            {/* PR status icon */}
+            {prStatus === 'open' && (
+              <GitPullRequestIcon
+                className="size-icon-xs text-brand shrink-0"
+                weight="fill"
+              />
+            )}
+            {prStatus === 'merged' && (
+              <GitPullRequestIcon
+                className="size-icon-xs text-success shrink-0"
                 weight="fill"
               />
             )}

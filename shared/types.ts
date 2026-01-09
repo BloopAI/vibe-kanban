@@ -352,7 +352,11 @@ has_running_dev_server: boolean,
 /**
  * Does this workspace have unseen coding agent turns?
  */
-has_unseen_turns: boolean, };
+has_unseen_turns: boolean, 
+/**
+ * PR status for this workspace (if any PR exists)
+ */
+pr_status: MergeStatus | null, };
 
 export type WorkspaceSummaryResponse = { summaries: Array<WorkspaceSummary>, };
 

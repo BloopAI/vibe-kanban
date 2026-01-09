@@ -4,6 +4,7 @@ use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessStatus},
+    merge::{Merge, MergeStatus},
     workspace::Workspace,
     workspace_repo::WorkspaceRepo,
 };
@@ -45,6 +46,8 @@ pub struct WorkspaceSummary {
     pub has_running_dev_server: bool,
     /// Does this workspace have unseen coding agent turns?
     pub has_unseen_turns: bool,
+    /// PR status for this workspace (if any PR exists)
+    pub pr_status: Option<MergeStatus>,
 }
 
 /// Response containing summaries for requested workspaces
@@ -103,7 +106,10 @@ pub async fn get_workspace_summaries(
     // 5. Check which workspaces have unseen coding agent turns
     let unseen_workspaces = CodingAgentTurn::find_workspaces_with_unseen(pool, archived).await?;
 
-    // 6. Compute diff stats for each workspace (in parallel)
+    // 6. Get PR status for each workspace
+    let pr_statuses = Merge::get_latest_pr_status_for_workspaces(pool, archived).await?;
+
+    // 7. Compute diff stats for each workspace (in parallel)
     let diff_futures: Vec<_> = workspaces
         .iter()
         .map(|ws| {
@@ -126,7 +132,7 @@ pub async fn get_workspace_summaries(
         futures_util::future::join_all(diff_futures).await;
     let diff_stats: HashMap<Uuid, DiffStats> = diff_results.into_iter().flatten().collect();
 
-    // 7. Assemble response
+    // 8. Assemble response
     let summaries: Vec<WorkspaceSummary> = workspaces
         .iter()
         .map(|ws| {
@@ -148,6 +154,7 @@ pub async fn get_workspace_summaries(
                 latest_process_status: latest.map(|p| p.status.clone()),
                 has_running_dev_server: dev_server_workspaces.contains(&id),
                 has_unseen_turns: unseen_workspaces.contains(&id),
+                pr_status: pr_statuses.get(&id).cloned(),
             }
         })
         .collect();

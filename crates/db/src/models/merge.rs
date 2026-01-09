@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool, Type};
@@ -287,6 +289,45 @@ impl Merge {
         .await?;
 
         Ok(rows.into_iter().map(Into::into).collect())
+    }
+
+    /// Get the latest PR status for each workspace (for workspace summaries)
+    /// Returns a map of workspace_id -> MergeStatus for workspaces that have PRs
+    pub async fn get_latest_pr_status_for_workspaces(
+        pool: &SqlitePool,
+        archived: bool,
+    ) -> Result<HashMap<Uuid, MergeStatus>, sqlx::Error> {
+        #[derive(FromRow)]
+        struct PrStatusRow {
+            workspace_id: Uuid,
+            pr_status: Option<MergeStatus>,
+        }
+
+        // Get the latest PR for each workspace by using a subquery to find the max created_at
+        // Only consider PR merges (not direct merges)
+        let rows = sqlx::query_as::<_, PrStatusRow>(
+            r#"SELECT
+                m.workspace_id,
+                m.pr_status
+            FROM merges m
+            INNER JOIN (
+                SELECT workspace_id, MAX(created_at) as max_created_at
+                FROM merges
+                WHERE merge_type = 'pr'
+                GROUP BY workspace_id
+            ) latest ON m.workspace_id = latest.workspace_id
+                AND m.created_at = latest.max_created_at
+            INNER JOIN workspaces w ON m.workspace_id = w.id
+            WHERE m.merge_type = 'pr' AND w.archived = $1"#,
+        )
+        .bind(archived)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .filter_map(|row| row.pr_status.map(|status| (row.workspace_id, status)))
+            .collect())
     }
 }
 
