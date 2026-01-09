@@ -37,7 +37,7 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
           </div>
           <nav className="flex items-center gap-4">
             {isSignedIn ? (
-              <Link to="/">
+              <Link to="/projects">
                 <Button>Go to Dashboard</Button>
               </Link>
             ) : (
@@ -68,7 +68,7 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
           </p>
           <div className="flex gap-4 justify-center">
             {isSignedIn ? (
-              <Link to="/">
+              <Link to="/projects">
                 <Button size="lg">Open Dashboard</Button>
               </Link>
             ) : (
@@ -191,7 +191,7 @@ function AboutContent({ isSignedIn }: { isSignedIn: boolean }) {
             agents and ship faster.
           </p>
           {isSignedIn ? (
-            <Link to="/">
+            <Link to="/projects">
               <Button size="lg">Go to Dashboard</Button>
             </Link>
           ) : (
