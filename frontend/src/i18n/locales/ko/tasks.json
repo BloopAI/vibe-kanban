@@ -30,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "리뷰 시작",
+    "startingReview": "리뷰 시작 중..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +43,12 @@
       "renaming": "이름 변경 중...",
       "action": "브랜치 이름 변경"
     }
+  },
+  "startReviewDialog": {
+    "additionalInstructions": "추가 지침 (선택 사항)",
+    "reviewComments": "리뷰 댓글 ({{count}})",
+    "includeGitContext": "Git 컨텍스트 포함",
+    "newSession": "새 세션"
   },
   "attempt": {
     "actions": {

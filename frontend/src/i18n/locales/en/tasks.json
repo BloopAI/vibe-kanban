@@ -483,6 +483,12 @@
       "action": "Rename Branch"
     }
   },
+  "startReviewDialog": {
+    "additionalInstructions": "Additional Instructions (optional)",
+    "reviewComments": "Review Comments ({{count}})",
+    "includeGitContext": "Include git context",
+    "newSession": "New Session"
+  },
   "stopShareDialog": {
     "title": "Stop Sharing Task",
     "description": "Stop sharing \"{{title}}\" with your organization?",

@@ -402,7 +402,9 @@
     "share": "分享",
     "reassign": "重新指派",
     "stopShare": "停止分享",
-    "duplicate": "複製"
+    "duplicate": "複製",
+    "startReview": "開始審查",
+    "startingReview": "正在開始審查..."
   },
   "editBranchName": {
     "dialog": {
@@ -413,6 +415,12 @@
       "renaming": "重新命名中...",
       "action": "重新命名分支"
     }
+  },
+  "startReviewDialog": {
+    "additionalInstructions": "附加說明（可選）",
+    "reviewComments": "審查評論（{{count}}）",
+    "includeGitContext": "包含 Git 上下文",
+    "newSession": "新工作階段"
   },
   "stopShareDialog": {
     "title": "停止分享任務",
