@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { SentryTest } from '@/pages/SentryTest';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
@@ -147,6 +148,7 @@ function AppContent() {
             >
               <Route path="/" element={<Projects />} />
               <Route path="/projects" element={<Projects />} />
+              <Route path="/sentry-test" element={<SentryTest />} />
               <Route path="/projects/:projectId" element={<Projects />} />
               <Route
                 path="/projects/:projectId/tasks"
