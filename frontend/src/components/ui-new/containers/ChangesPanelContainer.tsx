@@ -165,7 +165,7 @@ export function ChangesPanelContainer({
     const timeoutId = setTimeout(() => {
       diffRefs.current.get(selectedFilePath)?.scrollIntoView({
         behavior: 'smooth',
-        block: 'nearest',
+        block: 'start',
       });
     }, 0);
 
