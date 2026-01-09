@@ -1718,7 +1718,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/repos", get(get_task_attempt_repos))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
-        .route("/", put(update_workspace).delete(delete_workspace))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
