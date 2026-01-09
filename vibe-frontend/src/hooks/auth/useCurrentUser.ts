@@ -15,13 +15,13 @@ export function useCurrentUser() {
   const query = useQuery({
     queryKey: ['auth', 'user'],
     queryFn: () => oauthApi.getCurrentUser(),
-    retry: 2,
+    retry: isCloudMode ? 0 : 2, // Don't retry in cloud mode - endpoint may not exist
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    // In cloud mode, the /api/auth/user endpoint is not available (returns 400 "Remote client not configured")
-    // Clerk provides userId via useAuth(), so we don't need this endpoint in cloud mode
-    enabled: !isCloudMode,
+    // In cloud mode, only enable if we don't already have a userId from useAuth
+    // This allows the app to work even if /api/auth/user fails
+    enabled: !isCloudMode || !userId,
   });
 
   useEffect(() => {

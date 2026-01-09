@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
@@ -57,6 +56,12 @@ export function useProjects(): UseProjectsResult {
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
 
+  // REST API polling state (for cloud mode)
+  const [restProjects, setRestProjects] = useState<Record<string, Project>>({});
+  const [restLoading, setRestLoading] = useState(isCloudMode);
+  const [restError, setRestError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (isLoaded) {
       getToken().then(setToken).catch(console.error);
@@ -82,43 +87,53 @@ export function useProjects(): UseProjectsResult {
     { token }
   );
 
-  // REST API polling for cloud mode using TanStack Query for automatic deduplication
-  const restQuery = useQuery({
-    queryKey: ['projects', 'list'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/projects`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+  // REST API polling for cloud mode
+  useEffect(() => {
+    if (!isCloudMode || !token) return;
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch projects: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.success && Array.isArray(result.data)) {
-        const projectsMap: Record<string, Project> = {};
-        result.data.forEach((project: Project) => {
-          projectsMap[project.id] = project;
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/projects`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
-        return projectsMap;
-      }
-      return {} as Record<string, Project>;
-    },
-    enabled: isCloudMode && !!token,
-    staleTime: 30000, // Data considered fresh for 30 seconds (prevents duplicate requests)
-    refetchInterval: 60000, // Poll every 60 seconds (increased from 30s to reduce rate limiting)
-    refetchOnWindowFocus: false, // Don't refetch when tab gets focus
-    refetchOnReconnect: false, // Don't refetch on network reconnect
-    retry: 1, // Only retry once on failure
-    retryDelay: 5000, // Wait 5 seconds before retrying
-  });
 
-  const restProjects = restQuery.data ?? {};
-  const restLoading = restQuery.isLoading;
-  const restError = restQuery.error?.message ?? null;
+        if (!response.ok) {
+          throw new Error(`Failed to fetch projects: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success && Array.isArray(result.data)) {
+          const projectsMap: Record<string, Project> = {};
+          result.data.forEach((project: Project) => {
+            projectsMap[project.id] = project;
+          });
+          setRestProjects(projectsMap);
+          setRestError(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects:', err);
+        setRestError(err instanceof Error ? err.message : 'Failed to fetch projects');
+      } finally {
+        setRestLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchProjects();
+
+    // Poll every 30 seconds in cloud mode
+    pollingIntervalRef.current = window.setInterval(fetchProjects, 30000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        window.clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [token]);
 
   // Use REST data in cloud mode, WebSocket data otherwise
   const data = useMemo(
