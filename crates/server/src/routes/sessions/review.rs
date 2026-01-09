@@ -1,7 +1,8 @@
+use std::path::PathBuf;
+
 use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
-    execution_process_repo_state::ExecutionProcessRepoState,
     session::Session,
     workspace::{Workspace, WorkspaceError},
     workspace_repo::WorkspaceRepo,
@@ -68,16 +69,31 @@ pub async fn start_review(
         ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
 
     let context: Option<Vec<ExecutorRepoReviewContext>> = if payload.use_all_workspace_commits {
-        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        let repos =
+            WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace.id).await?;
+        let worktree_path = workspace
+            .container_ref
+            .as_ref()
+            .map(PathBuf::from)
+            .ok_or_else(|| {
+                ApiError::Workspace(WorkspaceError::ValidationError(
+                    "Workspace container not found".to_string(),
+                ))
+            })?;
+
         let mut contexts = Vec::new();
         for repo in repos {
-            if let Some(base_commit) =
-                ExecutionProcessRepoState::find_first_commit_for_repo(pool, workspace.id, repo.id)
-                    .await?
-            {
+            let repo_path = worktree_path.join(&repo.repo.name);
+            // Use fork-point to find where this branch diverged from target.
+            // This survives rebasing because it uses reflog, not stored commit SHAs.
+            if let Ok(base_commit) = deployment.git().get_fork_point(
+                &repo_path,
+                &repo.target_branch,
+                &workspace.branch,
+            ) {
                 contexts.push(ExecutorRepoReviewContext {
-                    repo_id: repo.id,
-                    repo_name: repo.display_name,
+                    repo_id: repo.repo.id,
+                    repo_name: repo.repo.display_name,
                     base_commit,
                 });
             }

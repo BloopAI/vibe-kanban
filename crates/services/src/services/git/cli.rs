@@ -478,7 +478,7 @@ impl GitCli {
 
     /// Return the merge base commit sha of two refs in the given worktree.
     /// If `git merge-base --fork-point` fails, falls back to regular `merge-base`.
-    fn merge_base(&self, worktree_path: &Path, a: &str, b: &str) -> Result<String, GitCliError> {
+    pub fn merge_base(&self, worktree_path: &Path, a: &str, b: &str) -> Result<String, GitCliError> {
         let out = self
             .git(worktree_path, ["merge-base", "--fork-point", a, b])
             .unwrap_or(self.git(worktree_path, ["merge-base", a, b])?);
