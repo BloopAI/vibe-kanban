@@ -45,10 +45,14 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isLoaded) {
+    // Only fetch token when user is loaded AND signed in
+    if (isLoaded && isSignedIn) {
       getToken().then(setToken).catch(console.error);
+    } else if (isLoaded && !isSignedIn) {
+      // Clear token if user signs out
+      setToken(null);
     }
-  }, [getToken, isLoaded]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   const remoteProjectId = project?.remote_project_id;
 
@@ -58,7 +62,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const { data, isConnected, error } = useJsonPatchWsStream(
     endpoint,
-    !!projectId && !!token,
+    !!projectId && !!token && isSignedIn === true,
     initialData,
     { token }
   );

@@ -368,8 +368,9 @@ export function Sidebar() {
     }
   };
 
-  const isProjectActive = (id: string) => {
-    return projectId === id;
+  const isProjectActive = (project: { id: string; name: string }) => {
+    // Compare both UUID and slug for backwards compatibility
+    return projectId === project.id || projectId === getProjectSlug(project);
   };
 
   return (
@@ -474,7 +475,7 @@ export function Sidebar() {
                   icon={FolderKanban}
                   label={project.name}
                   to={`/projects/${getProjectSlug(project)}/tasks`}
-                  isActive={isProjectActive(project.id)}
+                  isActive={isProjectActive(project)}
                   isCollapsed={isCollapsed}
                 />
               ))}

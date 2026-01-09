@@ -30,7 +30,7 @@ export function getTeamSlug(team: Team): string {
  * Get the URL slug for a project
  * Generates from the project name
  */
-export function getProjectSlug(project: Project): string {
+export function getProjectSlug(project: Pick<Project, 'name'>): string {
   return generateSlug(project.name);
 }
 

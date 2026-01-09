@@ -1431,6 +1431,12 @@ export const oauthApi = {
 
   /** Returns the current access token for the remote server (auto-refreshes if needed) */
   getToken: async (): Promise<TokenResponse | null> => {
+    // Don't attempt OAuth token fetch if there's no Clerk auth token
+    // This prevents 401 errors when user is not authenticated
+    const clerkToken = await getAuthToken();
+    if (!clerkToken) {
+      return null;
+    }
     const response = await makeRequest('/api/auth/token');
     if (!response.ok) return null;
     return handleApiResponse<TokenResponse>(response);
