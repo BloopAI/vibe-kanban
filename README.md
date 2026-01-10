@@ -1,3 +1,14 @@
+## About This Fork
+
+This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban). The upstream repository is configured as a remote for easy synchronization with the latest changes.
+
+### Local Modifications
+
+- **PR Title Fix**: Removed "vibe-kanban" suffix from auto-generated PR titles for cleaner commit history
+  - See commit: `9e2bade9` (fix: remove vibe-kanban suffix from auto-generated PR titles)
+
+---
+
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
@@ -53,15 +64,6 @@ We use [GitHub Discussions](https://github.com/mxyhi/vibe-kanban/discussions) fo
 
 We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/mxyhi/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
 
-## About This Fork
-
-This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban). The upstream repository is configured as a remote for easy synchronization with the latest changes.
-
-### Local Modifications
-
-- **PR Title Fix**: Removed "vibe-kanban" suffix from auto-generated PR titles for cleaner commit history
-  - See commit: `9e2bade9` (fix: remove vibe-kanban suffix from auto-generated PR titles)
-
 ## Development
 
 ### Prerequisites
@@ -71,12 +73,14 @@ This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban).
 - [pnpm](https://pnpm.io/) (>=8)
 
 Additional development tools:
+
 ```bash
 cargo install cargo-watch
 cargo install sqlx-cli
 ```
 
 Install dependencies:
+
 ```bash
 pnpm i
 ```
@@ -103,20 +107,19 @@ pnpm build
 1. Run `./local-build.sh`
 2. Test with `cd npx-cli && node bin/cli.js`
 
-
 ### Environment Variables
 
 The following environment variables can be configured at build time or runtime:
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
-| `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
-| `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
-| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
-| `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
-| `HOST` | Runtime | `127.0.0.1` | Backend server host |
-| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
+| Variable                          | Type       | Default           | Description                                                               |
+| --------------------------------- | ---------- | ----------------- | ------------------------------------------------------------------------- |
+| `POSTHOG_API_KEY`                 | Build-time | Empty             | PostHog analytics API key (disables analytics if empty)                   |
+| `POSTHOG_API_ENDPOINT`            | Build-time | Empty             | PostHog analytics endpoint (disables analytics if empty)                  |
+| `PORT`                            | Runtime    | Auto-assign       | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
+| `BACKEND_PORT`                    | Runtime    | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1)                     |
+| `FRONTEND_PORT`                   | Runtime    | `3000`            | Frontend dev server port (dev mode only, overrides PORT)                  |
+| `HOST`                            | Runtime    | `127.0.0.1`       | Backend server host                                                       |
+| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime    | Not set           | Disable git worktree cleanup (for debugging)                              |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
