@@ -101,6 +101,7 @@ export function TeamDocuments() {
   const [isMarkdownEditMode, setIsMarkdownEditMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -385,6 +386,69 @@ export function TeamDocuments() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  }, [teamId, currentFolderId, refresh]);
+
+  // Drag-and-drop handlers for file uploads
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeaveContent = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set to false if leaving the container
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX >= rect.right ||
+      e.clientY < rect.top ||
+      e.clientY >= rect.bottom
+    ) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDropFiles = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length === 0 || !teamId) return;
+
+    // Reuse existing upload logic
+    setIsUploading(true);
+    setUploadResult(null);
+    setScanResult(null);
+
+    try {
+      const formData = new FormData();
+      if (currentFolderId) {
+        formData.append('folder_id', currentFolderId);
+      }
+      for (const file of files) {
+        formData.append('files[]', file);
+      }
+      const result = await documentsApi.upload(teamId, formData);
+      setUploadResult(result);
+      if (result.uploaded > 0) {
+        refresh();
+      }
+    } catch (err) {
+      console.error('Failed to upload files:', err);
+      setUploadResult({
+        uploaded: 0,
+        skipped: 0,
+        errors: ['Upload failed. Please try again.'],
+        uploaded_titles: [],
+      });
+    } finally {
+      setIsUploading(false);
     }
   }, [teamId, currentFolderId, refresh]);
 
@@ -931,7 +995,7 @@ export function TeamDocuments() {
               ) : (
                 <Upload className="h-4 w-4" />
               )}
-              Upload
+              Upload Files
             </Button>
             <Button
               variant="outline"
@@ -1028,7 +1092,25 @@ export function TeamDocuments() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 overflow-auto p-4">
+      <div
+        className="flex-1 min-h-0 overflow-auto p-4 relative"
+        onDragEnter={handleDragEnter}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        onDragLeave={handleDragLeaveContent}
+        onDrop={handleDropFiles}
+      >
+        {/* Drag-and-drop overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="border-2 border-dashed border-primary rounded-lg p-12 text-center">
+              <Upload className="h-12 w-12 mx-auto text-primary mb-4" />
+              <p className="text-lg font-medium">Drop files here to upload</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Supports multiple files
+              </p>
+            </div>
+          </div>
+        )}
         {!hasContent && !searchQuery ? (
           <Card>
             <CardContent className="text-center py-8">
