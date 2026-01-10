@@ -1,5 +1,6 @@
-[build]
-dockerfilePath = "Dockerfile.deploy"
+# Note: Build is handled by GitHub Actions -> Docker Hub
+# Railway pulls from Docker Image source (rupeedev/vibe-kanban-backend)
+# Do NOT add [build] section here - it conflicts with Docker Image mode
 
 [deploy]
 healthcheckPath = "/"
