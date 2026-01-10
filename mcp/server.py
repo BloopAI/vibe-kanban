@@ -4,6 +4,19 @@ Vibe Kanban MCP Server - Task management for AI coding agents.
 
 This MCP server provides tools for managing tasks and issues in vibe-kanban.
 Based on vk-cli.py but exposed as an MCP server for Claude Code integration.
+
+Tools available:
+  - vk_list_teams: List all teams
+  - vk_list_projects: List all projects
+  - vk_list_issues: List issues for a team (with status filter)
+  - vk_list_tasks: List tasks in a project
+  - vk_get_task: Get task details
+  - vk_create_issue: Create a new issue
+  - vk_update_task: Update task status/title/description/priority/assignee/due_date
+  - vk_delete_task: Delete a task
+  - vk_move_task: Move task to another project
+  - vk_list_comments: List comments for a task
+  - vk_add_comment: Add a comment to a task
 """
 
 import json
@@ -13,45 +26,60 @@ from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
-# Configuration
-DEFAULT_PORT = 3003
-DEFAULT_HOST = "127.0.0.1"
+# ============================================================================
+# CONFIGURATION - Synced with cli.py
+# ============================================================================
 
 # Team registry with identifiers and default projects
 KNOWN_TEAMS = {
     # By name (lowercase)
     "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
     "schild": "a2f22deb-901e-436b-9755-644cb26753b7",
-    # By identifier (case-insensitive lookup handled in resolve_team_id)
+    # By identifier (case-insensitive lookup)
     "ika": "a263e43f-43d3-4af7-a947-5f70e6670921",
     "sch": "a2f22deb-901e-436b-9755-644cb26753b7",
 }
 
 # Default project for each team (used when no project specified)
 TEAM_DEFAULT_PROJECTS = {
-    "c1a926de-0683-407d-81de-124e0d161ec5": "ba7fe592-42d0-43f5-add8-f653054c2944",  # vibe-kanban -> frontend
     "a263e43f-43d3-4af7-a947-5f70e6670921": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",  # ikanban -> frontend
     "a2f22deb-901e-436b-9755-644cb26753b7": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",  # schild -> backend
 }
 
-# Project name aliases per team
-KNOWN_PROJECTS = {
-    # vibe-kanban team projects
-    "frontend": "ba7fe592-42d0-43f5-add8-f653054c2944",
-    "backend": "de246043-3b27-45e4-bd7a-f0d685b317d0",
-    "integration": "bde6ec12-2cf1-4784-9a0e-d03308ade450",
-    "database": "731d6e37-9223-4595-93a0-412a38af4540",
-    "ai": "ffa3f7db-bf84-4e88-b04d-59f5f98a0522",
+# Project name aliases (IKA team)
+IKA_PROJECTS = {
+    "frontend": "ff89ece5-eb49-4d8b-a349-4fc227773cbc",
+    "backend": "use-dynamic-lookup",
+    "integration": "use-dynamic-lookup",
 }
 
+# Project name aliases (SCH team)
+SCH_PROJECTS = {
+    "backend": "ec364e49-b620-48e1-9dd1-8744eaedb5e2",
+    "frontend": "a0838686-0c56-4492-bf6d-65847451496a",
+    "data-layer": "20f980e2-9cd8-427d-a11f-99cbff31acad",
+    "temporal": "0ea3cbc6-11c3-4d68-bb99-7493a40de833",
+    "elevenlabs": "e09697e8-c605-46a0-9dbc-877918fdca08",
+    "infra": "b40b5eca-1856-4b69-928f-0ec3ecd2737b",
+}
+
+STATUSES = ["todo", "inprogress", "inreview", "done", "cancelled"]
+PRIORITIES = {
+    "none": 0,
+    "urgent": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 4,
+}
+
+# ============================================================================
+# API HELPERS
+# ============================================================================
 
 def get_base_url():
     """Get the backend URL."""
-    # Use remote production API by default for data consistency
     if os.environ.get("VIBE_BACKEND_URL"):
         return os.environ["VIBE_BACKEND_URL"]
-
-    # Default to remote production API
     return "https://api.scho1ar.com"
 
 
@@ -61,7 +89,6 @@ def api_request(endpoint, method="GET", data=None):
     url = f"{base_url}/api{endpoint}"
     headers = {"Content-Type": "application/json"}
 
-    # Add authorization token if available
     auth_token = os.environ.get("VIBE_API_TOKEN")
     if auth_token:
         headers["Authorization"] = f"Bearer {auth_token}"
@@ -73,27 +100,50 @@ def api_request(endpoint, method="GET", data=None):
         else:
             req = Request(url, headers=headers, method=method)
 
-        with urlopen(req, timeout=10) as response:
+        with urlopen(req, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError) as e:
-        return {"success": False, "error": str(e)}
-
-
-def resolve_project_id(project_ref):
-    """Resolve project name or ID to actual ID."""
-    return KNOWN_PROJECTS.get(project_ref, project_ref)
+    except HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        try:
+            error_json = json.loads(error_body)
+            msg = error_json.get("message", error_body)
+        except:
+            msg = error_body
+        return {"success": False, "error": f"HTTP {e.code}: {msg}"}
+    except URLError as e:
+        return {"success": False, "error": f"Connection error: {e.reason}"}
 
 
 def resolve_team_id(team_ref):
     """Resolve team name, identifier, or ID to actual ID (case-insensitive)."""
-    # Try exact match first, then lowercase
+    if not team_ref:
+        return None
     if team_ref in KNOWN_TEAMS:
         return KNOWN_TEAMS[team_ref]
     lower_ref = team_ref.lower()
     if lower_ref in KNOWN_TEAMS:
         return KNOWN_TEAMS[lower_ref]
-    # Assume it's already a UUID
-    return team_ref
+    return team_ref  # Assume it's already a UUID
+
+
+def resolve_project_id(project_ref, team_id=None):
+    """Resolve project name or ID to actual ID."""
+    if not project_ref:
+        return TEAM_DEFAULT_PROJECTS.get(team_id) if team_id else None
+
+    lower_ref = project_ref.lower()
+
+    # Check team-specific projects
+    if team_id == "a263e43f-43d3-4af7-a947-5f70e6670921":  # IKA
+        if lower_ref in IKA_PROJECTS:
+            proj_id = IKA_PROJECTS[lower_ref]
+            if not proj_id.startswith("use-"):
+                return proj_id
+    elif team_id == "a2f22deb-901e-436b-9755-644cb26753b7":  # SCH
+        if lower_ref in SCH_PROJECTS:
+            return SCH_PROJECTS[lower_ref]
+
+    return project_ref  # Assume it's a UUID
 
 
 def get_default_project_for_team(team_id):
@@ -101,14 +151,49 @@ def get_default_project_for_team(team_id):
     return TEAM_DEFAULT_PROJECTS.get(team_id)
 
 
+def get_team_identifier(team_id):
+    """Get the team identifier (IKA, SCH) from team ID."""
+    for key, value in KNOWN_TEAMS.items():
+        if value == team_id and len(key) == 3:
+            return key.upper()
+    return None
+
+
+def parse_priority(priority_val):
+    """Parse priority string or int to integer value."""
+    if priority_val is None:
+        return None
+    if isinstance(priority_val, int):
+        return priority_val
+    if isinstance(priority_val, str):
+        lower = priority_val.lower()
+        if lower in PRIORITIES:
+            return PRIORITIES[lower]
+        try:
+            return int(priority_val)
+        except ValueError:
+            return None
+    return None
+
+
+# ============================================================================
 # MCP Tool Handlers
+# ============================================================================
 
 def handle_list_teams(params):
     """List all teams."""
     result = api_request("/teams")
     if result.get("success"):
         teams = result.get("data", [])
-        return {"teams": [{"id": t["id"], "name": t["name"], "identifier": t.get("identifier")} for t in teams]}
+        return {
+            "teams": [{
+                "id": t["id"],
+                "name": t["name"],
+                "identifier": t.get("identifier"),
+                "slug": t.get("slug"),
+            } for t in teams],
+            "count": len(teams)
+        }
     return {"error": result.get("error", "Failed to fetch teams")}
 
 
@@ -117,25 +202,45 @@ def handle_list_projects(params):
     result = api_request("/projects")
     if result.get("success"):
         projects = result.get("data", [])
-        return {"projects": [{"id": p["id"], "name": p["name"]} for p in projects]}
+        return {
+            "projects": [{
+                "id": p["id"],
+                "name": p["name"],
+                "description": p.get("description"),
+            } for p in projects],
+            "count": len(projects)
+        }
     return {"error": result.get("error", "Failed to fetch projects")}
 
 
 def handle_list_issues(params):
-    """List issues for a team."""
-    team_id = resolve_team_id(params.get("team", "vibe-kanban"))
+    """List issues for a team with optional status filter."""
+    team = params.get("team", "IKA")
+    team_id = resolve_team_id(team)
+    status_filter = params.get("status")
+
     result = api_request(f"/teams/{team_id}/issues")
     if result.get("success"):
         issues = result.get("data", [])
+
+        # Apply status filter if specified
+        if status_filter:
+            issues = [i for i in issues if i.get("status") == status_filter]
+
+        team_identifier = get_team_identifier(team_id) or team
+
         return {
+            "team": team_identifier,
             "issues": [{
                 "id": i["id"],
                 "issue_number": i.get("issue_number"),
+                "issue_key": f"{team_identifier}-{i.get('issue_number')}" if i.get("issue_number") else None,
                 "title": i["title"],
                 "status": i["status"],
-                "project_id": i.get("project_id"),
                 "priority": i.get("priority"),
                 "assignee_id": i.get("assignee_id"),
+                "due_date": i.get("due_date"),
+                "project_id": i.get("project_id"),
             } for i in issues],
             "count": len(issues)
         }
@@ -144,7 +249,8 @@ def handle_list_issues(params):
 
 def handle_list_tasks(params):
     """List tasks in a project."""
-    project_id = resolve_project_id(params.get("project", "frontend"))
+    project = params.get("project", "frontend")
+    project_id = resolve_project_id(project)
     status = params.get("status")
 
     endpoint = f"/tasks?project_id={project_id}"
@@ -162,6 +268,8 @@ def handle_list_tasks(params):
                 "issue_number": t.get("issue_number"),
                 "team_id": t.get("team_id"),
                 "priority": t.get("priority"),
+                "assignee_id": t.get("assignee_id"),
+                "due_date": t.get("due_date"),
             } for t in tasks],
             "count": len(tasks)
         }
@@ -176,14 +284,24 @@ def handle_get_task(params):
 
     result = api_request(f"/tasks/{task_id}")
     if result.get("success"):
-        return {"task": result.get("data")}
+        task = result.get("data", {})
+        team_id = task.get("team_id")
+        team_identifier = get_team_identifier(team_id) if team_id else None
+        issue_number = task.get("issue_number")
+
+        return {
+            "task": {
+                **task,
+                "issue_key": f"{team_identifier}-{issue_number}" if team_identifier and issue_number else None,
+            }
+        }
     return {"error": result.get("error", "Failed to fetch task")}
 
 
 def handle_create_issue(params):
     """Create a new team issue."""
     title = params.get("title")
-    team = params.get("team", "vibe-kanban")
+    team = params.get("team", "IKA")
 
     if not title:
         return {"error": "title is required"}
@@ -192,12 +310,9 @@ def handle_create_issue(params):
 
     # Get project: use specified project, or default for the team
     project = params.get("project")
-    if project:
-        project_id = resolve_project_id(project)
-    else:
-        project_id = get_default_project_for_team(team_id)
-        if not project_id:
-            return {"error": f"No default project configured for team '{team}'. Please specify a project."}
+    project_id = resolve_project_id(project, team_id)
+    if not project_id:
+        return {"error": f"No default project configured for team '{team}'. Please specify a project."}
 
     data = {
         "project_id": project_id,
@@ -208,20 +323,28 @@ def handle_create_issue(params):
 
     if params.get("description"):
         data["description"] = params["description"]
-    if params.get("priority"):
-        data["priority"] = params["priority"]
+    if params.get("priority") is not None:
+        priority = parse_priority(params["priority"])
+        if priority is not None:
+            data["priority"] = priority
     if params.get("assignee_id"):
         data["assignee_id"] = params["assignee_id"]
+    if params.get("due_date"):
+        data["due_date"] = params["due_date"]
 
     result = api_request("/tasks", method="POST", data=data)
     if result.get("success"):
         task = result.get("data", {})
+        team_identifier = get_team_identifier(team_id) or team
+        issue_number = task.get("issue_number")
+
         return {
             "task_id": task.get("id"),
-            "issue_number": task.get("issue_number"),
+            "issue_number": issue_number,
+            "issue_key": f"{team_identifier}-{issue_number}" if issue_number else None,
             "title": task.get("title"),
             "status": task.get("status"),
-            "message": f"Created issue #{task.get('issue_number')}: {task.get('title')}"
+            "message": f"Created {team_identifier}-{issue_number}: {task.get('title')}"
         }
     return {"error": result.get("error", "Failed to create issue")}
 
@@ -237,15 +360,19 @@ def handle_update_task(params):
         data["status"] = params["status"]
     if params.get("title"):
         data["title"] = params["title"]
-    if params.get("description"):
+    if params.get("description") is not None:
         data["description"] = params["description"]
     if params.get("priority") is not None:
-        data["priority"] = params["priority"]
+        priority = parse_priority(params["priority"])
+        if priority is not None:
+            data["priority"] = priority
     if params.get("assignee_id"):
         data["assignee_id"] = params["assignee_id"]
+    if params.get("due_date"):
+        data["due_date"] = params["due_date"]
 
     if not data:
-        return {"error": "No updates provided"}
+        return {"error": "No updates provided. Specify status, title, description, priority, assignee_id, or due_date."}
 
     result = api_request(f"/tasks/{task_id}", method="PUT", data=data)
     if result.get("success"):
@@ -259,12 +386,105 @@ def handle_update_task(params):
     return {"error": result.get("error", "Failed to update task")}
 
 
+def handle_delete_task(params):
+    """Delete a task."""
+    task_id = params.get("task_id")
+    if not task_id:
+        return {"error": "task_id is required"}
+
+    result = api_request(f"/tasks/{task_id}", method="DELETE")
+    if result.get("success"):
+        return {
+            "deleted": True,
+            "task_id": task_id,
+            "message": f"Deleted task: {task_id}"
+        }
+    return {"error": result.get("error", "Failed to delete task")}
+
+
+def handle_move_task(params):
+    """Move a task to another project."""
+    task_id = params.get("task_id")
+    project_id = params.get("project_id")
+
+    if not task_id:
+        return {"error": "task_id is required"}
+    if not project_id:
+        return {"error": "project_id is required"}
+
+    # Resolve project name to ID if needed
+    resolved_project_id = resolve_project_id(project_id)
+
+    data = {"project_id": resolved_project_id}
+    result = api_request(f"/tasks/{task_id}/move", method="POST", data=data)
+
+    if result.get("success"):
+        task = result.get("data", {})
+        return {
+            "task_id": task.get("id"),
+            "title": task.get("title"),
+            "new_project_id": task.get("project_id"),
+            "message": f"Moved task to project: {resolved_project_id}"
+        }
+    return {"error": result.get("error", "Failed to move task")}
+
+
+def handle_list_comments(params):
+    """List comments for a task."""
+    task_id = params.get("task_id")
+    if not task_id:
+        return {"error": "task_id is required"}
+
+    result = api_request(f"/tasks/{task_id}/comments")
+    if result.get("success"):
+        comments = result.get("data", [])
+        return {
+            "task_id": task_id,
+            "comments": [{
+                "id": c.get("id"),
+                "content": c.get("content"),
+                "author_name": c.get("author_name"),
+                "created_at": c.get("created_at"),
+            } for c in comments],
+            "count": len(comments)
+        }
+    return {"error": result.get("error", "Failed to fetch comments")}
+
+
+def handle_add_comment(params):
+    """Add a comment to a task."""
+    task_id = params.get("task_id")
+    content = params.get("content")
+
+    if not task_id:
+        return {"error": "task_id is required"}
+    if not content:
+        return {"error": "content is required"}
+
+    data = {"content": content}
+    if params.get("author_name"):
+        data["author_name"] = params["author_name"]
+
+    result = api_request(f"/tasks/{task_id}/comments", method="POST", data=data)
+    if result.get("success"):
+        comment = result.get("data", {})
+        return {
+            "comment_id": comment.get("id"),
+            "task_id": task_id,
+            "content": comment.get("content"),
+            "message": f"Added comment to task {task_id}"
+        }
+    return {"error": result.get("error", "Failed to add comment")}
+
+
+# ============================================================================
 # MCP Protocol Implementation
+# ============================================================================
 
 TOOLS = [
     {
         "name": "vk_list_teams",
-        "description": "List all teams in vibe-kanban",
+        "description": "List all teams in vibe-kanban. Teams are the top-level organizational unit.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -272,7 +492,7 @@ TOOLS = [
     },
     {
         "name": "vk_list_projects",
-        "description": "List all projects in vibe-kanban",
+        "description": "List all projects in vibe-kanban. Projects contain tasks and belong to teams.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -280,40 +500,45 @@ TOOLS = [
     },
     {
         "name": "vk_list_issues",
-        "description": "List issues for a team. Issues appear on the team's kanban board.",
+        "description": "List issues for a team. Issues appear on the team's kanban board. Use status filter to find issues in specific states.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "team": {
                     "type": "string",
-                    "description": "Team name, identifier (IKA, SCH), or ID. Default: vibe-kanban",
-                    "default": "vibe-kanban"
+                    "description": "Team identifier: IKA (iKanban), SCH (Schild), or team UUID. Default: IKA",
+                    "default": "IKA"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["todo", "inprogress", "inreview", "done", "cancelled"],
+                    "description": "Filter by status (optional)"
                 }
             },
         }
     },
     {
         "name": "vk_list_tasks",
-        "description": "List tasks in a project",
+        "description": "List tasks in a project. Tasks are work items that can be assigned and tracked.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "project": {
                     "type": "string",
-                    "description": "Project name (frontend, backend, integration) or ID",
+                    "description": "Project name (frontend, backend, integration) or UUID. Default: frontend",
                     "default": "frontend"
                 },
                 "status": {
                     "type": "string",
                     "enum": ["todo", "inprogress", "inreview", "done", "cancelled"],
-                    "description": "Filter by status"
+                    "description": "Filter by status (optional)"
                 }
             },
         }
     },
     {
         "name": "vk_get_task",
-        "description": "Get details of a specific task by ID",
+        "description": "Get detailed information about a specific task by ID. Returns all task fields including description, assignee, due date, etc.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -327,35 +552,44 @@ TOOLS = [
     },
     {
         "name": "vk_create_issue",
-        "description": "Create a new team issue. Use this to create tasks that appear on the team kanban board.",
+        "description": "Create a new team issue. Use this to create tasks that appear on the team kanban board. Returns the new issue ID and issue number (e.g., IKA-123).",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "title": {
                     "type": "string",
-                    "description": "Issue title"
+                    "description": "Issue title (required)"
                 },
                 "team": {
                     "type": "string",
-                    "description": "Team name, identifier (IKA, SCH), or ID. Default: vibe-kanban",
-                    "default": "vibe-kanban"
+                    "description": "Team identifier: IKA (iKanban), SCH (Schild), or UUID. Default: IKA",
+                    "default": "IKA"
                 },
                 "project": {
                     "type": "string",
-                    "description": "Project name or ID. Optional - uses team's default project if not specified"
+                    "description": "Project name or UUID. Optional - uses team's default project if not specified"
                 },
                 "description": {
                     "type": "string",
-                    "description": "Issue description"
+                    "description": "Issue description (optional)"
                 },
                 "status": {
                     "type": "string",
                     "enum": ["todo", "inprogress", "inreview", "done", "cancelled"],
+                    "description": "Initial status. Default: todo",
                     "default": "todo"
                 },
                 "priority": {
-                    "type": "integer",
-                    "description": "Priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low"
+                    "type": ["integer", "string"],
+                    "description": "Priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low (or use names: urgent, high, medium, low)"
+                },
+                "assignee_id": {
+                    "type": "string",
+                    "description": "Assignee user ID (optional)"
+                },
+                "due_date": {
+                    "type": "string",
+                    "description": "Due date in ISO format: YYYY-MM-DD (optional)"
                 }
             },
             "required": ["title"]
@@ -363,7 +597,92 @@ TOOLS = [
     },
     {
         "name": "vk_update_task",
-        "description": "Update an existing task's status, title, description, or priority",
+        "description": "Update an existing task's status, title, description, priority, assignee, or due date. Only provided fields are updated.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string",
+                    "description": "Task UUID (required)"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["todo", "inprogress", "inreview", "done", "cancelled"],
+                    "description": "New status"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "New title"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "New description (empty string clears it)"
+                },
+                "priority": {
+                    "type": ["integer", "string"],
+                    "description": "Priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low (or use names)"
+                },
+                "assignee_id": {
+                    "type": "string",
+                    "description": "Assignee user ID"
+                },
+                "due_date": {
+                    "type": "string",
+                    "description": "Due date in ISO format: YYYY-MM-DD"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "vk_delete_task",
+        "description": "Delete a task permanently. This action cannot be undone. All associated data (comments, links) will be deleted.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string",
+                    "description": "Task UUID to delete"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "vk_move_task",
+        "description": "Move a task to a different project. Useful for reorganizing work between projects.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string",
+                    "description": "Task UUID to move"
+                },
+                "project_id": {
+                    "type": "string",
+                    "description": "Target project name or UUID"
+                }
+            },
+            "required": ["task_id", "project_id"]
+        }
+    },
+    {
+        "name": "vk_list_comments",
+        "description": "List all comments on a task. Comments are ordered by creation date.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "string",
+                    "description": "Task UUID"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "vk_add_comment",
+        "description": "Add a comment to a task. Useful for adding notes, updates, or context to tasks.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -371,22 +690,16 @@ TOOLS = [
                     "type": "string",
                     "description": "Task UUID"
                 },
-                "status": {
+                "content": {
                     "type": "string",
-                    "enum": ["todo", "inprogress", "inreview", "done", "cancelled"]
+                    "description": "Comment content (required)"
                 },
-                "title": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "priority": {
-                    "type": "integer",
-                    "description": "Priority: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low"
+                "author_name": {
+                    "type": "string",
+                    "description": "Author name (optional, for display purposes)"
                 }
             },
-            "required": ["task_id"]
+            "required": ["task_id", "content"]
         }
     },
 ]
@@ -399,6 +712,10 @@ TOOL_HANDLERS = {
     "vk_get_task": handle_get_task,
     "vk_create_issue": handle_create_issue,
     "vk_update_task": handle_update_task,
+    "vk_delete_task": handle_delete_task,
+    "vk_move_task": handle_move_task,
+    "vk_list_comments": handle_list_comments,
+    "vk_add_comment": handle_add_comment,
 }
 
 
@@ -425,7 +742,7 @@ def handle_request(request):
                 },
                 "serverInfo": {
                     "name": "vibe-kanban",
-                    "version": "1.0.0"
+                    "version": "2.0.0"
                 }
             }
         }
@@ -474,7 +791,7 @@ def handle_request(request):
                 "id": request_id,
                 "error": {
                     "code": -32601,
-                    "message": f"Unknown tool: {tool_name}"
+                    "message": f"Unknown tool: {tool_name}. Available tools: {', '.join(TOOL_HANDLERS.keys())}"
                 }
             }
 

@@ -4,12 +4,17 @@ vibe-kanban CLI - Direct API client for vibe-kanban task management.
 
 Usage:
     ./cli.py teams                                    # List all teams
+    ./cli.py projects                                 # List all projects
     ./cli.py issues IKA                               # List issues for iKanban team
-    ./cli.py issues SCH                               # List issues for Schild team
+    ./cli.py issues SCH --status inprogress           # Filter by status
     ./cli.py create IKA "title"                       # Create issue in iKanban
     ./cli.py create SCH "title" --project backend     # Create issue in Schild
     ./cli.py update <task_id> --status done           # Update task status
     ./cli.py task <task_id>                           # Get task details
+    ./cli.py delete <task_id>                         # Delete a task
+    ./cli.py move <task_id> <project_id>              # Move task to another project
+    ./cli.py comments <task_id>                       # List task comments
+    ./cli.py comment <task_id> "message"              # Add comment to task
 """
 
 import argparse
@@ -31,7 +36,7 @@ except ImportError:
     pass  # dotenv not required if env vars are set
 
 # ============================================================================
-# CONFIGURATION - Shared with server.py
+# CONFIGURATION - Shared between cli.py and server.py
 # ============================================================================
 
 # Team registry with identifiers and default projects
@@ -68,6 +73,13 @@ SCH_PROJECTS = {
 }
 
 STATUSES = ["todo", "inprogress", "inreview", "done", "cancelled"]
+PRIORITIES = {
+    "none": 0,
+    "urgent": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 4,
+}
 
 # ============================================================================
 # API HELPERS
@@ -134,7 +146,9 @@ def resolve_project_id(project_ref, team_id=None):
     # Check team-specific projects first
     if team_id == "a263e43f-43d3-4af7-a947-5f70e6670921":  # IKA
         if project_ref.lower() in IKA_PROJECTS:
-            return IKA_PROJECTS[project_ref.lower()]
+            proj_id = IKA_PROJECTS[project_ref.lower()]
+            if proj_id != "use-vk_list_projects":
+                return proj_id
     elif team_id == "a2f22deb-901e-436b-9755-644cb26753b7":  # SCH
         if project_ref.lower() in SCH_PROJECTS:
             return SCH_PROJECTS[project_ref.lower()]
@@ -148,6 +162,21 @@ def get_team_identifier(team_id):
         if value == team_id and len(key) == 3:  # Only return 3-letter identifiers
             return key.upper()
     return None
+
+
+def parse_priority(priority_str):
+    """Parse priority string or int to integer value."""
+    if priority_str is None:
+        return None
+    if isinstance(priority_str, int):
+        return priority_str
+    lower = priority_str.lower()
+    if lower in PRIORITIES:
+        return PRIORITIES[lower]
+    try:
+        return int(priority_str)
+    except ValueError:
+        return None
 
 
 # ============================================================================
@@ -189,23 +218,28 @@ def cmd_issues(args):
     issues = result.get("data", [])
     team_identifier = get_team_identifier(team_id) or "?"
 
-    if args.json:
-        print(json.dumps(issues, indent=2))
-        return
-
     # Filter by status if specified
     if args.status:
         issues = [i for i in issues if i.get("status") == args.status]
 
+    # Filter by assignee if specified
+    if args.assignee:
+        issues = [i for i in issues if i.get("assignee_id") == args.assignee]
+
+    if args.json:
+        print(json.dumps(issues, indent=2))
+        return
+
     print(f"\n{team_identifier} Issues ({len(issues)}):")
-    print(f"{'#':<8} {'Status':<12} {'Title'}")
-    print("-" * 70)
+    print(f"{'#':<8} {'Status':<12} {'Pri':<4} {'Title'}")
+    print("-" * 80)
 
     for issue in issues:
         num = f"{team_identifier}-{issue.get('issue_number', '?')}"
         status = issue.get("status", "?")
+        priority = issue.get("priority") or "-"
         title = issue.get("title", "Untitled")[:50]
-        print(f"{num:<8} {status:<12} {title}")
+        print(f"{num:<8} {status:<12} {priority:<4} {title}")
 
 
 def cmd_create(args):
@@ -230,7 +264,13 @@ def cmd_create(args):
     if args.description:
         data["description"] = args.description
     if args.priority is not None:
-        data["priority"] = args.priority
+        priority = parse_priority(args.priority)
+        if priority is not None:
+            data["priority"] = priority
+    if args.assignee:
+        data["assignee_id"] = args.assignee
+    if args.due_date:
+        data["due_date"] = args.due_date
 
     result = api_request("/tasks", method="POST", data=data)
     if not result.get("success"):
@@ -259,10 +299,16 @@ def cmd_update(args):
     if args.description:
         data["description"] = args.description
     if args.priority is not None:
-        data["priority"] = args.priority
+        priority = parse_priority(args.priority)
+        if priority is not None:
+            data["priority"] = priority
+    if args.assignee:
+        data["assignee_id"] = args.assignee
+    if args.due_date:
+        data["due_date"] = args.due_date
 
     if not data:
-        print("No updates specified. Use --status, --title, --description, or --priority", file=sys.stderr)
+        print("No updates specified. Use --status, --title, --description, --priority, --assignee, or --due-date", file=sys.stderr)
         sys.exit(1)
 
     result = api_request(f"/tasks/{args.task_id}", method="PUT", data=data)
@@ -302,12 +348,108 @@ def cmd_task(args):
     else:
         print(f"\n{task.get('title', 'Untitled')}")
 
-    print(f"  ID:      {task.get('id', '')}")
-    print(f"  Status:  {task.get('status', 'unknown')}")
+    print(f"  ID:       {task.get('id', '')}")
+    print(f"  Status:   {task.get('status', 'unknown')}")
     if task.get("priority"):
         print(f"  Priority: {task['priority']}")
+    if task.get("assignee_id"):
+        print(f"  Assignee: {task['assignee_id']}")
+    if task.get("due_date"):
+        print(f"  Due Date: {task['due_date']}")
     if task.get("description"):
-        print(f"  Description: {task['description'][:100]}...")
+        desc = task['description']
+        if len(desc) > 100:
+            desc = desc[:100] + "..."
+        print(f"  Description: {desc}")
+
+
+def cmd_delete(args):
+    """Delete a task."""
+    if not args.force:
+        confirm = input(f"Are you sure you want to delete task {args.task_id}? [y/N] ")
+        if confirm.lower() != 'y':
+            print("Cancelled")
+            return
+
+    result = api_request(f"/tasks/{args.task_id}", method="DELETE")
+    if not result.get("success"):
+        print("Failed to delete task", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps({"deleted": True, "task_id": args.task_id}, indent=2))
+        return
+
+    print(f"Deleted task: {args.task_id}")
+
+
+def cmd_move(args):
+    """Move a task to another project."""
+    data = {"project_id": args.project_id}
+
+    result = api_request(f"/tasks/{args.task_id}/move", method="POST", data=data)
+    if not result.get("success"):
+        print("Failed to move task", file=sys.stderr)
+        sys.exit(1)
+
+    task = result.get("data", {})
+
+    if args.json:
+        print(json.dumps(task, indent=2))
+        return
+
+    print(f"Moved task to project: {args.project_id}")
+    print(f"  Task: {task.get('title')}")
+
+
+def cmd_comments(args):
+    """List comments for a task."""
+    result = api_request(f"/tasks/{args.task_id}/comments")
+    if not result.get("success"):
+        print("Failed to fetch comments", file=sys.stderr)
+        sys.exit(1)
+
+    comments = result.get("data", [])
+
+    if args.json:
+        print(json.dumps(comments, indent=2))
+        return
+
+    if not comments:
+        print("No comments on this task")
+        return
+
+    print(f"\nComments ({len(comments)}):")
+    print("-" * 60)
+    for comment in comments:
+        author = comment.get("author_name", "Unknown")
+        created = comment.get("created_at", "")[:10]
+        content = comment.get("content", "")
+        print(f"[{created}] {author}:")
+        print(f"  {content}")
+        print()
+
+
+def cmd_comment(args):
+    """Add a comment to a task."""
+    data = {"content": args.content}
+
+    if args.author_name:
+        data["author_name"] = args.author_name
+
+    result = api_request(f"/tasks/{args.task_id}/comments", method="POST", data=data)
+    if not result.get("success"):
+        print("Failed to add comment", file=sys.stderr)
+        sys.exit(1)
+
+    comment = result.get("data", {})
+
+    if args.json:
+        print(json.dumps(comment, indent=2))
+        return
+
+    print(f"Added comment to task {args.task_id}")
+    print(f"  ID: {comment.get('id')}")
 
 
 def cmd_projects(args):
@@ -341,15 +483,22 @@ def main():
         epilog="""
 Examples:
   %(prog)s teams                              List all teams
+  %(prog)s projects                           List all projects
   %(prog)s issues IKA                         List iKanban issues
   %(prog)s issues SCH --status inprogress     List Schild in-progress issues
   %(prog)s create IKA "Fix bug"               Create issue in iKanban
   %(prog)s create SCH "Add feature" -p 1      Create urgent issue in Schild
   %(prog)s update <id> --status done          Mark task done
   %(prog)s task <id>                          Get task details
+  %(prog)s delete <id>                        Delete a task
+  %(prog)s delete <id> --force                Delete without confirmation
+  %(prog)s move <id> <project_id>             Move task to project
+  %(prog)s comments <id>                      List task comments
+  %(prog)s comment <id> "Great work!"         Add comment to task
 
 Teams: IKA (iKanban), SCH (Schild)
 Statuses: todo, inprogress, inreview, done, cancelled
+Priorities: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low (or use names)
         """
     )
 
@@ -366,6 +515,7 @@ Statuses: todo, inprogress, inreview, done, cancelled
     issues_p = subparsers.add_parser("issues", help="List issues for a team")
     issues_p.add_argument("team", help="Team: IKA, SCH, or UUID")
     issues_p.add_argument("--status", "-s", choices=STATUSES, help="Filter by status")
+    issues_p.add_argument("--assignee", "-a", help="Filter by assignee ID")
 
     # create
     create_p = subparsers.add_parser("create", help="Create a new issue")
@@ -374,7 +524,9 @@ Statuses: todo, inprogress, inreview, done, cancelled
     create_p.add_argument("--project", help="Project name or ID (optional)")
     create_p.add_argument("--description", "-d", help="Description")
     create_p.add_argument("--status", "-s", choices=STATUSES, default="todo")
-    create_p.add_argument("--priority", "-p", type=int, help="Priority: 0-4")
+    create_p.add_argument("--priority", "-p", help="Priority: 0-4 or urgent/high/medium/low")
+    create_p.add_argument("--assignee", "-a", help="Assignee user ID")
+    create_p.add_argument("--due-date", dest="due_date", help="Due date (ISO format: YYYY-MM-DD)")
 
     # update
     update_p = subparsers.add_parser("update", help="Update a task")
@@ -382,11 +534,33 @@ Statuses: todo, inprogress, inreview, done, cancelled
     update_p.add_argument("--status", "-s", choices=STATUSES, help="New status")
     update_p.add_argument("--title", "-t", help="New title")
     update_p.add_argument("--description", "-d", help="New description")
-    update_p.add_argument("--priority", "-p", type=int, help="New priority")
+    update_p.add_argument("--priority", "-p", help="New priority: 0-4 or urgent/high/medium/low")
+    update_p.add_argument("--assignee", "-a", help="Assignee user ID")
+    update_p.add_argument("--due-date", dest="due_date", help="Due date (ISO format: YYYY-MM-DD)")
 
     # task
     task_p = subparsers.add_parser("task", help="Get task details")
     task_p.add_argument("task_id", help="Task UUID")
+
+    # delete
+    delete_p = subparsers.add_parser("delete", help="Delete a task")
+    delete_p.add_argument("task_id", help="Task UUID")
+    delete_p.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+
+    # move
+    move_p = subparsers.add_parser("move", help="Move task to another project")
+    move_p.add_argument("task_id", help="Task UUID")
+    move_p.add_argument("project_id", help="Target project UUID")
+
+    # comments
+    comments_p = subparsers.add_parser("comments", help="List comments for a task")
+    comments_p.add_argument("task_id", help="Task UUID")
+
+    # comment (add)
+    comment_p = subparsers.add_parser("comment", help="Add a comment to a task")
+    comment_p.add_argument("task_id", help="Task UUID")
+    comment_p.add_argument("content", help="Comment content")
+    comment_p.add_argument("--author", dest="author_name", help="Author name (optional)")
 
     args = parser.parse_args()
 
@@ -405,6 +579,10 @@ Statuses: todo, inprogress, inreview, done, cancelled
         "create": cmd_create,
         "update": cmd_update,
         "task": cmd_task,
+        "delete": cmd_delete,
+        "move": cmd_move,
+        "comments": cmd_comments,
+        "comment": cmd_comment,
     }
 
     handler = commands.get(args.command)

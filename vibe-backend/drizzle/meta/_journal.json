@@ -8,6 +8,13 @@
       "when": 1767850259577,
       "tag": "0000_bizarre_sir_ram",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1736524800000,
+      "tag": "0001_supabase_storage_policies",
+      "breakpoints": true
     }
   ]
 }
