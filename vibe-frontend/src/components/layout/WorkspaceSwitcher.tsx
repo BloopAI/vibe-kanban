@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -21,9 +22,13 @@ import {
   Settings,
   Search,
   PenSquare,
+  FolderKanban,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
+import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 
 interface Workspace {
   id: string;
@@ -41,6 +46,7 @@ const defaultWorkspace: Workspace = {
 };
 
 export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
+  const navigate = useNavigate();
   const [currentWorkspace] = useState<Workspace>(defaultWorkspace);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -52,9 +58,34 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
     ws.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleQuickAction = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // TODO: Implement quick create action (new issue, project, etc.)
+  const handleCreateWorkspace = async () => {
+    setIsOpen(false);
+    try {
+      await TeamFormDialog.show({});
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleWorkspaceSettings = () => {
+    setIsOpen(false);
+    navigate('/settings/organizations');
+  };
+
+  const handleCreateProject = async () => {
+    try {
+      await ProjectFormDialog.show({});
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    try {
+      await TeamFormDialog.show({});
+    } catch {
+      // User cancelled
+    }
   };
 
   if (isCollapsed) {
@@ -138,34 +169,50 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
             </div>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2">
+          <DropdownMenuItem className="gap-2" onClick={handleCreateWorkspace}>
             <Plus className="h-4 w-4" />
             <span>Create workspace</span>
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2">
+          <DropdownMenuItem className="gap-2" onClick={handleWorkspaceSettings}>
             <Settings className="h-4 w-4" />
             <span>Workspace settings</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              onClick={handleQuickAction}
-            >
-              <PenSquare className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Quick create
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <DropdownMenu>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                >
+                  <PenSquare className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Quick create
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <DropdownMenuContent align="end" sideOffset={8}>
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+            Create new
+          </DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleCreateProject}>
+            <FolderKanban className="h-4 w-4 mr-2" />
+            New Project
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleCreateTeam}>
+            <Users className="h-4 w-4 mr-2" />
+            New Team
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
