@@ -27,12 +27,17 @@
 
 ## Phase 1: Task Setup
 
-Create a task in iKanban before starting any work.
+Create a task in iKanban with a description before starting any work.
 
 ```bash
 cd /Users/rupeshpanwar/Documents/Projects/iKanban/mcp
-python3 ikanban.py create IKA "Task title" -s inprogress
+python3 ikanban.py create IKA "Task title" -s inprogress -d "Description of what needs to be done, why, and acceptance criteria"
 ```
+
+**IMPORTANT:** Always include `-d "description"` with meaningful context:
+- What the task accomplishes
+- Why it's needed
+- Key acceptance criteria
 
 **Output:** `Created IKA-XX: Task title`
 
@@ -322,15 +327,23 @@ python3 ikanban.py comment IKA-XX "Planning docs: <type>/IKA-XX-<feature>-flow.m
 
 **Only mark done if all tests passed!**
 
+### 8.1 Add Summary Comment (BEFORE marking done)
+
 ```bash
 cd /Users/rupeshpanwar/Documents/Projects/iKanban/mcp
 
-# Update status and add summary
-python3 ikanban.py update IKA-XX -s done -d "Completed: <summary>. Tests: passed. Docs: <type>/IKA-XX-*"
-
-# Add final comment
-python3 ikanban.py comment IKA-XX "Completed: <what was done>. All Playwright tests passing."
+# Add completion summary as a COMMENT (not description update)
+python3 ikanban.py comment IKA-XX "Summary: <what was implemented>, <key changes made>, <test status>. Example: Renamed Upload button to Upload Files, added drag-drop zone with visual overlay, 6 Playwright tests added."
 ```
+
+### 8.2 Mark Task as Done
+
+```bash
+# Mark task done (do NOT use -d flag here)
+python3 ikanban.py update IKA-XX -s done
+```
+
+**IMPORTANT:** Do NOT use `-d` to update description when marking done. Use a **comment** for the completion summary instead. The original description should remain as the task specification.
 
 ---
 
@@ -340,7 +353,7 @@ python3 ikanban.py comment IKA-XX "Completed: <what was done>. All Playwright te
 
 | Phase | Checkpoint | Status |
 |-------|------------|--------|
-| 1 | Task created with IKA-XX number | [ ] |
+| 1 | Task created with IKA-XX number AND description | [ ] |
 | 2 | `IKA-XX-<feature>-flow.md` created with ASCII diagram | [ ] |
 | 2 | `IKA-XX-<feature>-plan.md` created | [ ] |
 | 3 | Feature branch created (not on main) | [ ] |
@@ -348,7 +361,8 @@ python3 ikanban.py comment IKA-XX "Completed: <what was done>. All Playwright te
 | 5 | Test file created in `vibe-testing/tests/` | [ ] |
 | 6 | All Playwright tests passing | [ ] |
 | 7 | Merged to main and pushed | [ ] |
-| 7 | Planning docs attached to task | [ ] |
+| 7 | Planning docs attached to task (comment) | [ ] |
+| 8 | Summary comment added | [ ] |
 | 8 | Task marked done | [ ] |
 
 **If any checkbox is empty, STOP and complete that step first!**
@@ -388,10 +402,10 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ## Quick Reference Commands
 
 ```bash
-# Task Management
-python3 mcp/ikanban.py create IKA "title" -s inprogress
-python3 mcp/ikanban.py update IKA-XX -s done
-python3 mcp/ikanban.py comment IKA-XX "message"
+# Task Management (ALWAYS include description on create!)
+python3 mcp/ikanban.py create IKA "title" -s inprogress -d "description"
+python3 mcp/ikanban.py update IKA-XX -s done  # Do NOT use -d when marking done
+python3 mcp/ikanban.py comment IKA-XX "Summary: what was done"  # Use for completion summary
 python3 mcp/ikanban.py task IKA-XX
 
 # Git

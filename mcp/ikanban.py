@@ -9,7 +9,7 @@ Usage:
         ikanban issues IKA                               # List iKanban issues
         ikanban issues SCH --status inprogress           # Filter by status
         ikanban issues IKA --json                        # Output as JSON
-        ikanban create IKA "title"                       # Create issue
+        ikanban create IKA "title" -d "description"      # Create issue with description
         ikanban update IKA-27 --status done              # Update task by issue key
         ikanban update ika27 --status inprogress         # Case-insensitive, dash optional
         ikanban task IKA-27                              # Get task details by issue key
@@ -18,6 +18,15 @@ Usage:
         ikanban move IKA-10 <project_id>                 # Move task
         ikanban comments IKA-27                          # List comments
         ikanban comment IKA-27 "message"                 # Add comment
+
+    Document Commands:
+        ikanban upload IKA file1.md file2.md             # Upload files to team
+        ikanban upload IKA file.md -t IKA-38             # Upload and link to task
+        ikanban link IKA-38 <doc-uuid> <doc-uuid>        # Link docs to task
+        ikanban unlink IKA-38 <doc-uuid>                 # Unlink doc from task
+        ikanban docs IKA-38                              # List docs linked to task
+        ikanban search-docs IKA "query"                  # Search team documents
+        ikanban search-docs IKA                          # List all team documents
 
     MCP Server Mode (Claude Code):
         ikanban serve                                    # Start MCP server (stdio)
@@ -37,9 +46,12 @@ Installation:
 
 import argparse
 import json
+import mimetypes
 import os
 import sys
+import uuid
 from pathlib import Path
+from urllib.parse import quote
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
@@ -57,7 +69,7 @@ except ImportError:
 # CONFIGURATION
 # ============================================================================
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 KNOWN_TEAMS = {
     "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
@@ -116,6 +128,85 @@ def api_request(endpoint, method="GET", data=None, exit_on_error=True):
             req = Request(url, headers=headers, method=method)
 
         with urlopen(req, timeout=15) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        try:
+            error_json = json.loads(error_body)
+            msg = error_json.get("message", error_body)
+        except:
+            msg = error_body
+        if exit_on_error:
+            print(f"HTTP {e.code}: {msg}", file=sys.stderr)
+            sys.exit(1)
+        return {"success": False, "error": f"HTTP {e.code}: {msg}"}
+    except URLError as e:
+        if exit_on_error:
+            print(f"Connection error: {e.reason}", file=sys.stderr)
+            sys.exit(1)
+        return {"success": False, "error": f"Connection error: {e.reason}"}
+
+def multipart_upload(endpoint, files, fields=None, exit_on_error=True):
+    """Upload files using multipart/form-data."""
+    url = f"{get_base_url()}/api{endpoint}"
+    boundary = f"----WebKitFormBoundary{uuid.uuid4().hex[:16]}"
+
+    body_parts = []
+
+    # Add form fields
+    if fields:
+        for key, value in fields.items():
+            if value is not None:
+                body_parts.append(
+                    f'--{boundary}\r\n'
+                    f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    f'{value}\r\n'
+                )
+
+    # Add files
+    for file_path in files:
+        path = Path(file_path)
+        if not path.exists():
+            if exit_on_error:
+                print(f"File not found: {file_path}", file=sys.stderr)
+                sys.exit(1)
+            return {"success": False, "error": f"File not found: {file_path}"}
+
+        filename = path.name
+        mime_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
+        with open(path, 'rb') as f:
+            file_content = f.read()
+
+        body_parts.append(
+            f'--{boundary}\r\n'
+            f'Content-Disposition: form-data; name="files[]"; filename="{filename}"\r\n'
+            f'Content-Type: {mime_type}\r\n\r\n'
+        )
+        body_parts.append(file_content)
+        body_parts.append(b'\r\n')
+
+    body_parts.append(f'--{boundary}--\r\n')
+
+    # Build body
+    body = b''
+    for part in body_parts:
+        if isinstance(part, str):
+            body += part.encode('utf-8')
+        else:
+            body += part
+
+    headers = {
+        'Content-Type': f'multipart/form-data; boundary={boundary}',
+    }
+
+    auth_token = get_auth_token()
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+
+    try:
+        req = Request(url, data=body, headers=headers, method="POST")
+        with urlopen(req, timeout=60) as response:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as e:
         error_body = e.read().decode("utf-8")
@@ -452,6 +543,190 @@ def cmd_comment(args):
     print(f"Added comment to task {args.task_id}")
 
 # ============================================================================
+# DOCUMENT COMMANDS
+# ============================================================================
+
+def cmd_upload(args):
+    """Upload files to a team and optionally link to a task."""
+    team_id = resolve_team_id(args.team)
+    if not team_id:
+        print("Team is required. Use: IKA, SCH, or team UUID", file=sys.stderr)
+        sys.exit(1)
+
+    # Validate files exist
+    files = args.files
+    for f in files:
+        if not Path(f).exists():
+            print(f"File not found: {f}", file=sys.stderr)
+            sys.exit(1)
+
+    # Upload files
+    fields = {}
+    if args.folder_id:
+        fields['folder_id'] = args.folder_id
+
+    result = multipart_upload(f"/teams/{team_id}/documents/upload", files, fields)
+    upload_data = result.get("data", {})
+
+    uploaded = upload_data.get("uploaded", 0)
+    skipped = upload_data.get("skipped", 0)
+    errors = upload_data.get("errors", [])
+    uploaded_titles = upload_data.get("uploaded_titles", [])
+
+    if args.json:
+        print(json.dumps(upload_data, indent=2))
+        return
+
+    print(f"\nUpload Results:")
+    print(f"  Uploaded: {uploaded}")
+    if skipped > 0:
+        print(f"  Skipped (duplicates): {skipped}")
+    if errors:
+        print(f"  Errors: {', '.join(errors)}")
+    if uploaded_titles:
+        print(f"  Titles: {', '.join(uploaded_titles)}")
+
+    # If task specified, find and link the uploaded documents
+    if args.task and uploaded > 0:
+        task_id = resolve_task_id(args.task)
+
+        # Search for uploaded documents to get their IDs
+        doc_ids = []
+        for title in uploaded_titles:
+            # Search for documents by title (URL-encode the title)
+            search_result = api_request(f"/teams/{team_id}/documents?search={quote(title)}", exit_on_error=False)
+            docs = search_result.get("data", [])
+            for doc in docs:
+                if doc.get("title", "").lower() == title.lower():
+                    doc_ids.append(doc["id"])
+                    break
+
+        if doc_ids:
+            # Link documents to task
+            link_result = api_request(
+                f"/tasks/{task_id}/links",
+                method="POST",
+                data={"document_ids": doc_ids}
+            )
+            linked = link_result.get("data", [])
+            print(f"\n  Linked {len(linked)} document(s) to task {args.task}")
+        else:
+            print(f"\n  Warning: Could not find document IDs to link to task")
+
+def cmd_link(args):
+    """Link existing documents to a task."""
+    task_id = resolve_task_id(args.task_id)
+
+    # document_ids can be UUIDs or we need to search by title
+    doc_ids = []
+
+    for doc_ref in args.document_ids:
+        # Check if it looks like a UUID
+        if len(doc_ref) == 36 and doc_ref.count('-') == 4:
+            doc_ids.append(doc_ref)
+        else:
+            # Treat as search term - need team to search
+            if not args.team:
+                print(f"Team required to search for document by title: {doc_ref}", file=sys.stderr)
+                sys.exit(1)
+            team_id = resolve_team_id(args.team)
+            search_result = api_request(f"/teams/{team_id}/documents?search={quote(doc_ref)}", exit_on_error=False)
+            docs = search_result.get("data", [])
+            found = False
+            for doc in docs:
+                if doc.get("title", "").lower() == doc_ref.lower():
+                    doc_ids.append(doc["id"])
+                    found = True
+                    break
+            if not found and docs:
+                # Use first match if exact match not found
+                doc_ids.append(docs[0]["id"])
+                found = True
+            if not found:
+                print(f"Document not found: {doc_ref}", file=sys.stderr)
+
+    if not doc_ids:
+        print("No valid documents to link", file=sys.stderr)
+        sys.exit(1)
+
+    result = api_request(f"/tasks/{task_id}/links", method="POST", data={"document_ids": doc_ids})
+    linked = result.get("data", [])
+
+    if args.json:
+        print(json.dumps(linked, indent=2))
+        return
+
+    print(f"Linked {len(linked)} document(s) to task {args.task_id}")
+    for doc in linked:
+        folder = f" ({doc.get('folder_name')})" if doc.get('folder_name') else ""
+        print(f"  - {doc.get('document_title')}{folder}")
+
+def cmd_docs(args):
+    """List documents linked to a task."""
+    task_id = resolve_task_id(args.task_id)
+
+    result = api_request(f"/tasks/{task_id}/links")
+    docs = result.get("data", [])
+
+    if args.json:
+        print(json.dumps(docs, indent=2))
+        return
+
+    if not docs:
+        print(f"No documents linked to task {args.task_id}")
+        return
+
+    print(f"\nLinked Documents ({len(docs)}):")
+    print(f"{'ID':<38} {'Title':<40} {'Folder'}")
+    print("-" * 100)
+    for doc in docs:
+        doc_id = doc.get("document_id", "")
+        title = doc.get("document_title", "Untitled")[:38]
+        folder = doc.get("folder_name") or "-"
+        print(f"{doc_id:<38} {title:<40} {folder}")
+
+def cmd_search_docs(args):
+    """Search for documents in a team."""
+    team_id = resolve_team_id(args.team)
+    if not team_id:
+        print("Team is required. Use: IKA, SCH, or team UUID", file=sys.stderr)
+        sys.exit(1)
+
+    params = f"search={quote(args.query)}" if args.query else "all=true"
+    result = api_request(f"/teams/{team_id}/documents?{params}")
+    docs = result.get("data", [])
+
+    if args.json:
+        print(json.dumps(docs, indent=2))
+        return
+
+    if not docs:
+        print("No documents found")
+        return
+
+    print(f"\nDocuments ({len(docs)}):")
+    print(f"{'ID':<38} {'Title':<40} {'Type':<8} {'Folder'}")
+    print("-" * 100)
+    for doc in docs:
+        doc_id = doc.get("id", "")
+        title = doc.get("title", "Untitled")[:38]
+        file_type = doc.get("file_type", "-")[:6]
+        folder = doc.get("folder_name") or "-"
+        print(f"{doc_id:<38} {title:<40} {file_type:<8} {folder}")
+
+def cmd_unlink(args):
+    """Unlink a document from a task."""
+    task_id = resolve_task_id(args.task_id)
+
+    result = api_request(f"/tasks/{task_id}/links/{args.document_id}", method="DELETE")
+
+    if args.json:
+        print(json.dumps({"unlinked": True, "task_id": task_id, "document_id": args.document_id}, indent=2))
+        return
+
+    print(f"Unlinked document {args.document_id} from task {args.task_id}")
+
+# ============================================================================
 # MCP SERVER MODE
 # ============================================================================
 
@@ -579,6 +854,53 @@ def run_mcp_server():
                 "required": ["task_id", "content"]
             }
         },
+        # Document operations
+        {
+            "name": "ikanban_search_documents",
+            "description": "Search for documents in a team by title or get all documents.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "team": {"type": "string", "description": "Team: IKA, SCH, or UUID", "default": "IKA"},
+                    "query": {"type": "string", "description": "Search query (optional, omit to list all)"}
+                }
+            }
+        },
+        {
+            "name": "ikanban_get_task_documents",
+            "description": "Get all documents linked to a task.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task UUID or issue key (e.g., IKA-38)"}
+                },
+                "required": ["task_id"]
+            }
+        },
+        {
+            "name": "ikanban_link_documents",
+            "description": "Link one or more documents to a task.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task UUID or issue key (e.g., IKA-38)"},
+                    "document_ids": {"type": "array", "items": {"type": "string"}, "description": "List of document UUIDs to link"}
+                },
+                "required": ["task_id", "document_ids"]
+            }
+        },
+        {
+            "name": "ikanban_unlink_document",
+            "description": "Unlink a document from a task.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Task UUID or issue key (e.g., IKA-38)"},
+                    "document_id": {"type": "string", "description": "Document UUID to unlink"}
+                },
+                "required": ["task_id", "document_id"]
+            }
+        },
     ]
 
     def handle_tool(name, args):
@@ -689,6 +1011,52 @@ def run_mcp_server():
             result = api_request(f"/tasks/{args['task_id']}/comments", method="POST", data=data, exit_on_error=False)
             if result.get("success"):
                 return {"comment_id": result.get("data", {}).get("id"), "task_id": args["task_id"]}
+            return {"error": result.get("error")}
+
+        # Document operations
+        elif name == "ikanban_search_documents":
+            team_id = resolve_team_id(args.get("team", "IKA"))
+            query = args.get("query")
+            params = f"search={quote(query)}" if query else "all=true"
+            result = api_request(f"/teams/{team_id}/documents?{params}", exit_on_error=False)
+            if result.get("success"):
+                docs = result.get("data", [])
+                return {"documents": [
+                    {"id": d["id"], "title": d.get("title", "Untitled"),
+                     "file_type": d.get("file_type"), "folder_name": d.get("folder_name")}
+                    for d in docs
+                ], "count": len(docs)}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_get_task_documents":
+            task_id = resolve_task_id(args["task_id"])
+            result = api_request(f"/tasks/{task_id}/links", exit_on_error=False)
+            if result.get("success"):
+                docs = result.get("data", [])
+                return {"documents": [
+                    {"document_id": d["document_id"], "title": d.get("document_title", "Untitled"),
+                     "folder_name": d.get("folder_name"), "linked_at": d.get("linked_at")}
+                    for d in docs
+                ], "count": len(docs)}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_link_documents":
+            task_id = resolve_task_id(args["task_id"])
+            result = api_request(f"/tasks/{task_id}/links", method="POST",
+                                data={"document_ids": args["document_ids"]}, exit_on_error=False)
+            if result.get("success"):
+                docs = result.get("data", [])
+                return {"linked": len(docs), "documents": [
+                    {"document_id": d["document_id"], "title": d.get("document_title")}
+                    for d in docs
+                ]}
+            return {"error": result.get("error")}
+
+        elif name == "ikanban_unlink_document":
+            task_id = resolve_task_id(args["task_id"])
+            result = api_request(f"/tasks/{task_id}/links/{args['document_id']}", method="DELETE", exit_on_error=False)
+            if result.get("success"):
+                return {"unlinked": True, "task_id": task_id, "document_id": args["document_id"]}
             return {"error": result.get("error")}
 
         return {"error": f"Unknown tool: {name}"}
@@ -837,6 +1205,38 @@ Priorities: urgent, high, medium, low (or 1-4)
     p.add_argument("--author", dest="author_name")
     p.add_argument("--json", action="store_true", help="Output as JSON")
 
+    # upload - upload files and optionally link to task
+    p = subparsers.add_parser("upload", help="Upload files to team, optionally link to task")
+    p.add_argument("team", help="Team: IKA, SCH")
+    p.add_argument("files", nargs="+", help="File(s) to upload")
+    p.add_argument("--task", "-t", help="Task to link uploaded docs to (e.g., IKA-38)")
+    p.add_argument("--folder-id", "-f", dest="folder_id", help="Folder UUID to upload into")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # link - link existing documents to a task
+    p = subparsers.add_parser("link", help="Link documents to a task")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-38)")
+    p.add_argument("document_ids", nargs="+", help="Document UUID(s) or title(s) to link")
+    p.add_argument("--team", help="Team (required if searching by title)")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # unlink - unlink a document from a task
+    p = subparsers.add_parser("unlink", help="Unlink document from task")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-38)")
+    p.add_argument("document_id", help="Document UUID to unlink")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # docs - list documents linked to a task
+    p = subparsers.add_parser("docs", help="List documents linked to a task")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-38)")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # search-docs - search for documents
+    p = subparsers.add_parser("search-docs", help="Search documents in a team")
+    p.add_argument("team", help="Team: IKA, SCH")
+    p.add_argument("query", nargs="?", help="Search query (optional, lists all if omitted)")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
+
     args = parser.parse_args()
 
     # MCP server mode
@@ -857,6 +1257,9 @@ Priorities: urgent, high, medium, low (or 1-4)
         "teams": cmd_teams, "projects": cmd_projects, "issues": cmd_issues,
         "create": cmd_create, "update": cmd_update, "task": cmd_task,
         "delete": cmd_delete, "move": cmd_move, "comments": cmd_comments, "comment": cmd_comment,
+        # Document commands
+        "upload": cmd_upload, "link": cmd_link, "unlink": cmd_unlink,
+        "docs": cmd_docs, "search-docs": cmd_search_docs,
     }
 
     handler = handlers.get(args.command)

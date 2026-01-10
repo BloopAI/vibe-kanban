@@ -42,21 +42,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **SQLx types**: `DateTime<Utc>` → `TIMESTAMPTZ`, `i64` → `bigint`
 - **CI**: Commit `.sqlx/` cache files (CI uses `SQLX_OFFLINE=true`)
 
-## /full-stack-dev Workflow
+## /full-stack-dev Workflow (8 Phases)
 
-When `/full-stack-dev` is invoked, follow phases in order:
-1. Create task: `python3 mcp/ikanban.py create IKA "title" -s inprogress`
-2. Create planning docs in `docs-ikanban/planning/`
-3. TDD: Red → Green → Refactor
-4. E2E test → Git workflow → Mark task done
+When `/full-stack-dev` is invoked, follow all 8 phases in order:
+
+| Phase | Action | Key Points |
+|-------|--------|------------|
+| 1 | Task Setup | Create task with `-d "description"` |
+| 2 | Planning Docs | Create flow.md + plan.md in docs-ikanban |
+| 3 | Feature Branch | `git checkout -b feature/IKA-XX-name` |
+| 4 | Implementation | Code + lint + type check |
+| 5 | Write Tests | Playwright tests in vibe-testing |
+| 6 | Run Tests | All tests must pass |
+| 7 | Git Merge | Push, merge to main, cleanup branch |
+| 8 | Task Done | Add summary comment, then mark done |
 
 ## Task Management
 
 ```bash
-python3 mcp/ikanban.py create IKA "title" -s inprogress
-python3 mcp/ikanban.py update IKA-27 --status done
+# Create task (ALWAYS include description!)
+python3 mcp/ikanban.py create IKA "title" -s inprogress -d "what, why, acceptance criteria"
+
+# List tasks
 python3 mcp/ikanban.py issues IKA
+
+# Add completion summary (use COMMENT, not description update)
+python3 mcp/ikanban.py comment IKA-XX "Summary: what was done, key changes, test status"
+
+# Mark done (do NOT use -d flag here)
+python3 mcp/ikanban.py update IKA-XX --status done
 ```
+
+**Important:** Description is set at creation. Use comments for completion summaries.
 
 Teams: `IKA` (frontend), `SCH` (backend)
 
