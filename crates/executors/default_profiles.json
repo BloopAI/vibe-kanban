@@ -297,20 +297,48 @@
     },
     "PI": {
       "DEFAULT": {
-        "PI": {
-          "mode": "json"
-        }
+        "PI": {}
       },
       "HIGH_THINKING": {
         "PI": {
-          "mode": "json",
           "thinking": "high"
         }
       },
-      "NO_THINKING": {
+      "READ_ONLY": {
         "PI": {
-          "mode": "json",
+          "tools": "read,grep,find,ls",
+          "thinking": "medium"
+        }
+      },
+      "PLAN_MODE": {
+        "PI": {
+          "extensions": ["~/.pi/agent/extensions/plan-mode/index.ts"],
+          "no_skills": true
+        }
+      },
+      "WITH_SKILLS": {
+        "PI": {
+          "no_extensions": true,
+          "no_skills": false
+        }
+      },
+      "MINIMAL": {
+        "PI": {
+          "no_extensions": true,
+          "no_skills": true,
           "thinking": "off"
+        }
+      },
+      "SONNET_HIGH": {
+        "PI": {
+          "provider": "anthropic",
+          "model": "claude-sonnet-4-20250514",
+          "thinking": "high"
+        }
+      },
+      "EPHEMERAL": {
+        "PI": {
+          "no_session": true
         }
       }
     }

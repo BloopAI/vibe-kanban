@@ -29,15 +29,7 @@
     },
     "thinking": {
       "title": "Thinking Mode",
-      "description": "Thinking/reasoning mode: off, low, high, etc.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "mode": {
-      "title": "Output Mode",
-      "description": "Output mode (default: json for structured parsing)",
+      "description": "Thinking/reasoning mode: off, low, high, xhigh",
       "type": [
         "string",
         "null"
@@ -46,6 +38,86 @@
     "use_npx": {
       "title": "Use NPX",
       "description": "Toggle between local binary and npx execution",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "no_extensions": {
+      "title": "Disable Extensions",
+      "description": "Disable extension discovery",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "no_skills": {
+      "title": "Disable Skills",
+      "description": "Disable skills discovery and loading",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "extensions": {
+      "title": "Extensions",
+      "description": "Extension file paths to load",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skills": {
+      "title": "Skills Filter",
+      "description": "Comma-separated glob patterns to filter skills (e.g., 'git-*,docker')",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tools": {
+      "title": "Tools",
+      "description": "Comma-separated tools to enable (read,bash,edit,write,grep,find,ls)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "no_tools": {
+      "title": "Disable All Tools",
+      "description": "Disable all built-in tools",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "system_prompt": {
+      "title": "System Prompt",
+      "description": "Custom system prompt (text or file path)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "append_system_prompt": {
+      "title": "Append System Prompt",
+      "description": "Append text or file contents to the system prompt",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "models": {
+      "title": "Model Patterns",
+      "description": "Model patterns for Ctrl+P cycling (e.g., 'sonnet:high,haiku:low')",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "no_session": {
+      "title": "Ephemeral Session",
+      "description": "Don't save session (ephemeral mode)",
       "type": [
         "boolean",
         "null"

@@ -493,7 +493,7 @@ export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-
 
 export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium" | "high";
 
-export type Pi = { append_prompt: AppendPrompt, provider?: string | null, model?: string | null, thinking?: string | null, mode?: string | null, use_npx?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type Pi = { append_prompt: AppendPrompt, provider?: string | null, model?: string | null, thinking?: string | null, use_npx?: boolean | null, no_extensions?: boolean | null, no_skills?: boolean | null, extensions?: Array<string>, skills?: string | null, tools?: string | null, no_tools?: boolean | null, system_prompt?: string | null, append_system_prompt?: string | null, models?: string | null, no_session?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type AppendPrompt = string | null;
 
