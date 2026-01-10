@@ -716,6 +716,7 @@ pub async fn get_document_signed_url(
             .await
             .map_err(|e| ApiError::BadRequest(format!("Failed to create signed URL: {}", e)))?;
 
+        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
             url: signed_result.url,
             storage_provider: "supabase".to_string(),
             expires_in: signed_result.expires_in,
@@ -730,6 +731,7 @@ pub async fn get_document_signed_url(
             base_url, team_id, document_id
         );
 
+        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
             url: file_url,
             storage_provider: "local".to_string(),
             expires_in: 0, // Local files don't expire
