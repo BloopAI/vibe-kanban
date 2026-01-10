@@ -47,6 +47,431 @@
         "null"
       ]
     },
+    "settings": {
+      "description": "Claude Code settings (permissions, hooks, etc.)\nThese will be written to .claude/settings.local.json in the working directory",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "permissions": {
+          "description": "Permissions configuration for tool access",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "allowedTools": {
+              "description": "Tools to allow without prompting\nExamples: \"Read\", \"Write\", \"Bash(git *)\", \"Bash(npm *)\"",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "deny": {
+              "description": "Tools to deny/block\nExamples: \"Bash(rm *)\", \"Read(.env*)\"",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "defaultMode": {
+              "description": "Default permission mode",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "hooks": {
+          "description": "Hooks for automation (pre/post tool use, session events)",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "PreToolUse": {
+              "description": "Hooks to run before a tool is used",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "PostToolUse": {
+              "description": "Hooks to run after a tool is used",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "UserPromptSubmit": {
+              "description": "Hooks to run when user submits a prompt",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "SessionStart": {
+              "description": "Hooks to run at session start",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "SessionEnd": {
+              "description": "Hooks to run at session end",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "Stop": {
+              "description": "Hooks to run when the agent stops",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "description": "A single hook entry",
+                "type": "object",
+                "properties": {
+                  "matcher": {
+                    "description": "Pattern to match (regex for tool names, glob for files)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "hooks": {
+                    "description": "Hook actions to execute",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "description": "A hook action (command to run)",
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "description": "Type of hook action (usually \"command\")",
+                          "type": "string"
+                        },
+                        "command": {
+                          "description": "The command to execute",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "command"
+                      ]
+                    }
+                  },
+                  "hookCallbackIds": {
+                    "description": "Hook callback IDs for custom handling",
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "maxTokens": {
+          "description": "Maximum tokens for responses",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "temperature": {
+          "description": "Temperature for model responses (0.0 - 1.0)",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "float"
+        },
+        "systemPrompt": {
+          "description": "Custom system prompt to prepend",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "env": {
+          "description": "Additional environment variables to set",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "use_local_settings": {
+      "description": "When true, reads settings from ~/.claude/settings.json and merges with profile settings\nProfile settings take precedence over local settings",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

@@ -45,7 +45,8 @@ The profiles configuration uses a JSON structure with an `executors` object cont
     "CLAUDE_CODE": {
       "DEFAULT": { "CLAUDE_CODE": { "dangerously_skip_permissions": true } },
       "PLAN":    { "CLAUDE_CODE": { "plan": true } },
-      "ROUTER":  { "CLAUDE_CODE": { "claude_code_router": true, "dangerously_skip_permissions": true } }
+      "LOCAL":   { "CLAUDE_CODE": { "dangerously_skip_permissions": true, "use_local_settings": true } },
+      "SAFE":    { "CLAUDE_CODE": { "dangerously_skip_permissions": false, "settings": { "permissions": { "allowedTools": ["Read", "Glob", "Grep"], "deny": ["Bash(rm *)", "Read(.env*)"] } } } }
     },
     "GEMINI": {
       "DEFAULT": { "GEMINI": { "model": "default", "yolo": true } },
@@ -88,6 +89,14 @@ The profiles configuration uses a JSON structure with an `executors` object cont
 
   <ParamField path="dangerously_skip_permissions" type="boolean">
   Skip permission prompts (use with caution)
+  </ParamField>
+
+  <ParamField path="use_local_settings" type="boolean">
+  Import and merge settings from your local `~/.claude/settings.json` file. Profile settings take precedence over local settings, but deny lists are combined. See [Local Settings Import](#local-settings-import) for details.
+  </ParamField>
+
+  <ParamField path="settings" type="object">
+  Claude Code settings written to `.claude/settings.local.json` in the workspace. Includes permissions, hooks, and other configuration. See [Settings Configuration](#settings-configuration) for details.
   </ParamField>
 
   [View full CLI reference →](https://docs.anthropic.com/en/docs/claude-code/cli-reference#cli-flags)
@@ -213,6 +222,134 @@ Options prefixed with "dangerously_" bypass safety confirmations and can perform
   Override defaults when creating attempts by selecting different agent/variant combinations in the attempt dialogue.
 </Card>
 </CardGroup>
+
+## Local Settings Import
+
+The `use_local_settings` option for Claude Code allows you to import your existing settings from `~/.claude/settings.json`. This is useful when you want to reuse your personal Claude Code configuration across Vibe Kanban tasks.
+
+<Info>
+When enabled, Vibe Kanban reads your local settings file and merges it with any profile-specific settings. Profile settings take precedence, but deny lists from both sources are combined for maximum security.
+</Info>
+
+### Example: LOCAL Profile
+
+```json profiles.json
+{
+  "executors": {
+    "CLAUDE_CODE": {
+      "LOCAL": {
+        "CLAUDE_CODE": {
+          "dangerously_skip_permissions": true,
+          "use_local_settings": true
+        }
+      }
+    }
+  }
+}
+```
+
+### Merge Behaviour
+
+When `use_local_settings` is enabled:
+
+| Setting | Behaviour |
+|---------|-----------|
+| `allowedTools` | Profile value takes precedence; falls back to local if not set |
+| `deny` | **Combined** from both profile and local settings |
+| `defaultMode` | Profile value takes precedence |
+| Other settings | Profile values take precedence |
+
+<Tip>
+Use the LOCAL profile to quickly apply your personal deny rules (like blocking `.env` file access) without manually configuring each project.
+</Tip>
+
+## Settings Configuration
+
+The `settings` object provides fine-grained control over Claude Code's behaviour. Settings are written to `.claude/settings.local.json` in the workspace when the agent starts.
+
+### Permissions
+
+Control which tools Claude Code can use:
+
+```json
+{
+  "CLAUDE_CODE": {
+    "settings": {
+      "permissions": {
+        "allowedTools": ["Read", "Glob", "Grep", "Bash(git *)"],
+        "deny": ["Bash(rm *)", "Bash(sudo *)", "Read(.env*)"],
+        "defaultMode": "bypassPermissions"
+      }
+    }
+  }
+}
+```
+
+<ParamField path="settings.permissions.allowedTools" type="string[]">
+Tools to allow without prompting. Examples: `"Read"`, `"Write"`, `"Bash(git *)"`, `"Bash(npm *)"`.
+</ParamField>
+
+<ParamField path="settings.permissions.deny" type="string[]">
+Tools to block entirely. Examples: `"Bash(rm *)"`, `"Read(.env*)"`, `"Read(./secrets/**)"`.
+</ParamField>
+
+<ParamField path="settings.permissions.defaultMode" type="string">
+Default permission mode when not explicitly allowed or denied.
+</ParamField>
+
+<Warning>
+Deny rules use glob patterns. `Read(.env*)` blocks all files starting with `.env`, whilst `Read(**/.env)` blocks `.env` files in any directory.
+</Warning>
+
+### Hooks
+
+Configure automation hooks for tool execution:
+
+```json
+{
+  "CLAUDE_CODE": {
+    "settings": {
+      "hooks": {
+        "PostToolUse": [
+          {
+            "matcher": "Write(*.py)",
+            "hooks": [{ "type": "command", "command": "python -m black $file" }]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+<AccordionGroup>
+<Accordion title="Available Hook Events">
+  - `PreToolUse`: Run before a tool is executed
+  - `PostToolUse`: Run after a tool completes
+  - `UserPromptSubmit`: Run when user submits a prompt
+  - `SessionStart`: Run when session begins
+  - `SessionEnd`: Run when session ends
+  - `Stop`: Run when agent stops
+</Accordion>
+
+<Accordion title="Hook Configuration">
+  Each hook entry contains:
+  - `matcher`: Pattern to match (glob for files, regex for tool names)
+  - `hooks`: Array of actions with `type` and `command`
+</Accordion>
+</AccordionGroup>
+
+### Built-in Profiles
+
+Vibe Kanban includes several pre-configured Claude Code profiles:
+
+| Profile | Description |
+|---------|-------------|
+| `DEFAULT` | Standard configuration with permissions skipped |
+| `PLAN` | Planning mode enabled for complex tasks |
+| `SAFE` | Restricted permissions with common deny rules |
+| `LOCAL` | Imports settings from `~/.claude/settings.json` |
+| `DEV_WITH_HOOKS` | Development profile with auto-formatting hooks |
 
 ## Related Configuration
 
