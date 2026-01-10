@@ -3,8 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from '@/lib/api';
 import type { Team, CreateTeam, UpdateTeam } from 'shared/types';
 import { resolveTeamFromParam } from '@/lib/url-utils';
+import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 
-const TEAMS_QUERY_KEY = ['teams'];
+// Query key factory for workspace-scoped teams
+export const teamsKeys = {
+  all: ['teams'] as const,
+  list: (workspaceId?: string | null) => [...teamsKeys.all, 'list', workspaceId ?? 'all'] as const,
+};
 
 // Helper to check if error is a rate limit (429)
 function isRateLimitError(error: unknown): boolean {
@@ -28,10 +33,15 @@ export interface UseTeamsResult {
 
 export function useTeams(): UseTeamsResult {
   const queryClient = useQueryClient();
+  const workspaceContext = useWorkspaceOptional();
+  const currentWorkspaceId = workspaceContext?.currentWorkspaceId ?? null;
+
+  // Use workspace-scoped query key for proper cache isolation
+  const queryKey = teamsKeys.list(currentWorkspaceId);
 
   const { data: teams = [], isLoading, error } = useQuery<Team[], Error>({
-    queryKey: TEAMS_QUERY_KEY,
-    queryFn: () => teamsApi.list(),
+    queryKey,
+    queryFn: () => teamsApi.list(currentWorkspaceId ?? undefined),
     staleTime: 5 * 60 * 1000, // 5 minutes - teams rarely change
     gcTime: 15 * 60 * 1000, // 15 minutes cache retention
     refetchOnWindowFocus: false,
@@ -56,14 +66,14 @@ export function useTeams(): UseTeamsResult {
   );
 
   const refresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: TEAMS_QUERY_KEY });
-  }, [queryClient]);
+    await queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const createMutation = useMutation({
     mutationFn: (data: CreateTeam) => teamsApi.create(data),
     onSuccess: (newTeam) => {
       // Optimistically add the new team to the cache
-      queryClient.setQueryData<Team[]>(TEAMS_QUERY_KEY, (old) =>
+      queryClient.setQueryData<Team[]>(queryKey, (old) =>
         old ? [...old, newTeam] : [newTeam]
       );
     },
@@ -74,7 +84,7 @@ export function useTeams(): UseTeamsResult {
       teamsApi.update(teamId, data),
     onSuccess: (updatedTeam) => {
       // Update the team in the cache
-      queryClient.setQueryData<Team[]>(TEAMS_QUERY_KEY, (old) =>
+      queryClient.setQueryData<Team[]>(queryKey, (old) =>
         old?.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)) ?? []
       );
     },
@@ -84,7 +94,7 @@ export function useTeams(): UseTeamsResult {
     mutationFn: (teamId: string) => teamsApi.delete(teamId),
     onSuccess: (_, teamId) => {
       // Remove the team from the cache
-      queryClient.setQueryData<Team[]>(TEAMS_QUERY_KEY, (old) =>
+      queryClient.setQueryData<Team[]>(queryKey, (old) =>
         old?.filter((t) => t.id !== teamId) ?? []
       );
     },

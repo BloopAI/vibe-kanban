@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE projects\n               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5,\n                   priority = $6, lead_id = $7, start_date = $8, target_date = $9, status = $10,\n                   health = $11, description = $12, summary = $13, icon = $14,\n                   updated_at = NOW()\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         dev_script,\n                         dev_script_working_dir,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         priority as \"priority: i32\",\n                         lead_id as \"lead_id: Uuid\",\n                         start_date,\n                         target_date,\n                         status,\n                         health as \"health: i32\",\n                         description,\n                         summary,\n                         icon,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      priority as \"priority: i32\",\n                      lead_id as \"lead_id: Uuid\",\n                      start_date,\n                      target_date,\n                      status,\n                      health as \"health: i32\",\n                      description,\n                      summary,\n                      icon,\n                      tenant_workspace_id as \"tenant_workspace_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE tenant_workspace_id = $1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -80,31 +80,23 @@
       },
       {
         "ordinal": 15,
+        "name": "tenant_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Uuid",
-        "Timestamptz",
-        "Timestamptz",
-        "Text",
-        "Int4",
-        "Text",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -123,9 +115,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "db3c38edecf53981e0851c7e8bd00c51d452cf1821670d5d9345d4098aa1bc77"
+  "hash": "dcbe4d3c320f823a4831048aa327f062b4ca9dece3705d06e2fd06d86266f93e"
 }

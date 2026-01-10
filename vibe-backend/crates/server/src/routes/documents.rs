@@ -319,7 +319,8 @@ pub async fn create_document(
     // Ensure team_id matches the route
     payload.team_id = team.id;
 
-    // Extract content for filesystem storage
+    // Extract content for filesystem storage (track if content was explicitly provided)
+    let content_was_provided = payload.content.is_some();
     let content = payload.content.take().unwrap_or_default();
     let file_type = payload.file_type.clone().unwrap_or_else(|| "markdown".to_string());
     let title = payload.title.clone();
@@ -339,7 +340,7 @@ pub async fn create_document(
         // Only write to local storage if content is explicitly provided
         // or if we are creating a new empty document (no file path provided)
         // If file_path is provided, we assume it's an external file (e.g. Supabase upload)
-        let should_write_storage = content.is_some() || payload.file_path.is_none();
+        let should_write_storage = content_was_provided || payload.file_path.is_none();
 
 		if should_write_storage {
             // Write content to filesystem using human-readable title as filename
@@ -347,7 +348,7 @@ pub async fn create_document(
                 .write_document_with_title(
                     team.id,
                     &title,
-                    &content.unwrap_or_default(),
+                    &content,
                     &file_type,
                     team.document_storage_path.as_deref(),
                     subfolder.as_deref(), // Use folder name as subfolder
@@ -379,7 +380,7 @@ pub async fn create_document(
              
              // Simplest is to reload or just set it.
              // If we wrote default "", then content is "".
-             response_doc.content = Some(if should_write_storage && content.is_none() { "".to_string() } else { content.unwrap_or_default() });
+             response_doc.content = Some(if should_write_storage && !content_was_provided { String::new() } else { content.clone() });
              
             deployment
                 .track_if_analytics_allowed(
@@ -1186,6 +1187,8 @@ pub async fn scan_filesystem(
                 file_path: None,
                 file_size: None,
                 mime_type: None,
+                storage_provider: None,
+                storage_key: None,
             };
 
             let document = Document::create(&deployment.db().pool, &create_payload).await?;
@@ -1375,6 +1378,8 @@ pub async fn scan_all_filesystem(
                     file_path: None,
                     file_size: None,
                     mime_type: None,
+                    storage_provider: None,
+                    storage_key: None,
                 };
 
                 let document = Document::create(&deployment.db().pool, &create_payload).await?;
@@ -1544,6 +1549,8 @@ pub async fn upload_documents(
                 file_path: None,
                 file_size: None,
                 mime_type: None,
+                storage_provider: None,
+                storage_key: None,
             };
 
             match Document::create(&deployment.db().pool, &create_payload).await {

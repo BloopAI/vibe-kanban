@@ -33,6 +33,13 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
 
+/// Query parameters for listing projects
+#[derive(Debug, Deserialize)]
+pub struct ListProjectsQuery {
+    /// Filter projects by workspace ID (optional for backwards compatibility)
+    pub workspace_id: Option<Uuid>,
+}
+
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
     pub remote_project_id: Uuid,
@@ -46,8 +53,9 @@ pub struct CreateRemoteProjectRequest {
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ListProjectsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
-    let projects = Project::find_all(&deployment.db().pool).await?;
+    let projects = Project::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 

@@ -4,6 +4,7 @@ import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { Project } from 'shared/types';
 import { resolveProjectFromParam } from '@/lib/url-utils';
 import { useClerkAuth } from '@/hooks/auth/useClerkAuth';
+import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 
 type ProjectsState = {
   projects: Record<string, Project>;
@@ -59,17 +60,21 @@ function removeOptimisticProject(projectId: string) {
   notifyListeners();
 }
 
-// Query key for TanStack Query (cloud mode)
+// Query key factory for workspace-scoped projects
 export const projectsKeys = {
   all: ['projects'] as const,
-  list: () => [...projectsKeys.all, 'list'] as const,
+  list: (workspaceId?: string | null) => [...projectsKeys.all, 'list', workspaceId ?? 'all'] as const,
 };
 
 // Fetch function for TanStack Query (cloud mode)
-async function fetchProjects(token: string | null): Promise<Record<string, Project>> {
+async function fetchProjects(token: string | null, workspaceId?: string | null): Promise<Record<string, Project>> {
   if (!token) return {};
 
-  const response = await fetch(`${API_BASE_URL}/api/projects`, {
+  const params = new URLSearchParams();
+  if (workspaceId) params.set('workspace_id', workspaceId);
+  const url = `${API_BASE_URL}/api/projects${params.toString() ? `?${params}` : ''}`;
+
+  const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -97,6 +102,11 @@ export function useProjects(): UseProjectsResult {
   const [token, setToken] = useState<string | null>(null);
   const [, forceUpdate] = useState({});
   const queryClient = useQueryClient();
+  const workspaceContext = useWorkspaceOptional();
+  const currentWorkspaceId = workspaceContext?.currentWorkspaceId ?? null;
+
+  // Use workspace-scoped query key for proper cache isolation
+  const queryKey = projectsKeys.list(currentWorkspaceId);
 
   useEffect(() => {
     // Only fetch token when user is loaded AND signed in
@@ -133,8 +143,8 @@ export function useProjects(): UseProjectsResult {
     isLoading: restLoading,
     error: restError
   } = useQuery({
-    queryKey: projectsKeys.list(),
-    queryFn: () => fetchProjects(token),
+    queryKey,
+    queryFn: () => fetchProjects(token, currentWorkspaceId),
     enabled: isCloudMode && isSignedIn && !!token,
     staleTime: 5 * 60 * 1000, // 5 minutes - projects don't change frequently
     gcTime: 15 * 60 * 1000, // 15 minutes cache retention
@@ -199,32 +209,32 @@ export function useProjects(): UseProjectsResult {
     addOptimisticProject(project);
     // Also update TanStack Query cache for immediate UI update
     if (isCloudMode) {
-      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
         return { ...old, [project.id]: project };
       });
     }
-  }, [queryClient]);
+  }, [queryClient, queryKey]);
 
   const updateProject = useCallback((project: Project) => {
     updateOptimisticProject(project);
     if (isCloudMode) {
-      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
         return { ...old, [project.id]: project };
       });
     }
-  }, [queryClient]);
+  }, [queryClient, queryKey]);
 
   const removeProject = useCallback((projectId: string) => {
     removeOptimisticProject(projectId);
     if (isCloudMode) {
-      queryClient.setQueryData(projectsKeys.list(), (old: Record<string, Project> | undefined) => {
+      queryClient.setQueryData(queryKey, (old: Record<string, Project> | undefined) => {
         if (!old) return {};
         const { [projectId]: _removed, ...rest } = old;
         void _removed;
         return rest;
       });
     }
-  }, [queryClient]);
+  }, [queryClient, queryKey]);
 
   return {
     projects: projectsData ?? [],

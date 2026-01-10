@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    priority,\n                    lead_id,\n                    start_date,\n                    target_date,\n                    status,\n                    description,\n                    summary,\n                    icon\n                ) VALUES (\n                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          priority as \"priority: i32\",\n                          lead_id as \"lead_id: Uuid\",\n                          start_date as \"start_date: DateTime<Utc>\",\n                          target_date as \"target_date: DateTime<Utc>\",\n                          status,\n                          health as \"health: i32\",\n                          description,\n                          summary,\n                          icon,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.dev_script, p.dev_script_working_dir,\n                   p.default_agent_working_dir,\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.priority as \"priority: i32\",\n                   p.lead_id as \"lead_id: Uuid\",\n                   p.start_date,\n                   p.target_date,\n                   p.status,\n                   p.health as \"health: i32\",\n                   p.description,\n                   p.summary,\n                   p.icon,\n                   p.tenant_workspace_id as \"tenant_workspace_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT t.project_id\n                FROM tasks t\n                INNER JOIN workspaces w ON w.task_id = t.id\n                GROUP BY t.project_id\n                ORDER BY MAX(w.updated_at) DESC\n            )\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -45,12 +45,12 @@
       },
       {
         "ordinal": 8,
-        "name": "start_date: DateTime<Utc>",
+        "name": "start_date",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 9,
-        "name": "target_date: DateTime<Utc>",
+        "name": "target_date",
         "type_info": "Timestamptz"
       },
       {
@@ -80,27 +80,23 @@
       },
       {
         "ordinal": 15,
+        "name": "tenant_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Int4",
-        "Uuid",
-        "Timestamptz",
-        "Timestamptz",
-        "Text",
-        "Text",
-        "Text",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
@@ -119,9 +115,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "59388042104ae3b9e438b6cc61ed66bd10a4d895d11c9d1eaf983d6b46ff73d2"
+  "hash": "ce23e94552db6128083420ce5e39aa77dfd8f5f3b9c1664fc82cabc6e6061d12"
 }

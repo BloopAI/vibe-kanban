@@ -1,6 +1,6 @@
 use axum::{
     Extension, Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::{delete, get, post, put},
@@ -27,6 +27,13 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_team_middleware};
+
+/// Query parameters for listing teams
+#[derive(Debug, Deserialize)]
+pub struct ListTeamsQuery {
+    /// Filter teams by workspace ID (optional for backwards compatibility)
+    pub workspace_id: Option<Uuid>,
+}
 
 /// Request to migrate tasks from a project to a team
 #[derive(Debug, Deserialize, TS)]
@@ -106,8 +113,9 @@ pub struct SyncOperationResponse {
 /// Get all teams
 pub async fn get_teams(
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ListTeamsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Team>>>, ApiError> {
-    let teams = Team::find_all(&deployment.db().pool).await?;
+    let teams = Team::find_all_with_workspace_filter(&deployment.db().pool, query.workspace_id).await?;
     Ok(ResponseJson(ApiResponse::success(teams)))
 }
 
@@ -1173,6 +1181,8 @@ pub async fn pull_documents_from_github(
                                     file_path: None,
                                     file_size: None,
                                     mime_type: None,
+                                    storage_provider: None,
+                                    storage_key: None,
                                 };
                                 Document::create(&deployment.db().pool, &create).await?;
                             }

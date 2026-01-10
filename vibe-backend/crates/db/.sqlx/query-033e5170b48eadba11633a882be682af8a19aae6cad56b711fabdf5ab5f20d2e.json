@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      priority as \"priority: i32\",\n                      lead_id as \"lead_id: Uuid\",\n                      start_date,\n                      target_date,\n                      status,\n                      health as \"health: i32\",\n                      description,\n                      summary,\n                      icon,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    priority,\n                    lead_id,\n                    start_date,\n                    target_date,\n                    status,\n                    description,\n                    summary,\n                    icon,\n                    tenant_workspace_id\n                ) VALUES (\n                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          dev_script,\n                          dev_script_working_dir,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          priority as \"priority: i32\",\n                          lead_id as \"lead_id: Uuid\",\n                          start_date as \"start_date: DateTime<Utc>\",\n                          target_date as \"target_date: DateTime<Utc>\",\n                          status,\n                          health as \"health: i32\",\n                          description,\n                          summary,\n                          icon,\n                          tenant_workspace_id as \"tenant_workspace_id: Uuid\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -45,12 +45,12 @@
       },
       {
         "ordinal": 8,
-        "name": "start_date",
+        "name": "start_date: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 9,
-        "name": "target_date",
+        "name": "target_date: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
@@ -80,17 +80,32 @@
       },
       {
         "ordinal": 15,
+        "name": "tenant_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Text",
+        "Int4",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
         "Uuid"
       ]
     },
@@ -110,9 +125,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "3b5860c66dbf586d1303f138375f8de812e71190f57c0e0d83152530c957778e"
+  "hash": "033e5170b48eadba11633a882be682af8a19aae6cad56b711fabdf5ab5f20d2e"
 }

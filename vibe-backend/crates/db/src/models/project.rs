@@ -81,6 +81,8 @@ pub struct Project {
     pub description: Option<String>,
     pub summary: Option<String>,
     pub icon: Option<String>,
+    /// The tenant workspace this project belongs to (for multi-tenant scoping)
+    pub tenant_workspace_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -107,6 +109,9 @@ pub struct CreateProject {
     pub summary: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
+    /// The tenant workspace this project belongs to
+    #[serde(default)]
+    pub tenant_workspace_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -165,6 +170,7 @@ impl Project {
                       description,
                       summary,
                       icon,
+                      tenant_workspace_id as "tenant_workspace_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -172,6 +178,52 @@ impl Project {
         )
         .fetch_all(pool)
         .await
+    }
+
+    /// Find all projects belonging to a specific tenant workspace
+    pub async fn find_by_workspace(
+        pool: &PgPool,
+        workspace_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      dev_script,
+                      dev_script_working_dir,
+                      default_agent_working_dir,
+                      remote_project_id as "remote_project_id: Uuid",
+                      priority as "priority: i32",
+                      lead_id as "lead_id: Uuid",
+                      start_date,
+                      target_date,
+                      status,
+                      health as "health: i32",
+                      description,
+                      summary,
+                      icon,
+                      tenant_workspace_id as "tenant_workspace_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects
+               WHERE tenant_workspace_id = $1
+               ORDER BY created_at DESC"#,
+            workspace_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Find all projects, optionally filtered by workspace
+    /// If workspace_id is None, returns all projects (for backwards compatibility)
+    pub async fn find_all_with_workspace_filter(
+        pool: &PgPool,
+        workspace_id: Option<Uuid>,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        match workspace_id {
+            Some(ws_id) => Self::find_by_workspace(pool, ws_id).await,
+            None => Self::find_all(pool).await,
+        }
     }
 
     /// Find the most actively used projects based on recent task activity
@@ -191,6 +243,7 @@ impl Project {
                    p.description,
                    p.summary,
                    p.icon,
+                   p.tenant_workspace_id as "tenant_workspace_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -226,6 +279,7 @@ impl Project {
                       description,
                       summary,
                       icon,
+                      tenant_workspace_id as "tenant_workspace_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -257,6 +311,7 @@ impl Project {
                       description,
                       summary,
                       icon,
+                      tenant_workspace_id as "tenant_workspace_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -285,9 +340,10 @@ impl Project {
                     status,
                     description,
                     summary,
-                    icon
+                    icon,
+                    tenant_workspace_id
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -304,6 +360,7 @@ impl Project {
                           description,
                           summary,
                           icon,
+                          tenant_workspace_id as "tenant_workspace_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -316,6 +373,7 @@ impl Project {
             data.description,
             data.summary,
             data.icon,
+            data.tenant_workspace_id,
         )
         .fetch_one(executor)
         .await
@@ -367,6 +425,7 @@ impl Project {
                          description,
                          summary,
                          icon,
+                         tenant_workspace_id as "tenant_workspace_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,

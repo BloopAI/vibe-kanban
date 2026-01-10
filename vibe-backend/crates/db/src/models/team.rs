@@ -34,6 +34,9 @@ pub struct CreateTeam {
     pub identifier: Option<String>, // If not provided, auto-generated from name
     pub icon: Option<String>,
     pub color: Option<String>,
+    /// The tenant workspace this team belongs to
+    #[serde(default)]
+    pub tenant_workspace_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -199,8 +202,8 @@ impl Team {
 
         sqlx::query_as!(
             Team,
-            r#"INSERT INTO teams (id, name, slug, identifier, icon, color)
-               VALUES ($1, $2, $3, $4, $5, $6)
+            r#"INSERT INTO teams (id, name, slug, identifier, icon, color, tenant_workspace_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                RETURNING id as "id!: Uuid",
                          name,
                          slug,
@@ -215,7 +218,8 @@ impl Team {
             data.slug,
             identifier,
             data.icon,
-            data.color
+            data.color,
+            data.tenant_workspace_id
         )
         .fetch_one(pool)
         .await

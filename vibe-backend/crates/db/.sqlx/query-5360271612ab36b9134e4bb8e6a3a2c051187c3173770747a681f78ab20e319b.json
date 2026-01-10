@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO teams (id, name, slug, identifier, icon, color)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         slug,\n                         identifier,\n                         icon,\n                         color,\n                         document_storage_path,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO teams (id, name, slug, identifier, icon, color, tenant_workspace_id)\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         slug,\n                         identifier,\n                         icon,\n                         color,\n                         document_storage_path,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -56,7 +56,8 @@
         "Text",
         "Text",
         "Text",
-        "Text"
+        "Text",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -71,5 +72,5 @@
       false
     ]
   },
-  "hash": "f608b22df4ac8d6c05e919c13ff2a80ca0aa98cfb7842c9d3ed78dc63dd15dba"
+  "hash": "5360271612ab36b9134e4bb8e6a3a2c051187c3173770747a681f78ab20e319b"
 }

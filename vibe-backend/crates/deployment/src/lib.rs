@@ -182,6 +182,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         description: None,
                         summary: None,
                         icon: None,
+                        tenant_workspace_id: None,
                     };
 
                     match self
