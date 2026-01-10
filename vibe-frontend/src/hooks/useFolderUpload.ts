@@ -116,8 +116,10 @@ async function uploadSingleFile(
             const title = getTitleFromFilename(file.name);
             const mimeType = getMimeType(extension);
 
+            // Note: team_id is extracted from the URL path by the backend middleware,
+            // so we don't need to send it in the body (and it would fail if we sent
+            // the slug instead of UUID)
             await documentsApi.create(teamId, {
-                team_id: teamId,
                 folder_id: currentFolderId,
                 title,
                 content: null,
