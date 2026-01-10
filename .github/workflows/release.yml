@@ -288,18 +288,22 @@ jobs:
           mkdir -p dist
 
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            SERVER_BIN="target/${{ matrix.target }}/release/server.exe"
-            MCP_BIN="target/${{ matrix.target }}/release/mcp_task_server.exe"
-            REVIEW_BIN="target/${{ matrix.target }}/release/review.exe"
-          else
-            SERVER_BIN="target/${{ matrix.target }}/release/server"
-            MCP_BIN="target/${{ matrix.target }}/release/mcp_task_server"
-            REVIEW_BIN="target/${{ matrix.target }}/release/review"
-          fi
+            cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban.exe
+            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp.exe
+            cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review.exe
 
-          zip -j "dist/vibe-kanban-${{ matrix.name }}.zip" "$SERVER_BIN"
-          zip -j "dist/vibe-kanban-mcp-${{ matrix.name }}.zip" "$MCP_BIN"
-          zip -j "dist/vibe-kanban-review-${{ matrix.name }}.zip" "$REVIEW_BIN"
+            zip -j "dist/vibe-kanban-${{ matrix.name }}.zip" "dist/vibe-kanban.exe"
+            zip -j "dist/vibe-kanban-mcp-${{ matrix.name }}.zip" "dist/vibe-kanban-mcp.exe"
+            zip -j "dist/vibe-kanban-review-${{ matrix.name }}.zip" "dist/vibe-kanban-review.exe"
+          else
+            cp target/${{ matrix.target }}/release/server dist/vibe-kanban
+            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp
+            cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review
+
+            zip -j "dist/vibe-kanban-${{ matrix.name }}.zip" "dist/vibe-kanban"
+            zip -j "dist/vibe-kanban-mcp-${{ matrix.name }}.zip" "dist/vibe-kanban-mcp"
+            zip -j "dist/vibe-kanban-review-${{ matrix.name }}.zip" "dist/vibe-kanban-review"
+          fi
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
