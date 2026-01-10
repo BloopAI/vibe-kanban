@@ -9,6 +9,8 @@
 </p>
 
 <p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
+
+> **Note:** This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban) with additional enhancements for Claude Code settings configuration.
 <p align="center">
   <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
   <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
@@ -33,6 +35,54 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Open projects remotely via SSH when running Vibe Kanban on a remote server
 
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
+
+## Fork Enhancements
+
+This fork adds the following features for Claude Code:
+
+### LOCAL Profile - Import Your Settings
+
+Use the **LOCAL** profile to automatically import settings from your `~/.claude/settings.json`:
+
+- **Permissions**: Allowed tools and deny rules are applied
+- **Deny rules**: Block access to sensitive files (e.g., `.env`, `secrets/`)
+- **Merge behavior**: Profile settings take precedence, but deny lists are combined
+
+```json
+{
+  "CLAUDE_CODE": {
+    "LOCAL": {
+      "CLAUDE_CODE": {
+        "dangerously_skip_permissions": true,
+        "use_local_settings": true
+      }
+    }
+  }
+}
+```
+
+### Settings Configuration
+
+Configure Claude Code permissions and hooks directly in profiles:
+
+```json
+{
+  "CLAUDE_CODE": {
+    "SAFE": {
+      "CLAUDE_CODE": {
+        "settings": {
+          "permissions": {
+            "allowedTools": ["Read", "Glob", "Grep"],
+            "deny": ["Bash(rm *)", "Read(.env*)"]
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Settings are written to `.claude/settings.local.json` in the workspace when the agent starts.
 
 ## Installation
 
