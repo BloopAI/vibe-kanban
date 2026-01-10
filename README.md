@@ -69,6 +69,17 @@ Settings are written to `.claude/settings.local.json` in the workspace when the 
 
 ## Quick Start
 
+### Prerequisites
+
+- **Node.js** (v18+) and **pnpm**
+- **Rust** via [rustup](https://rustup.rs/):
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  source "$HOME/.cargo/env"
+  ```
+
+### Install & Run
+
 ```bash
 git clone https://github.com/hippogriff-io/vibe-kanban.git
 cd vibe-kanban
