@@ -81,7 +81,7 @@ Settings are written to `.claude/settings.local.json` in the workspace when the 
 ### Install & Run
 
 ```bash
-git clone https://github.com/hippogriff-io/vibe-kanban.git
+git clone https://github.com/hippogriff-ai/vibe-kanban.git
 cd vibe-kanban
 pnpm i
 pnpm run dev
