@@ -79,6 +79,8 @@ pub struct LocalContainerService {
     queued_message_service: QueuedMessageService,
     publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     notification_service: NotificationService,
+    workspace_repo_changes:
+        Arc<tokio::sync::broadcast::Sender<services::services::events::WorkspaceRepoChange>>,
 }
 
 impl LocalContainerService {
@@ -93,6 +95,9 @@ impl LocalContainerService {
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+        workspace_repo_changes: Arc<
+            tokio::sync::broadcast::Sender<services::services::events::WorkspaceRepoChange>,
+        >,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
@@ -111,6 +116,7 @@ impl LocalContainerService {
             queued_message_service,
             publisher,
             notification_service,
+            workspace_repo_changes,
         };
 
         container.spawn_workspace_cleanup();
@@ -1295,6 +1301,7 @@ impl ContainerService for LocalContainerService {
                     base_commit: base_commit.clone(),
                     stats_only,
                     path_prefix: Some(repo.name.clone()),
+                    workspace_repo_changes: self.workspace_repo_changes.clone(),
                 })
                 .await?;
 

@@ -103,6 +103,8 @@ impl Deployment for LocalDeployment {
         // Create shared components for EventService
         let events_msg_store = Arc::new(MsgStore::new());
         let events_entry_count = Arc::new(RwLock::new(0));
+        let (workspace_repo_changes_tx, _) = tokio::sync::broadcast::channel(100);
+        let workspace_repo_changes = Arc::new(workspace_repo_changes_tx);
 
         // Create DB with event hooks
         let db = {
@@ -110,6 +112,7 @@ impl Deployment for LocalDeployment {
                 events_msg_store.clone(),
                 events_entry_count.clone(),
                 DBService::new().await?, // Temporary DB service for the hook
+                workspace_repo_changes.clone(),
             );
             DBService::new_with_after_connect(hook).await?
         };
@@ -182,10 +185,16 @@ impl Deployment for LocalDeployment {
             approvals.clone(),
             queued_message_service.clone(),
             share_publisher.clone(),
+            workspace_repo_changes.clone(),
         )
         .await;
 
-        let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
+        let events = EventService::new(
+            db.clone(),
+            events_msg_store,
+            events_entry_count,
+            workspace_repo_changes,
+        );
 
         let file_search_cache = Arc::new(FileSearchCache::new());
 

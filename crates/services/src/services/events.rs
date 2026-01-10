@@ -4,14 +4,21 @@ use db::{
     DBService,
     models::{
         execution_process::ExecutionProcess, project::Project, scratch::Scratch, task::Task,
-        workspace::Workspace,
+        workspace::Workspace, workspace_repo::WorkspaceRepo,
     },
 };
 use serde_json::json;
 use sqlx::{Error as SqlxError, Sqlite, SqlitePool, decode::Decode, sqlite::SqliteOperation};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast};
 use utils::msg_store::MsgStore;
 use uuid::Uuid;
+
+/// Notification sent when a workspace_repo's target_branch changes
+#[derive(Debug, Clone)]
+pub struct WorkspaceRepoChange {
+    pub workspace_id: Uuid,
+    pub repo_id: Uuid,
+}
 
 #[path = "events/patches.rs"]
 pub mod patches;
@@ -31,15 +38,22 @@ pub struct EventService {
     db: DBService,
     #[allow(dead_code)]
     entry_count: Arc<RwLock<usize>>,
+    workspace_repo_changes: Arc<broadcast::Sender<WorkspaceRepoChange>>,
 }
 
 impl EventService {
     /// Creates a new EventService that will work with a DBService configured with hooks
-    pub fn new(db: DBService, msg_store: Arc<MsgStore>, entry_count: Arc<RwLock<usize>>) -> Self {
+    pub fn new(
+        db: DBService,
+        msg_store: Arc<MsgStore>,
+        entry_count: Arc<RwLock<usize>>,
+        workspace_repo_changes: Arc<broadcast::Sender<WorkspaceRepoChange>>,
+    ) -> Self {
         Self {
             msg_store,
             db,
             entry_count,
+            workspace_repo_changes,
         }
     }
 
@@ -97,6 +111,7 @@ impl EventService {
         msg_store: Arc<MsgStore>,
         entry_count: Arc<RwLock<usize>>,
         db_service: DBService,
+        workspace_repo_changes: Arc<broadcast::Sender<WorkspaceRepoChange>>,
     ) -> impl for<'a> Fn(
         &'a mut sqlx::sqlite::SqliteConnection,
     ) -> std::pin::Pin<
@@ -108,6 +123,7 @@ impl EventService {
             let msg_store_for_hook = msg_store.clone();
             let entry_count_for_hook = entry_count.clone();
             let db_for_hook = db_service.clone();
+            let workspace_repo_changes_for_hook = workspace_repo_changes.clone();
             Box::pin(async move {
                 let mut handle = conn.lock_handle().await?;
                 let runtime_handle = tokio::runtime::Handle::current();
@@ -174,6 +190,7 @@ impl EventService {
                     let entry_count_for_hook = entry_count_for_hook.clone();
                     let msg_store_for_hook = msg_store_for_hook.clone();
                     let db = db_for_hook.clone();
+                    let workspace_repo_changes = workspace_repo_changes_for_hook.clone();
 
                     if let Ok(table) = HookTables::from_str(hook.table) {
                         let rowid = hook.rowid;
@@ -183,8 +200,20 @@ impl EventService {
                                 | (HookTables::Projects, SqliteOperation::Delete)
                                 | (HookTables::Workspaces, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
-                                | (HookTables::Scratch, SqliteOperation::Delete) => {
+                                | (HookTables::Scratch, SqliteOperation::Delete)
+                                | (HookTables::WorkspaceRepos, SqliteOperation::Delete) => {
                                     // Deletions handled in preupdate hook for reliable data capture
+                                    return;
+                                }
+                                (HookTables::WorkspaceRepos, _) => {
+                                    if let Ok(Some(workspace_repo)) =
+                                        WorkspaceRepo::find_by_rowid(&db.pool, rowid).await
+                                    {
+                                        let _ = workspace_repo_changes.send(WorkspaceRepoChange {
+                                            workspace_id: workspace_repo.workspace_id,
+                                            repo_id: workspace_repo.repo_id,
+                                        });
+                                    }
                                     return;
                                 }
                                 (HookTables::Tasks, _) => {

@@ -241,6 +241,23 @@ impl WorkspaceRepo {
         .await
     }
 
+    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            WorkspaceRepo,
+            r#"SELECT id as "id!: Uuid",
+                      workspace_id as "workspace_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      target_branch,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM workspace_repos
+               WHERE rowid = $1"#,
+            rowid
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     /// Find repos for a workspace with their copy_files configuration.
     /// Uses LEFT JOIN so repos without project_repo entries still appear (with NULL copy_files).
     pub async fn find_repos_with_copy_files(

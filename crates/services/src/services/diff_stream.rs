@@ -18,7 +18,7 @@ use notify_debouncer_full::{
 };
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 use utils::{
     diff::{self, Diff},
     log_msg::LogMsg,
@@ -26,6 +26,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
+    events::WorkspaceRepoChange,
     filesystem_watcher::{self, FilesystemWatcherError},
     git::{Commit, DiffTarget, GitService, GitServiceError},
 };
@@ -103,6 +104,7 @@ pub struct DiffStreamArgs {
     pub base_commit: Commit,
     pub stats_only: bool,
     pub path_prefix: Option<String>,
+    pub workspace_repo_changes: Arc<tokio::sync::broadcast::Sender<WorkspaceRepoChange>>,
 }
 
 struct DiffStreamManager {
@@ -123,10 +125,9 @@ enum DiffEvent {
 
 pub async fn create(args: DiffStreamArgs) -> Result<DiffStreamHandle, DiffStreamError> {
     let (tx, rx) = mpsc::channel::<Result<LogMsg, io::Error>>(DIFF_STREAM_CHANNEL_CAPACITY);
-    let manager_args = args.clone();
 
     let watcher_task = tokio::spawn(async move {
-        let mut manager = DiffStreamManager::new(manager_args, tx);
+        let mut manager = DiffStreamManager::new(args, tx);
         if let Err(e) = manager.run().await {
             tracing::error!("Diff stream manager failed: {e}");
             let _ = manager.tx.send(Err(io::Error::other(e.to_string()))).await;
@@ -170,8 +171,9 @@ impl DiffStreamManager {
             };
         let _git_guard = git_debouncer;
 
-        let mut target_interval =
-            IntervalStream::new(tokio::time::interval(Duration::from_secs(1)));
+        let mut workspace_repo_rx = self.args.workspace_repo_changes.subscribe();
+        let workspace_id = self.args.workspace_id;
+        let repo_id = self.args.repo_id;
 
         loop {
             let event = tokio::select! {
@@ -182,7 +184,18 @@ impl DiffStreamManager {
                         None => std::future::pending().await,
                     }
                 } => DiffEvent::GitStateChange,
-                _ = target_interval.next() => DiffEvent::CheckTarget,
+                result = workspace_repo_rx.recv() => {
+                    match result {
+                        Ok(change) if change.workspace_id == workspace_id && change.repo_id == repo_id => {
+                            DiffEvent::CheckTarget
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => { // Missed messages, check anyway to be safe
+                            DiffEvent::CheckTarget
+                        },
+                        Ok(_) => continue, // Change for a different workspace/repo
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break, // Channel closed
+                    }
+                },
                 else => break,
             };
 
