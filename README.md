@@ -61,11 +61,25 @@ Configure permissions and deny rules directly in profiles:
 
 Settings are written to `.claude/settings.local.json` in the workspace when the agent starts.
 
-## Development
+## Quick Start
 
 ```bash
+git clone https://github.com/hippogriff-io/vibe-kanban.git
+cd vibe-kanban
 pnpm i
 pnpm run dev
 ```
+
+This starts both the frontend (port 3000) and backend with auto-assigned ports.
+
+### Shell Alias (Optional)
+
+Add to your `~/.zshrc` or `~/.bashrc` for quick access:
+
+```bash
+alias vk="cd ~/path/to/vibe-kanban && pnpm run dev"
+```
+
+Then reload your shell (`source ~/.zshrc`) and run `vk` from anywhere.
 
 See the [original repo](https://github.com/BloopAI/vibe-kanban#development) for full development instructions.
