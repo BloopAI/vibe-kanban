@@ -294,6 +294,25 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "PI": {
+      "DEFAULT": {
+        "PI": {
+          "mode": "json"
+        }
+      },
+      "HIGH_THINKING": {
+        "PI": {
+          "mode": "json",
+          "thinking": "high"
+        }
+      },
+      "NO_THINKING": {
+        "PI": {
+          "mode": "json",
+          "thinking": "off"
+        }
+      }
     }
   }
 }
