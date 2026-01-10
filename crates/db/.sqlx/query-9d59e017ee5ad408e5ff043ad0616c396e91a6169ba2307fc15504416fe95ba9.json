@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE projects\n               SET name = $2, dev_script = $3, dev_script_working_dir = $4, default_agent_working_dir = $5\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         dev_script,\n                         dev_script_working_dir,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      editor_config,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,23 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "editor_config",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 1
     },
     "nullable": [
       true,
@@ -54,9 +59,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "697001fc14562702ea84061e74bdcc6b9fbef679b8366ab46c1f629a633e9919"
+  "hash": "9d59e017ee5ad408e5ff043ad0616c396e91a6169ba2307fc15504416fe95ba9"
 }

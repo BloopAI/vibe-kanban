@@ -16,6 +16,7 @@ fn generate_types_content() -> String {
         remote::db::tasks::SharedTask::decl(),
         remote::db::users::UserData::decl(),
         db::models::project::Project::decl(),
+        db::models::project::ProjectEditorConfig::decl(),
         db::models::project::CreateProject::decl(),
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),

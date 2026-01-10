@@ -31,13 +31,25 @@ import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
+import type {
+  Project,
+  ProjectEditorConfig,
+  ProjectRepo,
+  Repo,
+  UpdateProject,
+} from 'shared/types';
+import { EditorType } from 'shared/types';
+import { toPrettyCase } from '@/utils/string';
+import { useEditorAvailability } from '@/hooks/useEditorAvailability';
+import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 
 interface ProjectFormState {
   name: string;
   dev_script: string;
   dev_script_working_dir: string;
   default_agent_working_dir: string;
+  // Editor override: null = use global, undefined = not set, object = override
+  editor_config: ProjectEditorConfig | null;
 }
 
 interface RepoScriptsFormState {
@@ -53,6 +65,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     dev_script_working_dir: project.dev_script_working_dir ?? '',
     default_agent_working_dir: project.default_agent_working_dir ?? '',
+    editor_config: project.editor_config ?? null,
   };
 }
 
@@ -116,11 +129,33 @@ export function ProjectSettings() {
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
 
-  // Check for unsaved changes (project name)
-  const hasUnsavedProjectChanges = useMemo(() => {
+  // Check editor availability when project editor override is set
+  const editorAvailability = useEditorAvailability(
+    draft?.editor_config?.editor_type as EditorType | undefined
+  );
+
+  // Check for unsaved changes in general settings (name, scripts, working dirs)
+  const hasUnsavedGeneralChanges = useMemo(() => {
     if (!draft || !selectedProject) return false;
-    return !isEqual(draft, projectToFormState(selectedProject));
+    const original = projectToFormState(selectedProject);
+    return (
+      draft.name !== original.name ||
+      draft.dev_script !== original.dev_script ||
+      draft.dev_script_working_dir !== original.dev_script_working_dir ||
+      draft.default_agent_working_dir !== original.default_agent_working_dir
+    );
   }, [draft, selectedProject]);
+
+  // Check for unsaved changes in editor override
+  const hasUnsavedEditorChanges = useMemo(() => {
+    if (!draft || !selectedProject) return false;
+    const original = projectToFormState(selectedProject);
+    return !isEqual(draft.editor_config, original.editor_config);
+  }, [draft, selectedProject]);
+
+  // Combined check for any unsaved project changes
+  const hasUnsavedProjectChanges =
+    hasUnsavedGeneralChanges || hasUnsavedEditorChanges;
 
   // Check for unsaved script changes
   const hasUnsavedScriptsChanges = useMemo(() => {
@@ -397,6 +432,8 @@ export function ProjectSettings() {
         dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
         default_agent_working_dir:
           draft.default_agent_working_dir.trim() || null,
+        // Explicitly set editor_config - null clears override, object sets it
+        editor_config: draft.editor_config,
       };
 
       updateProject.mutate({
@@ -632,7 +669,7 @@ export function ProjectSettings() {
 
               {/* Save Button */}
               <div className="flex items-center justify-between pt-4 border-t">
-                {hasUnsavedProjectChanges ? (
+                {hasUnsavedGeneralChanges ? (
                   <span className="text-sm text-muted-foreground">
                     {t('settings.projects.save.unsavedChanges')}
                   </span>
@@ -643,13 +680,13 @@ export function ProjectSettings() {
                   <Button
                     variant="outline"
                     onClick={handleDiscard}
-                    disabled={saving || !hasUnsavedProjectChanges}
+                    disabled={saving || !hasUnsavedGeneralChanges}
                   >
                     {t('settings.projects.save.discard')}
                   </Button>
                   <Button
                     onClick={handleSave}
-                    disabled={saving || !hasUnsavedProjectChanges}
+                    disabled={saving || !hasUnsavedGeneralChanges}
                   >
                     {saving ? (
                       <>
@@ -662,18 +699,132 @@ export function ProjectSettings() {
                   </Button>
                 </div>
               </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
+            </CardContent>
+          </Card>
+
+          {/* Editor Override Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.projects.editor.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.editor.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="project-editor-type">
+                  {t('settings.projects.editor.type.label')}
+                </Label>
+                <Select
+                  value={draft.editor_config?.editor_type ?? 'DEFAULT'}
+                  onValueChange={(value: string) => {
+                    if (value === 'DEFAULT') {
+                      // Use global setting
+                      updateDraft({ editor_config: null });
+                    } else {
+                      // Set project-specific editor
+                      updateDraft({
+                        editor_config: {
+                          editor_type: value,
+                          custom_command:
+                            value === EditorType.CUSTOM
+                              ? (draft.editor_config?.custom_command ?? null)
+                              : null,
+                        },
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="project-editor-type">
+                    <SelectValue
+                      placeholder={t(
+                        'settings.projects.editor.type.placeholder'
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEFAULT">
+                      {t('settings.projects.editor.useGlobalFallback')}
+                    </SelectItem>
+                    {Object.values(EditorType).map((editor) => (
+                      <SelectItem key={editor} value={editor}>
+                        {toPrettyCase(editor)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Editor availability status indicator */}
+                {draft.editor_config &&
+                  draft.editor_config.editor_type !== EditorType.CUSTOM && (
+                    <EditorAvailabilityIndicator
+                      availability={editorAvailability}
+                    />
+                  )}
+
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.editor.type.helper')}
+                </p>
+              </div>
+
+              {draft.editor_config?.editor_type === EditorType.CUSTOM && (
+                <div className="space-y-2">
+                  <Label htmlFor="project-custom-command">
+                    {t('settings.projects.editor.customCommand.label')}
+                  </Label>
+                  <Input
+                    id="project-custom-command"
+                    placeholder={t(
+                      'settings.projects.editor.customCommand.placeholder'
+                    )}
+                    value={draft.editor_config.custom_command || ''}
+                    onChange={(e) =>
+                      updateDraft({
+                        editor_config: {
+                          ...draft.editor_config!,
+                          custom_command: e.target.value || null,
+                        },
+                      })
+                    }
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {t('settings.projects.editor.customCommand.helper')}
+                  </p>
+                </div>
               )}
-              {success && (
-                <Alert>
-                  <AlertDescription>
-                    {t('settings.projects.save.success')}
-                  </AlertDescription>
-                </Alert>
-              )}
+
+              {/* Save Button for Editor Override */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                {hasUnsavedEditorChanges ? (
+                  <span className="text-sm text-muted-foreground">
+                    {t('settings.projects.save.unsavedChanges')}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscard}
+                    disabled={saving || !hasUnsavedEditorChanges}
+                  >
+                    {t('settings.projects.save.discard')}
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !hasUnsavedEditorChanges}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('settings.projects.save.saving')}
+                      </>
+                    ) : (
+                      t('settings.projects.save.button')
+                    )}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

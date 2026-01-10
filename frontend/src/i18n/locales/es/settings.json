@@ -369,7 +369,27 @@
         "error": "Error al guardar la configuración del proyecto",
         "unsavedChanges": "• Tienes cambios sin guardar",
         "discard": "Descartar",
-        "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
+        "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán.",
+        "saving": "Guardando..."
+      },
+      "editor": {
+        "title": "Anular Editor",
+        "description": "Anula el editor predeterminado para este proyecto. Cuando está configurado, este proyecto se abrirá en el editor especificado en lugar del predeterminado global.",
+        "toggle": {
+          "label": "Usar editor personalizado para este proyecto",
+          "helper": "Habilita para anular la configuración global del editor para este proyecto."
+        },
+        "type": {
+          "label": "Tipo de Editor",
+          "placeholder": "Seleccionar editor",
+          "helper": "Elige el editor a usar al abrir archivos de este proyecto."
+        },
+        "customCommand": {
+          "label": "Comando de Editor Personalizado",
+          "placeholder": "ej., code, subl, vim",
+          "helper": "Ingresa el comando para iniciar tu editor personalizado."
+        },
+        "useGlobalFallback": "Usar predeterminado global"
       }
     }
   },

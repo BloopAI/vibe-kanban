@@ -132,6 +132,7 @@ impl ProjectService {
                     dev_script: None,
                     dev_script_working_dir: None,
                     default_agent_working_dir: Some(repo.name),
+                    editor_config: None,
                 },
             )
             .await?;
