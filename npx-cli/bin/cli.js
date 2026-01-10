@@ -96,7 +96,7 @@ function showProgress(downloaded, total) {
 async function extractAndRun(baseName, launch) {
   const binName = getBinaryName(baseName);
   const binPath = path.join(versionCacheDir, binName);
-  const zipPath = path.join(versionCacheDir, `${baseName}.zip`);
+  let zipPath = path.join(versionCacheDir, `${baseName}.zip`);
 
   // Clean old binary if exists
   try {
@@ -109,12 +109,16 @@ async function extractAndRun(baseName, launch) {
     }
   }
 
-  // Download if not cached
+  // Download if not cached (or use local dev zip)
   if (!fs.existsSync(zipPath)) {
-    console.error(`Downloading ${baseName}...`);
+    const actionLabel = LOCAL_DEV_MODE ? "Using local binary" : "Downloading";
+    console.error(`${actionLabel} ${baseName}...`);
     try {
-      await ensureBinary(platformDir, baseName, showProgress);
-      console.error(""); // newline after progress
+      // Always trust ensureBinary result path to avoid local dev path mismatch
+      zipPath = await ensureBinary(platformDir, baseName, showProgress);
+      if (!LOCAL_DEV_MODE) {
+        console.error(""); // newline after progress
+      }
     } catch (err) {
       console.error(`\nDownload failed: ${err.message}`);
       process.exit(1);
