@@ -13,6 +13,8 @@
         "mcpDesc": "Model Context Protocol servers",
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
+        "workspace": "Workspace",
+        "workspaceDesc": "Manage workspace settings and members",
         "api-keys": "API Keys",
         "api-keysDesc": "Manage API keys for programmatic access"
       }

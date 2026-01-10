@@ -10,6 +10,7 @@ import { TeamProjectDetail } from '@/pages/TeamProjectDetail';
 import { TeamDocuments } from '@/pages/TeamDocuments';
 import { TeamMembers } from '@/pages/TeamMembers';
 import { JoinTeam } from '@/pages/JoinTeam';
+import { NewWorkspace } from '@/pages/workspace';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { About } from '@/pages/About';
 import { Views } from '@/pages/Views';
@@ -30,6 +31,7 @@ import {
   OrganizationSettings,
   ProjectSettings,
   SettingsLayout,
+  WorkspaceSettings,
 } from '@/pages/settings/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -38,6 +40,7 @@ import { SearchProvider } from '@/contexts/SearchContext';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectProvider } from '@/contexts/ProjectContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
@@ -159,6 +162,16 @@ function AppContent() {
               {/* Join team via invite link (standalone page) */}
               <Route path="/join" element={<JoinTeam />} />
 
+              {/* Workspace setup wizard (standalone page) */}
+              <Route
+                path="/workspace/new"
+                element={
+                  <ProtectedRoute>
+                    <NewWorkspace />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
               <Route
                 path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
@@ -194,6 +207,7 @@ function AppContent() {
                     path="organizations"
                     element={<OrganizationSettings />}
                   />
+                  <Route path="workspace" element={<WorkspaceSettings />} />
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                   <Route path="api-keys" element={<ApiKeysSettings />} />
@@ -233,15 +247,17 @@ function App() {
     <BrowserRouter>
       <UserSystemProvider>
         <ClickedElementsProvider>
-          <ProjectProvider>
-            <SidebarProvider>
-              <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-                <NiceModal.Provider>
-                  <AppContent />
-                </NiceModal.Provider>
-              </HotkeysProvider>
-            </SidebarProvider>
-          </ProjectProvider>
+          <WorkspaceProvider>
+            <ProjectProvider>
+              <SidebarProvider>
+                <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+                  <NiceModal.Provider>
+                    <AppContent />
+                  </NiceModal.Provider>
+                </HotkeysProvider>
+              </SidebarProvider>
+            </ProjectProvider>
+          </WorkspaceProvider>
         </ClickedElementsProvider>
       </UserSystemProvider>
     </BrowserRouter>

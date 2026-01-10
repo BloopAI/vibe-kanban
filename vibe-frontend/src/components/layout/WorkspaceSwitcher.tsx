@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -24,39 +24,42 @@ import {
   PenSquare,
   FolderKanban,
   Users,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TeamFormDialog } from '@/components/dialogs/teams/TeamFormDialog';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
-
-interface Workspace {
-  id: string;
-  name: string;
-  icon?: string;
-}
+import { useWorkspaceOptional } from '@/contexts/WorkspaceContext';
 
 interface WorkspaceSwitcherProps {
   isCollapsed?: boolean;
 }
 
-const defaultWorkspace: Workspace = {
-  id: 'default',
-  name: 'iKanban',
-};
-
 export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
   const navigate = useNavigate();
-  const [currentWorkspace] = useState<Workspace>(defaultWorkspace);
+  const workspaceContext = useWorkspaceOptional();
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Mock workspaces for future multi-workspace support
-  const workspaces: Workspace[] = [defaultWorkspace];
+  // Get workspaces from context or use fallback
+  const workspaces = workspaceContext?.workspaces ?? [];
+  const currentWorkspace = workspaceContext?.currentWorkspace;
+  const isLoading = workspaceContext?.isLoading ?? false;
+  const setCurrentWorkspaceId = workspaceContext?.setCurrentWorkspaceId;
 
-  const filteredWorkspaces = workspaces.filter((ws) =>
-    ws.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter workspaces by search
+  const filteredWorkspaces = useMemo(
+    () =>
+      workspaces.filter((ws) =>
+        ws.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [workspaces, searchQuery]
   );
+
+  // Display name for current workspace
+  const displayName = currentWorkspace?.name ?? 'iKanban';
+  const displayColor = currentWorkspace?.color;
 
   const handleCreateWorkspace = () => {
     setIsOpen(false);
@@ -86,17 +89,35 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
     }
   };
 
+  // Handle workspace switch
+  const handleWorkspaceSwitch = (workspaceId: string) => {
+    if (setCurrentWorkspaceId) {
+      setCurrentWorkspaceId(workspaceId);
+    }
+    setIsOpen(false);
+  };
+
   if (isCollapsed) {
     return (
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors mx-auto">
-              <Building2 className="h-4 w-4" />
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-md transition-colors mx-auto"
+              style={{
+                backgroundColor: displayColor ? `${displayColor}20` : undefined,
+                color: displayColor || undefined,
+              }}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Building2 className="h-4 w-4" />
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {currentWorkspace.name}
+            {displayName}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -115,11 +136,21 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
               'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1'
             )}
           >
-            <div className="flex items-center justify-center w-6 h-6 rounded bg-primary/10 text-primary shrink-0">
-              <Building2 className="h-3.5 w-3.5" />
+            <div
+              className="flex items-center justify-center w-6 h-6 rounded shrink-0"
+              style={{
+                backgroundColor: displayColor ? `${displayColor}20` : 'hsl(var(--primary) / 0.1)',
+                color: displayColor || 'hsl(var(--primary))',
+              }}
+            >
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Building2 className="h-3.5 w-3.5" />
+              )}
             </div>
             <span className="truncate flex-1 text-left">
-              {currentWorkspace.name}
+              {displayName}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           </button>
@@ -147,16 +178,23 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
           {filteredWorkspaces.map((workspace) => (
             <DropdownMenuItem
               key={workspace.id}
+              onClick={() => handleWorkspaceSwitch(workspace.id)}
               className={cn(
-                'gap-2',
-                workspace.id === currentWorkspace.id && 'bg-accent'
+                'gap-2 cursor-pointer',
+                workspace.id === currentWorkspace?.id && 'bg-accent'
               )}
             >
-              <div className="flex items-center justify-center w-5 h-5 rounded bg-primary/10 text-primary">
+              <div
+                className="flex items-center justify-center w-5 h-5 rounded"
+                style={{
+                  backgroundColor: workspace.color ? `${workspace.color}20` : 'hsl(var(--primary) / 0.1)',
+                  color: workspace.color || 'hsl(var(--primary))',
+                }}
+              >
                 <Building2 className="h-3 w-3" />
               </div>
               <span className="flex-1 truncate">{workspace.name}</span>
-              {workspace.id === currentWorkspace.id && (
+              {workspace.id === currentWorkspace?.id && (
                 <span className="text-xs text-muted-foreground">Current</span>
               )}
             </DropdownMenuItem>
