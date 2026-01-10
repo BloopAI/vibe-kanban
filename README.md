@@ -54,6 +54,15 @@ We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) 
 
 We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
 
+## About This Fork
+
+This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban). The upstream repository is configured as a remote for easy synchronization with the latest changes.
+
+### Local Modifications
+
+- **PR Title Fix**: Removed "vibe-kanban" suffix from auto-generated PR titles for cleaner commit history
+  - See commit: `9e2bade9` (fix: remove vibe-kanban suffix from auto-generated PR titles)
+
 ## Development
 
 ### Prerequisites
