@@ -2,6 +2,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const ProxyAgent = require("proxy-agent");
 
 // Replaced during npm publish by workflow
 const RELEASE_REPO = "__RELEASE_REPO__"; // e.g., mxyhi/vibe-kanban
@@ -13,10 +14,17 @@ const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 // Only activate if dist/ exists (i.e., running from source after local-build.sh)
 const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
 const LOCAL_DEV_MODE = fs.existsSync(LOCAL_DIST_DIR) || process.env.VIBE_KANBAN_LOCAL === "1";
+// ProxyAgent will pick HTTP/HTTPS/SOCKS proxy from env (HTTP(S)_PROXY/NO_PROXY).
+const proxyAgent = new ProxyAgent();
+
+function withProxyAgent(options = {}) {
+  if (options.agent) return options;
+  return { ...options, agent: proxyAgent };
+}
 
 async function fetchJson(url, options = {}) {
   return new Promise((resolve, reject) => {
-    https.get(url, options, (res) => {
+    https.get(url, withProxyAgent(options), (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return fetchJson(res.headers.location, options).then(resolve).catch(reject);
       }
@@ -48,7 +56,7 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
       } catch {}
     };
 
-    https.get(url, (res) => {
+    https.get(url, withProxyAgent(), (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
         cleanup();
