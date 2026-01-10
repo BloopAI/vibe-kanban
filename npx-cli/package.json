@@ -1,15 +1,22 @@
 {
-  "name": "vibe-kanban",
+  "name": "ikanban",
   "private": false,
   "version": "0.0.142",
   "main": "index.js",
   "bin": {
-    "vibe-kanban": "bin/cli.js"
+    "ikanban": "bin/cli.js"
   },
-  "keywords": [],
-  "author": "bloop",
-  "license": "",
-  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "keywords": [
+    "kanban",
+    "project-management",
+    "task-management",
+    "ai",
+    "claude",
+    "developer-tools"
+  ],
+  "author": "scho1ar",
+  "license": "MIT",
+  "description": "AI-powered Kanban board for developers - integrates with Claude Code and git repositories",
   "dependencies": {
     "adm-zip": "^0.5.16"
   },
