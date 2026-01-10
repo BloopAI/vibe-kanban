@@ -28,6 +28,8 @@ pub struct ProjectRepo {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
+    /// The default branch to use for new task attempts. When None, auto-detects from remote HEAD.
+    pub default_branch: Option<String>,
 }
 
 /// ProjectRepo with the associated repo name (for script execution in worktrees)
@@ -56,6 +58,8 @@ pub struct UpdateProjectRepo {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: Option<bool>,
+    /// The default branch to use for new task attempts. Use null to auto-detect from remote.
+    pub default_branch: Option<String>,
 }
 
 impl ProjectRepo {
@@ -71,7 +75,8 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      default_branch
                FROM project_repos
                WHERE project_id = $1"#,
             project_id
@@ -92,7 +97,8 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      default_branch
                FROM project_repos
                WHERE repo_id = $1"#,
             repo_id
@@ -160,7 +166,8 @@ impl ProjectRepo {
                       setup_script,
                       cleanup_script,
                       copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool"
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      default_branch
                FROM project_repos
                WHERE project_id = $1 AND repo_id = $2"#,
             project_id,
@@ -235,7 +242,8 @@ impl ProjectRepo {
                          setup_script,
                          cleanup_script,
                          copy_files,
-                         parallel_setup_script as "parallel_setup_script!: bool""#,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         default_branch"#,
             id,
             project_id,
             repo_id
@@ -259,6 +267,7 @@ impl ProjectRepo {
         let parallel_setup_script = payload
             .parallel_setup_script
             .unwrap_or(existing.parallel_setup_script);
+        let default_branch = payload.default_branch.clone();
 
         sqlx::query_as!(
             ProjectRepo,
@@ -266,19 +275,22 @@ impl ProjectRepo {
                SET setup_script = $1,
                    cleanup_script = $2,
                    copy_files = $3,
-                   parallel_setup_script = $4
-               WHERE project_id = $5 AND repo_id = $6
+                   parallel_setup_script = $4,
+                   default_branch = $5
+               WHERE project_id = $6 AND repo_id = $7
                RETURNING id as "id!: Uuid",
                          project_id as "project_id!: Uuid",
                          repo_id as "repo_id!: Uuid",
                          setup_script,
                          cleanup_script,
                          copy_files,
-                         parallel_setup_script as "parallel_setup_script!: bool""#,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         default_branch"#,
             setup_script,
             cleanup_script,
             copy_files,
             parallel_setup_script,
+            default_branch,
             project_id,
             repo_id
         )

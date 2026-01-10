@@ -17,7 +17,7 @@ import {
   useTask,
   useAttempt,
   useRepoBranchSelection,
-  useProjectRepos,
+  useProjectReposWithDefaults,
 } from '@/hooks';
 import { useTaskAttemptsWithSessions } from '@/hooks/useTaskAttempts';
 import { useProject } from '@/contexts/ProjectContext';
@@ -68,7 +68,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     );
 
     const { data: projectRepos = [], isLoading: isLoadingRepos } =
-      useProjectRepos(projectId, { enabled: modal.visible });
+      useProjectReposWithDefaults(projectId, { enabled: modal.visible });
 
     const {
       configs: repoBranchConfigs,
