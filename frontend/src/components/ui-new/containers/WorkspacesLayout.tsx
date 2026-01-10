@@ -158,6 +158,7 @@ export function WorkspacesLayout() {
     setChangesMode,
     setLogsMode,
     resetForCreateMode,
+    setSidebarVisible,
   } = useLayoutStore();
 
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
@@ -328,6 +329,13 @@ export function WorkspacesLayout() {
       resetForCreateMode();
     }
   }, [isCreateMode, resetForCreateMode]);
+
+  // Show sidebar when no panel is open
+  useEffect(() => {
+    if (!isChangesMode && !isLogsMode && !isPreviewMode) {
+      setSidebarVisible(true);
+    }
+  }, [isChangesMode, isLogsMode, isPreviewMode, setSidebarVisible]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
