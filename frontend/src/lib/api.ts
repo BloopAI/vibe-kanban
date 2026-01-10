@@ -89,6 +89,9 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  GitHubIssue,
+  ImportGitHubIssuesRequest,
+  ImportGitHubIssuesResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -332,6 +335,13 @@ export const projectsApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
+  getRepositoryConfigs: async (projectId: string): Promise<ProjectRepo[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repository-configs`
+    );
+    return handleApiResponse<ProjectRepo[]>(response);
+  },
+
   addRepository: async (
     projectId: string,
     data: CreateProjectRepo
@@ -382,6 +392,31 @@ export const projectsApi = {
       }
     );
     return handleApiResponse<ProjectRepo>(response);
+  },
+
+  listGitHubIssues: async (
+    projectId: string,
+    repoId: string,
+    state: string = 'open'
+  ): Promise<GitHubIssue[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repos/${repoId}/github-issues?state=${encodeURIComponent(state)}`
+    );
+    return handleApiResponse<GitHubIssue[]>(response);
+  },
+
+  importGitHubIssues: async (
+    projectId: string,
+    data: ImportGitHubIssuesRequest
+  ): Promise<ImportGitHubIssuesResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/import-github-issues`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<ImportGitHubIssuesResponse>(response);
   },
 };
 

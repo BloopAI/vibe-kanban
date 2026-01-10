@@ -836,10 +836,12 @@ export function ProjectTasks() {
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">{t('empty.noTasks')}</p>
-            <Button className="mt-4" onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('empty.createFirst')}
-            </Button>
+            <div className="flex gap-2 justify-center mt-4">
+              <Button onClick={handleCreateNewTask}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t('empty.createFirst')}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -856,15 +858,15 @@ export function ProjectTasks() {
     ) : (
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">
         <TaskKanbanBoard
-          columns={kanbanColumns}
-          onDragEnd={handleDragEnd}
-          onViewTaskDetails={handleViewTaskDetails}
-          onViewSharedTask={handleViewSharedTask}
-          selectedTaskId={selectedTask?.id}
-          selectedSharedTaskId={selectedSharedTaskId}
-          onCreateTask={handleCreateNewTask}
-          projectId={projectId!}
-        />
+            columns={kanbanColumns}
+            onDragEnd={handleDragEnd}
+            onViewTaskDetails={handleViewTaskDetails}
+            onViewSharedTask={handleViewSharedTask}
+            selectedTaskId={selectedTask?.id}
+            selectedSharedTaskId={selectedSharedTaskId}
+            onCreateTask={handleCreateNewTask}
+            projectId={projectId!}
+          />
       </div>
     );
 

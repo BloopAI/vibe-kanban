@@ -12,7 +12,8 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use tempfile::NamedTempFile;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
@@ -25,6 +26,17 @@ use crate::services::git_host::types::{
 pub struct GitHubRepoInfo {
     pub owner: String,
     pub repo_name: String,
+}
+
+/// A GitHub issue
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct GitHubIssue {
+    #[ts(type = "number")]
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: String, // "open" or "closed"
+    pub url: String,
 }
 
 #[derive(Deserialize)]
@@ -303,6 +315,32 @@ impl GhCli {
         )?;
         Self::parse_pr_review_comments(&raw)
     }
+
+    /// List issues for a repository.
+    /// `state` can be "open", "closed", or "all".
+    pub fn list_issues(
+        &self,
+        owner: &str,
+        repo: &str,
+        state: &str,
+    ) -> Result<Vec<GitHubIssue>, GhCliError> {
+        let raw = self.run(
+            [
+                "issue",
+                "list",
+                "--repo",
+                &format!("{owner}/{repo}"),
+                "--state",
+                state,
+                "--json",
+                "number,title,body,state,url",
+                "--limit",
+                "100",
+            ],
+            None,
+        )?;
+        Self::parse_issues(&raw)
+    }
 }
 
 impl GhCli {
@@ -438,5 +476,13 @@ impl GhCli {
                 author_association: c.author_association,
             })
             .collect())
+    }
+
+    fn parse_issues(raw: &str) -> Result<Vec<GitHubIssue>, GhCliError> {
+        serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh issue list response: {err}; raw: {raw}"
+            ))
+        })
     }
 }

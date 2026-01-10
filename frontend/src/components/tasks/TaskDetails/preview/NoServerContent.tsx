@@ -134,6 +134,8 @@ export function NoServerContent({
         parent_workspace_id: null,
         image_ids: null,
         shared_task_id: null,
+        github_issue_number: null,
+        github_issue_url: null,
       },
       executor_profile_id: config.executor_profile,
       repos,

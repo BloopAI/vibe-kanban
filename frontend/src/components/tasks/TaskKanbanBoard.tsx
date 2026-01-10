@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { useAuth } from '@/hooks';
 import {
   type DragEndEvent,
@@ -12,6 +12,7 @@ import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
+import { ImportGitHubIssuesDialog } from '@/components/dialogs/tasks/ImportGitHubIssuesDialog';
 
 export type KanbanColumnItem =
   | {
@@ -49,6 +50,10 @@ function TaskKanbanBoard({
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
 
+  const handleImportIssues = useCallback(() => {
+    ImportGitHubIssuesDialog.show({ projectId });
+  }, [projectId]);
+
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(columns).map(([status, items]) => {
@@ -59,6 +64,7 @@ function TaskKanbanBoard({
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              onImportIssues={statusKey === 'todo' ? handleImportIssues : undefined}
             />
             <KanbanCards>
               {items.map((item, index) => {
