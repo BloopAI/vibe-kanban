@@ -4,6 +4,7 @@ import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface PreviewControlsContainerProps {
   attemptId?: string;
@@ -16,6 +17,7 @@ export function PreviewControlsContainer({
   onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
+  const { repos } = useWorkspaceContext();
   const setLogsMode = useLayoutStore((s) => s.setLogsMode);
   const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
 
@@ -86,6 +88,15 @@ export function PreviewControlsContainer({
     }
   }, [urlInfo?.url]);
 
+  const hasDevScript = repos.some(
+    (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
+  );
+
+  // Don't render if no repos have dev server scripts configured
+  if (!hasDevScript) {
+    return null;
+  }
+
   return (
     <PreviewControls
       devServerProcesses={devServerProcesses}
@@ -102,7 +113,6 @@ export function PreviewControlsContainer({
       onOpenInNewTab={handleOpenInNewTab}
       isStarting={isStarting}
       isStopping={isStopping}
-      hasDevScript={true}
       isServerRunning={runningDevServers.length > 0}
       className={className}
     />

@@ -32,7 +32,6 @@ interface PreviewControlsProps {
   onOpenInNewTab: () => void;
   isStarting: boolean;
   isStopping: boolean;
-  hasDevScript: boolean;
   isServerRunning: boolean;
   className?: string;
 }
@@ -52,7 +51,6 @@ export function PreviewControls({
   onOpenInNewTab,
   isStarting,
   isStopping,
-  hasDevScript,
   isServerRunning,
   className,
 }: PreviewControlsProps) {
@@ -112,15 +110,13 @@ export function PreviewControls({
               onClick={onStop}
               disabled={isStopping}
             />
-          ) : hasDevScript ? (
+          ) : (
             <PrimaryButton
               value={t('preview.browser.startingButton')}
               actionIcon={isStarting ? 'spinner' : PlayIcon}
               onClick={onStart}
               disabled={isStarting}
             />
-          ) : (
-            <p className="text-sm text-low">{t('preview.noDevScript')}</p>
           )}
         </div>
 

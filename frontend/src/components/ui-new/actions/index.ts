@@ -590,6 +590,8 @@ export const Actions = {
         ctx.stopDevServer();
       } else {
         ctx.startDevServer();
+        // Auto-open preview mode when starting dev server
+        useLayoutStore.getState().setPreviewMode(true);
       }
     },
   },
