@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "vibe_kanban": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["mcp/ikanban.py", "serve"],
+      "env": {}
+    }
+  }
+}

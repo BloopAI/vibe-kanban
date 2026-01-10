@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+target/
+dist/
+build/
+.pnpm-store/
+
+# Large generated files
+*.lock
+pnpm-lock.yaml
+Cargo.lock
+package-lock.json
+
+# SQLx cache (large JSON files)
+.sqlx/
+
+# Build artifacts
+*.wasm
+*.map
+*.min.js
+*.min.css
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs and temp
+*.log
+tmp/
+temp/
+.temp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Documentation assets
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.pdf
+
+# Environment files
+.env*
+!.env.example
