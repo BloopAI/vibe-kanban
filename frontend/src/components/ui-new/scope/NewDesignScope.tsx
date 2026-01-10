@@ -6,6 +6,8 @@ import { ActionsProvider } from '@/contexts/ActionsContext';
 import NiceModal from '@ebay/nice-modal-react';
 import '@/styles/new/index.css';
 
+const UI_NEW_ACCESSED_KEY = 'ui_new_accessed';
+
 interface NewDesignScopeProps {
   children: ReactNode;
 }
@@ -13,12 +15,11 @@ interface NewDesignScopeProps {
 export function NewDesignScope({ children }: NewDesignScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
-  const hasTrackedSession = useRef(false);
 
   useEffect(() => {
-    if (posthog && !hasTrackedSession.current) {
-      posthog.capture('ui_new_accessed');
-      hasTrackedSession.current = true;
+    if (!sessionStorage.getItem(UI_NEW_ACCESSED_KEY)) {
+      posthog?.capture('ui_new_accessed');
+      sessionStorage.setItem(UI_NEW_ACCESSED_KEY, 'true');
     }
   }, [posthog]);
 
