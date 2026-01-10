@@ -40,7 +40,13 @@ Import settings from your `~/.claude/settings.json` automatically:
 
 ### Settings Configuration
 
-Configure permissions and deny rules directly in profiles:
+Configure permissions and deny rules directly in profiles via **Settings → Agents**:
+
+<p align="center">
+  <img src="docs/images/coding-agent-settings-configuration.png" alt="Agent Settings Configuration UI" width="800">
+</p>
+
+Or edit the JSON directly:
 
 ```json
 {
