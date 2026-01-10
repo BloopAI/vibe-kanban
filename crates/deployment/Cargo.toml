@@ -1,6 +1,6 @@
 [package]
 name = "deployment"
-version = "0.0.149-rc.1+fixci2"
+version = "0.0.149-rc.1"
 edition = "2024"
 
 [dependencies]
@@ -8,8 +8,8 @@ db = { path = "../db" }
 utils = { path = "../utils" }
 services = { path = "../services" }
 executors = { path = "../executors" }
-async-trait = { workspace = true } 
-thiserror = { workspace = true } 
+async-trait = { workspace = true }
+thiserror = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 sqlx = "0.8.6"
@@ -18,4 +18,3 @@ tracing = { workspace = true }
 git2 = { workspace = true }
 futures = "0.3.31"
 axum = { workspace = true }
-

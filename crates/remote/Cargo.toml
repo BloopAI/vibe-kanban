@@ -1,6 +1,6 @@
 [package]
 name = "remote"
-version = "0.0.149-rc.1+fixci2"
+version = "0.0.149-rc.1"
 edition = "2024"
 publish = false
 
@@ -12,14 +12,36 @@ aes-gcm = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-webpki-roots-no-provider", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls-webpki-roots-no-provider",
+    "stream",
+] }
 rustls = { workspace = true }
 secrecy = "0.10.3"
-sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
-sentry-tracing = { version = "0.41.0", default-features = false, features = ["backtrace"] }
+sentry = { version = "0.41.0", default-features = false, features = [
+    "anyhow",
+    "backtrace",
+    "panic",
+    "debug-images",
+    "reqwest",
+] }
+sentry-tracing = { version = "0.41.0", default-features = false, features = [
+    "backtrace",
+] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "uuid", "chrono", "json", "macros", "migrate", "ipnetwork"] }
+sqlx = { version = "0.8.6", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-aws-lc-rs",
+    "postgres",
+    "uuid",
+    "chrono",
+    "json",
+    "macros",
+    "migrate",
+    "ipnetwork",
+] }
 ipnetwork = "0.20"
 tokio = { workspace = true }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
@@ -40,7 +62,9 @@ hex = "0.4"
 urlencoding = "2.1"
 url = "2.5"
 base64 = "0.22"
-aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest"] }
+aws-sdk-s3 = { version = "1.65", default-features = false, features = [
+    "behavior-version-latest",
+] }
 aws-credential-types = "1.2"
 tempfile = "3"
 tar = "0.4"
