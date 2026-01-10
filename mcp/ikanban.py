@@ -440,8 +440,8 @@ def cmd_comments(args):
 def cmd_comment(args):
     task_id = resolve_task_id(args.task_id)
     data = {"content": args.content}
-    if args.author_name:
-        data["author_name"] = args.author_name
+    # author_name is required by the API - use provided value or default
+    data["author_name"] = args.author_name if args.author_name else "Claude Code"
 
     result = api_request(f"/tasks/{task_id}/comments", method="POST", data=data)
     comment = result.get("data", {})
@@ -684,8 +684,8 @@ def run_mcp_server():
 
         elif name == "ikanban_add_comment":
             data = {"content": args["content"]}
-            if args.get("author_name"):
-                data["author_name"] = args["author_name"]
+            # author_name is required by the API - use provided value or default
+            data["author_name"] = args.get("author_name") or "Claude Code"
             result = api_request(f"/tasks/{args['task_id']}/comments", method="POST", data=data, exit_on_error=False)
             if result.get("success"):
                 return {"comment_id": result.get("data", {}).get("id"), "task_id": args["task_id"]}
