@@ -8,17 +8,24 @@ Usage:
         ikanban projects                                 # List all projects
         ikanban issues IKA                               # List iKanban issues
         ikanban issues SCH --status inprogress           # Filter by status
+        ikanban issues IKA --json                        # Output as JSON
         ikanban create IKA "title"                       # Create issue
-        ikanban update <task_id> --status done           # Update task
-        ikanban task <task_id>                           # Get task details
-        ikanban delete <task_id>                         # Delete task
-        ikanban move <task_id> <project_id>              # Move task
-        ikanban comments <task_id>                       # List comments
-        ikanban comment <task_id> "message"              # Add comment
+        ikanban update IKA-27 --status done              # Update task by issue key
+        ikanban update ika27 --status inprogress         # Case-insensitive, dash optional
+        ikanban task IKA-27                              # Get task details by issue key
+        ikanban task <uuid>                              # Also accepts UUID
+        ikanban delete IKA-5                             # Delete task
+        ikanban move IKA-10 <project_id>                 # Move task
+        ikanban comments IKA-27                          # List comments
+        ikanban comment IKA-27 "message"                 # Add comment
 
     MCP Server Mode (Claude Code):
         ikanban serve                                    # Start MCP server (stdio)
         ikanban --mcp                                    # Alias for serve
+
+    Task ID formats (all commands accept):
+        IKA-27, ika-27, IKA27, ika27                     # Issue key (recommended)
+        ab802fb3-698e-4235-942c-b3ec7df6fa3c             # UUID (also works)
 
 Installation:
     # Add to ~/.bashrc or ~/.zshrc:
@@ -50,7 +57,7 @@ except ImportError:
 # CONFIGURATION
 # ============================================================================
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 
 KNOWN_TEAMS = {
     "ikanban": "a263e43f-43d3-4af7-a947-5f70e6670921",
@@ -167,6 +174,55 @@ def parse_priority(priority_str):
     except ValueError:
         return None
 
+def resolve_task_id(task_ref):
+    """
+    Resolve a task reference to a UUID.
+
+    Accepts:
+      - UUID directly: "ab802fb3-698e-4235-942c-b3ec7df6fa3c"
+      - Issue identifier: "IKA-27", "ika-27", "IKA27", "ika27", "SCH-5", etc.
+
+    Returns the task UUID or exits with error if not found.
+    """
+    import re
+
+    if not task_ref:
+        print("Task ID is required", file=sys.stderr)
+        sys.exit(1)
+
+    # Check if it's already a UUID (contains dashes and is 36 chars)
+    if len(task_ref) == 36 and task_ref.count('-') == 4:
+        return task_ref
+
+    # Try to parse as issue identifier (IKA-27, ika27, SCH-5, etc.)
+    match = re.match(r'^([a-zA-Z]+)-?(\d+)$', task_ref.strip())
+    if not match:
+        # Not a recognized format, assume it's a UUID
+        return task_ref
+
+    team_key = match.group(1).lower()
+    issue_number = int(match.group(2))
+
+    # Resolve team ID
+    team_id = KNOWN_TEAMS.get(team_key)
+    if not team_id:
+        print(f"Unknown team: {team_key.upper()}. Use IKA or SCH.", file=sys.stderr)
+        sys.exit(1)
+
+    # Fetch issues for this team and find the one with matching issue_number
+    result = api_request(f"/teams/{team_id}/issues", exit_on_error=False)
+    if "error" in result:
+        print(f"Failed to fetch issues: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    issues = result.get("data", [])
+    for issue in issues:
+        if issue.get("issue_number") == issue_number:
+            return issue["id"]
+
+    print(f"Issue {team_key.upper()}-{issue_number} not found", file=sys.stderr)
+    sys.exit(1)
+
 # ============================================================================
 # CLI COMMANDS
 # ============================================================================
@@ -270,6 +326,8 @@ def cmd_create(args):
     print(f"  Status: {task.get('status')}")
 
 def cmd_update(args):
+    task_id = resolve_task_id(args.task_id)
+
     data = {}
     if args.status:
         data["status"] = args.status
@@ -290,7 +348,7 @@ def cmd_update(args):
         print("No updates specified. Use --status, --title, --description, --priority, --assignee, or --due-date", file=sys.stderr)
         sys.exit(1)
 
-    result = api_request(f"/tasks/{args.task_id}", method="PUT", data=data)
+    result = api_request(f"/tasks/{task_id}", method="PUT", data=data)
     task = result.get("data", {})
 
     if args.json:
@@ -301,7 +359,8 @@ def cmd_update(args):
     print(f"  Status: {task.get('status')}")
 
 def cmd_task(args):
-    result = api_request(f"/tasks/{args.task_id}")
+    task_id = resolve_task_id(args.task_id)
+    result = api_request(f"/tasks/{task_id}")
     task = result.get("data", {})
 
     if args.json:
@@ -330,22 +389,25 @@ def cmd_task(args):
         print(f"  Description: {desc}")
 
 def cmd_delete(args):
+    task_id = resolve_task_id(args.task_id)
+
     if not args.force:
         confirm = input(f"Delete task {args.task_id}? [y/N] ")
         if confirm.lower() != 'y':
             print("Cancelled")
             return
 
-    result = api_request(f"/tasks/{args.task_id}", method="DELETE")
+    result = api_request(f"/tasks/{task_id}", method="DELETE")
 
     if args.json:
-        print(json.dumps({"deleted": True, "task_id": args.task_id}, indent=2))
+        print(json.dumps({"deleted": True, "task_id": task_id}, indent=2))
         return
     print(f"Deleted task: {args.task_id}")
 
 def cmd_move(args):
+    task_id = resolve_task_id(args.task_id)
     data = {"project_id": args.project_id}
-    result = api_request(f"/tasks/{args.task_id}/move", method="POST", data=data)
+    result = api_request(f"/tasks/{task_id}/move", method="POST", data=data)
     task = result.get("data", {})
 
     if args.json:
@@ -354,7 +416,8 @@ def cmd_move(args):
     print(f"Moved task to project: {args.project_id}")
 
 def cmd_comments(args):
-    result = api_request(f"/tasks/{args.task_id}/comments")
+    task_id = resolve_task_id(args.task_id)
+    result = api_request(f"/tasks/{task_id}/comments")
     comments = result.get("data", [])
 
     if args.json:
@@ -375,11 +438,12 @@ def cmd_comments(args):
         print(f"  {content}\n")
 
 def cmd_comment(args):
+    task_id = resolve_task_id(args.task_id)
     data = {"content": args.content}
     if args.author_name:
         data["author_name"] = args.author_name
 
-    result = api_request(f"/tasks/{args.task_id}/comments", method="POST", data=data)
+    result = api_request(f"/tasks/{task_id}/comments", method="POST", data=data)
     comment = result.get("data", {})
 
     if args.json:
@@ -707,16 +771,19 @@ Priorities: urgent, high, medium, low (or 1-4)
     subparsers.add_parser("serve", help="Start MCP server for Claude Code")
 
     # teams
-    subparsers.add_parser("teams", help="List all teams")
+    p = subparsers.add_parser("teams", help="List all teams")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # projects
-    subparsers.add_parser("projects", help="List all projects")
+    p = subparsers.add_parser("projects", help="List all projects")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # issues
     p = subparsers.add_parser("issues", help="List team issues")
     p.add_argument("team", help="Team: IKA, SCH, or UUID")
     p.add_argument("--status", "-s", choices=STATUSES)
     p.add_argument("--assignee", "-a")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # create
     p = subparsers.add_parser("create", help="Create issue")
@@ -728,40 +795,47 @@ Priorities: urgent, high, medium, low (or 1-4)
     p.add_argument("--priority", "-p")
     p.add_argument("--assignee", "-a")
     p.add_argument("--due-date", dest="due_date")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # update
     p = subparsers.add_parser("update", help="Update task")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
     p.add_argument("--status", "-s", choices=STATUSES)
     p.add_argument("--title", "-t")
     p.add_argument("--description", "-d")
     p.add_argument("--priority", "-p")
     p.add_argument("--assignee", "-a")
     p.add_argument("--due-date", dest="due_date")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # task
     p = subparsers.add_parser("task", help="Get task details")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # delete
     p = subparsers.add_parser("delete", help="Delete task")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
     p.add_argument("--force", "-f", action="store_true")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # move
     p = subparsers.add_parser("move", help="Move task to project")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
     p.add_argument("project_id")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # comments
     p = subparsers.add_parser("comments", help="List task comments")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     # comment
     p = subparsers.add_parser("comment", help="Add comment")
-    p.add_argument("task_id")
+    p.add_argument("task_id", help="Task UUID or issue key (e.g., IKA-27)")
     p.add_argument("content")
     p.add_argument("--author", dest="author_name")
+    p.add_argument("--json", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
 
