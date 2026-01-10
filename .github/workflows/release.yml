@@ -186,10 +186,21 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             name: macos-arm64
+    env:
+      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
 
       - name: Download frontend artifact
         uses: actions/download-artifact@v4
@@ -209,6 +220,24 @@ jobs:
         run: |
           sudo apt-get update
           DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang lld llvm nasm cmake ninja-build
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-19 clang-tools-19 llvm-19 lld-19
+            echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
 
       - name: Install Zig
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
@@ -223,6 +252,13 @@ jobs:
       - name: Install cargo xwin
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
         run: cargo install --locked cargo-xwin --version 0.20.2
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-0.20.2
 
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')

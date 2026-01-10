@@ -9,7 +9,7 @@ const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135
 const RELEASE_BASE_URL = `https://github.com/${RELEASE_REPO}/releases/download`;
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 
-// Local development mode: use binaries from npx-cli/dist/ instead of GitHub Releases
+// Local development mode: use binaries from npx-cli/dist/<platform>/ instead of GitHub Releases
 // Only activate if dist/ exists (i.e., running from source after local-build.sh)
 const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
 const LOCAL_DEV_MODE = fs.existsSync(LOCAL_DIST_DIR) || process.env.VIBE_KANBAN_LOCAL === "1";
@@ -104,7 +104,7 @@ function getAssetName(platform, binaryName) {
 async function ensureBinary(platform, binaryName, onProgress) {
   // In local dev mode, use binaries directly from npx-cli/dist/
   if (LOCAL_DEV_MODE) {
-    const localZipPath = path.join(LOCAL_DIST_DIR, getAssetName(platform, binaryName));
+    const localZipPath = path.join(LOCAL_DIST_DIR, platform, `${binaryName}.zip`);
     if (fs.existsSync(localZipPath)) {
       return localZipPath;
     }

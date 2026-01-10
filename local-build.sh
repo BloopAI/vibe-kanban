@@ -4,7 +4,7 @@ set -e  # Exit on any error
 
 echo "🧹 Cleaning previous builds..."
 rm -rf npx-cli/dist
-mkdir -p npx-cli/dist
+mkdir -p npx-cli/dist/macos-arm64
 
 echo "🔨 Building frontend..."
 (cd frontend && npm run build)
@@ -19,25 +19,25 @@ echo "📦 Creating distribution package..."
 cp target/release/server vibe-kanban
 zip -q vibe-kanban.zip vibe-kanban
 rm -f vibe-kanban
-mv vibe-kanban.zip npx-cli/dist/vibe-kanban-macos-arm64.zip
+mv vibe-kanban.zip npx-cli/dist/macos-arm64/vibe-kanban.zip
 
 # Copy the MCP binary
 cp target/release/mcp_task_server vibe-kanban-mcp
 zip -q vibe-kanban-mcp.zip vibe-kanban-mcp
 rm -f vibe-kanban-mcp
-mv vibe-kanban-mcp.zip npx-cli/dist/vibe-kanban-mcp-macos-arm64.zip
+mv vibe-kanban-mcp.zip npx-cli/dist/macos-arm64/vibe-kanban-mcp.zip
 
 # Copy the Review CLI binary
 cp target/release/review vibe-kanban-review
 zip -q vibe-kanban-review.zip vibe-kanban-review
 rm -f vibe-kanban-review
-mv vibe-kanban-review.zip npx-cli/dist/vibe-kanban-review-macos-arm64.zip
+mv vibe-kanban-review.zip npx-cli/dist/macos-arm64/vibe-kanban-review.zip
 
 echo "✅ Build complete!"
 echo "📁 Files created:"
-echo "   - npx-cli/dist/vibe-kanban-macos-arm64.zip"
-echo "   - npx-cli/dist/vibe-kanban-mcp-macos-arm64.zip"
-echo "   - npx-cli/dist/vibe-kanban-review-macos-arm64.zip"
+echo "   - npx-cli/dist/macos-arm64/vibe-kanban.zip"
+echo "   - npx-cli/dist/macos-arm64/vibe-kanban-mcp.zip"
+echo "   - npx-cli/dist/macos-arm64/vibe-kanban-review.zip"
 echo ""
 echo "🚀 To test locally, run:"
 echo "   cd npx-cli && node bin/cli.js"
