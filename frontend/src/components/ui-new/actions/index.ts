@@ -1,7 +1,7 @@
 import type { Icon } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
-import type { EditorType, Workspace } from 'shared/types';
+import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import {
   CopyIcon,
@@ -66,7 +66,7 @@ export interface ActionExecutorContext {
   activeWorkspaces: SidebarWorkspace[];
   currentWorkspaceId: string | null;
   containerRef: string | null;
-  runningDevServerId: string | null;
+  runningDevServers: ExecutionProcess[];
   startDevServer: () => void;
   stopDevServer: () => void;
 }
@@ -94,7 +94,7 @@ export interface ActionVisibilityContext {
   // Dev server state
   editorType: EditorType | null;
   devServerState: DevServerState;
-  runningDevServerId: string | null;
+  runningDevServers: ExecutionProcess[];
 
   // Git panel state
   hasGitRepos: boolean;
@@ -586,7 +586,7 @@ export const Actions = {
     getLabel: (ctx) =>
       ctx.devServerState === 'running' ? 'Stop Dev Server' : 'Start Dev Server',
     execute: (ctx) => {
-      if (ctx.runningDevServerId) {
+      if (ctx.runningDevServers.length > 0) {
         ctx.stopDevServer();
       } else {
         ctx.startDevServer();

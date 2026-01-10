@@ -42,8 +42,10 @@ export function NoServerContent({
   const { data: projectRepos = [] } = useProjectRepos(project?.id);
 
   const handleConfigureDevScript = () => {
-    if (project) {
-      navigate(`/settings/projects?projectId=${project.id}`);
+    if (projectRepos.length === 1) {
+      navigate(`/settings/repos?repoId=${projectRepos[0].id}`);
+    } else {
+      navigate('/settings/repos');
     }
   };
 

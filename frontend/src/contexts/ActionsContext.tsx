@@ -52,7 +52,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     useWorkspaceContext();
 
   // Get dev server state
-  const { start, stop, runningDevServer } = useDevServer(workspaceId);
+  const { start, stop, runningDevServers } = useDevServer(workspaceId);
 
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
@@ -63,7 +63,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       activeWorkspaces,
       currentWorkspaceId: workspaceId ?? null,
       containerRef: workspace?.container_ref ?? null,
-      runningDevServerId: runningDevServer?.id ?? null,
+      runningDevServers,
       startDevServer: start,
       stopDevServer: stop,
     }),
@@ -74,7 +74,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       activeWorkspaces,
       workspaceId,
       workspace?.container_ref,
-      runningDevServer?.id,
+      runningDevServers,
       start,
       stop,
     ]
