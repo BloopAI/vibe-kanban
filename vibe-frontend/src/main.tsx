@@ -119,7 +119,12 @@ const AppWithProviders = () => (
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   CLERK_PUBLISHABLE_KEY ? (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/">
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      afterSignOutUrl="/"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+    >
       <AuthInitializer />
       <AppWithProviders />
     </ClerkProvider>

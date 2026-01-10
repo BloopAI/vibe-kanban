@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { SignInButton, SignUpButton, useUser } from '@clerk/clerk-react';
+import { useUser } from '@clerk/clerk-react';
 import {
   Layers,
   GitBranch,
@@ -118,12 +118,12 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
               </Button>
             ) : (
               <>
-                <SignInButton mode="modal">
+                <Link to="/sign-in">
                   <Button variant="ghost">Sign In</Button>
-                </SignInButton>
-                <SignUpButton mode="modal">
+                </Link>
+                <Link to="/sign-up">
                   <Button>Get Started</Button>
-                </SignUpButton>
+                </Link>
               </>
             )}
           </nav>
@@ -156,14 +156,14 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
               </Button>
             ) : (
               <>
-                <SignUpButton mode="modal">
+                <Link to="/sign-up">
                   <Button size="lg">Start Free</Button>
-                </SignUpButton>
-                <SignInButton mode="modal">
+                </Link>
+                <Link to="/sign-in">
                   <Button size="lg" variant="outline">
                     Sign In
                   </Button>
-                </SignInButton>
+                </Link>
               </>
             )}
           </div>
@@ -282,9 +282,9 @@ function AboutContent({ isSignedIn, isApproved = false, welcomeMessage }: AboutC
               Awaiting Approval
             </Button>
           ) : (
-            <SignUpButton mode="modal">
+            <Link to="/sign-up">
               <Button size="lg">Get Started Free</Button>
-            </SignUpButton>
+            </Link>
           )}
         </div>
       </section>

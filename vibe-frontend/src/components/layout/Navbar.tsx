@@ -36,8 +36,6 @@ import {
 import {
   SignedIn,
   SignedOut,
-  SignInButton,
-  SignUpButton,
   UserButton,
 } from '@clerk/clerk-react';
 import { Logo } from '@/components/Logo';
@@ -379,17 +377,17 @@ export function Navbar() {
               <div className="hidden sm:flex items-center">
                 <SignedOut>
                   <div className="flex items-center gap-1">
-                    <SignInButton mode="modal">
+                    <Link to="/sign-in">
                       <Button variant="ghost" size="sm" className="h-8 text-xs">
                         <LogIn className="mr-1.5 h-3.5 w-3.5" />
                         Sign In
                       </Button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
+                    </Link>
+                    <Link to="/sign-up">
                       <Button variant="default" size="sm" className="h-8 text-xs">
                         Sign Up
                       </Button>
-                    </SignUpButton>
+                    </Link>
                   </div>
                 </SignedOut>
                 <SignedIn>
