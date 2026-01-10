@@ -58,18 +58,16 @@ export function WorkspaceSwitcher({ isCollapsed }: WorkspaceSwitcherProps) {
     ws.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateWorkspace = async () => {
+  const handleCreateWorkspace = () => {
     setIsOpen(false);
-    try {
-      await TeamFormDialog.show({});
-    } catch {
-      // User cancelled
-    }
+    // Navigate to workspace setup wizard (full page)
+    navigate('/workspace/new');
   };
 
   const handleWorkspaceSettings = () => {
     setIsOpen(false);
-    navigate('/settings/organizations');
+    // Navigate to workspace settings (will be implemented)
+    navigate('/settings/workspace');
   };
 
   const handleCreateProject = async () => {
