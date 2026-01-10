@@ -1,5 +1,5 @@
 {
-  "name": "vibe-kanban",
+  "name": "@mxyhi/vibe-kanban",
   "version": "0.0.148",
   "private": true,
   "bin": {
