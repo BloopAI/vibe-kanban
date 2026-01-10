@@ -5,6 +5,7 @@ interface CopyFilesFieldProps {
   value: string;
   onChange: (value: string) => void;
   projectId: string;
+  repoName?: string;
   disabled?: boolean;
 }
 
@@ -12,6 +13,7 @@ export function CopyFilesField({
   value,
   onChange,
   projectId,
+  repoName,
   disabled = false,
 }: CopyFilesFieldProps) {
   const { t } = useTranslation('projects');
@@ -25,6 +27,7 @@ export function CopyFilesField({
       disabled={disabled}
       className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground disabled:opacity-50 rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
       projectId={projectId}
+      repoName={repoName}
       maxRows={6}
     />
   );

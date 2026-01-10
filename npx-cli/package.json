@@ -4,7 +4,8 @@
   "version": "0.0.148",
   "main": "index.js",
   "bin": {
-    "vibe-kanban": "bin/cli.js"
+    "vibe-kanban": "bin/cli.js",
+    "vibe-kanban-local": "bin/cli.js"
   },
   "keywords": [],
   "author": "bloop",

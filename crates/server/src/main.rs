@@ -119,6 +119,7 @@ async fn main() -> Result<(), VibeKanbanError> {
     }
 
     tracing::info!("Server running on http://{host}:{actual_port}");
+    println!("\n>>> vibe-kanban running at: http://{host}:{actual_port}\n");
 
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
