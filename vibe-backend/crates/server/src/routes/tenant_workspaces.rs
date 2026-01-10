@@ -22,6 +22,13 @@ pub struct ListWorkspacesQuery {
     pub user_id: String,
 }
 
+/// Query params for ensuring default workspace
+#[derive(Debug, Deserialize)]
+pub struct EnsureDefaultQuery {
+    pub user_id: String,
+    pub email: String,
+}
+
 /// List all workspaces for a user
 pub async fn list_workspaces(
     State(deployment): State<DeploymentImpl>,
@@ -29,6 +36,41 @@ pub async fn list_workspaces(
 ) -> Result<ResponseJson<ApiResponse<Vec<TenantWorkspace>>>, ApiError> {
     let workspaces =
         TenantWorkspace::find_all_for_user(&deployment.db().pool, &params.user_id).await?;
+    Ok(ResponseJson(ApiResponse::success(workspaces)))
+}
+
+/// Ensure user is in default workspace and return all workspaces
+/// This is called when a user has no workspaces (e.g., first login or missing membership)
+pub async fn ensure_default_workspace(
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Query(params): axum::extract::Query<EnsureDefaultQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<TenantWorkspace>>>, ApiError> {
+    // Find or create the default "iKanban" workspace
+    let default_workspace = TenantWorkspace::find_or_create_default(&deployment.db().pool).await?;
+
+    // Ensure user is a member of the default workspace
+    TenantWorkspace::ensure_user_is_member(
+        &deployment.db().pool,
+        default_workspace.id,
+        &params.user_id,
+        &params.email,
+    )
+    .await?;
+
+    // Return all workspaces the user now belongs to
+    let workspaces =
+        TenantWorkspace::find_all_for_user(&deployment.db().pool, &params.user_id).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "tenant_workspace_ensure_default",
+            serde_json::json!({
+                "user_id": params.user_id,
+                "workspace_id": default_workspace.id.to_string(),
+            }),
+        )
+        .await;
+
     Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
@@ -325,6 +367,10 @@ pub fn router() -> Router<DeploymentImpl> {
         .route(
             "/tenant-workspaces",
             get(list_workspaces).post(create_workspace),
+        )
+        .route(
+            "/tenant-workspaces/ensure-default",
+            axum::routing::post(ensure_default_workspace),
         )
         .route(
             "/tenant-workspaces/{workspace_id}",

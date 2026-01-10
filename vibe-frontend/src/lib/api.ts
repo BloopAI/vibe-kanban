@@ -2381,6 +2381,15 @@ export const tenantWorkspacesApi = {
     return handleApiResponse<TenantWorkspace[]>(response);
   },
 
+  // Ensure user is in default workspace (for first login or missing membership)
+  ensureDefault: async (userId: string, email: string): Promise<TenantWorkspace[]> => {
+    const response = await makeRequest(
+      `/api/tenant-workspaces/ensure-default?user_id=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`,
+      { method: 'POST' }
+    );
+    return handleApiResponse<TenantWorkspace[]>(response);
+  },
+
   // Get a single workspace
   get: async (workspaceId: string, userId: string): Promise<TenantWorkspace> => {
     const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}?user_id=${encodeURIComponent(userId)}`);

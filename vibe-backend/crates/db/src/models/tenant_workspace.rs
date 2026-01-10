@@ -368,6 +368,56 @@ impl TenantWorkspace {
             .await?;
         Ok(result.rows_affected())
     }
+
+    /// Find or create the default "iKanban" workspace
+    pub async fn find_or_create_default(pool: &PgPool) -> Result<Self, TenantWorkspaceError> {
+        // Try to find existing default workspace
+        if let Some(workspace) = Self::find_by_slug(pool, "ikanban").await? {
+            return Ok(workspace);
+        }
+
+        // Create default workspace (without owner - will be added separately)
+        let workspace = sqlx::query_as!(
+            TenantWorkspaceRow,
+            r#"INSERT INTO tenant_workspaces (name, slug, icon, color)
+               VALUES ('iKanban', 'ikanban', NULL, '#6366f1')
+               ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+               RETURNING id as "id!: Uuid",
+                         name,
+                         slug,
+                         icon,
+                         color,
+                         settings as "settings!: serde_json::Value",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(workspace.into())
+    }
+
+    /// Ensure a user is a member of a workspace (idempotent)
+    pub async fn ensure_user_is_member(
+        pool: &PgPool,
+        workspace_id: Uuid,
+        user_id: &str,
+        email: &str,
+    ) -> Result<(), TenantWorkspaceError> {
+        // Use ON CONFLICT to make this idempotent
+        sqlx::query!(
+            r#"INSERT INTO tenant_workspace_members (tenant_workspace_id, user_id, email, role)
+               VALUES ($1, $2, $3, 'member')
+               ON CONFLICT (tenant_workspace_id, user_id) DO NOTHING"#,
+            workspace_id,
+            user_id,
+            email
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }
 
 // ============================================================================

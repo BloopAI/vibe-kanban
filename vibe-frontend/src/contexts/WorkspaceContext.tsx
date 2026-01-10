@@ -54,6 +54,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const userId = user?.id;
   const userEmail = user?.primaryEmailAddress?.emailAddress;
 
+  // Track if we've already tried to ensure default workspace
+  const [hasTriedEnsureDefault, setHasTriedEnsureDefault] = useState(false);
+
   // Get persisted workspace ID from localStorage
   const [currentWorkspaceId, setCurrentWorkspaceIdState] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -89,6 +92,33 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     enabled: isUserLoaded && !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Ensure default mutation - called when user has no workspaces
+  const ensureDefaultMutation = useMutation({
+    mutationFn: () => {
+      if (!userId || !userEmail) throw new Error('User not authenticated');
+      return tenantWorkspacesApi.ensureDefault(userId, userEmail);
+    },
+    onSuccess: () => {
+      // Refetch workspaces after ensuring default
+      queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY });
+    },
+  });
+
+  // If user has no workspaces after loading, ensure they're in the default workspace
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !hasTriedEnsureDefault &&
+      workspaces.length === 0 &&
+      userId &&
+      userEmail &&
+      !ensureDefaultMutation.isPending
+    ) {
+      setHasTriedEnsureDefault(true);
+      ensureDefaultMutation.mutate();
+    }
+  }, [isLoading, hasTriedEnsureDefault, workspaces.length, userId, userEmail, ensureDefaultMutation]);
 
   // Auto-select first workspace if none selected
   useEffect(() => {
