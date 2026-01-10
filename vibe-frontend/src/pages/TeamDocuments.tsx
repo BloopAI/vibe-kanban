@@ -45,17 +45,10 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 import { useDocuments } from '@/hooks/useDocuments';
 import { useTeams } from '@/hooks/useTeams';
 import { documentsApi } from '@/lib/api';
-import { useFolderUpload } from '@/hooks/useFolderUpload';
 
 import type { Document, DocumentFolder, DocumentContentResponse, UploadResult } from 'shared/types';
 
@@ -350,29 +343,9 @@ export function TeamDocuments() {
   }, [teamId]);
 
   // Handle file upload from browser file picker
-  // Use actualTeamId (UUID) instead of teamId (URL slug) for API calls
-  const { uploadFolder, isUploading: isSupabaseUploading } = useFolderUpload(actualTeamId, currentFolderId);
-
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !teamId) return;
-
-    // Check if it's a folder upload (webkitDirectory)
-    if (e.target.webkitdirectory) {
-      setUploadResult(null); // Reset previous results
-      const { uploaded, errors } = await uploadFolder(files);
-      setUploadResult({
-        uploaded,
-        skipped: 0,
-        errors,
-        uploaded_titles: []
-      });
-      if (uploaded > 0) refresh();
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setIsUploading(true);
 
     setIsUploading(true);
     setUploadResult(null);
@@ -945,49 +918,21 @@ export function TeamDocuments() {
               accept=".md,.txt,.pdf,.csv,.json,.xml,.html,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.svg"
               onChange={handleFileUpload}
             />
-            {/* Hidden folder input */}
-            <input
-              type="file"
-              className="hidden"
-              id="folder-upload-input"
-              ref={(el) => {
-                if (el) {
-                  el.webkitdirectory = true;
-                  // @ts-ignore
-                  el.directory = true;
-                }
-              }}
-              onChange={handleFileUpload}
-              disabled={isSupabaseUploading}
-            />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-2"
-                  disabled={isUploading || isSupabaseUploading}
-                >
-                  {isUploading || isSupabaseUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Upload
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Upload Files
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('folder-upload-input')?.click()} className="cursor-pointer">
-                  <FolderPlus className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Upload Folder
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-2"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              Upload
+            </Button>
             <Button
               variant="outline"
               size="sm"
