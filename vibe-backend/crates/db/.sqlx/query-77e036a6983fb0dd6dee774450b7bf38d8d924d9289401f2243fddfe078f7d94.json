@@ -1,0 +1,67 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tenant_workspaces (name, slug, icon, color)\n               VALUES ($1, $2, $3, $4)\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         slug,\n                         icon,\n                         color,\n                         settings as \"settings!: serde_json::Value\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "settings!: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "77e036a6983fb0dd6dee774450b7bf38d8d924d9289401f2243fddfe078f7d94"
+}

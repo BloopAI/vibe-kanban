@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tenant_workspace_members (tenant_workspace_id, user_id, email, role)\n               VALUES ($1, $2, $3, 'owner')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "73a8c41909b4f74730b957dcd260214277ccc20f7fc8bd6d1232676e602da6bb"
+}

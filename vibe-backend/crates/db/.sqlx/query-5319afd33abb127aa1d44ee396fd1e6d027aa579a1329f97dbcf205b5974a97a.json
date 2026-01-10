@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id as \"id!: Uuid\",\n                      tenant_workspace_id as \"tenant_workspace_id!: Uuid\",\n                      user_id,\n                      email,\n                      display_name,\n                      avatar_url,\n                      role,\n                      joined_at as \"joined_at!: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tenant_workspace_members\n               WHERE tenant_workspace_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "tenant_workspace_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "avatar_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "joined_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5319afd33abb127aa1d44ee396fd1e6d027aa579a1329f97dbcf205b5974a97a"
+}

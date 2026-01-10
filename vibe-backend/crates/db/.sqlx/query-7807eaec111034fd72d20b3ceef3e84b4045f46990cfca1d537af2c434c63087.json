@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE documents\n               SET folder_id = $2, title = $3, slug = $4, content = $5, icon = $6, is_pinned = $7,\n                   is_archived = $8, position = $9, updated_at = NOW()\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE documents\n               SET storage_key = $2, storage_bucket = $3, file_size = $4, mime_type = $5,\n                   file_type = $6, storage_metadata = $7, storage_provider = 'supabase',\n                   updated_at = NOW()\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\",\n                         storage_key,\n                         storage_bucket,\n                         storage_metadata as \"storage_metadata: serde_json::Value\",\n                         storage_provider as \"storage_provider!\"",
   "describe": {
     "columns": [
       {
@@ -87,19 +87,37 @@
         "ordinal": 16,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "storage_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "storage_bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "storage_metadata: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 20,
+        "name": "storage_provider!",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
         "Text",
         "Text",
+        "Int8",
         "Text",
         "Text",
-        "Bool",
-        "Bool",
-        "Int4"
+        "Jsonb"
       ]
     },
     "nullable": [
@@ -119,8 +137,12 @@
       false,
       true,
       false,
+      false,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "4530270c105424e682cbf4183230568fcac7fc2438768075151d49490e6c3d07"
+  "hash": "7807eaec111034fd72d20b3ceef3e84b4045f46990cfca1d537af2c434c63087"
 }

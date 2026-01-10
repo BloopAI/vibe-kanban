@@ -40,6 +40,7 @@ pub mod tags;
 pub mod task_attempts;
 pub mod tasks;
 pub mod teams;
+pub mod tenant_workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Check if auth is enabled (disabled by default for backwards compatibility)
@@ -80,6 +81,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(teams::router(&deployment))
+        .merge(tenant_workspaces::router())
         .merge(documents::router(&deployment))
         .merge(inbox::router(&deployment))
         .merge(organizations::router())

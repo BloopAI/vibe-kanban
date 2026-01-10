@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                          team_id as \"team_id!: Uuid\",\n                          folder_id as \"folder_id: Uuid\",\n                          title,\n                          slug,\n                          content,\n                          file_path,\n                          file_type,\n                          file_size as \"file_size: i64\",\n                          mime_type,\n                          icon,\n                          is_pinned as \"is_pinned!: bool\",\n                          is_archived as \"is_archived!: bool\",\n                          position as \"position!: i32\",\n                          created_by,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\",\n                          storage_key,\n                          storage_bucket,\n                          storage_metadata as \"storage_metadata: serde_json::Value\",\n                          storage_provider as \"storage_provider!\"\n                   FROM documents\n                   WHERE team_id = $1 AND folder_id = $2 AND is_archived = FALSE\n                   ORDER BY is_pinned DESC, position ASC, updated_at DESC",
   "describe": {
     "columns": [
       {
@@ -87,22 +87,32 @@
         "ordinal": 16,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "storage_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "storage_bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "storage_metadata: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 20,
+        "name": "storage_provider!",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Int4",
-        "Text",
-        "Int8",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -122,8 +132,12 @@
       false,
       true,
       false,
+      false,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "0f30a1464cae5e103c8c6b467a22bec6714ba349736bc0cbe1a9ae412405400a"
+  "hash": "2d09373cbc51827d2322659188be86b91d1d410e9cb8083cf4837a9ff1d19e4b"
 }

@@ -86,6 +86,15 @@ pub struct Document {
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
     pub updated_at: DateTime<Utc>,
+    /// Supabase Storage object key (path in bucket)
+    pub storage_key: Option<String>,
+    /// Supabase Storage bucket name
+    pub storage_bucket: Option<String>,
+    /// Supabase file metadata (etag, version, etc.)
+    #[ts(type = "Record<string, unknown> | null")]
+    pub storage_metadata: Option<serde_json::Value>,
+    /// Storage backend: "local" or "supabase"
+    pub storage_provider: String,
 }
 
 /// Generate a URL-friendly slug from a title
@@ -464,7 +473,11 @@ impl Document {
                           position as "position!: i32",
                           created_by,
                           created_at as "created_at!: DateTime<Utc>",
-                          updated_at as "updated_at!: DateTime<Utc>"
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          storage_key,
+                          storage_bucket,
+                          storage_metadata as "storage_metadata: serde_json::Value",
+                          storage_provider as "storage_provider!"
                    FROM documents
                    WHERE team_id = $1
                    ORDER BY is_pinned DESC, position ASC, updated_at DESC"#,
@@ -491,7 +504,11 @@ impl Document {
                           position as "position!: i32",
                           created_by,
                           created_at as "created_at!: DateTime<Utc>",
-                          updated_at as "updated_at!: DateTime<Utc>"
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          storage_key,
+                          storage_bucket,
+                          storage_metadata as "storage_metadata: serde_json::Value",
+                          storage_provider as "storage_provider!"
                    FROM documents
                    WHERE team_id = $1 AND is_archived = FALSE
                    ORDER BY is_pinned DESC, position ASC, updated_at DESC"#,
@@ -526,7 +543,11 @@ impl Document {
                           position as "position!: i32",
                           created_by,
                           created_at as "created_at!: DateTime<Utc>",
-                          updated_at as "updated_at!: DateTime<Utc>"
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          storage_key,
+                          storage_bucket,
+                          storage_metadata as "storage_metadata: serde_json::Value",
+                          storage_provider as "storage_provider!"
                    FROM documents
                    WHERE team_id = $1 AND folder_id = $2 AND is_archived = FALSE
                    ORDER BY is_pinned DESC, position ASC, updated_at DESC"#,
@@ -554,7 +575,11 @@ impl Document {
                           position as "position!: i32",
                           created_by,
                           created_at as "created_at!: DateTime<Utc>",
-                          updated_at as "updated_at!: DateTime<Utc>"
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          storage_key,
+                          storage_bucket,
+                          storage_metadata as "storage_metadata: serde_json::Value",
+                          storage_provider as "storage_provider!"
                    FROM documents
                    WHERE team_id = $1 AND folder_id IS NULL AND is_archived = FALSE
                    ORDER BY is_pinned DESC, position ASC, updated_at DESC"#,
@@ -584,7 +609,11 @@ impl Document {
                       position as "position!: i32",
                       created_by,
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      storage_key,
+                      storage_bucket,
+                      storage_metadata as "storage_metadata: serde_json::Value",
+                      storage_provider as "storage_provider!"
                FROM documents
                WHERE id = $1"#,
             id
@@ -617,7 +646,11 @@ impl Document {
                       position as "position!: i32",
                       created_by,
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      storage_key,
+                      storage_bucket,
+                      storage_metadata as "storage_metadata: serde_json::Value",
+                      storage_provider as "storage_provider!"
                FROM documents
                WHERE team_id = $1 AND slug = $2"#,
             team_id,
@@ -651,7 +684,11 @@ impl Document {
                       position as "position!: i32",
                       created_by,
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      storage_key,
+                      storage_bucket,
+                      storage_metadata as "storage_metadata: serde_json::Value",
+                      storage_provider as "storage_provider!"
                FROM documents
                WHERE team_id = $1 AND is_archived = FALSE
                  AND (title LIKE $2 OR content LIKE $2)
@@ -692,8 +729,8 @@ impl Document {
 
         sqlx::query_as!(
             Document,
-            r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'local')
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          folder_id as "folder_id: Uuid",
@@ -710,7 +747,11 @@ impl Document {
                          position as "position!: i32",
                          created_by,
                          created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
+                         updated_at as "updated_at!: DateTime<Utc>",
+                         storage_key,
+                         storage_bucket,
+                         storage_metadata as "storage_metadata: serde_json::Value",
+                         storage_provider as "storage_provider!""#,
             id,
             data.team_id,
             data.folder_id,
@@ -777,7 +818,11 @@ impl Document {
                          position as "position!: i32",
                          created_by,
                          created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
+                         updated_at as "updated_at!: DateTime<Utc>",
+                         storage_key,
+                         storage_bucket,
+                         storage_metadata as "storage_metadata: serde_json::Value",
+                         storage_provider as "storage_provider!""#,
             id,
             folder_id,
             title,
@@ -831,12 +876,67 @@ impl Document {
                          position as "position!: i32",
                          created_by,
                          created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
+                         updated_at as "updated_at!: DateTime<Utc>",
+                         storage_key,
+                         storage_bucket,
+                         storage_metadata as "storage_metadata: serde_json::Value",
+                         storage_provider as "storage_provider!""#,
             id,
             file_path,
             file_size,
             mime_type,
             file_type
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Update storage information for Supabase uploads
+    pub async fn update_storage_info(
+        pool: &PgPool,
+        id: Uuid,
+        storage_key: &str,
+        storage_bucket: &str,
+        file_size: i64,
+        mime_type: &str,
+        file_type: &str,
+        storage_metadata: Option<serde_json::Value>,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Document,
+            r#"UPDATE documents
+               SET storage_key = $2, storage_bucket = $3, file_size = $4, mime_type = $5,
+                   file_type = $6, storage_metadata = $7, storage_provider = 'supabase',
+                   updated_at = NOW()
+               WHERE id = $1
+               RETURNING id as "id!: Uuid",
+                         team_id as "team_id!: Uuid",
+                         folder_id as "folder_id: Uuid",
+                         title,
+                         slug,
+                         content,
+                         file_path,
+                         file_type,
+                         file_size as "file_size: i64",
+                         mime_type,
+                         icon,
+                         is_pinned as "is_pinned!: bool",
+                         is_archived as "is_archived!: bool",
+                         position as "position!: i32",
+                         created_by,
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>",
+                         storage_key,
+                         storage_bucket,
+                         storage_metadata as "storage_metadata: serde_json::Value",
+                         storage_provider as "storage_provider!""#,
+            id,
+            storage_key,
+            storage_bucket,
+            file_size,
+            mime_type,
+            file_type,
+            storage_metadata
         )
         .fetch_one(pool)
         .await

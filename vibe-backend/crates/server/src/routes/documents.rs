@@ -15,6 +15,7 @@ use db::models::team::Team;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
+use services::services::supabase_storage::SupabaseStorageClient;
 use ts_rs::TS;
 use utils::assets::asset_dir;
 use utils::response::ApiResponse;
@@ -28,6 +29,18 @@ use crate::file_reader::{read_file_content, ContentType};
 fn get_document_storage() -> DocumentStorageService {
     DocumentStorageService::new(asset_dir())
 }
+
+/// Get the Supabase Storage client if configured
+fn get_supabase_storage() -> Option<SupabaseStorageClient> {
+    match SupabaseStorageClient::from_env() {
+        Ok(client) => Some(client),
+        Err(e) => {
+            tracing::debug!("Supabase Storage not configured: {}", e);
+            None
+        }
+    }
+}
+
 
 /// Query parameters for listing documents
 #[derive(Debug, Deserialize, TS)]
@@ -620,6 +633,72 @@ pub async fn get_document_file(
     Ok(response)
 }
 
+/// Get a signed URL for temporary document access
+///
+/// For documents stored in Supabase Storage, generates a signed URL.
+/// For local files, returns the direct file endpoint URL.
+pub async fn get_document_signed_url(
+    State(deployment): State<DeploymentImpl>,
+    Path((team_id, document_id)): Path<(Uuid, Uuid)>,
+    Query(query): Query<SignedUrlQuery>,
+) -> Result<ResponseJson<ApiResponse<SignedUrlResponse>>, ApiError> {
+    // Verify team exists
+    let _team = Team::find_by_id(&deployment.db().pool, team_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Get document
+    let document = Document::find_by_id(&deployment.db().pool, document_id)
+        .await?
+        .ok_or(ApiError::Database(sqlx::Error::RowNotFound))?;
+
+    // Verify document belongs to team
+    if document.team_id != team_id {
+        return Err(ApiError::Database(sqlx::Error::RowNotFound));
+    }
+
+    let expires_in = query.expires_in.unwrap_or(3600); // Default 1 hour
+
+    // Check if document is stored in Supabase
+    if document.storage_provider == "supabase" {
+        // Get storage key
+        let storage_key = document.storage_key.as_ref().ok_or_else(|| {
+            ApiError::NotFound("Document has no storage key".to_string())
+        })?;
+
+        // Get Supabase client
+        let client = get_supabase_storage().ok_or_else(|| {
+            ApiError::BadRequest("Supabase Storage is not configured".to_string())
+        })?;
+
+        // Generate signed URL
+        let signed_result = client
+            .create_signed_url(storage_key, expires_in)
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Failed to create signed URL: {}", e)))?;
+
+        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
+            url: signed_result.url,
+            storage_provider: "supabase".to_string(),
+            expires_in: signed_result.expires_in,
+        })))
+    } else {
+        // For local files, return the direct file endpoint
+        // The client should use /file endpoint instead
+        let base_url = std::env::var("API_BASE_URL").unwrap_or_else(|_| "".to_string());
+        let file_url = format!(
+            "{}/api/teams/{}/documents/{}/file",
+            base_url, team_id, document_id
+        );
+
+        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
+            url: file_url,
+            storage_provider: "local".to_string(),
+            expires_in: 0, // Local files don't expire
+        })))
+    }
+}
+
 /// Response for scan filesystem operation
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
@@ -702,6 +781,25 @@ pub struct UploadResult {
     pub errors: Vec<String>,
     /// Titles of uploaded documents
     pub uploaded_titles: Vec<String>,
+}
+
+/// Response for signed URL request
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct SignedUrlResponse {
+    /// The signed URL for temporary access
+    pub url: String,
+    /// Storage provider used
+    pub storage_provider: String,
+    /// Time until expiry in seconds
+    pub expires_in: u64,
+}
+
+/// Query parameters for signed URL request
+#[derive(Debug, Deserialize)]
+pub struct SignedUrlQuery {
+    /// Expiry time in seconds (default: 3600 = 1 hour)
+    pub expires_in: Option<u64>,
 }
 
 /// Get mime type from file extension
@@ -1243,8 +1341,10 @@ pub async fn scan_all_filesystem(
 
 /// Upload documents via multipart form
 ///
-/// Accepts files via browser file picker and stores them on Railway.
-/// Text files have content stored in database, binary files stored to /data/uploads/
+/// Accepts files via browser file picker and stores them.
+/// - If Supabase Storage is configured, binary files are uploaded to Supabase bucket
+/// - Fallback: binary files stored to /data/uploads/
+/// - Text files have content stored in database
 pub async fn upload_documents(
     Extension(team): Extension<Team>,
     State(deployment): State<DeploymentImpl>,
@@ -1255,6 +1355,16 @@ pub async fn upload_documents(
     let mut errors = Vec::new();
     let mut uploaded_titles = Vec::new();
     let mut folder_id: Option<Uuid> = None;
+
+    // Try to get Supabase Storage client
+    let supabase_client = get_supabase_storage();
+    let use_supabase = supabase_client.is_some();
+
+    if use_supabase {
+        tracing::info!("Using Supabase Storage for file uploads");
+    } else {
+        tracing::info!("Supabase Storage not configured, using local storage");
+    }
 
     // Get existing documents to check for duplicates
     let existing_docs = Document::find_all_by_team(&deployment.db().pool, team.id, false).await?;
@@ -1335,29 +1445,13 @@ pub async fn upload_documents(
             let file_size = bytes.len() as i64;
 
             // For text files, store content in database
-            // For binary files, store to /data/uploads/
-            let (content, file_path) = if is_text {
-                let text_content = String::from_utf8_lossy(&bytes).to_string();
-                (Some(text_content), None)
+            let content = if is_text {
+                Some(String::from_utf8_lossy(&bytes).to_string())
             } else {
-                // Store binary file to uploads directory
-                let upload_dir = std::path::PathBuf::from("/data/uploads");
-                if let Err(e) = tokio::fs::create_dir_all(&upload_dir).await {
-                    tracing::warn!("Failed to create uploads directory: {}", e);
-                }
-
-                let doc_id = Uuid::new_v4();
-                let file_path = upload_dir.join(format!("{}.{}", doc_id, extension));
-
-                if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
-                    errors.push(format!("{}: failed to save - {}", filename, e));
-                    continue;
-                }
-
-                (None, Some(file_path.to_string_lossy().to_string()))
+                None
             };
 
-            // Create document record
+            // Create document record first
             let create_payload = CreateDocument {
                 team_id: team.id,
                 folder_id,
@@ -1372,16 +1466,84 @@ pub async fn upload_documents(
 
             match Document::create(&deployment.db().pool, &create_payload).await {
                 Ok(document) => {
-                    // Update file metadata if we have a file path
-                    if let Some(ref path) = file_path {
-                        let _ = Document::update_file_metadata(
-                            &deployment.db().pool,
-                            document.id,
-                            path,
-                            file_size,
-                            mime_type,
-                            &file_type,
-                        ).await;
+                    // For binary files, upload to storage
+                    if !is_text {
+                        if let Some(ref client) = supabase_client {
+                            // Upload to Supabase Storage
+                            match client
+                                .upload(team.id, folder_id, &filename, bytes.to_vec(), mime_type)
+                                .await
+                            {
+                                Ok(upload_result) => {
+                                    // Update document with Supabase storage info
+                                    if let Err(e) = Document::update_storage_info(
+                                        &deployment.db().pool,
+                                        document.id,
+                                        &upload_result.key,
+                                        &upload_result.bucket,
+                                        file_size,
+                                        mime_type,
+                                        &file_type,
+                                        None,
+                                    )
+                                    .await
+                                    {
+                                        tracing::error!(
+                                            "Failed to update storage info for {}: {}",
+                                            filename,
+                                            e
+                                        );
+                                    }
+                                    tracing::info!(
+                                        "Uploaded {} to Supabase Storage: {}",
+                                        filename,
+                                        upload_result.key
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to upload {} to Supabase: {}",
+                                        filename,
+                                        e
+                                    );
+                                    errors.push(format!(
+                                        "{}: Supabase upload failed - {}",
+                                        filename, e
+                                    ));
+                                    // Clean up the document record since upload failed
+                                    let _ =
+                                        Document::delete(&deployment.db().pool, document.id).await;
+                                    continue;
+                                }
+                            }
+                        } else {
+                            // Fallback to local storage
+                            let upload_dir = std::path::PathBuf::from("/data/uploads");
+                            if let Err(e) = tokio::fs::create_dir_all(&upload_dir).await {
+                                tracing::warn!("Failed to create uploads directory: {}", e);
+                            }
+
+                            let file_path =
+                                upload_dir.join(format!("{}.{}", document.id, extension));
+
+                            if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
+                                errors.push(format!("{}: failed to save - {}", filename, e));
+                                // Clean up the document record
+                                let _ = Document::delete(&deployment.db().pool, document.id).await;
+                                continue;
+                            }
+
+                            // Update document with local file metadata
+                            let _ = Document::update_file_metadata(
+                                &deployment.db().pool,
+                                document.id,
+                                &file_path.to_string_lossy(),
+                                file_size,
+                                mime_type,
+                                &file_type,
+                            )
+                            .await;
+                        }
                     }
 
                     uploaded += 1;
@@ -1402,6 +1564,7 @@ pub async fn upload_documents(
                 "uploaded": uploaded,
                 "skipped": skipped,
                 "errors": errors.len(),
+                "storage_provider": if use_supabase { "supabase" } else { "local" },
             }),
         )
         .await;
@@ -1446,7 +1609,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_document).put(update_document).delete(delete_document),
         )
         .route("/content", get(get_document_content))
-        .route("/file", get(get_document_file));
+        .route("/file", get(get_document_file))
+        .route("/signed-url", get(get_document_signed_url));
 
     let folder_item_router = Router::new().route(
         "/",

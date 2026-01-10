@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT tw.id as \"id!: Uuid\",\n                      tw.name,\n                      tw.slug,\n                      tw.icon,\n                      tw.color,\n                      tw.settings as \"settings!: serde_json::Value\",\n                      tw.created_at as \"created_at!: DateTime<Utc>\",\n                      tw.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tenant_workspaces tw\n               JOIN tenant_workspace_members twm ON tw.id = twm.tenant_workspace_id\n               WHERE twm.user_id = $1\n               ORDER BY tw.name ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "icon",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "settings!: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "75ece12be0ec639556983dfabd4e58ef7269a9dc612fc29efb73a5a88dd21768"
+}

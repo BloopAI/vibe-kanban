@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE documents\n               SET file_path = $2, file_size = $3, mime_type = $4, file_type = $5,\n                   updated_at = NOW()\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      folder_id as \"folder_id: Uuid\",\n                      title,\n                      slug,\n                      content,\n                      file_path,\n                      file_type,\n                      file_size as \"file_size: i64\",\n                      mime_type,\n                      icon,\n                      is_pinned as \"is_pinned!: bool\",\n                      is_archived as \"is_archived!: bool\",\n                      position as \"position!: i32\",\n                      created_by,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\",\n                      storage_key,\n                      storage_bucket,\n                      storage_metadata as \"storage_metadata: serde_json::Value\",\n                      storage_provider as \"storage_provider!\"\n               FROM documents\n               WHERE team_id = $1 AND is_archived = FALSE\n                 AND (title LIKE $2 OR content LIKE $2)\n               ORDER BY is_pinned DESC, updated_at DESC",
   "describe": {
     "columns": [
       {
@@ -87,14 +87,31 @@
         "ordinal": 16,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "storage_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "storage_bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "storage_metadata: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 20,
+        "name": "storage_provider!",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Int8",
-        "Text",
         "Text"
       ]
     },
@@ -115,8 +132,12 @@
       false,
       true,
       false,
+      false,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "6f81ce0f70d4c83f764bdc97eb64d7287e150db012b84ef8b3c6da92bb2715fb"
+  "hash": "eadb40aa9bcbef2d4ec089b73a85a0c42aae454f0bccfee306958e436b07c4ce"
 }

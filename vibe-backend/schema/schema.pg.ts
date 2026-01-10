@@ -1,4 +1,4 @@
-import { pgTable, text, integer, bigint, boolean, timestamp, uuid, index, uniqueIndex, foreignKey, numeric, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, boolean, timestamp, uuid, index, uniqueIndex, foreignKey, numeric, primaryKey, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Projects Table
@@ -22,6 +22,7 @@ export const projects = pgTable("projects", {
     description: text("description"),
     summary: text("summary"),
     icon: text("icon"),
+    tenantWorkspaceId: uuid("tenant_workspace_id"), // FK to tenant_workspaces (nullable for backwards compatibility)
 }, (table) => ({
     idxProjectsTargetDate: index("idx_projects_target_date").on(table.targetDate),
     idxProjectsStatus: index("idx_projects_status").on(table.status),
@@ -29,6 +30,7 @@ export const projects = pgTable("projects", {
     idxProjectsPriority: index("idx_projects_priority").on(table.priority),
     idxProjectsCreatedAt: index("idx_projects_created_at").on(table.createdAt),
     idxProjectsRemoteProjectId: uniqueIndex("idx_projects_remote_project_id").on(table.remoteProjectId),
+    idxProjectsTenantWorkspaceId: index("idx_projects_tenant_workspace_id").on(table.tenantWorkspaceId),
 }));
 
 // Teams Table
@@ -45,8 +47,10 @@ export const teams = pgTable("teams", {
     devScriptWorkingDir: text("dev_script_working_dir"),
     defaultAgentWorkingDir: text("default_agent_working_dir"),
     slug: text("slug"),
+    tenantWorkspaceId: uuid("tenant_workspace_id"), // FK to tenant_workspaces (nullable for backwards compatibility)
 }, (table) => ({
     idxTeamsSlug: uniqueIndex("idx_teams_slug").on(table.slug),
+    idxTeamsTenantWorkspaceId: index("idx_teams_tenant_workspace_id").on(table.tenantWorkspaceId),
 }));
 
 // Tasks Table
@@ -181,6 +185,7 @@ export const documentFolders = pgTable("document_folders", {
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     localPath: text("local_path"),
+    storagePath: text("storage_path"), // Supabase Storage path for this folder
 }, (table) => ({
     idxDocumentFoldersParentId: index("idx_document_folders_parent_id").on(table.parentId),
     idxDocumentFoldersTeamId: index("idx_document_folders_team_id").on(table.teamId),
@@ -210,6 +215,11 @@ export const documents = pgTable("documents", {
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     slug: text("slug"),
+    // Supabase Storage columns
+    storageKey: text("storage_key"), // Supabase Storage object key (path in bucket)
+    storageBucket: text("storage_bucket"), // Supabase Storage bucket name
+    storageMetadata: jsonb("storage_metadata"), // Supabase file metadata (etag, version, etc.)
+    storageProvider: text("storage_provider").default("local").notNull(), // Storage backend: local or supabase
 }, (table) => ({
     idxDocumentsTeamSlug: index("idx_documents_team_slug").on(table.teamId, table.slug),
     idxDocumentsIsArchived: index("idx_documents_is_archived").on(table.isArchived),
@@ -217,6 +227,9 @@ export const documents = pgTable("documents", {
     idxDocumentsFileType: index("idx_documents_file_type").on(table.fileType),
     idxDocumentsFolderId: index("idx_documents_folder_id").on(table.folderId),
     idxDocumentsTeamId: index("idx_documents_team_id").on(table.teamId),
+    idxDocumentsStorageKey: index("idx_documents_storage_key").on(table.storageKey),
+    idxDocumentsStorageProvider: index("idx_documents_storage_provider").on(table.storageProvider),
+    idxDocumentsStorageBucket: index("idx_documents_storage_bucket").on(table.storageBucket),
 }));
 
 // GitHub Connections
@@ -574,6 +587,37 @@ export const userRegistrations = pgTable("user_registrations", {
     idxUserRegistrationsClerkUserId: uniqueIndex("idx_user_registrations_clerk_user_id").on(table.clerkUserId),
     idxUserRegistrationsStatus: index("idx_user_registrations_status").on(table.status),
     idxUserRegistrationsEmail: index("idx_user_registrations_email").on(table.email),
+}));
+
+// Tenant Workspaces (organizational workspaces - top-level multi-tenant containers)
+// Note: Different from 'workspaces' table which is for task execution containers
+export const tenantWorkspaces = pgTable("tenant_workspaces", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    icon: text("icon"),
+    color: text("color"),
+    settings: jsonb("settings").default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// Tenant Workspace Members
+export const tenantWorkspaceMembers = pgTable("tenant_workspace_members", {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantWorkspaceId: uuid("tenant_workspace_id").notNull().references(() => tenantWorkspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    email: text("email").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    role: text("role").default("member").notNull(), // owner, admin, member
+    joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+    idxTenantWorkspaceMembersWorkspaceId: index("idx_tenant_workspace_members_workspace_id").on(table.tenantWorkspaceId),
+    idxTenantWorkspaceMembersUserId: index("idx_tenant_workspace_members_user_id").on(table.userId),
+    uniqTenantWorkspaceMemberUser: uniqueIndex("uniq_tenant_workspace_member_user").on(table.tenantWorkspaceId, table.userId),
 }));
 
 // Team Registry (for multi-tenant team management)

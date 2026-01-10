@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      folder_id as \"folder_id: Uuid\",\n                      title,\n                      slug,\n                      content,\n                      file_path,\n                      file_type,\n                      file_size as \"file_size: i64\",\n                      mime_type,\n                      icon,\n                      is_pinned as \"is_pinned!: bool\",\n                      is_archived as \"is_archived!: bool\",\n                      position as \"position!: i32\",\n                      created_by,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM documents\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      team_id as \"team_id!: Uuid\",\n                      folder_id as \"folder_id: Uuid\",\n                      title,\n                      slug,\n                      content,\n                      file_path,\n                      file_type,\n                      file_size as \"file_size: i64\",\n                      mime_type,\n                      icon,\n                      is_pinned as \"is_pinned!: bool\",\n                      is_archived as \"is_archived!: bool\",\n                      position as \"position!: i32\",\n                      created_by,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\",\n                      storage_key,\n                      storage_bucket,\n                      storage_metadata as \"storage_metadata: serde_json::Value\",\n                      storage_provider as \"storage_provider!\"\n               FROM documents\n               WHERE team_id = $1 AND slug = $2",
   "describe": {
     "columns": [
       {
@@ -87,11 +87,32 @@
         "ordinal": 16,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "storage_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "storage_bucket",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "storage_metadata: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 20,
+        "name": "storage_provider!",
+        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
@@ -111,8 +132,12 @@
       false,
       true,
       false,
+      false,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "ff60e0ba86a29086d69306db228d80cafc8320e7167f74c68f78c06e56e4a42c"
+  "hash": "7aa61c608da3bc11f3cbb31fa42081a6d03ba57b34e008056082c5695fad288e"
 }
