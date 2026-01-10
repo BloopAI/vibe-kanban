@@ -350,7 +350,8 @@ export function TeamDocuments() {
   }, [teamId]);
 
   // Handle file upload from browser file picker
-  const { uploadFolder, isUploading: isSupabaseUploading } = useFolderUpload(teamId || '', currentFolderId);
+  // Use actualTeamId (UUID) instead of teamId (URL slug) for API calls
+  const { uploadFolder, isUploading: isSupabaseUploading } = useFolderUpload(actualTeamId, currentFolderId);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

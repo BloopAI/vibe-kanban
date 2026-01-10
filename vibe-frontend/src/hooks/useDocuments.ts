@@ -111,12 +111,11 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   }, [teamId, currentFolderId, queryClient]);
 
   // Document mutations
-  // Note: team_id is extracted from the URL path by the backend middleware,
-  // so we don't include it here (would fail if we sent slug instead of UUID)
   const createDocMutation = useMutation({
     mutationFn: (data: Omit<CreateDocument, 'team_id'>) =>
       documentsApi.create(teamId, {
         ...data,
+        team_id: teamId,
         folder_id: data.folder_id ?? currentFolderId,
       }),
     onSuccess: (newDoc) => {
@@ -146,12 +145,11 @@ export function useDocuments(teamId: string): UseDocumentsResult {
   });
 
   // Folder mutations
-  // Note: team_id is extracted from the URL path by the backend middleware,
-  // so we don't include it here (would fail if we sent slug instead of UUID)
   const createFolderMutation = useMutation({
     mutationFn: (data: Omit<CreateDocumentFolder, 'team_id'>) =>
       documentsApi.createFolder(teamId, {
         ...data,
+        team_id: teamId,
         parent_id: data.parent_id ?? currentFolderId,
       }),
     onSuccess: (newFolder) => {
