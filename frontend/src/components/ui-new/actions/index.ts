@@ -605,6 +605,9 @@ export const Actions = {
       const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
       const task = await tasksApi.getById(workspace.task_id);
 
+      const repos = await attemptsApi.getRepos(workspaceId);
+      const repo = repos.find((r) => r.id === repoId);
+
       const result = await CreatePRDialog.show({
         attempt: workspace,
         task: {
@@ -614,6 +617,7 @@ export const Actions = {
           executor: '',
         },
         repoId,
+        targetBranch: repo?.target_branch,
       });
 
       if (!result.success && result.error) {
