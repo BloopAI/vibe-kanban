@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'local')\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\",\n                         storage_key,\n                         storage_bucket,\n                         storage_metadata as \"storage_metadata: serde_json::Value\",\n                         storage_provider as \"storage_provider!\"",
+  "query": "INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider, storage_key)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)\n               RETURNING id as \"id!: Uuid\",\n                         team_id as \"team_id!: Uuid\",\n                         folder_id as \"folder_id: Uuid\",\n                         title,\n                         slug,\n                         content,\n                         file_path,\n                         file_type,\n                         file_size as \"file_size: i64\",\n                         mime_type,\n                         icon,\n                         is_pinned as \"is_pinned!: bool\",\n                         is_archived as \"is_archived!: bool\",\n                         position as \"position!: i32\",\n                         created_by,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\",\n                         storage_key,\n                         storage_bucket,\n                         storage_metadata as \"storage_metadata: serde_json::Value\",\n                         storage_provider as \"storage_provider!\"",
   "describe": {
     "columns": [
       {
@@ -122,6 +122,8 @@
         "Int4",
         "Text",
         "Int8",
+        "Text",
+        "Text",
         "Text"
       ]
     },
@@ -149,5 +151,5 @@
       false
     ]
   },
-  "hash": "7cf9530ae95f56dc8451c05210ea56e950bf20d60b8ff835bf2570d51ac34fff"
+  "hash": "6e0be58164f0be13055397a504037a5cb13b12974d6dd0e415bbc9c29648c71d"
 }
