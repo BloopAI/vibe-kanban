@@ -885,6 +885,11 @@ export function ProjectSettings() {
                             updateScriptsDraft({ copy_files: value })
                           }
                           projectId={selectedProject.id}
+                          repoName={
+                            repositories.find(
+                              (r) => r.id === selectedScriptsRepoId
+                            )?.name
+                          }
                         />
                         <p className="text-sm text-muted-foreground">
                           {t('settings.projects.scripts.copyFiles.helper')}

@@ -324,4 +324,43 @@ mod tests {
 
         assert_eq!(std::fs::read_dir(dst.path()).unwrap().count(), 0);
     }
+
+    #[test]
+    fn test_copy_hidden_files_via_glob_pattern() {
+        let source_dir = TempDir::new().unwrap();
+        let target_dir = TempDir::new().unwrap();
+
+        // Create hidden files
+        fs::write(source_dir.path().join(".env"), "SECRET=value").unwrap();
+        fs::write(source_dir.path().join(".env.local"), "LOCAL=value").unwrap();
+        fs::write(source_dir.path().join(".hidden"), "hidden content").unwrap();
+
+        // Copy using glob pattern that should match hidden files
+        copy_project_files_impl(source_dir.path(), target_dir.path(), ".*").unwrap();
+
+        // All hidden files should be copied
+        assert!(target_dir.path().join(".env").exists());
+        assert!(target_dir.path().join(".env.local").exists());
+        assert!(target_dir.path().join(".hidden").exists());
+    }
+
+    #[test]
+    fn test_copy_gitignored_files() {
+        let source_dir = TempDir::new().unwrap();
+        let target_dir = TempDir::new().unwrap();
+
+        // Create a .gitignore that would normally exclude .env
+        fs::write(source_dir.path().join(".gitignore"), ".env\n*.secret").unwrap();
+
+        // Create files that would be gitignored
+        fs::write(source_dir.path().join(".env"), "SECRET=value").unwrap();
+        fs::write(source_dir.path().join("api.secret"), "api key").unwrap();
+
+        // Copy the gitignored files explicitly - they should still be copied
+        copy_project_files_impl(source_dir.path(), target_dir.path(), ".env, *.secret").unwrap();
+
+        // Gitignored files should still be copied when explicitly specified
+        assert!(target_dir.path().join(".env").exists());
+        assert!(target_dir.path().join("api.secret").exists());
+    }
 }

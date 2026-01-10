@@ -704,7 +704,24 @@ impl LocalContainerService {
                 && !copy_files.trim().is_empty()
             {
                 let worktree_path = workspace_dir.join(&repo.name);
-                self.copy_project_files(&repo.path, &worktree_path, copy_files)
+
+                // Strip repo name prefix from patterns if present (legacy format from search results)
+                // e.g., "repo-name/.env, repo-name/config.json" -> ".env, config.json"
+                let repo_prefix = format!("{}/", repo.name);
+                let normalized_copy_files: String = copy_files
+                    .split(',')
+                    .map(|p| {
+                        let trimmed = p.trim();
+                        if trimmed.starts_with(&repo_prefix) {
+                            trimmed.strip_prefix(&repo_prefix).unwrap_or(trimmed)
+                        } else {
+                            trimmed
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                self.copy_project_files(&repo.path, &worktree_path, &normalized_copy_files)
                     .await
                     .unwrap_or_else(|e| {
                         tracing::warn!(

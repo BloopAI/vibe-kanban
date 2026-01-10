@@ -18,6 +18,7 @@ interface MultiFileSearchTextareaProps {
   disabled?: boolean;
   className?: string;
   projectId: string;
+  repoName?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
 }
@@ -30,6 +31,7 @@ export function MultiFileSearchTextarea({
   disabled = false,
   className,
   projectId,
+  repoName,
   onKeyDown,
   maxRows = 10,
 }: MultiFileSearchTextareaProps) {
@@ -218,8 +220,14 @@ export function MultiFileSearchTextarea({
     const before = value.slice(0, currentTokenStart);
     const after = value.slice(currentTokenEnd);
 
+    // Strip repo name prefix if provided (search results include repo_name/path format)
+    let filePath = file.path;
+    if (repoName && filePath.startsWith(`${repoName}/`)) {
+      filePath = filePath.slice(repoName.length + 1);
+    }
+
     // Smart comma handling - add ", " if not at end and next char isn't comma/newline
-    let insertion = file.path;
+    let insertion = filePath;
     const trimmedAfter = after.trimStart();
     const needsComma =
       trimmedAfter.length > 0 &&
