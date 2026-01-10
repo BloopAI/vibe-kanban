@@ -2,7 +2,9 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const ProxyAgent = require("proxy-agent");
+const proxyAgentModule = require("proxy-agent");
+// Handle CJS/ESM export shapes: named export, default export, or direct constructor.
+const ProxyAgent = proxyAgentModule.ProxyAgent || proxyAgentModule.default || proxyAgentModule;
 
 // Replaced during npm publish by workflow
 const RELEASE_REPO = "__RELEASE_REPO__"; // e.g., mxyhi/vibe-kanban
