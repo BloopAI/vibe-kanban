@@ -89,6 +89,10 @@ pnpm run dev
 
 This starts both the frontend (port 3000) and backend with auto-assigned ports.
 
+> **Note: First run takes 3-5 minutes** to compile the Rust backend. Subsequent runs start in seconds (Rust only recompiles changed code).
+>
+> The original `npx vibe-kanban` is fast because it ships pre-built binaries. Running from source requires compilation but gives you access to fork enhancements and local modifications.
+
 ### Shell Alias (Optional)
 
 Add to your `~/.zshrc` or `~/.bashrc` for quick access:
