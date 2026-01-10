@@ -2316,7 +2316,7 @@ export const documentsApi = {
     const headers: HeadersInit = {};
     const token = await getAuthToken();
     if (token) {
-      headers['Authorization'] = `${token}`;
+      headers['Authorization'] = `Bearer ${token}`;
     } else {
       console.warn('No auth token available for upload - user may need to sign in again');
     }
