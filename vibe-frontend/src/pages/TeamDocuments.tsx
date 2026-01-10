@@ -223,6 +223,8 @@ export function TeamDocuments() {
         file_path: null,
         file_size: null,
         mime_type: null,
+        storage_provider: null,
+        storage_key: null,
       });
       setIsCreateDocOpen(false);
       setNewDocTitle('');

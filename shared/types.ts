@@ -330,7 +330,7 @@ export type DocumentFolder = { id: string, team_id: string, parent_id: string | 
  */
 local_path: string | null, position: number, created_at: Date, updated_at: Date, };
 
-export type Document = { id: string, team_id: string, folder_id: string | null, title: string, slug: string | null, content: string | null, file_path: string | null, file_type: string, file_size: bigint | null, mime_type: string | null, icon: string | null, is_pinned: boolean, is_archived: boolean, position: number, created_by: string | null, created_at: Date, updated_at: Date, };
+export type Document = { id: string, team_id: string, folder_id: string | null, title: string, slug: string | null, content: string | null, file_path: string | null, file_type: string, file_size: bigint | null, mime_type: string | null, icon: string | null, is_pinned: boolean, is_archived: boolean, position: number, created_by: string | null, created_at: Date, updated_at: Date, storage_key: string | null, storage_bucket: string | null, storage_metadata: Record<string, unknown> | null, storage_provider: string, };
 
 export type CreateDocumentFolder = { team_id: string, parent_id: string | null, name: string, icon: string | null, color: string | null, 
 /**
@@ -356,7 +356,15 @@ file_size: number | null,
 /**
  * MIME type for uploaded files
  */
-mime_type: string | null, };
+mime_type: string | null,
+/**
+ * Storage provider ("local", "supabase", "s3", etc.)
+ */
+storage_provider: string | null,
+/**
+ * Storage key (path in bucket)
+ */
+storage_key: string | null, };
 
 export type UpdateDocument = { folder_id: string | null, title: string | null, content: string | null, icon: string | null, is_pinned: boolean | null, is_archived: boolean | null, position: number | null, };
 

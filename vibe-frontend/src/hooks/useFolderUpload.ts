@@ -123,15 +123,12 @@ async function uploadSingleFile(
                 content: null,
                 file_type: extension || 'unknown',
                 icon: null,
-                // For Supabase, we store the key in storage_key.
-                // We can leave file_path null or descriptive.
-                // We use 'any' cast because types might not be generated yet for storage fields
                 file_path: null,
                 file_size: file.size,
                 mime_type: mimeType,
                 storage_provider: storage_provider,
-                storage_key: file_path, // Key returned from getUploadUrl
-            } as any);
+                storage_key: file_path ?? null, // Key returned from getUploadUrl
+            });
 
             return; // Success - exit retry loop
         } catch (err) {
