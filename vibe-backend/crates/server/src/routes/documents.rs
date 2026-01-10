@@ -641,35 +641,80 @@ pub async fn get_document_content(
     }
 
     // Handle local filesystem files
-    let file_path = document.file_path.as_ref().ok_or_else(|| {
-        ApiError::NotFound("Document has no file path".to_string())
-    })?;
+    // First, check if content exists in database (preferred for text documents)
+    // This handles cases where file_path points to a non-existent file (e.g., different server)
+    if let Some(ref content) = document.content {
+        if !content.is_empty() {
+            // Document has content stored in database - return it directly
+            let file_type = document.file_type.as_str();
+            let content_type_str = match file_type {
+                "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => "text",
+                "csv" => "csv",
+                _ => "text",
+            }.to_string();
 
-    // Read file content using the file reader
-    let file_content = read_file_content(file_path)
-        .await
-        .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+            let response = DocumentContentResponse {
+                document_id,
+                content_type: content_type_str,
+                content: content.clone(),
+                csv_data: None,
+                file_path: document.file_path,
+                file_type: document.file_type,
+                mime_type: document.mime_type,
+            };
+            return Ok(ResponseJson(ApiResponse::success(response)));
+        }
+    }
 
-    // Convert content type to string
-    let content_type_str = match file_content.content_type {
-        ContentType::Text => "text",
-        ContentType::Csv => "csv",
-        ContentType::PdfText => "pdf_text",
-        ContentType::ImageBase64 => "image_base64",
-        ContentType::Binary => "binary",
-    }.to_string();
+    // Fall back to filesystem if no DB content
+    if let Some(ref file_path) = document.file_path {
+        match read_file_content(file_path).await {
+            Ok(file_content) => {
+                // Convert content type to string
+                let content_type_str = match file_content.content_type {
+                    ContentType::Text => "text",
+                    ContentType::Csv => "csv",
+                    ContentType::PdfText => "pdf_text",
+                    ContentType::ImageBase64 => "image_base64",
+                    ContentType::Binary => "binary",
+                }.to_string();
 
-    // Convert CSV data if present
-    let csv_data = file_content.structured_data.map(|data| CsvDataResponse {
-        headers: data.headers,
-        rows: data.rows,
-    });
+                // Convert CSV data if present
+                let csv_data = file_content.structured_data.map(|data| CsvDataResponse {
+                    headers: data.headers,
+                    rows: data.rows,
+                });
 
+                let response = DocumentContentResponse {
+                    document_id,
+                    content_type: content_type_str,
+                    content: file_content.content,
+                    csv_data,
+                    file_path: document.file_path,
+                    file_type: document.file_type,
+                    mime_type: document.mime_type,
+                };
+
+                return Ok(ResponseJson(ApiResponse::success(response)));
+            }
+            Err(e) => {
+                // Log the error but return empty content instead of failing
+                tracing::warn!(
+                    "Failed to read file {} for document {}: {}. Returning empty content.",
+                    file_path,
+                    document_id,
+                    e
+                );
+            }
+        }
+    }
+
+    // No DB content and filesystem read failed (or no file_path) - return empty content
     let response = DocumentContentResponse {
         document_id,
-        content_type: content_type_str,
-        content: file_content.content,
-        csv_data,
+        content_type: "text".to_string(),
+        content: String::new(),
+        csv_data: None,
         file_path: document.file_path,
         file_type: document.file_type,
         mime_type: document.mime_type,
