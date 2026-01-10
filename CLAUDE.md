@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 When `/full-stack-dev` skill is invoked:
 
 1. **STOP** - Do not write any code immediately
-2. **Create task in iKanban FIRST** - Use CLI: `python cli.py create IKA "task title" -s inprogress`
+2. **Create task in iKanban FIRST** - Use CLI: `python3 ikanban.py create IKA "task title" -s inprogress`
 3. **Create planning docs BEFORE coding**:
    - ASCII Flow Diagram: `docs-ikanban/planning/<type>/<task-id>-<feature>-flow.md`
    - Implementation Plan: `docs-ikanban/planning/<type>/<task-id>-<feature>-plan.md`
@@ -154,7 +154,7 @@ Reference `.agent/rules/` for detailed guidelines:
 
 ## MCP Tools & Task Management
 
-Custom MCP tools in `/mcp/` for task management. Two interfaces available:
+Custom MCP tools in `/mcp/` for task management using the unified `ikanban.py` CLI (v2.2.0+).
 
 ### CLI Interface (Recommended)
 
@@ -162,41 +162,58 @@ Custom MCP tools in `/mcp/` for task management. Two interfaces available:
 cd mcp/
 
 # List teams and issues
-python cli.py teams                              # List all teams
-python cli.py issues IKA                         # List iKanban issues
-python cli.py issues SCH --status inprogress    # List Schild in-progress
+python3 ikanban.py teams                              # List all teams
+python3 ikanban.py issues IKA                         # List iKanban issues
+python3 ikanban.py issues IKA --json                  # Output as JSON
+python3 ikanban.py issues SCH --status inprogress    # Filter by status
 
 # Create issues
-python cli.py create IKA "Fix login bug"                    # Create in iKanban
-python cli.py create SCH "Add feature" --project backend    # Create in Schild
-python cli.py create IKA "Urgent fix" -p 1 -s inprogress   # Priority 1, in-progress
+python3 ikanban.py create IKA "Fix login bug"                    # Create in iKanban
+python3 ikanban.py create SCH "Add feature" --project backend    # Create in Schild
+python3 ikanban.py create IKA "Urgent fix" -p 1 -s inprogress   # Priority 1, in-progress
 
-# Update tasks
-python cli.py update <task-id> --status done               # Mark done
-python cli.py update <task-id> -s inprogress -d "WIP"     # Status + description
+# Update tasks (supports issue keys like IKA-27)
+python3 ikanban.py update IKA-27 --status done         # Mark done by issue key
+python3 ikanban.py update ika27 -s inprogress          # Case-insensitive, dash optional
+python3 ikanban.py update IKA-27 -d "Summary of fix"   # Update description
 
-# Get task details
-python cli.py task <task-id>                               # Get task info
-python cli.py task <task-id> --json                        # JSON output
+# Get task details (supports issue keys)
+python3 ikanban.py task IKA-27                         # Get task by issue key
+python3 ikanban.py task IKA-27 --json                  # JSON output
+
+# Comments (supports issue keys)
+python3 ikanban.py comments IKA-27                     # List comments
+python3 ikanban.py comment IKA-27 "Fixed the bug"      # Add comment
 ```
+
+### Task ID Formats
+
+All task commands accept these formats:
+| Format | Example | Description |
+|--------|---------|-------------|
+| Issue key with dash | `IKA-27` | Recommended |
+| Issue key lowercase | `ika-27` | Case-insensitive |
+| Issue key no dash | `IKA27`, `ika27` | Also works |
+| UUID | `ab802fb3-698e-4235-...` | Legacy format |
 
 ### JSON-RPC Interface (Alternative)
 
-For programmatic access or when CLI has issues:
+For MCP server mode (used by Claude Code internally):
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
-{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"vk_create_issue","arguments":{"team":"IKA","title":"My task","status":"inprogress"}}}' | \
-VIBE_API_TOKEN="vk_..." python3 mcp/server.py
+python3 mcp/ikanban.py serve                           # Start MCP server
+python3 mcp/ikanban.py --mcp                           # Alias for serve
 ```
 
-Available tools via JSON-RPC:
-- `vk_list_teams` - List all teams
-- `vk_list_projects` - List all projects
-- `vk_list_issues` - List issues for a team
-- `vk_create_issue` - Create new issue
-- `vk_update_task` - Update task status/description
-- `vk_get_task` - Get task details
+Available MCP tools:
+- `ikanban_list_teams` - List all teams
+- `ikanban_list_projects` - List all projects
+- `ikanban_list_issues` - List issues for a team
+- `ikanban_create_issue` - Create new issue
+- `ikanban_update_task` - Update task status/description
+- `ikanban_get_task` - Get task details
+- `ikanban_add_comment` - Add comment to task
+- `ikanban_list_comments` - List task comments
 
 ### Teams Reference
 
