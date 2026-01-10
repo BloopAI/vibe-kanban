@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
 import { tenantWorkspacesApi } from '@/lib/api';
 import type {
   TenantWorkspaceMember,
@@ -10,6 +11,8 @@ export const WORKSPACE_MEMBERS_QUERY_KEY = ['workspace-members'];
 
 export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   const queryClient = useQueryClient();
+  const { user } = useUser();
+  const userId = user?.id;
 
   // Fetch members
   const {
@@ -18,12 +21,13 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     error,
     refetch,
   } = useQuery({
-    queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId],
+    queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
     queryFn: () => {
       if (!workspaceId) throw new Error('Workspace ID required');
-      return tenantWorkspacesApi.getMembers(workspaceId);
+      if (!userId) throw new Error('User ID required');
+      return tenantWorkspacesApi.getMembers(workspaceId, userId);
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && !!userId,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -31,37 +35,40 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
   const addMutation = useMutation({
     mutationFn: (data: AddWorkspaceMember) => {
       if (!workspaceId) throw new Error('Workspace ID required');
-      return tenantWorkspacesApi.addMember(workspaceId, data);
+      if (!userId) throw new Error('User ID required');
+      return tenantWorkspacesApi.addMember(workspaceId, data, userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId],
+        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
       });
     },
   });
 
   // Update member role
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, data }: { userId: string; data: UpdateWorkspaceMemberRole }) => {
+    mutationFn: ({ userId: targetUserId, data }: { userId: string; data: UpdateWorkspaceMemberRole }) => {
       if (!workspaceId) throw new Error('Workspace ID required');
-      return tenantWorkspacesApi.updateMemberRole(workspaceId, userId, data);
+      if (!userId) throw new Error('User ID required');
+      return tenantWorkspacesApi.updateMemberRole(workspaceId, targetUserId, data, userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId],
+        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
       });
     },
   });
 
   // Remove member
   const removeMutation = useMutation({
-    mutationFn: (userId: string) => {
+    mutationFn: (targetUserId: string) => {
       if (!workspaceId) throw new Error('Workspace ID required');
-      return tenantWorkspacesApi.removeMember(workspaceId, userId);
+      if (!userId) throw new Error('User ID required');
+      return tenantWorkspacesApi.removeMember(workspaceId, targetUserId, userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId],
+        queryKey: [...WORKSPACE_MEMBERS_QUERY_KEY, workspaceId, userId],
       });
     },
   });

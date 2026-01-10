@@ -2429,14 +2429,14 @@ export const tenantWorkspacesApi = {
   },
 
   // Get workspace members
-  getMembers: async (workspaceId: string): Promise<TenantWorkspaceMember[]> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members`);
+  getMembers: async (workspaceId: string, userId: string): Promise<TenantWorkspaceMember[]> => {
+    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(userId)}`);
     return handleApiResponse<TenantWorkspaceMember[]>(response);
   },
 
   // Add a member to workspace
-  addMember: async (workspaceId: string, data: AddWorkspaceMember): Promise<TenantWorkspaceMember> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members`, {
+  addMember: async (workspaceId: string, data: AddWorkspaceMember, callerUserId: string): Promise<TenantWorkspaceMember> => {
+    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members?user_id=${encodeURIComponent(callerUserId)}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -2446,10 +2446,11 @@ export const tenantWorkspacesApi = {
   // Update member role
   updateMemberRole: async (
     workspaceId: string,
-    userId: string,
-    data: UpdateWorkspaceMemberRole
+    targetUserId: string,
+    data: UpdateWorkspaceMemberRole,
+    callerUserId: string
   ): Promise<TenantWorkspaceMember> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${userId}`, {
+    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -2457,8 +2458,8 @@ export const tenantWorkspacesApi = {
   },
 
   // Remove a member
-  removeMember: async (workspaceId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${userId}`, {
+  removeMember: async (workspaceId: string, targetUserId: string, callerUserId: string): Promise<void> => {
+    const response = await makeRequest(`/api/tenant-workspaces/${workspaceId}/members/${targetUserId}?user_id=${encodeURIComponent(callerUserId)}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
