@@ -7,6 +7,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
+use base64::Engine;
 use db::models::document::{
     CreateDocument, CreateDocumentFolder, Document, DocumentFolder, UpdateDocument,
     UpdateDocumentFolder,
@@ -559,6 +560,7 @@ pub async fn delete_document(
 
 /// Get document file content with type-specific handling
 /// Supports: text files (md, txt, json, xml, html), CSV, PDF (text extraction), images (base64)
+/// Handles both local filesystem and Supabase storage
 pub async fn get_document_content(
     State(deployment): State<DeploymentImpl>,
     Path((team_id, document_id)): Path<(Uuid, Uuid)>,
@@ -578,7 +580,67 @@ pub async fn get_document_content(
         return Err(ApiError::Database(sqlx::Error::RowNotFound));
     }
 
-    // Get file path
+    // Handle Supabase-stored files
+    if document.storage_provider == "supabase" {
+        let storage_key = document.storage_key.as_ref().ok_or_else(|| {
+            ApiError::NotFound("Document has no storage key".to_string())
+        })?;
+
+        let client = get_supabase_storage().ok_or_else(|| {
+            ApiError::BadRequest("Supabase Storage is not configured".to_string())
+        })?;
+
+        // Download content from Supabase
+        let bytes = client
+            .download(storage_key)
+            .await
+            .map_err(|e| ApiError::BadRequest(format!("Failed to download from Supabase: {}", e)))?;
+
+        // Determine content type from file extension or mime_type
+        let extension = storage_key
+            .split('.')
+            .last()
+            .unwrap_or("")
+            .to_lowercase();
+
+        let (content, content_type_str) = match extension.as_str() {
+            "md" | "markdown" | "txt" | "json" | "xml" | "html" | "htm" => {
+                let text = String::from_utf8(bytes)
+                    .map_err(|e| ApiError::BadRequest(format!("Invalid UTF-8 content: {}", e)))?;
+                (text, "text".to_string())
+            }
+            "csv" => {
+                let text = String::from_utf8(bytes)
+                    .map_err(|e| ApiError::BadRequest(format!("Invalid UTF-8 content: {}", e)))?;
+                (text, "csv".to_string())
+            }
+            "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => {
+                let base64_content = base64::engine::general_purpose::STANDARD.encode(&bytes);
+                (base64_content, "image_base64".to_string())
+            }
+            _ => {
+                // Try to read as text, fallback to binary description
+                match String::from_utf8(bytes.clone()) {
+                    Ok(text) => (text, "text".to_string()),
+                    Err(_) => (format!("Binary file ({} bytes)", bytes.len()), "binary".to_string()),
+                }
+            }
+        };
+
+        let response = DocumentContentResponse {
+            document_id,
+            content_type: content_type_str,
+            content,
+            csv_data: None, // TODO: Parse CSV if needed
+            file_path: document.storage_key,
+            file_type: document.file_type,
+            mime_type: document.mime_type,
+        };
+
+        return Ok(ResponseJson(ApiResponse::success(response)));
+    }
+
+    // Handle local filesystem files
     let file_path = document.file_path.as_ref().ok_or_else(|| {
         ApiError::NotFound("Document has no file path".to_string())
     })?;
