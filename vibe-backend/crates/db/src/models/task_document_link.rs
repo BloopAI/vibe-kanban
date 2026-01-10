@@ -88,7 +88,7 @@ impl TaskDocumentLink {
                   tdl.id as "id!: Uuid",
                   tdl.document_id as "document_id!: Uuid",
                   COALESCE(d.title, 'Untitled') as "document_title!",
-                  df.name as "folder_name",
+                  df.name as "folder_name?",
                   tdl.created_at as "linked_at!: DateTime<Utc>"
                FROM task_document_links tdl
                JOIN documents d ON d.id = tdl.document_id

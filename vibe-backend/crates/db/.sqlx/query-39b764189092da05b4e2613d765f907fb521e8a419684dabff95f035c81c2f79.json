@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                  tdl.id as \"id!: Uuid\",\n                  tdl.document_id as \"document_id!: Uuid\",\n                  COALESCE(d.title, 'Untitled') as \"document_title!\",\n                  df.name as \"folder_name\",\n                  tdl.created_at as \"linked_at!: DateTime<Utc>\"\n               FROM task_document_links tdl\n               JOIN documents d ON d.id = tdl.document_id\n               LEFT JOIN document_folders df ON df.id = d.folder_id\n               WHERE tdl.task_id = $1\n               ORDER BY tdl.created_at DESC",
+  "query": "SELECT\n                  tdl.id as \"id!: Uuid\",\n                  tdl.document_id as \"document_id!: Uuid\",\n                  COALESCE(d.title, 'Untitled') as \"document_title!\",\n                  df.name as \"folder_name?\",\n                  tdl.created_at as \"linked_at!: DateTime<Utc>\"\n               FROM task_document_links tdl\n               JOIN documents d ON d.id = tdl.document_id\n               LEFT JOIN document_folders df ON df.id = d.folder_id\n               WHERE tdl.task_id = $1\n               ORDER BY tdl.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "folder_name",
+        "name": "folder_name?",
         "type_info": "Text"
       },
       {
@@ -42,5 +42,5 @@
       false
     ]
   },
-  "hash": "480fd78e7e95a7b077d899e609e9732524586c6af10896fa729bd4cfeb5c1a78"
+  "hash": "39b764189092da05b4e2613d765f907fb521e8a419684dabff95f035c81c2f79"
 }
