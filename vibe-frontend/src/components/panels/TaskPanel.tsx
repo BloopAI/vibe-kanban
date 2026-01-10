@@ -12,6 +12,7 @@ import { PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
+import { InlinePromptInput } from '@/components/tasks/TaskDetails/InlinePromptInput';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -168,6 +169,12 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                 }
               />
             )}
+
+            {/* Inline prompt input for quick agent interaction */}
+            <InlinePromptInput
+              taskId={task.id}
+              className="mt-4"
+            />
           </div>
         </div>
       </NewCardContent>
