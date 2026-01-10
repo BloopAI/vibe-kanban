@@ -24,6 +24,9 @@ pub struct CodingAgentFollowUpRequest {
     /// If None, uses the container_ref directory directly.
     #[serde(default)]
     pub working_dir: Option<String>,
+    /// Maximum execution time in seconds. None means no limit. Default: 120 seconds (2 minutes).
+    #[serde(default)]
+    pub time_limit_seconds: Option<i64>,
 }
 
 impl CodingAgentFollowUpRequest {
