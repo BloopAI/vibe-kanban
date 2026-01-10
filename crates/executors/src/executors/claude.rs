@@ -2096,6 +2096,7 @@ mod tests {
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
             settings: None,
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,
@@ -2612,6 +2613,7 @@ mod tests {
             dangerously_skip_permissions: Some(true),
             disable_api_key: None,
             settings: Some(settings),
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,
@@ -2673,6 +2675,7 @@ mod tests {
             dangerously_skip_permissions: None,
             disable_api_key: None,
             settings: Some(settings),
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides::default(),
             approvals_service: None,
         };
@@ -2716,6 +2719,7 @@ mod tests {
             dangerously_skip_permissions: None,
             disable_api_key: None,
             settings: None, // No settings
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides::default(),
             approvals_service: None,
         };
@@ -2769,6 +2773,7 @@ mod tests {
             dangerously_skip_permissions: None,
             disable_api_key: None,
             settings: Some(settings),
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides::default(),
             approvals_service: None,
         };
