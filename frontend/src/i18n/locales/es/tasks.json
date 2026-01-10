@@ -623,6 +623,7 @@
       "conflicts_other": "{{count}} archivos en conflicto necesitan resolución manual"
     },
     "executors": "Ejecutores",
+    "saveAsDefault": "Guardar como predeterminado",
     "script": {
       "clickToViewLogs": "Haz clic para ver registros",
       "completedSuccessfully": "Completado exitosamente",

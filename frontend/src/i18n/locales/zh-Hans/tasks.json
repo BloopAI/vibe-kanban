@@ -650,6 +650,7 @@
       "clickToViewLogs": "点击查看日志"
     },
     "executors": "执行器",
+    "saveAsDefault": "设为默认",
     "updatedTodos": "更新的待办事项",
     "viewInChangesPanel": "在更改面板中查看",
     "unableToRenderDiff": "无法显示差异。"

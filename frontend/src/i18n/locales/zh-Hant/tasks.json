@@ -623,6 +623,7 @@
       "conflicts_other": "{{count}}個衝突檔案需要手動解決"
     },
     "executors": "執行器",
+    "saveAsDefault": "設為預設",
     "script": {
       "clickToViewLogs": "點擊查看日誌",
       "completedSuccessfully": "成功完成",
