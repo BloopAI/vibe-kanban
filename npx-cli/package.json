@@ -1,5 +1,5 @@
 {
-  "name": "vibe-kanban",
+  "name": "@mxyhi/vibe-kanban",
   "private": false,
   "version": "0.0.148",
   "main": "index.js",

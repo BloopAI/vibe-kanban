@@ -10,9 +10,8 @@
 
 <p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
-  <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
-  <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://www.npmjs.com/package/@mxyhi/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/@mxyhi%2Fvibe-kanban?style=flat-square" /></a>
+  <a href="https://github.com/mxyhi/vibe-kanban/blob/main/.github/workflows/test.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/mxyhi/vibe-kanban/test.yml?style=flat-square" /></a>
 </p>
 
 <h1 align="center">
@@ -39,7 +38,7 @@ You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
 
 ```bash
-npx vibe-kanban
+npx @mxyhi/vibe-kanban
 ```
 
 ## Documentation
@@ -48,11 +47,11 @@ Please head to the [website](https://vibekanban.com/docs) for the latest documen
 
 ## Support
 
-We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
+We use [GitHub Discussions](https://github.com/mxyhi/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
 
 ## Contributing
 
-We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
+We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/mxyhi/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
 
 ## About This Fork
 

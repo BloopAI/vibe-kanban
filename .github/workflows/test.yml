@@ -18,7 +18,7 @@ env:
 
 jobs:
   test:
-    runs-on: buildjet-8vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -54,7 +54,6 @@ jobs:
           RUST_CACHE_DEBUG: true
         with:
           workspaces: "."
-          cache-provider: "buildjet"
           cache-on-failure: true
           shared-key: "shared"
           cache-all-crates: true

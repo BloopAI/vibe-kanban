@@ -4,9 +4,19 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_BASE_URL, getLatestVersion } = require("./download");
+const {
+  ensureBinary,
+  BINARY_TAG,
+  CACHE_DIR,
+  LOCAL_DEV_MODE,
+  LOCAL_DIST_DIR,
+  RELEASE_REPO,
+  getLatestVersion
+} = require("./download");
 
-const CLI_VERSION = require("../package.json").version;
+const CLI_PACKAGE = require("../package.json");
+const CLI_VERSION = CLI_PACKAGE.version;
+const CLI_NAME = CLI_PACKAGE.name;
 
 // Resolve effective arch for our published 64-bit binaries only.
 // Any ARM → arm64; anything else → x64. On macOS, handle Rosetta.
@@ -148,15 +158,15 @@ async function main() {
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
 
-  // Non-blocking update check (skip in MCP mode, local dev mode, and when R2 URL not configured)
-  const hasValidR2Url = !R2_BASE_URL.startsWith("__");
-  if (!isMcpMode && !LOCAL_DEV_MODE && hasValidR2Url) {
+  // Non-blocking update check (skip in MCP mode, local dev mode, and when repo not configured)
+  const hasValidReleaseRepo = !RELEASE_REPO.startsWith("__");
+  if (!isMcpMode && !LOCAL_DEV_MODE && hasValidReleaseRepo) {
     getLatestVersion()
       .then((latest) => {
         if (latest && latest !== CLI_VERSION) {
           setTimeout(() => {
             console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-            console.log(`Run: npx vibe-kanban@latest`);
+            console.log(`Run: npx ${CLI_NAME}@latest`);
           }, 2000);
         }
       })
