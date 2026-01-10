@@ -163,6 +163,10 @@ pub struct CreateDocument {
     pub file_size: Option<i64>,
     /// MIME type for uploaded files
     pub mime_type: Option<String>,
+    /// Storage provider ("local", "supabase", "s3", etc.)
+    pub storage_provider: Option<String>,
+    /// Storage key (path in bucket)
+    pub storage_key: Option<String>,
 }
 
 /// Request to update a document
@@ -727,10 +731,12 @@ impl Document {
             .await?
         };
 
+        let storage_provider = data.storage_provider.clone().unwrap_or_else(|| "local".to_string());
+        
         sqlx::query_as!(
             Document,
-            r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'local')
+            r#"INSERT INTO documents (id, team_id, folder_id, title, slug, content, file_type, icon, position, file_path, file_size, mime_type, storage_provider, storage_key)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                RETURNING id as "id!: Uuid",
                          team_id as "team_id!: Uuid",
                          folder_id as "folder_id: Uuid",
@@ -763,7 +769,9 @@ impl Document {
             max_position,
             data.file_path,
             data.file_size,
-            data.mime_type
+            data.mime_type,
+            storage_provider,
+            data.storage_key
         )
         .fetch_one(pool)
         .await

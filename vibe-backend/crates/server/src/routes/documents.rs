@@ -15,7 +15,7 @@ use db::models::team::Team;
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::document_storage::DocumentStorageService;
-use services::services::supabase_storage::SupabaseStorageClient;
+use services::services::supabase_storage::{SupabaseStorageClient, generate_storage_key};
 use ts_rs::TS;
 use utils::assets::asset_dir;
 use utils::response::ApiResponse;
@@ -333,51 +333,90 @@ pub async fn create_document(
         None
     };
 
-    // Create document record in DB (without content)
-    let document = Document::create(&deployment.db().pool, &payload).await?;
+    		// Create document record in DB (without content)
+		let document = Document::create(&deployment.db().pool, &payload).await?;
 
-    // Write content to filesystem using human-readable title as filename
-    let file_info = storage
-        .write_document_with_title(
-            team.id,
-            &title,
-            &content,
-            &file_type,
-            team.document_storage_path.as_deref(),
-            subfolder.as_deref(), // Use folder name as subfolder
-        )
-        .await
-        .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
+        // Only write to local storage if content is explicitly provided
+        // or if we are creating a new empty document (no file path provided)
+        // If file_path is provided, we assume it's an external file (e.g. Supabase upload)
+        let should_write_storage = content.is_some() || payload.file_path.is_none();
 
-    // Update document with file metadata
-    let document = Document::update_file_metadata(
-        &deployment.db().pool,
-        document.id,
-        &file_info.file_path,
-        file_info.file_size,
-        &file_info.mime_type,
-        &file_type,
-    )
-    .await?;
+		if should_write_storage {
+            // Write content to filesystem using human-readable title as filename
+            let file_info = storage
+                .write_document_with_title(
+                    team.id,
+                    &title,
+                    &content.unwrap_or_default(),
+                    &file_type,
+                    team.document_storage_path.as_deref(),
+                    subfolder.as_deref(), // Use folder name as subfolder
+                )
+                .await
+                .map_err(|e| ApiError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
-    // Return document with content included
-    let mut response_doc = document;
-    response_doc.content = Some(content);
+            // Update document with file metadata
+            let document = Document::update_file_metadata(
+                &deployment.db().pool,
+                document.id,
+                &file_info.file_path,
+                file_info.file_size,
+                &file_info.mime_type,
+                &file_type,
+            )
+            .await?;
+            
+            // Return document with content included
+            let mut response_doc = document;
+            // Since we just wrote it (or it was empty), we can return the content we had
+            // If content was None but we wrote default empty string, return empty string?
+            // Actually, if we wrote something, we should return it.
+            // If content was None, `unwrap_or_default` was "", ensuring empty doc has empty content.
+            // Wait, if content was None, `content` variable is None.
+            // We should reconstruct it.
+            // But strict ownership of `content` (Option<String>) suggests we can just use the reference passed to write?
+            // `write_document_with_title` constructs it.
+             
+             // Simplest is to reload or just set it.
+             // If we wrote default "", then content is "".
+             response_doc.content = Some(if should_write_storage && content.is_none() { "".to_string() } else { content.unwrap_or_default() });
+             
+            deployment
+                .track_if_analytics_allowed(
+                    "document_created",
+                    serde_json::json!({
+                        "team_id": team.id.to_string(),
+                        "document_id": response_doc.id.to_string(),
+                        "document_title": response_doc.title,
+                        "file_type": response_doc.file_type,
+                        "file_size": file_info.file_size,
+                    }),
+                )
+                .await;
 
-    deployment
-        .track_if_analytics_allowed(
-            "document_created",
-            serde_json::json!({
-                "team_id": team.id.to_string(),
-                "document_id": response_doc.id.to_string(),
-                "document_title": response_doc.title,
-                "file_type": response_doc.file_type,
-                "file_size": file_info.file_size,
-            }),
-        )
-        .await;
+            return Ok(ResponseJson(ApiResponse::success(response_doc)));
+        }
+        
+        // If we didn't write storage (external file), return the document as created
+        // It should have the metadata from payload via Document::create
+		let mut response_doc = document;
+        // Content is None for external files usually
+		response_doc.content = None; 
 
-    Ok(ResponseJson(ApiResponse::success(response_doc)))
+		deployment
+			.track_if_analytics_allowed(
+				"document_created",
+				serde_json::json!({
+					"team_id": team.id.to_string(),
+					"document_id": response_doc.id.to_string(),
+					"document_title": response_doc.title,
+					"file_type": response_doc.file_type,
+					"file_size": response_doc.file_size,
+				}),
+			)
+			.await;
+
+		Ok(ResponseJson(ApiResponse::success(response_doc)))
 }
 
 /// Update a document
@@ -677,10 +716,10 @@ pub async fn get_document_signed_url(
             .await
             .map_err(|e| ApiError::BadRequest(format!("Failed to create signed URL: {}", e)))?;
 
-        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
             url: signed_result.url,
             storage_provider: "supabase".to_string(),
             expires_in: signed_result.expires_in,
+            file_path: Some(storage_key.clone()),
         })))
     } else {
         // For local files, return the direct file endpoint
@@ -691,12 +730,51 @@ pub async fn get_document_signed_url(
             base_url, team_id, document_id
         );
 
-        Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
             url: file_url,
             storage_provider: "local".to_string(),
             expires_in: 0, // Local files don't expire
+            file_path: None,
         })))
     }
+}
+
+/// Request body for getting an upload URL
+#[derive(Debug, Deserialize)]
+pub struct UploadUrlRequest {
+    pub filename: String,
+    pub folder_id: Option<Uuid>,
+}
+
+/// Get a signed URL for uploading a document directly to Supabase
+pub async fn get_document_upload_url(
+    Extension(team): Extension<Team>,
+    State(_deployment): State<DeploymentImpl>,
+    Json(payload): Json<UploadUrlRequest>,
+) -> Result<ResponseJson<ApiResponse<SignedUrlResponse>>, ApiError> {
+    // Check if Supabase is configured
+    let client = get_supabase_storage().ok_or_else(|| {
+        ApiError::BadRequest("Supabase Storage is not configured".to_string())
+    })?;
+
+    // Generate storage key
+    let storage_key = generate_storage_key(
+        team.id,
+        payload.folder_id,
+        &payload.filename,
+    );
+
+    // Generate signed upload URL
+    let signed_result = client
+        .create_signed_upload_url(&storage_key)
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Failed to create signed URL: {}", e)))?;
+
+    Ok(ResponseJson(ApiResponse::success(SignedUrlResponse {
+        url: signed_result.url,
+        storage_provider: "supabase".to_string(),
+        expires_in: signed_result.expires_in,
+        file_path: Some(storage_key),
+    })))
 }
 
 /// Response for scan filesystem operation
@@ -793,6 +871,8 @@ pub struct SignedUrlResponse {
     pub storage_provider: String,
     /// Time until expiry in seconds
     pub expires_in: u64,
+    /// Storage path/key (optional)
+    pub file_path: Option<String>,
 }
 
 /// Query parameters for signed URL request
@@ -1625,6 +1705,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // Upload route (must be before wildcard to avoid /{document_id} matching "upload")
     let upload_router = Router::new()
         .route("/upload", post(upload_documents))
+        .route("/upload-url", post(get_document_upload_url))
         .layer(from_fn_with_state(deployment.clone(), load_team_middleware));
 
     // Combine documents routes

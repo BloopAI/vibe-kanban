@@ -290,7 +290,7 @@ impl SupabaseStorageClient {
         Ok(())
     }
 
-    /// Generate a signed URL for temporary file access
+    /// Generate a signed URL for temporary file access (Download)
     pub async fn create_signed_url(
         &self,
         storage_key: &str,
@@ -346,6 +346,58 @@ impl SupabaseStorageClient {
         Ok(SignedUrlResult {
             url: full_url,
             expires_in: expires_in_seconds,
+        })
+    }
+
+    /// Generate a signed URL for uploading a file
+    pub async fn create_signed_upload_url(
+        &self,
+        storage_key: &str,
+    ) -> Result<SignedUrlResult, SupabaseStorageError> {
+        let url = format!(
+            "{}/object/upload/sign/{}/{}",
+            self.storage_url(),
+            self.bucket,
+            storage_key
+        );
+
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.service_key))
+            .send()
+            .await
+            .map_err(|e| SupabaseStorageError::Http(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_body = response.text().await.unwrap_or_default();
+            return Err(SupabaseStorageError::Api(format!(
+                "Status {}: {}",
+                status, error_body
+            )));
+        }
+
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct SignedUploadUrlResponse {
+            url: String,
+        }
+
+        let result: SignedUploadUrlResponse = response
+            .json()
+            .await
+            .map_err(|e| SupabaseStorageError::Serialization(e.to_string()))?;
+
+        // Supabase returns the full URL with token for uploads usually
+        let full_url = if result.url.starts_with("http") {
+            result.url
+        } else {
+             format!("{}{}", self.storage_url(), result.url)
+        };
+
+        Ok(SignedUrlResult {
+            url: full_url,
+            expires_in: 3600, // Default to 1 hour (unspecified in response usually)
         })
     }
 

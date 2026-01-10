@@ -89,6 +89,43 @@ impl Team {
         .await
     }
 
+    /// Find all teams belonging to a specific tenant workspace
+    pub async fn find_by_workspace(
+        pool: &PgPool,
+        workspace_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Team,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      slug,
+                      identifier,
+                      icon,
+                      color,
+                      document_storage_path,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM teams
+               WHERE tenant_workspace_id = $1
+               ORDER BY name ASC"#,
+            workspace_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Find all teams, optionally filtered by workspace
+    /// If workspace_id is None, returns all teams (for backwards compatibility)
+    pub async fn find_all_with_workspace_filter(
+        pool: &PgPool,
+        workspace_id: Option<Uuid>,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        match workspace_id {
+            Some(ws_id) => Self::find_by_workspace(pool, ws_id).await,
+            None => Self::find_all(pool).await,
+        }
+    }
+
     pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Team,

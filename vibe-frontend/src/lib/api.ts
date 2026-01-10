@@ -142,6 +142,13 @@ import {
   UserRegistration,
   CreateUserRegistration,
 } from 'shared/types';
+
+export interface SignedUrlResponse {
+  url: string;
+  storage_provider: string;
+  expires_in: number;
+  file_path?: string;
+}
 export type { TeamMemberRole } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -2298,7 +2305,7 @@ export const documentsApi = {
     const headers: HeadersInit = {};
     const token = await getAuthToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers['Authorization'] = `${token}`;
     } else {
       console.warn('No auth token available for upload - user may need to sign in again');
     }
@@ -2310,6 +2317,18 @@ export const documentsApi = {
       // Note: Don't set Content-Type header - browser sets it with boundary for multipart
     });
     return handleApiResponse<UploadResult>(response);
+  },
+
+  getUploadUrl: async (
+    teamId: string,
+    filename: string,
+    folderId: string | null
+  ): Promise<SignedUrlResponse> => {
+    const response = await makeRequest(`/api/teams/${teamId}/documents/upload-url`, {
+      method: 'POST',
+      body: JSON.stringify({ filename, folder_id: folderId }),
+    });
+    return handleApiResponse<SignedUrlResponse>(response);
   },
 };
 

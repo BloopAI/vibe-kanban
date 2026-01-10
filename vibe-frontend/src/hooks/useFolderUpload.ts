@@ -1,6 +1,5 @@
 
 import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
 import { documentsApi } from '@/lib/api';
 
 interface UploadProgress {
@@ -80,38 +79,37 @@ function getTitleFromFilename(filename: string): string {
 async function uploadSingleFile(
     file: File,
     teamId: string,
-    currentFolderId: string | null,
-    bucketName: string
+    currentFolderId: string | null
 ): Promise<void> {
-    const path = `${teamId}/${file.webkitRelativePath || file.name}`;
-
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= UPLOAD_CONFIG.maxRetries; attempt++) {
         try {
-            // 1. Upload to Supabase storage
-            const { error: uploadError } = await supabase.storage
-                .from(bucketName)
-                .upload(path, file, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
+            // 1. Get Signed Upload URL from Backend
+            // We don't need bucketName here as backend handles it based on config
+            const { url, storage_provider, file_path } = await documentsApi.getUploadUrl(
+                teamId,
+                file.name,
+                currentFolderId
+            );
 
-            if (uploadError) {
-                // Check if it's a rate limit error (429)
-                const errorMessage = uploadError.message?.toLowerCase() || '';
-                if (errorMessage.includes('rate') || errorMessage.includes('429') || errorMessage.includes('too many')) {
-                    throw uploadError; // Will be caught and retried
+            // 2. Upload to Storage via Signed URL
+            const response = await fetch(url, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                    // Add cache control if supported by signed URL params, usually embedded in URL
                 }
-                throw uploadError;
+            });
+
+            if (!response.ok) {
+                // Check for rate limiting
+                if (response.status === 429) {
+                    throw new Error(`Rate limited: ${response.statusText}`);
+                }
+                throw new Error(`Upload failed with status ${response.status}: ${response.statusText}`);
             }
-
-            // 2. Get the public URL for the uploaded file
-            const { data: urlData } = supabase.storage
-                .from(bucketName)
-                .getPublicUrl(path);
-
-            const publicUrl = urlData?.publicUrl;
 
             // 3. Create database record with file metadata
             const extension = getFileExtension(file.name);
@@ -125,10 +123,15 @@ async function uploadSingleFile(
                 content: null,
                 file_type: extension || 'unknown',
                 icon: null,
-                file_path: publicUrl || path,
+                // For Supabase, we store the key in storage_key.
+                // We can leave file_path null or descriptive.
+                // We use 'any' cast because types might not be generated yet for storage fields
+                file_path: null,
                 file_size: file.size,
                 mime_type: mimeType,
-            });
+                storage_provider: storage_provider,
+                storage_key: file_path, // Key returned from getUploadUrl
+            } as any);
 
             return; // Success - exit retry loop
         } catch (err) {
@@ -158,7 +161,6 @@ export function useFolderUpload(teamId: string, currentFolderId: string | null) 
 
         let uploadedCount = 0;
         const errors: string[] = [];
-        const BUCKET_NAME = 'ikanban-bucket';
 
         // Convert FileList to array for batching
         const fileArray = Array.from(files);
@@ -169,7 +171,7 @@ export function useFolderUpload(teamId: string, currentFolderId: string | null) 
 
             // Process batch concurrently
             const batchResults = await Promise.allSettled(
-                batch.map(file => uploadSingleFile(file, teamId, currentFolderId, BUCKET_NAME))
+                batch.map(file => uploadSingleFile(file, teamId, currentFolderId))
             );
 
             // Process results
