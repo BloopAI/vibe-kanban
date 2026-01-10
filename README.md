@@ -76,6 +76,7 @@ Settings are written to `.claude/settings.local.json` in the workspace when the 
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   source "$HOME/.cargo/env"
+  cargo install cargo-watch
   ```
 
 ### Install & Run
