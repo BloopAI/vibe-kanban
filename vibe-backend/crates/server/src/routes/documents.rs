@@ -1555,84 +1555,82 @@ pub async fn upload_documents(
 
             match Document::create(&deployment.db().pool, &create_payload).await {
                 Ok(document) => {
-                    // For binary files, upload to storage
-                    if !is_text {
-                        if let Some(ref client) = supabase_client {
-                            // Upload to Supabase Storage
-                            match client
-                                .upload(team.id, folder_id, &filename, bytes.to_vec(), mime_type)
+                    // Upload ALL files to storage (including text files like .md, .txt)
+                    if let Some(ref client) = supabase_client {
+                        // Upload to Supabase Storage
+                        match client
+                            .upload(team.id, folder_id, &filename, bytes.to_vec(), mime_type)
+                            .await
+                        {
+                            Ok(upload_result) => {
+                                // Update document with Supabase storage info
+                                if let Err(e) = Document::update_storage_info(
+                                    &deployment.db().pool,
+                                    document.id,
+                                    &upload_result.key,
+                                    &upload_result.bucket,
+                                    file_size,
+                                    mime_type,
+                                    &file_type,
+                                    None,
+                                )
                                 .await
-                            {
-                                Ok(upload_result) => {
-                                    // Update document with Supabase storage info
-                                    if let Err(e) = Document::update_storage_info(
-                                        &deployment.db().pool,
-                                        document.id,
-                                        &upload_result.key,
-                                        &upload_result.bucket,
-                                        file_size,
-                                        mime_type,
-                                        &file_type,
-                                        None,
-                                    )
-                                    .await
-                                    {
-                                        tracing::error!(
-                                            "Failed to update storage info for {}: {}",
-                                            filename,
-                                            e
-                                        );
-                                    }
-                                    tracing::info!(
-                                        "Uploaded {} to Supabase Storage: {}",
-                                        filename,
-                                        upload_result.key
-                                    );
-                                }
-                                Err(e) => {
+                                {
                                     tracing::error!(
-                                        "Failed to upload {} to Supabase: {}",
+                                        "Failed to update storage info for {}: {}",
                                         filename,
                                         e
                                     );
-                                    errors.push(format!(
-                                        "{}: Supabase upload failed - {}",
-                                        filename, e
-                                    ));
-                                    // Clean up the document record since upload failed
-                                    let _ =
-                                        Document::delete(&deployment.db().pool, document.id).await;
-                                    continue;
                                 }
+                                tracing::info!(
+                                    "Uploaded {} to Supabase Storage: {}",
+                                    filename,
+                                    upload_result.key
+                                );
                             }
-                        } else {
-                            // Fallback to local storage
-                            let upload_dir = std::path::PathBuf::from("/data/uploads");
-                            if let Err(e) = tokio::fs::create_dir_all(&upload_dir).await {
-                                tracing::warn!("Failed to create uploads directory: {}", e);
-                            }
-
-                            let file_path =
-                                upload_dir.join(format!("{}.{}", document.id, extension));
-
-                            if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
-                                errors.push(format!("{}: failed to save - {}", filename, e));
-                                // Clean up the document record
-                                let _ = Document::delete(&deployment.db().pool, document.id).await;
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to upload {} to Supabase: {}",
+                                    filename,
+                                    e
+                                );
+                                errors.push(format!(
+                                    "{}: Supabase upload failed - {}",
+                                    filename, e
+                                ));
+                                // Clean up the document record since upload failed
+                                let _ =
+                                    Document::delete(&deployment.db().pool, document.id).await;
                                 continue;
                             }
-
-                            // Update document with local file metadata
-                            let _ = Document::update_file_metadata(
-                                &deployment.db().pool,
-                                document.id,
-                                &file_path.to_string_lossy(),
-                                file_size,
-                                mime_type,
-                                &file_type,
-                            )
-                            .await;
                         }
+                    } else {
+                        // Fallback to local storage when Supabase not configured
+                        let upload_dir = std::path::PathBuf::from("/data/uploads");
+                        if let Err(e) = tokio::fs::create_dir_all(&upload_dir).await {
+                            tracing::warn!("Failed to create uploads directory: {}", e);
+                        }
+
+                        let file_path =
+                            upload_dir.join(format!("{}.{}", document.id, extension));
+
+                        if let Err(e) = tokio::fs::write(&file_path, &bytes).await {
+                            errors.push(format!("{}: failed to save - {}", filename, e));
+                            // Clean up the document record
+                            let _ = Document::delete(&deployment.db().pool, document.id).await;
+                            continue;
+                        }
+
+                        // Update document with local file metadata
+                        let _ = Document::update_file_metadata(
+                            &deployment.db().pool,
+                            document.id,
+                            &file_path.to_string_lossy(),
+                            file_size,
+                            mime_type,
+                            &file_type,
+                        )
+                        .await;
                     }
 
                     uploaded += 1;
