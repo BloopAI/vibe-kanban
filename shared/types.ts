@@ -451,6 +451,41 @@ export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: Executor
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER" }
 
+export type ClaudeCodeSettings = {
+permissions?: ClaudeCodePermissions | null,
+hooks?: ClaudeCodeHooks | null,
+maxTokens?: number | null,
+temperature?: number | null,
+systemPrompt?: string | null,
+env?: { [key in string]?: string } | null,
+};
+
+export type ClaudeCodePermissions = {
+allowedTools?: Array<string> | null,
+deny?: Array<string> | null,
+defaultMode?: string | null,
+};
+
+export type ClaudeCodeHooks = {
+PreToolUse?: Array<ClaudeCodeHookEntry> | null,
+PostToolUse?: Array<ClaudeCodeHookEntry> | null,
+UserPromptSubmit?: Array<ClaudeCodeHookEntry> | null,
+SessionStart?: Array<ClaudeCodeHookEntry> | null,
+SessionEnd?: Array<ClaudeCodeHookEntry> | null,
+Stop?: Array<ClaudeCodeHookEntry> | null,
+};
+
+export type ClaudeCodeHookEntry = {
+matcher?: string | null,
+hooks?: Array<ClaudeCodeHookAction> | null,
+hookCallbackIds?: Array<string> | null,
+};
+
+export type ClaudeCodeHookAction = {
+type: string,
+command: string,
+};
+
 export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, 
 /**
  * Claude Code settings (permissions, hooks, etc.)
