@@ -43,27 +43,29 @@ export function CommentWidgetLine({
   }, [value, draft, setDraft, widgetKey, onSave, addComment]);
 
   return (
-    <div className="p-base rounded-sm border border-brand bg-brand/10 font-sans">
-      <WYSIWYGEditor
-        value={value}
-        onChange={setValue}
-        placeholder={t('comments.addPlaceholder')}
-        className="w-full text-normal min-h-[60px]"
-        projectId={projectId}
-        onCmdEnter={handleSave}
-        autoFocus
-      />
-      <div className="mt-half flex gap-half">
-        <PrimaryButton
-          variant="default"
-          onClick={handleSave}
-          disabled={!value.trim()}
-        >
-          {t('comments.addReviewComment')}
-        </PrimaryButton>
-        <PrimaryButton variant="secondary" onClick={handleCancel}>
-          {t('actions.cancel')}
-        </PrimaryButton>
+    <div className="p-base bg-panel font-sans text-base">
+      <div className="p-base rounded-sm bg-brand/20 border border-brand">
+        <WYSIWYGEditor
+          value={value}
+          onChange={setValue}
+          placeholder={t('comments.addPlaceholder')}
+          className="w-full text-normal min-h-[60px]"
+          projectId={projectId}
+          onCmdEnter={handleSave}
+          autoFocus
+        />
+        <div className="mt-half flex gap-half">
+          <PrimaryButton
+            variant="default"
+            onClick={handleSave}
+            disabled={!value.trim()}
+          >
+            {t('comments.addReviewComment')}
+          </PrimaryButton>
+          <PrimaryButton variant="secondary" onClick={handleCancel}>
+            {t('actions.cancel')}
+          </PrimaryButton>
+        </div>
       </div>
     </div>
   );
