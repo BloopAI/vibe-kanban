@@ -1,6 +1,6 @@
 [package]
 name = "executors"
-version = "0.0.149-rc.1+fixci2"
+version = "0.0.149-rc.1"
 edition = "2024"
 
 [dependencies]
@@ -18,7 +18,7 @@ ts-rs = { workspace = true }
 schemars = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
-async-trait = { workspace = true } 
+async-trait = { workspace = true }
 directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 regex = "1.11.1"
