@@ -117,6 +117,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
           // Handle JsonPatch messages (same as SSE json_patch event)
           if ('JsonPatch' in msg) {
+            setIsInitialized(true);
             const patches: Operation[] = msg.JsonPatch;
             const filtered = deduplicatePatches
               ? deduplicatePatches(patches)
@@ -143,6 +144,7 @@ export const useJsonPatchWsStream = <T extends object>(
           // Treat finished as terminal - do NOT reconnect
           if ('finished' in msg) {
             finishedRef.current = true;
+            setIsInitialized(true);
             ws.close(1000, 'finished');
             wsRef.current = null;
             setIsConnected(false);
