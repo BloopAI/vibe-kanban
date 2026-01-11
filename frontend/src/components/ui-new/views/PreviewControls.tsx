@@ -91,7 +91,9 @@ export function PreviewControls({
                 placeholder={autoDetectedUrl ?? 'Enter URL...'}
                 className={cn(
                   'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
-                  isUsingOverride ? 'text-normal' : 'text-low placeholder:text-low'
+                  isUsingOverride
+                    ? 'text-normal'
+                    : 'text-low placeholder:text-low'
                 )}
               />
               {isUsingOverride && (

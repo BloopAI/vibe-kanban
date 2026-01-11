@@ -51,12 +51,8 @@ export function PreviewControlsContainer({
   const urlInfo = usePreviewUrl(primaryLogs);
 
   // URL override for this workspace
-  const {
-    overrideUrl,
-    setOverrideUrl,
-    clearOverride,
-    hasOverride,
-  } = usePreviewUrlOverride(workspaceId);
+  const { overrideUrl, setOverrideUrl, clearOverride, hasOverride } =
+    usePreviewUrlOverride(workspaceId);
 
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
