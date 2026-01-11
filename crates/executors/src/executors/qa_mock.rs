@@ -18,7 +18,10 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     env::ExecutionEnv,
-    executors::{ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        claude::{ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeToolData},
+        ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+    },
     logs::utils::EntryIndexProvider,
 };
 
@@ -167,42 +170,173 @@ async fn perform_file_operations(dir: &Path) {
     }
 }
 
-/// Generate 10 mock log entries in ClaudeJson format
+/// Generate 10 mock log entries in ClaudeJson format using strongly-typed structs
 fn generate_mock_logs(prompt: &str) -> Vec<String> {
     let session_id = uuid::Uuid::new_v4().to_string();
-    let escaped_prompt = prompt
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n");
 
-    vec![
+    let logs: Vec<ClaudeJson> = vec![
         // 1. System init
-        format!(
-            r#"{{"type":"system","subtype":"init","apiKeySource":"unknown","model":"qa-mock-executor","session_id":"{}"}}"#,
-            session_id
-        ),
+        ClaudeJson::System {
+            subtype: Some("init".to_string()),
+            session_id: Some(session_id.clone()),
+            cwd: None,
+            tools: None,
+            model: Some("qa-mock-executor".to_string()),
+            api_key_source: Some("unknown".to_string()),
+        },
         // 2. Assistant thinking
-        r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Analyzing the QA task and preparing mock execution..."}]}}"#.to_string(),
+        ClaudeJson::Assistant {
+            message: ClaudeMessage {
+                id: Some("msg-qa-1".to_string()),
+                message_type: Some("message".to_string()),
+                role: "assistant".to_string(),
+                model: Some("qa-mock".to_string()),
+                content: vec![ClaudeContentItem::Thinking {
+                    thinking: "Analyzing the QA task and preparing mock execution...".to_string(),
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 3. Read tool use
-        r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"qa-tool-1","name":"Read","input":{"file_path":"README.md"}}]}}"#.to_string(),
-        // 4. Read tool result (note: JSON newlines are literal \n in the string)
-        "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"qa-tool-1\",\"content\":\"# Project README\\n\\nThis is a QA test repository.\",\"is_error\":false}]}}".to_string(),
+        ClaudeJson::Assistant {
+            message: ClaudeMessage {
+                id: Some("msg-qa-2".to_string()),
+                message_type: Some("message".to_string()),
+                role: "assistant".to_string(),
+                model: Some("qa-mock".to_string()),
+                content: vec![ClaudeContentItem::ToolUse {
+                    id: "qa-tool-1".to_string(),
+                    tool_data: ClaudeToolData::Read {
+                        file_path: "README.md".to_string(),
+                    },
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
+        // 4. Read tool result
+        ClaudeJson::User {
+            message: ClaudeMessage {
+                id: Some("msg-qa-3".to_string()),
+                message_type: Some("message".to_string()),
+                role: "user".to_string(),
+                model: None,
+                content: vec![ClaudeContentItem::ToolResult {
+                    tool_use_id: "qa-tool-1".to_string(),
+                    content: serde_json::json!("# Project README\n\nThis is a QA test repository."),
+                    is_error: Some(false),
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 5. Write tool use
-        r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"qa-tool-2","name":"Write","input":{"file_path":"qa_output.txt","content":"QA generated content"}}]}}"#.to_string(),
+        ClaudeJson::Assistant {
+            message: ClaudeMessage {
+                id: Some("msg-qa-4".to_string()),
+                message_type: Some("message".to_string()),
+                role: "assistant".to_string(),
+                model: Some("qa-mock".to_string()),
+                content: vec![ClaudeContentItem::ToolUse {
+                    id: "qa-tool-2".to_string(),
+                    tool_data: ClaudeToolData::Write {
+                        file_path: "qa_output.txt".to_string(),
+                        content: "QA generated content".to_string(),
+                    },
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 6. Write tool result
-        r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"qa-tool-2","content":"File written successfully","is_error":false}]}}"#.to_string(),
+        ClaudeJson::User {
+            message: ClaudeMessage {
+                id: Some("msg-qa-5".to_string()),
+                message_type: Some("message".to_string()),
+                role: "user".to_string(),
+                model: None,
+                content: vec![ClaudeContentItem::ToolResult {
+                    tool_use_id: "qa-tool-2".to_string(),
+                    content: serde_json::json!("File written successfully"),
+                    is_error: Some(false),
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 7. Bash tool use
-        r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"qa-tool-3","name":"Bash","input":{"command":"echo 'QA test complete'"}}]}}"#.to_string(),
+        ClaudeJson::Assistant {
+            message: ClaudeMessage {
+                id: Some("msg-qa-6".to_string()),
+                message_type: Some("message".to_string()),
+                role: "assistant".to_string(),
+                model: Some("qa-mock".to_string()),
+                content: vec![ClaudeContentItem::ToolUse {
+                    id: "qa-tool-3".to_string(),
+                    tool_data: ClaudeToolData::Bash {
+                        command: "echo 'QA test complete'".to_string(),
+                        description: Some("Run QA test command".to_string()),
+                    },
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 8. Bash tool result
-        "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"qa-tool-3\",\"content\":\"QA test complete\\n\",\"is_error\":false}]}}".to_string(),
+        ClaudeJson::User {
+            message: ClaudeMessage {
+                id: Some("msg-qa-7".to_string()),
+                message_type: Some("message".to_string()),
+                role: "user".to_string(),
+                model: None,
+                content: vec![ClaudeContentItem::ToolResult {
+                    tool_use_id: "qa-tool-3".to_string(),
+                    content: serde_json::json!("QA test complete\n"),
+                    is_error: Some(false),
+                }],
+                stop_reason: None,
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 9. Assistant final message
-        format!(
-            "{{\"type\":\"assistant\",\"message\":{{\"role\":\"assistant\",\"content\":[{{\"type\":\"text\",\"text\":\"QA mode execution completed successfully.\\n\\nI performed the following operations:\\n1. Read README.md\\n2. Created qa_output.txt\\n3. Ran a test command\\n\\nOriginal prompt: {}\"}}]}}}}",
-            escaped_prompt
-        ),
+        ClaudeJson::Assistant {
+            message: ClaudeMessage {
+                id: Some("msg-qa-8".to_string()),
+                message_type: Some("message".to_string()),
+                role: "assistant".to_string(),
+                model: Some("qa-mock".to_string()),
+                content: vec![ClaudeContentItem::Text {
+                    text: format!(
+                        "QA mode execution completed successfully.\n\n\
+                        I performed the following operations:\n\
+                        1. Read README.md\n\
+                        2. Created qa_output.txt\n\
+                        3. Ran a test command\n\n\
+                        Original prompt: {}",
+                        prompt
+                    ),
+                }],
+                stop_reason: Some("end_turn".to_string()),
+            },
+            session_id: Some(session_id.clone()),
+        },
         // 10. Result success
-        r#"{"type":"result","subtype":"success","is_error":false}"#.to_string(),
-    ]
+        ClaudeJson::Result {
+            subtype: Some("success".to_string()),
+            is_error: Some(false),
+            duration_ms: Some(10000),
+            result: None,
+            error: None,
+            num_turns: Some(3),
+            session_id: Some(session_id),
+        },
+    ];
+
+    // Serialize to JSON strings - this ensures proper escaping
+    logs.into_iter()
+        .map(|log| serde_json::to_string(&log).expect("ClaudeJson should serialize"))
+        .collect()
 }
 
 #[cfg(test)]
@@ -230,10 +364,35 @@ mod tests {
     }
 
     #[test]
+    fn test_generate_mock_logs_deserializes_to_claudejson() {
+        let logs = generate_mock_logs("test prompt");
+        for (i, log) in logs.iter().enumerate() {
+            let parsed: Result<ClaudeJson, _> = serde_json::from_str(log);
+            assert!(
+                parsed.is_ok(),
+                "Log entry {} should deserialize to ClaudeJson: {} - error: {:?}",
+                i,
+                log,
+                parsed.err()
+            );
+        }
+    }
+
+    #[test]
     fn test_escape_special_characters() {
         let logs = generate_mock_logs("test with \"quotes\" and\nnewlines");
-        let last_log = &logs[8]; // Assistant final message
-        let parsed: serde_json::Value = serde_json::from_str(last_log).unwrap();
-        assert!(parsed.is_object());
+        // The final assistant message (index 8) should contain the prompt
+        let final_log = &logs[8];
+        let parsed: ClaudeJson = serde_json::from_str(final_log).unwrap();
+
+        if let ClaudeJson::Assistant { message, .. } = parsed {
+            if let Some(ClaudeContentItem::Text { text }) = message.content.first() {
+                assert!(text.contains("test with \"quotes\" and\nnewlines"));
+            } else {
+                panic!("Expected Text content item");
+            }
+        } else {
+            panic!("Expected Assistant variant");
+        }
     }
 }
