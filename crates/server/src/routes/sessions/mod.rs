@@ -181,7 +181,11 @@ pub async fn follow_up(
     let latest_agent_session_id =
         ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
 
-    let prompt = payload.prompt;
+    // Append commit instruction to follow-up prompts (same as to_prompt() for initial requests)
+    let prompt = format!(
+        "{}\n\nDo not commit. Your final message becomes the commit body - output ONLY bullet points of changes made, nothing else.",
+        payload.prompt
+    );
 
     let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let cleanup_action = deployment.container().cleanup_actions_for_repos(&repos);

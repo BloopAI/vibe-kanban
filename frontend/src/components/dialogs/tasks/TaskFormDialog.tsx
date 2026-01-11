@@ -47,6 +47,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
   TaskStatus,
+  TaskType,
   ExecutorProfileId,
   ImageResponse,
 } from 'shared/types';
@@ -78,6 +79,7 @@ type TaskFormValues = {
   title: string;
   description: string;
   status: TaskStatus;
+  taskType: TaskType;
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
@@ -133,6 +135,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.task.title,
           description: props.task.description || '',
           status: props.task.status,
+          taskType: 'feat',
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
@@ -143,6 +146,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.initialTask.title,
           description: props.initialTask.description || '',
           status: 'todo',
+          taskType: 'feat',
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
@@ -155,6 +159,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: '',
           description: '',
           status: 'todo',
+          taskType: 'feat',
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
@@ -172,6 +177,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             title: value.title,
             description: value.description,
             status: value.status,
+            task_type: value.taskType,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
           },
@@ -186,6 +192,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         title: value.title,
         description: value.description,
         status: null,
+        task_type: value.taskType,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
         image_ids: imageIds,
@@ -421,7 +428,39 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </div>
           )}
 
-          {/* Title */}
+          <form.Field name="taskType">
+            {(field) => (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">
+                  {t('taskFormDialog.typeLabel', 'Type')}
+                </Label>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(value) =>
+                    field.handleChange(value as TaskType)
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="feat">feat</SelectItem>
+                    <SelectItem value="fix">fix</SelectItem>
+                    <SelectItem value="chore">chore</SelectItem>
+                    <SelectItem value="docs">docs</SelectItem>
+                    <SelectItem value="refactor">refactor</SelectItem>
+                    <SelectItem value="test">test</SelectItem>
+                    <SelectItem value="style">style</SelectItem>
+                    <SelectItem value="perf">perf</SelectItem>
+                    <SelectItem value="ci">ci</SelectItem>
+                    <SelectItem value="build">build</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </form.Field>
+
           <form.Field name="title">
             {(field) => (
               <Input
@@ -430,7 +469,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={t('taskFormDialog.titlePlaceholder')}
                 disabled={isSubmitting}
-                className="text-base"
+                className="text-lg"
                 autoFocus
               />
             )}

@@ -234,27 +234,30 @@ impl LocalContainerService {
     }
 
     /// Get the commit message based on the execution run reason.
+    /// For coding agents, uses conventional commit format: `type: title` with agent summary as body.
     async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
         match ctx.execution_process.run_reason {
             ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the coding agent turn
-                // otherwise fallback to default message
+                // Conventional commit subject: type: title
+                let subject = format!("{}: {}", ctx.task.task_type, ctx.task.title);
+
+                // Try to get agent's summary for commit body
                 match CodingAgentTurn::find_by_execution_process_id(
                     &self.db().pool,
                     ctx.execution_process.id,
                 )
                 .await
                 {
-                    Ok(Some(turn)) if turn.summary.is_some() => turn.summary.unwrap(),
+                    Ok(Some(turn)) if turn.summary.is_some() => {
+                        // Subject + body separated by blank line per git convention
+                        format!("{}\n\n{}", subject, turn.summary.unwrap())
+                    }
                     Ok(_) => {
                         tracing::debug!(
-                            "No summary found for execution process {}, using default message",
+                            "No summary found for execution process {}, using subject only",
                             ctx.execution_process.id
                         );
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
+                        subject
                     }
                     Err(e) => {
                         tracing::debug!(
@@ -262,10 +265,7 @@ impl LocalContainerService {
                             ctx.execution_process.id,
                             e
                         );
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
+                        subject
                     }
                 }
             }
@@ -898,10 +898,6 @@ impl ContainerService for LocalContainerService {
 
     fn notification_service(&self) -> &NotificationService {
         &self.notification_service
-    }
-
-    async fn git_branch_prefix(&self) -> String {
-        self.config.read().await.git_branch_prefix.clone()
     }
 
     fn workspace_to_current_dir(&self, workspace: &Workspace) -> PathBuf {
