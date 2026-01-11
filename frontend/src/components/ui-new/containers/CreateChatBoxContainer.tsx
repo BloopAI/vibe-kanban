@@ -1,17 +1,17 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { getVariantOptions } from '@/utils/executor';
+import { getVariantOptions, areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
-  const { profiles, config } = useUserSystem();
+  const { profiles, config, updateAndSaveConfig } = useUserSystem();
   const {
     repos,
     targetBranches,
@@ -26,6 +26,7 @@ export function CreateChatBoxContainer() {
 
   const { createWorkspace } = useCreateWorkspace();
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -64,6 +65,19 @@ export function CreateChatBoxContainer() {
     [effectiveProfile?.executor, profiles]
   );
 
+  // Detect if user has changed from their saved default
+  const hasChangedFromDefault = useMemo(() => {
+    if (!config?.executor_profile || !effectiveProfile) return false;
+    return !areProfilesEqual(effectiveProfile, config.executor_profile);
+  }, [effectiveProfile, config?.executor_profile]);
+
+  // Reset toggle when profile matches default again
+  useEffect(() => {
+    if (!hasChangedFromDefault) {
+      setSaveAsDefault(false);
+    }
+  }, [hasChangedFromDefault]);
+
   // Get project ID from context
   const projectId = selectedProjectId;
 
@@ -86,23 +100,50 @@ export function CreateChatBoxContainer() {
     [effectiveProfile, setSelectedProfile]
   );
 
-  // Handle executor change - reset variant to first available
+  // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
     (executor: BaseCodingAgent) => {
       const executorConfig = profiles?.[executor];
-      const variants = executorConfig ? Object.keys(executorConfig) : [];
-      setSelectedProfile({
-        executor,
-        variant: variants[0] ?? null,
-      });
+      if (!executorConfig) {
+        setSelectedProfile({ executor, variant: null });
+        return;
+      }
+
+      const variants = Object.keys(executorConfig);
+      let targetVariant: string | null = null;
+
+      // If switching to user's default executor, use their saved variant
+      if (
+        config?.executor_profile?.executor === executor &&
+        config?.executor_profile?.variant
+      ) {
+        const savedVariant = config.executor_profile.variant;
+        if (variants.includes(savedVariant)) {
+          targetVariant = savedVariant;
+        }
+      }
+
+      // Fallback to DEFAULT or first available
+      if (!targetVariant) {
+        targetVariant = variants.includes('DEFAULT')
+          ? 'DEFAULT'
+          : (variants[0] ?? null);
+      }
+
+      setSelectedProfile({ executor, variant: targetVariant });
     },
-    [profiles, setSelectedProfile]
+    [profiles, setSelectedProfile, config?.executor_profile]
   );
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
     setHasAttemptedSubmit(true);
     if (!canSubmit || !effectiveProfile || !projectId) return;
+
+    // Save profile as default if toggle is checked
+    if (saveAsDefault && hasChangedFromDefault) {
+      await updateAndSaveConfig({ executor_profile: effectiveProfile });
+    }
 
     const { title, description } = splitMessageToTitleDescription(message);
 
@@ -137,6 +178,9 @@ export function CreateChatBoxContainer() {
     getImageIds,
     clearAttachments,
     clearDraft,
+    saveAsDefault,
+    hasChangedFromDefault,
+    updateAndSaveConfig,
   ]);
 
   // Determine error to display
@@ -194,6 +238,11 @@ export function CreateChatBoxContainer() {
                 }
               : undefined
           }
+          saveAsDefault={{
+            checked: saveAsDefault,
+            onChange: setSaveAsDefault,
+            visible: hasChangedFromDefault,
+          }}
           error={displayError}
           projectId={projectId}
           agent={effectiveProfile?.executor ?? null}

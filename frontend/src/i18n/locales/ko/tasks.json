@@ -623,6 +623,7 @@
       "conflicts_other": "{{count}}개의 충돌 파일을 수동으로 해결해야 합니다"
     },
     "executors": "실행기",
+    "saveAsDefault": "기본값으로 저장",
     "script": {
       "clickToViewLogs": "로그를 보려면 클릭하세요",
       "completedSuccessfully": "성공적으로 완료됨",

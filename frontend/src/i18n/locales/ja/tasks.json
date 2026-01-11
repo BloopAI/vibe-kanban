@@ -623,6 +623,7 @@
       "conflicts_other": "{{count}}件の競合ファイルを手動で解決する必要があります"
     },
     "executors": "エクゼキューター",
+    "saveAsDefault": "デフォルトとして保存",
     "script": {
       "clickToViewLogs": "クリックしてログを表示",
       "completedSuccessfully": "正常に完了しました",

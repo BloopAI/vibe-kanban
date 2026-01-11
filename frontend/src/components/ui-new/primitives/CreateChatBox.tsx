@@ -5,6 +5,7 @@ import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { AgentIcon } from '@/components/agents/AgentIcon';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ChatBoxBase,
   VisualVariant,
@@ -21,12 +22,19 @@ export interface ExecutorProps {
   onChange: (executor: BaseCodingAgent) => void;
 }
 
+export interface SaveAsDefaultProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  visible: boolean;
+}
+
 interface CreateChatBoxProps {
   editor: EditorProps;
   onSend: () => void;
   isSending: boolean;
   executor: ExecutorProps;
   variant?: VariantProps;
+  saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
@@ -45,6 +53,7 @@ export function CreateChatBox({
   isSending,
   executor,
   variant,
+  saveAsDefault,
   error,
   projectId,
   agent,
@@ -107,6 +116,16 @@ export function CreateChatBox({
               </DropdownMenuItem>
             ))}
           </ToolbarDropdown>
+          {saveAsDefault?.visible && (
+            <label className="flex items-center gap-1.5 text-sm text-low cursor-pointer ml-2">
+              <Checkbox
+                checked={saveAsDefault.checked}
+                onCheckedChange={saveAsDefault.onChange}
+                className="h-3.5 w-3.5"
+              />
+              <span>{t('conversation.saveAsDefault')}</span>
+            </label>
+          )}
         </>
       }
       footerLeft={
