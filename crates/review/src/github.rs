@@ -28,6 +28,23 @@ struct GhPrView {
     head_ref_name: String,
 }
 
+/// Response from `gh api /repos/{owner}/{repo}/pulls/{number}`
+/// Used as fallback for older gh CLI versions that don't support baseRefOid/headRefOid fields
+#[derive(Debug, Deserialize)]
+struct GhApiPr {
+    title: String,
+    body: Option<String>,
+    base: GhApiRef,
+    head: GhApiRef,
+}
+
+#[derive(Debug, Deserialize)]
+struct GhApiRef {
+    sha: String,
+    #[serde(rename = "ref")]
+    ref_name: String,
+}
+
 /// Parse a GitHub PR URL to extract owner, repo, and PR number
 ///
 /// Expected format: https://github.com/owner/repo/pull/123
@@ -83,6 +100,46 @@ fn ensure_gh_available() -> Result<(), ReviewError> {
     Ok(())
 }
 
+/// Get PR information using `gh api` (REST API)
+/// This is used as a fallback for older gh CLI versions that don't support
+/// the baseRefOid/headRefOid fields in `gh pr view --json`
+fn get_pr_info_via_api(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
+    debug!("Fetching PR info via gh api for {owner}/{repo}#{pr_number}");
+
+    let output = Command::new("gh")
+        .args(["api", &format!("repos/{owner}/{repo}/pulls/{pr_number}")])
+        .output()
+        .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let lower = stderr.to_ascii_lowercase();
+
+        if lower.contains("authentication")
+            || lower.contains("gh auth login")
+            || lower.contains("unauthorized")
+        {
+            return Err(ReviewError::GhNotAuthenticated);
+        }
+
+        return Err(ReviewError::PrInfoFailed(stderr.to_string()));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let api_pr: GhApiPr =
+        serde_json::from_str(&stdout).map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
+
+    Ok(PrInfo {
+        owner: owner.to_string(),
+        repo: repo.to_string(),
+        title: api_pr.title,
+        description: api_pr.body.unwrap_or_default(),
+        base_commit: api_pr.base.sha,
+        head_commit: api_pr.head.sha,
+        head_ref_name: api_pr.head.ref_name,
+    })
+}
+
 /// Get PR information using `gh pr view`
 pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
     ensure_gh_available()?;
@@ -105,6 +162,12 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let lower = stderr.to_ascii_lowercase();
+
+        // Check for old gh CLI version that doesn't support these JSON fields
+        if lower.contains("unknown json field") {
+            debug!("gh pr view --json failed with unknown field, falling back to gh api");
+            return get_pr_info_via_api(owner, repo, pr_number);
+        }
 
         if lower.contains("authentication")
             || lower.contains("gh auth login")
