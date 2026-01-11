@@ -8,7 +8,7 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
-import { PlusIcon } from 'lucide-react';
+import { ExternalLink, GitPullRequest, PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
@@ -105,6 +105,17 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             <WYSIWYGEditor value={titleContent} disabled />
             {descriptionContent && (
               <WYSIWYGEditor value={descriptionContent} disabled />
+            )}
+            {task.open_pr && (
+              <button
+                onClick={() => window.open(task.open_pr!.url, '_blank')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs hover:underline w-fit"
+                aria-label={t('git.pr.open', { number: task.open_pr.number })}
+              >
+                <GitPullRequest className="h-3.5 w-3.5" />
+                {t('git.pr.number', { number: task.open_pr.number })}
+                <ExternalLink className="h-3.5 w-3.5" />
+              </button>
             )}
           </div>
 

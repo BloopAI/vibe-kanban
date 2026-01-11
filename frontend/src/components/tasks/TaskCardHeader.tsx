@@ -11,6 +11,7 @@ interface HeaderAvatar {
 interface TaskCardHeaderProps {
   title: ReactNode;
   avatar?: HeaderAvatar;
+  left?: ReactNode;
   right?: ReactNode;
   className?: string;
   titleClassName?: string;
@@ -19,12 +20,16 @@ interface TaskCardHeaderProps {
 export function TaskCardHeader({
   title,
   avatar,
+  left,
   right,
   className,
   titleClassName,
 }: TaskCardHeaderProps) {
   return (
     <div className={`flex items-start gap-3 min-w-0 ${className ?? ''}`}>
+      {left ? (
+        <div className="flex items-center shrink-0">{left}</div>
+      ) : null}
       <h4
         className={`flex-1 min-w-0 line-clamp-2 font-light text-sm ${titleClassName ?? ''}`}
       >
