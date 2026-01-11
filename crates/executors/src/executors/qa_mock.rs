@@ -231,7 +231,9 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 model: None,
                 content: vec![ClaudeContentItem::ToolResult {
                     tool_use_id: "qa-tool-1".to_string(),
-                    content: serde_json::json!("# Project README\\n\\nThis is a QA test repository."),
+                    content: serde_json::json!(
+                        "# Project README\\n\\nThis is a QA test repository."
+                    ),
                     is_error: Some(false),
                 }],
                 stop_reason: None,
