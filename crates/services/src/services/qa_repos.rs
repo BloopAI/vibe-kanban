@@ -4,8 +4,8 @@
 //! to a persistent temp directory and returned as the only "recent" repos.
 
 use std::path::PathBuf;
+use std::process::Command;
 
-use git2::Repository;
 use once_cell::sync::Lazy;
 use tracing::{info, warn};
 
@@ -77,14 +77,26 @@ fn clone_qa_repos_if_needed(base_dir: &PathBuf) {
 
         info!("Cloning QA repo {} from {} to {:?}", name, url, repo_path);
 
-        match Repository::clone(url, &repo_path) {
-            Ok(_) => {
+        // Use git CLI for reliable TLS support (git2 has TLS issues)
+        let output = Command::new("git")
+            .args(["clone", "--depth", "1", url, &repo_path.to_string_lossy()])
+            .output();
+
+        match output {
+            Ok(result) if result.status.success() => {
                 info!("Successfully cloned QA repo {}", name);
             }
-            Err(e) => {
-                warn!("Failed to clone QA repo {}: {}", name, e);
+            Ok(result) => {
+                warn!(
+                    "Failed to clone QA repo {}: {}",
+                    name,
+                    String::from_utf8_lossy(&result.stderr)
+                );
                 // Try to clean up partial clone
                 let _ = std::fs::remove_dir_all(&repo_path);
+            }
+            Err(e) => {
+                warn!("Failed to run git clone for {}: {}", name, e);
             }
         }
     }
