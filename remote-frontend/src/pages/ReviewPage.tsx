@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
@@ -53,7 +60,9 @@ export default function ReviewPage() {
     const saved = localStorage.getItem(DIFF_VIEW_MODE_KEY);
     return saved === "split" ? DiffModeEnum.Split : DiffModeEnum.Unified;
   });
+  const [currentCommentIndex, setCurrentCommentIndex] = useState(0);
   const fetchingFiles = useRef<Set<string>>(new Set());
+  const commentRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const parsedDiffs = useMemo(() => parseUnifiedDiff(diffText), [diffText]);
 
@@ -151,6 +160,52 @@ export default function ReviewPage() {
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Track which comment is currently visible using IntersectionObserver
+  useEffect(() => {
+    if (!review) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const index = commentRefs.current.findIndex(
+              (ref) => ref === entry.target,
+            );
+            if (index !== -1) {
+              setCurrentCommentIndex(index);
+            }
+          }
+        }
+      },
+      {
+        rootMargin: "-40% 0px -40% 0px",
+        threshold: 0,
+      },
+    );
+
+    commentRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => observer.disconnect();
+  }, [review]);
+
+  const goToPreviousComment = useCallback(() => {
+    if (currentCommentIndex > 0) {
+      const newIndex = currentCommentIndex - 1;
+      commentRefs.current[newIndex]?.scrollIntoView({ behavior: "smooth" });
+      setCurrentCommentIndex(newIndex);
+    }
+  }, [currentCommentIndex]);
+
+  const goToNextComment = useCallback(() => {
+    if (review && currentCommentIndex < review.comments.length - 1) {
+      const newIndex = currentCommentIndex + 1;
+      commentRefs.current[newIndex]?.scrollIntoView({ behavior: "smooth" });
+      setCurrentCommentIndex(newIndex);
+    }
+  }, [currentCommentIndex, review]);
 
   // Parse PR metadata from the GitHub URL
   const prMetadata = useMemo(() => {
@@ -310,6 +365,9 @@ export default function ReviewPage() {
       {review.comments.map((comment, idx) => (
         <CommentStoryRow
           key={idx}
+          ref={(el) => {
+            commentRefs.current[idx] = el;
+          }}
           index={idx + 1}
           totalComments={review.comments.length}
           comment={comment}
@@ -348,6 +406,63 @@ export default function ReviewPage() {
               className="h-3"
             />
           </a>
+
+          {/* Center: Comment Navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToPreviousComment}
+              disabled={currentCommentIndex === 0}
+              className={cn(
+                "px-2 py-1 text-sm rounded border flex items-center gap-1",
+                currentCommentIndex === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
+            >
+              <svg
+                className="h-3 w-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Previous
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {currentCommentIndex + 1} / {review.comments.length}
+            </span>
+            <button
+              onClick={goToNextComment}
+              disabled={currentCommentIndex === review.comments.length - 1}
+              className={cn(
+                "px-2 py-1 text-sm rounded border flex items-center gap-1",
+                currentCommentIndex === review.comments.length - 1
+                  ? "opacity-50 cursor-not-allowed"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
+            >
+              Next
+              <svg
+                className="h-3 w-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
 
           {/* Right: View Toggle */}
           <div className="flex items-center gap-1">
@@ -392,20 +507,27 @@ interface CommentStoryRowProps {
   diffViewMode: DiffModeEnum;
 }
 
-function CommentStoryRow({
-  index,
-  totalComments,
-  comment,
-  fileCache,
-  loadingFiles,
-  parsedDiffs,
-  hasDiff,
-  diffViewMode,
-}: CommentStoryRowProps) {
-  const hasComment = comment.comment && comment.comment.trim().length > 0;
+const CommentStoryRow = forwardRef<HTMLDivElement, CommentStoryRowProps>(
+  function CommentStoryRow(
+    {
+      index,
+      totalComments,
+      comment,
+      fileCache,
+      loadingFiles,
+      parsedDiffs,
+      hasDiff,
+      diffViewMode,
+    },
+    ref,
+  ) {
+    const hasComment = comment.comment && comment.comment.trim().length > 0;
 
-  return (
-    <div className="min-h-screen flex flex-row justify-center px-8 2xl:px-[10vw] space-x-8 2xl:space-x-[5vw]">
+    return (
+      <div
+        ref={ref}
+        className="min-h-screen flex flex-row justify-center px-8 2xl:px-[10vw] space-x-8 2xl:space-x-[5vw]"
+      >
       <div className="flex-1 flex  w-1/2 2xl:w-1/3">
         <div className="h-screen sticky top-0 flex items-center">
           <div className="flex space-x-4">
@@ -454,9 +576,10 @@ function CommentStoryRow({
           </div>
         )}
       </div>
-    </div>
-  );
-}
+      </div>
+    );
+  },
+);
 
 interface DiffFragmentCardProps {
   file: string;
