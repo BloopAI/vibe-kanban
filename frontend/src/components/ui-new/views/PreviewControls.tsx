@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import {
   PlayIcon,
   StopIcon,
@@ -69,6 +70,17 @@ export function PreviewControls({
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
 
+  // Local state for URL input to prevent WebSocket updates from disrupting typing
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [localValue, setLocalValue] = useState(url ?? '');
+
+  // Sync from prop only when input is not focused
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocalValue(url ?? '');
+    }
+  }, [url]);
+
   return (
     <div
       className={cn(
@@ -85,9 +97,13 @@ export function PreviewControls({
           {(url || autoDetectedUrl) && (
             <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
               <input
+                ref={inputRef}
                 type="text"
-                value={url ?? ''}
-                onChange={(e) => onUrlChange?.(e.target.value)}
+                value={localValue}
+                onChange={(e) => {
+                  setLocalValue(e.target.value);
+                  onUrlChange?.(e.target.value);
+                }}
                 placeholder={autoDetectedUrl ?? 'Enter URL...'}
                 className={cn(
                   'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
