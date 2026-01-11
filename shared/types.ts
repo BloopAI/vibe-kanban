@@ -12,11 +12,11 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, };
+export type UpdateProject = { name: string | null, default_agent_working_dir: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -26,19 +26,19 @@ score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Repo = { id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
 
-export type ProjectRepo = { id: string, project_id: string, repo_id: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, };
+export type UpdateRepo = { display_name: string | null, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, dev_server_script: string | null, };
+
+export type ProjectRepo = { id: string, project_id: string, repo_id: string, };
 
 export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
-
-export type UpdateProjectRepo = { setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
 
 export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 
 export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
-export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
+export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -283,8 +283,6 @@ conflict_op: ConflictOp | null,
 conflicted_files: Array<string>, };
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
-
-export type DeleteWorkspaceError = { "type": "has_running_processes" };
 
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
 

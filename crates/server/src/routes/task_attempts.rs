@@ -26,7 +26,6 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
-    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
@@ -1230,33 +1229,18 @@ pub async fn start_dev_server(
         }
     }
 
-    // Get dev script from project (dev_script is project-level, not per-repo)
-    let dev_script = match &project.dev_script {
-        Some(script) if !script.is_empty() => script.clone(),
-        _ => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "No dev server script configured for this project",
-            )));
-        }
-    };
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repos_with_dev_script: Vec<_> = repos
+        .iter()
+        .filter(|r| r.dev_server_script.as_ref().is_some_and(|s| !s.is_empty()))
+        .collect();
 
-    let working_dir = project
-        .dev_script_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
+    if repos_with_dev_script.is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "No dev server script configured for any repository in this workspace",
+        )));
+    }
 
-    let executor_action = ExecutorAction::new(
-        ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: dev_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::DevServer,
-            working_dir,
-        }),
-        None,
-    );
-
-    // Get or create a session for dev server
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
         Some(s) => s,
         None => {
@@ -1272,15 +1256,27 @@ pub async fn start_dev_server(
         }
     };
 
-    deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::DevServer,
-        )
-        .await?;
+    for repo in repos_with_dev_script {
+        let executor_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: repo.dev_server_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::DevServer,
+                working_dir: Some(repo.name.clone()),
+            }),
+            None,
+        );
+
+        deployment
+            .container()
+            .start_execution(
+                &workspace,
+                &session,
+                &executor_action,
+                &ExecutionProcessRunReason::DevServer,
+            )
+            .await?;
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -1373,7 +1369,6 @@ pub async fn run_setup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1383,11 +1378,9 @@ pub async fn run_setup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .setup_actions_for_repos(&project_repos)
-    {
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().setup_actions_for_repos(&repos) {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -1457,7 +1450,6 @@ pub async fn run_cleanup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1467,11 +1459,9 @@ pub async fn run_cleanup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .cleanup_actions_for_repos(&project_repos)
-    {
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().cleanup_actions_for_repos(&repos) {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -1580,34 +1570,19 @@ pub async fn get_first_user_message(
     Ok(ResponseJson(ApiResponse::success(message)))
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(tag = "type", rename_all = "snake_case")]
-#[ts(tag = "type", rename_all = "snake_case")]
-pub enum DeleteWorkspaceError {
-    HasRunningProcesses,
-}
-
 pub async fn delete_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<
-    (
-        StatusCode,
-        ResponseJson<ApiResponse<(), DeleteWorkspaceError>>,
-    ),
-    ApiError,
-> {
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
 
     // Check for running execution processes
     if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
         .await?
     {
-        return Ok((
-            StatusCode::CONFLICT,
-            ResponseJson(ApiResponse::error_with_data(
-                DeleteWorkspaceError::HasRunningProcesses,
-            )),
+        return Err(ApiError::Conflict(
+            "Cannot delete workspace while processes are running. Stop all processes first."
+                .to_string(),
         ));
     }
 

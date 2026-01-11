@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      path,\n                      name,\n                      display_name,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos\n               WHERE name = '__NEEDS_BACKFILL__'",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -9,19 +9,19 @@
         "type_info": "Blob"
       },
       {
-        "name": "path",
+        "name": "name",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "name",
+        "name": "default_agent_working_dir",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "display_name",
+        "name": "remote_project_id: Uuid",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
@@ -40,11 +40,11 @@
     "nullable": [
       true,
       false,
-      false,
-      false,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "c6ca04f8ad0f3f918e83a3960b78f1f5215066f9bb46917fc8e50afe86a6da73"
+  "hash": "2c0172d5b2c5bff0914727a57983d5c336f5b2dfa73ca6c2efa4ea23bb526e05"
 }

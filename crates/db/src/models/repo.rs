@@ -21,10 +21,26 @@ pub struct Repo {
     pub path: PathBuf,
     pub name: String,
     pub display_name: String,
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
+    pub dev_server_script: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateRepo {
+    pub display_name: Option<String>,
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: Option<bool>,
+    pub dev_server_script: Option<String>,
 }
 
 impl Repo {
@@ -37,6 +53,11 @@ impl Repo {
                       path,
                       name,
                       display_name,
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      dev_server_script,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM repos
@@ -70,6 +91,11 @@ impl Repo {
                       path,
                       name,
                       display_name,
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      dev_server_script,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM repos
@@ -120,6 +146,11 @@ impl Repo {
                          path,
                          name,
                          display_name,
+                         setup_script,
+                         cleanup_script,
+                         copy_files,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         dev_server_script,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -140,5 +171,82 @@ impl Repo {
         .execute(pool)
         .await?;
         Ok(result.rows_affected())
+    }
+
+    pub async fn list_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT id as "id!: Uuid",
+                      path,
+                      name,
+                      display_name,
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      dev_server_script,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos
+               ORDER BY display_name ASC"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn update(
+        pool: &SqlitePool,
+        id: Uuid,
+        payload: &UpdateRepo,
+    ) -> Result<Self, RepoError> {
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+        let display_name = payload
+            .display_name
+            .clone()
+            .unwrap_or(existing.display_name);
+        let setup_script = payload.setup_script.clone();
+        let cleanup_script = payload.cleanup_script.clone();
+        let copy_files = payload.copy_files.clone();
+        let parallel_setup_script = payload
+            .parallel_setup_script
+            .unwrap_or(existing.parallel_setup_script);
+        let dev_server_script = payload.dev_server_script.clone();
+
+        sqlx::query_as!(
+            Repo,
+            r#"UPDATE repos
+               SET display_name = $1,
+                   setup_script = $2,
+                   cleanup_script = $3,
+                   copy_files = $4,
+                   parallel_setup_script = $5,
+                   dev_server_script = $6,
+                   updated_at = datetime('now', 'subsec')
+               WHERE id = $7
+               RETURNING id as "id!: Uuid",
+                         path,
+                         name,
+                         display_name,
+                         setup_script,
+                         cleanup_script,
+                         copy_files,
+                         parallel_setup_script as "parallel_setup_script!: bool",
+                         dev_server_script,
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            display_name,
+            setup_script,
+            cleanup_script,
+            copy_files,
+            parallel_setup_script,
+            dev_server_script,
+            id
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(RepoError::from)
     }
 }

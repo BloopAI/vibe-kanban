@@ -129,8 +129,6 @@ impl ProjectService {
                 project.id,
                 &UpdateProject {
                     name: None,
-                    dev_script: None,
-                    dev_script_working_dir: None,
                     default_agent_working_dir: Some(repo.name),
                 },
             )

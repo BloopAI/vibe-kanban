@@ -10,16 +10,21 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 import { PrimaryButton } from '../primitives/PrimaryButton';
-import {
-  VirtualizedProcessLogs,
-  type LogEntry,
-} from '../VirtualizedProcessLogs';
+import { VirtualizedProcessLogs } from '../VirtualizedProcessLogs';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
+import { getDevServerWorkingDir } from '@/lib/devServerUtils';
+import type { ExecutionProcess, PatchType } from 'shared/types';
+
+type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface PreviewControlsProps {
+  devServerProcesses: ExecutionProcess[];
+  activeProcessId: string | null;
   logs: LogEntry[];
+  logsError: string | null;
   url?: string;
   onViewFullLogs: () => void;
+  onTabChange: (processId: string) => void;
   onStart: () => void;
   onStop: () => void;
   onRefresh: () => void;
@@ -27,15 +32,18 @@ interface PreviewControlsProps {
   onOpenInNewTab: () => void;
   isStarting: boolean;
   isStopping: boolean;
-  hasDevScript: boolean;
   isServerRunning: boolean;
   className?: string;
 }
 
 export function PreviewControls({
+  devServerProcesses,
+  activeProcessId,
   logs,
+  logsError,
   url,
   onViewFullLogs,
+  onTabChange,
   onStart,
   onStop,
   onRefresh,
@@ -43,7 +51,6 @@ export function PreviewControls({
   onOpenInNewTab,
   isStarting,
   isStopping,
-  hasDevScript,
   isServerRunning,
   className,
 }: PreviewControlsProps) {
@@ -62,7 +69,6 @@ export function PreviewControls({
         persistKey={PERSIST_KEYS.devServerSection}
         contentClassName="flex flex-col flex-1 overflow-hidden"
       >
-        {/* Controls row: URL bar + Start/Stop button */}
         <div className="flex items-center gap-half p-base">
           {url && (
             <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
@@ -104,19 +110,16 @@ export function PreviewControls({
               onClick={onStop}
               disabled={isStopping}
             />
-          ) : hasDevScript ? (
+          ) : (
             <PrimaryButton
               value={t('preview.browser.startingButton')}
               actionIcon={isStarting ? 'spinner' : PlayIcon}
               onClick={onStart}
               disabled={isStarting}
             />
-          ) : (
-            <p className="text-sm text-low">{t('preview.noDevScript')}</p>
           )}
         </div>
 
-        {/* Logs section */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-base pb-half">
             <span className="text-xs font-medium text-low">
@@ -132,14 +135,33 @@ export function PreviewControls({
             </button>
           </div>
 
+          {devServerProcesses.length > 1 && (
+            <div className="flex border-b border-border mx-base">
+              {devServerProcesses.map((process) => (
+                <button
+                  key={process.id}
+                  className={cn(
+                    'px-base py-half text-xs border-b-2 transition-colors',
+                    activeProcessId === process.id
+                      ? 'border-brand text-normal'
+                      : 'border-transparent text-low hover:text-normal'
+                  )}
+                  onClick={() => onTabChange(process.id)}
+                >
+                  {getDevServerWorkingDir(process) ?? 'Dev Server'}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-hidden">
-            {isLoading && logs.length === 0 ? (
+            {isLoading && devServerProcesses.length === 0 ? (
               <div className="h-full flex items-center justify-center text-low">
                 <SpinnerIcon className="size-icon-sm animate-spin" />
               </div>
-            ) : (
-              <VirtualizedProcessLogs logs={logs} error={null} />
-            )}
+            ) : devServerProcesses.length > 0 ? (
+              <VirtualizedProcessLogs logs={logs} error={logsError} />
+            ) : null}
           </div>
         </div>
       </CollapsibleSectionHeader>

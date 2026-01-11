@@ -17,6 +17,7 @@ import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useHasDevServerScript } from '@/hooks/useHasDevServerScript';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -57,7 +58,7 @@ export function NextActionCard({
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
-  const { project } = useProject();
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -77,11 +78,14 @@ export function NextActionCard({
     stop,
     isStarting,
     isStopping,
-    runningDevServer,
-    latestDevServerProcess,
+    runningDevServers,
+    devServerProcesses,
   } = useDevServer(attemptId);
 
-  const projectHasDevScript = Boolean(project?.dev_script);
+  const hasRunningDevServer = runningDevServers.length > 0;
+
+  const { data: projectHasDevScript = false } =
+    useHasDevServerScript(projectId);
 
   const handleCopy = useCallback(async () => {
     if (!containerRef) return;
@@ -103,10 +107,10 @@ export function NextActionCard({
     if (sessionId) {
       ViewProcessesDialog.show({
         sessionId,
-        initialProcessId: latestDevServerProcess?.id,
+        initialProcessId: devServerProcesses[0]?.id,
       });
     }
-  }, [sessionId, latestDevServerProcess?.id]);
+  }, [sessionId, devServerProcesses]);
 
   const handleOpenDiffs = useCallback(() => {
     navigate({ search: '?view=diffs' });
@@ -302,19 +306,21 @@ export function NextActionCard({
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={runningDevServer ? () => stop() : () => start()}
+                      onClick={
+                        hasRunningDevServer ? () => stop() : () => start()
+                      }
                       disabled={
-                        (runningDevServer ? isStopping : isStarting) ||
+                        (hasRunningDevServer ? isStopping : isStarting) ||
                         !attemptId ||
                         !projectHasDevScript
                       }
                       aria-label={
-                        runningDevServer
+                        hasRunningDevServer
                           ? t('attempt.pauseDev')
                           : t('attempt.startDev')
                       }
                     >
-                      {runningDevServer ? (
+                      {hasRunningDevServer ? (
                         <Pause className="h-3.5 w-3.5 text-destructive" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -325,13 +331,13 @@ export function NextActionCard({
                 <TooltipContent>
                   {!projectHasDevScript
                     ? t('attempt.devScriptMissingTooltip')
-                    : runningDevServer
+                    : hasRunningDevServer
                       ? t('attempt.pauseDev')
                       : t('attempt.startDev')}
                 </TooltipContent>
               </Tooltip>
 
-              {latestDevServerProcess && (
+              {devServerProcesses.length > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

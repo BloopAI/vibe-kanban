@@ -88,7 +88,7 @@
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
-      "editButton": "Edit Dev Script",
+      "configureButton": "Configure",
       "stopAndEditButton": "Stop Dev Server & Resolve Issues"
     },
     "devScript": {

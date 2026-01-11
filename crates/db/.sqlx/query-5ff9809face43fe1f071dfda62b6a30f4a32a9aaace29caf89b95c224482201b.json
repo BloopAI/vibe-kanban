@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id as \"id!: Uuid\", r.path, r.name, pr.copy_files\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               JOIN workspaces w ON w.id = wr.workspace_id\n               JOIN tasks t ON t.id = w.task_id\n               LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id\n               WHERE wr.workspace_id = $1",
+  "query": "SELECT r.id as \"id!: Uuid\", r.path, r.name, r.copy_files\n               FROM repos r\n               JOIN workspace_repos wr ON r.id = wr.repo_id\n               WHERE wr.workspace_id = $1",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       true
     ]
   },
-  "hash": "929007c0ea1cd26a8ddc2ee2993285009017dc33e4472bd4bbe7a0adff798f2b"
+  "hash": "5ff9809face43fe1f071dfda62b6a30f4a32a9aaace29caf89b95c224482201b"
 }

@@ -160,14 +160,7 @@ export function useCreateModeState({
         for (const draftRepo of scratchData.repos) {
           const fullRepo = repoMap.get(draftRepo.repo_id);
           if (fullRepo) {
-            restoredRepos.push({
-              id: fullRepo.id,
-              path: fullRepo.path,
-              name: fullRepo.name,
-              display_name: fullRepo.display_name,
-              created_at: fullRepo.created_at,
-              updated_at: fullRepo.updated_at,
-            });
+            restoredRepos.push(fullRepo);
             restoredBranches[draftRepo.repo_id] = draftRepo.target_branch;
           }
         }
@@ -198,16 +191,7 @@ export function useCreateModeState({
       initialRepos.length > 0
     ) {
       hasInitializedRepos.current = true;
-      setRepos(
-        initialRepos.map((r) => ({
-          id: r.id,
-          path: r.path,
-          name: r.name,
-          display_name: r.display_name,
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-        }))
-      );
+      setRepos(initialRepos);
       setTargetBranches(
         initialRepos.reduce(
           (acc, repo) => {

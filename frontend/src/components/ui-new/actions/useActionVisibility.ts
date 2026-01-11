@@ -27,7 +27,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
   const { config } = useUserSystem();
-  const { isStarting, isStopping, runningDevServer } =
+  const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
 
   return useMemo(() => {
@@ -41,7 +41,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       ? 'starting'
       : isStopping
         ? 'stopping'
-        : runningDevServer
+        : runningDevServers.length > 0
           ? 'running'
           : 'stopped';
 
@@ -60,7 +60,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAllDiffsExpanded,
       editorType: config?.editor?.editor_type ?? null,
       devServerState,
-      runningDevServerId: runningDevServer?.id ?? null,
+      runningDevServers,
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
     };
@@ -80,7 +80,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     config?.editor?.editor_type,
     isStarting,
     isStopping,
-    runningDevServer,
+    runningDevServers,
   ]);
 }
 
