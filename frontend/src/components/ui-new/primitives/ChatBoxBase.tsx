@@ -141,7 +141,7 @@ export function ChatBoxBase({
           onChange={editor.onChange}
           onCmdEnter={onCmdEnter}
           disabled={disabled}
-          className="min-h-0 max-h-[min(15rem,20vh)] overflow-y-auto"
+          className="min-h-0 max-h-[50vh] overflow-y-auto"
           projectId={projectId}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
