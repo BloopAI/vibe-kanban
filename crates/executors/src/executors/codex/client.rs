@@ -12,7 +12,8 @@ use codex_app_server_protocol::{
     GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, InputItem,
     JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, NewConversationParams,
     NewConversationResponse, RequestId, ResumeConversationParams, ResumeConversationResponse,
-    SendUserMessageParams, SendUserMessageResponse, ServerNotification, ServerRequest,
+    ReviewStartParams, ReviewStartResponse, ReviewTarget, SendUserMessageParams,
+    SendUserMessageResponse, ServerNotification, ServerRequest,
 };
 use codex_protocol::{ConversationId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -146,6 +147,23 @@ impl AppServerClient {
         };
         self.send_request(request, "getAuthStatus").await
     }
+
+    pub async fn start_review(
+        &self,
+        thread_id: String,
+        target: ReviewTarget,
+    ) -> Result<ReviewStartResponse, ExecutorError> {
+        let request = ClientRequest::ReviewStart {
+            request_id: self.next_request_id(),
+            params: ReviewStartParams {
+                thread_id,
+                target,
+                delivery: None,
+            },
+        };
+        self.send_request(request, "reviewStart").await
+    }
+
     async fn handle_server_request(
         &self,
         peer: &JsonRpcPeer,
@@ -482,7 +500,8 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::GetAuthStatus { request_id, .. }
         | ClientRequest::ResumeConversation { request_id, .. }
         | ClientRequest::AddConversationListener { request_id, .. }
-        | ClientRequest::SendUserMessage { request_id, .. } => request_id.clone(),
+        | ClientRequest::SendUserMessage { request_id, .. }
+        | ClientRequest::ReviewStart { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }
 }

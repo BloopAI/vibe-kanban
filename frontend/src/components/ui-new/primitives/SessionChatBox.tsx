@@ -25,6 +25,12 @@ import {
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  isSpecialIcon,
+} from '../actions';
+import { isActionEnabled } from '../actions/useActionVisibility';
+import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -57,10 +63,14 @@ interface SessionProps {
   sessions: Session[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
-  /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
-  /** Callback to start new session mode */
   onNewSession?: () => void;
+}
+
+interface ToolbarActionsProps {
+  actions: ActionDefinition[];
+  context: ActionVisibilityContext;
+  onExecuteAction: (action: ActionDefinition) => void;
 }
 
 interface StatsProps {
@@ -115,18 +125,14 @@ interface SessionChatBoxProps {
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
-  /** Approval mode for pending plan approvals */
   approvalMode?: ApprovalModeProps;
-  /** Review comments from diff viewer */
   reviewComments?: ReviewCommentsProps;
+  toolbarActions?: ToolbarActionsProps;
   error?: string | null;
   projectId?: string;
   agent?: BaseCodingAgent | null;
-  /** Executor selection for new session mode */
   executor?: ExecutorProps;
-  /** Currently in-progress todo item (shown when agent is running) */
   inProgressTodo?: TodoItem | null;
-  /** Local images for immediate preview (before saved to server) */
   localImages?: LocalImageMetadata[];
 }
 
@@ -145,6 +151,7 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
+  toolbarActions,
   error,
   projectId,
   agent,
@@ -187,7 +194,6 @@ export function SessionChatBox({
     !isInApprovalMode &&
     editor.value.trim().length === 0;
 
-  // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
     : isInEditMode
@@ -235,7 +241,6 @@ export function SessionChatBox({
     fileInputRef.current?.click();
   };
 
-  // Session dropdown
   const {
     sessions,
     selectedSessionId,
@@ -633,6 +638,29 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
+          {toolbarActions?.actions.map((action) => {
+            const icon = action.icon;
+            // Skip special icons in toolbar (only standard phosphor icons)
+            if (isSpecialIcon(icon)) return null;
+            const actionEnabled = isActionEnabled(
+              action,
+              toolbarActions.context
+            );
+            const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
+            const label =
+              typeof action.label === 'function'
+                ? action.label()
+                : action.label;
+            return (
+              <ToolbarIconButton
+                key={action.id}
+                icon={icon}
+                aria-label={label}
+                onClick={() => toolbarActions.onExecuteAction(action)}
+                disabled={isButtonDisabled}
+              />
+            );
+          })}
         </>
       }
       footerRight={renderActionButtons()}

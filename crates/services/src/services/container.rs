@@ -765,6 +765,11 @@ pub trait ContainerService {
                     executor
                         .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir));
                 }
+                ExecutorActionType::ReviewRequest(request) => {
+                    let executor = ExecutorConfigs::get_cached()
+                        .get_coding_agent_or_default(&request.executor_profile_id);
+                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                }
                 _ => {
                     tracing::debug!(
                         "Executor action doesn't support log normalization: {:?}",
@@ -1115,6 +1120,10 @@ pub trait ContainerService {
                     &request.executor_profile_id,
                     request.effective_dir(&workspace_root),
                 )),
+                ExecutorActionType::ReviewRequest(request) => Some((
+                    &request.executor_profile_id,
+                    request.effective_dir(&workspace_root),
+                )),
                 _ => None,
             }
         {
@@ -1150,13 +1159,15 @@ pub trait ContainerService {
             }
             (
                 ExecutorActionType::CodingAgentInitialRequest(_)
-                | ExecutorActionType::CodingAgentFollowUpRequest(_),
+                | ExecutorActionType::CodingAgentFollowUpRequest(_)
+                | ExecutorActionType::ReviewRequest(_),
                 ExecutorActionType::ScriptRequest(_),
             ) => ExecutionProcessRunReason::CleanupScript,
             (
                 _,
                 ExecutorActionType::CodingAgentFollowUpRequest(_)
-                | ExecutorActionType::CodingAgentInitialRequest(_),
+                | ExecutorActionType::CodingAgentInitialRequest(_)
+                | ExecutorActionType::ReviewRequest(_),
             ) => ExecutionProcessRunReason::CodingAgent,
         };
 

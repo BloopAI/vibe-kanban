@@ -30,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "Iniciar revisión",
+    "startingReview": "Iniciando revisión..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +43,13 @@
       "renaming": "Renombrando...",
       "action": "Renombrar rama"
     }
+  },
+  "startReviewDialog": {
+    "additionalInstructions": "Instrucciones adicionales (opcional)",
+    "reviewComments": "Comentarios de revisión ({{count}})",
+    "includeGitContext": "Incluir contexto de git",
+    "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
+    "newSession": "Nueva sesión"
   },
   "attempt": {
     "actions": {

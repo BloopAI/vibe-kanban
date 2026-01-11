@@ -30,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "レビューを開始",
+    "startingReview": "レビューを開始中..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +43,13 @@
       "renaming": "名前を変更中...",
       "action": "ブランチ名を変更"
     }
+  },
+  "startReviewDialog": {
+    "additionalInstructions": "追加の指示（オプション）",
+    "reviewComments": "レビューコメント（{{count}}）",
+    "includeGitContext": "Gitコンテキストを含める",
+    "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
+    "newSession": "新しいセッション"
   },
   "attempt": {
     "actions": {
