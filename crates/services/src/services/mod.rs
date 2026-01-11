@@ -16,6 +16,8 @@ pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;
 pub mod project;
+#[cfg(feature = "qa-mode")]
+pub mod qa_repos;
 pub mod queued_message;
 pub mod remote_client;
 pub mod repo;

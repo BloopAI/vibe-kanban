@@ -6,6 +6,7 @@ edition = "2024"
 [features]
 default = []
 cloud = []
+qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 utils = { path = "../utils" }

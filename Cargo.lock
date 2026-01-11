@@ -1800,6 +1800,7 @@ dependencies = [
  "json-patch",
  "mcp-types",
  "os_pipe",
+ "rand 0.8.5",
  "regex",
  "reqwest",
  "rustls",
@@ -1821,6 +1822,7 @@ dependencies = [
  "ts-rs 11.0.1",
  "utils",
  "uuid",
+ "walkdir",
  "winsplit",
  "xdg",
 ]
