@@ -20,6 +20,45 @@
         "CLAUDE_CODE": {
           "approvals": true
         }
+      },
+      "SAFE": {
+        "CLAUDE_CODE": {
+          "dangerously_skip_permissions": false,
+          "settings": {
+            "permissions": {
+              "allowedTools": ["Read", "Glob", "Grep", "Task", "TodoWrite"],
+              "deny": ["Bash(rm *)", "Bash(sudo *)", "Read(.env*)"]
+            }
+          }
+        }
+      },
+      "DEV_WITH_HOOKS": {
+        "CLAUDE_CODE": {
+          "dangerously_skip_permissions": true,
+          "settings": {
+            "permissions": {
+              "allowedTools": ["Read", "Write", "Edit", "Bash(git *)", "Bash(npm *)", "Bash(pnpm *)"]
+            },
+            "hooks": {
+              "PostToolUse": [
+                {
+                  "matcher": "Write(*.py)",
+                  "hooks": [{ "type": "command", "command": "python -m black $file" }]
+                },
+                {
+                  "matcher": "Write(*.ts)",
+                  "hooks": [{ "type": "command", "command": "npx prettier --write $file" }]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "LOCAL": {
+        "CLAUDE_CODE": {
+          "dangerously_skip_permissions": true,
+          "use_local_settings": true
+        }
       }
     },
     "AMP": {

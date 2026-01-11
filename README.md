@@ -9,122 +9,99 @@
 </p>
 
 <p align="center">Get 10X more out of Claude Code, Gemini CLI, Codex, Amp and other coding agents...</p>
-<p align="center">
-  <a href="https://www.npmjs.com/package/vibe-kanban"><img alt="npm" src="https://img.shields.io/npm/v/vibe-kanban?style=flat-square" /></a>
-  <a href="https://github.com/BloopAI/vibe-kanban/blob/main/.github/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/BloopAI/vibe-kanban/.github%2Fworkflows%2Fpublish.yml" /></a>
-  <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
-</p>
 
-<h1 align="center">
-  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
-</h1>
+> **This is a fork of [BloopAI/vibe-kanban](https://github.com/BloopAI/vibe-kanban)** with additional enhancements for Claude Code settings configuration.
+>
+> For installation, documentation, and general usage, see the [original README](https://github.com/BloopAI/vibe-kanban#readme).
 
-![](frontend/public/vibe-kanban-screenshot-overview.png)
+## Fork Enhancements
 
-## Overview
+This fork adds the following features for Claude Code:
 
-AI coding agents are increasingly writing the world's code and human engineers now spend the majority of their time planning, reviewing, and orchestrating tasks. Vibe Kanban streamlines this process, enabling you to:
+### LOCAL Profile
 
-- Easily switch between different coding agents
-- Orchestrate the execution of multiple coding agents in parallel or in sequence
-- Quickly review work and start dev servers
-- Track the status of tasks that your coding agents are working on
-- Centralise configuration of coding agent MCP configs
-- Open projects remotely via SSH when running Vibe Kanban on a remote server
+Import settings from your `~/.claude/settings.json` automatically:
 
-You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
-
-## Installation
-
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
-
-```bash
-npx vibe-kanban
+```json
+{
+  "CLAUDE_CODE": {
+    "LOCAL": {
+      "CLAUDE_CODE": {
+        "dangerously_skip_permissions": true,
+        "use_local_settings": true
+      }
+    }
+  }
+}
 ```
 
-## Documentation
+- Profile settings take precedence over local settings
+- Deny lists are **combined** from both sources
 
-Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
+### Settings Configuration
 
-## Support
+Configure permissions and deny rules directly in profiles via **Settings → Agents**:
 
-We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) for feature requests. Please open a discussion to create a feature request. For bugs please open an issue on this repo.
+<p align="center">
+  <img src="docs/images/coding-agent-settings-configuration.png" alt="Agent Settings Configuration UI" width="800">
+</p>
 
-## Contributing
+Or edit the JSON directly:
 
-We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
+```json
+{
+  "CLAUDE_CODE": {
+    "SAFE": {
+      "CLAUDE_CODE": {
+        "settings": {
+          "permissions": {
+            "allowedTools": ["Read", "Glob", "Grep"],
+            "deny": ["Bash(rm *)", "Read(.env*)"]
+          }
+        }
+      }
+    }
+  }
+}
+```
 
-## Development
+Settings are written to `.claude/settings.local.json` in the workspace when the agent starts.
+
+## Quick Start
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) (latest stable)
-- [Node.js](https://nodejs.org/) (>=18)
-- [pnpm](https://pnpm.io/) (>=8)
+- **Node.js** (v18+) and **pnpm**
+- **Rust** via [rustup](https://rustup.rs/):
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  source "$HOME/.cargo/env"
+  cargo install cargo-watch
+  ```
 
-Additional development tools:
-```bash
-cargo install cargo-watch
-cargo install sqlx-cli
-```
+### Install & Run
 
-Install dependencies:
 ```bash
+git clone https://github.com/hippogriff-ai/vibe-kanban.git
+cd vibe-kanban
 pnpm i
-```
-
-### Running the dev server
-
-```bash
 pnpm run dev
 ```
 
-This will start the backend. A blank DB will be copied from the `dev_assets_seed` folder.
+This starts both the frontend (port 3000) and backend with auto-assigned ports.
 
-### Building the frontend
+> **Note: First run takes 3-5 minutes** to compile the Rust backend. Subsequent runs start in seconds (Rust only recompiles changed code).
+>
+> The original `npx vibe-kanban` is fast because it ships pre-built binaries. Running from source requires compilation but gives you access to fork enhancements and local modifications.
 
-To build just the frontend:
+### Shell Alias (Optional)
+
+Add to your `~/.zshrc` or `~/.bashrc` for quick access:
 
 ```bash
-cd frontend
-pnpm build
+alias vk="cd ~/path/to/vibe-kanban && pnpm run dev"
 ```
 
-### Build from source (macOS)
+Then reload your shell (`source ~/.zshrc`) and run `vk` from anywhere.
 
-1. Run `./local-build.sh`
-2. Test with `cd npx-cli && node bin/cli.js`
-
-
-### Environment Variables
-
-The following environment variables can be configured at build time or runtime:
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
-| `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
-| `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
-| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
-| `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
-| `HOST` | Runtime | `127.0.0.1` | Backend server host |
-| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
-
-**Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
-
-### Remote Deployment
-
-When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
-
-1. **Access via tunnel**: Use Cloudflare Tunnel, ngrok, or similar to expose the web UI
-2. **Configure remote SSH** in Settings → Editor Integration:
-   - Set **Remote SSH Host** to your server hostname or IP
-   - Set **Remote SSH User** to your SSH username (optional)
-3. **Prerequisites**:
-   - SSH access from your local machine to the remote server
-   - SSH keys configured (passwordless authentication)
-   - VSCode Remote-SSH extension
-
-When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
-
-See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+See the [original repo](https://github.com/BloopAI/vibe-kanban#development) for full development instructions.

@@ -20,7 +20,7 @@ use workspace_utils::{
 use self::{
     client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
     protocol::ProtocolPeer,
-    types::PermissionMode,
+    types::{ClaudeCodeSettings, PermissionMode},
 };
 use crate::{
     approvals::ExecutorApprovalService,
@@ -66,6 +66,14 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    /// Claude Code settings (permissions, hooks, etc.)
+    /// These will be written to .claude/settings.local.json in the working directory
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<ClaudeCodeSettings>,
+    /// When true, reads settings from ~/.claude/settings.json and merges with profile settings
+    /// Profile settings take precedence over local settings
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_local_settings: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -231,6 +239,73 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 }
 
 impl ClaudeCode {
+    /// Write settings to .claude/settings.local.json in the working directory
+    fn write_settings_file(&self, current_dir: &Path) -> Result<(), ExecutorError> {
+        // Determine final settings by optionally merging with local user settings
+        let final_settings = self.compute_final_settings();
+
+        if let Some(settings) = final_settings {
+            let claude_dir = current_dir.join(".claude");
+            std::fs::create_dir_all(&claude_dir).map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!(
+                    "Failed to create .claude directory: {e}"
+                )))
+            })?;
+
+            let settings_path = claude_dir.join("settings.local.json");
+            let settings_json = serde_json::to_string_pretty(&settings).map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!(
+                    "Failed to serialize settings: {e}"
+                )))
+            })?;
+
+            std::fs::write(&settings_path, settings_json).map_err(|e| {
+                ExecutorError::Io(std::io::Error::other(format!(
+                    "Failed to write settings file: {e}"
+                )))
+            })?;
+
+            tracing::info!("Wrote Claude Code settings to {:?}", settings_path);
+        }
+        Ok(())
+    }
+
+    /// Compute final settings by optionally merging with local ~/.claude/settings.json
+    fn compute_final_settings(&self) -> Option<ClaudeCodeSettings> {
+        let use_local = self.use_local_settings.unwrap_or(false);
+
+        if use_local {
+            // Load local settings from ~/.claude/settings.json
+            let local_settings = ClaudeCodeSettings::load_from_local();
+
+            match (&self.settings, local_settings) {
+                (Some(profile_settings), Some(local)) => {
+                    tracing::info!("Merging profile settings with local ~/.claude/settings.json");
+                    Some(profile_settings.merge_with_local(&local))
+                }
+                (Some(profile_settings), None) => {
+                    tracing::warn!(
+                        "use_local_settings enabled but ~/.claude/settings.json not found"
+                    );
+                    Some(profile_settings.clone())
+                }
+                (None, Some(local)) => {
+                    tracing::info!("Using local ~/.claude/settings.json (no profile settings)");
+                    Some(local)
+                }
+                (None, None) => {
+                    tracing::warn!(
+                        "use_local_settings enabled but no settings found anywhere"
+                    );
+                    None
+                }
+            }
+        } else {
+            // Just use profile settings as-is
+            self.settings.clone()
+        }
+    }
+
     async fn spawn_internal(
         &self,
         current_dir: &Path,
@@ -238,6 +313,9 @@ impl ClaudeCode {
         command_parts: CommandParts,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
+        // Write settings file if provided
+        self.write_settings_file(current_dir)?;
+
         let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -2017,6 +2095,8 @@ mod tests {
             model: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
+            settings: None,
+            use_local_settings: None,
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,
@@ -2344,5 +2424,466 @@ mod tests {
         assert_eq!(entries[1].content, "I'll help you with that");
 
         // ToolResult entry is ignored - no third entry
+    }
+
+    // ==================== Settings Tests ====================
+
+    use super::types::{
+        ClaudeCodeHookAction, ClaudeCodeHookEntry, ClaudeCodeHooks, ClaudeCodePermissions,
+        ClaudeCodeSettings,
+    };
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_claude_code_settings_deserialization_empty() {
+        let json = r#"{}"#;
+        let settings: ClaudeCodeSettings = serde_json::from_str(json).unwrap();
+
+        assert!(settings.permissions.is_none());
+        assert!(settings.hooks.is_none());
+        assert!(settings.max_tokens.is_none());
+        assert!(settings.temperature.is_none());
+        assert!(settings.system_prompt.is_none());
+        assert!(settings.env.is_none());
+    }
+
+    #[test]
+    fn test_claude_code_settings_deserialization_with_permissions() {
+        let json = r#"{
+            "permissions": {
+                "allowedTools": ["Read", "Write", "Bash(git *)"],
+                "deny": ["Bash(rm *)", "Read(.env*)"]
+            }
+        }"#;
+        let settings: ClaudeCodeSettings = serde_json::from_str(json).unwrap();
+
+        let permissions = settings.permissions.unwrap();
+        let allowed = permissions.allowed_tools.unwrap();
+        let denied = permissions.deny.unwrap();
+
+        assert_eq!(allowed.len(), 3);
+        assert_eq!(allowed[0], "Read");
+        assert_eq!(allowed[1], "Write");
+        assert_eq!(allowed[2], "Bash(git *)");
+
+        assert_eq!(denied.len(), 2);
+        assert_eq!(denied[0], "Bash(rm *)");
+        assert_eq!(denied[1], "Read(.env*)");
+    }
+
+    #[test]
+    fn test_claude_code_settings_deserialization_with_hooks() {
+        let json = r#"{
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": "Write(*.py)",
+                        "hooks": [
+                            { "type": "command", "command": "python -m black $file" }
+                        ]
+                    }
+                ],
+                "PreToolUse": [
+                    {
+                        "matcher": "Bash(rm *)",
+                        "hookCallbackIds": ["block_dangerous"]
+                    }
+                ]
+            }
+        }"#;
+        let settings: ClaudeCodeSettings = serde_json::from_str(json).unwrap();
+
+        let hooks = settings.hooks.unwrap();
+
+        // Check PostToolUse
+        let post_hooks = hooks.post_tool_use.unwrap();
+        assert_eq!(post_hooks.len(), 1);
+        assert_eq!(post_hooks[0].matcher, Some("Write(*.py)".to_string()));
+        let actions = post_hooks[0].hooks.as_ref().unwrap();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].action_type, "command");
+        assert_eq!(actions[0].command, "python -m black $file");
+
+        // Check PreToolUse
+        let pre_hooks = hooks.pre_tool_use.unwrap();
+        assert_eq!(pre_hooks.len(), 1);
+        assert_eq!(pre_hooks[0].matcher, Some("Bash(rm *)".to_string()));
+        let callback_ids = pre_hooks[0].hook_callback_ids.as_ref().unwrap();
+        assert_eq!(callback_ids.len(), 1);
+        assert_eq!(callback_ids[0], "block_dangerous");
+    }
+
+    #[test]
+    fn test_claude_code_settings_deserialization_full() {
+        let json = r#"{
+            "permissions": {
+                "allowedTools": ["Read", "Glob"],
+                "deny": ["Bash(sudo *)"],
+                "defaultMode": "plan"
+            },
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "matcher": "Write(*.ts)",
+                        "hooks": [{ "type": "command", "command": "npx prettier --write $file" }]
+                    }
+                ]
+            },
+            "maxTokens": 4096,
+            "temperature": 0.7,
+            "systemPrompt": "You are a helpful coding assistant."
+        }"#;
+        let settings: ClaudeCodeSettings = serde_json::from_str(json).unwrap();
+
+        assert_eq!(settings.max_tokens, Some(4096));
+        assert_eq!(settings.temperature, Some(0.7));
+        assert_eq!(
+            settings.system_prompt,
+            Some("You are a helpful coding assistant.".to_string())
+        );
+
+        let permissions = settings.permissions.unwrap();
+        assert_eq!(permissions.default_mode, Some("plan".to_string()));
+    }
+
+    #[test]
+    fn test_claude_code_struct_with_settings_deserialization() {
+        let json = r#"{
+            "model": "opus",
+            "dangerously_skip_permissions": false,
+            "settings": {
+                "permissions": {
+                    "allowedTools": ["Read", "Write"],
+                    "deny": ["Bash(rm *)"]
+                }
+            }
+        }"#;
+        let claude_code: ClaudeCode = serde_json::from_str(json).unwrap();
+
+        assert_eq!(claude_code.model, Some("opus".to_string()));
+        assert_eq!(claude_code.dangerously_skip_permissions, Some(false));
+
+        let settings = claude_code.settings.unwrap();
+        let permissions = settings.permissions.unwrap();
+        let allowed = permissions.allowed_tools.unwrap();
+        assert_eq!(allowed.len(), 2);
+        assert_eq!(allowed[0], "Read");
+        assert_eq!(allowed[1], "Write");
+    }
+
+    #[test]
+    fn test_claude_code_struct_serialization_roundtrip() {
+        let settings = ClaudeCodeSettings {
+            permissions: Some(ClaudeCodePermissions {
+                allowed_tools: Some(vec![
+                    "Read".to_string(),
+                    "Write".to_string(),
+                    "Bash(git *)".to_string(),
+                ]),
+                deny: Some(vec!["Bash(rm *)".to_string()]),
+                default_mode: None,
+            }),
+            hooks: Some(ClaudeCodeHooks {
+                pre_tool_use: None,
+                post_tool_use: Some(vec![ClaudeCodeHookEntry {
+                    matcher: Some("Write(*.py)".to_string()),
+                    hooks: Some(vec![ClaudeCodeHookAction {
+                        action_type: "command".to_string(),
+                        command: "black $file".to_string(),
+                    }]),
+                    hook_callback_ids: None,
+                }]),
+                user_prompt_submit: None,
+                session_start: None,
+                session_end: None,
+                stop: None,
+            }),
+            max_tokens: Some(8192),
+            temperature: Some(0.5),
+            system_prompt: None,
+            env: None,
+        };
+
+        let claude_code = ClaudeCode {
+            append_prompt: AppendPrompt::default(),
+            claude_code_router: None,
+            plan: None,
+            approvals: None,
+            model: Some("sonnet".to_string()),
+            dangerously_skip_permissions: Some(true),
+            disable_api_key: None,
+            settings: Some(settings),
+            use_local_settings: None,
+            cmd: crate::command::CmdOverrides {
+                base_command_override: None,
+                additional_params: None,
+                env: None,
+            },
+            approvals_service: None,
+        };
+
+        // Serialize
+        let json = serde_json::to_string(&claude_code).unwrap();
+
+        // Deserialize back
+        let deserialized: ClaudeCode = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.model, Some("sonnet".to_string()));
+        assert_eq!(deserialized.dangerously_skip_permissions, Some(true));
+
+        let settings = deserialized.settings.unwrap();
+        assert_eq!(settings.max_tokens, Some(8192));
+        assert_eq!(settings.temperature, Some(0.5));
+
+        let permissions = settings.permissions.unwrap();
+        let allowed = permissions.allowed_tools.unwrap();
+        assert_eq!(allowed.len(), 3);
+        assert!(allowed.contains(&"Read".to_string()));
+        assert!(allowed.contains(&"Write".to_string()));
+        assert!(allowed.contains(&"Bash(git *)".to_string()));
+
+        let hooks = settings.hooks.unwrap();
+        let post_hooks = hooks.post_tool_use.unwrap();
+        assert_eq!(post_hooks.len(), 1);
+        assert_eq!(post_hooks[0].matcher, Some("Write(*.py)".to_string()));
+    }
+
+    #[test]
+    fn test_write_settings_file_creates_directory_and_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let settings = ClaudeCodeSettings {
+            permissions: Some(ClaudeCodePermissions {
+                allowed_tools: Some(vec!["Read".to_string(), "Write".to_string()]),
+                deny: Some(vec!["Bash(rm *)".to_string()]),
+                default_mode: None,
+            }),
+            hooks: None,
+            max_tokens: Some(4096),
+            temperature: None,
+            system_prompt: None,
+            env: None,
+        };
+
+        let claude_code = ClaudeCode {
+            append_prompt: AppendPrompt::default(),
+            claude_code_router: None,
+            plan: None,
+            approvals: None,
+            model: None,
+            dangerously_skip_permissions: None,
+            disable_api_key: None,
+            settings: Some(settings),
+            use_local_settings: None,
+            cmd: crate::command::CmdOverrides::default(),
+            approvals_service: None,
+        };
+
+        // Write settings
+        claude_code.write_settings_file(work_dir).unwrap();
+
+        // Check .claude directory exists
+        let claude_dir = work_dir.join(".claude");
+        assert!(claude_dir.exists());
+        assert!(claude_dir.is_dir());
+
+        // Check settings.local.json exists
+        let settings_file = claude_dir.join("settings.local.json");
+        assert!(settings_file.exists());
+        assert!(settings_file.is_file());
+
+        // Read and verify contents
+        let contents = std::fs::read_to_string(&settings_file).unwrap();
+        let parsed: ClaudeCodeSettings = serde_json::from_str(&contents).unwrap();
+
+        assert_eq!(parsed.max_tokens, Some(4096));
+        let permissions = parsed.permissions.unwrap();
+        let allowed = permissions.allowed_tools.unwrap();
+        assert_eq!(allowed.len(), 2);
+        assert!(allowed.contains(&"Read".to_string()));
+        assert!(allowed.contains(&"Write".to_string()));
+    }
+
+    #[test]
+    fn test_write_settings_file_no_op_when_settings_none() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let claude_code = ClaudeCode {
+            append_prompt: AppendPrompt::default(),
+            claude_code_router: None,
+            plan: None,
+            approvals: None,
+            model: None,
+            dangerously_skip_permissions: None,
+            disable_api_key: None,
+            settings: None, // No settings
+            use_local_settings: None,
+            cmd: crate::command::CmdOverrides::default(),
+            approvals_service: None,
+        };
+
+        // Write settings (should be no-op)
+        claude_code.write_settings_file(work_dir).unwrap();
+
+        // Check .claude directory does NOT exist
+        let claude_dir = work_dir.join(".claude");
+        assert!(!claude_dir.exists());
+    }
+
+    #[test]
+    fn test_write_settings_file_with_hooks() {
+        let temp_dir = TempDir::new().unwrap();
+        let work_dir = temp_dir.path();
+
+        let settings = ClaudeCodeSettings {
+            permissions: None,
+            hooks: Some(ClaudeCodeHooks {
+                pre_tool_use: Some(vec![ClaudeCodeHookEntry {
+                    matcher: Some("Bash(rm *)".to_string()),
+                    hooks: None,
+                    hook_callback_ids: Some(vec!["block_dangerous".to_string()]),
+                }]),
+                post_tool_use: Some(vec![ClaudeCodeHookEntry {
+                    matcher: Some("Write(*.py)".to_string()),
+                    hooks: Some(vec![ClaudeCodeHookAction {
+                        action_type: "command".to_string(),
+                        command: "python -m black $file".to_string(),
+                    }]),
+                    hook_callback_ids: None,
+                }]),
+                user_prompt_submit: None,
+                session_start: None,
+                session_end: None,
+                stop: None,
+            }),
+            max_tokens: None,
+            temperature: None,
+            system_prompt: None,
+            env: None,
+        };
+
+        let claude_code = ClaudeCode {
+            append_prompt: AppendPrompt::default(),
+            claude_code_router: None,
+            plan: None,
+            approvals: None,
+            model: None,
+            dangerously_skip_permissions: None,
+            disable_api_key: None,
+            settings: Some(settings),
+            use_local_settings: None,
+            cmd: crate::command::CmdOverrides::default(),
+            approvals_service: None,
+        };
+
+        // Write settings
+        claude_code.write_settings_file(work_dir).unwrap();
+
+        // Read and verify contents
+        let settings_file = work_dir.join(".claude/settings.local.json");
+        let contents = std::fs::read_to_string(&settings_file).unwrap();
+        let parsed: ClaudeCodeSettings = serde_json::from_str(&contents).unwrap();
+
+        let hooks = parsed.hooks.unwrap();
+
+        // Check PreToolUse hook
+        let pre_hooks = hooks.pre_tool_use.unwrap();
+        assert_eq!(pre_hooks.len(), 1);
+        assert_eq!(pre_hooks[0].matcher, Some("Bash(rm *)".to_string()));
+        let callback_ids = pre_hooks[0].hook_callback_ids.as_ref().unwrap();
+        assert_eq!(callback_ids[0], "block_dangerous");
+
+        // Check PostToolUse hook
+        let post_hooks = hooks.post_tool_use.unwrap();
+        assert_eq!(post_hooks.len(), 1);
+        assert_eq!(post_hooks[0].matcher, Some("Write(*.py)".to_string()));
+        let actions = post_hooks[0].hooks.as_ref().unwrap();
+        assert_eq!(actions[0].command, "python -m black $file");
+    }
+
+    #[test]
+    fn test_default_profiles_json_parsing() {
+        // Test that our default profiles with settings can be parsed
+        let profiles_json = r#"{
+            "executors": {
+                "CLAUDE_CODE": {
+                    "SAFE": {
+                        "CLAUDE_CODE": {
+                            "dangerously_skip_permissions": false,
+                            "settings": {
+                                "permissions": {
+                                    "allowedTools": ["Read", "Glob", "Grep", "Task", "TodoWrite"],
+                                    "deny": ["Bash(rm *)", "Bash(sudo *)", "Read(.env*)"]
+                                }
+                            }
+                        }
+                    },
+                    "DEV_WITH_HOOKS": {
+                        "CLAUDE_CODE": {
+                            "dangerously_skip_permissions": true,
+                            "settings": {
+                                "permissions": {
+                                    "allowedTools": ["Read", "Write", "Edit", "Bash(git *)", "Bash(npm *)"]
+                                },
+                                "hooks": {
+                                    "PostToolUse": [
+                                        {
+                                            "matcher": "Write(*.py)",
+                                            "hooks": [{ "type": "command", "command": "python -m black $file" }]
+                                        },
+                                        {
+                                            "matcher": "Write(*.ts)",
+                                            "hooks": [{ "type": "command", "command": "npx prettier --write $file" }]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }"#;
+
+        // Parse the JSON structure
+        let parsed: serde_json::Value = serde_json::from_str(profiles_json).unwrap();
+
+        // Extract SAFE profile
+        let safe_profile = &parsed["executors"]["CLAUDE_CODE"]["SAFE"]["CLAUDE_CODE"];
+        let safe_claude: ClaudeCode = serde_json::from_value(safe_profile.clone()).unwrap();
+
+        assert_eq!(safe_claude.dangerously_skip_permissions, Some(false));
+        let safe_settings = safe_claude.settings.unwrap();
+        let safe_permissions = safe_settings.permissions.unwrap();
+        let safe_allowed = safe_permissions.allowed_tools.unwrap();
+        assert_eq!(safe_allowed.len(), 5);
+        assert!(safe_allowed.contains(&"Read".to_string()));
+        assert!(safe_allowed.contains(&"TodoWrite".to_string()));
+
+        let safe_denied = safe_permissions.deny.unwrap();
+        assert_eq!(safe_denied.len(), 3);
+        assert!(safe_denied.contains(&"Bash(rm *)".to_string()));
+        assert!(safe_denied.contains(&"Read(.env*)".to_string()));
+
+        // Extract DEV_WITH_HOOKS profile
+        let dev_profile = &parsed["executors"]["CLAUDE_CODE"]["DEV_WITH_HOOKS"]["CLAUDE_CODE"];
+        let dev_claude: ClaudeCode = serde_json::from_value(dev_profile.clone()).unwrap();
+
+        assert_eq!(dev_claude.dangerously_skip_permissions, Some(true));
+        let dev_settings = dev_claude.settings.unwrap();
+        let dev_hooks = dev_settings.hooks.unwrap();
+        let post_hooks = dev_hooks.post_tool_use.unwrap();
+        assert_eq!(post_hooks.len(), 2);
+
+        // Check Python formatter hook
+        assert_eq!(post_hooks[0].matcher, Some("Write(*.py)".to_string()));
+        let py_actions = post_hooks[0].hooks.as_ref().unwrap();
+        assert_eq!(py_actions[0].command, "python -m black $file");
+
+        // Check TypeScript formatter hook
+        assert_eq!(post_hooks[1].matcher, Some("Write(*.ts)".to_string()));
+        let ts_actions = post_hooks[1].hooks.as_ref().unwrap();
+        assert_eq!(ts_actions[0].command, "npx prettier --write $file");
     }
 }
