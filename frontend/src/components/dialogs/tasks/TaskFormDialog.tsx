@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import BranchSelector from '@/components/tasks/BranchSelector';
@@ -100,6 +101,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     []
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
+  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(true);
   const forceCreateOnlyRef = useRef(false);
 
   const { data: taskImages } = useTaskImages(
@@ -439,20 +441,65 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           {/* Description */}
           <form.Field name="description">
             {(field) => (
-              <div className="border p-3">
-                <WYSIWYGEditor
-                  placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                  className="w-full h-24 overflow-auto"
-                  value={field.state.value}
-                  onChange={(desc) => field.handleChange(desc)}
-                  disabled={isSubmitting}
-                  projectId={projectId}
-                  onPasteFiles={onDrop}
-                  onCmdEnter={primaryAction}
-                  onShiftCmdEnter={handleSubmitCreateOnly}
-                  taskId={editMode ? props.task.id : undefined}
-                  localImages={localImages}
-                />
+              <div className="border p-3 relative">
+                <div className="h-40 overflow-auto">
+                  {isRawMarkdownMode ? (
+                    <textarea
+                      placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                      className="w-full h-full bg-transparent resize-none outline-none font-mono text-base leading-relaxed"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      disabled={isSubmitting}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          if (e.shiftKey) {
+                            handleSubmitCreateOnly();
+                          } else {
+                            primaryAction();
+                          }
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                  ) : (
+                    <WYSIWYGEditor
+                      placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                      className="w-full"
+                      value={field.state.value}
+                      onChange={(desc) => field.handleChange(desc)}
+                      disabled={isSubmitting}
+                      projectId={projectId}
+                      onPasteFiles={onDrop}
+                      onCmdEnter={primaryAction}
+                      onShiftCmdEnter={handleSubmitCreateOnly}
+                      taskId={editMode ? props.task.id : undefined}
+                      localImages={localImages}
+                    />
+                  )}
+                </div>
+                <ToggleGroup
+                  type="single"
+                  value={isRawMarkdownMode ? 'markdown' : 'preview'}
+                  onValueChange={(value) => {
+                    if (value) setIsRawMarkdownMode(value === 'markdown');
+                  }}
+                  className="absolute bottom-1 right-1 bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
+                >
+                  <ToggleGroupItem
+                    value="preview"
+                    active={!isRawMarkdownMode}
+                    size="sm"
+                  >
+                    {t('taskFormDialog.preview')}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="markdown"
+                    active={isRawMarkdownMode}
+                    size="sm"
+                  >
+                    {t('taskFormDialog.markdown')}
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
             )}
           </form.Field>
