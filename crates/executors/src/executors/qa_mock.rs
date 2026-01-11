@@ -19,8 +19,8 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     env::ExecutionEnv,
     executors::{
-        claude::{ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeToolData},
         ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        claude::{ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeToolData},
     },
     logs::utils::EntryIndexProvider,
 };
