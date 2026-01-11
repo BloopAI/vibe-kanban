@@ -315,12 +315,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 model: Some("qa-mock".to_string()),
                 content: vec![ClaudeContentItem::Text {
                     text: format!(
-                        "QA mode execution completed successfully.\n\n\
-                        I performed the following operations:\n\
-                        1. Read README.md\n\
-                        2. Created qa_output.txt\n\
-                        3. Ran a test command\n\n\
-                        Original prompt: {}",
+                        "QA mode execution completed successfully.\\n\\nI performed the following operations:\\n1. Read README.md\\n2. Created qa_output.txt\\n3. Ran a test command\\nOriginal prompt: {}",
                         prompt
                     ),
                 }],
