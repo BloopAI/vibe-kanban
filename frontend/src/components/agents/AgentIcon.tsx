@@ -38,6 +38,8 @@ export function getAgentName(
       return 'Copilot';
     case BaseCodingAgent.DROID:
       return 'Droid';
+    case BaseCodingAgent.MISTRAL_VIBE:
+      return 'Mistral Vibe';
   }
 }
 
@@ -81,6 +83,9 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       break;
     case BaseCodingAgent.DROID:
       iconPath = `/agents/droid${suffix}.svg`;
+      break;
+    case BaseCodingAgent.MISTRAL_VIBE:
+      iconPath = `/agents/mistral-vibe${suffix}.svg`;
       break;
     default:
       return null;

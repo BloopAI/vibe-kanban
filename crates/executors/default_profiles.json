@@ -294,6 +294,24 @@
           "model": "glm-4.6"
         }
       }
+    },
+    "MISTRAL_VIBE": {
+      "DEFAULT": {
+        "MISTRAL_VIBE": {
+          "auto_approve": true
+        }
+      },
+      "DEVSTRAL_SMALL": {
+        "MISTRAL_VIBE": {
+          "model": "devstral-small-2",
+          "auto_approve": true
+        }
+      },
+      "APPROVALS": {
+        "MISTRAL_VIBE": {
+          "auto_approve": false
+        }
+      }
     }
   }
 }
