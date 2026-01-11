@@ -120,10 +120,15 @@ impl PrMonitorService {
                     Workspace::find_by_id(&self.db.pool, pr_merge.workspace_id).await?
             {
                 info!(
-                    "PR #{} was merged, updating task {} to done",
+                    "PR #{} was merged, updating task {} to done and archiving workspace",
                     pr_merge.pr_info.number, workspace.task_id
                 );
                 Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
+
+                // Archive workspace unless pinned
+                if !workspace.pinned {
+                    Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
+                }
 
                 // Track analytics event
                 if let Some(analytics) = &self.analytics
