@@ -3,8 +3,7 @@
 //! This module provides two hardcoded QA repositories that are cloned
 //! to a persistent temp directory and returned as the only "recent" repos.
 
-use std::path::PathBuf;
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
 use once_cell::sync::Lazy;
 use tracing::{info, warn};
