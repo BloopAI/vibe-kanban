@@ -12,7 +12,7 @@ use anyhow::Result;
 use api::{ReviewApiClient, ReviewStatus, StartRequest};
 use clap::Parser;
 use error::ReviewError;
-use github::{checkout_commit, clone_repo, get_pr_info, parse_pr_url};
+use github::{checkout_commit, clone_repo, get_pr_info, parse_pr_url, resolve_branch_to_commit};
 use indicatif::{ProgressBar, ProgressStyle};
 use tempfile::TempDir;
 use tracing::debug;
@@ -170,12 +170,15 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     clone_repo(&owner, &repo, &repo_dir)?;
     spinner.finish_with_message("Repository cloned");
 
-    // 6. Checkout PR head commit
+    // 6. Resolve base branch to commit SHA
+    let base_commit = resolve_branch_to_commit(&pr_info.base_ref_name, &repo_dir)?;
+
+    // 7. Checkout PR head commit
     let spinner = create_spinner("Checking out PR...");
     checkout_commit(&pr_info.head_commit, &repo_dir)?;
     spinner.finish_with_message("PR checked out");
 
-    // 7. Create tarball (with optional session data)
+    // 8. Create tarball (with optional session data)
     let spinner = create_spinner("Creating archive...");
 
     // If sessions were selected, write .agent-messages.json to repo root
@@ -190,18 +193,18 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     let size_mb = payload.len() as f64 / 1_048_576.0;
     spinner.finish_with_message(format!("Archive created ({size_mb:.2} MB)"));
 
-    // 8. Initialize review
+    // 9. Initialize review
     let client = ReviewApiClient::new(args.api_url.clone());
     let spinner = create_spinner("Initializing review...");
     let init_response = client.init(&args.pr_url, &email, &pr_info.title).await?;
     spinner.finish_with_message(format!("Review ID: {}", init_response.review_id));
 
-    // 9. Upload archive
+    // 10. Upload archive
     let spinner = create_spinner("Uploading archive...");
     client.upload(&init_response.upload_url, payload).await?;
     spinner.finish_with_message("Upload complete");
 
-    // 10. Start review
+    // 11. Start review
     let spinner = create_spinner("Starting review...");
     let codebase_url = format!("r2://{}", init_response.object_key);
     client
@@ -212,12 +215,12 @@ async fn run(args: Args) -> Result<(), ReviewError> {
             org: pr_info.owner,
             repo: pr_info.repo,
             codebase_url,
-            base_commit: pr_info.base_commit,
+            base_commit,
         })
         .await?;
     spinner.finish_with_message(format!("Review started, we'll send you an email at {} when the review is ready. This can take a few minutes, you may now close the terminal", email));
 
-    // 11. Poll for completion
+    // 12. Poll for completion
     let spinner = create_spinner("Review in progress...");
     let start_time = std::time::Instant::now();
 
