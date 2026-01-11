@@ -12,7 +12,7 @@ pub struct PrInfo {
     pub repo: String,
     pub title: String,
     pub description: String,
-    pub base_commit: String,
+    pub base_ref_name: String,
     pub head_commit: String,
     pub head_ref_name: String,
 }
@@ -23,7 +23,7 @@ pub struct PrInfo {
 struct GhPrView {
     title: String,
     body: String,
-    base_ref_oid: String,
+    base_ref_name: String,
     head_ref_oid: String,
     head_ref_name: String,
 }
@@ -97,7 +97,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
             "--repo",
             &format!("{owner}/{repo}"),
             "--json",
-            "title,body,baseRefOid,headRefOid,headRefName",
+            "title,body,baseRefName,headRefOid,headRefName",
         ])
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
@@ -125,7 +125,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
         repo: repo.to_string(),
         title: pr_view.title,
         description: pr_view.body,
-        base_commit: pr_view.base_ref_oid,
+        base_ref_name: pr_view.base_ref_name,
         head_commit: pr_view.head_ref_oid,
         head_ref_name: pr_view.head_ref_name,
     })
@@ -195,6 +195,38 @@ pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewEr
     }
 
     Ok(())
+}
+
+/// Resolve a branch name to its commit SHA
+///
+/// This fetches the remote branch and returns its commit SHA.
+/// Must be called after cloning the repository.
+pub fn resolve_branch_to_commit(branch_name: &str, repo_dir: &Path) -> Result<String, ReviewError> {
+    debug!(
+        "Resolving branch {branch_name} to commit in {}",
+        repo_dir.display()
+    );
+
+    // Get the commit SHA for origin/<branch_name>
+    let output = Command::new("git")
+        .args(["rev-parse", &format!("origin/{branch_name}")])
+        .current_dir(repo_dir)
+        .output()
+        .map_err(|e| {
+            ReviewError::PrInfoFailed(format!("Failed to resolve branch {branch_name}: {e}"))
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(ReviewError::PrInfoFailed(format!(
+            "Failed to resolve branch {branch_name}: {stderr}"
+        )));
+    }
+
+    let commit_sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    debug!("Resolved {branch_name} to {commit_sha}");
+
+    Ok(commit_sha)
 }
 
 #[cfg(test)]
