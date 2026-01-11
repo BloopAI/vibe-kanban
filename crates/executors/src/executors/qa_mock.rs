@@ -42,17 +42,24 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
         // 1. Perform file operations before spawning the log output process
         perform_file_operations(current_dir).await;
 
-        // 2. Build shell script that outputs JSON logs with 1-second delays
+        // 2. Generate mock logs and write to temp file to avoid shell escaping issues
         let logs = generate_mock_logs(prompt);
-        let script = logs
-            .iter()
-            .map(|log| {
-                // Escape single quotes for shell
-                let escaped = log.replace('\'', "'\\''");
-                format!("echo '{}'; sleep 1", escaped)
-            })
-            .collect::<Vec<_>>()
-            .join("; ");
+        let temp_dir = std::env::temp_dir();
+        let log_file = temp_dir.join(format!("qa_mock_logs_{}.jsonl", uuid::Uuid::new_v4()));
+
+        // Write all logs to file, one per line
+        let content = logs.join("\n") + "\n";
+        tokio::fs::write(&log_file, &content)
+            .await
+            .map_err(|e| ExecutorError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+
+        // 3. Create shell script that reads file and outputs with delays
+        // Using IFS= read -r to preserve exact content (no word splitting, no backslash interpretation)
+        let script = format!(
+            r#"while IFS= read -r line; do echo "$line"; sleep 1; done < "{}"; rm -f "{}""#,
+            log_file.display(),
+            log_file.display()
+        );
 
         let mut cmd = tokio::process::Command::new("sh");
         cmd.arg("-c")
