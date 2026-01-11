@@ -110,29 +110,11 @@ impl ProjectService {
             .await
             .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
 
-        let mut created_repo: Option<Repo> = None;
         for repo in &normalized_repos {
             let repo_entity =
                 Repo::find_or_create(pool, Path::new(&repo.git_repo_path), &repo.display_name)
                     .await?;
             ProjectRepo::create(pool, project.id, repo_entity.id).await?;
-            if created_repo.is_none() {
-                created_repo = Some(repo_entity);
-            }
-        }
-
-        if normalized_repos.len() == 1
-            && let Some(repo) = created_repo
-        {
-            Project::update(
-                pool,
-                project.id,
-                &UpdateProject {
-                    name: None,
-                    default_agent_working_dir: Some(repo.name),
-                },
-            )
-            .await?;
         }
 
         Ok(project)
@@ -203,11 +185,6 @@ impl ProjectService {
         let path = repo_service.normalize_path(&payload.git_repo_path)?;
         repo_service.validate_git_repo_path(&path)?;
 
-        // Count repos before adding
-        let repo_count_before = ProjectRepo::find_by_project_id(pool, project_id)
-            .await?
-            .len();
-
         let repository = ProjectRepo::add_repo_to_project(
             pool,
             project_id,
@@ -224,11 +201,6 @@ impl ProjectService {
             }
             _ => ProjectServiceError::RepositoryNotFound,
         })?;
-
-        // If project just went from 1 to 2 repos, clear default_agent_working_dir
-        if repo_count_before == 1 {
-            Project::clear_default_agent_working_dir(pool, project_id).await?;
-        }
 
         tracing::info!(
             "Added repository {} to project {} (path: {})",

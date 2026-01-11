@@ -31,13 +31,11 @@ import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
-  default_agent_working_dir: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
-    default_agent_working_dir: project.default_agent_working_dir ?? '',
   };
 }
 
@@ -294,8 +292,6 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        default_agent_working_dir:
-          draft.default_agent_working_dir.trim() || null,
       };
 
       updateProject.mutate({
@@ -426,26 +422,6 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.general.name.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="agent-working-dir">
-                  {t('settings.projects.agentWorkingDir.label')}
-                </Label>
-                <Input
-                  id="agent-working-dir"
-                  value={draft.default_agent_working_dir}
-                  onChange={(e) =>
-                    updateDraft({ default_agent_working_dir: e.target.value })
-                  }
-                  placeholder={t(
-                    'settings.projects.agentWorkingDir.placeholder'
-                  )}
-                  className="font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.agentWorkingDir.helper')}
                 </p>
               </div>
 
