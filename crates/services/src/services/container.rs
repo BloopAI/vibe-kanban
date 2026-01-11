@@ -22,7 +22,7 @@ use db::{
         project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
         session::{CreateSession, Session, SessionError},
-        task::{Task, TaskStatus},
+        task::{Task, TaskStatus, TaskType},
         workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
@@ -607,17 +607,19 @@ pub trait ContainerService {
         map.get(uuid).cloned()
     }
 
-    async fn git_branch_prefix(&self) -> String;
-
-    async fn git_branch_from_workspace(&self, workspace_id: &Uuid, task_title: &str) -> String {
+    fn git_branch_from_workspace(
+        &self,
+        workspace_id: &Uuid,
+        task_title: &str,
+        task_type: &TaskType,
+    ) -> String {
         let task_title_id = git_branch_id(task_title);
-        let prefix = self.git_branch_prefix().await;
-
-        if prefix.is_empty() {
-            format!("{}-{}", short_uuid(workspace_id), task_title_id)
-        } else {
-            format!("{}/{}-{}", prefix, short_uuid(workspace_id), task_title_id)
-        }
+        format!(
+            "{}/{}-{}",
+            task_type,
+            short_uuid(workspace_id),
+            task_title_id
+        )
     }
 
     async fn stream_raw_logs(
