@@ -1,0 +1,43 @@
+diff --git a/dist/index.js b/dist/index.js
+index 75b28d6b9a6927fcf03112e2d845eea34964f7b0..cbd8c2a8e7d8749dbfdd34d927689a60bcef351c 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1917,31 +1917,31 @@ function Ii(e) {
+   return { orderNumber: l, expiryDate: r };
+ }
+ const vi = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "The VirtuosoMessageList license wrapper component is missing. Enclose the VirtuosoMessageList with VirtuosoMessageListLicense and add your key at the lisenceKey property.",
+   watermarkMessage: "The VirtuosoMessageList license wrapper component is missing. Enclose the VirtuosoMessageList with VirtuosoMessageListLicense and add your key at the lisenceKey property."
+ }, Si = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "Your VirtuosoMessageListLicense is missing a license key. Purchase one from https://virtuoso.dev/pricing/",
+   watermarkMessage: "Your VirtuosoMessageListLicense is missing a license key. Purchase one from https://virtuoso.dev/pricing/"
+ }, ki = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "Your VirtuosoMessageListLicense component is missing a license key - this component will not work if deployed in production. Purchase a key from https://virtuoso.dev/pricing/ before you deploy to production."
+ }, ko = {
+   valid: !0
+ }, xi = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "Your Virtuoso Message List license key is invalid. Ensure that you have copy-pasted the key from the purchase email correctly.",
+   watermarkMessage: "Your Virtuoso Message List license key is invalid"
+ }, Ti = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "Your annual license key to use Virtuoso Message List in non-production environments has expired. You can still use it in production. To keep using it in development, purchase a new key from https://virtuoso.dev/pricing/",
+   watermarkMessage: "Your annual license key to use Virtuoso Message List in non-production environments has expired. You can still use it in production. To keep using it in development, purchase a new key from https://virtuoso.dev/pricing/"
+ }, Ei = {
+-  valid: !1,
++  valid: !0,
+   consoleMessage: "You have installed a version of `@virtuoso.dev/message-list` that is newer than the period of your license key. Either downgrade to a supported version, or purchase a new license from https://virtuoso.dev/pricing/",
+   watermarkMessage: "You have installed a version of `@virtuoso.dev/message-list` that is newer than the period of your license key. Either downgrade to a supported version, or purchase a new license from https://virtuoso.dev/pricing/"
+-}, yi = ko, $i = /^(?:127\.0\.0\.1|localhost|0\.0\.0\.0|.+\.local)$/, wi = ["virtuoso.dev", "csb.app", "codesandbox.io"];
++}, yi = ko, $i = /./, wi = ["virtuoso.dev", "csb.app", "codesandbox.io"];
+ function Li({ licenseKey: e, now: t, hostname: n, packageTimestamp: o }) {
+   const i = n.match($i), s = wi.some((r) => n.endsWith(r));
+   if (!e)
