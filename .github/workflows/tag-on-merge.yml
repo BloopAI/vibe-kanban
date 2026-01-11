@@ -1,0 +1,55 @@
+name: Tag Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    if: ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create tag from merged release PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const headRef = pr.head.ref;
+            // release branch format: release/vX.Y.Z -> tag: vX.Y.Z
+            const tagName = headRef.replace(/^release\\//, '');
+            const sha = pr.merge_commit_sha;
+
+            if (!tagName.startsWith('v')) {
+              throw new Error(`Unexpected release branch name: ${headRef}`);
+            }
+
+            if (!sha) {
+              throw new Error('Missing merge_commit_sha for merged PR.');
+            }
+
+            try {
+              // Skip if the tag already exists (e.g., re-run workflow).
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tagName}`,
+              });
+              console.log(`Tag ${tagName} already exists; skipping.`);
+              return;
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tagName}`,
+              sha,
+            });

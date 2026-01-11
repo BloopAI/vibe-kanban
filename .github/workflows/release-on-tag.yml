@@ -1,0 +1,333 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.13.1
+  RUST_TOOLCHAIN: nightly-2025-12-04
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Check i18n regressions
+        env:
+          GITHUB_BASE_REF: main
+        run: ./scripts/check-i18n.sh
+
+      - name: Format check frontend
+        run: cd frontend && npm run format:check
+
+      - name: Type check frontend
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        env:
+          RUST_CACHE_DEBUG: true
+        with:
+          workspaces: "."
+          cache-on-failure: true
+          shared-key: "shared"
+          cache-all-crates: true
+
+      - name: Install sqlx-cli
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: sqlite,postgres
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Checks
+        run: |
+          cargo fmt --all -- --check
+          npm run generate-types:check
+          npm run prepare-db:check
+          npm run remote:prepare-db:check
+          cargo test --workspace
+          cargo clippy --all --all-targets -- -D warnings
+
+  build-frontend:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  build-backend:
+    needs: [test, build-frontend]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-x64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-arm64
+          - target: x86_64-pc-windows-msvc
+            os: ubuntu-latest
+            name: windows-x64
+          - target: aarch64-pc-windows-msvc
+            os: ubuntu-latest
+            name: windows-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: macos-x64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: macos-arm64
+    env:
+      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang lld llvm nasm cmake ninja-build
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang-19 clang-tools-19 llvm-19 lld-19
+            echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
+          key: cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Install Zig
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
+        uses: BloopAI/setup-zig@main
+        with:
+          version: 0.15.2
+
+      - name: Install cargo zigbuild
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-zigbuild --version 0.20.1
+
+      - name: Install cargo xwin
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-xwin --version 0.20.2
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-0.20.2
+
+      - name: Build backend (Linux)
+        if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
+        run: |
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+
+      - name: Build backend (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=10.12
+          elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
+            export MACOSX_DEPLOYMENT_TARGET=11.0
+          fi
+          cargo build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+
+      - name: Build backend (Windows)
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: |
+          cargo xwin build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+        env:
+          CARGO_PROFILE_RELEASE_DEBUG: 0
+
+      - name: Package binaries
+        shell: bash
+        run: |
+          mkdir -p dist
+
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban.exe
+            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp.exe
+            cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review.exe
+
+            zip -j "dist/vibe-kanban-${{ matrix.name }}.zip" "dist/vibe-kanban.exe"
+            zip -j "dist/vibe-kanban-mcp-${{ matrix.name }}.zip" "dist/vibe-kanban-mcp.exe"
+            zip -j "dist/vibe-kanban-review-${{ matrix.name }}.zip" "dist/vibe-kanban-review.exe"
+          else
+            cp target/${{ matrix.target }}/release/server dist/vibe-kanban
+            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp
+            cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review
+
+            zip -j "dist/vibe-kanban-${{ matrix.name }}.zip" "dist/vibe-kanban"
+            zip -j "dist/vibe-kanban-mcp-${{ matrix.name }}.zip" "dist/vibe-kanban-mcp"
+            zip -j "dist/vibe-kanban-review-${{ matrix.name }}.zip" "dist/vibe-kanban-review"
+          fi
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-${{ matrix.name }}
+          path: dist/*.zip
+          retention-days: 1
+
+  release:
+    needs: [test, build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Download backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: backend-binary-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Package frontend
+        run: |
+          mkdir -p release-assets
+          mkdir -p vibe-kanban-${{ github.ref_name }}
+          cp -R frontend/dist vibe-kanban-${{ github.ref_name }}/dist
+          zip -r "release-assets/vibe-kanban-frontend-${{ github.ref_name }}.zip" "vibe-kanban-${{ github.ref_name }}"
+
+      - name: Generate manifest
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const manifest = { version: '${{ github.ref_name }}', platforms: {} };
+          const platforms = ['linux-x64', 'linux-arm64', 'windows-x64', 'windows-arm64', 'macos-x64', 'macos-arm64'];
+          const binaries = ['vibe-kanban', 'vibe-kanban-mcp', 'vibe-kanban-review'];
+
+          for (const platform of platforms) {
+            manifest.platforms[platform] = {};
+            for (const binary of binaries) {
+              const filePath = `release-assets/${binary}-${platform}.zip`;
+              if (fs.existsSync(filePath)) {
+                const data = fs.readFileSync(filePath);
+                manifest.platforms[platform][binary] = {
+                  sha256: crypto.createHash('sha256').update(data).digest('hex'),
+                  size: data.length
+                };
+              }
+            }
+          }
+
+          fs.writeFileSync('release-assets/manifest.json', JSON.stringify(manifest, null, 2));
+          NODE
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-assets/*
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Publish to npm
+        run: |
+          cd npx-cli
+          sed -i "s|__RELEASE_REPO__|${{ github.repository }}|g" bin/download.js
+          sed -i "s|__BINARY_TAG__|${{ github.ref_name }}|g" bin/download.js
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
