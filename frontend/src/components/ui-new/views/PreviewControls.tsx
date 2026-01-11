@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 import {
   PlayIcon,
   StopIcon,
@@ -28,7 +28,9 @@ interface PreviewControlsProps {
   url?: string;
   autoDetectedUrl?: string;
   isUsingOverride?: boolean;
-  onUrlChange?: (url: string) => void;
+  urlInputValue: string;
+  urlInputRef: RefObject<HTMLInputElement | null>;
+  onUrlInputChange: (value: string) => void;
   onClearOverride?: () => void;
   onViewFullLogs: () => void;
   onTabChange: (processId: string) => void;
@@ -52,7 +54,9 @@ export function PreviewControls({
   url,
   autoDetectedUrl,
   isUsingOverride,
-  onUrlChange,
+  urlInputValue,
+  urlInputRef,
+  onUrlInputChange,
   onClearOverride,
   onViewFullLogs,
   onTabChange,
@@ -70,17 +74,6 @@ export function PreviewControls({
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
 
-  // Local state for URL input to prevent WebSocket updates from disrupting typing
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [localValue, setLocalValue] = useState(url ?? '');
-
-  // Sync from prop only when input is not focused
-  useEffect(() => {
-    if (document.activeElement !== inputRef.current) {
-      setLocalValue(url ?? '');
-    }
-  }, [url]);
-
   return (
     <div
       className={cn(
@@ -97,13 +90,10 @@ export function PreviewControls({
           {(url || autoDetectedUrl) && (
             <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
               <input
-                ref={inputRef}
+                ref={urlInputRef}
                 type="text"
-                value={localValue}
-                onChange={(e) => {
-                  setLocalValue(e.target.value);
-                  onUrlChange?.(e.target.value);
-                }}
+                value={urlInputValue}
+                onChange={(e) => onUrlInputChange(e.target.value)}
                 placeholder={autoDetectedUrl ?? 'Enter URL...'}
                 className={cn(
                   'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',

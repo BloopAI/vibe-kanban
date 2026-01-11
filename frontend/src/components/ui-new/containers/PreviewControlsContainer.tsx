@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
@@ -57,6 +57,25 @@ export function PreviewControlsContainer({
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
 
+  // Local state for URL input to prevent WebSocket updates from disrupting typing
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
+
+  // Sync from prop only when input is not focused
+  useEffect(() => {
+    if (document.activeElement !== urlInputRef.current) {
+      setUrlInputValue(effectiveUrl ?? '');
+    }
+  }, [effectiveUrl]);
+
+  const handleUrlInputChange = useCallback(
+    (value: string) => {
+      setUrlInputValue(value);
+      setOverrideUrl(value);
+    },
+    [setOverrideUrl]
+  );
+
   const handleViewFullLogs = useCallback(
     (processId?: string) => {
       const targetId = processId ?? activeProcess?.id;
@@ -84,13 +103,6 @@ export function PreviewControlsContainer({
   const handleRefresh = useCallback(() => {
     triggerPreviewRefresh();
   }, [triggerPreviewRefresh]);
-
-  const handleUrlChange = useCallback(
-    (newUrl: string) => {
-      setOverrideUrl(newUrl);
-    },
-    [setOverrideUrl]
-  );
 
   const handleClearOverride = useCallback(async () => {
     await clearOverride();
@@ -145,7 +157,9 @@ export function PreviewControlsContainer({
       url={effectiveUrl ?? undefined}
       autoDetectedUrl={urlInfo?.url}
       isUsingOverride={hasOverride}
-      onUrlChange={handleUrlChange}
+      urlInputValue={urlInputValue}
+      urlInputRef={urlInputRef}
+      onUrlInputChange={handleUrlInputChange}
       onClearOverride={handleClearOverride}
       onViewFullLogs={handleViewFullLogs}
       onTabChange={handleTabChange}
