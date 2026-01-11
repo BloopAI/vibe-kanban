@@ -25,6 +25,12 @@ pub struct DraftFollowUpData {
     pub variant: Option<String>,
 }
 
+/// Data for a preview URL override scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct PreviewUrlOverrideData {
+    pub url: String,
+}
+
 /// Data for a draft workspace scratch (new workspace creation)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceData {
@@ -57,6 +63,7 @@ pub enum ScratchPayload {
     DraftTask(String),
     DraftFollowUp(DraftFollowUpData),
     DraftWorkspace(DraftWorkspaceData),
+    PreviewUrlOverride(PreviewUrlOverrideData),
 }
 
 impl ScratchPayload {

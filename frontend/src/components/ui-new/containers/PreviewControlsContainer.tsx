@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
+import { usePreviewUrlOverride } from '@/hooks/usePreviewUrlOverride';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -18,7 +19,7 @@ export function PreviewControlsContainer({
   onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
-  const { repos } = useWorkspaceContext();
+  const { repos, workspaceId } = useWorkspaceContext();
   const setLogsMode = useLayoutStore((s) => s.setLogsMode);
   const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
 
@@ -49,6 +50,17 @@ export function PreviewControlsContainer({
   const { logs: primaryLogs } = useLogStream(primaryDevServer?.id ?? '');
   const urlInfo = usePreviewUrl(primaryLogs);
 
+  // URL override for this workspace
+  const {
+    overrideUrl,
+    setOverrideUrl,
+    clearOverride,
+    hasOverride,
+  } = usePreviewUrlOverride(workspaceId);
+
+  // Use override URL if set, otherwise fall back to auto-detected
+  const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
+
   const handleViewFullLogs = useCallback(
     (processId?: string) => {
       const targetId = processId ?? activeProcess?.id;
@@ -77,17 +89,28 @@ export function PreviewControlsContainer({
     triggerPreviewRefresh();
   }, [triggerPreviewRefresh]);
 
+  const handleUrlChange = useCallback(
+    (newUrl: string) => {
+      setOverrideUrl(newUrl);
+    },
+    [setOverrideUrl]
+  );
+
+  const handleClearOverride = useCallback(async () => {
+    await clearOverride();
+  }, [clearOverride]);
+
   const handleCopyUrl = useCallback(async () => {
-    if (urlInfo?.url) {
-      await navigator.clipboard.writeText(urlInfo.url);
+    if (effectiveUrl) {
+      await navigator.clipboard.writeText(effectiveUrl);
     }
-  }, [urlInfo?.url]);
+  }, [effectiveUrl]);
 
   const handleOpenInNewTab = useCallback(() => {
-    if (urlInfo?.url) {
-      window.open(urlInfo.url, '_blank');
+    if (effectiveUrl) {
+      window.open(effectiveUrl, '_blank');
     }
-  }, [urlInfo?.url]);
+  }, [effectiveUrl]);
 
   const handleFixScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
@@ -123,7 +146,11 @@ export function PreviewControlsContainer({
       activeProcessId={activeProcess?.id ?? null}
       logs={logs}
       logsError={logsError}
-      url={urlInfo?.url}
+      url={effectiveUrl ?? undefined}
+      autoDetectedUrl={urlInfo?.url}
+      isUsingOverride={hasOverride}
+      onUrlChange={handleUrlChange}
+      onClearOverride={handleClearOverride}
       onViewFullLogs={handleViewFullLogs}
       onTabChange={handleTabChange}
       onStart={handleStart}
