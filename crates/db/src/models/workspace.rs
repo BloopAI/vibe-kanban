@@ -5,6 +5,9 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+/// Maximum length for auto-generated workspace names (derived from first user prompt)
+const WORKSPACE_NAME_MAX_LEN: usize = 60;
+
 use super::{
     project::Project,
     task::Task,
@@ -580,7 +583,7 @@ impl Workspace {
             if ws.workspace.name.is_none()
                 && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
             {
-                let name = Self::truncate_to_name(&prompt, 35);
+                let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
                 Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
                 ws.workspace.name = Some(name);
             }
@@ -667,7 +670,7 @@ impl Workspace {
         if ws.workspace.name.is_none()
             && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
         {
-            let name = Self::truncate_to_name(&prompt, 35);
+            let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
             Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
             ws.workspace.name = Some(name);
         }
