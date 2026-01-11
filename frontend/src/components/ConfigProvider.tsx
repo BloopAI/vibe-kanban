@@ -17,6 +17,7 @@ import {
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
 import { updateLanguageFromConfig } from '../i18n/config';
+import { loadGoogleFont } from '../hooks/useGoogleFonts';
 
 interface UserSystemState {
   config: Config | null;
@@ -90,6 +91,39 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateLanguageFromConfig(config.language);
     }
   }, [config?.language]);
+
+  // Sync font family when config changes
+  useEffect(() => {
+    if (config?.font_family) {
+      // Load custom font from Google Fonts and apply it
+      loadGoogleFont(config.font_family);
+      document.documentElement.style.setProperty(
+        '--font-family',
+        config.font_family
+      );
+      document.body.style.fontFamily = config.font_family;
+    } else {
+      // Reset to default (remove custom font styling)
+      document.documentElement.style.removeProperty('--font-family');
+      document.body.style.fontFamily = '';
+    }
+  }, [config?.font_family]);
+
+  // Sync font size when config changes
+  useEffect(() => {
+    if (config?.font_size) {
+      // Apply custom font size (in pixels)
+      document.documentElement.style.setProperty(
+        '--font-size-base',
+        `${config.font_size}px`
+      );
+      document.documentElement.style.fontSize = `${config.font_size}px`;
+    } else {
+      // Reset to default
+      document.documentElement.style.removeProperty('--font-size-base');
+      document.documentElement.style.fontSize = '';
+    }
+  }, [config?.font_size]);
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
