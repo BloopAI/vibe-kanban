@@ -120,6 +120,8 @@ fn generate_types_content() -> String {
         server::routes::tasks::ShareTaskResponse::decl(),
         server::routes::tasks::CreateAndStartTaskRequest::decl(),
         server::routes::task_attempts::pr::CreatePrApiRequest::decl(),
+        server::routes::tasks::BulkDeleteTasksRequest::decl(),
+        server::routes::tasks::BulkDeleteTasksResponse::decl(),
         server::routes::images::ImageResponse::decl(),
         server::routes::images::ImageMetadata::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
