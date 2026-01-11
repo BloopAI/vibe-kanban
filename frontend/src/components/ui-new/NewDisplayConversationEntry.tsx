@@ -572,9 +572,8 @@ function ToolSummaryEntry({
     }
   }, [summary, expanded]);
 
-  // Only Bash tools with output should open the logs panel
-  const isBash = toolName === 'Bash';
-  const hasOutput = isBash && content && content.trim().length > 0;
+  // Any tool with output can open the logs panel
+  const hasOutput = content && content.trim().length > 0;
 
   const handleViewContent = useCallback(() => {
     viewToolContentInPanel(toolName, content, command);
