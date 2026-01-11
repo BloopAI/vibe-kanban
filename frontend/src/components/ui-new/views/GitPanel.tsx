@@ -59,7 +59,7 @@ export function GitPanel({
       <CollapsibleSectionHeader
         title={t('common:sections.repositories')}
         persistKey={PERSIST_KEYS.gitPanelRepositories}
-        contentClassName="flex flex-col p-base gap-base"
+        contentClassName="flex flex-col p-base gap-base overflow-auto"
       >
         <div className="flex flex-col gap-base">
           {repos.map((repo) => (
