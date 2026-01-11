@@ -171,6 +171,14 @@ export function Navbar() {
                   : 'online'}
               </span>
             </a>
+            {project && (
+              <>
+                <NavDivider />
+                <span className="text-base text-muted-foreground truncate max-w-[200px]">
+                  {project.name}
+                </span>
+              </>
+            )}
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
