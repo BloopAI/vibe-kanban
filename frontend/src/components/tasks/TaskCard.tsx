@@ -83,7 +83,7 @@ export function TaskCard({
     <KanbanCard
       key={task.id}
       id={task.id}
-      name={task.title}
+      name={`${task.task_type}: ${task.title}`}
       index={index}
       parent={status}
       onClick={handleClick}
@@ -98,7 +98,7 @@ export function TaskCard({
     >
       <div className="flex flex-col gap-2">
         <TaskCardHeader
-          title={task.title}
+          title={`${task.task_type}: ${task.title}`}
           avatar={
             sharedTask
               ? {

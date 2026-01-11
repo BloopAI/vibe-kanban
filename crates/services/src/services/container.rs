@@ -20,7 +20,7 @@ use db::{
         },
         repo::Repo,
         session::{CreateSession, Session, SessionError},
-        task::{Task, TaskStatus},
+        task::{Task, TaskStatus, TaskType},
         workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
@@ -561,17 +561,19 @@ pub trait ContainerService {
         map.get(uuid).cloned()
     }
 
-    async fn git_branch_prefix(&self) -> String;
-
-    async fn git_branch_from_workspace(&self, workspace_id: &Uuid, task_title: &str) -> String {
+    fn git_branch_from_workspace(
+        &self,
+        workspace_id: &Uuid,
+        task_title: &str,
+        task_type: &TaskType,
+    ) -> String {
         let task_title_id = git_branch_id(task_title);
-        let prefix = self.git_branch_prefix().await;
-
-        if prefix.is_empty() {
-            format!("{}-{}", short_uuid(workspace_id), task_title_id)
-        } else {
-            format!("{}/{}-{}", prefix, short_uuid(workspace_id), task_title_id)
-        }
+        format!(
+            "{}/{}-{}",
+            task_type,
+            short_uuid(workspace_id),
+            task_title_id
+        )
     }
 
     async fn stream_raw_logs(
@@ -903,6 +905,7 @@ pub trait ContainerService {
         .await?;
 
         let prompt = task.to_prompt();
+        let user_input = task.to_display_content();
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -919,6 +922,7 @@ pub trait ContainerService {
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt,
+                user_input: Some(user_input),
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
             }),

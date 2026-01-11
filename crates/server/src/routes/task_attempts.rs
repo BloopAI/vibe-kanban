@@ -199,10 +199,10 @@ pub async fn create_task_attempt(
     };
 
     let attempt_id = Uuid::new_v4();
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&attempt_id, &task.title)
-        .await;
+    let git_branch_name =
+        deployment
+            .container()
+            .git_branch_from_workspace(&attempt_id, &task.title, &task.task_type);
 
     let workspace = Workspace::create(
         pool,
@@ -440,10 +440,8 @@ pub async fn merge_task_attempt(
         .parent_task(pool)
         .await?
         .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
-    let task_uuid_str = task.id.to_string();
-    let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 
-    let mut commit_message = format!("{} (vibe-kanban {})", task.title, first_uuid_section);
+    let mut commit_message = format!("{}: {}", task.task_type, task.title);
 
     // Add description on next line if it exists
     if let Some(description) = &task.description

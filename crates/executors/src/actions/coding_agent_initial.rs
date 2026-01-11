@@ -17,6 +17,10 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
+    /// Original user input before system instructions were appended.
+    /// Used for display purposes in the frontend.
+    #[serde(default)]
+    pub user_input: Option<String>,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]
     // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
