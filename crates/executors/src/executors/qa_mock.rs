@@ -5,9 +5,7 @@
 //! 2. Streams 10 mock log entries over 10 seconds
 //! 3. Outputs logs in ClaudeJson format for compatibility with existing log normalization
 
-use std::path::Path;
-use std::process::Stdio;
-use std::sync::Arc;
+use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;

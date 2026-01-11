@@ -27,6 +27,8 @@ use db::{
         workspace_repo::WorkspaceRepo,
     },
 };
+#[cfg(feature = "qa-mode")]
+use executors::executors::qa_mock::QaMockExecutor;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
@@ -37,8 +39,6 @@ use executors::{
     logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
-#[cfg(feature = "qa-mode")]
-use executors::executors::qa_mock::QaMockExecutor;
 use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
 use thiserror::Error;

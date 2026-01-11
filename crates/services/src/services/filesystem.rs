@@ -105,8 +105,13 @@ impl FilesystemService {
                 .map(PathBuf::from)
                 .unwrap_or_else(Self::get_home_directory);
             Self::verify_directory(&base_path)?;
-            self.list_git_repos_with_timeout(vec![base_path], timeout_ms, hard_timeout_ms, max_depth)
-                .await
+            self.list_git_repos_with_timeout(
+                vec![base_path],
+                timeout_ms,
+                hard_timeout_ms,
+                max_depth,
+            )
+            .await
         }
     }
 
@@ -162,7 +167,9 @@ impl FilesystemService {
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         #[cfg(feature = "qa-mode")]
         {
-            tracing::info!("QA mode: returning hardcoded QA repos instead of scanning common directories");
+            tracing::info!(
+                "QA mode: returning hardcoded QA repos instead of scanning common directories"
+            );
             return super::qa_repos::get_qa_repos();
         }
 

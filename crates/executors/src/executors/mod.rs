@@ -12,6 +12,8 @@ use thiserror::Error;
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
+#[cfg(feature = "qa-mode")]
+use crate::executors::qa_mock::QaMockExecutor;
 use crate::{
     actions::ExecutorAction,
     approvals::ExecutorApprovalService,
@@ -23,9 +25,6 @@ use crate::{
     },
     mcp_config::McpConfig,
 };
-
-#[cfg(feature = "qa-mode")]
-use crate::executors::qa_mock::QaMockExecutor;
 
 pub mod acp;
 pub mod amp;
