@@ -21,7 +21,7 @@ jobs:
             const pr = context.payload.pull_request;
             const headRef = pr.head.ref;
             // release branch format: release/vX.Y.Z -> tag: vX.Y.Z
-            const tagName = headRef.replace(/^release\\//, '');
+            const tagName = headRef.replace(/^release\//, '');
             const sha = pr.merge_commit_sha;
 
             if (!tagName.startsWith('v')) {
