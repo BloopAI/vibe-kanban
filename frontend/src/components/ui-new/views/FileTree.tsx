@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { GithubLogoIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
 import type { TreeNode } from '../types/fileTree';

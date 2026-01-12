@@ -36,7 +36,11 @@ export function CommentCard({
   return (
     <div className="p-base bg-panel font-sans text-base">
       <div
-        className={cn('p-base rounded-sm border', variantStyles[variant], className)}
+        className={cn(
+          'p-base rounded-sm border',
+          variantStyles[variant],
+          className
+        )}
       >
         {header && <div className="mb-half">{header}</div>}
         {children}

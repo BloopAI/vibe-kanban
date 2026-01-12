@@ -1,6 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CaretDownIcon, ChatCircleIcon, GithubLogoIcon } from '@phosphor-icons/react';
+import {
+  CaretDownIcon,
+  ChatCircleIcon,
+  GithubLogoIcon,
+} from '@phosphor-icons/react';
 import { DiffView, DiffModeEnum, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
 import { cn } from '@/lib/utils';
@@ -182,7 +186,8 @@ export function DiffViewCardWithComments({
   const { diffFile, additions, deletions, filePath, isValid } =
     useDiffData(input);
   const { comments, drafts, setDraft } = useReview();
-  const { showGitHubComments, getGitHubCommentsForFile } = useWorkspaceContext();
+  const { showGitHubComments, getGitHubCommentsForFile } =
+    useWorkspaceContext();
 
   // Open in IDE functionality
   const openInEditor = useOpenInEditor(attemptId);
@@ -230,7 +235,8 @@ export function DiffViewCardWithComments({
   }, [showGitHubComments, getGitHubCommentsForFile, filePath]);
 
   // Total comment count (user + GitHub)
-  const totalCommentCount = commentsForFile.length + githubCommentsForFile.length;
+  const totalCommentCount =
+    commentsForFile.length + githubCommentsForFile.length;
 
   // Transform comments to git-diff-view extendData format
   // The library expects { data: T } where T is the actual data

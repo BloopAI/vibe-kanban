@@ -32,11 +32,8 @@ export function FileTreeContainer({
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Get GitHub comments state from workspace context
-  const {
-    showGitHubComments,
-    setShowGitHubComments,
-    gitHubFileCommentCounts,
-  } = useWorkspaceContext();
+  const { showGitHubComments, setShowGitHubComments, gitHubFileCommentCounts } =
+    useWorkspaceContext();
 
   // Sync selectedPath with external selectedFilePath prop and scroll into view
   useEffect(() => {
