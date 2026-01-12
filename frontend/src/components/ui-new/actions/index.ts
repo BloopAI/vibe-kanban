@@ -181,6 +181,23 @@ function invalidateWorkspaceQueries(
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
 }
 
+// Helper to find the next workspace to navigate to when removing current workspace
+function getNextWorkspaceId(
+  activeWorkspaces: SidebarWorkspace[],
+  removingWorkspaceId: string
+): string | null {
+  const currentIndex = activeWorkspaces.findIndex(
+    (ws) => ws.id === removingWorkspaceId
+  );
+  if (currentIndex >= 0 && activeWorkspaces.length > 1) {
+    const nextWorkspace =
+      activeWorkspaces[currentIndex + 1] ||
+      activeWorkspaces[currentIndex - 1];
+    return nextWorkspace?.id ?? null;
+  }
+  return null;
+}
+
 // All application actions
 export const Actions = {
   // === Workspace Actions ===
@@ -243,18 +260,9 @@ export const Actions = {
       const wasArchived = workspace.archived;
 
       // Calculate next workspace before archiving
-      let nextWorkspaceId: string | null = null;
-      if (!wasArchived) {
-        const currentIndex = ctx.activeWorkspaces.findIndex(
-          (ws) => ws.id === workspaceId
-        );
-        if (currentIndex >= 0 && ctx.activeWorkspaces.length > 1) {
-          const nextWorkspace =
-            ctx.activeWorkspaces[currentIndex + 1] ||
-            ctx.activeWorkspaces[currentIndex - 1];
-          nextWorkspaceId = nextWorkspace?.id ?? null;
-        }
-      }
+      const nextWorkspaceId = !wasArchived
+        ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+        : null;
 
       // Perform the archive/unarchive
       await attemptsApi.update(workspaceId, { archived: !wasArchived });
@@ -284,11 +292,26 @@ export const Actions = {
         variant: 'destructive',
       });
       if (result === 'confirmed') {
+        // Calculate next workspace before deleting (only if deleting current)
+        const isCurrentWorkspace = ctx.currentWorkspaceId === workspaceId;
+        const nextWorkspaceId = isCurrentWorkspace
+          ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+          : null;
+
         await tasksApi.delete(workspace.task_id);
         ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
+
+        // Navigate away if we deleted the current workspace
+        if (isCurrentWorkspace) {
+          if (nextWorkspaceId) {
+            ctx.selectWorkspace(nextWorkspaceId);
+          } else {
+            ctx.navigate('/workspaces/create');
+          }
+        }
       }
     },
   },
