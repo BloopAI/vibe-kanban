@@ -27,6 +27,8 @@ use db::{
         workspace_repo::WorkspaceRepo,
     },
 };
+#[cfg(feature = "qa-mode")]
+use executors::executors::qa_mock::QaMockExecutor;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
@@ -754,16 +756,42 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor
-                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir));
+                    #[cfg(feature = "qa-mode")]
+                    {
+                        let executor = QaMockExecutor;
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
+                    #[cfg(not(feature = "qa-mode"))]
+                    {
+                        let executor = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_profile_id);
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor
-                        .normalize_logs(temp_store.clone(), &request.effective_dir(&current_dir));
+                    #[cfg(feature = "qa-mode")]
+                    {
+                        let executor = QaMockExecutor;
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
+                    #[cfg(not(feature = "qa-mode"))]
+                    {
+                        let executor = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_profile_id);
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
                 }
                 _ => {
                     tracing::debug!(
@@ -1118,15 +1146,23 @@ pub trait ContainerService {
                 _ => None,
             }
         {
-            if let Some(executor) =
-                ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
+            #[cfg(feature = "qa-mode")]
             {
+                let executor = QaMockExecutor;
                 executor.normalize_logs(msg_store, &working_dir);
-            } else {
-                tracing::error!(
-                    "Failed to resolve profile '{:?}' for normalization",
-                    executor_profile_id
-                );
+            }
+            #[cfg(not(feature = "qa-mode"))]
+            {
+                if let Some(executor) =
+                    ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
+                {
+                    executor.normalize_logs(msg_store, &working_dir);
+                } else {
+                    tracing::error!(
+                        "Failed to resolve profile '{:?}' for normalization",
+                        executor_profile_id
+                    );
+                }
             }
         }
 
