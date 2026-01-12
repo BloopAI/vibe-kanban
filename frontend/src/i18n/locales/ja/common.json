@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "ファイルを検索...",
     "noResults": "一致するファイルがありません",
-    "title": "ファイル"
+    "title": "ファイル",
+    "showGitHubComments": "GitHubコメントを表示",
+    "hideGitHubComments": "GitHubコメントを非表示"
   },
   "sections": {
     "changes": "変更",

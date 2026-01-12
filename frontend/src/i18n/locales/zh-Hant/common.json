@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",
     "noResults": "沒有匹配的檔案",
-    "title": "檔案"
+    "title": "檔案",
+    "showGitHubComments": "顯示 GitHub 評論",
+    "hideGitHubComments": "隱藏 GitHub 評論"
   },
   "sections": {
     "changes": "變更",

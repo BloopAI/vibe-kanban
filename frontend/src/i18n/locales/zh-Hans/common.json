@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "搜索文件...",
     "noResults": "没有匹配的文件",
-    "title": "文件"
+    "title": "文件",
+    "showGitHubComments": "显示 GitHub 评论",
+    "hideGitHubComments": "隐藏 GitHub 评论"
   },
   "sections": {
     "changes": "更改",
