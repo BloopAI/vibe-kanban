@@ -103,6 +103,7 @@ export function SessionChatBoxContainer({
 
   // Compute active account name
   const activeClaudeAccountName = useMemo(() => {
+    // Show active account when rotation is enabled
     if (!claudeAccountsData?.rotation_enabled || !claudeAccountsData?.current_account_id) {
       return null;
     }
@@ -111,6 +112,9 @@ export function SessionChatBoxContainer({
     );
     return activeAccount?.name || null;
   }, [claudeAccountsData]);
+
+  // Debug log
+  console.log('Claude accounts data:', claudeAccountsData, 'Active name:', activeClaudeAccountName);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
