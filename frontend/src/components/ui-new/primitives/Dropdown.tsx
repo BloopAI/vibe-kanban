@@ -158,6 +158,7 @@ const DropdownMenuItem = React.forwardRef<
       variant = 'default',
       preventFocusOnHover = false,
       onPointerMove,
+      onPointerLeave,
       children,
       ...props
     },
@@ -182,6 +183,14 @@ const DropdownMenuItem = React.forwardRef<
               onPointerMove?.(e);
             }
           : onPointerMove
+      }
+      onPointerLeave={
+        preventFocusOnHover
+          ? (e) => {
+              e.preventDefault();
+              onPointerLeave?.(e);
+            }
+          : onPointerLeave
       }
       {...props}
     >
