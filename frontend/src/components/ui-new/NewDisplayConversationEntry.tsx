@@ -668,9 +668,11 @@ function ScriptEntryWithFix({
 
     // Determine script type based on title
     const scriptType: ScriptType =
-      title === 'Setup Script' || title === 'Cleanup Script'
+      title === 'Setup Script'
         ? 'setup'
-        : 'dev_server';
+        : title === 'Cleanup Script'
+          ? 'cleanup'
+          : 'dev_server';
 
     ScriptFixerDialog.show({
       scriptType,

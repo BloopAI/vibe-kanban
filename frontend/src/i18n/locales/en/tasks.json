@@ -659,6 +659,7 @@
   "scriptFixer": {
     "title": "Fix Script",
     "setupScriptTitle": "Fix Setup Script",
+    "cleanupScriptTitle": "Fix Cleanup Script",
     "devServerTitle": "Fix Dev Server Script",
     "scriptLabel": "Script (edit)",
     "logsLabel": "Last Execution Logs",

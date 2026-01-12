@@ -28,7 +28,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';
 
-export type ScriptType = 'setup' | 'dev_server';
+export type ScriptType = 'setup' | 'cleanup' | 'dev_server';
 
 export interface ScriptFixerDialogProps {
   scriptType: ScriptType;
@@ -66,7 +66,12 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
     // Find the latest process for this script type
     const latestProcess = useMemo(() => {
-      const runReason = scriptType === 'setup' ? 'setupscript' : 'devserver';
+      const runReason =
+        scriptType === 'setup'
+          ? 'setupscript'
+          : scriptType === 'cleanup'
+            ? 'cleanupscript'
+            : 'devserver';
       const filtered = executionProcesses.filter(
         (p) => p.run_reason === runReason && !p.dropped
       );
@@ -114,7 +119,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           const scriptContent =
             scriptType === 'setup'
               ? (repo.setup_script ?? '')
-              : (repo.dev_server_script ?? '');
+              : scriptType === 'cleanup'
+                ? (repo.cleanup_script ?? '')
+                : (repo.dev_server_script ?? '');
 
           setScript(scriptContent);
           setOriginalScript(scriptContent);
@@ -161,7 +168,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             scriptType === 'setup'
               ? script.trim() || null
               : (selectedRepo?.setup_script ?? null),
-          cleanup_script: selectedRepo?.cleanup_script ?? null,
+          cleanup_script:
+            scriptType === 'cleanup'
+              ? script.trim() || null
+              : (selectedRepo?.cleanup_script ?? null),
           copy_files: selectedRepo?.copy_files ?? null,
           parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
           dev_server_script:
@@ -202,7 +212,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             scriptType === 'setup'
               ? script.trim() || null
               : (selectedRepo?.setup_script ?? null),
-          cleanup_script: selectedRepo?.cleanup_script ?? null,
+          cleanup_script:
+            scriptType === 'cleanup'
+              ? script.trim() || null
+              : (selectedRepo?.cleanup_script ?? null),
           copy_files: selectedRepo?.copy_files ?? null,
           parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
           dev_server_script:
@@ -221,6 +234,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         // Then run the script
         if (scriptType === 'setup') {
           await attemptsApi.runSetupScript(workspaceId);
+        } else if (scriptType === 'cleanup') {
+          await attemptsApi.runCleanupScript(workspaceId);
         } else {
           // Start the dev server
           await attemptsApi.startDevServer(workspaceId);
@@ -248,7 +263,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const dialogTitle =
       scriptType === 'setup'
         ? t('scriptFixer.setupScriptTitle')
-        : t('scriptFixer.devServerTitle');
+        : scriptType === 'cleanup'
+          ? t('scriptFixer.cleanupScriptTitle')
+          : t('scriptFixer.devServerTitle');
 
     return (
       <Dialog
@@ -302,7 +319,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                     placeholder={
                       scriptType === 'setup'
                         ? '#!/bin/bash\nnpm install'
-                        : '#!/bin/bash\nnpm run dev'
+                        : scriptType === 'cleanup'
+                          ? '#!/bin/bash\nrm -rf node_modules'
+                          : '#!/bin/bash\nnpm run dev'
                     }
                     disableInternalScroll
                   />
