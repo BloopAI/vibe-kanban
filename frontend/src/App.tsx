@@ -38,6 +38,7 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
 import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+import { TerminalProvider } from '@/contexts/TerminalContext';
 
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
@@ -184,7 +185,9 @@ function AppContent() {
               path="/workspaces"
               element={
                 <NewDesignScope>
-                  <NewDesignLayout />
+                  <TerminalProvider>
+                    <NewDesignLayout />
+                  </TerminalProvider>
                 </NewDesignScope>
               }
             >

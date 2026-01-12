@@ -19,6 +19,7 @@ import {
   ChatsTeardropIcon,
   GitDiffIcon,
   TerminalIcon,
+  TerminalWindowIcon,
   SignOutIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
@@ -575,6 +576,29 @@ export const Actions = {
     },
   },
 
+  ToggleTerminalMode: {
+    id: 'toggle-terminal-mode',
+    label: 'Toggle Terminal Panel',
+    icon: TerminalWindowIcon,
+    requiresTarget: false,
+    isVisible: (ctx) => !ctx.isCreateMode,
+    isActive: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.TERMINAL,
+    isEnabled: (ctx) => !ctx.isCreateMode && ctx.hasWorkspace,
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.TERMINAL
+        ? 'Hide Terminal Panel'
+        : 'Show Terminal Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.TERMINAL,
+          ctx.currentWorkspaceId ?? undefined
+        );
+    },
+  },
+
   // === Navigation Actions ===
   OpenInOldUI: {
     id: 'open-in-old-ui',
@@ -988,6 +1012,7 @@ export const NavbarActionGroups = {
     Actions.ToggleChangesMode,
     Actions.ToggleLogsMode,
     Actions.TogglePreviewMode,
+    Actions.ToggleTerminalMode,
     Actions.ToggleRightSidebar,
     NavbarDivider,
     Actions.OpenCommandBar,

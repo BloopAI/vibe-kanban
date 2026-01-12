@@ -7,6 +7,7 @@ export const RIGHT_MAIN_PANEL_MODES = {
   CHANGES: 'changes',
   LOGS: 'logs',
   PREVIEW: 'preview',
+  TERMINAL: 'terminal',
 } as const;
 
 export type RightMainPanelMode =
