@@ -36,6 +36,7 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useProjects,
 } from '@/hooks';
 import {
   useKeySubmitTask,
@@ -62,7 +63,7 @@ interface Task {
 }
 
 export type TaskFormDialogProps =
-  | { mode: 'create'; projectId: string }
+  | { mode: 'create'; projectId?: string; onSuccess?: () => void }
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
@@ -84,12 +85,25 @@ type TaskFormValues = {
 };
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
-  const { mode, projectId } = props;
+  const { mode, projectId: initialProjectId } = props;
   const editMode = mode === 'edit';
   const modal = useModal();
-  const { t } = useTranslation(['tasks', 'common']);
+  const { t } = useTranslation(['tasks', 'projects', 'common']);
+  const { projects } = useProjects();
+
+  // State for project selection when projectId is not provided
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(
+    initialProjectId
+  );
+
+  const projectId = selectedProjectId || '';
+
+  // Only navigate when projectId was initially provided (e.g., from Kanban)
+  // When creating from "All Tasks" screen, stay on that screen
+  const shouldNavigate = !!initialProjectId;
+
   const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId);
+    useTaskMutations(projectId, { shouldNavigate });
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
@@ -106,7 +120,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     editMode ? props.task.id : undefined
   );
   const { data: projectRepos = [] } = useProjectRepos(projectId, {
-    enabled: modal.visible,
+    enabled: modal.visible && !!projectId,
   });
   const initialBranch =
     mode === 'subtask' ? props.initialBaseBranch : undefined;
@@ -114,7 +128,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     useRepoBranchSelection({
       repos: projectRepos,
       initialBranch,
-      enabled: modal.visible && projectRepos.length > 0,
+      enabled: modal.visible && projectRepos.length > 0 && !!projectId,
     });
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {
@@ -203,15 +217,30 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             executor_profile_id: value.executorProfileId!,
             repos,
           },
-          { onSuccess: () => modal.remove() }
+          {
+            onSuccess: () => {
+              modal.remove();
+              if (mode === 'create' && props.onSuccess) {
+                props.onSuccess();
+              }
+            },
+          }
         );
       } else {
-        await createTask.mutateAsync(task, { onSuccess: () => modal.remove() });
+        await createTask.mutateAsync(task, {
+          onSuccess: () => {
+            modal.remove();
+            if (mode === 'create' && props.onSuccess) {
+              props.onSuccess();
+            }
+          },
+        });
       }
     }
   };
 
   const validator = (value: TaskFormValues): string | undefined => {
+    if (!initialProjectId && !editMode && !selectedProjectId) return 'need project';
     if (!value.title.trim().length) return 'need title';
     if (value.autoStart && !forceCreateOnlyRef.current) {
       if (!value.executorProfileId) return 'need executor profile';
@@ -418,6 +447,31 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   {t('taskFormDialog.dropImagesHere')}
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Project selector - only shown in create mode when no projectId provided */}
+          {!initialProjectId && !editMode && (
+            <div className="space-y-2">
+              <Label htmlFor="project-select" className="text-sm font-medium">
+                {t('projects:projectLabel')}
+              </Label>
+              <Select
+                value={selectedProjectId}
+                onValueChange={setSelectedProjectId}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="project-select">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

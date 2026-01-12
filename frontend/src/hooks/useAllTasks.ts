@@ -58,7 +58,8 @@ export function useAllTasks(
             console.error(`Failed to fetch tasks for project ${project.id}`);
             return [];
           }
-          const projectTasks: Task[] = await response.json();
+          const apiResponse = await response.json();
+          const projectTasks: Task[] = apiResponse.data || [];
           return projectTasks.map((task) => ({
             ...task,
             has_in_progress_attempt: false,

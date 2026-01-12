@@ -5,6 +5,7 @@ import {
   ArrowUpDown,
   Loader2,
   Plus,
+  RefreshCw,
   Search,
   X,
 } from 'lucide-react';
@@ -57,7 +58,7 @@ export function AllTasks() {
     direction: 'desc',
   });
 
-  const { tasks, isLoading, error, filteredTasks } = useAllTasks({
+  const { tasks, isLoading, error, filteredTasks, refetch } = useAllTasks({
     status: statusFilter === 'all' ? undefined : statusFilter,
     searchQuery: searchQuery || undefined,
     projectId: projectFilter === 'all' ? undefined : projectFilter,
@@ -99,15 +100,8 @@ export function AllTasks() {
   };
 
   const handleCreateTask = useCallback(() => {
-    const project =
-      projectFilter !== 'all'
-        ? projects.find((p) => p.id === projectFilter)
-        : projects[0];
-
-    if (project) {
-      openTaskForm({ mode: 'create', projectId: project.id });
-    }
-  }, [projects, projectFilter]);
+    openTaskForm({ mode: 'create', onSuccess: refetch });
+  }, [refetch]);
 
   const handleRowClick = useCallback(
     (task: TaskWithProject) => {
@@ -227,7 +221,7 @@ export function AllTasks() {
         const date = new Date(row.created_at);
         return (
           <div className="text-sm text-muted-foreground">
-            {date.toLocaleDateString()}
+            {date.toLocaleString()}
           </div>
         );
       },
@@ -240,11 +234,6 @@ export function AllTasks() {
     },
   ];
 
-  useEffect(() => {
-    if (projectFilter === 'all' && projects.length > 0) {
-      setProjectFilter(projects[0].id);
-    }
-  }, [projects, projectFilter]);
 
   const stats = useMemo(() => {
     const byStatus: Record<TaskStatus, number> = {
@@ -293,10 +282,15 @@ export function AllTasks() {
               </p>
             </div>
           </div>
-          <Button onClick={handleCreateTask}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={refetch} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={handleCreateTask}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Task
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
