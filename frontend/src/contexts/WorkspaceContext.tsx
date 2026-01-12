@@ -127,7 +127,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // GitHub comments toggle state (persisted)
   const [showGitHubComments, setShowGitHubComments] = usePersistedExpanded(
     PERSIST_KEYS.showGitHubComments,
-    false // Default to hidden
+    true // Default to shown
   );
 
   // Get first repo ID for PR comments.
