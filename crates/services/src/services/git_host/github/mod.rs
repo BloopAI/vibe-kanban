@@ -39,13 +39,16 @@ impl GitHubProvider {
     }
 
     /// Get repository info (owner and name) from a remote URL using `gh repo view <url>`.
+    /// The repo_path helps gh CLI determine the correct GitHub host for authentication.
     async fn get_repo_info_from_url(
         &self,
         remote_url: &str,
+        repo_path: &Path,
     ) -> Result<GitHubRepoInfo, GitHostError> {
         let cli = self.gh_cli.clone();
         let url = remote_url.to_string();
-        task::spawn_blocking(move || cli.get_repo_info_from_url(&url))
+        let path = repo_path.to_path_buf();
+        task::spawn_blocking(move || cli.get_repo_info_from_url(&url, &path))
             .await
             .map_err(|err| {
                 GitHostError::Repository(format!("Failed to get repo info from URL: {err}"))
@@ -191,7 +194,7 @@ impl From<GhCliError> for GitHostError {
 impl GitHostProvider for GitHubProvider {
     async fn create_pr(
         &self,
-        _repo_path: &Path,
+        repo_path: &Path,
         remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
@@ -201,7 +204,7 @@ impl GitHostProvider for GitHubProvider {
         // Get owner/repo from the remote URL using gh CLI.
         // This is critical for fork workflows: the remote_url should be the upstream repo,
         // not the fork, so the PR is created against the correct repository.
-        let repo_info = self.get_repo_info_from_url(remote_url).await?;
+        let repo_info = self.get_repo_info_from_url(remote_url, repo_path).await?;
 
         let cli = self.gh_cli.clone();
         let request_clone = request.clone();

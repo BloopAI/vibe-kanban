@@ -174,8 +174,17 @@ impl GhCli {
 
     /// Get repository info (owner and name) from a remote URL.
     /// Uses `gh repo view <url>` to parse the URL and fetch repo metadata.
-    pub fn get_repo_info_from_url(&self, remote_url: &str) -> Result<GitHubRepoInfo, GhCliError> {
-        let raw = self.run(["repo", "view", remote_url, "--json", "owner,name"], None)?;
+    /// The repo_path helps gh CLI determine the correct GitHub host for authentication
+    /// (important for GitHub Enterprise).
+    pub fn get_repo_info_from_url(
+        &self,
+        remote_url: &str,
+        repo_path: &Path,
+    ) -> Result<GitHubRepoInfo, GhCliError> {
+        let raw = self.run(
+            ["repo", "view", remote_url, "--json", "owner,name"],
+            Some(repo_path),
+        )?;
         Self::parse_repo_info_response(&raw)
     }
 
