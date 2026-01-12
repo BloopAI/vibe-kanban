@@ -342,7 +342,7 @@ export function WorkspacesLayout() {
     [renameBranch]
   );
 
-  // Compute diff stats from real diffs
+  // Compute aggregate diff stats from real diffs (for WorkspacesMainContainer)
   const diffStats = useMemo(
     () => ({
       filesChanged: realDiffs.length,
@@ -380,21 +380,33 @@ export function WorkspacesLayout() {
           }
         }
 
+        // Compute per-repo diff stats
+        const repoDiffs = realDiffs.filter((d) => d.repoId === repo.id);
+        const filesChanged = repoDiffs.length;
+        const linesAdded = repoDiffs.reduce(
+          (sum, d) => sum + (d.additions ?? 0),
+          0
+        );
+        const linesRemoved = repoDiffs.reduce(
+          (sum, d) => sum + (d.deletions ?? 0),
+          0
+        );
+
         return {
           id: repo.id,
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged: diffStats.filesChanged,
-          linesAdded: diffStats.linesAdded,
-          linesRemoved: diffStats.linesRemoved,
+          filesChanged,
+          linesAdded,
+          linesRemoved,
           prNumber,
           prUrl,
           prStatus,
         };
       }),
-    [repos, diffStats, branchStatus]
+    [repos, realDiffs, branchStatus]
   );
 
   // Content for logs panel (either process logs or tool content)

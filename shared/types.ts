@@ -124,7 +124,7 @@ contentOmitted: boolean,
 /**
  * Optional precomputed stats for omitted content
  */
-additions: number | null, deletions: number | null, };
+additions: number | null, deletions: number | null, repoId: string | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
