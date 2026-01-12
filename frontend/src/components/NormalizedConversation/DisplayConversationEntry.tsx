@@ -591,7 +591,11 @@ const ToolCallCard: React.FC<{
 };
 
 // Script tool names that can be fixed
-const SCRIPT_TOOL_NAMES = ['Setup Script', 'Cleanup Script', 'Tool Install Script'];
+const SCRIPT_TOOL_NAMES = [
+  'Setup Script',
+  'Cleanup Script',
+  'Tool Install Script',
+];
 
 const getScriptType = (toolName: string): ScriptType => {
   if (toolName === 'Setup Script') return 'setup';
