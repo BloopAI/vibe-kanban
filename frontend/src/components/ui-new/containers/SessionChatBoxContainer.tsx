@@ -99,7 +99,6 @@ export function SessionChatBoxContainer({
   const sessionId = session?.id;
   const queryClient = useQueryClient();
 
-  // Actions system
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
 

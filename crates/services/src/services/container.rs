@@ -766,10 +766,9 @@ pub trait ContainerService {
                         );
                     }
                 }
-                ExecutorActionType::ReviewRequest(request) => {
+                ExecutorActionType::ReviewRequest(_request) => {
                     #[cfg(feature = "qa-mode")]
                     {
-                        let _ = request;
                         let executor = QaMockExecutor;
                         executor.normalize_logs(temp_store.clone(), &current_dir);
                     }
