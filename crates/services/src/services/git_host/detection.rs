@@ -294,7 +294,10 @@ mod tests {
 
     #[test]
     fn test_parse_github_owner_repo_non_github() {
-        assert_eq!(parse_github_owner_repo("https://gitlab.com/owner/repo"), None);
+        assert_eq!(
+            parse_github_owner_repo("https://gitlab.com/owner/repo"),
+            None
+        );
         assert_eq!(
             parse_github_owner_repo("https://bitbucket.org/owner/repo"),
             None
