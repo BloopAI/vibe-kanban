@@ -642,6 +642,12 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
+          {/* Active Claude account indicator */}
+          {activeClaudeAccountName && (
+            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full ml-1" title="Active Claude Account">
+              {activeClaudeAccountName}
+            </span>
+          )}
         </>
       }
       footerRight={renderActionButtons()}
