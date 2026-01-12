@@ -11,7 +11,7 @@ use axum::{
 use deployment::{Deployment, DeploymentError};
 use executors::{
     claude_accounts::{ClaudeAccount, ClaudeAccountsConfig, spawn_login_terminal},
-    executors::claude::{get_current_account_index, set_current_account_index},
+    executors::claude::set_current_account_index,
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
@@ -550,9 +550,9 @@ async fn get_claude_accounts(
     let accounts: Vec<ClaudeAccountWithStatus> =
         config.accounts.iter().map(|a| a.into()).collect();
 
-    // Get the current account ID based on rotation index
+    // Get the current account ID based on persisted index in config
     let current_account_id = if config.rotation_enabled && !config.accounts.is_empty() {
-        let index = get_current_account_index() % config.accounts.len();
+        let index = config.current_account_index % config.accounts.len();
         Some(config.accounts[index].id.clone())
     } else {
         None
@@ -588,9 +588,9 @@ async fn update_claude_accounts(
     let accounts: Vec<ClaudeAccountWithStatus> =
         config.accounts.iter().map(|a| a.into()).collect();
 
-    // Get the current account ID based on rotation index
+    // Get the current account ID based on persisted index in config
     let current_account_id = if config.rotation_enabled && !config.accounts.is_empty() {
-        let index = get_current_account_index() % config.accounts.len();
+        let index = config.current_account_index % config.accounts.len();
         Some(config.accounts[index].id.clone())
     } else {
         None
@@ -675,14 +675,25 @@ async fn set_active_claude_account(
     State(_deployment): State<DeploymentImpl>,
     Path(id): Path<String>,
 ) -> ResponseJson<ApiResponse<ClaudeAccountsResponse>> {
-    let config = ClaudeAccountsConfig::load().await;
+    let mut config = ClaudeAccountsConfig::load().await;
 
     // Find the index of the account with the given ID
     let account_index = config.accounts.iter().position(|a| a.id == id);
 
     match account_index {
         Some(index) => {
+            // Update both the in-memory index and persist to config
             set_current_account_index(index);
+            config.current_account_index = index;
+
+            // Save the updated config
+            if let Err(e) = config.save().await {
+                return ResponseJson(ApiResponse::error(&format!(
+                    "Failed to save config: {}",
+                    e
+                )));
+            }
+
             let accounts: Vec<ClaudeAccountWithStatus> =
                 config.accounts.iter().map(|a| a.into()).collect();
 

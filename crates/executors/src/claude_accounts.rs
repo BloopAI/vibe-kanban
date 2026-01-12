@@ -57,6 +57,9 @@ pub struct ClaudeAccountsConfig {
     /// Whether to automatically rotate accounts on rate limit
     #[serde(default)]
     pub rotation_enabled: bool,
+    /// Current account index for rotation (persisted)
+    #[serde(default)]
+    pub current_account_index: usize,
 }
 
 impl ClaudeAccountsConfig {
@@ -161,26 +164,38 @@ impl ClaudeAccountsConfig {
     }
 
     /// Get the next available account for rotation (skips rate-limited accounts)
+    /// Uses the persisted current_account_index from config
     pub fn get_next_available_account(&self, current_index: &AtomicUsize) -> Option<&ClaudeAccount> {
         if self.accounts.is_empty() {
             return None;
         }
 
         let len = self.accounts.len();
-        let start = current_index.load(Ordering::Relaxed) % len;
+        // Use the persisted index from config as the source of truth
+        let start = self.current_account_index % len;
+        // Also sync the AtomicUsize for consistency
+        current_index.store(start, Ordering::Relaxed);
 
         // Try each account starting from current index
         for i in 0..len {
             let idx = (start + i) % len;
             let account = &self.accounts[idx];
             if account.is_logged_in() && !account.is_rate_limited() {
-                current_index.store(idx, Ordering::Relaxed);
                 return Some(account);
             }
         }
 
         // If all accounts are rate limited, return the first logged-in one
         self.accounts.iter().find(|a| a.is_logged_in())
+    }
+
+    /// Get the current account based on persisted index
+    pub fn get_current_account(&self) -> Option<&ClaudeAccount> {
+        if self.accounts.is_empty() {
+            return None;
+        }
+        let idx = self.current_account_index % self.accounts.len();
+        Some(&self.accounts[idx])
     }
 
     /// Mark an account as rate limited
