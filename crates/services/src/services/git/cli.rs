@@ -433,18 +433,10 @@ impl GitCli {
         }
 
         let output = self.git(repo_path, ["remote"])?;
-        let remotes: Vec<&str> = output
+        Ok(output
             .lines()
             .map(|l| l.trim())
-            .filter(|l| !l.is_empty())
-            .collect();
-
-        if remotes.contains(&"origin") {
-            return Ok("origin".to_string());
-        }
-
-        Ok(remotes
-            .first()
+            .find(|l| !l.is_empty())
             .map(|s| s.to_string())
             .unwrap_or_else(|| "origin".to_string()))
     }

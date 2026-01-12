@@ -195,14 +195,8 @@ impl GitService {
         }
 
         if let Ok(remotes) = repo.remotes() {
-            let remote_list: Vec<_> = remotes.iter().flatten().collect();
-
-            if remote_list.contains(&"origin") {
-                return "origin".to_string();
-            }
-
-            if let Some(first) = remote_list.first() {
-                return (*first).to_string();
+            if let Some(first) = remotes.iter().flatten().next() {
+                return first.to_string();
             }
         }
         "origin".to_string()
