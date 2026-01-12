@@ -104,6 +104,9 @@ export interface ActionVisibilityContext {
   hasMultipleRepos: boolean;
   hasOpenPR: boolean;
   hasUnpushedCommits: boolean;
+
+  // Execution state
+  isAttemptRunning: boolean;
 }
 
 // Base properties shared by all actions
@@ -727,6 +730,49 @@ export const Actions = {
         throw new Error('Failed to push changes');
       }
       invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  // === Script Actions ===
+  RunSetupScript: {
+    id: 'run-setup-script',
+    label: 'Run Setup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runSetupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No setup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run setup script');
+      }
+    },
+  },
+
+  RunCleanupScript: {
+    id: 'run-cleanup-script',
+    label: 'Run Cleanup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runCleanupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No cleanup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run cleanup script');
+      }
     },
   },
 } as const satisfies Record<string, ActionDefinition>;

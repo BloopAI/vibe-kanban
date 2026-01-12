@@ -6,6 +6,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
@@ -31,6 +32,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
+  const { isAttemptRunningVisible } = useExecutionProcessesContext();
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -79,6 +81,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       hasMultipleRepos: repos.length > 1,
       hasOpenPR,
       hasUnpushedCommits,
+      isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
     layout.isChangesMode,
@@ -98,6 +101,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     isStopping,
     runningDevServers,
     branchStatus,
+    isAttemptRunningVisible,
   ]);
 }
 

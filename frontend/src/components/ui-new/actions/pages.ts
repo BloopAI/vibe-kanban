@@ -110,6 +110,14 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.DeleteWorkspace },
         ],
       },
+      {
+        type: 'group',
+        label: 'Scripts',
+        items: [
+          { type: 'action', action: Actions.RunSetupScript },
+          { type: 'action', action: Actions.RunCleanupScript },
+        ],
+      },
     ],
   },
 
