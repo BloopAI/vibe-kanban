@@ -29,7 +29,7 @@ interface PreviewControlsProps {
   autoDetectedUrl?: string;
   isUsingOverride?: boolean;
   urlInputValue: string;
-  urlInputRef: RefObject<HTMLInputElement | null>;
+  urlInputRef: RefObject<HTMLInputElement>;
   onUrlInputChange: (value: string) => void;
   onClearOverride?: () => void;
   onViewFullLogs: () => void;
