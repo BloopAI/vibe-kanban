@@ -39,12 +39,17 @@ impl GitHubProvider {
     }
 
     /// Get repository info (owner and name) from a remote URL using `gh repo view <url>`.
-    async fn get_repo_info_from_url(&self, remote_url: &str) -> Result<GitHubRepoInfo, GitHostError> {
+    async fn get_repo_info_from_url(
+        &self,
+        remote_url: &str,
+    ) -> Result<GitHubRepoInfo, GitHostError> {
         let cli = self.gh_cli.clone();
         let url = remote_url.to_string();
         task::spawn_blocking(move || cli.get_repo_info_from_url(&url))
             .await
-            .map_err(|err| GitHostError::Repository(format!("Failed to get repo info from URL: {err}")))?
+            .map_err(|err| {
+                GitHostError::Repository(format!("Failed to get repo info from URL: {err}"))
+            })?
             .map_err(Into::into)
     }
 
