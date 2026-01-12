@@ -12,6 +12,7 @@ import {
   GitMergeIcon,
   CheckCircleIcon,
   SpinnerGapIcon,
+  WarningCircleIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -55,6 +56,7 @@ interface RepoCardProps {
   showPushButton?: boolean;
   isPushPending?: boolean;
   isPushSuccess?: boolean;
+  isPushError?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
@@ -78,6 +80,7 @@ export function RepoCard({
   showPushButton = false,
   isPushPending = false,
   isPushSuccess = false,
+  isPushError = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
@@ -219,21 +222,25 @@ export function RepoCard({
               {t('git.pr.open', { number: prNumber })}
             </span>
           )}
-          {/* Push button - shows loading/success state */}
-          {(showPushButton || isPushPending || isPushSuccess) && (
+          {/* Push button - shows loading/success/error state */}
+          {(showPushButton || isPushPending || isPushSuccess || isPushError) && (
             <button
               onClick={onPushClick}
-              disabled={isPushPending || isPushSuccess}
+              disabled={isPushPending || isPushSuccess || isPushError}
               className={`inline-flex items-center gap-half px-base py-half rounded-sm text-sm font-medium transition-colors disabled:cursor-not-allowed ${
                 isPushSuccess
                   ? 'bg-success/20 text-success'
-                  : 'bg-panel text-normal hover:bg-tertiary disabled:opacity-50'
+                  : isPushError
+                    ? 'bg-error/20 text-error'
+                    : 'bg-panel text-normal hover:bg-tertiary disabled:opacity-50'
               }`}
             >
               {isPushPending ? (
                 <SpinnerGapIcon className="size-icon-xs animate-spin" />
               ) : isPushSuccess ? (
                 <CheckCircleIcon className="size-icon-xs" weight="fill" />
+              ) : isPushError ? (
+                <WarningCircleIcon className="size-icon-xs" weight="fill" />
               ) : (
                 <ArrowUpIcon className="size-icon-xs" weight="bold" />
               )}
@@ -241,7 +248,9 @@ export function RepoCard({
                 ? t('git.states.pushing')
                 : isPushSuccess
                   ? t('git.states.pushed')
-                  : t('git.states.push')}
+                  : isPushError
+                    ? t('git.states.pushFailed')
+                    : t('git.states.push')}
             </button>
           )}
         </div>

@@ -26,6 +26,7 @@ export interface RepoInfo {
   showPushButton?: boolean;
   isPushPending?: boolean;
   isPushSuccess?: boolean;
+  isPushError?: boolean;
 }
 
 interface GitPanelProps {
@@ -84,6 +85,7 @@ export function GitPanel({
               showPushButton={repo.showPushButton}
               isPushPending={repo.isPushPending}
               isPushSuccess={repo.isPushSuccess}
+              isPushError={repo.isPushError}
               onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
               onRebase={() => onActionsClick?.(repo.id, 'rebase')}
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}

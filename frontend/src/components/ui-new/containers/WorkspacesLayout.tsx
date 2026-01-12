@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
-import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -28,7 +27,6 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
-import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
@@ -55,6 +53,8 @@ interface GitPanelContainerProps {
   onBranchNameChange: (name: string) => void;
 }
 
+type PushState = 'idle' | 'pending' | 'success' | 'error';
+
 function GitPanelContainer({
   selectedWorkspace,
   repos,
@@ -62,46 +62,35 @@ function GitPanelContainer({
   onBranchNameChange,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
-  const queryClient = useQueryClient();
 
-  // Track which repo is currently being pushed and which just succeeded
-  const [pushingRepoId, setPushingRepoId] = useState<string | null>(null);
-  const [pushSuccessRepoId, setPushSuccessRepoId] = useState<string | null>(
-    null
-  );
+  // Track push state per repo: idle, pending, success, or error
+  const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Use the push hook - isPending tells us when push is in progress
-  const pushMutation = usePush(
-    selectedWorkspace?.id,
-    // onSuccess - wait for query invalidation to complete, then show success
-    async () => {
-      const repoId = pushingRepoId;
-      // Wait for the branchStatus query to refetch
-      await queryClient.invalidateQueries({
-        queryKey: ['branchStatus', selectedWorkspace?.id],
-      });
-      setPushingRepoId(null);
-      // Show success feedback for 2 seconds
-      setPushSuccessRepoId(repoId);
-      setTimeout(() => setPushSuccessRepoId(null), 2000);
-    },
-    // onError - clear pending state
-    () => {
-      setPushingRepoId(null);
-    }
-  );
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Compute repoInfos with push button state
   const repoInfosWithPushButton = useMemo(
     () =>
-      repoInfos.map((repo) => ({
-        ...repo,
-        showPushButton:
-          repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0,
-        isPushPending: pushingRepoId === repo.id,
-        isPushSuccess: pushSuccessRepoId === repo.id,
-      })),
-    [repoInfos, pushingRepoId, pushSuccessRepoId]
+      repoInfos.map((repo) => {
+        const state = pushStates[repo.id] ?? 'idle';
+        return {
+          ...repo,
+          showPushButton:
+            repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0,
+          isPushPending: state === 'pending',
+          isPushSuccess: state === 'success',
+          isPushError: state === 'error',
+        };
+      }),
+    [repoInfos, pushStates]
   );
 
   // Handle copying repo path to clipboard
@@ -155,14 +144,36 @@ function GitPanelContainer({
     [selectedWorkspace, executeAction]
   );
 
-  // Handle push button click - use mutation with loading state
+  // Handle push button click - use action system with UI state tracking
   const handlePushClick = useCallback(
-    (repoId: string) => {
-      if (pushingRepoId) return; // Prevent multiple simultaneous pushes
-      setPushingRepoId(repoId);
-      pushMutation.mutate({ repo_id: repoId });
+    async (repoId: string) => {
+      if (!selectedWorkspace?.id) return;
+      if (pushStates[repoId] === 'pending') return; // Prevent multiple simultaneous pushes
+
+      // Clear any existing success timeout
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
+
+      setPushStates((prev) => ({ ...prev, [repoId]: 'pending' }));
+
+      try {
+        await executeAction(Actions.GitPush, selectedWorkspace.id, repoId);
+        setPushStates((prev) => ({ ...prev, [repoId]: 'success' }));
+        // Clear success state after 2 seconds
+        successTimeoutRef.current = setTimeout(() => {
+          setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+        }, 2000);
+      } catch {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
+        // Clear error state after 3 seconds
+        successTimeoutRef.current = setTimeout(() => {
+          setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+        }, 3000);
+      }
     },
-    [pushingRepoId, pushMutation]
+    [selectedWorkspace?.id, pushStates, executeAction]
   );
 
   return (

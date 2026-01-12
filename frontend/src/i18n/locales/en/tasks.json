@@ -352,6 +352,7 @@
       "pushed": "Pushed!",
       "pushing": "Pushing...",
       "push": "Push",
+      "pushFailed": "Failed",
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
