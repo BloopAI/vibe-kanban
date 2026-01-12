@@ -100,6 +100,8 @@ export interface ActionVisibilityContext {
   // Git panel state
   hasGitRepos: boolean;
   hasMultipleRepos: boolean;
+  hasOpenPR: boolean;
+  hasUnpushedCommits: boolean;
 }
 
 // Base properties shared by all actions
@@ -693,7 +695,11 @@ export const Actions = {
     label: 'Push',
     icon: ArrowUpIcon,
     requiresTarget: 'git',
-    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    isVisible: (ctx) =>
+      ctx.hasWorkspace &&
+      ctx.hasGitRepos &&
+      ctx.hasOpenPR &&
+      ctx.hasUnpushedCommits,
     execute: async (ctx, workspaceId, repoId) => {
       const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
       if (!result.success) {
