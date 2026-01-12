@@ -161,18 +161,19 @@ export type ActionDefinition =
   | WorkspaceActionDefinition
   | GitActionDefinition;
 
-// Helper to get workspace from query cache
-function getWorkspaceFromCache(
+// Helper to get workspace from query cache or fetch from API
+async function getWorkspace(
   queryClient: QueryClient,
   workspaceId: string
-): Workspace {
-  const workspace = queryClient.getQueryData<Workspace>(
+): Promise<Workspace> {
+  const cached = queryClient.getQueryData<Workspace>(
     attemptKeys.byId(workspaceId)
   );
-  if (!workspace) {
-    throw new Error('Workspace not found');
+  if (cached) {
+    return cached;
   }
-  return workspace;
+  // Fetch from API if not in cache
+  return attemptsApi.get(workspaceId);
 }
 
 // Helper to invalidate workspace-related queries
@@ -211,7 +212,7 @@ export const Actions = {
     icon: PencilSimpleIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
         workspaceId,
         currentName: workspace.name || workspace.branch,
@@ -225,7 +226,7 @@ export const Actions = {
     icon: PushPinIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await attemptsApi.update(workspaceId, {
         pinned: !workspace.pinned,
       });
@@ -242,7 +243,7 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const wasArchived = workspace.archived;
 
       // Calculate next workspace before archiving
@@ -277,7 +278,7 @@ export const Actions = {
     variant: 'destructive',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const result = await ConfirmDialog.show({
         title: 'Delete Workspace',
         message:
@@ -485,7 +486,7 @@ export const Actions = {
         return;
       }
 
-      const workspace = getWorkspaceFromCache(
+      const workspace = await getWorkspace(
         ctx.queryClient,
         ctx.currentWorkspaceId
       );
@@ -626,7 +627,7 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const task = await tasksApi.getById(workspace.task_id);
 
       const repos = await attemptsApi.getRepos(workspaceId);
