@@ -260,8 +260,16 @@ export function DiffViewCardWithComments({
     // you've likely addressed the GitHub feedback, so we hide the GitHub comment.
     githubCommentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
-      if (!newFileData[lineKey]) {
-        newFileData[lineKey] = { data: { type: 'github', comment } };
+      const entry: ExtendLineData = { type: 'github', comment };
+      // Place comment on correct side based on GitHub's side field
+      if (comment.side === SplitSide.old) {
+        if (!oldFileData[lineKey]) {
+          oldFileData[lineKey] = { data: entry };
+        }
+      } else {
+        if (!newFileData[lineKey]) {
+          newFileData[lineKey] = { data: entry };
+        }
       }
     });
 

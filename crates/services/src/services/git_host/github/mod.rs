@@ -352,6 +352,7 @@ impl GitHostProvider for GitHubProvider {
                 url: Some(c.html_url),
                 path: c.path,
                 line: c.line,
+                side: c.side,
                 diff_hunk: Some(c.diff_hunk),
             });
         }

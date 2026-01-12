@@ -160,9 +160,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         url: comment.url,
         filePath: comment.path,
         lineNumber: Number(comment.line),
-        // GitHub review comments always reference the new (changed) file side.
-        // The API doesn't include a side field - comments are on the lines being reviewed.
-        side: SplitSide.new,
+        // Use side from API: "LEFT" = old/deleted side, "RIGHT" = new/added side (default)
+        side: comment.side === 'LEFT' ? SplitSide.old : SplitSide.new,
         diffHunk: comment.diff_hunk,
       });
     }

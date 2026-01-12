@@ -531,6 +531,7 @@ impl AzCli {
                             url: None,
                             path: path.clone(),
                             line,
+                            side: None,
                             diff_hunk: None,
                         });
                     } else {
