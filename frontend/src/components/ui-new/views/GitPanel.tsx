@@ -25,6 +25,7 @@ export interface RepoInfo {
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   showPushButton?: boolean;
   isPushPending?: boolean;
+  isPushSuccess?: boolean;
 }
 
 interface GitPanelProps {
@@ -82,6 +83,7 @@ export function GitPanel({
               prStatus={repo.prStatus}
               showPushButton={repo.showPushButton}
               isPushPending={repo.isPushPending}
+              isPushSuccess={repo.isPushSuccess}
               onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
               onRebase={() => onActionsClick?.(repo.id, 'rebase')}
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}

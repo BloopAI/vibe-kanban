@@ -64,19 +64,26 @@ function GitPanelContainer({
   const { executeAction } = useActions();
   const queryClient = useQueryClient();
 
-  // Track which repo is currently being pushed
+  // Track which repo is currently being pushed and which just succeeded
   const [pushingRepoId, setPushingRepoId] = useState<string | null>(null);
+  const [pushSuccessRepoId, setPushSuccessRepoId] = useState<string | null>(
+    null
+  );
 
   // Use the push hook - isPending tells us when push is in progress
   const pushMutation = usePush(
     selectedWorkspace?.id,
-    // onSuccess - wait for query invalidation to complete before clearing pending state
+    // onSuccess - wait for query invalidation to complete, then show success
     async () => {
+      const repoId = pushingRepoId;
       // Wait for the branchStatus query to refetch
       await queryClient.invalidateQueries({
         queryKey: ['branchStatus', selectedWorkspace?.id],
       });
       setPushingRepoId(null);
+      // Show success feedback for 2 seconds
+      setPushSuccessRepoId(repoId);
+      setTimeout(() => setPushSuccessRepoId(null), 2000);
     },
     // onError - clear pending state
     () => {
@@ -92,8 +99,9 @@ function GitPanelContainer({
         showPushButton:
           repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0,
         isPushPending: pushingRepoId === repo.id,
+        isPushSuccess: pushSuccessRepoId === repo.id,
       })),
-    [repoInfos, pushingRepoId]
+    [repoInfos, pushingRepoId, pushSuccessRepoId]
   );
 
   // Handle copying repo path to clipboard
