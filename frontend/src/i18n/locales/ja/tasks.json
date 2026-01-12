@@ -585,6 +585,9 @@
       "discardChanges": "変更を破棄"
     }
   },
+  "terminal": {
+    "selectWorkspace": "ターミナルを開くにはワークスペースを選択してください"
+  },
   "restoreLogsDialog": {
     "title": "リトライを確認",
     "historyChange": {

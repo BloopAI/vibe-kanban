@@ -585,6 +585,9 @@
       "discardChanges": "Descartar Cambios"
     }
   },
+  "terminal": {
+    "selectWorkspace": "Selecciona un espacio de trabajo para abrir terminal"
+  },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
     "historyChange": {
