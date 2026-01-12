@@ -91,11 +91,13 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const isProcessCompleted = latestProcess?.status === 'completed';
     const isProcessKilled = latestProcess?.status === 'killed';
     const isProcessFailed = latestProcess?.status === 'failed';
+    // exit_code can be null (treat as success) or BigInt
+    const exitCode = latestProcess?.exit_code;
     const isProcessSuccessful =
-      isProcessCompleted && latestProcess?.exit_code === BigInt(0);
+      isProcessCompleted && (exitCode === null || exitCode === BigInt(0));
     const hasProcessError =
       isProcessFailed ||
-      (isProcessCompleted && latestProcess?.exit_code !== BigInt(0));
+      (isProcessCompleted && exitCode !== null && exitCode !== BigInt(0));
 
     // Fetch the selected repo's script
     useEffect(() => {
