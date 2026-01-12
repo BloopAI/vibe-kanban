@@ -19,11 +19,10 @@ use executors::actions::{
     ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
     coding_agent_initial::CodingAgentInitialRequest,
 };
-use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{GitCliError, GitServiceError},
+    git::{GitCli, GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
     },
@@ -223,10 +222,21 @@ pub async fn create_pr(
     let workspace_path = PathBuf::from(&container_ref);
     let worktree_path = workspace_path.join(&repo.name);
 
-    match deployment
-        .git()
-        .check_remote_branch_exists(&repo_path, &target_branch)
-    {
+    // Resolve remotes and branch names
+    let git = deployment.git();
+    let push_remote = git.default_remote_name_for_path(&repo_path)?;
+    let target_remote = git.get_remote_name_from_branch_name(&repo_path, &target_branch)?;
+
+    let push_remote_url = git.get_remote_url(&repo_path, &push_remote)?;
+    let target_remote_url = git.get_remote_url(&repo_path, &target_remote)?;
+
+    let base_branch = target_branch
+        .strip_prefix(&format!("{target_remote}/"))
+        .unwrap_or(&target_branch);
+
+    // Check target branch exists on remote
+    let git_cli = GitCli::new();
+    match git_cli.check_remote_branch_exists(&repo_path, &target_remote_url, base_branch) {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::TargetBranchNotFound {
@@ -234,25 +244,22 @@ pub async fn create_pr(
                 },
             )));
         }
-        Err(GitServiceError::GitCLI(GitCliError::AuthFailed(_))) => {
+        Err(GitCliError::AuthFailed(_)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotLoggedIn,
             )));
         }
-        Err(GitServiceError::GitCLI(GitCliError::NotAvailable)) => {
+        Err(GitCliError::NotAvailable) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotInstalled,
             )));
         }
-        Err(e) => return Err(ApiError::GitService(e)),
+        Err(e) => return Err(ApiError::GitService(e.into())),
         Ok(true) => {}
     }
 
-    // Push the branch to remote first
-    if let Err(e) = deployment
-        .git()
-        .push_to_remote(&worktree_path, &workspace.branch, false)
-    {
+    // Push the branch to remote
+    if let Err(e) = git.push_to_remote(&worktree_path, &workspace.branch, false) {
         tracing::error!("Failed to push branch to remote: {}", e);
         match e {
             GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => {
@@ -268,34 +275,6 @@ pub async fn create_pr(
             _ => return Err(ApiError::GitService(e)),
         }
     }
-
-    // For remote branches (e.g., "upstream/main"), extract the remote name and branch name.
-    // The target_remote_url is critical for fork workflows: the PR should be created
-    // against the upstream repo (target_branch's remote), not the fork.
-    let (norm_target_branch_name, target_remote_url) = if matches!(
-        deployment
-            .git()
-            .find_branch_type(&repo_path, &target_branch)?,
-        BranchType::Remote
-    ) {
-        // Remote branches are formatted as {remote}/{branch} locally.
-        // For PR APIs, we must provide just the branch name.
-        let remote = deployment
-            .git()
-            .get_remote_name_from_branch_name(&worktree_path, &target_branch)?;
-        let remote_url = deployment.git().get_remote_url(&repo_path, &remote)?;
-        let remote_prefix = format!("{}/", remote);
-        let branch_name = target_branch
-            .strip_prefix(&remote_prefix)
-            .unwrap_or(&target_branch)
-            .to_string();
-        (branch_name, remote_url)
-    } else {
-        let remote_url = deployment
-            .git()
-            .get_remote_url_from_branch_or_default(&repo_path, &target_branch)?;
-        (target_branch, remote_url)
-    };
 
     let git_host = match git_host::GitHostService::from_url(&target_remote_url) {
         Ok(host) => host,
@@ -314,21 +293,14 @@ pub async fn create_pr(
 
     let provider = git_host.provider_kind();
 
-    // Get the URL of the repo where the head branch lives (where we pushed).
-    // This may differ from target_remote_url in fork workflows.
-    let head_repo_url = deployment
-        .git()
-        .get_remote_url_from_branch_or_default(&worktree_path, &workspace.branch)
-        .ok();
-
     // Create the PR
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: workspace.branch.clone(),
-        base_branch: norm_target_branch_name.clone(),
+        base_branch: base_branch.to_string(),
         draft: request.draft,
-        head_repo_url,
+        head_repo_url: Some(push_remote_url),
     };
 
     match git_host
@@ -341,7 +313,7 @@ pub async fn create_pr(
                 pool,
                 workspace.id,
                 workspace_repo.repo_id,
-                &norm_target_branch_name,
+                base_branch,
                 pr_info.number,
                 &pr_info.url,
             )

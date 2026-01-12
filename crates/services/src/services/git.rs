@@ -208,6 +208,11 @@ impl GitService {
         "origin".to_string()
     }
 
+    pub fn default_remote_name_for_path(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(self.default_remote_name(&repo))
+    }
+
     /// Initialize a new git repository with a main branch and initial commit
     pub fn initialize_repo_with_main_branch(
         &self,
@@ -1461,36 +1466,6 @@ impl GitService {
                 Err(_) => Ok(false),
             },
         }
-    }
-
-    pub fn check_remote_branch_exists(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<bool, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        let (remote_name, stripped_branch_name) =
-            match self.find_branch_type(repo_path, branch_name) {
-                Ok(BranchType::Remote) => {
-                    let remote = self.get_remote_name_from_branch_name(repo_path, branch_name)?;
-                    let prefix = format!("{remote}/");
-                    let stripped = branch_name.strip_prefix(&prefix).unwrap_or(branch_name);
-                    (remote, stripped.to_string())
-                }
-                Ok(BranchType::Local) => (self.default_remote_name(&repo), branch_name.to_string()),
-                Err(e) => return Err(e),
-            };
-
-        let remote = repo.find_remote(&remote_name)?;
-        let remote_url = remote
-            .url()
-            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-
-        let git_cli = GitCli::new();
-        git_cli
-            .check_remote_branch_exists(repo_path, remote_url, &stripped_branch_name)
-            .map_err(|e| e.into())
     }
 
     pub fn rename_local_branch(
