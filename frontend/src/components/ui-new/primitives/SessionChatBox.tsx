@@ -579,12 +579,6 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
-          {/* Active Claude account indicator */}
-          {activeClaudeAccountName && (
-            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
-              {activeClaudeAccountName}
-            </span>
-          )}
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}

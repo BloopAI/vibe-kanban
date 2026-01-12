@@ -101,16 +101,24 @@ export function SessionChatBoxContainer({
     refetchInterval: 10000, // Poll every 10 seconds
   });
 
-  // Compute active account name
+  // Compute active account name - always show when rotation is enabled and we have accounts
   const activeClaudeAccountName = useMemo(() => {
-    // Show active account when rotation is enabled
-    if (!claudeAccountsData?.rotation_enabled || !claudeAccountsData?.current_account_id) {
+    // Only show when rotation is enabled
+    if (!claudeAccountsData?.rotation_enabled) {
       return null;
     }
-    const activeAccount = claudeAccountsData.accounts.find(
-      (a) => a.id === claudeAccountsData.current_account_id
-    );
-    return activeAccount?.name || null;
+    // If we have a current_account_id, find that account
+    if (claudeAccountsData?.current_account_id) {
+      const activeAccount = claudeAccountsData.accounts.find(
+        (a) => a.id === claudeAccountsData.current_account_id
+      );
+      return activeAccount?.name || null;
+    }
+    // If no current_account_id but we have accounts, show the first one
+    if (claudeAccountsData?.accounts?.length > 0) {
+      return claudeAccountsData.accounts[0].name;
+    }
+    return null;
   }, [claudeAccountsData]);
 
   // Get entries early to extract pending approval for scratch key
