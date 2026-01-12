@@ -108,6 +108,10 @@ export function PreviewControlsContainer({
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
   );
 
+  // Only show "Fix Script" button when the latest dev server process failed
+  const latestDevServerFailed =
+    devServerProcesses.length > 0 && devServerProcesses[0]?.status === 'failed';
+
   // Don't render if no repos have dev server scripts configured
   if (!hasDevScript) {
     return null;
@@ -127,7 +131,11 @@ export function PreviewControlsContainer({
       onRefresh={handleRefresh}
       onCopyUrl={handleCopyUrl}
       onOpenInNewTab={handleOpenInNewTab}
-      onFixScript={attemptId && repos.length > 0 ? handleFixScript : undefined}
+      onFixScript={
+        attemptId && repos.length > 0 && latestDevServerFailed
+          ? handleFixScript
+          : undefined
+      }
       isStarting={isStarting}
       isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}
