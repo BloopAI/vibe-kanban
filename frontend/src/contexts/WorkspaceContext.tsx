@@ -182,7 +182,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // Get comments for a specific file (handles prefixed paths)
   const getGitHubCommentsForFile = useCallback(
     (filePath: string): NormalizedGitHubComment[] => {
-      return normalizedComments.filter((c) => pathMatches(filePath, c.filePath));
+      return normalizedComments.filter((c) =>
+        pathMatches(filePath, c.filePath)
+      );
     },
     [normalizedComments, pathMatches]
   );
@@ -190,9 +192,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // Get comment count for a specific file (handles prefixed paths)
   const getGitHubCommentCountForFile = useCallback(
     (filePath: string): number => {
-      return normalizedComments.filter((c) =>
-        pathMatches(filePath, c.filePath)
-      ).length;
+      return normalizedComments.filter((c) => pathMatches(filePath, c.filePath))
+        .length;
     },
     [normalizedComments, pathMatches]
   );
