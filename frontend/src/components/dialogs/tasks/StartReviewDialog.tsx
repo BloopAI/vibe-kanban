@@ -113,7 +113,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
           queryKey: ['branchStatus', workspaceId],
         });
 
-        const createdNewSession = targetSessionId !== sessionId;
+        const createdNewSession = targetSessionId !== resolvedSessionId;
         onSuccess?.(createdNewSession ? targetSessionId : undefined);
         modal.hide();
       } catch (err) {
