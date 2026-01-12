@@ -92,7 +92,8 @@
       "item2": "您的開發伺服器是否以格式將 URL 與連接埠輸出到終端機",
       "item2Suffix": "？（這是我們判斷它是否在執行的方式）",
       "item3": "您是否安裝了 Web Companion（點擊編輯所需）？如果沒有，請",
-      "item3Link": "依照此處的安裝說明操作"
+      "item3Link": "依照此處的安裝說明操作",
+      "fixScript": "修復開發腳本"
     },
     "noServer": {
       "title": "沒有執行中的開發伺服器",
@@ -102,7 +103,8 @@
       "companionLink": "查看安裝指南",
       "startButton": "啟動開發伺服器",
       "configureButton": "設定",
-      "stopAndEditButton": "停止開發伺服器並解決問題"
+      "stopAndEditButton": "停止開發伺服器並解決問題",
+      "fixScript": "修復開發腳本"
     },
     "devScript": {
       "saveAndStart": "儲存並啟動",
@@ -655,5 +657,24 @@
       "deleted": "已刪除",
       "renamed": "已重新命名"
     }
+  },
+  "scriptFixer": {
+    "title": "修復腳本",
+    "setupScriptTitle": "修復設定腳本",
+    "cleanupScriptTitle": "修復清理腳本",
+    "devServerTitle": "修復開發伺服器腳本",
+    "scriptLabel": "腳本（編輯）",
+    "logsLabel": "上次執行日誌",
+    "saveButton": "儲存",
+    "saveAndTestButton": "儲存並測試",
+    "saving": "儲存中...",
+    "testing": "測試中...",
+    "noLogs": "沒有可用的執行日誌",
+    "selectRepo": "儲存庫",
+    "fixScript": "修復腳本",
+    "statusRunning": "執行中...",
+    "statusSuccess": "成功完成",
+    "statusFailed": "失敗，結束代碼 {{exitCode}}",
+    "statusKilled": "程序已被終止"
   }
 }

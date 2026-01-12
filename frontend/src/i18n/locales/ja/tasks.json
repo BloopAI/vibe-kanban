@@ -360,7 +360,8 @@
       "startButton": "開発サーバーを開始",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
       "stopAndEditButton": "開発サーバーを停止して問題を解決",
-      "title": "開発サーバーが実行されていません"
+      "title": "開発サーバーが実行されていません",
+      "fixScript": "開発スクリプトを修正"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -378,7 +379,8 @@
       "item2Suffix": "？（これにより実行中であることを認識します）",
       "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
       "item3Link": "こちらのインストール手順に従ってください",
-      "title": "アプリケーションのプレビューに問題があります："
+      "title": "アプリケーションのプレビューに問題があります：",
+      "fixScript": "開発スクリプトを修正"
     }
   },
   "processes": {
@@ -655,5 +657,24 @@
       "deleted": "削除済み",
       "renamed": "名前変更済み"
     }
+  },
+  "scriptFixer": {
+    "title": "スクリプトを修正",
+    "setupScriptTitle": "セットアップスクリプトを修正",
+    "cleanupScriptTitle": "クリーンアップスクリプトを修正",
+    "devServerTitle": "開発サーバースクリプトを修正",
+    "scriptLabel": "スクリプト（編集）",
+    "logsLabel": "最後の実行ログ",
+    "saveButton": "保存",
+    "saveAndTestButton": "保存してテスト",
+    "saving": "保存中...",
+    "testing": "テスト中...",
+    "noLogs": "利用可能な実行ログがありません",
+    "selectRepo": "リポジトリ",
+    "fixScript": "スクリプトを修正",
+    "statusRunning": "実行中...",
+    "statusSuccess": "正常に完了しました",
+    "statusFailed": "終了コード {{exitCode}} で失敗しました",
+    "statusKilled": "プロセスが強制終了されました"
   }
 }

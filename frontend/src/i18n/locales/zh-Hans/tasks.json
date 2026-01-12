@@ -92,7 +92,8 @@
       "item2": "您的开发服务器是否以格式打印 URL 和端口到终端",
       "item2Suffix": "？（这就是我们如何知道它正在运行）",
       "item3": "您是否安装了 Web Companion（点击编辑所需）？如果没有，请",
-      "item3Link": "按照此处的安装说明操作"
+      "item3Link": "按照此处的安装说明操作",
+      "fixScript": "修复开发脚本"
     },
     "noServer": {
       "title": "没有运行开发服务器",
@@ -102,7 +103,8 @@
       "companionLink": "查看安装指南",
       "startButton": "启动开发服务器",
       "configureButton": "配置",
-      "stopAndEditButton": "停止开发服务器并解决问题"
+      "stopAndEditButton": "停止开发服务器并解决问题",
+      "fixScript": "修复开发脚本"
     },
     "devScript": {
       "saveAndStart": "保存并启动",
@@ -655,5 +657,24 @@
     "updatedTodos": "更新的待办事项",
     "viewInChangesPanel": "在更改面板中查看",
     "unableToRenderDiff": "无法显示差异。"
+  },
+  "scriptFixer": {
+    "title": "修复脚本",
+    "setupScriptTitle": "修复设置脚本",
+    "cleanupScriptTitle": "修复清理脚本",
+    "devServerTitle": "修复开发服务器脚本",
+    "scriptLabel": "脚本（编辑）",
+    "logsLabel": "上次执行日志",
+    "saveButton": "保存",
+    "saveAndTestButton": "保存并测试",
+    "saving": "保存中...",
+    "testing": "测试中...",
+    "noLogs": "没有可用的执行日志",
+    "selectRepo": "仓库",
+    "fixScript": "修复脚本",
+    "statusRunning": "运行中...",
+    "statusSuccess": "成功完成",
+    "statusFailed": "失败，退出代码 {{exitCode}}",
+    "statusKilled": "进程已被终止"
   }
 }

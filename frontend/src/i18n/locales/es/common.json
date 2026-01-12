@@ -60,7 +60,8 @@
       "ranCommand": "Ejecutó comando",
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
-    }
+    },
+    "fixScript": "Corregir Script"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"

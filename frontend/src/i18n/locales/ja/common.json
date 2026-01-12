@@ -60,7 +60,8 @@
       "ranCommand": "コマンドを実行",
       "createdTask": "タスクを作成: {{description}}",
       "todoOperation": "{{operation}} Todo"
-    }
+    },
+    "fixScript": "スクリプトを修正"
   },
   "language": {
     "browserDefault": "ブラウザ設定"

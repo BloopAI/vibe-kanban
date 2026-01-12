@@ -352,7 +352,8 @@
       "startButton": "개발 서버 시작",
       "startPrompt": "미리보기를 보려면 개발 서버를 시작하세요",
       "stopAndEditButton": "개발 서버 중지 및 문제 해결",
-      "title": "실행 중인 개발 서버 없음"
+      "title": "실행 중인 개발 서버 없음",
+      "fixScript": "개발 스크립트 수정"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -370,7 +371,8 @@
       "item2Suffix": "? (이것이 실행 중임을 아는 방법입니다)",
       "item3": "Web Companion(클릭하여 편집에 필요)을 설치했나요? 설치하지 않았다면",
       "item3Link": "여기의 설치 지침을 따르세요",
-      "title": "애플리케이션 미리보기에 문제가 발생했습니다:"
+      "title": "애플리케이션 미리보기에 문제가 발생했습니다:",
+      "fixScript": "개발 스크립트 수정"
     },
     "browser": {
       "title": "개발 서버 미리보기",
@@ -655,5 +657,24 @@
       "deleted": "삭제됨",
       "renamed": "이름 변경됨"
     }
+  },
+  "scriptFixer": {
+    "title": "스크립트 수정",
+    "setupScriptTitle": "설정 스크립트 수정",
+    "cleanupScriptTitle": "정리 스크립트 수정",
+    "devServerTitle": "개발 서버 스크립트 수정",
+    "scriptLabel": "스크립트 (편집)",
+    "logsLabel": "마지막 실행 로그",
+    "saveButton": "저장",
+    "saveAndTestButton": "저장 및 테스트",
+    "saving": "저장 중...",
+    "testing": "테스트 중...",
+    "noLogs": "실행 로그가 없습니다",
+    "selectRepo": "저장소",
+    "fixScript": "스크립트 수정",
+    "statusRunning": "실행 중...",
+    "statusSuccess": "성공적으로 완료됨",
+    "statusFailed": "종료 코드 {{exitCode}}(으)로 실패함",
+    "statusKilled": "프로세스가 종료되었습니다"
   }
 }
