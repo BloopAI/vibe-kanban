@@ -30,6 +30,7 @@ import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -86,17 +87,24 @@ function GitPanelContainer({
       }, 2000);
     },
     // onError
-    (err, errorData) => {
+    async (err, errorData) => {
       const repoId = currentPushRepoRef.current;
       if (!repoId) return;
+
+      // Handle force push required - show confirmation dialog
+      if (errorData?.type === 'force_push_required' && selectedWorkspace?.id) {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+        await ForcePushDialog.show({
+          attemptId: selectedWorkspace.id,
+          repoId,
+        });
+        return;
+      }
+
+      // Show error state and dialog for other errors
       setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
-      // Show error dialog
       const message =
-        errorData?.type === 'force_push_required'
-          ? 'Force push required. The remote branch has diverged.'
-          : err instanceof Error
-            ? err.message
-            : 'Failed to push changes';
+        err instanceof Error ? err.message : 'Failed to push changes';
       ConfirmDialog.show({
         title: 'Error',
         message,
