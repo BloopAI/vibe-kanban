@@ -38,7 +38,6 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
     icon: GitPullRequestIcon,
   },
   { value: 'merge', label: 'Merge', icon: GitMergeIcon },
-  { value: 'push', label: 'Push', icon: ArrowUpIcon },
 ];
 
 interface RepoCardProps {
@@ -210,6 +209,16 @@ export function RepoCard({
               <GitPullRequestIcon className="size-icon-xs" weight="fill" />
               {t('git.pr.open', { number: prNumber })}
             </span>
+          )}
+          {/* Push button - show when PR is open and there are commits ahead */}
+          {prStatus === 'open' && commitsAhead > 0 && (
+            <button
+              onClick={() => onActionsClick?.('push')}
+              className="inline-flex items-center gap-half px-base py-half rounded-sm bg-brand-primary text-on-brand hover:bg-brand-primary-hover text-sm font-medium transition-colors"
+            >
+              <ArrowUpIcon className="size-icon-xs" weight="bold" />
+              {t('git.states.push')}
+            </button>
           )}
         </div>
       )}
