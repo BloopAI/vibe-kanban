@@ -75,7 +75,7 @@ async fn list_reactions(
     Extension(ctx): Extension<RequestContext>,
     Path(comment_id): Path<Uuid>,
 ) -> Result<Json<ListReactionsResponse>, ErrorResponse> {
-    let comment = TaskCommentRepository::fetch_by_id(state.pool(), comment_id)
+    let comment = TaskCommentRepository::find_by_id(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %comment_id, "failed to load comment");
@@ -85,7 +85,7 @@ async fn list_reactions(
 
     ensure_task_access(&state, &ctx, comment.task_id).await?;
 
-    let reactions = TaskCommentReactionRepository::fetch_by_comment(state.pool(), comment_id)
+    let reactions = TaskCommentReactionRepository::list_by_comment(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %comment_id, "failed to list reactions");
@@ -112,7 +112,7 @@ async fn create_reaction(
     Path(comment_id): Path<Uuid>,
     Json(payload): Json<CreateReactionRequest>,
 ) -> Result<Json<TaskCommentReactionResponse>, ErrorResponse> {
-    let comment = TaskCommentRepository::fetch_by_id(state.pool(), comment_id)
+    let comment = TaskCommentRepository::find_by_id(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %comment_id, "failed to load comment");
@@ -122,17 +122,13 @@ async fn create_reaction(
 
     ensure_task_access(&state, &ctx, comment.task_id).await?;
 
-    let reaction = TaskCommentReactionRepository::create_with_pool(
-        state.pool(),
-        comment_id,
-        ctx.user.id,
-        payload.emoji,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to create reaction");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
+    let reaction =
+        TaskCommentReactionRepository::create(state.pool(), comment_id, ctx.user.id, payload.emoji)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create reaction");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     Ok(Json(to_reaction_response(reaction)))
 }
@@ -147,7 +143,7 @@ async fn delete_reaction(
     Extension(ctx): Extension<RequestContext>,
     Path(reaction_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let reaction = TaskCommentReactionRepository::fetch_by_id(state.pool(), reaction_id)
+    let reaction = TaskCommentReactionRepository::find_by_id(state.pool(), reaction_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %reaction_id, "failed to load reaction");
@@ -162,7 +158,7 @@ async fn delete_reaction(
         ));
     }
 
-    let comment = TaskCommentRepository::fetch_by_id(state.pool(), reaction.comment_id)
+    let comment = TaskCommentRepository::find_by_id(state.pool(), reaction.comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, comment_id = %reaction.comment_id, "failed to load comment");
@@ -172,7 +168,7 @@ async fn delete_reaction(
 
     ensure_task_access(&state, &ctx, comment.task_id).await?;
 
-    TaskCommentReactionRepository::delete_with_pool(state.pool(), reaction_id)
+    TaskCommentReactionRepository::delete(state.pool(), reaction_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete reaction");

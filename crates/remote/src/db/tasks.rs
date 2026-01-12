@@ -158,7 +158,7 @@ impl<'a> SharedTaskRepository<'a> {
 
         ensure_text_size(&title, description.as_deref())?;
 
-        let project = ProjectRepository::find_by_id(&mut tx, project_id)
+        let project = ProjectRepository::find_by_id(&mut *tx, project_id)
             .await?
             .ok_or_else(|| {
                 tracing::warn!(%project_id, "remote project not found when creating shared task");

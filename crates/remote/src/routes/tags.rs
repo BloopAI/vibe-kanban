@@ -57,7 +57,7 @@ async fn ensure_project_access(
     ctx: &RequestContext,
     project_id: Uuid,
 ) -> Result<(), ErrorResponse> {
-    let project = RemoteProjectRepository::fetch_by_id(state.pool(), project_id)
+    let project = RemoteProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -81,7 +81,7 @@ async fn list_tags(
 ) -> Result<Json<ListTagsResponse>, ErrorResponse> {
     ensure_project_access(&state, &ctx, project_id).await?;
 
-    let tags = TagRepository::fetch_by_project(state.pool(), project_id)
+    let tags = TagRepository::list_by_project(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to list tags");
@@ -107,13 +107,12 @@ async fn create_tag(
 ) -> Result<Json<TagResponse>, ErrorResponse> {
     ensure_project_access(&state, &ctx, project_id).await?;
 
-    let tag =
-        TagRepository::create_with_pool(state.pool(), project_id, payload.name, payload.color)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to create tag");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
+    let tag = TagRepository::create(state.pool(), project_id, payload.name, payload.color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to create tag");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
     Ok(Json(to_tag_response(tag)))
 }
@@ -129,7 +128,7 @@ async fn update_tag(
     Path(tag_id): Path<Uuid>,
     Json(payload): Json<UpdateTagRequest>,
 ) -> Result<Json<TagResponse>, ErrorResponse> {
-    let tag = TagRepository::fetch_by_id(state.pool(), tag_id)
+    let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %tag_id, "failed to load tag");
@@ -139,13 +138,12 @@ async fn update_tag(
 
     ensure_project_access(&state, &ctx, tag.project_id).await?;
 
-    let updated_tag =
-        TagRepository::update_with_pool(state.pool(), tag_id, payload.name, payload.color)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to update tag");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
+    let updated_tag = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update tag");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
     Ok(Json(to_tag_response(updated_tag)))
 }
@@ -160,7 +158,7 @@ async fn delete_tag(
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let tag = TagRepository::fetch_by_id(state.pool(), tag_id)
+    let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %tag_id, "failed to load tag");
@@ -170,7 +168,7 @@ async fn delete_tag(
 
     ensure_project_access(&state, &ctx, tag.project_id).await?;
 
-    TagRepository::delete_with_pool(state.pool(), tag_id)
+    TagRepository::delete(state.pool(), tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete tag");

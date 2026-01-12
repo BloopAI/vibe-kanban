@@ -1,8 +1,6 @@
 -- 1. ENUMS
 -- We define enums for fields with a fixed set of options
-CREATE TYPE project_visibility AS ENUM ('whole_team', 'members_only');
-CREATE TYPE task_priority AS ENUM ('high', 'medium', 'low');
-CREATE TYPE sprint_status AS ENUM ('planned', 'active', 'completed');
+CREATE TYPE task_priority AS ENUM ('urgent', 'high', 'medium', 'low');
 
 -- 3. PROJECTS
 CREATE TABLE remote_projects (
@@ -10,26 +8,12 @@ CREATE TABLE remote_projects (
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     color VARCHAR(7) NOT NULL DEFAULT '#000000', -- Hex code
-    visibility project_visibility NOT NULL DEFAULT 'whole_team',
-    
-    -- Sprint Settings
-    sprints_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    sprint_duration_weeks INTEGER DEFAULT 2,
-    
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. PROJECT MEMBERS
-CREATE TABLE project_members (
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    PRIMARY KEY (project_id, user_id)
-);
-
--- 5. PROJECT STATUSES
+-- 4. PROJECT STATUSES
 -- Configurable statuses per project (Backlog, Todo, etc.)
 CREATE TABLE project_statuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,42 +40,14 @@ CREATE TABLE project_notification_preferences (
     PRIMARY KEY (project_id, user_id)
 );
 
--- 6. PROJECT NOTIFICATION PREFERENCES
-CREATE TABLE project_task_notification_preferences (
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    
-    notify_on_status_updated BOOLEAN NOT NULL DEFAULT TRUE,
-    notify_on_completed BOOLEAN NOT NULL DEFAULT TRUE,
-    
-    PRIMARY KEY (project_id, user_id)
-);
-
--- 7. SPRINTS
-CREATE TABLE sprints (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
-    
-    label VARCHAR(100) NOT NULL, -- e.g. "Sprint 1"
-    sequence_number INTEGER NOT NULL, -- e.g. 1
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    status sprint_status NOT NULL DEFAULT 'planned',
-    
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- 8. TASKS
+-- 6. TASKS
 CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
-    
+
     -- Status inherits from project_statuses
     status_id UUID NOT NULL REFERENCES project_statuses(id),
-    
-    -- Sprint is nullable (Backlog tasks have no sprint)
-    sprint_id UUID REFERENCES sprints(id) ON DELETE SET NULL,
-    
+
     title VARCHAR(255) NOT NULL,
     description TEXT,
     priority task_priority NOT NULL DEFAULT 'medium',
@@ -119,7 +75,7 @@ CREATE TABLE tasks (
 CREATE TABLE task_assignees (
     task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    lead BOOLEAN NOT NULL DEFAULT FALSE,
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (task_id, user_id)
 );
 
@@ -186,7 +142,6 @@ CREATE TABLE task_comment_reactions (
 
 -- Indexes for common lookups
 CREATE INDEX idx_tasks_project_id ON tasks(project_id);
-CREATE INDEX idx_tasks_sprint_id ON tasks(sprint_id);
 CREATE INDEX idx_tasks_status_id ON tasks(status_id);
 CREATE INDEX idx_tasks_parent_task_id ON tasks(parent_task_id);
 CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);

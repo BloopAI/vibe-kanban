@@ -85,7 +85,7 @@ async fn list_comments(
 ) -> Result<Json<ListCommentsResponse>, ErrorResponse> {
     ensure_task_access(&state, &ctx, task_id).await?;
 
-    let comments = TaskCommentRepository::fetch_by_task(state.pool(), task_id)
+    let comments = TaskCommentRepository::list_by_task(state.pool(), task_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %task_id, "failed to list task comments");
@@ -114,17 +114,13 @@ async fn create_comment(
 ) -> Result<Json<TaskCommentResponse>, ErrorResponse> {
     ensure_task_access(&state, &ctx, task_id).await?;
 
-    let comment = TaskCommentRepository::create_with_pool(
-        state.pool(),
-        task_id,
-        ctx.user.id,
-        payload.message,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to create task comment");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
+    let comment =
+        TaskCommentRepository::create(state.pool(), task_id, ctx.user.id, payload.message)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create task comment");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     Ok(Json(to_comment_response(comment)))
 }
@@ -140,7 +136,7 @@ async fn update_comment(
     Path(comment_id): Path<Uuid>,
     Json(payload): Json<UpdateCommentRequest>,
 ) -> Result<Json<TaskCommentResponse>, ErrorResponse> {
-    let comment = TaskCommentRepository::fetch_by_id(state.pool(), comment_id)
+    let comment = TaskCommentRepository::find_by_id(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %comment_id, "failed to load task comment");
@@ -160,13 +156,12 @@ async fn update_comment(
 
     ensure_task_access(&state, &ctx, comment.task_id).await?;
 
-    let updated_comment =
-        TaskCommentRepository::update_with_pool(state.pool(), comment_id, payload.message)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to update task comment");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
+    let updated_comment = TaskCommentRepository::update(state.pool(), comment_id, payload.message)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update task comment");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
     Ok(Json(to_comment_response(updated_comment)))
 }
@@ -181,7 +176,7 @@ async fn delete_comment(
     Extension(ctx): Extension<RequestContext>,
     Path(comment_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let comment = TaskCommentRepository::fetch_by_id(state.pool(), comment_id)
+    let comment = TaskCommentRepository::find_by_id(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %comment_id, "failed to load task comment");
@@ -201,7 +196,7 @@ async fn delete_comment(
 
     ensure_task_access(&state, &ctx, comment.task_id).await?;
 
-    TaskCommentRepository::delete_with_pool(state.pool(), comment_id)
+    TaskCommentRepository::delete(state.pool(), comment_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete task comment");
