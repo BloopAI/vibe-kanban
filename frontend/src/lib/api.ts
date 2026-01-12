@@ -482,14 +482,12 @@ export const sessionsApi = {
   startReview: async (
     sessionId: string,
     data: StartReviewRequest
-  ): Promise<ApiResponse<ExecutionProcess, ReviewError>> => {
+  ): Promise<ExecutionProcess> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/review`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<ApiResponse<ExecutionProcess, ReviewError>>(
-      response
-    );
+    return handleApiResponse<ExecutionProcess, ReviewError>(response);
   },
 };
 
