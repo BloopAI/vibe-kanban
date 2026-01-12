@@ -643,13 +643,9 @@ export function SessionChatBox({
             onChange={handleFileInputChange}
           />
           {/* Active Claude account indicator */}
-          {activeClaudeAccountName ? (
+          {activeClaudeAccountName && (
             <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full ml-1" title="Active Claude Account">
               {activeClaudeAccountName}
-            </span>
-          ) : (
-            <span className="text-xs text-red-500 px-2 py-0.5 bg-red-100 rounded-full ml-1">
-              DEBUG: No account
             </span>
           )}
         </>

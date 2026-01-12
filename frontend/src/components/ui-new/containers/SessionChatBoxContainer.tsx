@@ -113,9 +113,6 @@ export function SessionChatBoxContainer({
     return activeAccount?.name || null;
   }, [claudeAccountsData]);
 
-  // Debug log
-  console.log('Claude accounts data:', claudeAccountsData, 'Active name:', activeClaudeAccountName);
-
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
 

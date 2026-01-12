@@ -257,14 +257,18 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
 impl ClaudeCode {
     /// Get the HOME directory to use for this execution
-    /// If account rotation is enabled and accounts are configured, returns the next available account's home
-    /// Otherwise returns None to use the default HOME
+    /// If account rotation is enabled (either per-agent or globally) and accounts are configured,
+    /// returns the next available account's home. Otherwise returns None to use the default HOME.
     fn get_account_home(&self) -> Option<String> {
-        if !self.use_account_rotation.unwrap_or(false) {
+        let config = ClaudeAccountsConfig::load_sync();
+
+        // Check if rotation is enabled either per-agent OR globally in settings
+        let rotation_enabled = self.use_account_rotation.unwrap_or(false) || config.rotation_enabled;
+
+        if !rotation_enabled {
             return None;
         }
 
-        let config = ClaudeAccountsConfig::load_sync();
         if config.accounts.is_empty() {
             tracing::debug!("Account rotation enabled but no accounts configured");
             return None;
