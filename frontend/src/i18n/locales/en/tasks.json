@@ -653,6 +653,9 @@
       "discardChanges": "Discard Changes"
     }
   },
+  "terminal": {
+    "selectWorkspace": "Select a workspace to open terminal"
+  },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
     "historyChange": {

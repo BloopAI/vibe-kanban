@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { TerminalTab } from '@/contexts/TerminalContext';
 import { TerminalTabBar } from '../terminal/TerminalTabBar';
 import { XTermInstance } from '../terminal/XTermInstance';
@@ -21,10 +22,12 @@ export function TerminalPanel({
   onTabClose,
   onNewTab,
 }: TerminalPanelProps) {
+  const { t } = useTranslation('tasks');
+
   if (!workspaceId || !containerRef) {
     return (
       <div className="flex h-full items-center justify-center text-low">
-        Select a workspace to open terminal
+        {t('terminal.selectWorkspace')}
       </div>
     );
   }

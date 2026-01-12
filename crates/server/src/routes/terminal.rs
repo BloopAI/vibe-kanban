@@ -47,7 +47,6 @@ enum TerminalCommand {
 enum TerminalMessage {
     Output { data: String },
     Error { message: String },
-    Exit { code: i32 },
 }
 
 pub async fn terminal_ws(

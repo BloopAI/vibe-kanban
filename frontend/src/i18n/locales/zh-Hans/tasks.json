@@ -586,6 +586,9 @@
       "discardChanges": "放弃更改"
     }
   },
+  "terminal": {
+    "selectWorkspace": "选择一个工作区以打开终端"
+  },
   "restoreLogsDialog": {
     "title": "确认重试",
     "historyChange": {

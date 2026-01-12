@@ -586,6 +586,9 @@
       "discardChanges": "변경사항 버리기"
     }
   },
+  "terminal": {
+    "selectWorkspace": "터미널을 열려면 작업 공간을 선택하세요"
+  },
   "restoreLogsDialog": {
     "title": "재시도 확인",
     "historyChange": {
