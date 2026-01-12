@@ -28,6 +28,17 @@ pub struct GitHubRepoInfo {
 }
 
 #[derive(Deserialize)]
+struct GhRepoViewResponse {
+    owner: GhRepoOwner,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct GhRepoOwner {
+    login: String,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhCommentResponse {
     id: String,
@@ -169,17 +180,7 @@ impl GhCli {
     }
 
     fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
-        #[derive(Deserialize)]
-        struct Response {
-            owner: Owner,
-            name: String,
-        }
-        #[derive(Deserialize)]
-        struct Owner {
-            login: String,
-        }
-
-        let resp: Response = serde_json::from_str(raw).map_err(|e| {
+        let resp: GhRepoViewResponse = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
