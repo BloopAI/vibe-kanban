@@ -214,7 +214,7 @@ export function RepoCard({
           {prStatus === 'open' && commitsAhead > 0 && (
             <button
               onClick={() => onActionsClick?.('push')}
-              className="inline-flex items-center gap-half px-base py-half rounded-sm bg-brand-primary text-on-brand hover:bg-brand-primary-hover text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors"
             >
               <ArrowUpIcon className="size-icon-xs" weight="bold" />
               {t('git.states.push')}
