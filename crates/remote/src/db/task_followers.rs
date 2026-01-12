@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
-
-use super::Tx;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskFollower {
@@ -20,11 +18,14 @@ pub enum TaskFollowerError {
 pub struct TaskFollowerRepository;
 
 impl TaskFollowerRepository {
-    pub async fn get(
-        tx: &mut Tx<'_>,
+    pub async fn find<'e, E>(
+        executor: E,
         task_id: Uuid,
         user_id: Uuid,
-    ) -> Result<Option<TaskFollower>, TaskFollowerError> {
+    ) -> Result<Option<TaskFollower>, TaskFollowerError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let record = sqlx::query_as!(
             TaskFollower,
             r#"
@@ -37,30 +38,7 @@ impl TaskFollowerRepository {
             task_id,
             user_id
         )
-        .fetch_optional(&mut **tx)
-        .await?;
-
-        Ok(record)
-    }
-
-    pub async fn fetch(
-        pool: &PgPool,
-        task_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Option<TaskFollower>, TaskFollowerError> {
-        let record = sqlx::query_as!(
-            TaskFollower,
-            r#"
-            SELECT
-                task_id AS "task_id!: Uuid",
-                user_id AS "user_id!: Uuid"
-            FROM task_followers
-            WHERE task_id = $1 AND user_id = $2
-            "#,
-            task_id,
-            user_id
-        )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(record)

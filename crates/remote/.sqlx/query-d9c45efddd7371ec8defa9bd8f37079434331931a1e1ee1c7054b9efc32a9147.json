@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                status_id           AS \"status_id!: Uuid\",\n                sprint_id           AS \"sprint_id?: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: TaskPriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_task_id      AS \"parent_task_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM tasks\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: TaskPriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_task_id      AS \"parent_task_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM tasks\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,27 +20,23 @@
       },
       {
         "ordinal": 3,
-        "name": "sprint_id?: Uuid",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "title!",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "description?",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "priority!: TaskPriority",
         "type_info": {
           "Custom": {
             "name": "task_priority",
             "kind": {
               "Enum": [
+                "urgent",
                 "high",
                 "medium",
                 "low"
@@ -50,42 +46,42 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "start_date?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "target_date?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 8,
         "name": "completed_at?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "sort_order!",
         "type_info": "Float8"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "parent_task_id?: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "extension_metadata!: Value",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -99,7 +95,6 @@
       false,
       false,
       false,
-      true,
       false,
       true,
       false,
@@ -113,5 +108,5 @@
       false
     ]
   },
-  "hash": "bb6bbb7dab683bdeb4f780c7ece238f3d7d5e5428f04c83ca1ceafc2a260016b"
+  "hash": "d9c45efddd7371ec8defa9bd8f37079434331931a1e1ee1c7054b9efc32a9147"
 }

@@ -65,7 +65,7 @@ async fn ensure_project_access(
     ctx: &RequestContext,
     project_id: Uuid,
 ) -> Result<(), ErrorResponse> {
-    let project = RemoteProjectRepository::fetch_by_id(state.pool(), project_id)
+    let project = RemoteProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -89,7 +89,7 @@ async fn list_statuses(
 ) -> Result<Json<ListProjectStatusesResponse>, ErrorResponse> {
     ensure_project_access(&state, &ctx, project_id).await?;
 
-    let statuses = ProjectStatusRepository::fetch_by_project(state.pool(), project_id)
+    let statuses = ProjectStatusRepository::list_by_project(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to list project statuses");
@@ -118,7 +118,7 @@ async fn create_status(
 ) -> Result<Json<ProjectStatusResponse>, ErrorResponse> {
     ensure_project_access(&state, &ctx, project_id).await?;
 
-    let status = ProjectStatusRepository::create_with_pool(
+    let status = ProjectStatusRepository::create(
         state.pool(),
         project_id,
         payload.name,
@@ -145,7 +145,7 @@ async fn update_status(
     Path(status_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectStatusRequest>,
 ) -> Result<Json<ProjectStatusResponse>, ErrorResponse> {
-    let status = ProjectStatusRepository::fetch_by_id(state.pool(), status_id)
+    let status = ProjectStatusRepository::find_by_id(state.pool(), status_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %status_id, "failed to load project status");
@@ -158,7 +158,7 @@ async fn update_status(
 
     ensure_project_access(&state, &ctx, status.project_id).await?;
 
-    let updated_status = ProjectStatusRepository::update_with_pool(
+    let updated_status = ProjectStatusRepository::update(
         state.pool(),
         status_id,
         payload.name,
@@ -184,7 +184,7 @@ async fn delete_status(
     Extension(ctx): Extension<RequestContext>,
     Path(status_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let status = ProjectStatusRepository::fetch_by_id(state.pool(), status_id)
+    let status = ProjectStatusRepository::find_by_id(state.pool(), status_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %status_id, "failed to load project status");
@@ -197,7 +197,7 @@ async fn delete_status(
 
     ensure_project_access(&state, &ctx, status.project_id).await?;
 
-    ProjectStatusRepository::delete_with_pool(state.pool(), status_id)
+    ProjectStatusRepository::delete(state.pool(), status_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete project status");

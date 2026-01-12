@@ -1,10 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
-
-use super::Tx;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectStatus {
@@ -25,10 +23,13 @@ pub enum ProjectStatusError {
 pub struct ProjectStatusRepository;
 
 impl ProjectStatusRepository {
-    pub async fn find_by_id(
-        tx: &mut Tx<'_>,
+    pub async fn find_by_id<'e, E>(
+        executor: E,
         id: Uuid,
-    ) -> Result<Option<ProjectStatus>, ProjectStatusError> {
+    ) -> Result<Option<ProjectStatus>, ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let record = sqlx::query_as!(
             ProjectStatus,
             r#"
@@ -44,44 +45,22 @@ impl ProjectStatusRepository {
             "#,
             id
         )
-        .fetch_optional(&mut **tx)
+        .fetch_optional(executor)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn fetch_by_id(
-        pool: &PgPool,
-        id: Uuid,
-    ) -> Result<Option<ProjectStatus>, ProjectStatusError> {
-        let record = sqlx::query_as!(
-            ProjectStatus,
-            r#"
-            SELECT
-                id              AS "id!: Uuid",
-                project_id      AS "project_id!: Uuid",
-                name            AS "name!",
-                color           AS "color!",
-                sort_order      AS "sort_order!",
-                created_at      AS "created_at!: DateTime<Utc>"
-            FROM project_statuses
-            WHERE id = $1
-            "#,
-            id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        Ok(record)
-    }
-
-    pub async fn create(
-        tx: &mut Tx<'_>,
+    pub async fn create<'e, E>(
+        executor: E,
         project_id: Uuid,
         name: String,
         color: String,
         sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError> {
+    ) -> Result<ProjectStatus, ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let id = Uuid::new_v4();
         let created_at = Utc::now();
         let record = sqlx::query_as!(
@@ -104,32 +83,22 @@ impl ProjectStatusRepository {
             sort_order,
             created_at
         )
-        .fetch_one(&mut **tx)
+        .fetch_one(executor)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn create_with_pool(
-        pool: &PgPool,
-        project_id: Uuid,
-        name: String,
-        color: String,
-        sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError> {
-        let mut tx = pool.begin().await?;
-        let record = Self::create(&mut tx, project_id, name, color, sort_order).await?;
-        tx.commit().await?;
-        Ok(record)
-    }
-
-    pub async fn update(
-        tx: &mut Tx<'_>,
+    pub async fn update<'e, E>(
+        executor: E,
         id: Uuid,
         name: String,
         color: String,
         sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError> {
+    ) -> Result<ProjectStatus, ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let record = sqlx::query_as!(
             ProjectStatus,
             r#"
@@ -152,43 +121,29 @@ impl ProjectStatusRepository {
             sort_order,
             id
         )
-        .fetch_one(&mut **tx)
+        .fetch_one(executor)
         .await?;
 
         Ok(record)
     }
 
-    pub async fn update_with_pool(
-        pool: &PgPool,
-        id: Uuid,
-        name: String,
-        color: String,
-        sort_order: i32,
-    ) -> Result<ProjectStatus, ProjectStatusError> {
-        let mut tx = pool.begin().await?;
-        let record = Self::update(&mut tx, id, name, color, sort_order).await?;
-        tx.commit().await?;
-        Ok(record)
-    }
-
-    pub async fn delete(tx: &mut Tx<'_>, id: Uuid) -> Result<(), ProjectStatusError> {
+    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query!("DELETE FROM project_statuses WHERE id = $1", id)
-            .execute(&mut **tx)
+            .execute(executor)
             .await?;
         Ok(())
     }
 
-    pub async fn delete_with_pool(pool: &PgPool, id: Uuid) -> Result<(), ProjectStatusError> {
-        let mut tx = pool.begin().await?;
-        Self::delete(&mut tx, id).await?;
-        tx.commit().await?;
-        Ok(())
-    }
-
-    pub async fn list_by_project(
-        tx: &mut Tx<'_>,
+    pub async fn list_by_project<'e, E>(
+        executor: E,
         project_id: Uuid,
-    ) -> Result<Vec<ProjectStatus>, ProjectStatusError> {
+    ) -> Result<Vec<ProjectStatus>, ProjectStatusError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let records = sqlx::query_as!(
             ProjectStatus,
             r#"
@@ -204,32 +159,7 @@ impl ProjectStatusRepository {
             "#,
             project_id
         )
-        .fetch_all(&mut **tx)
-        .await?;
-
-        Ok(records)
-    }
-
-    pub async fn fetch_by_project(
-        pool: &PgPool,
-        project_id: Uuid,
-    ) -> Result<Vec<ProjectStatus>, ProjectStatusError> {
-        let records = sqlx::query_as!(
-            ProjectStatus,
-            r#"
-            SELECT
-                id              AS "id!: Uuid",
-                project_id      AS "project_id!: Uuid",
-                name            AS "name!",
-                color           AS "color!",
-                sort_order      AS "sort_order!",
-                created_at      AS "created_at!: DateTime<Utc>"
-            FROM project_statuses
-            WHERE project_id = $1
-            "#,
-            project_id
-        )
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(records)
