@@ -187,18 +187,14 @@ impl GitService {
         }
     }
 
-    /// Get the default remote name for a repository.
-    /// Prefers "origin" if it exists (git's convention), otherwise falls back to first remote.
     pub fn default_remote_name(&self, repo: &Repository) -> String {
         if let Ok(remotes) = repo.remotes() {
             let remote_list: Vec<_> = remotes.iter().flatten().collect();
 
-            // Prefer "origin" (git's conventional default)
             if remote_list.contains(&"origin") {
                 return "origin".to_string();
             }
 
-            // Fall back to first remote
             if let Some(first) = remote_list.first() {
                 return (*first).to_string();
             }
@@ -1629,7 +1625,6 @@ impl GitService {
             })
     }
 
-    /// Get the URL of a specific remote by name.
     pub fn get_remote_url(
         &self,
         repo_path: &Path,
@@ -1640,8 +1635,6 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
-    /// Get the remote URL for a branch. For remote-tracking branches, uses the branch's remote.
-    /// For local branches or if remote detection fails, falls back to the default remote.
     pub fn get_remote_url_from_branch_or_default(
         &self,
         repo_path: &Path,
