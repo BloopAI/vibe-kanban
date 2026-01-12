@@ -336,6 +336,27 @@ export function ReposSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="dev-server-script">
+                  {t('settings.repos.scripts.devServer.label')}
+                </Label>
+                <AutoExpandingTextarea
+                  id="dev-server-script"
+                  value={draft.dev_server_script}
+                  onChange={(e) =>
+                    updateDraft({
+                      dev_server_script: e.target.value,
+                    })
+                  }
+                  placeholder={placeholders.dev}
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.repos.scripts.devServer.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="setup-script">
                   {t('settings.repos.scripts.setup.label')}
                 </Label>
@@ -411,27 +432,6 @@ export function ReposSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.repos.scripts.copyFiles.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-server-script">
-                  {t('settings.repos.scripts.devServer.label')}
-                </Label>
-                <AutoExpandingTextarea
-                  id="dev-server-script"
-                  value={draft.dev_server_script}
-                  onChange={(e) =>
-                    updateDraft({
-                      dev_server_script: e.target.value,
-                    })
-                  }
-                  placeholder={placeholders.dev}
-                  maxRows={12}
-                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.repos.scripts.devServer.helper')}
                 </p>
               </div>
 

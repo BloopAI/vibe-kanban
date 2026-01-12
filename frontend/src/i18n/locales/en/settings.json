@@ -367,7 +367,7 @@
       },
       "scripts": {
         "title": "Scripts & Configuration",
-        "description": "Configure setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
+        "description": "Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
         "setup": {
           "label": "Setup Script",
           "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
