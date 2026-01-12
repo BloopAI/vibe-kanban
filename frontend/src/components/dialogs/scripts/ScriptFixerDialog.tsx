@@ -204,8 +204,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         // Then run the script
         if (scriptType === 'setup') {
           await attemptsApi.runSetupScript(workspaceId);
+        } else {
+          // Start the dev server
+          await attemptsApi.startDevServer(workspaceId);
         }
-        // For dev_server, the caller should handle starting the dev server
 
         modal.resolve({
           action: 'saved_and_tested',
