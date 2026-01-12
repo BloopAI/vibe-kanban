@@ -255,10 +255,11 @@ export function DiffViewCardWithComments({
       }
     });
 
-    // Add GitHub comments (only if no user comment on that line)
+    // Add GitHub comments (only if no user comment on that line).
+    // User comments take priority - if you're adding your own comment on a line,
+    // you've likely addressed the GitHub feedback, so we hide the GitHub comment.
     githubCommentsForFile.forEach((comment) => {
       const lineKey = String(comment.lineNumber);
-      // GitHub comments are on the new file side
       if (!newFileData[lineKey]) {
         newFileData[lineKey] = { data: { type: 'github', comment } };
       }

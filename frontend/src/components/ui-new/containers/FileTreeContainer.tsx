@@ -32,8 +32,12 @@ export function FileTreeContainer({
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Get GitHub comments state from workspace context
-  const { showGitHubComments, setShowGitHubComments, gitHubFileCommentCounts } =
-    useWorkspaceContext();
+  const {
+    showGitHubComments,
+    setShowGitHubComments,
+    gitHubFileCommentCounts,
+    isGitHubCommentsLoading,
+  } = useWorkspaceContext();
 
   // Sync selectedPath with external selectedFilePath prop and scroll into view
   useEffect(() => {
@@ -137,6 +141,7 @@ export function FileTreeContainer({
       showGitHubComments={showGitHubComments}
       onToggleGitHubComments={setShowGitHubComments}
       fileCommentCounts={gitHubFileCommentCounts}
+      isGitHubCommentsLoading={isGitHubCommentsLoading}
     />
   );
 }

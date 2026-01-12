@@ -130,7 +130,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     false // Default to hidden
   );
 
-  // Get first repo ID for PR comments
+  // Get first repo ID for PR comments.
+  // TODO: Support multiple repos - currently only fetches comments from the primary repo.
   const primaryRepoId = repos[0]?.id;
 
   // Fetch PR comments for the current workspace
@@ -159,7 +160,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         url: comment.url,
         filePath: comment.path,
         lineNumber: Number(comment.line),
-        side: SplitSide.new, // GitHub comments reference the new file side
+        // GitHub review comments always reference the new (changed) file side.
+        // The API doesn't include a side field - comments are on the lines being reviewed.
+        side: SplitSide.new,
         diffHunk: comment.diff_hunk,
       });
     }

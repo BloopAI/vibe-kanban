@@ -30,6 +30,8 @@ interface FileTreeProps {
   onToggleGitHubComments?: (show: boolean) => void;
   /** Map of file paths to their GitHub comment counts */
   fileCommentCounts?: Record<string, number>;
+  /** Whether GitHub comments are currently loading */
+  isGitHubCommentsLoading?: boolean;
 }
 
 export function FileTree({
@@ -47,6 +49,7 @@ export function FileTree({
   showGitHubComments,
   onToggleGitHubComments,
   fileCommentCounts,
+  isGitHubCommentsLoading,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
 
@@ -107,7 +110,8 @@ export function FileTree({
                     onClick={() => onToggleGitHubComments(!showGitHubComments)}
                     className={cn(
                       'p-1 rounded hover:bg-panel transition-colors shrink-0',
-                      showGitHubComments ? 'text-normal' : 'text-low'
+                      showGitHubComments ? 'text-normal' : 'text-low',
+                      isGitHubCommentsLoading && 'opacity-50 animate-pulse'
                     )}
                     aria-label={
                       showGitHubComments
