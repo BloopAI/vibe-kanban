@@ -61,6 +61,47 @@ function GitPanelContainer({
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
 
+  // Track which repos have had push clicked (to hide button immediately)
+  const [hiddenPushRepos, setHiddenPushRepos] = useState<Set<string>>(
+    new Set()
+  );
+  const lastRemoteCommitsAhead = useRef<Record<string, number>>({});
+
+  // Reset hidden state when remoteCommitsAhead increases for a repo
+  useEffect(() => {
+    const newHidden = new Set(hiddenPushRepos);
+    let changed = false;
+
+    for (const repo of repoInfos) {
+      const lastValue = lastRemoteCommitsAhead.current[repo.id] ?? 0;
+      const currentValue = repo.remoteCommitsAhead ?? 0;
+
+      if (currentValue > lastValue && hiddenPushRepos.has(repo.id)) {
+        newHidden.delete(repo.id);
+        changed = true;
+      }
+
+      lastRemoteCommitsAhead.current[repo.id] = currentValue;
+    }
+
+    if (changed) {
+      setHiddenPushRepos(newHidden);
+    }
+  }, [repoInfos, hiddenPushRepos]);
+
+  // Compute repoInfos with showPushButton
+  const repoInfosWithPushButton = useMemo(
+    () =>
+      repoInfos.map((repo) => ({
+        ...repo,
+        showPushButton:
+          repo.prStatus === 'open' &&
+          (repo.remoteCommitsAhead ?? 0) > 0 &&
+          !hiddenPushRepos.has(repo.id),
+      })),
+    [repoInfos, hiddenPushRepos]
+  );
+
   // Handle copying repo path to clipboard
   const handleCopyPath = useCallback(
     (repoId: string) => {
@@ -112,12 +153,27 @@ function GitPanelContainer({
     [selectedWorkspace, executeAction]
   );
 
+  // Handle push button click - hide immediately
+  const handlePushClick = useCallback(
+    async (repoId: string) => {
+      // Hide the button immediately
+      setHiddenPushRepos((prev) => new Set(prev).add(repoId));
+
+      // Execute push action
+      if (selectedWorkspace?.id) {
+        await executeAction(Actions.GitPush, selectedWorkspace.id, repoId);
+      }
+    },
+    [selectedWorkspace, executeAction]
+  );
+
   return (
     <GitPanel
-      repos={repoInfos}
+      repos={repoInfosWithPushButton}
       workingBranchName={selectedWorkspace?.branch ?? ''}
       onWorkingBranchNameChange={onBranchNameChange}
       onActionsClick={handleActionsClick}
+      onPushClick={handlePushClick}
       onOpenInEditor={handleOpenInEditor}
       onCopyPath={handleCopyPath}
       onAddRepo={() => console.log('Add repo clicked')}

@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from 'react';
 import {
   GitBranchIcon,
   GitPullRequestIcon,
@@ -46,17 +45,18 @@ interface RepoCardProps {
   name: string;
   targetBranch: string;
   commitsAhead?: number;
-  remoteCommitsAhead?: number;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  showPushButton?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
+  onPushClick?: () => void;
   onOpenInEditor?: () => void;
   onCopyPath?: () => void;
 }
@@ -66,40 +66,24 @@ export function RepoCard({
   name,
   targetBranch,
   commitsAhead = 0,
-  remoteCommitsAhead = 0,
   filesChanged = 0,
   linesAdded,
   linesRemoved,
   prNumber,
   prUrl,
   prStatus,
+  showPushButton = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
   onActionsClick,
+  onPushClick,
   onOpenInEditor,
   onCopyPath,
 }: RepoCardProps) {
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
-
-  // Track push state to hide button immediately on click
-  const [isPushHidden, setIsPushHidden] = useState(false);
-  const lastRemoteCommitsAhead = useRef(remoteCommitsAhead);
-
-  // Reset hidden state when remoteCommitsAhead increases (new commits available)
-  useEffect(() => {
-    if (remoteCommitsAhead > lastRemoteCommitsAhead.current) {
-      setIsPushHidden(false);
-    }
-    lastRemoteCommitsAhead.current = remoteCommitsAhead;
-  }, [remoteCommitsAhead]);
-
-  const handlePushClick = () => {
-    setIsPushHidden(true);
-    onActionsClick?.('push');
-  };
 
   return (
     <CollapsibleSection
@@ -230,10 +214,10 @@ export function RepoCard({
               {t('git.pr.open', { number: prNumber })}
             </span>
           )}
-          {/* Push button - show when PR is open and there are unpushed commits */}
-          {prStatus === 'open' && remoteCommitsAhead > 0 && !isPushHidden && (
+          {/* Push button - controlled by parent */}
+          {showPushButton && (
             <button
-              onClick={handlePushClick}
+              onClick={onPushClick}
               className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors"
             >
               <ArrowUpIcon className="size-icon-xs" weight="bold" />
