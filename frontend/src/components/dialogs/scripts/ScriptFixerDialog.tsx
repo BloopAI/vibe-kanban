@@ -336,8 +336,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                       </>
                     ) : hasProcessError ? (
                       <>
-                        <span className="size-2 rounded-full bg-destructive" />
-                        <span className="text-destructive">
+                        <span className="size-2 rounded-full bg-destructive bg-error" />
+                        <span className="text-destructive text-error">
                           {t('scriptFixer.statusFailed', {
                             exitCode: Number(latestProcess.exit_code ?? 0),
                           })}
