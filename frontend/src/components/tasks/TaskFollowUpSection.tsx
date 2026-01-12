@@ -270,8 +270,9 @@ export function TaskFollowUpSection({
   // Mutation to set active Claude account
   const setActiveAccountMutation = useMutation({
     mutationFn: (accountId: string) => claudeAccountsApi.setActive(accountId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['claude-accounts'] });
+    onSuccess: (data) => {
+      // Directly update the cache instead of invalidating to avoid triggering other queries
+      queryClient.setQueryData(['claude-accounts'], data);
     },
     onError: (error) => {
       console.error('Failed to set active account:', error);
