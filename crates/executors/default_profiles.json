@@ -120,44 +120,80 @@
     "CURSOR_AGENT": {
       "DEFAULT": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "auto"
-        }
-      },
-      "SONNET_4_5": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "sonnet-4.5"
-        }
-      },
-      "SONNET_4_5_THINKING": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "sonnet-4.5-thinking"
-        }
-      },
-      "OPUS_4_1": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "opus-4.1"
-        }
-      },
-      "GPT_5": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "gpt-5"
-        }
-      },
-      "GROK": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "grok"
+              "force": true,
+              "model": "auto"
         }
       },
       "COMPOSER_1": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "composer-1"
+              "force": true,
+              "model": "composer-1"
+        }
+      },
+      "GPT_5_1_CODEX_MAX": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.1-codex-max"
+        }
+      },
+      "GPT_5_1_CODEX_MAX_HIGH": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.1-codex-max-high"
+        }
+      },
+      "GPT_5_2": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.2"
+        }
+      },
+      "OPUS_4_5_THINKING": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "opus-4.5-thinking"
+        }
+      },
+      "GPT_5_2_HIGH": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.2-high"
+        }
+      },
+      "GEMINI_3_PRO": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gemini-3-pro"
+        }
+      },
+      "OPUS_4_5": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "opus-4.5"
+        }
+      },
+      "SONNET_4_5": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "sonnet-4.5"
+        }
+      },
+      "SONNET_4_5_THINKING": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "sonnet-4.5-thinking"
+        }
+      },
+      "GEMINI_3_FLASH": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gemini-3-flash"
+        }
+      },
+      "GROK": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "grok"
         }
       }
     },
