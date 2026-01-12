@@ -90,12 +90,13 @@ impl FilesystemService {
         skip_dirs
     }
 
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     pub async fn list_git_repos(
         &self,
-        _path: Option<String>,
-        _timeout_ms: u64,
-        _hard_timeout_ms: u64,
-        _max_depth: Option<usize>,
+        path: Option<String>,
+        timeout_ms: u64,
+        hard_timeout_ms: u64,
+        max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         #[cfg(feature = "qa-mode")]
         {
@@ -105,15 +106,15 @@ impl FilesystemService {
 
         #[cfg(not(feature = "qa-mode"))]
         {
-            let base_path = _path
+            let base_path = path
                 .map(PathBuf::from)
                 .unwrap_or_else(Self::get_home_directory);
             Self::verify_directory(&base_path)?;
             self.list_git_repos_with_timeout(
                 vec![base_path],
-                _timeout_ms,
-                _hard_timeout_ms,
-                _max_depth,
+                timeout_ms,
+                hard_timeout_ms,
+                max_depth,
             )
             .await
         }
@@ -164,11 +165,12 @@ impl FilesystemService {
         }
     }
 
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     pub async fn list_common_git_repos(
         &self,
-        _timeout_ms: u64,
-        _hard_timeout_ms: u64,
-        _max_depth: Option<usize>,
+        timeout_ms: u64,
+        hard_timeout_ms: u64,
+        max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         #[cfg(feature = "qa-mode")]
         {
@@ -194,7 +196,7 @@ impl FilesystemService {
             {
                 paths.insert(0, cwd);
             }
-            self.list_git_repos_with_timeout(paths, _timeout_ms, _hard_timeout_ms, _max_depth)
+            self.list_git_repos_with_timeout(paths, timeout_ms, hard_timeout_ms, max_depth)
                 .await
         }
     }
