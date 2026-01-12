@@ -8,6 +8,8 @@ import {
   Paperclip,
   Terminal,
   MessageSquare,
+  Check,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -264,6 +266,14 @@ export function TaskFollowUpSection({
   // Queue status for queuing follow-up messages while agent is running
   const queryClient = useQueryClient();
   const QUEUE_STATUS_KEY = 'queue-status';
+
+  // Mutation to set active Claude account
+  const setActiveAccountMutation = useMutation({
+    mutationFn: (accountId: string) => claudeAccountsApi.setActive(accountId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['claude-accounts'] });
+    },
+  });
 
   const {
     data: queueStatus = { status: 'empty' as const },
@@ -807,15 +817,45 @@ export function TaskFollowUpSection({
               onChange={setSelectedVariant}
               disabled={!isEditable}
             />
-            {/* Active Claude account indicator */}
-            {activeClaudeAccountName && (
-              <span
-                className="text-xs text-white px-2 py-1 bg-green-500 rounded-full font-bold"
-                title="Active Claude Account"
-              >
-                {activeClaudeAccountName}
-              </span>
-            )}
+            {/* Active Claude account selector */}
+            {claudeAccountsData?.rotation_enabled &&
+              claudeAccountsData.accounts.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1"
+                      disabled={setActiveAccountMutation.isPending}
+                    >
+                      <User className="h-3 w-3" />
+                      {activeClaudeAccountName || 'Select Account'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {claudeAccountsData.accounts.map((account) => (
+                      <DropdownMenuItem
+                        key={account.id}
+                        onClick={() => setActiveAccountMutation.mutate(account.id)}
+                        className="flex items-center gap-2"
+                      >
+                        {account.id === claudeAccountsData.current_account_id && (
+                          <Check className="h-3 w-3" />
+                        )}
+                        <span
+                          className={
+                            account.id !== claudeAccountsData.current_account_id
+                              ? 'ml-5'
+                              : ''
+                          }
+                        >
+                          {account.name}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
           </div>
 
           {/* Hidden file input for attachment - always present */}
