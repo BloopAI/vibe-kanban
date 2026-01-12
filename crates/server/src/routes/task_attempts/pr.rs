@@ -314,6 +314,13 @@ pub async fn create_pr(
 
     let provider = git_host.provider_kind();
 
+    // Get the URL of the repo where the head branch lives (where we pushed).
+    // This may differ from target_remote_url in fork workflows.
+    let head_repo_url = deployment
+        .git()
+        .get_remote_url_from_branch_or_default(&worktree_path, &workspace.branch)
+        .ok();
+
     // Create the PR
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
@@ -321,6 +328,7 @@ pub async fn create_pr(
         head_branch: workspace.branch.clone(),
         base_branch: norm_target_branch_name.clone(),
         draft: request.draft,
+        head_repo_url,
     };
 
     match git_host
