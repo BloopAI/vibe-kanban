@@ -45,6 +45,8 @@
     }
   },
   "startReviewDialog": {
+    "title": "리뷰 시작",
+    "description": "코딩 에이전트에게 변경 사항을 검토하고 피드백을 제공하도록 요청합니다.",
     "additionalInstructions": "추가 지침 (선택 사항)",
     "reviewComments": "리뷰 댓글 ({{count}})",
     "includeGitContext": "Git 컨텍스트 포함",

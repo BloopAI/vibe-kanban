@@ -417,6 +417,8 @@
     }
   },
   "startReviewDialog": {
+    "title": "开始审查",
+    "description": "请求编码代理审查您的更改并提供反馈。",
     "additionalInstructions": "附加说明（可选）",
     "reviewComments": "审查评论（{{count}}）",
     "includeGitContext": "包含 Git 上下文",

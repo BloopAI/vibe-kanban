@@ -484,6 +484,8 @@
     }
   },
   "startReviewDialog": {
+    "title": "Start Review",
+    "description": "Ask the coding agent to review your changes and provide feedback.",
     "additionalInstructions": "Additional Instructions (optional)",
     "reviewComments": "Review Comments ({{count}})",
     "includeGitContext": "Include git context",

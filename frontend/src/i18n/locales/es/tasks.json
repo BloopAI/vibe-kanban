@@ -45,6 +45,8 @@
     }
   },
   "startReviewDialog": {
+    "title": "Iniciar revisión",
+    "description": "Pide al agente de codificación que revise tus cambios y proporcione comentarios.",
     "additionalInstructions": "Instrucciones adicionales (opcional)",
     "reviewComments": "Comentarios de revisión ({{count}})",
     "includeGitContext": "Incluir contexto de git",

@@ -417,6 +417,8 @@
     }
   },
   "startReviewDialog": {
+    "title": "開始審查",
+    "description": "請求編碼代理審查您的變更並提供反饋。",
     "additionalInstructions": "附加說明（可選）",
     "reviewComments": "審查評論（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
