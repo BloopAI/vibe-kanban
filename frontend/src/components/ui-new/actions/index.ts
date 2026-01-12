@@ -18,6 +18,7 @@ import {
   ChatsTeardropIcon,
   GitDiffIcon,
   TerminalIcon,
+  TerminalWindowIcon,
   SignOutIcon,
   CaretDoubleUpIcon,
   CaretDoubleDownIcon,
@@ -81,6 +82,7 @@ export interface ActionVisibilityContext {
   isChangesMode: boolean;
   isLogsMode: boolean;
   isPreviewMode: boolean;
+  isTerminalMode: boolean;
   isSidebarVisible: boolean;
   isMainPanelVisible: boolean;
   isGitPanelVisible: boolean;
@@ -496,6 +498,22 @@ export const Actions = {
     },
   },
 
+  ToggleTerminalMode: {
+    id: 'toggle-terminal-mode',
+    label: () =>
+      useLayoutStore.getState().isTerminalMode
+        ? 'Hide Terminal Panel'
+        : 'Show Terminal Panel',
+    icon: TerminalWindowIcon,
+    requiresTarget: false,
+    isVisible: (ctx) => !ctx.isCreateMode,
+    isActive: (ctx) => ctx.isTerminalMode,
+    isEnabled: (ctx) => !ctx.isCreateMode && ctx.hasWorkspace,
+    execute: () => {
+      useLayoutStore.getState().toggleTerminalMode();
+    },
+  },
+
   // === Navigation Actions ===
   OpenInOldUI: {
     id: 'open-in-old-ui',
@@ -905,6 +923,7 @@ export const NavbarActionGroups = {
     Actions.ToggleChangesMode,
     Actions.ToggleLogsMode,
     Actions.TogglePreviewMode,
+    Actions.ToggleTerminalMode,
     Actions.ToggleGitPanel,
   ] as NavbarItem[],
 };

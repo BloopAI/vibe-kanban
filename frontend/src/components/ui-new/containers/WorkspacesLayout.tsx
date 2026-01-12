@@ -26,6 +26,7 @@ import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateCha
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
+import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
@@ -280,6 +281,7 @@ export function WorkspacesLayout() {
     isChangesMode,
     isLogsMode,
     isPreviewMode,
+    isTerminalMode,
     setChangesMode,
     setLogsMode,
     resetForCreateMode,
@@ -676,6 +678,18 @@ export function WorkspacesLayout() {
       );
     }
 
+    if (isTerminalMode) {
+      // In terminal mode, just show the git panel (terminal is in center pane)
+      return (
+        <GitPanelContainer
+          selectedWorkspace={selectedWorkspace}
+          repos={repos}
+          repoInfos={repoInfos}
+          onBranchNameChange={handleBranchNameChange}
+        />
+      );
+    }
+
     return (
       <GitPanelContainer
         selectedWorkspace={selectedWorkspace}
@@ -795,6 +809,7 @@ export function WorkspacesLayout() {
             {isPreviewMode && (
               <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
             )}
+            {isTerminalMode && <TerminalPanelContainer />}
           </div>
         </Allotment.Pane>
 
