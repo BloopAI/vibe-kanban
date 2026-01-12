@@ -26,6 +26,7 @@ use services::services::{
     git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
+        parse_github_owner_repo,
     },
 };
 use ts_rs::TS;

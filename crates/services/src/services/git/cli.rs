@@ -424,10 +424,26 @@ impl GitCli {
         Ok(output.trim().to_string())
     }
 
-    /// Get the default remote name (first remote listed, or "origin" as fallback).
+    /// Get the default remote name for a repository.
+    /// Prefers "origin" if it exists (git's convention), otherwise falls back to first remote.
     pub fn default_remote_name(&self, repo_path: &Path) -> Result<String, GitCliError> {
         let output = self.git(repo_path, ["remote"])?;
-        Ok(output.lines().next().unwrap_or("origin").to_string())
+        let remotes: Vec<&str> = output
+            .lines()
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        // Prefer "origin" (git's conventional default)
+        if remotes.contains(&"origin") {
+            return Ok("origin".to_string());
+        }
+
+        // Fall back to first remote
+        Ok(remotes
+            .first()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "origin".to_string()))
     }
 
     // Parse `git diff --name-status` output into structured entries.

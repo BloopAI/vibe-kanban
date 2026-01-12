@@ -13,7 +13,7 @@ use tokio::task;
 use tracing::info;
 
 use super::{
-    GitHostProvider,
+    GitHostProvider, parse_github_owner_repo,
     types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
 };
 
@@ -177,13 +177,28 @@ impl GitHostProvider for GitHubProvider {
     async fn create_pr(
         &self,
         repo_path: &Path,
-        _remote_url: &str,
+        remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
         // Check auth first
         self.check_auth().await?;
 
-        let repo_info = self.get_repo_info(repo_path).await?;
+        // Parse owner/repo from the remote URL (target repo for the PR)
+        // This is critical for fork workflows: the remote_url should be the upstream repo,
+        // not the fork, so the PR is created against the correct repository.
+        let repo_info = if let Some(parsed) = parse_github_owner_repo(remote_url) {
+            GitHubRepoInfo {
+                owner: parsed.owner,
+                repo_name: parsed.repo,
+            }
+        } else {
+            // Fallback to gh repo view (for backwards compatibility or unusual URL formats)
+            tracing::warn!(
+                "Could not parse owner/repo from URL '{}', falling back to gh repo view",
+                remote_url
+            );
+            self.get_repo_info(repo_path).await?
+        };
 
         let cli = self.gh_cli.clone();
         let request_clone = request.clone();
