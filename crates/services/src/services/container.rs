@@ -766,18 +766,16 @@ pub trait ContainerService {
                         );
                     }
                 }
+                #[cfg(feature = "qa-mode")]
                 ExecutorActionType::ReviewRequest(_request) => {
-                    #[cfg(feature = "qa-mode")]
-                    {
-                        let executor = QaMockExecutor;
-                        executor.normalize_logs(temp_store.clone(), &current_dir);
-                    }
-                    #[cfg(not(feature = "qa-mode"))]
-                    {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_profile_id);
-                        executor.normalize_logs(temp_store.clone(), &current_dir);
-                    }
+                    let executor = QaMockExecutor;
+                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                }
+                #[cfg(not(feature = "qa-mode"))]
+                ExecutorActionType::ReviewRequest(request) => {
+                    let executor = ExecutorConfigs::get_cached()
+                        .get_coding_agent_or_default(&request.executor_profile_id);
+                    executor.normalize_logs(temp_store.clone(), &current_dir);
                 }
                 _ => {
                     tracing::debug!(
