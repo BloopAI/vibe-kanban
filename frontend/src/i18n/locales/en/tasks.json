@@ -668,6 +668,10 @@
     "testing": "Testing...",
     "noLogs": "No execution logs available",
     "selectRepo": "Repository",
-    "fixScript": "Fix Script"
+    "fixScript": "Fix Script",
+    "statusRunning": "Running...",
+    "statusSuccess": "Completed successfully",
+    "statusFailed": "Failed with exit code {{exitCode}}",
+    "statusKilled": "Process was killed"
   }
 }

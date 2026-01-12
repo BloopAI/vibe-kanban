@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { VirtualizedProcessLogs } from '@/components/ui-new/VirtualizedProcessLogs';
+import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import { defineModal } from '@/lib/modals';
 import { repoApi, attemptsApi } from '@/lib/api';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -84,6 +85,17 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const logs: LogEntry[] = rawLogs.filter(
       (l): l is LogEntry => l.type === 'STDOUT' || l.type === 'STDERR'
     );
+
+    // Compute status for the latest process
+    const isProcessRunning = latestProcess?.status === 'running';
+    const isProcessCompleted = latestProcess?.status === 'completed';
+    const isProcessKilled = latestProcess?.status === 'killed';
+    const isProcessFailed = latestProcess?.status === 'failed';
+    const isProcessSuccessful =
+      isProcessCompleted && latestProcess?.exit_code === BigInt(0);
+    const hasProcessError =
+      isProcessFailed ||
+      (isProcessCompleted && latestProcess?.exit_code !== BigInt(0));
 
     // Fetch the selected repo's script
     useEffect(() => {
@@ -302,7 +314,45 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
               className="flex flex-col gap-2 min-h-0 min-w-0"
               style={{ height: '200px' }}
             >
-              <Label>{t('scriptFixer.logsLabel')}</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>{t('scriptFixer.logsLabel')}</Label>
+                {/* Status indicator */}
+                {latestProcess && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {isProcessRunning ? (
+                      <>
+                        <RunningDots />
+                        <span className="text-muted-foreground">
+                          {t('scriptFixer.statusRunning')}
+                        </span>
+                      </>
+                    ) : isProcessSuccessful ? (
+                      <>
+                        <span className="size-2 rounded-full bg-success" />
+                        <span className="text-success">
+                          {t('scriptFixer.statusSuccess')}
+                        </span>
+                      </>
+                    ) : hasProcessError ? (
+                      <>
+                        <span className="size-2 rounded-full bg-destructive" />
+                        <span className="text-destructive">
+                          {t('scriptFixer.statusFailed', {
+                            exitCode: Number(latestProcess.exit_code ?? 0),
+                          })}
+                        </span>
+                      </>
+                    ) : isProcessKilled ? (
+                      <>
+                        <span className="size-2 rounded-full bg-low" />
+                        <span className="text-muted-foreground">
+                          {t('scriptFixer.statusKilled')}
+                        </span>
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
               <div className="flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
                 {latestProcess ? (
                   <VirtualizedProcessLogs logs={logs} error={logsError} />
