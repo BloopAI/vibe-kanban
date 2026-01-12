@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import {
   GitBranchIcon,
   GitPullRequestIcon,
@@ -82,6 +83,23 @@ export function RepoCard({
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
+
+  // Track push state to hide button immediately on click
+  const [isPushHidden, setIsPushHidden] = useState(false);
+  const lastRemoteCommitsAhead = useRef(remoteCommitsAhead);
+
+  // Reset hidden state when remoteCommitsAhead increases (new commits available)
+  useEffect(() => {
+    if (remoteCommitsAhead > lastRemoteCommitsAhead.current) {
+      setIsPushHidden(false);
+    }
+    lastRemoteCommitsAhead.current = remoteCommitsAhead;
+  }, [remoteCommitsAhead]);
+
+  const handlePushClick = () => {
+    setIsPushHidden(true);
+    onActionsClick?.('push');
+  };
 
   return (
     <CollapsibleSection
@@ -213,9 +231,9 @@ export function RepoCard({
             </span>
           )}
           {/* Push button - show when PR is open and there are unpushed commits */}
-          {prStatus === 'open' && remoteCommitsAhead > 0 && (
+          {prStatus === 'open' && remoteCommitsAhead > 0 && !isPushHidden && (
             <button
-              onClick={() => onActionsClick?.('push')}
+              onClick={handlePushClick}
               className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors"
             >
               <ArrowUpIcon className="size-icon-xs" weight="bold" />
