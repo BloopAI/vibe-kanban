@@ -217,62 +217,126 @@ impl ClaudeAccountsConfig {
         }
     }
 
-    /// Sync Claude sessions from one account to another
-    /// This copies the .claude/projects directory so sessions can be resumed
-    pub fn sync_sessions_between_accounts(
-        &self,
-        from_account_id: &str,
-        to_account_id: &str,
-    ) -> Result<(), String> {
-        let from_account = self
-            .get_account(from_account_id)
-            .ok_or_else(|| format!("Source account {} not found", from_account_id))?;
-        let to_account = self
-            .get_account(to_account_id)
-            .ok_or_else(|| format!("Target account {} not found", to_account_id))?;
-
-        let from_projects = PathBuf::from(&from_account.home_path).join(".claude/projects");
-        let to_projects = PathBuf::from(&to_account.home_path).join(".claude/projects");
-
-        if !from_projects.exists() {
-            tracing::info!("No projects to sync from {}", from_account.name);
+    /// Sync Claude sessions bidirectionally between all accounts
+    /// This ensures all accounts have access to all session files
+    /// Keeps the newest version when conflicts occur
+    pub fn sync_all_sessions(&self) -> Result<(), String> {
+        if self.accounts.len() < 2 {
             return Ok(());
         }
 
-        // Create target projects directory if it doesn't exist
-        std::fs::create_dir_all(&to_projects)
-            .map_err(|e| format!("Failed to create projects dir: {}", e))?;
+        // Collect all unique session files from all accounts with their modification times
+        let mut all_sessions: std::collections::HashMap<String, (PathBuf, std::time::SystemTime)> =
+            std::collections::HashMap::new();
 
-        // Copy all project directories and session files
-        Self::copy_dir_recursive(&from_projects, &to_projects)
-            .map_err(|e| format!("Failed to sync sessions: {}", e))?;
+        // First pass: collect all sessions with their modification times
+        for account in &self.accounts {
+            let projects_dir = PathBuf::from(&account.home_path).join(".claude/projects");
+            if !projects_dir.exists() {
+                continue;
+            }
+
+            Self::collect_sessions(&projects_dir, &mut all_sessions)?;
+        }
 
         tracing::info!(
-            "Synced sessions from {} to {}",
-            from_account.name,
-            to_account.name
+            "Found {} unique session files across all accounts",
+            all_sessions.len()
+        );
+
+        // Second pass: copy sessions to all accounts (keeping newest versions)
+        for account in &self.accounts {
+            let projects_dir = PathBuf::from(&account.home_path).join(".claude/projects");
+
+            // Create projects directory if it doesn't exist
+            std::fs::create_dir_all(&projects_dir)
+                .map_err(|e| format!("Failed to create projects dir for {}: {}", account.name, e))?;
+
+            for (relative_path, (src_path, _)) in &all_sessions {
+                let dst_path = projects_dir.join(relative_path);
+
+                // Skip if source and destination are the same file
+                if src_path == &dst_path {
+                    continue;
+                }
+
+                // Create parent directory if needed
+                if let Some(parent) = dst_path.parent() {
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| format!("Failed to create dir: {}", e))?;
+                }
+
+                // Copy the file (overwrite if exists)
+                std::fs::copy(src_path, &dst_path)
+                    .map_err(|e| format!("Failed to copy session file: {}", e))?;
+            }
+        }
+
+        tracing::info!(
+            "Synced all sessions across {} accounts",
+            self.accounts.len()
         );
         Ok(())
     }
 
-    /// Recursively copy a directory
-    fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
-        if !dst.exists() {
-            std::fs::create_dir_all(dst)?;
+    /// Collect all session files from a projects directory
+    fn collect_sessions(
+        projects_dir: &Path,
+        sessions: &mut std::collections::HashMap<String, (PathBuf, std::time::SystemTime)>,
+    ) -> Result<(), String> {
+        if !projects_dir.exists() {
+            return Ok(());
         }
 
-        for entry in std::fs::read_dir(src)? {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
+        for project_entry in std::fs::read_dir(projects_dir)
+            .map_err(|e| format!("Failed to read projects dir: {}", e))?
+        {
+            let project_entry =
+                project_entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let project_path = project_entry.path();
 
-            if file_type.is_dir() {
-                Self::copy_dir_recursive(&src_path, &dst_path)?;
-            } else {
-                std::fs::copy(&src_path, &dst_path)?;
+            if !project_path.is_dir() {
+                continue;
+            }
+
+            let project_name = project_entry.file_name();
+
+            for session_entry in std::fs::read_dir(&project_path)
+                .map_err(|e| format!("Failed to read project dir: {}", e))?
+            {
+                let session_entry =
+                    session_entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+                let session_path = session_entry.path();
+
+                // Only process .jsonl files (session files)
+                if session_path
+                    .extension()
+                    .map(|e| e == "jsonl")
+                    .unwrap_or(false)
+                {
+                    let relative_path = format!(
+                        "{}/{}",
+                        project_name.to_string_lossy(),
+                        session_entry.file_name().to_string_lossy()
+                    );
+
+                    let modified = session_path
+                        .metadata()
+                        .and_then(|m| m.modified())
+                        .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+                    // Keep the newest version of each session
+                    if let Some((_, existing_modified)) = sessions.get(&relative_path) {
+                        if modified > *existing_modified {
+                            sessions.insert(relative_path, (session_path, modified));
+                        }
+                    } else {
+                        sessions.insert(relative_path, (session_path, modified));
+                    }
+                }
             }
         }
+
         Ok(())
     }
 }
