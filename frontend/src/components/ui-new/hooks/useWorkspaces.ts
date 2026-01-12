@@ -179,10 +179,8 @@ export function useWorkspaces(): UseWorkspacesResult {
         if (a.pinned !== b.pinned) {
           return a.pinned ? -1 : 1;
         }
-        // Then by created_at (newest first)
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        // Then by updated_at (most recent first)
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       })
       .map((ws) => toSidebarWorkspace(ws, activeSummaries.get(ws.id)));
   }, [activeData, activeSummaries]);
@@ -195,10 +193,8 @@ export function useWorkspaces(): UseWorkspacesResult {
         if (a.pinned !== b.pinned) {
           return a.pinned ? -1 : 1;
         }
-        // Then by created_at (newest first)
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        // Then by updated_at (most recent first)
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       })
       .map((ws) => toSidebarWorkspace(ws, archivedSummaries.get(ws.id)));
   }, [archivedData, archivedSummaries]);
