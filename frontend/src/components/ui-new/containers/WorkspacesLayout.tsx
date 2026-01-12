@@ -257,6 +257,7 @@ export function WorkspacesLayout() {
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
+          remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
           filesChanged: diffStats.filesChanged,
           linesAdded: diffStats.linesAdded,
           linesRemoved: diffStats.linesRemoved,

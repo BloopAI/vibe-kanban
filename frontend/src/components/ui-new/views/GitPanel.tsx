@@ -16,6 +16,7 @@ export interface RepoInfo {
   name: string;
   targetBranch: string;
   commitsAhead: number;
+  remoteCommitsAhead: number;
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
@@ -69,6 +70,7 @@ export function GitPanel({
               name={repo.name}
               targetBranch={repo.targetBranch}
               commitsAhead={repo.commitsAhead}
+              remoteCommitsAhead={repo.remoteCommitsAhead}
               filesChanged={repo.filesChanged}
               linesAdded={repo.linesAdded}
               linesRemoved={repo.linesRemoved}

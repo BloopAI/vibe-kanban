@@ -45,6 +45,7 @@ interface RepoCardProps {
   name: string;
   targetBranch: string;
   commitsAhead?: number;
+  remoteCommitsAhead?: number;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
@@ -64,6 +65,7 @@ export function RepoCard({
   name,
   targetBranch,
   commitsAhead = 0,
+  remoteCommitsAhead = 0,
   filesChanged = 0,
   linesAdded,
   linesRemoved,
@@ -210,8 +212,8 @@ export function RepoCard({
               {t('git.pr.open', { number: prNumber })}
             </span>
           )}
-          {/* Push button - show when PR is open and there are commits ahead */}
-          {prStatus === 'open' && commitsAhead > 0 && (
+          {/* Push button - show when PR is open and there are unpushed commits */}
+          {prStatus === 'open' && remoteCommitsAhead > 0 && (
             <button
               onClick={() => onActionsClick?.('push')}
               className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors"
