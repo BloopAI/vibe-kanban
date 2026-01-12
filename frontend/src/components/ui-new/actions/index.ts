@@ -191,8 +191,7 @@ function getNextWorkspaceId(
   );
   if (currentIndex >= 0 && activeWorkspaces.length > 1) {
     const nextWorkspace =
-      activeWorkspaces[currentIndex + 1] ||
-      activeWorkspaces[currentIndex - 1];
+      activeWorkspaces[currentIndex + 1] || activeWorkspaces[currentIndex - 1];
     return nextWorkspace?.id ?? null;
   }
   return null;
