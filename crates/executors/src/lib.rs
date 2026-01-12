@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod approvals;
+pub mod claude_accounts;
 pub mod command;
 pub mod env;
 pub mod executors;

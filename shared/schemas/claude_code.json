@@ -76,6 +76,15 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "use_account_rotation": {
+      "title": "Use Account Rotation",
+      "description": "Enable rotation between multiple Claude accounts when rate limits are hit. Configure accounts in Settings > Claude Accounts.",
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": false
     }
   },
   "type": "object"

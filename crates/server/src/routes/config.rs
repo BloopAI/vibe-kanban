@@ -10,6 +10,7 @@ use axum::{
 };
 use deployment::{Deployment, DeploymentError};
 use executors::{
+    claude_accounts::{ClaudeAccount, ClaudeAccountsConfig, spawn_login_terminal},
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
@@ -41,6 +42,20 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        // Claude accounts management
+        .route(
+            "/claude-accounts",
+            get(get_claude_accounts).put(update_claude_accounts),
+        )
+        .route("/claude-accounts/add", axum::routing::post(add_claude_account))
+        .route(
+            "/claude-accounts/{id}",
+            axum::routing::delete(delete_claude_account),
+        )
+        .route(
+            "/claude-accounts/{id}/login",
+            axum::routing::post(login_claude_account),
+        )
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -484,4 +499,148 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+// ============================================================================
+// Claude Accounts Management
+// ============================================================================
+
+/// Response for claude accounts with login status
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ClaudeAccountWithStatus {
+    pub id: String,
+    pub name: String,
+    pub home_path: String,
+    pub created_at: i64,
+    pub rate_limited_until: Option<i64>,
+    pub is_logged_in: bool,
+}
+
+impl From<&ClaudeAccount> for ClaudeAccountWithStatus {
+    fn from(account: &ClaudeAccount) -> Self {
+        Self {
+            id: account.id.clone(),
+            name: account.name.clone(),
+            home_path: account.home_path.clone(),
+            created_at: account.created_at,
+            rate_limited_until: account.rate_limited_until,
+            is_logged_in: account.is_logged_in(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ClaudeAccountsResponse {
+    pub accounts: Vec<ClaudeAccountWithStatus>,
+    pub rotation_enabled: bool,
+}
+
+/// Get all Claude accounts with their login status
+async fn get_claude_accounts(
+    State(_deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<ClaudeAccountsResponse>> {
+    let config = ClaudeAccountsConfig::load().await;
+    let accounts: Vec<ClaudeAccountWithStatus> =
+        config.accounts.iter().map(|a| a.into()).collect();
+
+    ResponseJson(ApiResponse::success(ClaudeAccountsResponse {
+        accounts,
+        rotation_enabled: config.rotation_enabled,
+    }))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateClaudeAccountsBody {
+    pub rotation_enabled: bool,
+}
+
+/// Update Claude accounts configuration (rotation enabled setting)
+async fn update_claude_accounts(
+    State(_deployment): State<DeploymentImpl>,
+    Json(body): Json<UpdateClaudeAccountsBody>,
+) -> ResponseJson<ApiResponse<ClaudeAccountsResponse>> {
+    let mut config = ClaudeAccountsConfig::load().await;
+    config.rotation_enabled = body.rotation_enabled;
+
+    if let Err(e) = config.save().await {
+        return ResponseJson(ApiResponse::error(&format!(
+            "Failed to save accounts config: {}",
+            e
+        )));
+    }
+
+    let accounts: Vec<ClaudeAccountWithStatus> =
+        config.accounts.iter().map(|a| a.into()).collect();
+
+    ResponseJson(ApiResponse::success(ClaudeAccountsResponse {
+        accounts,
+        rotation_enabled: config.rotation_enabled,
+    }))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddClaudeAccountBody {
+    pub name: String,
+}
+
+/// Add a new Claude account
+async fn add_claude_account(
+    State(_deployment): State<DeploymentImpl>,
+    Json(body): Json<AddClaudeAccountBody>,
+) -> ResponseJson<ApiResponse<ClaudeAccountWithStatus>> {
+    let mut config = ClaudeAccountsConfig::load().await;
+    let account = config.add_account(body.name);
+
+    if let Err(e) = config.save().await {
+        return ResponseJson(ApiResponse::error(&format!(
+            "Failed to save accounts config: {}",
+            e
+        )));
+    }
+
+    ResponseJson(ApiResponse::success(ClaudeAccountWithStatus::from(&account)))
+}
+
+/// Delete a Claude account
+async fn delete_claude_account(
+    State(_deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> ResponseJson<ApiResponse<String>> {
+    let mut config = ClaudeAccountsConfig::load().await;
+
+    if config.remove_account(&id).is_none() {
+        return ResponseJson(ApiResponse::error("Account not found"));
+    }
+
+    if let Err(e) = config.save().await {
+        return ResponseJson(ApiResponse::error(&format!(
+            "Failed to save accounts config: {}",
+            e
+        )));
+    }
+
+    ResponseJson(ApiResponse::success("Account deleted".to_string()))
+}
+
+/// Spawn a terminal for Claude Code login
+async fn login_claude_account(
+    State(_deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> ResponseJson<ApiResponse<String>> {
+    let config = ClaudeAccountsConfig::load().await;
+
+    let account = match config.get_account(&id) {
+        Some(a) => a,
+        None => return ResponseJson(ApiResponse::error("Account not found")),
+    };
+
+    match spawn_login_terminal(account) {
+        Ok(()) => ResponseJson(ApiResponse::success(
+            "Login terminal opened. Please complete the login in the terminal window.".to_string(),
+        )),
+        Err(e) => ResponseJson(ApiResponse::error(&format!(
+            "Failed to open login terminal: {}",
+            e
+        ))),
+    }
 }
