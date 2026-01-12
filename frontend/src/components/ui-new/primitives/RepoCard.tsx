@@ -223,7 +223,10 @@ export function RepoCard({
             </span>
           )}
           {/* Push button - shows loading/success/error state */}
-          {(showPushButton || isPushPending || isPushSuccess || isPushError) && (
+          {(showPushButton ||
+            isPushPending ||
+            isPushSuccess ||
+            isPushError) && (
             <button
               onClick={onPushClick}
               disabled={isPushPending || isPushSuccess || isPushError}
