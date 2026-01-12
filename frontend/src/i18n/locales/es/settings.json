@@ -248,8 +248,8 @@
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
         "installationFound": "Uso previo detectado",
         "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
-        "notFound": "No encontrado",
-        "notFoundTooltip": "No se detectó uso previo. El agente puede requerir instalación y/o inicio de sesión."
+        "notFound": "Desconocido",
+        "notFoundTooltip": "No pudimos verificar que este agente esté configurado, pero pruébalo."
       },
       "editor": {
         "formLabel": "Editar JSON",

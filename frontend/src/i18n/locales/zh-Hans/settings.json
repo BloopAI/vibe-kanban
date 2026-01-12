@@ -248,8 +248,8 @@
         "loginDetectedTooltip": "找到此代理的最近身份验证凭据",
         "installationFound": "检测到以前使用",
         "installationFoundTooltip": "找到代理配置。您可能需要登录才能使用它。",
-        "notFound": "未找到",
-        "notFoundTooltip": "未检测到以前的使用。代理可能需要安装和/或登录。"
+        "notFound": "未知",
+        "notFoundTooltip": "我们无法验证此代理是否已设置，但请继续尝试。"
       },
       "editor": {
         "formLabel": "编辑 JSON",
