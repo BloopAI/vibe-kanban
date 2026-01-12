@@ -27,7 +27,6 @@ import {
   Settings,
   Terminal,
   User,
-  Wrench,
 } from 'lucide-react';
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
@@ -35,12 +34,6 @@ import PendingApprovalEntry from './PendingApprovalEntry';
 import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
-import {
-  ScriptFixerDialog,
-  type ScriptType,
-} from '@/components/dialogs/scripts/ScriptFixerDialog';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import type { RepoWithTargetBranch } from 'shared/types';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -589,64 +582,6 @@ const ToolCallCard: React.FC<{
   );
 };
 
-/**
- * Fix button for failed script entries
- */
-const ScriptFixButton: React.FC<{
-  toolName: string;
-  status: ToolStatus;
-  workspaceId?: string;
-  sessionId?: string;
-}> = ({ toolName, status, workspaceId, sessionId }) => {
-  const { t } = useTranslation('tasks');
-
-  // Try to get repos from workspace context
-  let repos: RepoWithTargetBranch[] = [];
-  try {
-    const workspaceContext = useWorkspaceContext();
-    repos = workspaceContext.repos;
-  } catch {
-    // Context not available
-  }
-
-  const scriptToolNames = [
-    'Setup Script',
-    'Cleanup Script',
-    'Tool Install Script',
-  ];
-  const isScript = scriptToolNames.includes(toolName);
-  const isFailed = status.status === 'failed';
-  const canFix = isScript && isFailed && workspaceId && repos.length > 0;
-
-  if (!canFix) return null;
-
-  const handleFix = () => {
-    const scriptType: ScriptType =
-      toolName === 'Setup Script' || toolName === 'Cleanup Script'
-        ? 'setup'
-        : 'dev_server';
-
-    ScriptFixerDialog.show({
-      scriptType,
-      repos,
-      workspaceId: workspaceId!,
-      sessionId,
-      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleFix}
-      className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded transition-colors"
-    >
-      <Wrench className="h-3 w-3" />
-      <span>{t('scriptFixer.fixScript')}</span>
-    </button>
-  );
-};
-
 const LoadingCard = () => {
   return (
     <div className="flex animate-pulse space-x-2 items-center">
@@ -814,12 +749,6 @@ function DisplayConversationEntry({
         className={`px-4 py-2 text-sm space-y-3 ${greyed ? 'opacity-50 pointer-events-none' : ''}`}
       >
         {body}
-        <ScriptFixButton
-          toolName={toolEntry.tool_name}
-          status={status}
-          workspaceId={taskAttempt?.id}
-          sessionId={taskAttempt?.session?.id}
-        />
       </div>
     );
 

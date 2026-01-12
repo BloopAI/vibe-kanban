@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X, Wrench } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -16,8 +16,6 @@ import { DevServerLogsView } from '@/components/tasks/TaskDetails/preview/DevSer
 import { PreviewToolbar } from '@/components/tasks/TaskDetails/preview/PreviewToolbar';
 import { NoServerContent } from '@/components/tasks/TaskDetails/preview/NoServerContent';
 import { ReadyContent } from '@/components/tasks/TaskDetails/preview/ReadyContent';
-import { useProjectRepos } from '@/hooks';
-import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 export function PreviewPanel() {
   const [iframeError, setIframeError] = useState(false);
@@ -37,9 +35,6 @@ export function PreviewPanel() {
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
   const { data: projectHasDevScript = false } =
     useHasDevServerScript(projectId);
-
-  // Get repos for script fixer dialog
-  const { data: projectRepos = [] } = useProjectRepos(projectId);
 
   const {
     start: startDevServer,
@@ -166,27 +161,6 @@ export function PreviewPanel() {
     });
   };
 
-  const handleFixDevScript = () => {
-    if (!attemptId || projectRepos.length === 0) return;
-
-    // Convert project repos to RepoWithTargetBranch format
-    const reposWithTargetBranch = projectRepos.map((repo) => ({
-      ...repo,
-      target_branch: 'main', // Default target branch
-    }));
-
-    // Get session ID from the latest dev server process
-    const sessionId = devServerProcesses[0]?.session_id;
-
-    ScriptFixerDialog.show({
-      scriptType: 'dev_server',
-      repos: reposWithTargetBranch,
-      workspaceId: attemptId,
-      sessionId,
-      initialRepoId: projectRepos.length === 1 ? projectRepos[0].id : undefined,
-    });
-  };
-
   if (!attemptId) {
     return (
       <div className="h-full flex items-center justify-center p-8">
@@ -255,24 +229,16 @@ export function PreviewPanel() {
                     .
                   </li>
                 </ol>
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    onClick={handleStopAndEdit}
-                    disabled={isStoppingDevServer}
-                  >
-                    {isStoppingDevServer && (
-                      <Loader2 className="mr-2 animate-spin" />
-                    )}
-                    {t('preview.noServer.stopAndEditButton')}
-                  </Button>
-                  {projectRepos.length > 0 && (
-                    <Button variant="outline" onClick={handleFixDevScript}>
-                      <Wrench className="mr-2 h-4 w-4" />
-                      {t('scriptFixer.fixScript')}
-                    </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleStopAndEdit}
+                  disabled={isStoppingDevServer}
+                >
+                  {isStoppingDevServer && (
+                    <Loader2 className="mr-2 animate-spin" />
                   )}
-                </div>
+                  {t('preview.noServer.stopAndEditButton')}
+                </Button>
               </div>
               <Button
                 variant="ghost"
