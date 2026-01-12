@@ -26,6 +26,7 @@ export function SectionHeader({
         <button
           type="button"
           onClick={onIconClick}
+          onMouseDown={(e) => e.preventDefault()}
           className="text-low hover:text-normal"
         >
           <IconComponent className="size-icon-xs" weight="bold" />
