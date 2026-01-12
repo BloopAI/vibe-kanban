@@ -83,10 +83,14 @@ function GitPanelContainer({
     () =>
       repoInfos.map((repo) => {
         const state = pushStates[repo.id] ?? 'idle';
+        const hasUnpushedCommits =
+          repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0;
+        // Show push button if there are unpushed commits OR if we're in a push flow
+        // (pending/success/error states keep the button visible for feedback)
+        const isInPushFlow = state !== 'idle';
         return {
           ...repo,
-          showPushButton:
-            repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0,
+          showPushButton: hasUnpushedCommits && !isInPushFlow,
           isPushPending: state === 'pending',
           isPushSuccess: state === 'success',
           isPushError: state === 'error',
