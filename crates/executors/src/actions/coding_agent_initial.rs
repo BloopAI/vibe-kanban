@@ -42,6 +42,7 @@ impl CodingAgentInitialRequest {
 
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -52,7 +53,6 @@ impl Executable for CodingAgentInitialRequest {
 
         #[cfg(feature = "qa-mode")]
         {
-            let _ = &approvals; // Silence unused variable warning in qa-mode
             tracing::info!("QA mode: using mock executor instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor.spawn(&effective_dir, &self.prompt, env).await;

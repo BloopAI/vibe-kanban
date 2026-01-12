@@ -48,6 +48,7 @@ impl CodingAgentFollowUpRequest {
 
 #[async_trait]
 impl Executable for CodingAgentFollowUpRequest {
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -58,7 +59,6 @@ impl Executable for CodingAgentFollowUpRequest {
 
         #[cfg(feature = "qa-mode")]
         {
-            let _ = &approvals; // Silence unused variable warning in qa-mode
             tracing::info!("QA mode: using mock executor for follow-up instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor
