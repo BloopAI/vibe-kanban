@@ -239,12 +239,12 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
           </DialogHeader>
 
-          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col gap-4 min-h-0 min-w-0 overflow-hidden">
             {/* Repo selector (only show if multiple repos) */}
             {repos.length > 1 && (
               <div className="flex items-center gap-2">
@@ -270,9 +270,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             )}
 
             {/* Script editor */}
-            <div className="flex flex-col gap-2 flex-1 min-h-0">
+            <div className="flex flex-col gap-2 flex-1 min-h-0 min-w-0">
               <Label>{t('scriptFixer.scriptLabel')}</Label>
-              <div className="flex-1 min-h-[150px] max-h-[300px] overflow-auto border rounded-md">
+              <div className="flex-1 min-h-[150px] max-h-[300px] overflow-auto border rounded-md min-w-0">
                 {isLoadingRepo ? (
                   <div className="h-full flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -295,11 +295,11 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
             {/* Logs section */}
             <div
-              className="flex flex-col gap-2 min-h-0"
+              className="flex flex-col gap-2 min-h-0 min-w-0"
               style={{ height: '200px' }}
             >
               <Label>{t('scriptFixer.logsLabel')}</Label>
-              <div className="flex-1 border rounded-md bg-muted overflow-hidden">
+              <div className="flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
                 {latestProcess ? (
                   <VirtualizedProcessLogs logs={logs} error={logsError} />
                 ) : (
