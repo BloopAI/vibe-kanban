@@ -35,7 +35,7 @@ export function FileTreeContainer({
   const {
     showGitHubComments,
     setShowGitHubComments,
-    gitHubFileCommentCounts,
+    getGitHubCommentCountForFile,
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
 
@@ -140,7 +140,7 @@ export function FileTreeContainer({
       className={className}
       showGitHubComments={showGitHubComments}
       onToggleGitHubComments={setShowGitHubComments}
-      fileCommentCounts={gitHubFileCommentCounts}
+      getGitHubCommentCountForFile={getGitHubCommentCountForFile}
       isGitHubCommentsLoading={isGitHubCommentsLoading}
     />
   );

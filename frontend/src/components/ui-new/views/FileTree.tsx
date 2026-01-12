@@ -24,8 +24,8 @@ interface FileTreeProps {
   showGitHubComments?: boolean;
   /** Callback to toggle GitHub comments visibility */
   onToggleGitHubComments?: (show: boolean) => void;
-  /** Map of file paths to their GitHub comment counts */
-  fileCommentCounts?: Record<string, number>;
+  /** Function to get comment count for a file path (handles prefixed paths) */
+  getGitHubCommentCountForFile?: (filePath: string) => number;
   /** Whether GitHub comments are currently loading */
   isGitHubCommentsLoading?: boolean;
 }
@@ -44,7 +44,7 @@ export function FileTree({
   className,
   showGitHubComments,
   onToggleGitHubComments,
-  fileCommentCounts,
+  getGitHubCommentCountForFile,
   isGitHubCommentsLoading,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
@@ -70,7 +70,7 @@ export function FileTree({
               ? () => onSelectFile(node.path)
               : undefined
           }
-          commentCount={fileCommentCounts?.[node.path]}
+          commentCount={getGitHubCommentCountForFile?.(node.path)}
           showCommentBadge={showGitHubComments}
         />
         {node.type === 'folder' &&

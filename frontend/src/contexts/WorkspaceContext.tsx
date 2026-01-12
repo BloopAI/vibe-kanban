@@ -76,7 +76,7 @@ interface WorkspaceContextValue {
   showGitHubComments: boolean;
   setShowGitHubComments: (show: boolean) => void;
   getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
-  gitHubFileCommentCounts: Record<string, number>;
+  getGitHubCommentCountForFile: (filePath: string) => number;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -169,22 +169,33 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     return normalized;
   }, [gitHubComments]);
 
-  // Get comments for a specific file
-  const getGitHubCommentsForFile = useCallback(
-    (filePath: string): NormalizedGitHubComment[] => {
-      return normalizedComments.filter((c) => c.filePath === filePath);
+  // Helper to match paths - handles repo prefix in diff paths
+  // GitHub paths: "frontend/src/file.ts"
+  // Diff paths: "vibe-kanban/frontend/src/file.ts" (prefixed with repo name)
+  const pathMatches = useCallback(
+    (diffPath: string, githubPath: string): boolean => {
+      return diffPath === githubPath || diffPath.endsWith('/' + githubPath);
     },
-    [normalizedComments]
+    []
   );
 
-  // Compute file comment counts
-  const gitHubFileCommentCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const comment of normalizedComments) {
-      counts[comment.filePath] = (counts[comment.filePath] || 0) + 1;
-    }
-    return counts;
-  }, [normalizedComments]);
+  // Get comments for a specific file (handles prefixed paths)
+  const getGitHubCommentsForFile = useCallback(
+    (filePath: string): NormalizedGitHubComment[] => {
+      return normalizedComments.filter((c) => pathMatches(filePath, c.filePath));
+    },
+    [normalizedComments, pathMatches]
+  );
+
+  // Get comment count for a specific file (handles prefixed paths)
+  const getGitHubCommentCountForFile = useCallback(
+    (filePath: string): number => {
+      return normalizedComments.filter((c) =>
+        pathMatches(filePath, c.filePath)
+      ).length;
+    },
+    [normalizedComments, pathMatches]
+  );
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
@@ -238,7 +249,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       showGitHubComments,
       setShowGitHubComments,
       getGitHubCommentsForFile,
-      gitHubFileCommentCounts,
+      getGitHubCommentCountForFile,
     }),
     [
       workspaceId,
@@ -264,7 +275,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       showGitHubComments,
       setShowGitHubComments,
       getGitHubCommentsForFile,
-      gitHubFileCommentCounts,
+      getGitHubCommentCountForFile,
     ]
   );
 
