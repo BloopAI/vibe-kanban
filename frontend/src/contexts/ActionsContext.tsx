@@ -114,6 +114,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
           showCancelButton: false,
           variant: 'destructive',
         });
+        // Re-throw so callers can handle the error (e.g., update UI state)
+        throw error;
       }
     },
     [executorContext]

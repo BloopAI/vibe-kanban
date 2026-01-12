@@ -65,6 +65,8 @@ function GitPanelContainer({
 
   // Track push state per repo: idle, pending, success, or error
   const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
+  const pushStatesRef = useRef<Record<string, PushState>>({});
+  pushStatesRef.current = pushStates;
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up timeout on unmount
@@ -148,9 +150,10 @@ function GitPanelContainer({
   const handlePushClick = useCallback(
     async (repoId: string) => {
       if (!selectedWorkspace?.id) return;
-      if (pushStates[repoId] === 'pending') return; // Prevent multiple simultaneous pushes
+      // Use ref to check current state to avoid stale closure
+      if (pushStatesRef.current[repoId] === 'pending') return;
 
-      // Clear any existing success timeout
+      // Clear any existing timeout
       if (successTimeoutRef.current) {
         clearTimeout(successTimeoutRef.current);
         successTimeoutRef.current = null;
@@ -165,7 +168,9 @@ function GitPanelContainer({
         successTimeoutRef.current = setTimeout(() => {
           setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
         }, 2000);
-      } catch {
+      } catch (error) {
+        // Error dialog is already shown by executeAction
+        console.error('Push failed:', error);
         setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
         // Clear error state after 3 seconds
         successTimeoutRef.current = setTimeout(() => {
@@ -173,7 +178,7 @@ function GitPanelContainer({
         }, 3000);
       }
     },
-    [selectedWorkspace?.id, pushStates, executeAction]
+    [selectedWorkspace?.id, executeAction]
   );
 
   return (
