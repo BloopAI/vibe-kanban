@@ -3,8 +3,8 @@ use std::{str::FromStr, sync::Arc};
 use db::{
     DBService,
     models::{
-        execution_process::ExecutionProcess, project::Project, scratch::Scratch, session::Session,
-        task::Task, workspace::Workspace,
+        execution_process::ExecutionProcess, project::Project, project_group::ProjectGroup,
+        scratch::Scratch, session::Session, task::Task, workspace::Workspace,
     },
 };
 use serde_json::json;
@@ -21,7 +21,8 @@ mod streams;
 pub mod types;
 
 pub use patches::{
-    execution_process_patch, project_patch, scratch_patch, task_patch, workspace_patch,
+    execution_process_patch, project_group_patch, project_patch, scratch_patch, task_patch,
+    workspace_patch,
 };
 pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
@@ -162,6 +163,14 @@ impl EventService {
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
+                            "project_groups" => {
+                                if let Ok(value) = preupdate.get_old_column_value(0)
+                                    && let Ok(group_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                {
+                                    let patch = project_group_patch::remove(group_id);
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
                             _ => {}
                         }
                     }
@@ -181,7 +190,8 @@ impl EventService {
                                 | (HookTables::Projects, SqliteOperation::Delete)
                                 | (HookTables::Workspaces, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
-                                | (HookTables::Scratch, SqliteOperation::Delete) => {
+                                | (HookTables::Scratch, SqliteOperation::Delete)
+                                | (HookTables::ProjectGroups, SqliteOperation::Delete) => {
                                     // Deletions handled in preupdate hook for reliable data capture
                                     return;
                                 }
@@ -259,6 +269,19 @@ impl EventService {
                                         }
                                     }
                                 }
+                                (HookTables::ProjectGroups, _) => {
+                                    match ProjectGroup::find_by_rowid(&db.pool, rowid).await {
+                                        Ok(Some(group)) => RecordTypes::ProjectGroup(group),
+                                        Ok(None) => RecordTypes::DeletedProjectGroup {
+                                            rowid,
+                                            group_id: None,
+                                        },
+                                        Err(e) => {
+                                            tracing::error!("Failed to fetch project_group: {:?}", e);
+                                            return;
+                                        }
+                                    }
+                                }
                             };
 
                             let db_op: &str = match hook.operation {
@@ -326,6 +349,15 @@ impl EventService {
                                     ..
                                 } => {
                                     let patch = scratch_patch::remove(*scratch_id, scratch_type_str);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::ProjectGroup(group) => {
+                                    let patch = match hook.operation {
+                                        SqliteOperation::Insert => project_group_patch::add(group),
+                                        SqliteOperation::Update => project_group_patch::replace(group),
+                                        _ => project_group_patch::replace(group),
+                                    };
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }

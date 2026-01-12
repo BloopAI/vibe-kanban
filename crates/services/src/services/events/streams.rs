@@ -1,6 +1,7 @@
 use db::models::{
     execution_process::ExecutionProcess,
     project::Project,
+    project_group::ProjectGroup,
     scratch::Scratch,
     task::{Task, TaskWithAttemptStatus},
     workspace::Workspace,
@@ -211,6 +212,85 @@ impl EventService {
                                     );
                                     Some(Err(std::io::Error::other(format!(
                                         "failed to resync projects after lag: {err}"
+                                    ))))
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+        // Start with initial snapshot, Ready signal, then live updates
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
+
+        Ok(combined_stream)
+    }
+
+    /// Stream raw project group messages with initial snapshot
+    pub async fn stream_project_groups_raw(
+        &self,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        fn build_project_groups_snapshot(groups: Vec<ProjectGroup>) -> LogMsg {
+            // Convert groups array to object keyed by group ID
+            let groups_map: serde_json::Map<String, serde_json::Value> = groups
+                .into_iter()
+                .map(|group| {
+                    (
+                        group.id.to_string(),
+                        serde_json::to_value(group).unwrap(),
+                    )
+                })
+                .collect();
+
+            let patch = json!([
+                {
+                    "op": "replace",
+                    "path": "/groups",
+                    "value": groups_map
+                }
+            ]);
+
+            LogMsg::JsonPatch(serde_json::from_value(patch).unwrap())
+        }
+
+        // Get initial snapshot of project groups
+        let groups = ProjectGroup::find_all(&self.db.pool).await?;
+        let initial_msg = build_project_groups_snapshot(groups);
+
+        let db_pool = self.db.pool.clone();
+
+        // Get filtered event stream (project_groups only)
+        let filtered_stream =
+            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let db_pool = db_pool.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            if let Some(patch_op) = patch.0.first()
+                                && patch_op.path().starts_with("/project_groups")
+                            {
+                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                            }
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                        Err(BroadcastStreamRecvError::Lagged(skipped)) => {
+                            tracing::warn!(
+                                skipped = skipped,
+                                "project_groups stream lagged; resyncing snapshot"
+                            );
+
+                            match ProjectGroup::find_all(&db_pool).await {
+                                Ok(groups) => Some(Ok(build_project_groups_snapshot(groups))),
+                                Err(err) => {
+                                    tracing::error!(
+                                        error = %err,
+                                        "failed to resync project_groups after lag"
+                                    );
+                                    Some(Err(std::io::Error::other(format!(
+                                        "failed to resync project_groups after lag: {err}"
                                     ))))
                                 }
                             }

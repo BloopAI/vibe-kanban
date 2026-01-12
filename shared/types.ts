@@ -12,11 +12,11 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, group_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, };
+export type UpdateProject = { name: string | null, group_id: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -25,6 +25,12 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
+
+export type ProjectGroup = { id: string, name: string, position: number, created_at: Date, updated_at: Date, };
+
+export type CreateProjectGroup = { name: string, position: number | null, };
+
+export type UpdateProjectGroup = { name: string | null, position: number | null, };
 
 export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
 

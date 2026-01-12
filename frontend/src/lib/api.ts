@@ -17,6 +17,9 @@ import {
   ExecutionProcessRepoState,
   GitBranch,
   Project,
+  ProjectGroup,
+  CreateProjectGroup,
+  UpdateProjectGroup,
   Repo,
   RepoWithTargetBranch,
   CreateProject,
@@ -355,6 +358,51 @@ export const projectsApi = {
         method: 'DELETE',
       }
     );
+    return handleApiResponse<void>(response);
+  },
+
+  setGroup: async (
+    projectId: string,
+    groupId: string | null
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ group_id: groupId }),
+    });
+    return handleApiResponse<Project>(response);
+  },
+};
+
+// Project Groups APIs
+export const projectGroupsApi = {
+  getAll: async (): Promise<ProjectGroup[]> => {
+    const response = await makeRequest('/api/project-groups');
+    return handleApiResponse<ProjectGroup[]>(response);
+  },
+
+  create: async (data: CreateProjectGroup): Promise<ProjectGroup> => {
+    const response = await makeRequest('/api/project-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectGroup>(response);
+  },
+
+  update: async (
+    id: string,
+    data: UpdateProjectGroup
+  ): Promise<ProjectGroup> => {
+    const response = await makeRequest(`/api/project-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectGroup>(response);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/project-groups/${id}`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 };

@@ -23,6 +23,7 @@ pub struct Project {
     pub name: String,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    pub group_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -38,6 +39,7 @@ pub struct CreateProject {
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateProject {
     pub name: Option<String>,
+    pub group_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -71,6 +73,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      group_id as "group_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -88,6 +91,7 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.group_id as "group_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -111,6 +115,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      group_id as "group_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -128,6 +133,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      group_id as "group_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -148,6 +154,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      group_id as "group_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -176,6 +183,7 @@ impl Project {
                           name,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          group_id as "group_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -205,10 +213,35 @@ impl Project {
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         group_id as "group_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    pub async fn set_group_id(
+        pool: &SqlitePool,
+        id: Uuid,
+        group_id: Option<Uuid>,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"UPDATE projects
+               SET group_id = $2, updated_at = datetime('now', 'subsec')
+               WHERE id = $1
+               RETURNING id as "id!: Uuid",
+                         name,
+                         default_agent_working_dir,
+                         remote_project_id as "remote_project_id: Uuid",
+                         group_id as "group_id: Uuid",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            group_id
         )
         .fetch_one(pool)
         .await
