@@ -495,26 +495,6 @@ export function WorkspacesLayout() {
     [setFileTreeHeight]
   );
 
-  // Handle pane resize end
-  const handlePaneResize = useCallback(
-    (sizes: number[]) => {
-      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes/logs panel, sizes[3] = git panel
-      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
-      if (sizes[3] !== undefined) setGitPanelWidth(sizes[3]);
-
-      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
-      if (total > 0) {
-        // Store changes/logs panel as percentage of TOTAL container width
-        const centerPaneWidth = sizes[2];
-        if (centerPaneWidth !== undefined) {
-          const percent = Math.round((centerPaneWidth / total) * 100);
-          setChangesPanelWidth(`${percent}%`);
-        }
-      }
-    },
-    [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
-  );
-
   // Navigate to logs panel and select a specific process
   const handleViewProcessInPanel = useCallback(
     (processId: string) => {
@@ -698,11 +678,39 @@ export function WorkspacesLayout() {
     />
   );
 
+  // Handle inner pane resize (main, changes/logs, git panel)
+  const handleInnerPaneResize = useCallback(
+    (sizes: number[]) => {
+      // sizes[0] = main (no persistence needed, uses LayoutPriority.High)
+      // sizes[1] = changes/logs panel
+      // sizes[2] = git panel
+      if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
+
+      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
+      if (total > 0) {
+        const centerPaneWidth = sizes[1];
+        if (centerPaneWidth !== undefined) {
+          const percent = Math.round((centerPaneWidth / total) * 100);
+          setChangesPanelWidth(`${percent}%`);
+        }
+      }
+    },
+    [setGitPanelWidth, setChangesPanelWidth]
+  );
+
+  // Handle outer pane resize (sidebar only)
+  const handleOuterPaneResize = useCallback(
+    (sizes: number[]) => {
+      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
+    },
+    [setSidebarWidth]
+  );
+
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
-    // Main content panes (2-4) that need ExecutionProcessesContext
-    const mainPanesContent = (
-      <>
+    // Inner Allotment with panes 2-4 (main, changes/logs, git panel)
+    const innerAllotment = (
+      <Allotment onDragEnd={handleInnerPaneResize}>
         <Allotment.Pane
           visible={isMainPanelVisible}
           priority={LayoutPriority.High}
@@ -776,17 +784,17 @@ export function WorkspacesLayout() {
             {renderRightPanelContent()}
           </div>
         </Allotment.Pane>
-      </>
+      </Allotment>
     );
 
-    // Wrap only panes 2-4 with providers (sidebar stays outside)
-    const wrappedMainPanes = isCreateMode ? (
+    // Wrap inner Allotment with providers
+    const wrappedInnerContent = isCreateMode ? (
       <CreateModeProvider
         initialProjectId={lastWorkspaceTask?.project_id}
         initialRepos={lastWorkspaceRepos}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {mainPanesContent}
+          {innerAllotment}
         </ReviewProvider>
       </CreateModeProvider>
     ) : (
@@ -796,7 +804,7 @@ export function WorkspacesLayout() {
         sessionId={selectedSessionId}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {mainPanesContent}
+          {innerAllotment}
         </ReviewProvider>
       </ExecutionProcessesProvider>
     );
@@ -805,9 +813,9 @@ export function WorkspacesLayout() {
       <Allotment
         ref={allotmentRef}
         className="flex-1 min-h-0"
-        onDragEnd={handlePaneResize}
+        onDragEnd={handleOuterPaneResize}
       >
-        {/* Sidebar pane - OUTSIDE providers, won't re-render on workspace switch */}
+        {/* Sidebar pane - OUTSIDE providers, won't remount on workspace switch */}
         <Allotment.Pane
           minSize={300}
           preferredSize={sidebarWidth}
@@ -817,8 +825,10 @@ export function WorkspacesLayout() {
           <div className="h-full overflow-hidden">{renderSidebar()}</div>
         </Allotment.Pane>
 
-        {/* Main panes wrapped with providers */}
-        {wrappedMainPanes}
+        {/* Container for provider-wrapped inner content */}
+        <Allotment.Pane priority={LayoutPriority.High}>
+          {wrappedInnerContent}
+        </Allotment.Pane>
       </Allotment>
     );
   };
