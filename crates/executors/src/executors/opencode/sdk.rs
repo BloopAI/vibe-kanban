@@ -73,7 +73,7 @@ pub struct RunConfig {
     pub directory: String,
     pub prompt: String,
     pub resume_session_id: Option<String>,
-    pub model: Option<String>,
+    pub model: Option<ModelSpec>,
     pub agent: Option<String>,
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
     pub auto_approve: bool,
@@ -90,6 +90,20 @@ struct SessionResponse {
     id: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct AgentModel {
+    #[serde(rename = "providerID")]
+    provider_id: String,
+    #[serde(rename = "modelID")]
+    model_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentResponse {
+    name: String,
+    model: Option<AgentModel>,
+}
+
 #[derive(Debug, Serialize)]
 struct PromptRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,7 +114,7 @@ struct PromptRequest {
 }
 
 #[derive(Debug, Serialize, Clone)]
-struct ModelSpec {
+pub struct ModelSpec {
     #[serde(rename = "providerID")]
     provider_id: String,
     #[serde(rename = "modelID")]
@@ -188,7 +202,7 @@ async fn run_session_inner(
         })
         .await?;
 
-    let model = config.model.as_deref().and_then(parse_model);
+    let model = config.model.clone();
 
     let (control_tx, mut control_rx) = mpsc::unbounded_channel::<ControlEvent>();
 
@@ -526,6 +540,55 @@ fn parse_model(model: &str) -> Option<ModelSpec> {
         provider_id,
         model_id,
     })
+}
+
+/// Fetches available agents from the OpenCode server API
+async fn fetch_agents(
+    client: &reqwest::Client,
+    base_url: &str,
+) -> Result<Vec<AgentResponse>, ExecutorError> {
+    let resp = client
+        .get(format!("{base_url}/agent"))
+        .send()
+        .await
+        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
+
+    if !resp.status().is_success() {
+        return Err(ExecutorError::Io(io::Error::other(format!(
+            "OpenCode /agent request failed: HTTP {}",
+            resp.status()
+        ))));
+    }
+
+    let agents = resp
+        .json::<Vec<AgentResponse>>()
+        .await
+        .map_err(|err| ExecutorError::Io(io::Error::other(err)))?;
+
+    Ok(agents)
+}
+
+/// Resolves the default model for a given agent by querying the OpenCode API
+async fn resolve_agent_model(
+    client: &reqwest::Client,
+    base_url: &str,
+    agent_name: &str,
+) -> Result<Option<ModelSpec>, ExecutorError> {
+    let agents = fetch_agents(client, base_url).await?;
+
+    for agent in agents {
+        if agent.name == agent_name {
+            if let Some(model) = agent.model {
+                return Ok(Some(ModelSpec {
+                    provider_id: model.provider_id,
+                    model_id: model.model_id,
+                }));
+            }
+            return Ok(None);
+        }
+    }
+
+    Ok(None)
 }
 
 async fn connect_event_stream(
@@ -917,4 +980,18 @@ async fn request_permission_approval(
             reason: Some(format!("Approval request failed: {err}")),
         },
     }
+}
+
+/// Public wrapper for parse_model function
+pub fn parse_model_public(model: &str) -> Option<ModelSpec> {
+    parse_model(model)
+}
+
+/// Public wrapper for resolve_agent_model function
+pub async fn resolve_agent_model_public(
+    client: &reqwest::Client,
+    base_url: &str,
+    agent_name: &str,
+) -> Result<Option<ModelSpec>, ExecutorError> {
+    resolve_agent_model(client, base_url, agent_name).await
 }

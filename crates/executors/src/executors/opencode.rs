@@ -31,9 +31,13 @@ use sdk::{LogWriter, RunConfig, run_session};
 pub struct Opencode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    /// Agent to use for OpenCode execution. If not specified, defaults to "build".
+    /// When model is not specified, the agent's default model will be fetched from OpenCode API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "agent")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     /// Auto-approve agent actions
     #[serde(default = "default_to_true")]
@@ -103,13 +107,42 @@ impl Opencode {
             self.approvals.clone()
         };
 
+        // Determine agent name: use configured agent, or default to "build"
+        let agent_name = self.agent.as_deref().unwrap_or("build");
+
+        // Determine model: if model is configured, use it; otherwise fetch from agent API
+        let model = if let Some(ref model_str) = self.model {
+            sdk::parse_model_public(model_str)
+        } else {
+            // No model configured, try to fetch agent's default model
+            let client = reqwest::Client::new();
+            match sdk::resolve_agent_model_public(&client, &base_url, agent_name).await {
+                Ok(Some(model_spec)) => Some(model_spec),
+                Ok(None) => {
+                    tracing::warn!(
+                        "Agent '{}' has no default model configured, and no model was specified",
+                        agent_name
+                    );
+                    None
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to fetch agent model for '{}': {}. Proceeding without model.",
+                        agent_name,
+                        err
+                    );
+                    None
+                }
+            }
+        };
+
         let config = RunConfig {
             base_url,
             directory,
             prompt: combined_prompt,
             resume_session_id: resume_session.map(|s| s.to_string()),
-            model: self.model.clone(),
-            agent: self.mode.clone(),
+            model,
+            agent: Some(agent_name.to_string()),
             approvals,
             auto_approve: self.auto_approve,
         };
