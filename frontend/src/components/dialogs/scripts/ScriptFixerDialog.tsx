@@ -238,8 +238,12 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         : t('scriptFixer.devServerTitle');
 
     return (
-      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden">
+      <Dialog
+        open={modal.visible}
+        onOpenChange={handleOpenChange}
+        className="max-w-4xl w-[90vw]"
+      >
+        <DialogContent className="max-h-[80vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
           </DialogHeader>
