@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { SplitSide } from '@git-diff-view/react';
 import {
   useWorkspaces,
   workspaceSummaryKeys,
@@ -15,12 +16,33 @@ import {
 import { useAttempt } from '@/hooks/useAttempt';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
+import { usePrComments } from '@/hooks/usePrComments';
+import {
+  usePersistedExpanded,
+  PERSIST_KEYS,
+} from '@/stores/useUiPreferencesStore';
 import { attemptsApi } from '@/lib/api';
 import type {
   Workspace as ApiWorkspace,
   Session,
   RepoWithTargetBranch,
+  UnifiedPrComment,
 } from 'shared/types';
+
+/**
+ * Normalized GitHub comment for diff view display
+ */
+export interface NormalizedGitHubComment {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  url: string | null;
+  filePath: string;
+  lineNumber: number;
+  side: SplitSide;
+  diffHunk: string | null;
+}
 
 interface WorkspaceContextValue {
   workspaceId: string | undefined;
@@ -48,6 +70,13 @@ interface WorkspaceContextValue {
   /** Repos for the current workspace */
   repos: RepoWithTargetBranch[];
   isReposLoading: boolean;
+  /** GitHub PR Comments */
+  gitHubComments: UnifiedPrComment[];
+  isGitHubCommentsLoading: boolean;
+  showGitHubComments: boolean;
+  setShowGitHubComments: (show: boolean) => void;
+  getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
+  gitHubFileCommentCounts: Record<string, number>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -94,6 +123,65 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
     enabled: !isCreateMode,
   });
+
+  // GitHub comments toggle state (persisted)
+  const [showGitHubComments, setShowGitHubComments] = usePersistedExpanded(
+    PERSIST_KEYS.showGitHubComments,
+    false // Default to hidden
+  );
+
+  // Get first repo ID for PR comments
+  const primaryRepoId = repos[0]?.id;
+
+  // Fetch PR comments for the current workspace
+  const { data: prCommentsData, isLoading: isGitHubCommentsLoading } =
+    usePrComments(workspaceId, primaryRepoId, {
+      enabled: !isCreateMode && !!primaryRepoId,
+    });
+
+  const gitHubComments = useMemo(
+    () => prCommentsData?.comments ?? [],
+    [prCommentsData?.comments]
+  );
+
+  // Normalize GitHub review comments for file matching
+  const normalizedComments = useMemo(() => {
+    const normalized: NormalizedGitHubComment[] = [];
+    for (const comment of gitHubComments) {
+      if (comment.comment_type !== 'review') continue;
+      if (comment.line === null) continue; // Skip file-level comments
+
+      normalized.push({
+        id: String(comment.id),
+        author: comment.author,
+        body: comment.body,
+        createdAt: comment.created_at,
+        url: comment.url,
+        filePath: comment.path,
+        lineNumber: Number(comment.line),
+        side: SplitSide.new, // GitHub comments reference the new file side
+        diffHunk: comment.diff_hunk,
+      });
+    }
+    return normalized;
+  }, [gitHubComments]);
+
+  // Get comments for a specific file
+  const getGitHubCommentsForFile = useCallback(
+    (filePath: string): NormalizedGitHubComment[] => {
+      return normalizedComments.filter((c) => c.filePath === filePath);
+    },
+    [normalizedComments]
+  );
+
+  // Compute file comment counts
+  const gitHubFileCommentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const comment of normalizedComments) {
+      counts[comment.filePath] = (counts[comment.filePath] || 0) + 1;
+    }
+    return counts;
+  }, [normalizedComments]);
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
@@ -142,6 +230,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      gitHubFileCommentCounts,
     }),
     [
       workspaceId,
@@ -162,6 +256,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      gitHubFileCommentCounts,
     ]
   );
 

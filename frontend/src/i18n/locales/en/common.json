@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "Search files...",
     "noResults": "No matching files",
-    "title": "Files"
+    "title": "Files",
+    "showGitHubComments": "Show GitHub comments",
+    "hideGitHubComments": "Hide GitHub comments"
   },
   "sections": {
     "changes": "Changes",

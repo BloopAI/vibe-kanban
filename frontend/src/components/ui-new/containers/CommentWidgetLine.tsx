@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
+import { CommentCard } from '../primitives/CommentCard';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 
@@ -43,18 +44,10 @@ export function CommentWidgetLine({
   }, [value, draft, setDraft, widgetKey, onSave, addComment]);
 
   return (
-    <div className="p-base bg-panel font-sans text-base">
-      <div className="p-base rounded-sm bg-brand/20 border border-brand">
-        <WYSIWYGEditor
-          value={value}
-          onChange={setValue}
-          placeholder={t('comments.addPlaceholder')}
-          className="w-full text-normal min-h-[60px]"
-          projectId={projectId}
-          onCmdEnter={handleSave}
-          autoFocus
-        />
-        <div className="mt-half flex gap-half">
+    <CommentCard
+      variant="input"
+      actions={
+        <>
           <PrimaryButton
             variant="default"
             onClick={handleSave}
@@ -65,8 +58,18 @@ export function CommentWidgetLine({
           <PrimaryButton variant="secondary" onClick={handleCancel}>
             {t('actions.cancel')}
           </PrimaryButton>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <WYSIWYGEditor
+        value={value}
+        onChange={setValue}
+        placeholder={t('comments.addPlaceholder')}
+        className="w-full text-normal min-h-[60px]"
+        projectId={projectId}
+        onCmdEnter={handleSave}
+        autoFocus
+      />
+    </CommentCard>
   );
 }
