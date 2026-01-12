@@ -700,21 +700,9 @@ export function WorkspacesLayout() {
 
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
-    const allotmentContent = (
-      <Allotment
-        ref={allotmentRef}
-        className="flex-1 min-h-0"
-        onDragEnd={handlePaneResize}
-      >
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={sidebarWidth}
-          maxSize={600}
-          visible={isSidebarVisible}
-        >
-          <div className="h-full overflow-hidden">{renderSidebar()}</div>
-        </Allotment.Pane>
-
+    // Main content panes (2-4) that need ExecutionProcessesContext
+    const mainPanesContent = (
+      <>
         <Allotment.Pane
           visible={isMainPanelVisible}
           priority={LayoutPriority.High}
@@ -788,32 +776,50 @@ export function WorkspacesLayout() {
             {renderRightPanelContent()}
           </div>
         </Allotment.Pane>
-      </Allotment>
+      </>
     );
 
-    if (isCreateMode) {
-      return (
-        <CreateModeProvider
-          initialProjectId={lastWorkspaceTask?.project_id}
-          initialRepos={lastWorkspaceRepos}
-        >
-          <ReviewProvider attemptId={selectedWorkspace?.id}>
-            {allotmentContent}
-          </ReviewProvider>
-        </CreateModeProvider>
-      );
-    }
-
-    return (
+    // Wrap only panes 2-4 with providers (sidebar stays outside)
+    const wrappedMainPanes = isCreateMode ? (
+      <CreateModeProvider
+        initialProjectId={lastWorkspaceTask?.project_id}
+        initialRepos={lastWorkspaceRepos}
+      >
+        <ReviewProvider attemptId={selectedWorkspace?.id}>
+          {mainPanesContent}
+        </ReviewProvider>
+      </CreateModeProvider>
+    ) : (
       <ExecutionProcessesProvider
         key={`${selectedWorkspace?.id}-${selectedSessionId}`}
         attemptId={selectedWorkspace?.id}
         sessionId={selectedSessionId}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {allotmentContent}
+          {mainPanesContent}
         </ReviewProvider>
       </ExecutionProcessesProvider>
+    );
+
+    return (
+      <Allotment
+        ref={allotmentRef}
+        className="flex-1 min-h-0"
+        onDragEnd={handlePaneResize}
+      >
+        {/* Sidebar pane - OUTSIDE providers, won't re-render on workspace switch */}
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={sidebarWidth}
+          maxSize={600}
+          visible={isSidebarVisible}
+        >
+          <div className="h-full overflow-hidden">{renderSidebar()}</div>
+        </Allotment.Pane>
+
+        {/* Main panes wrapped with providers */}
+        {wrappedMainPanes}
+      </Allotment>
     );
   };
 
