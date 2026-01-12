@@ -12,27 +12,29 @@ export function ActiveClaudeAccount() {
     refetchInterval: 10000,
   });
 
-  // Show loading state
+  // Always show something to verify component is mounted
   if (isLoading) {
     return (
-      <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
-        ...
+      <span className="text-xs text-white px-2 py-1 bg-blue-500 rounded-full font-bold">
+        Loading...
       </span>
     );
   }
 
-  // Show error state
   if (error) {
     return (
-      <span className="text-xs text-red-500 px-2 py-0.5 bg-red-100 rounded-full">
-        Error
+      <span className="text-xs text-white px-2 py-1 bg-red-500 rounded-full font-bold">
+        Error!
       </span>
     );
   }
 
-  // Only show when rotation is enabled
   if (!accountsData?.rotation_enabled) {
-    return null;
+    return (
+      <span className="text-xs text-white px-2 py-1 bg-gray-500 rounded-full font-bold">
+        Rotation Off
+      </span>
+    );
   }
 
   // Find the current account name
@@ -48,15 +50,15 @@ export function ActiveClaudeAccount() {
 
   if (!accountName) {
     return (
-      <span className="text-xs text-yellow-500 px-2 py-0.5 bg-yellow-100 rounded-full">
-        No account
+      <span className="text-xs text-white px-2 py-1 bg-yellow-500 rounded-full font-bold">
+        No Account
       </span>
     );
   }
 
   return (
     <span
-      className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full"
+      className="text-xs text-white px-2 py-1 bg-green-500 rounded-full font-bold"
       title="Active Claude Account"
     >
       {accountName}
