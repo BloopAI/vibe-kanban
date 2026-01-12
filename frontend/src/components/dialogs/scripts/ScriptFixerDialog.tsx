@@ -122,10 +122,14 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
     const hasChanges = script !== originalScript;
 
+    const handleClose = useCallback(() => {
+      modal.resolve({ action: 'canceled' } as ScriptFixerDialogResult);
+      modal.hide();
+    }, [modal]);
+
     const handleOpenChange = (open: boolean) => {
       if (!open) {
-        modal.resolve({ action: 'canceled' } as ScriptFixerDialogResult);
-        modal.hide();
+        handleClose();
       }
     };
 
@@ -209,10 +213,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           await attemptsApi.startDevServer(workspaceId);
         }
 
-        modal.resolve({
-          action: 'saved_and_tested',
-        } as ScriptFixerDialogResult);
-        modal.hide();
+        // Keep dialog open so user can see the new execution logs
+        // The logs will update automatically via useLogStream/useExecutionProcesses
       } catch (err) {
         setError(
           err instanceof Error ? err.message : t('common:error.generic')
@@ -315,10 +317,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSaving || isTesting}
+              onClick={handleClose}
             >
-              {t('common:cancel')}
+              {t('common:close')}
             </Button>
             <Button
               variant="outline"
