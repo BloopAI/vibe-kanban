@@ -57,6 +57,7 @@ export function extractProfileFromAction(
       case 'CodingAgentFollowUpRequest':
         return typ.executor_profile_id;
       case 'ScriptRequest':
+      default:
         curr = curr.next_action;
         continue;
     }
