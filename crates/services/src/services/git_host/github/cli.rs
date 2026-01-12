@@ -180,11 +180,16 @@ impl GhCli {
     }
 
     /// Run `gh pr create` and parse the response.
+    ///
+    /// The `repo_path` parameter specifies the working directory for the command.
+    /// This is required for compatibility with older `gh` CLI versions (e.g., v2.4.0)
+    /// that require running from within a git repository.
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
         owner: &str,
         repo_name: &str,
+        repo_path: &Path,
     ) -> Result<PullRequestInfo, GhCliError> {
         // Write body to temp file to avoid shell escaping and length issues
         let body = request.body.as_deref().unwrap_or("");
@@ -212,7 +217,7 @@ impl GhCli {
             args.push(OsString::from("--draft"));
         }
 
-        let raw = self.run(args, None)?;
+        let raw = self.run(args, Some(repo_path))?;
         Self::parse_pr_create_text(&raw)
     }
 
