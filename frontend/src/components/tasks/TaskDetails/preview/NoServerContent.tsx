@@ -6,6 +6,7 @@ import {
   SquareTerminal,
   Settings,
   ExternalLink,
+  Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Project } from 'shared/types';
@@ -24,6 +25,8 @@ interface NoServerContentProps {
   startDevServer: () => void;
   stopDevServer: () => void;
   project: Project | undefined;
+  hasFailedDevServer?: boolean;
+  onFixDevScript?: () => void;
 }
 
 export function NoServerContent({
@@ -33,6 +36,8 @@ export function NoServerContent({
   startDevServer,
   stopDevServer,
   project,
+  hasFailedDevServer,
+  onFixDevScript,
 }: NoServerContentProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigate();
@@ -127,6 +132,18 @@ export function NoServerContent({
               >
                 <Settings className="h-3 w-3" />
                 {t('preview.noServer.configureButton')}
+              </Button>
+            )}
+
+            {hasFailedDevServer && onFixDevScript && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onFixDevScript}
+                className="gap-1"
+              >
+                <Wrench className="h-4 w-4" />
+                {t('preview.noServer.fixScript')}
               </Button>
             )}
           </div>

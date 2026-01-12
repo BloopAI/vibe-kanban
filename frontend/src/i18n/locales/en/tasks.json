@@ -90,7 +90,8 @@
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "configureButton": "Configure",
-      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues",
+      "fixScript": "Fix Dev Script"
     },
     "devScript": {
       "saveAndStart": "Save & Start",

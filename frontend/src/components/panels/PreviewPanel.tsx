@@ -115,6 +115,14 @@ export function PreviewPanel() {
 
   const hasRunningDevServer = runningDevServers.length > 0;
 
+  // Detect failed dev server process (failed status or completed with non-zero exit code)
+  const failedDevServerProcess = devServerProcesses.find(
+    (p) =>
+      p.status === 'failed' ||
+      (p.status === 'completed' && p.exit_code !== null && p.exit_code !== 0n)
+  );
+  const hasFailedDevServer = Boolean(failedDevServerProcess);
+
   useEffect(() => {
     if (
       loadingTimeFinished &&
@@ -221,6 +229,8 @@ export function PreviewPanel() {
             startDevServer={handleStartDevServer}
             stopDevServer={stopDevServer}
             project={project}
+            hasFailedDevServer={hasFailedDevServer}
+            onFixDevScript={canFixDevScript ? handleFixDevScript : undefined}
           />
         )}
 
