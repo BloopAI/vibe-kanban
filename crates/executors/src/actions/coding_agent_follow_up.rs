@@ -9,8 +9,10 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::ExecutorProfileId,
 };
+#[cfg(not(feature = "qa-mode"))]
+use crate::profile::ExecutorConfigs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentFollowUpRequest {
@@ -56,6 +58,7 @@ impl Executable for CodingAgentFollowUpRequest {
 
         #[cfg(feature = "qa-mode")]
         {
+            let _ = &approvals; // Silence unused variable warning in qa-mode
             tracing::info!("QA mode: using mock executor for follow-up instead of real agent");
             let executor = crate::executors::qa_mock::QaMockExecutor;
             return executor

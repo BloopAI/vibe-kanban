@@ -1,12 +1,15 @@
 use std::{
-    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
+#[cfg(not(feature = "qa-mode"))]
+use std::collections::HashSet;
 
+#[cfg(not(feature = "qa-mode"))]
 use ignore::WalkBuilder;
 use serde::Serialize;
 use thiserror::Error;
+#[cfg(not(feature = "qa-mode"))]
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
@@ -48,6 +51,7 @@ impl FilesystemService {
         FilesystemService {}
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     fn get_directories_to_skip() -> HashSet<String> {
         let mut skip_dirs = HashSet::from(
             [
@@ -88,33 +92,34 @@ impl FilesystemService {
 
     pub async fn list_git_repos(
         &self,
-        path: Option<String>,
-        timeout_ms: u64,
-        hard_timeout_ms: u64,
-        max_depth: Option<usize>,
+        _path: Option<String>,
+        _timeout_ms: u64,
+        _hard_timeout_ms: u64,
+        _max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         #[cfg(feature = "qa-mode")]
         {
             tracing::info!("QA mode: returning hardcoded QA repos instead of scanning filesystem");
-            return super::qa_repos::get_qa_repos();
+            super::qa_repos::get_qa_repos()
         }
 
         #[cfg(not(feature = "qa-mode"))]
         {
-            let base_path = path
+            let base_path = _path
                 .map(PathBuf::from)
                 .unwrap_or_else(Self::get_home_directory);
             Self::verify_directory(&base_path)?;
             self.list_git_repos_with_timeout(
                 vec![base_path],
-                timeout_ms,
-                hard_timeout_ms,
-                max_depth,
+                _timeout_ms,
+                _hard_timeout_ms,
+                _max_depth,
             )
             .await
         }
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     async fn list_git_repos_with_timeout(
         &self,
         paths: Vec<PathBuf>,
@@ -161,16 +166,16 @@ impl FilesystemService {
 
     pub async fn list_common_git_repos(
         &self,
-        timeout_ms: u64,
-        hard_timeout_ms: u64,
-        max_depth: Option<usize>,
+        _timeout_ms: u64,
+        _hard_timeout_ms: u64,
+        _max_depth: Option<usize>,
     ) -> Result<Vec<DirectoryEntry>, FilesystemError> {
         #[cfg(feature = "qa-mode")]
         {
             tracing::info!(
                 "QA mode: returning hardcoded QA repos instead of scanning common directories"
             );
-            return super::qa_repos::get_qa_repos();
+            super::qa_repos::get_qa_repos()
         }
 
         #[cfg(not(feature = "qa-mode"))]
@@ -189,11 +194,12 @@ impl FilesystemService {
             {
                 paths.insert(0, cwd);
             }
-            self.list_git_repos_with_timeout(paths, timeout_ms, hard_timeout_ms, max_depth)
+            self.list_git_repos_with_timeout(paths, _timeout_ms, _hard_timeout_ms, _max_depth)
                 .await
         }
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     async fn list_git_repos_inner(
         &self,
         path: Vec<PathBuf>,
