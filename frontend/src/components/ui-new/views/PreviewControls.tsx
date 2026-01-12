@@ -5,6 +5,7 @@ import {
   ArrowClockwiseIcon,
   SpinnerIcon,
   CopyIcon,
+  WrenchIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface PreviewControlsProps {
   onRefresh: () => void;
   onCopyUrl: () => void;
   onOpenInNewTab: () => void;
+  onFixScript?: () => void;
   isStarting: boolean;
   isStopping: boolean;
   isServerRunning: boolean;
@@ -49,6 +51,7 @@ export function PreviewControls({
   onRefresh,
   onCopyUrl,
   onOpenInNewTab,
+  onFixScript,
   isStarting,
   isStopping,
   isServerRunning,
@@ -116,6 +119,14 @@ export function PreviewControls({
               actionIcon={isStarting ? 'spinner' : PlayIcon}
               onClick={onStart}
               disabled={isStarting}
+            />
+          )}
+          {onFixScript && (
+            <PrimaryButton
+              variant="tertiary"
+              value={t('scriptFixer.fixScript')}
+              actionIcon={WrenchIcon}
+              onClick={onFixScript}
             />
           )}
         </div>

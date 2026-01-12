@@ -655,5 +655,19 @@
     "buttons": {
       "retry": "Retry"
     }
+  },
+  "scriptFixer": {
+    "title": "Fix Script",
+    "setupScriptTitle": "Fix Setup Script",
+    "devServerTitle": "Fix Dev Server Script",
+    "scriptLabel": "Script",
+    "logsLabel": "Last Execution Logs",
+    "saveButton": "Save",
+    "saveAndTestButton": "Save and Test",
+    "saving": "Saving...",
+    "testing": "Testing...",
+    "noLogs": "No execution logs available",
+    "selectRepo": "Repository",
+    "fixScript": "Fix Script"
   }
 }

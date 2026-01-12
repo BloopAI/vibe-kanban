@@ -5,6 +5,7 @@ import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 interface PreviewControlsContainerProps {
   attemptId?: string;
@@ -88,6 +89,17 @@ export function PreviewControlsContainer({
     }
   }, [urlInfo?.url]);
 
+  const handleFixScript = useCallback(() => {
+    if (!attemptId || repos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'dev_server',
+      repos,
+      workspaceId: attemptId,
+      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+    });
+  }, [attemptId, repos]);
+
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
   );
@@ -111,6 +123,7 @@ export function PreviewControlsContainer({
       onRefresh={handleRefresh}
       onCopyUrl={handleCopyUrl}
       onOpenInNewTab={handleOpenInNewTab}
+      onFixScript={attemptId && repos.length > 0 ? handleFixScript : undefined}
       isStarting={isStarting}
       isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}

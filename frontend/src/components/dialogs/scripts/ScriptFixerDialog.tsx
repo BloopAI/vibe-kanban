@@ -1,0 +1,332 @@
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { VirtualizedProcessLogs } from '@/components/ui-new/VirtualizedProcessLogs';
+import { defineModal } from '@/lib/modals';
+import { repoApi, attemptsApi } from '@/lib/api';
+import { useLogStream } from '@/hooks/useLogStream';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';
+
+export type ScriptType = 'setup' | 'dev_server';
+
+export interface ScriptFixerDialogProps {
+  scriptType: ScriptType;
+  repos: RepoWithTargetBranch[];
+  workspaceId: string;
+  sessionId?: string;
+  initialRepoId?: string;
+}
+
+export type ScriptFixerDialogResult = {
+  action: 'saved' | 'saved_and_tested' | 'canceled';
+};
+
+type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+
+const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
+  ({ scriptType, repos, workspaceId, sessionId, initialRepoId }) => {
+    const modal = useModal();
+    const { t } = useTranslation(['tasks', 'common']);
+    const queryClient = useQueryClient();
+
+    // State
+    const [selectedRepoId, setSelectedRepoId] = useState<string>(
+      initialRepoId || repos[0]?.id || ''
+    );
+    const [script, setScript] = useState('');
+    const [originalScript, setOriginalScript] = useState('');
+    const [isLoadingRepo, setIsLoadingRepo] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Get execution processes for the session to find latest script process
+    const { executionProcesses } = useExecutionProcesses(sessionId);
+
+    // Find the latest process for this script type
+    const latestProcess = useMemo(() => {
+      const runReason =
+        scriptType === 'setup' ? 'setupscript' : 'devserver';
+      const filtered = executionProcesses.filter(
+        (p) => p.run_reason === runReason && !p.dropped
+      );
+      // Sort by created_at descending and return the first one
+      return filtered.sort(
+        (a, b) =>
+          new Date(b.created_at as unknown as string).getTime() -
+          new Date(a.created_at as unknown as string).getTime()
+      )[0];
+    }, [executionProcesses, scriptType]);
+
+    // Stream logs for the latest process
+    const { logs: rawLogs, error: logsError } = useLogStream(
+      latestProcess?.id ?? ''
+    );
+    const logs: LogEntry[] = rawLogs.filter(
+      (l): l is LogEntry => l.type === 'STDOUT' || l.type === 'STDERR'
+    );
+
+    // Fetch the selected repo's script
+    useEffect(() => {
+      if (!selectedRepoId) return;
+
+      let cancelled = false;
+      setIsLoadingRepo(true);
+      setError(null);
+
+      (async () => {
+        try {
+          const repo = await repoApi.getById(selectedRepoId);
+          if (cancelled) return;
+
+          const scriptContent =
+            scriptType === 'setup'
+              ? repo.setup_script ?? ''
+              : repo.dev_server_script ?? '';
+
+          setScript(scriptContent);
+          setOriginalScript(scriptContent);
+        } catch (err) {
+          if (cancelled) return;
+          setError(
+            err instanceof Error ? err.message : t('common:error.generic')
+          );
+        } finally {
+          if (!cancelled) setIsLoadingRepo(false);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [selectedRepoId, scriptType, t]);
+
+    const hasChanges = script !== originalScript;
+
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        modal.resolve({ action: 'canceled' } as ScriptFixerDialogResult);
+        modal.hide();
+      }
+    };
+
+    const handleSave = useCallback(async () => {
+      if (!selectedRepoId) return;
+
+      setIsSaving(true);
+      setError(null);
+
+      try {
+        // Build update data with all required fields
+        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
+        const updateData: UpdateRepo = {
+          display_name: selectedRepo?.display_name ?? null,
+          setup_script:
+            scriptType === 'setup'
+              ? script.trim() || null
+              : selectedRepo?.setup_script ?? null,
+          cleanup_script: selectedRepo?.cleanup_script ?? null,
+          copy_files: selectedRepo?.copy_files ?? null,
+          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
+          dev_server_script:
+            scriptType === 'dev_server'
+              ? script.trim() || null
+              : selectedRepo?.dev_server_script ?? null,
+        };
+
+        await repoApi.update(selectedRepoId, updateData);
+
+        // Invalidate repos cache
+        queryClient.invalidateQueries({ queryKey: ['repos'] });
+
+        setOriginalScript(script);
+        modal.resolve({ action: 'saved' } as ScriptFixerDialogResult);
+        modal.hide();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('common:error.generic'));
+      } finally {
+        setIsSaving(false);
+      }
+    }, [selectedRepoId, script, scriptType, queryClient, modal, t]);
+
+    const handleSaveAndTest = useCallback(async () => {
+      if (!selectedRepoId) return;
+
+      setIsTesting(true);
+      setError(null);
+
+      try {
+        // First save the script
+        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
+        const updateData: UpdateRepo = {
+          display_name: selectedRepo?.display_name ?? null,
+          setup_script:
+            scriptType === 'setup'
+              ? script.trim() || null
+              : selectedRepo?.setup_script ?? null,
+          cleanup_script: selectedRepo?.cleanup_script ?? null,
+          copy_files: selectedRepo?.copy_files ?? null,
+          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
+          dev_server_script:
+            scriptType === 'dev_server'
+              ? script.trim() || null
+              : selectedRepo?.dev_server_script ?? null,
+        };
+
+        await repoApi.update(selectedRepoId, updateData);
+
+        // Invalidate repos cache
+        queryClient.invalidateQueries({ queryKey: ['repos'] });
+
+        setOriginalScript(script);
+
+        // Then run the script
+        if (scriptType === 'setup') {
+          await attemptsApi.runSetupScript(workspaceId);
+        }
+        // For dev_server, the caller should handle starting the dev server
+
+        modal.resolve({ action: 'saved_and_tested' } as ScriptFixerDialogResult);
+        modal.hide();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('common:error.generic'));
+      } finally {
+        setIsTesting(false);
+      }
+    }, [selectedRepoId, script, scriptType, workspaceId, queryClient, modal, t]);
+
+    const dialogTitle =
+      scriptType === 'setup'
+        ? t('scriptFixer.setupScriptTitle')
+        : t('scriptFixer.devServerTitle');
+
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+            {/* Repo selector (only show if multiple repos) */}
+            {repos.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="repo-select" className="shrink-0">
+                  {t('scriptFixer.selectRepo')}
+                </Label>
+                <Select
+                  value={selectedRepoId}
+                  onValueChange={setSelectedRepoId}
+                >
+                  <SelectTrigger id="repo-select" className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repos.map((repo) => (
+                      <SelectItem key={repo.id} value={repo.id}>
+                        {repo.display_name || repo.path}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Script editor */}
+            <div className="flex flex-col gap-2 flex-1 min-h-0">
+              <Label>{t('scriptFixer.scriptLabel')}</Label>
+              <div className="flex-1 min-h-[150px] max-h-[300px] overflow-auto border rounded-md">
+                {isLoadingRepo ? (
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <AutoExpandingTextarea
+                    value={script}
+                    onChange={(e) => setScript(e.target.value)}
+                    className="font-mono text-sm p-3 border-0 min-h-full"
+                    placeholder={
+                      scriptType === 'setup'
+                        ? '#!/bin/bash\nnpm install'
+                        : '#!/bin/bash\nnpm run dev'
+                    }
+                    disableInternalScroll
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Logs section */}
+            <div className="flex flex-col gap-2 min-h-0" style={{ height: '200px' }}>
+              <Label>{t('scriptFixer.logsLabel')}</Label>
+              <div className="flex-1 border rounded-md bg-muted overflow-hidden">
+                {latestProcess ? (
+                  <VirtualizedProcessLogs logs={logs} error={logsError} />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    {t('scriptFixer.noLogs')}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Error display */}
+            {error && (
+              <div className="text-destructive text-sm">{error}</div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isSaving || isTesting}
+            >
+              {t('common:cancel')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving || isTesting}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('scriptFixer.saveButton')}
+            </Button>
+            <Button
+              onClick={handleSaveAndTest}
+              disabled={isSaving || isTesting}
+            >
+              {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('scriptFixer.saveAndTestButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
+
+export const ScriptFixerDialog = defineModal<
+  ScriptFixerDialogProps,
+  ScriptFixerDialogResult
+>(ScriptFixerDialogImpl);

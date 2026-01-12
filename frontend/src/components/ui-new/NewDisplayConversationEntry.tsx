@@ -7,6 +7,7 @@ import {
   ToolStatus,
   TodoItem,
   type TaskWithAttemptStatus,
+  type RepoWithTargetBranch,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { DiffLineType, parseInstance } from '@git-diff-view/react';
@@ -18,7 +19,12 @@ import DisplayConversationEntry from '@/components/NormalizedConversation/Displa
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useFileNavigation } from '@/contexts/FileNavigationContext';
 import { useLogNavigation } from '@/contexts/LogNavigationContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
+import {
+  ScriptFixerDialog,
+  type ScriptType,
+} from '@/components/dialogs/scripts/ScriptFixerDialog';
 import {
   ChatToolSummary,
   ChatTodoList,
@@ -215,11 +221,13 @@ function renderToolUseEntry(
         : null;
 
     return (
-      <ChatScriptEntry
+      <ScriptEntryWithFix
         title={entryType.tool_name}
         processId={executionProcessId ?? ''}
         exitCode={exitCode}
         status={status}
+        workspaceId={taskAttempt?.id}
+        sessionId={taskAttempt?.session?.id}
       />
     );
   }
@@ -624,6 +632,65 @@ function SystemMessageEntry({
       content={content}
       expanded={expanded}
       onToggle={toggle}
+    />
+  );
+}
+
+/**
+ * Script entry with fix button for failed scripts
+ */
+function ScriptEntryWithFix({
+  title,
+  processId,
+  exitCode,
+  status,
+  workspaceId,
+  sessionId,
+}: {
+  title: string;
+  processId: string;
+  exitCode: number | null;
+  status: ToolStatus;
+  workspaceId?: string;
+  sessionId?: string;
+}) {
+  // Try to get repos from workspace context - may not be available in all contexts
+  let repos: RepoWithTargetBranch[] = [];
+  try {
+    const workspaceContext = useWorkspaceContext();
+    repos = workspaceContext.repos;
+  } catch {
+    // Context not available, fix button won't be shown
+  }
+
+  const handleFix = useCallback(() => {
+    if (!workspaceId || repos.length === 0) return;
+
+    // Determine script type based on title
+    const scriptType: ScriptType =
+      title === 'Setup Script' || title === 'Cleanup Script'
+        ? 'setup'
+        : 'dev_server';
+
+    ScriptFixerDialog.show({
+      scriptType,
+      repos,
+      workspaceId,
+      sessionId,
+      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+    });
+  }, [title, workspaceId, sessionId, repos]);
+
+  // Only show fix button if we have the necessary context
+  const canFix = workspaceId && repos.length > 0;
+
+  return (
+    <ChatScriptEntry
+      title={title}
+      processId={processId}
+      exitCode={exitCode}
+      status={status}
+      onFix={canFix ? handleFix : undefined}
     />
   );
 }

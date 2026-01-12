@@ -6,6 +6,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
+import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
 
 interface PreviewBrowserContainerProps {
   attemptId?: string;
@@ -44,6 +45,17 @@ export function PreviewBrowserContainer({
     }
   };
 
+  const handleFixDevScript = useCallback(() => {
+    if (!attemptId || repos.length === 0) return;
+
+    ScriptFixerDialog.show({
+      scriptType: 'dev_server',
+      repos,
+      workspaceId: attemptId,
+      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+    });
+  }, [attemptId, repos]);
+
   return (
     <PreviewBrowser
       url={iframeUrl}
@@ -52,6 +64,7 @@ export function PreviewBrowserContainer({
       isServerRunning={runningDevServers.length > 0}
       repos={repos}
       handleEditDevScript={handleEditDevScript}
+      handleFixDevScript={attemptId && repos.length > 0 ? handleFixDevScript : undefined}
       className={className}
     />
   );
