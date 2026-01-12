@@ -371,7 +371,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={handleClose}>
-              {t('common:close')}
+              {t('common:buttons.close')}
             </Button>
             <Button
               variant="outline"
