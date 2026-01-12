@@ -225,18 +225,26 @@ pub async fn create_pr(
     // Resolve remotes and branch names
     let git = deployment.git();
     let push_remote = git.default_remote_name_for_path(&repo_path)?;
-    let target_remote = git.get_remote_name_from_branch_name(&repo_path, &target_branch)?;
+
+    // Try to get the remote from the branch name (works for remote-tracking branches like "upstream/main").
+    // Fall back to push_remote if the branch doesn't exist locally or isn't a remote-tracking branch.
+    let (target_remote, base_branch) =
+        match git.get_remote_name_from_branch_name(&repo_path, &target_branch) {
+            Ok(remote) => {
+                let branch = target_branch
+                    .strip_prefix(&format!("{remote}/"))
+                    .unwrap_or(&target_branch);
+                (remote, branch.to_string())
+            }
+            Err(_) => (push_remote.clone(), target_branch.clone()),
+        };
 
     let push_remote_url = git.get_remote_url(&repo_path, &push_remote)?;
     let target_remote_url = git.get_remote_url(&repo_path, &target_remote)?;
 
-    let base_branch = target_branch
-        .strip_prefix(&format!("{target_remote}/"))
-        .unwrap_or(&target_branch);
-
     // Check target branch exists on remote
     let git_cli = GitCli::new();
-    match git_cli.check_remote_branch_exists(&repo_path, &target_remote_url, base_branch) {
+    match git_cli.check_remote_branch_exists(&repo_path, &target_remote_url, &base_branch) {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::TargetBranchNotFound {
@@ -298,7 +306,7 @@ pub async fn create_pr(
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: workspace.branch.clone(),
-        base_branch: base_branch.to_string(),
+        base_branch: base_branch.clone(),
         draft: request.draft,
         head_repo_url: Some(push_remote_url),
     };
@@ -313,7 +321,7 @@ pub async fn create_pr(
                 pool,
                 workspace.id,
                 workspace_repo.repo_id,
-                base_branch,
+                &base_branch,
                 pr_info.number,
                 &pr_info.url,
             )
