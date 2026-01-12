@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { PreviewBrowser } from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
+import { usePreviewUrlOverride } from '@/hooks/usePreviewUrlOverride';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -19,7 +20,7 @@ export function PreviewBrowserContainer({
 }: PreviewBrowserContainerProps) {
   const navigate = useNavigate();
   const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
-  const { repos } = useWorkspaceContext();
+  const { repos, workspaceId } = useWorkspaceContext();
 
   const { start, isStarting, runningDevServers, devServerProcesses } =
     usePreviewDevServer(attemptId);
@@ -28,13 +29,19 @@ export function PreviewBrowserContainer({
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
   const urlInfo = usePreviewUrl(logs);
 
+  // URL override for this workspace
+  const { overrideUrl, hasOverride } = usePreviewUrlOverride(workspaceId);
+
+  // Use override URL if set, otherwise fall back to auto-detected
+  const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
+
   const handleStart = useCallback(() => {
     start();
   }, [start]);
 
   // Use previewRefreshKey from store to force iframe reload
-  const iframeUrl = urlInfo?.url
-    ? `${urlInfo.url}${urlInfo.url.includes('?') ? '&' : '?'}_refresh=${previewRefreshKey}`
+  const iframeUrl = effectiveUrl
+    ? `${effectiveUrl}${effectiveUrl.includes('?') ? '&' : '?'}_refresh=${previewRefreshKey}`
     : undefined;
 
   const handleEditDevScript = () => {
