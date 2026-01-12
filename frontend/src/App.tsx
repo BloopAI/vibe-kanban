@@ -140,6 +140,25 @@ function AppContent() {
               }
             />
 
+            {/* Default view - AllBoards (grouped projects) */}
+            <Route
+              path="/"
+              element={
+                <NewDesignScope>
+                  <AllBoards />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <NewDesignScope>
+                  <AllBoards />
+                </NewDesignScope>
+              }
+            />
+
+            {/* Legacy design routes for project tasks and settings */}
             <Route
               element={
                 <LegacyDesignScope>
@@ -147,8 +166,6 @@ function AppContent() {
                 </LegacyDesignScope>
               }
             >
-              <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<Projects />} />
               <Route
                 path="/projects/:projectId/tasks"
@@ -194,14 +211,6 @@ function AppContent() {
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
 
-            <Route
-              path="/boards"
-              element={
-                <NewDesignScope>
-                  <AllBoards />
-                </NewDesignScope>
-              }
-            />
           </SentryRoutes>
         </SearchProvider>
       </ThemeProvider>

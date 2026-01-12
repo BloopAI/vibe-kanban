@@ -203,11 +203,12 @@ impl Project {
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let name = payload.name.clone().unwrap_or(existing.name);
+        let group_id = payload.group_id;
 
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2
+               SET name = $2, group_id = $3, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -218,6 +219,7 @@ impl Project {
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+            group_id,
         )
         .fetch_one(pool)
         .await

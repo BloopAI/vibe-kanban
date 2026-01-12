@@ -292,6 +292,7 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        group_id: selectedProject.group_id ?? null,
       };
 
       updateProject.mutate({

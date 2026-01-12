@@ -1,25 +1,16 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   CaretDown,
   ArrowsOut,
   ArrowsIn,
-  Kanban,
-  DotsThree,
 } from '@phosphor-icons/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
-import type { Project, ProjectGroup } from 'shared/types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from '@/components/ui/dropdown-menu';
+import type { ProjectGroup } from 'shared/types';
+import { DroppableGroup, EmptyGroupDropZone } from '@/components/ui-new/dnd/DroppableGroup';
+import { DraggableProjectCard } from '@/components/ui-new/dnd/DraggableProjectCard';
+import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
 
 interface AllBoardsMainProps {
   groupedProjects: GroupedProjects[];
@@ -32,90 +23,12 @@ interface AllBoardsMainProps {
   searchQuery: string;
   isLoading: boolean;
   onMoveToGroup: (projectId: string, groupId: string | null) => void;
-}
-
-interface ProjectCardProps {
-  project: Project;
-  groups: ProjectGroup[];
-  currentGroupId: string | null;
-  onMoveToGroup: (projectId: string, groupId: string | null) => void;
-}
-
-function ProjectCard({
-  project,
-  groups,
-  currentGroupId,
-  onMoveToGroup,
-}: ProjectCardProps) {
-  const navigate = useNavigate();
-
-  const handleClick = () => {
-    navigate(`/projects/${project.id}/tasks`);
-  };
-
-  const formattedDate = new Date(project.created_at as unknown as string).toLocaleDateString();
-
-  return (
-    <div
-      className={cn(
-        'flex flex-col p-base bg-secondary rounded border border-panel',
-        'hover:border-brand/50 transition-colors cursor-pointer group'
-      )}
-      onClick={handleClick}
-    >
-      <div className="flex items-start justify-between gap-half mb-half">
-        <div className="flex items-center gap-half min-w-0">
-          <Kanban weight="fill" className="size-4 text-brand shrink-0" />
-          <span className="font-medium text-normal truncate">{project.name}</span>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="p-half rounded hover:bg-panel text-low hover:text-normal opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <DotsThree weight="bold" className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/tasks`)}>
-              Open board
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Move to group</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {currentGroupId && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => onMoveToGroup(project.id, null)}
-                    >
-                      Remove from group
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                {groups.map(group => (
-                  <DropdownMenuItem
-                    key={group.id}
-                    onClick={() => onMoveToGroup(project.id, group.id)}
-                    disabled={group.id === currentGroupId}
-                  >
-                    {group.name}
-                  </DropdownMenuItem>
-                ))}
-                {groups.length === 0 && (
-                  <div className="px-2 py-1 text-sm text-low">No groups</div>
-                )}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="text-xs text-low">Created {formattedDate}</div>
-    </div>
-  );
+  // Inline group creation props
+  isCreatingGroup: boolean;
+  newGroupName: string;
+  onNewGroupNameChange: (value: string) => void;
+  onSubmitCreateGroup: () => void;
+  onCancelCreateGroup: () => void;
 }
 
 export function AllBoardsMain({
@@ -129,6 +42,11 @@ export function AllBoardsMain({
   searchQuery,
   isLoading,
   onMoveToGroup,
+  isCreatingGroup,
+  newGroupName,
+  onNewGroupNameChange,
+  onSubmitCreateGroup,
+  onCancelCreateGroup,
 }: AllBoardsMainProps) {
   // Filter projects by search query
   const filteredGroupedProjects = useMemo(() => {
@@ -187,7 +105,16 @@ export function AllBoardsMain({
 
       {/* Groups and projects */}
       <div className="p-base space-y-base">
-        {filteredGroupedProjects.length === 0 ? (
+        {/* Inline group creator */}
+        <InlineGroupCreator
+          isCreating={isCreatingGroup}
+          value={newGroupName}
+          onChange={onNewGroupNameChange}
+          onSubmit={onSubmitCreateGroup}
+          onCancel={onCancelCreateGroup}
+        />
+
+        {filteredGroupedProjects.length === 0 && !isCreatingGroup ? (
           <div className="text-center py-double text-low">
             {searchQuery ? 'No boards match your search' : 'No boards yet'}
           </div>
@@ -197,7 +124,10 @@ export function AllBoardsMain({
             const isExpanded = expandedGroups.has(groupKey);
 
             return (
-              <div key={groupKey} className="border border-panel rounded overflow-hidden">
+              <DroppableGroup
+                key={groupKey}
+                groupId={group?.id ?? null}
+              >
                 {/* Group header */}
                 <div className="flex items-center justify-between bg-secondary px-base py-half">
                   <button
@@ -208,7 +138,7 @@ export function AllBoardsMain({
                     <CaretDown
                       weight="fill"
                       className={cn(
-                        'size-4 text-low transition-transform',
+                        'size-4 text-low transition-transform duration-200',
                         !isExpanded && '-rotate-90'
                       )}
                     />
@@ -229,29 +159,37 @@ export function AllBoardsMain({
                   </button>
                 </div>
 
-                {/* Project cards grid */}
-                {isExpanded && (
-                  <div className="p-base bg-primary">
-                    {projects.length === 0 ? (
-                      <div className="text-sm text-low text-center py-base">
-                        No boards in this group
+                {/* Project cards grid with animation */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-base bg-primary">
+                        {projects.length === 0 ? (
+                          <EmptyGroupDropZone />
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-base">
+                            {projects.map(project => (
+                              <DraggableProjectCard
+                                key={project.id}
+                                project={project}
+                                groupId={group?.id ?? null}
+                                groups={groups}
+                                onMoveToGroup={onMoveToGroup}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-base">
-                        {projects.map(project => (
-                          <ProjectCard
-                            key={project.id}
-                            project={project}
-                            groups={groups}
-                            currentGroupId={group?.id ?? null}
-                            onMoveToGroup={onMoveToGroup}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </DroppableGroup>
             );
           })
         )}

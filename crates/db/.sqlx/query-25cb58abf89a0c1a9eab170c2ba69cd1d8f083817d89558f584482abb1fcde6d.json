@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE projects\n               SET name = $2\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         group_id as \"group_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE projects\n               SET name = $2, group_id = $3, updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         default_agent_working_dir,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         group_id as \"group_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -40,7 +40,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 3
     },
     "nullable": [
       true,
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "a71430530c39dc0e6a70549c9f9783521c167a06d6d8762fa20d8f1c5f71234b"
+  "hash": "25cb58abf89a0c1a9eab170c2ba69cd1d8f083817d89558f584482abb1fcde6d"
 }
