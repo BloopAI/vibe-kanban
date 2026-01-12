@@ -40,7 +40,10 @@ import {
   useExpandedAll,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useLayoutStore,
+  useIsRightMainPanelVisible,
+} from '@/stores/useLayoutStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
@@ -281,7 +284,11 @@ export function WorkspacesLayout() {
     setLogsMode,
     resetForCreateMode,
     setSidebarVisible,
+    setMainPanelVisible,
   } = useLayoutStore();
+
+  // Derived state: right main panel (Changes/Logs/Preview) is visible
+  const isRightMainPanelVisible = useIsRightMainPanelVisible();
 
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
   const { scratch: draftScratch } = useScratch(
@@ -435,16 +442,13 @@ export function WorkspacesLayout() {
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
-  // Reset Allotment sizes when changes, logs, or preview panel becomes visible
+  // Reset Allotment sizes when right main panel becomes visible
   // This re-applies preferredSize percentages based on current window size
   useEffect(() => {
-    if (
-      (isChangesMode || isLogsMode || isPreviewMode) &&
-      allotmentRef.current
-    ) {
+    if (isRightMainPanelVisible && allotmentRef.current) {
       allotmentRef.current.reset();
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode]);
+  }, [isRightMainPanelVisible]);
 
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
@@ -453,12 +457,20 @@ export function WorkspacesLayout() {
     }
   }, [isCreateMode, resetForCreateMode]);
 
-  // Show sidebar when no panel is open
+  // Show sidebar when right main panel is hidden
   useEffect(() => {
-    if (!isChangesMode && !isLogsMode && !isPreviewMode) {
+    if (!isRightMainPanelVisible) {
       setSidebarVisible(true);
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode, setSidebarVisible]);
+  }, [isRightMainPanelVisible, setSidebarVisible]);
+
+  // Ensure left main panel (chat) is visible when right main panel is hidden
+  // This prevents invalid state where only sidebars are visible after page reload
+  useEffect(() => {
+    if (!isMainPanelVisible && !isRightMainPanelVisible) {
+      setMainPanelVisible(true);
+    }
+  }, [isMainPanelVisible, isRightMainPanelVisible, setMainPanelVisible]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
@@ -748,7 +760,7 @@ export function WorkspacesLayout() {
         <Allotment.Pane
           minSize={300}
           preferredSize={changesPanelWidth}
-          visible={isChangesMode || isLogsMode || isPreviewMode}
+          visible={isRightMainPanelVisible}
         >
           <div className="h-full overflow-hidden">
             {isChangesMode && (

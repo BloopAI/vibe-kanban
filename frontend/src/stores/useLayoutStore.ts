@@ -26,6 +26,7 @@ type LayoutState = {
   setLogsMode: (value: boolean) => void;
   setPreviewMode: (value: boolean) => void;
   setSidebarVisible: (value: boolean) => void;
+  setMainPanelVisible: (value: boolean) => void;
 
   // Preview actions
   triggerPreviewRefresh: () => void;
@@ -168,6 +169,8 @@ export const useLayoutStore = create<LayoutState>()(
 
       setSidebarVisible: (value) => set({ isSidebarVisible: value }),
 
+      setMainPanelVisible: (value) => set({ isMainPanelVisible: value }),
+
       triggerPreviewRefresh: () =>
         set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
 
@@ -200,3 +203,7 @@ export const useIsGitPanelVisible = () =>
 export const useIsChangesMode = () => useLayoutStore((s) => s.isChangesMode);
 export const useIsLogsMode = () => useLayoutStore((s) => s.isLogsMode);
 export const useIsPreviewMode = () => useLayoutStore((s) => s.isPreviewMode);
+
+// Derived selector: true when right main panel content is visible (Changes/Logs/Preview)
+export const useIsRightMainPanelVisible = () =>
+  useLayoutStore((s) => s.isChangesMode || s.isLogsMode || s.isPreviewMode);
