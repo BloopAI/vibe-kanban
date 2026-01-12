@@ -195,7 +195,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       } finally {
         setIsSaving(false);
       }
-    }, [selectedRepoId, script, scriptType, queryClient, modal, t]);
+    }, [selectedRepoId, script, scriptType, queryClient, modal, t, repos]);
 
     const handleSaveAndTest = useCallback(async () => {
       if (!selectedRepoId) return;
@@ -256,8 +256,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       scriptType,
       workspaceId,
       queryClient,
-      modal,
       t,
+      repos,
     ]);
 
     const dialogTitle =

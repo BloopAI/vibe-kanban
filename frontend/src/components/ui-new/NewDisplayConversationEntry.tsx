@@ -663,8 +663,13 @@ function ScriptEntryWithFix({
     // Context not available, fix button won't be shown
   }
 
+  // Use ref to access current repos without causing callback recreation
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
   const handleFix = useCallback(() => {
-    if (!workspaceId || repos.length === 0) return;
+    const currentRepos = reposRef.current;
+    if (!workspaceId || currentRepos.length === 0) return;
 
     // Determine script type based on title
     const scriptType: ScriptType =
@@ -676,12 +681,12 @@ function ScriptEntryWithFix({
 
     ScriptFixerDialog.show({
       scriptType,
-      repos,
+      repos: currentRepos,
       workspaceId,
       sessionId,
-      initialRepoId: repos.length === 1 ? repos[0].id : undefined,
+      initialRepoId: currentRepos.length === 1 ? currentRepos[0].id : undefined,
     });
-  }, [title, workspaceId, sessionId, repos]);
+  }, [title, workspaceId, sessionId]);
 
   // Only show fix button if we have the necessary context
   const canFix = workspaceId && repos.length > 0;
