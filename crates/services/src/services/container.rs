@@ -1040,6 +1040,9 @@ pub trait ContainerService {
             ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request) => {
                 Some(follow_up_request.prompt.clone())
             }
+            ExecutorActionType::ReviewRequest(review_request) => {
+                Some(review_request.prompt.clone())
+            }
             _ => None,
         } {
             let create_coding_agent_turn = CreateCodingAgentTurn {
