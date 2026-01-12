@@ -425,6 +425,13 @@ impl GitCli {
     }
 
     pub fn default_remote_name(&self, repo_path: &Path) -> Result<String, GitCliError> {
+        if let Ok(default) = self.git(repo_path, ["config", "remote.pushDefault"]) {
+            let default = default.trim();
+            if !default.is_empty() {
+                return Ok(default.to_string());
+            }
+        }
+
         let output = self.git(repo_path, ["remote"])?;
         let remotes: Vec<&str> = output
             .lines()
