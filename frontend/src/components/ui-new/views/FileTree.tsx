@@ -1,11 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { GithubLogoIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip } from '../primitives/Tooltip';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
 import type { TreeNode } from '../types/fileTree';
@@ -103,30 +99,29 @@ export function FileTree({
               />
             </div>
             {onToggleGitHubComments && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onToggleGitHubComments(!showGitHubComments)}
-                    className={cn(
-                      'p-1 rounded hover:bg-panel transition-colors shrink-0',
-                      showGitHubComments ? 'text-normal' : 'text-low',
-                      isGitHubCommentsLoading && 'opacity-50 animate-pulse'
-                    )}
-                    aria-label={
-                      showGitHubComments
-                        ? t('common:fileTree.hideGitHubComments')
-                        : t('common:fileTree.showGitHubComments')
-                    }
-                  >
-                    <GithubLogoIcon className="size-icon-sm" weight="fill" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {showGitHubComments
+              <Tooltip
+                content={
+                  showGitHubComments
                     ? t('common:fileTree.hideGitHubComments')
-                    : t('common:fileTree.showGitHubComments')}
-                </TooltipContent>
+                    : t('common:fileTree.showGitHubComments')
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => onToggleGitHubComments(!showGitHubComments)}
+                  className={cn(
+                    'p-1 rounded hover:bg-panel transition-colors shrink-0',
+                    showGitHubComments ? 'text-normal' : 'text-low',
+                    isGitHubCommentsLoading && 'opacity-50 animate-pulse'
+                  )}
+                  aria-label={
+                    showGitHubComments
+                      ? t('common:fileTree.hideGitHubComments')
+                      : t('common:fileTree.showGitHubComments')
+                  }
+                >
+                  <GithubLogoIcon className="size-icon-sm" weight="fill" />
+                </button>
               </Tooltip>
             )}
           </div>
