@@ -27,7 +27,9 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -68,6 +70,46 @@ function GitPanelContainer({
   const pushStatesRef = useRef<Record<string, PushState>>({});
   pushStatesRef.current = pushStates;
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentPushRepoRef = useRef<string | null>(null);
+
+  // Use push hook for direct API access with proper error handling
+  const pushMutation = usePush(
+    selectedWorkspace?.id,
+    // onSuccess
+    () => {
+      const repoId = currentPushRepoRef.current;
+      if (!repoId) return;
+      setPushStates((prev) => ({ ...prev, [repoId]: 'success' }));
+      // Clear success state after 2 seconds
+      successTimeoutRef.current = setTimeout(() => {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+      }, 2000);
+    },
+    // onError
+    (err, errorData) => {
+      const repoId = currentPushRepoRef.current;
+      if (!repoId) return;
+      setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
+      // Show error dialog
+      const message =
+        errorData?.type === 'force_push_required'
+          ? 'Force push required. The remote branch has diverged.'
+          : err instanceof Error
+            ? err.message
+            : 'Failed to push changes';
+      ConfirmDialog.show({
+        title: 'Error',
+        message,
+        confirmText: 'OK',
+        showCancelButton: false,
+        variant: 'destructive',
+      });
+      // Clear error state after 3 seconds
+      successTimeoutRef.current = setTimeout(() => {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+      }, 3000);
+    }
+  );
 
   // Clean up timeout on unmount
   useEffect(() => {
@@ -150,10 +192,9 @@ function GitPanelContainer({
     [selectedWorkspace, executeAction]
   );
 
-  // Handle push button click - use action system with UI state tracking
+  // Handle push button click - use mutation for proper state tracking
   const handlePushClick = useCallback(
-    async (repoId: string) => {
-      if (!selectedWorkspace?.id) return;
+    (repoId: string) => {
       // Use ref to check current state to avoid stale closure
       if (pushStatesRef.current[repoId] === 'pending') return;
 
@@ -163,26 +204,12 @@ function GitPanelContainer({
         successTimeoutRef.current = null;
       }
 
+      // Track which repo we're pushing
+      currentPushRepoRef.current = repoId;
       setPushStates((prev) => ({ ...prev, [repoId]: 'pending' }));
-
-      try {
-        await executeAction(Actions.GitPush, selectedWorkspace.id, repoId);
-        setPushStates((prev) => ({ ...prev, [repoId]: 'success' }));
-        // Clear success state after 2 seconds
-        successTimeoutRef.current = setTimeout(() => {
-          setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
-        }, 2000);
-      } catch (error) {
-        // Error dialog is already shown by executeAction
-        console.error('Push failed:', error);
-        setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
-        // Clear error state after 3 seconds
-        successTimeoutRef.current = setTimeout(() => {
-          setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
-        }, 3000);
-      }
+      pushMutation.mutate({ repo_id: repoId });
     },
-    [selectedWorkspace?.id, executeAction]
+    [pushMutation]
   );
 
   return (
