@@ -309,6 +309,7 @@
       "push": "Enviar",
       "pushed": "¡Enviado!",
       "pushing": "Enviando...",
+      "pushFailed": "Falló",
       "rebase": "Rebase",
       "rebasing": "Rebaseando..."
     },

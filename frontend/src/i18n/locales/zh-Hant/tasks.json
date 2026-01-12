@@ -298,6 +298,7 @@
       "pushed": "已推送！",
       "pushing": "推送中...",
       "push": "推送",
+      "pushFailed": "失敗",
       "forcePush": "強制推送",
       "forcePushing": "強制推送中...",
       "creating": "建立中...",

@@ -263,6 +263,7 @@
       "pushed": "푸시됨!",
       "pushing": "푸시 중...",
       "push": "푸시",
+      "pushFailed": "실패",
       "forcePush": "강제 푸시",
       "forcePushing": "강제 푸시 중...",
       "creating": "생성 중...",

@@ -307,6 +307,7 @@
       "push": "プッシュ",
       "pushed": "プッシュ完了！",
       "pushing": "プッシュ中...",
+      "pushFailed": "失敗",
       "forcePush": "強制プッシュ",
       "forcePushing": "強制プッシュ中...",
       "rebase": "リベース",
