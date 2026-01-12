@@ -1043,7 +1043,7 @@ pub trait ContainerService {
             ExecutorActionType::ReviewRequest(review_request) => {
                 Some(review_request.prompt.clone())
             }
-            _ => None,
+            ExecutorActionType::ScriptRequest(_) => None,
         } {
             let create_coding_agent_turn = CreateCodingAgentTurn {
                 execution_process_id: execution_process.id,
