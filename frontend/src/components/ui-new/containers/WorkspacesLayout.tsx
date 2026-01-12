@@ -100,6 +100,7 @@ function GitPanelContainer({
         merge: Actions.GitMerge,
         rebase: Actions.GitRebase,
         'change-target': Actions.GitChangeTarget,
+        push: Actions.GitPush,
       };
 
       const actionDef = actionMap[action];

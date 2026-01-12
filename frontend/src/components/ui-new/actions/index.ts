@@ -30,6 +30,7 @@ import {
   CrosshairIcon,
   DesktopIcon,
   PencilSimpleIcon,
+  ArrowUpIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -684,6 +685,24 @@ export const Actions = {
         repoId,
         branches,
       });
+    },
+  },
+
+  GitPush: {
+    id: 'git-push',
+    label: 'Push',
+    icon: ArrowUpIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (ctx, workspaceId, repoId) => {
+      const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
+      if (!result.success) {
+        if (result.error?.type === 'force_push_required') {
+          throw new Error('Force push required. The remote branch has diverged.');
+        }
+        throw new Error('Failed to push changes');
+      }
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
     },
   },
 } as const satisfies Record<string, ActionDefinition>;

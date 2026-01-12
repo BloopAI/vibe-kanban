@@ -24,7 +24,12 @@ import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
-export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
+export type RepoAction =
+  | 'pull-request'
+  | 'merge'
+  | 'change-target'
+  | 'rebase'
+  | 'push';
 
 const repoActionOptions: SplitButtonOption<RepoAction>[] = [
   {
@@ -33,6 +38,7 @@ const repoActionOptions: SplitButtonOption<RepoAction>[] = [
     icon: GitPullRequestIcon,
   },
   { value: 'merge', label: 'Merge', icon: GitMergeIcon },
+  { value: 'push', label: 'Push', icon: ArrowUpIcon },
 ];
 
 interface RepoCardProps {
