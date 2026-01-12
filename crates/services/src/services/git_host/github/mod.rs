@@ -29,16 +29,7 @@ impl GitHubProvider {
         })
     }
 
-    async fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GitHostError> {
-        let cli = self.gh_cli.clone();
-        let path = repo_path.to_path_buf();
-        task::spawn_blocking(move || cli.get_repo_info(&path))
-            .await
-            .map_err(|err| GitHostError::Repository(format!("Failed to get repo info: {err}")))?
-            .map_err(Into::into)
-    }
-
-    async fn get_repo_info_from_url(
+    async fn get_repo_info(
         &self,
         remote_url: &str,
         repo_path: &Path,
@@ -46,7 +37,7 @@ impl GitHubProvider {
         let cli = self.gh_cli.clone();
         let url = remote_url.to_string();
         let path = repo_path.to_path_buf();
-        task::spawn_blocking(move || cli.get_repo_info_from_url(&url, &path))
+        task::spawn_blocking(move || cli.get_repo_info(&url, &path))
             .await
             .map_err(|err| {
                 GitHostError::Repository(format!("Failed to get repo info from URL: {err}"))
@@ -200,11 +191,11 @@ impl GitHostProvider for GitHubProvider {
         self.check_auth().await?;
 
         // Get owner/repo from the remote URL (target repo for the PR).
-        let target_repo_info = self.get_repo_info_from_url(remote_url, repo_path).await?;
+        let target_repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
         // For cross-fork PRs, get the head repo info to format head_branch as "owner:branch".
         let head_branch = if let Some(head_url) = &request.head_repo_url {
-            let head_repo_info = self.get_repo_info_from_url(head_url, repo_path).await?;
+            let head_repo_info = self.get_repo_info(head_url, repo_path).await?;
             if head_repo_info.owner != target_repo_info.owner {
                 format!("{}:{}", head_repo_info.owner, request.head_branch)
             } else {
@@ -299,10 +290,10 @@ impl GitHostProvider for GitHubProvider {
     async fn list_prs_for_branch(
         &self,
         repo_path: &Path,
-        _remote_url: &str,
+        remote_url: &str,
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHostError> {
-        let repo_info = self.get_repo_info(repo_path).await?;
+        let repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
         let cli = self.gh_cli.clone();
         let branch = branch_name.to_string();
@@ -344,10 +335,10 @@ impl GitHostProvider for GitHubProvider {
     async fn get_pr_comments(
         &self,
         repo_path: &Path,
-        _remote_url: &str,
+        remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
-        let repo_info = self.get_repo_info(repo_path).await?;
+        let repo_info = self.get_repo_info(remote_url, repo_path).await?;
 
         // Fetch both types of comments in parallel
         let cli1 = self.gh_cli.clone();

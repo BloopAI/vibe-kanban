@@ -166,12 +166,7 @@ impl GhCli {
         Err(GhCliError::CommandFailed(stderr))
     }
 
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
-        let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
-        Self::parse_repo_info_response(&raw)
-    }
-
-    pub fn get_repo_info_from_url(
+    pub fn get_repo_info(
         &self,
         remote_url: &str,
         repo_path: &Path,
