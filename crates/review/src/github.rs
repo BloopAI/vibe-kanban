@@ -17,7 +17,16 @@ pub struct PrInfo {
     pub head_ref_name: String,
 }
 
-/// Response from `gh pr view --json`
+#[derive(Debug, Deserialize)]
+struct GhRepoOwner {
+    login: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GhRepo {
+    name: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhPrView {
@@ -26,47 +35,8 @@ struct GhPrView {
     base_ref_oid: String,
     head_ref_oid: String,
     head_ref_name: String,
-}
-
-/// Parse a GitHub PR URL to extract owner, repo, and PR number
-///
-/// Expected format: https://github.com/owner/repo/pull/123
-pub fn parse_pr_url(url: &str) -> Result<(String, String, i64), ReviewError> {
-    let url = url.trim();
-
-    // Remove trailing slashes
-    let url = url.trim_end_matches('/');
-
-    // Try to parse as URL
-    let parts: Vec<&str> = url.split('/').collect();
-
-    // Find the index of "github.com" and then extract owner/repo/pull/number
-    let github_idx = parts
-        .iter()
-        .position(|&p| p == "github.com")
-        .ok_or(ReviewError::InvalidPrUrl)?;
-
-    // We need at least: github.com / owner / repo / pull / number
-    if parts.len() < github_idx + 5 {
-        return Err(ReviewError::InvalidPrUrl);
-    }
-
-    let owner = parts[github_idx + 1].to_string();
-    let repo = parts[github_idx + 2].to_string();
-
-    if parts[github_idx + 3] != "pull" {
-        return Err(ReviewError::InvalidPrUrl);
-    }
-
-    let pr_number: i64 = parts[github_idx + 4]
-        .parse()
-        .map_err(|_| ReviewError::InvalidPrUrl)?;
-
-    if owner.is_empty() || repo.is_empty() || pr_number <= 0 {
-        return Err(ReviewError::InvalidPrUrl);
-    }
-
-    Ok((owner, repo, pr_number))
+    head_repository: GhRepo,
+    head_repository_owner: GhRepoOwner,
 }
 
 /// Check if the GitHub CLI is installed
@@ -83,21 +53,18 @@ fn ensure_gh_available() -> Result<(), ReviewError> {
     Ok(())
 }
 
-/// Get PR information using `gh pr view`
-pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
+pub fn get_pr_info(pr_url: &str) -> Result<PrInfo, ReviewError> {
     ensure_gh_available()?;
 
-    debug!("Fetching PR info for {owner}/{repo}#{pr_number}");
+    debug!("Fetching PR info for {pr_url}");
 
     let output = Command::new("gh")
         .args([
             "pr",
             "view",
-            &pr_number.to_string(),
-            "--repo",
-            &format!("{owner}/{repo}"),
+            pr_url,
             "--json",
-            "title,body,baseRefOid,headRefOid,headRefName",
+            "title,body,baseRefOid,headRefOid,headRefName,headRepository,headRepositoryOwner",
         ])
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
@@ -121,8 +88,8 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
         serde_json::from_str(&stdout).map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
 
     Ok(PrInfo {
-        owner: owner.to_string(),
-        repo: repo.to_string(),
+        owner: pr_view.head_repository_owner.login,
+        repo: pr_view.head_repository.name,
         title: pr_view.title,
         description: pr_view.body,
         base_commit: pr_view.base_ref_oid,
@@ -195,35 +162,4 @@ pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewEr
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_pr_url_valid() {
-        let (owner, repo, pr) = parse_pr_url("https://github.com/anthropics/claude-code/pull/123")
-            .expect("Should parse valid URL");
-        assert_eq!(owner, "anthropics");
-        assert_eq!(repo, "claude-code");
-        assert_eq!(pr, 123);
-    }
-
-    #[test]
-    fn test_parse_pr_url_with_trailing_slash() {
-        let (owner, repo, pr) =
-            parse_pr_url("https://github.com/owner/repo/pull/456/").expect("Should parse");
-        assert_eq!(owner, "owner");
-        assert_eq!(repo, "repo");
-        assert_eq!(pr, 456);
-    }
-
-    #[test]
-    fn test_parse_pr_url_invalid_format() {
-        assert!(parse_pr_url("https://github.com/owner/repo").is_err());
-        assert!(parse_pr_url("https://github.com/owner/repo/issues/123").is_err());
-        assert!(parse_pr_url("https://gitlab.com/owner/repo/pull/123").is_err());
-        assert!(parse_pr_url("not a url").is_err());
-    }
 }

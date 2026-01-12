@@ -8,9 +8,6 @@ pub enum ReviewError {
     #[error("GitHub CLI is not authenticated. Run 'gh auth login' first.")]
     GhNotAuthenticated,
 
-    #[error("Invalid GitHub PR URL format. Expected: https://github.com/owner/repo/pull/123")]
-    InvalidPrUrl,
-
     #[error("Failed to get PR information: {0}")]
     PrInfoFailed(String),
 
