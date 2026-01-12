@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+#[cfg(not(feature = "qa-mode"))]
+use crate::profile::ExecutorConfigs;
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
@@ -11,8 +13,6 @@ use crate::{
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     profile::ExecutorProfileId,
 };
-#[cfg(not(feature = "qa-mode"))]
-use crate::profile::ExecutorConfigs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {

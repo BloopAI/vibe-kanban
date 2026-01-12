@@ -1,9 +1,9 @@
+#[cfg(not(feature = "qa-mode"))]
+use std::collections::HashSet;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-#[cfg(not(feature = "qa-mode"))]
-use std::collections::HashSet;
 
 #[cfg(not(feature = "qa-mode"))]
 use ignore::WalkBuilder;

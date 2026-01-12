@@ -27,6 +27,8 @@ use db::{
 };
 #[cfg(feature = "qa-mode")]
 use executors::executors::qa_mock::QaMockExecutor;
+#[cfg(not(feature = "qa-mode"))]
+use executors::profile::ExecutorConfigs;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
@@ -37,8 +39,6 @@ use executors::{
     logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
     profile::ExecutorProfileId,
 };
-#[cfg(not(feature = "qa-mode"))]
-use executors::profile::ExecutorConfigs;
 use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
 use thiserror::Error;
