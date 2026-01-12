@@ -698,7 +698,9 @@ export const Actions = {
       const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
       if (!result.success) {
         if (result.error?.type === 'force_push_required') {
-          throw new Error('Force push required. The remote branch has diverged.');
+          throw new Error(
+            'Force push required. The remote branch has diverged.'
+          );
         }
         throw new Error('Failed to push changes');
       }
