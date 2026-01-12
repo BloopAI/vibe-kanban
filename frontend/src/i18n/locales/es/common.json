@@ -261,5 +261,16 @@
       "title": "Volver a la interfaz clásica",
       "content": "Haz clic en el icono de salida en el lado izquierdo de la barra de navegación para volver al tablero kanban clásico. Para desactivar la nueva interfaz por completo, actualiza la opción \"Habilitar Beta de Workspaces\" en \"Funciones Beta\" en la configuración."
     }
+  },
+  "logs": {
+    "searchLogs": "Buscar registros",
+    "selectProcessToView": "Seleccione un proceso para ver los registros"
+  },
+  "processes": {
+    "noProcesses": "Sin procesos"
+  },
+  "search": {
+    "matchCount": "{{current}} de {{total}}",
+    "noMatches": "Sin coincidencias"
   }
 }
