@@ -36,7 +36,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
     const modal = useModal();
     const queryClient = useQueryClient();
     const { profiles, config } = useUserSystem();
-    const { sessions, selectedSession, selectedSessionId } =
+    const { sessions, selectedSession, selectedSessionId, selectSession } =
       useWorkspaceContext();
     const { t } = useTranslation(['tasks', 'common']);
 
@@ -121,6 +121,9 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
         });
 
         const createdNewSession = targetSessionId !== resolvedSessionId;
+        if (createdNewSession && targetSessionId) {
+          selectSession(targetSessionId);
+        }
         onSuccess?.(createdNewSession ? targetSessionId : undefined);
         modal.hide();
       } catch (err) {
@@ -138,6 +141,7 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
       reviewMarkdown,
       additionalPrompt,
       queryClient,
+      selectSession,
       onSuccess,
       modal,
     ]);
