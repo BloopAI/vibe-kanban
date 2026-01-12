@@ -60,6 +60,7 @@ import { imagesApi, attemptsApi } from '@/lib/api';
 import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
+import { claudeAccountsApi } from '@/lib/api';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -237,6 +238,28 @@ export function TaskFollowUpSection({
   // Use RetryUi context so optimistic retry immediately disables this box
   const { activeRetryProcessId } = useRetryUi();
   const isRetryActive = !!activeRetryProcessId;
+
+  // Get active Claude account for display
+  const { data: claudeAccountsData } = useQuery({
+    queryKey: ['claude-accounts'],
+    queryFn: claudeAccountsApi.list,
+    refetchInterval: 10000,
+  });
+
+  // Compute active account name
+  const activeClaudeAccountName = useMemo(() => {
+    if (!claudeAccountsData?.rotation_enabled) return null;
+    if (claudeAccountsData?.current_account_id) {
+      const activeAccount = claudeAccountsData.accounts.find(
+        (a) => a.id === claudeAccountsData.current_account_id
+      );
+      return activeAccount?.name || null;
+    }
+    if (claudeAccountsData?.accounts?.length > 0) {
+      return claudeAccountsData.accounts[0].name;
+    }
+    return null;
+  }, [claudeAccountsData]);
 
   // Queue status for queuing follow-up messages while agent is running
   const queryClient = useQueryClient();
@@ -777,13 +800,22 @@ export function TaskFollowUpSection({
       {/* Always-visible action bar */}
       <div className="p-4">
         <div className="flex flex-row gap-2 items-center">
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex gap-2 items-center">
             <VariantSelector
               currentProfile={currentProfile}
               selectedVariant={selectedVariant}
               onChange={setSelectedVariant}
               disabled={!isEditable}
             />
+            {/* Active Claude account indicator */}
+            {activeClaudeAccountName && (
+              <span
+                className="text-xs text-white px-2 py-1 bg-green-500 rounded-full font-bold"
+                title="Active Claude Account"
+              >
+                {activeClaudeAccountName}
+              </span>
+            )}
           </div>
 
           {/* Hidden file input for attachment - always present */}
