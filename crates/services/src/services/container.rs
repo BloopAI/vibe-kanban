@@ -1106,8 +1106,9 @@ pub trait ContainerService {
 
         // Start processing normalised logs for executor requests and follow ups
         let workspace_root = self.workspace_to_current_dir(workspace);
+        #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
         if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await
-            && let Some((_executor_profile_id, working_dir)) = match executor_action.typ() {
+            && let Some((executor_profile_id, working_dir)) = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => Some((
                     &request.executor_profile_id,
                     request.effective_dir(&workspace_root),
@@ -1127,7 +1128,7 @@ pub trait ContainerService {
             #[cfg(not(feature = "qa-mode"))]
             {
                 if let Some(executor) =
-                    ExecutorConfigs::get_cached().get_coding_agent(_executor_profile_id)
+                    ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
                 {
                     executor.normalize_logs(msg_store, &working_dir);
                 } else {
