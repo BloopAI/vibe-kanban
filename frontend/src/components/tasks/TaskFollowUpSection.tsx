@@ -273,6 +273,9 @@ export function TaskFollowUpSection({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['claude-accounts'] });
     },
+    onError: (error) => {
+      console.error('Failed to set active account:', error);
+    },
   });
 
   const {
