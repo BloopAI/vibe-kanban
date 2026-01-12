@@ -1470,19 +1470,17 @@ impl GitService {
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
 
-        let (remote_name, stripped_branch_name) = match self.find_branch_type(repo_path, branch_name)
-        {
-            Ok(BranchType::Remote) => {
-                let remote = self.get_remote_name_from_branch_name(repo_path, branch_name)?;
-                let prefix = format!("{remote}/");
-                let stripped = branch_name.strip_prefix(&prefix).unwrap_or(branch_name);
-                (remote, stripped.to_string())
-            }
-            Ok(BranchType::Local) => {
-                (self.default_remote_name(&repo), branch_name.to_string())
-            }
-            Err(e) => return Err(e),
-        };
+        let (remote_name, stripped_branch_name) =
+            match self.find_branch_type(repo_path, branch_name) {
+                Ok(BranchType::Remote) => {
+                    let remote = self.get_remote_name_from_branch_name(repo_path, branch_name)?;
+                    let prefix = format!("{remote}/");
+                    let stripped = branch_name.strip_prefix(&prefix).unwrap_or(branch_name);
+                    (remote, stripped.to_string())
+                }
+                Ok(BranchType::Local) => (self.default_remote_name(&repo), branch_name.to_string()),
+                Err(e) => return Err(e),
+            };
 
         let remote = repo.find_remote(&remote_name)?;
         let remote_url = remote
