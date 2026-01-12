@@ -6,11 +6,29 @@ import { claudeAccountsApi } from '@/lib/api';
  * Self-contained - fetches its own data.
  */
 export function ActiveClaudeAccount() {
-  const { data: accountsData } = useQuery({
+  const { data: accountsData, isLoading, error } = useQuery({
     queryKey: ['claude-accounts'],
     queryFn: claudeAccountsApi.list,
     refetchInterval: 10000,
   });
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
+        ...
+      </span>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <span className="text-xs text-red-500 px-2 py-0.5 bg-red-100 rounded-full">
+        Error
+      </span>
+    );
+  }
 
   // Only show when rotation is enabled
   if (!accountsData?.rotation_enabled) {
@@ -29,7 +47,11 @@ export function ActiveClaudeAccount() {
   }
 
   if (!accountName) {
-    return null;
+    return (
+      <span className="text-xs text-yellow-500 px-2 py-0.5 bg-yellow-100 rounded-full">
+        No account
+      </span>
+    );
   }
 
   return (

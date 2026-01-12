@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { claudeAccountsApi } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   type Session,
   type ToolStatus,
@@ -93,33 +92,6 @@ export function SessionChatBoxContainer({
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const queryClient = useQueryClient();
-
-  // Get active Claude account for display
-  const { data: claudeAccountsData } = useQuery({
-    queryKey: ['claude-accounts'],
-    queryFn: claudeAccountsApi.list,
-    refetchInterval: 10000, // Poll every 10 seconds
-  });
-
-  // Compute active account name - always show when rotation is enabled and we have accounts
-  const activeClaudeAccountName = useMemo(() => {
-    // Only show when rotation is enabled
-    if (!claudeAccountsData?.rotation_enabled) {
-      return null;
-    }
-    // If we have a current_account_id, find that account
-    if (claudeAccountsData?.current_account_id) {
-      const activeAccount = claudeAccountsData.accounts.find(
-        (a) => a.id === claudeAccountsData.current_account_id
-      );
-      return activeAccount?.name || null;
-    }
-    // If no current_account_id but we have accounts, show the first one
-    if (claudeAccountsData?.accounts?.length > 0) {
-      return claudeAccountsData.accounts[0].name;
-    }
-    return null;
-  }, [claudeAccountsData]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -588,7 +560,6 @@ export function SessionChatBoxContainer({
       }}
       error={sendError}
       agent={latestProfileId?.executor}
-      activeClaudeAccountName={activeClaudeAccountName}
       inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode
