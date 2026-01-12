@@ -158,7 +158,17 @@ impl GhCli {
     /// Get repository info (owner and name) from a local repository path.
     pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
         let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
+        Self::parse_repo_info_response(&raw)
+    }
 
+    /// Get repository info (owner and name) from a remote URL.
+    /// Uses `gh repo view <url>` to parse the URL and fetch repo metadata.
+    pub fn get_repo_info_from_url(&self, remote_url: &str) -> Result<GitHubRepoInfo, GhCliError> {
+        let raw = self.run(["repo", "view", remote_url, "--json", "owner,name"], None)?;
+        Self::parse_repo_info_response(&raw)
+    }
+
+    fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
         #[derive(Deserialize)]
         struct Response {
             owner: Owner,
@@ -169,7 +179,7 @@ impl GhCli {
             login: String,
         }
 
-        let resp: Response = serde_json::from_str(&raw).map_err(|e| {
+        let resp: Response = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 

@@ -8,7 +8,7 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use db::models::merge::PullRequestInfo;
-pub use detection::{GitHubRepoFromUrl, detect_provider_from_url, parse_github_owner_repo};
+use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
     CreatePrRequest, GitHostError, PrComment, PrCommentAuthor, PrReviewComment, ProviderKind,

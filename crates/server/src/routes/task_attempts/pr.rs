@@ -26,7 +26,6 @@ use services::services::{
     git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
-        parse_github_owner_repo,
     },
 };
 use ts_rs::TS;
@@ -270,7 +269,10 @@ pub async fn create_pr(
         }
     }
 
-    let norm_target_branch_name = if matches!(
+    // For remote branches (e.g., "upstream/main"), extract the remote name and branch name.
+    // The target_remote_url is critical for fork workflows: the PR should be created
+    // against the upstream repo (target_branch's remote), not the fork.
+    let (norm_target_branch_name, target_remote_url) = if matches!(
         deployment
             .git()
             .find_branch_type(&repo_path, &target_branch)?,
@@ -281,20 +283,22 @@ pub async fn create_pr(
         let remote = deployment
             .git()
             .get_remote_name_from_branch_name(&worktree_path, &target_branch)?;
+        let remote_url = deployment.git().get_remote_url(&repo_path, &remote)?;
         let remote_prefix = format!("{}/", remote);
-        target_branch
+        let branch_name = target_branch
             .strip_prefix(&remote_prefix)
             .unwrap_or(&target_branch)
-            .to_string()
+            .to_string();
+        (branch_name, remote_url)
     } else {
-        target_branch
+        // Local branch - use default remote
+        let remote_url = deployment
+            .git()
+            .get_remote_url_from_branch_or_default(&repo_path, &target_branch)?;
+        (target_branch, remote_url)
     };
 
-    let remote_url = deployment
-        .git()
-        .get_remote_url_from_branch_or_default(&repo_path, &workspace.branch)?;
-
-    let git_host = match git_host::GitHostService::from_url(&remote_url) {
+    let git_host = match git_host::GitHostService::from_url(&target_remote_url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -321,7 +325,7 @@ pub async fn create_pr(
     };
 
     match git_host
-        .create_pr(&repo_path, &remote_url, &pr_request)
+        .create_pr(&repo_path, &target_remote_url, &pr_request)
         .await
     {
         Ok(pr_info) => {
