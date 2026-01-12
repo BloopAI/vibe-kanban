@@ -1014,6 +1014,7 @@ export interface ClaudeAccountWithStatus {
 export interface ClaudeAccountsResponse {
   accounts: ClaudeAccountWithStatus[];
   rotation_enabled: boolean;
+  current_account_id: string | null;
 }
 
 export const claudeAccountsApi = {

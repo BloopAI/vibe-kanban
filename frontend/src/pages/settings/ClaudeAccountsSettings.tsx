@@ -160,6 +160,7 @@ export function ClaudeAccountsSettings() {
 
   const accounts = accountsData?.accounts || [];
   const rotationEnabled = accountsData?.rotation_enabled || false;
+  const currentAccountId = accountsData?.current_account_id || null;
 
   return (
     <div className="space-y-6">
@@ -248,14 +249,23 @@ export function ClaudeAccountsSettings() {
             </div>
           ) : (
             <div className="space-y-3">
-              {accounts.map((account) => (
+              {accounts.map((account) => {
+                const isCurrent = rotationEnabled && currentAccountId === account.id;
+                return (
                 <div
                   key={account.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
+                  className={`flex items-center justify-between rounded-lg border p-4 ${
+                    isCurrent ? 'border-primary bg-primary/5 ring-1 ring-primary' : ''
+                  }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{account.name}</span>
+                      {isCurrent && (
+                        <Badge className="gap-1 bg-primary text-primary-foreground">
+                          Current
+                        </Badge>
+                      )}
                       {account.is_logged_in ? (
                         <Badge className="gap-1 bg-green-600 text-white border-green-600">
                           <CheckCircle className="h-3 w-3" />
@@ -302,7 +312,8 @@ export function ClaudeAccountsSettings() {
                     </Button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </CardContent>

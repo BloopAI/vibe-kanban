@@ -11,6 +11,7 @@ use axum::{
 use deployment::{Deployment, DeploymentError};
 use executors::{
     claude_accounts::{ClaudeAccount, ClaudeAccountsConfig, spawn_login_terminal},
+    executors::claude::get_current_account_index,
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
@@ -533,6 +534,8 @@ impl From<&ClaudeAccount> for ClaudeAccountWithStatus {
 pub struct ClaudeAccountsResponse {
     pub accounts: Vec<ClaudeAccountWithStatus>,
     pub rotation_enabled: bool,
+    /// The ID of the currently active account (if rotation is enabled and accounts exist)
+    pub current_account_id: Option<String>,
 }
 
 /// Get all Claude accounts with their login status
@@ -543,9 +546,18 @@ async fn get_claude_accounts(
     let accounts: Vec<ClaudeAccountWithStatus> =
         config.accounts.iter().map(|a| a.into()).collect();
 
+    // Get the current account ID based on rotation index
+    let current_account_id = if config.rotation_enabled && !config.accounts.is_empty() {
+        let index = get_current_account_index() % config.accounts.len();
+        Some(config.accounts[index].id.clone())
+    } else {
+        None
+    };
+
     ResponseJson(ApiResponse::success(ClaudeAccountsResponse {
         accounts,
         rotation_enabled: config.rotation_enabled,
+        current_account_id,
     }))
 }
 
@@ -572,9 +584,18 @@ async fn update_claude_accounts(
     let accounts: Vec<ClaudeAccountWithStatus> =
         config.accounts.iter().map(|a| a.into()).collect();
 
+    // Get the current account ID based on rotation index
+    let current_account_id = if config.rotation_enabled && !config.accounts.is_empty() {
+        let index = get_current_account_index() % config.accounts.len();
+        Some(config.accounts[index].id.clone())
+    } else {
+        None
+    };
+
     ResponseJson(ApiResponse::success(ClaudeAccountsResponse {
         accounts,
         rotation_enabled: config.rotation_enabled,
+        current_account_id,
     }))
 }
 
