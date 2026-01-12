@@ -821,17 +821,44 @@ export function TaskFollowUpSection({
               onChange={setSelectedVariant}
               disabled={!isEditable}
             />
-            {/* Active Claude account indicator - show only, no switching mid-session */}
+            {/* Active Claude account selector */}
             {claudeAccountsData?.rotation_enabled &&
-              claudeAccountsData.accounts.length > 0 &&
-              activeClaudeAccountName && (
-                <span
-                  className="text-xs px-2 py-1 bg-muted text-muted-foreground rounded-full"
-                  title="Active Claude Account (switch in Settings)"
-                >
-                  <User className="h-3 w-3 inline mr-1" />
-                  {activeClaudeAccountName}
-                </span>
+              claudeAccountsData.accounts.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1"
+                      disabled={setActiveAccountMutation.isPending}
+                    >
+                      <User className="h-3 w-3" />
+                      {activeClaudeAccountName || 'Select Account'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {claudeAccountsData.accounts.map((account) => (
+                      <DropdownMenuItem
+                        key={account.id}
+                        onClick={() => setActiveAccountMutation.mutate(account.id)}
+                        className="flex items-center gap-2"
+                      >
+                        {account.id === claudeAccountsData.current_account_id && (
+                          <Check className="h-3 w-3" />
+                        )}
+                        <span
+                          className={
+                            account.id !== claudeAccountsData.current_account_id
+                              ? 'ml-5'
+                              : ''
+                          }
+                        >
+                          {account.name}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
           </div>
 

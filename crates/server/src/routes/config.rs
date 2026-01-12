@@ -677,11 +677,29 @@ async fn set_active_claude_account(
 ) -> ResponseJson<ApiResponse<ClaudeAccountsResponse>> {
     let mut config = ClaudeAccountsConfig::load().await;
 
+    // Get the current account ID before switching (for session sync)
+    let current_account_id = if config.rotation_enabled && !config.accounts.is_empty() {
+        let current_idx = config.current_account_index % config.accounts.len();
+        Some(config.accounts[current_idx].id.clone())
+    } else {
+        None
+    };
+
     // Find the index of the account with the given ID
     let account_index = config.accounts.iter().position(|a| a.id == id);
 
     match account_index {
         Some(index) => {
+            // Sync sessions from current account to new account (if different)
+            if let Some(ref from_id) = current_account_id {
+                if from_id != &id {
+                    if let Err(e) = config.sync_sessions_between_accounts(from_id, &id) {
+                        tracing::warn!("Failed to sync sessions: {}", e);
+                        // Continue anyway - switching should still work
+                    }
+                }
+            }
+
             // Update both the in-memory index and persist to config
             set_current_account_index(index);
             config.current_account_index = index;

@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -215,6 +215,65 @@ impl ClaudeAccountsConfig {
             let current = current_index.load(Ordering::Relaxed);
             current_index.store((current + 1) % self.accounts.len(), Ordering::Relaxed);
         }
+    }
+
+    /// Sync Claude sessions from one account to another
+    /// This copies the .claude/projects directory so sessions can be resumed
+    pub fn sync_sessions_between_accounts(
+        &self,
+        from_account_id: &str,
+        to_account_id: &str,
+    ) -> Result<(), String> {
+        let from_account = self
+            .get_account(from_account_id)
+            .ok_or_else(|| format!("Source account {} not found", from_account_id))?;
+        let to_account = self
+            .get_account(to_account_id)
+            .ok_or_else(|| format!("Target account {} not found", to_account_id))?;
+
+        let from_projects = PathBuf::from(&from_account.home_path).join(".claude/projects");
+        let to_projects = PathBuf::from(&to_account.home_path).join(".claude/projects");
+
+        if !from_projects.exists() {
+            tracing::info!("No projects to sync from {}", from_account.name);
+            return Ok(());
+        }
+
+        // Create target projects directory if it doesn't exist
+        std::fs::create_dir_all(&to_projects)
+            .map_err(|e| format!("Failed to create projects dir: {}", e))?;
+
+        // Copy all project directories and session files
+        Self::copy_dir_recursive(&from_projects, &to_projects)
+            .map_err(|e| format!("Failed to sync sessions: {}", e))?;
+
+        tracing::info!(
+            "Synced sessions from {} to {}",
+            from_account.name,
+            to_account.name
+        );
+        Ok(())
+    }
+
+    /// Recursively copy a directory
+    fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+        if !dst.exists() {
+            std::fs::create_dir_all(dst)?;
+        }
+
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            let src_path = entry.path();
+            let dst_path = dst.join(entry.file_name());
+
+            if file_type.is_dir() {
+                Self::copy_dir_recursive(&src_path, &dst_path)?;
+            } else {
+                std::fs::copy(&src_path, &dst_path)?;
+            }
+        }
+        Ok(())
     }
 }
 
