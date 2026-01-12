@@ -1469,25 +1469,29 @@ impl GitService {
         branch_name: &str,
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        let default_remote_name = self.default_remote_name(&repo);
-        let stripped_branch_name = match self.find_branch_type(repo_path, branch_name) {
+
+        let (remote_name, stripped_branch_name) = match self.find_branch_type(repo_path, branch_name)
+        {
             Ok(BranchType::Remote) => {
-                // strip remote prefix if present
-                Ok(branch_name
-                    .strip_prefix(&format!("{default_remote_name}/"))
-                    .unwrap_or(branch_name))
+                let remote = self.get_remote_name_from_branch_name(repo_path, branch_name)?;
+                let prefix = format!("{remote}/");
+                let stripped = branch_name.strip_prefix(&prefix).unwrap_or(branch_name);
+                (remote, stripped.to_string())
             }
-            Ok(BranchType::Local) => Ok(branch_name),
-            Err(e) => Err(e),
-        }?;
-        let remote = repo.find_remote(&default_remote_name)?;
+            Ok(BranchType::Local) => {
+                (self.default_remote_name(&repo), branch_name.to_string())
+            }
+            Err(e) => return Err(e),
+        };
+
+        let remote = repo.find_remote(&remote_name)?;
         let remote_url = remote
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
 
         let git_cli = GitCli::new();
         git_cli
-            .check_remote_branch_exists(repo_path, remote_url, stripped_branch_name)
+            .check_remote_branch_exists(repo_path, remote_url, &stripped_branch_name)
             .map_err(|e| e.into())
     }
 
