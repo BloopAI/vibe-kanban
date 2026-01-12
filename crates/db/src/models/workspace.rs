@@ -313,8 +313,8 @@ impl Workspace {
     }
 
     /// Find workspaces that are expired and eligible for cleanup.
-    /// Uses accelerated cleanup (1 hour) for archived workspaces whose task is not in progress/review.
-    /// Uses standard cleanup (72 hours) for all other workspaces.
+    /// Uses accelerated cleanup (1 hour) for archived workspaces OR tasks not in progress/review.
+    /// Uses standard cleanup (72 hours) only for non-archived workspaces on active tasks.
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
     ) -> Result<Vec<Workspace>, sqlx::Error> {
@@ -347,7 +347,7 @@ impl Workspace {
             GROUP BY w.id, w.container_ref, w.updated_at
             HAVING datetime('now',
                 CASE
-                    WHEN w.archived = 1 AND t.status NOT IN ('inprogress', 'inreview')
+                    WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview')
                     THEN '-1 hours'
                     ELSE '-72 hours'
                 END
