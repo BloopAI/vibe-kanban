@@ -38,8 +38,6 @@ impl GitHubProvider {
             .map_err(Into::into)
     }
 
-    /// Get repository info (owner and name) from a remote URL using `gh repo view <url>`.
-    /// The repo_path helps gh CLI determine the correct GitHub host for authentication.
     async fn get_repo_info_from_url(
         &self,
         remote_url: &str,

@@ -291,7 +291,6 @@ pub async fn create_pr(
             .to_string();
         (branch_name, remote_url)
     } else {
-        // Local branch - use default remote
         let remote_url = deployment
             .git()
             .get_remote_url_from_branch_or_default(&repo_path, &target_branch)?;

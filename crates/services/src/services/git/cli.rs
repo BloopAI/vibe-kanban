@@ -424,8 +424,6 @@ impl GitCli {
         Ok(output.trim().to_string())
     }
 
-    /// Get the default remote name for a repository.
-    /// Prefers "origin" if it exists (git's convention), otherwise falls back to first remote.
     pub fn default_remote_name(&self, repo_path: &Path) -> Result<String, GitCliError> {
         let output = self.git(repo_path, ["remote"])?;
         let remotes: Vec<&str> = output
@@ -434,12 +432,10 @@ impl GitCli {
             .filter(|l| !l.is_empty())
             .collect();
 
-        // Prefer "origin" (git's conventional default)
         if remotes.contains(&"origin") {
             return Ok("origin".to_string());
         }
 
-        // Fall back to first remote
         Ok(remotes
             .first()
             .map(|s| s.to_string())
