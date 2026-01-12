@@ -263,10 +263,7 @@ export function PreviewPanel() {
                     {t('preview.noServer.stopAndEditButton')}
                   </Button>
                   {projectRepos.length > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={handleFixDevScript}
-                    >
+                    <Button variant="outline" onClick={handleFixDevScript}>
                       <Wrench className="mr-2 h-4 w-4" />
                       {t('scriptFixer.fixScript')}
                     </Button>

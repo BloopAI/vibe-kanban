@@ -65,8 +65,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
     // Find the latest process for this script type
     const latestProcess = useMemo(() => {
-      const runReason =
-        scriptType === 'setup' ? 'setupscript' : 'devserver';
+      const runReason = scriptType === 'setup' ? 'setupscript' : 'devserver';
       const filtered = executionProcesses.filter(
         (p) => p.run_reason === runReason && !p.dropped
       );
@@ -101,8 +100,8 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
 
           const scriptContent =
             scriptType === 'setup'
-              ? repo.setup_script ?? ''
-              : repo.dev_server_script ?? '';
+              ? (repo.setup_script ?? '')
+              : (repo.dev_server_script ?? '');
 
           setScript(scriptContent);
           setOriginalScript(scriptContent);
@@ -144,14 +143,14 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           setup_script:
             scriptType === 'setup'
               ? script.trim() || null
-              : selectedRepo?.setup_script ?? null,
+              : (selectedRepo?.setup_script ?? null),
           cleanup_script: selectedRepo?.cleanup_script ?? null,
           copy_files: selectedRepo?.copy_files ?? null,
           parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
           dev_server_script:
             scriptType === 'dev_server'
               ? script.trim() || null
-              : selectedRepo?.dev_server_script ?? null,
+              : (selectedRepo?.dev_server_script ?? null),
         };
 
         await repoApi.update(selectedRepoId, updateData);
@@ -163,7 +162,9 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         modal.resolve({ action: 'saved' } as ScriptFixerDialogResult);
         modal.hide();
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('common:error.generic'));
+        setError(
+          err instanceof Error ? err.message : t('common:error.generic')
+        );
       } finally {
         setIsSaving(false);
       }
@@ -183,14 +184,14 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
           setup_script:
             scriptType === 'setup'
               ? script.trim() || null
-              : selectedRepo?.setup_script ?? null,
+              : (selectedRepo?.setup_script ?? null),
           cleanup_script: selectedRepo?.cleanup_script ?? null,
           copy_files: selectedRepo?.copy_files ?? null,
           parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
           dev_server_script:
             scriptType === 'dev_server'
               ? script.trim() || null
-              : selectedRepo?.dev_server_script ?? null,
+              : (selectedRepo?.dev_server_script ?? null),
         };
 
         await repoApi.update(selectedRepoId, updateData);
@@ -206,14 +207,26 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
         }
         // For dev_server, the caller should handle starting the dev server
 
-        modal.resolve({ action: 'saved_and_tested' } as ScriptFixerDialogResult);
+        modal.resolve({
+          action: 'saved_and_tested',
+        } as ScriptFixerDialogResult);
         modal.hide();
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('common:error.generic'));
+        setError(
+          err instanceof Error ? err.message : t('common:error.generic')
+        );
       } finally {
         setIsTesting(false);
       }
-    }, [selectedRepoId, script, scriptType, workspaceId, queryClient, modal, t]);
+    }, [
+      selectedRepoId,
+      script,
+      scriptType,
+      workspaceId,
+      queryClient,
+      modal,
+      t,
+    ]);
 
     const dialogTitle =
       scriptType === 'setup'
@@ -277,7 +290,10 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             </div>
 
             {/* Logs section */}
-            <div className="flex flex-col gap-2 min-h-0" style={{ height: '200px' }}>
+            <div
+              className="flex flex-col gap-2 min-h-0"
+              style={{ height: '200px' }}
+            >
               <Label>{t('scriptFixer.logsLabel')}</Label>
               <div className="flex-1 border rounded-md bg-muted overflow-hidden">
                 {latestProcess ? (
@@ -291,9 +307,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             </div>
 
             {/* Error display */}
-            {error && (
-              <div className="text-destructive text-sm">{error}</div>
-            )}
+            {error && <div className="text-destructive text-sm">{error}</div>}
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

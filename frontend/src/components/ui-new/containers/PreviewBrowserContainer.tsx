@@ -64,7 +64,9 @@ export function PreviewBrowserContainer({
       isServerRunning={runningDevServers.length > 0}
       repos={repos}
       handleEditDevScript={handleEditDevScript}
-      handleFixDevScript={attemptId && repos.length > 0 ? handleFixDevScript : undefined}
+      handleFixDevScript={
+        attemptId && repos.length > 0 ? handleFixDevScript : undefined
+      }
       className={className}
     />
   );

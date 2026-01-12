@@ -609,7 +609,11 @@ const ScriptFixButton: React.FC<{
     // Context not available
   }
 
-  const scriptToolNames = ['Setup Script', 'Cleanup Script', 'Tool Install Script'];
+  const scriptToolNames = [
+    'Setup Script',
+    'Cleanup Script',
+    'Tool Install Script',
+  ];
   const isScript = scriptToolNames.includes(toolName);
   const isFailed = status.status === 'failed';
   const canFix = isScript && isFailed && workspaceId && repos.length > 0;
