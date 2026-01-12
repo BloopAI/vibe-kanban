@@ -312,6 +312,9 @@ export function DiffViewCardWithComments({
   // The library wraps our data in { data: ExtendLineData }
   const renderExtendLine = useCallback(
     (lineData: { data: ExtendLineData }) => {
+      // Guard against undefined data (can happen when switching diff modes)
+      if (!lineData.data) return null;
+
       if (lineData.data.type === 'github') {
         return <GitHubCommentRenderer comment={lineData.data.comment} />;
       }
