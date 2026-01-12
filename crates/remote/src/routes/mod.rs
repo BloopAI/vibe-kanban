@@ -18,6 +18,7 @@ mod electric_proxy;
 mod error;
 mod github_app;
 mod identity;
+mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
@@ -72,6 +73,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tags::router())
         .merge(task_comments::router())
         .merge(task_comment_reactions::router())
+        .merge(notifications::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

@@ -140,8 +140,90 @@ CREATE TABLE task_comment_reactions (
     UNIQUE (comment_id, user_id, emoji)
 );
 
+-- 15. NOTIFICATIONS
+CREATE TYPE notification_type AS ENUM (
+    'task_comment_added',
+    'task_status_changed',
+    'task_assignee_changed',
+    'task_deleted'
+);
+
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    notification_type notification_type NOT NULL,
+    payload JSONB NOT NULL DEFAULT '{}',
+
+    task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    comment_id UUID REFERENCES task_comments(id) ON DELETE SET NULL,
+
+    seen BOOLEAN NOT NULL DEFAULT FALSE,
+    dismissed_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Indexes for common lookups
 CREATE INDEX idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX idx_tasks_status_id ON tasks(status_id);
 CREATE INDEX idx_tasks_parent_task_id ON tasks(parent_task_id);
 CREATE INDEX idx_task_comments_task_id ON task_comments(task_id);
+
+CREATE INDEX idx_notifications_user_unseen
+    ON notifications (user_id, seen)
+    WHERE dismissed_at IS NULL;
+
+CREATE INDEX idx_notifications_user_created
+    ON notifications (user_id, created_at DESC);
+
+CREATE INDEX idx_notifications_org
+    ON notifications (organization_id);
+
+-- 16. REMOTE WORKSPACES
+-- Workspace metadata pushed from local clients
+CREATE TYPE workspace_pr_status AS ENUM ('open', 'merged', 'closed');
+
+CREATE TABLE remote_workspaces (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+    local_workspace_id UUID NOT NULL,
+    archived BOOLEAN NOT NULL DEFAULT FALSE,
+    files_changed INTEGER,
+    lines_added INTEGER,
+    lines_removed INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE remote_workspace_repos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id UUID NOT NULL REFERENCES remote_workspaces(id) ON DELETE CASCADE,
+    repo_name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (workspace_id, repo_name)
+);
+
+CREATE TABLE remote_workspace_prs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_repo_id UUID NOT NULL REFERENCES remote_workspace_repos(id) ON DELETE CASCADE,
+    pr_url TEXT NOT NULL,
+    pr_number INTEGER NOT NULL,
+    pr_status workspace_pr_status NOT NULL DEFAULT 'open',
+    merged_at TIMESTAMPTZ,
+    closed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (workspace_repo_id)
+);
+
+CREATE INDEX idx_remote_workspaces_organization_id ON remote_workspaces(organization_id);
+CREATE INDEX idx_remote_workspaces_owner_user_id ON remote_workspaces(owner_user_id);
+CREATE INDEX idx_remote_workspaces_task_id ON remote_workspaces(task_id) WHERE task_id IS NOT NULL;
+CREATE INDEX idx_remote_workspaces_local_workspace_id ON remote_workspaces(local_workspace_id);
+CREATE INDEX idx_remote_workspace_repos_workspace_id ON remote_workspace_repos(workspace_id);
+CREATE INDEX idx_remote_workspace_prs_workspace_repo_id ON remote_workspace_prs(workspace_repo_id);
