@@ -269,7 +269,7 @@ impl EventService {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             if let Some(patch_op) = patch.0.first()
-                                && patch_op.path().starts_with("/project_groups")
+                                && patch_op.path().starts_with("/groups")
                             {
                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                             }

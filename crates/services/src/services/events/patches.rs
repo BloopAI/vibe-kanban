@@ -95,7 +95,7 @@ pub mod project_group_patch {
 
     fn project_group_path(group_id: Uuid) -> String {
         format!(
-            "/project_groups/{}",
+            "/groups/{}",
             escape_pointer_segment(&group_id.to_string())
         )
     }
