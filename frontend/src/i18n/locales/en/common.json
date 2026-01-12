@@ -49,7 +49,8 @@
       "ranCommand": "Ran command",
       "createdTask": "Created task: {{description}}",
       "todoOperation": "{{operation}} todos"
-    }
+    },
+    "fixScript": "Fix Script"
   },
   "folderPicker": {
     "legend": "Click folder names to navigate • Use action buttons to select",

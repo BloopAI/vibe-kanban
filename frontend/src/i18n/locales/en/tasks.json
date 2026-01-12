@@ -79,7 +79,8 @@
       "item2": "Did your dev server print the URL and port to the terminal in the format",
       "item2Suffix": "? (this is how we know it's running)",
       "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
-      "item3Link": "follow the installation instructions here"
+      "item3Link": "follow the installation instructions here",
+      "fixScript": "Fix Dev Script"
     },
     "noServer": {
       "title": "No dev server running",
