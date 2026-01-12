@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -27,6 +28,7 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
@@ -60,46 +62,38 @@ function GitPanelContainer({
   onBranchNameChange,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
+  const queryClient = useQueryClient();
 
-  // Track which repos have had push clicked (to hide button immediately)
-  const [hiddenPushRepos, setHiddenPushRepos] = useState<Set<string>>(
-    new Set()
+  // Track which repo is currently being pushed
+  const [pushingRepoId, setPushingRepoId] = useState<string | null>(null);
+
+  // Use the push hook - isPending tells us when push is in progress
+  const pushMutation = usePush(
+    selectedWorkspace?.id,
+    // onSuccess - wait for query invalidation to complete before clearing pending state
+    async () => {
+      // Wait for the branchStatus query to refetch
+      await queryClient.invalidateQueries({
+        queryKey: ['branchStatus', selectedWorkspace?.id],
+      });
+      setPushingRepoId(null);
+    },
+    // onError - clear pending state
+    () => {
+      setPushingRepoId(null);
+    }
   );
-  const lastRemoteCommitsAhead = useRef<Record<string, number>>({});
 
-  // Reset hidden state when remoteCommitsAhead increases for a repo
-  useEffect(() => {
-    const newHidden = new Set(hiddenPushRepos);
-    let changed = false;
-
-    for (const repo of repoInfos) {
-      const lastValue = lastRemoteCommitsAhead.current[repo.id] ?? 0;
-      const currentValue = repo.remoteCommitsAhead ?? 0;
-
-      if (currentValue > lastValue && hiddenPushRepos.has(repo.id)) {
-        newHidden.delete(repo.id);
-        changed = true;
-      }
-
-      lastRemoteCommitsAhead.current[repo.id] = currentValue;
-    }
-
-    if (changed) {
-      setHiddenPushRepos(newHidden);
-    }
-  }, [repoInfos, hiddenPushRepos]);
-
-  // Compute repoInfos with showPushButton
+  // Compute repoInfos with push button state
   const repoInfosWithPushButton = useMemo(
     () =>
       repoInfos.map((repo) => ({
         ...repo,
         showPushButton:
-          repo.prStatus === 'open' &&
-          (repo.remoteCommitsAhead ?? 0) > 0 &&
-          !hiddenPushRepos.has(repo.id),
+          repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0,
+        isPushPending: pushingRepoId === repo.id,
       })),
-    [repoInfos, hiddenPushRepos]
+    [repoInfos, pushingRepoId]
   );
 
   // Handle copying repo path to clipboard
@@ -153,18 +147,14 @@ function GitPanelContainer({
     [selectedWorkspace, executeAction]
   );
 
-  // Handle push button click - hide immediately
+  // Handle push button click - use mutation with loading state
   const handlePushClick = useCallback(
-    async (repoId: string) => {
-      // Hide the button immediately
-      setHiddenPushRepos((prev) => new Set(prev).add(repoId));
-
-      // Execute push action
-      if (selectedWorkspace?.id) {
-        await executeAction(Actions.GitPush, selectedWorkspace.id, repoId);
-      }
+    (repoId: string) => {
+      if (pushingRepoId) return; // Prevent multiple simultaneous pushes
+      setPushingRepoId(repoId);
+      pushMutation.mutate({ repo_id: repoId });
     },
-    [selectedWorkspace, executeAction]
+    [pushingRepoId, pushMutation]
   );
 
   return (

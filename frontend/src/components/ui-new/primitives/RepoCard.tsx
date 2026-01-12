@@ -11,6 +11,7 @@ import {
   CopyIcon,
   GitMergeIcon,
   CheckCircleIcon,
+  SpinnerGapIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -52,6 +53,7 @@ interface RepoCardProps {
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   showPushButton?: boolean;
+  isPushPending?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
@@ -73,6 +75,7 @@ export function RepoCard({
   prUrl,
   prStatus,
   showPushButton = false,
+  isPushPending = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
@@ -214,14 +217,19 @@ export function RepoCard({
               {t('git.pr.open', { number: prNumber })}
             </span>
           )}
-          {/* Push button - controlled by parent */}
-          {showPushButton && (
+          {/* Push button - shows loading state while pushing */}
+          {(showPushButton || isPushPending) && (
             <button
               onClick={onPushClick}
-              className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors"
+              disabled={isPushPending}
+              className="inline-flex items-center gap-half px-base py-half rounded-sm bg-panel text-normal hover:bg-tertiary text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ArrowUpIcon className="size-icon-xs" weight="bold" />
-              {t('git.states.push')}
+              {isPushPending ? (
+                <SpinnerGapIcon className="size-icon-xs animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-icon-xs" weight="bold" />
+              )}
+              {isPushPending ? t('git.states.pushing') : t('git.states.push')}
             </button>
           )}
         </div>
