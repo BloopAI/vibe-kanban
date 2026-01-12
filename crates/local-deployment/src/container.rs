@@ -18,6 +18,7 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
+        project::Project,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
@@ -914,9 +915,16 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
+        let project = Project::find_by_id(&self.db.pool, task.project_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
         let workspace_dir_name =
             LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
-        let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
+        let workspace_dir = WorkspaceManager::get_workspace_base_dir_with_config(
+            project.worktree_base_dir.as_deref(),
+        )
+        .join(&workspace_dir_name);
 
         let workspace_repos =
             WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
@@ -996,9 +1004,15 @@ impl ContainerService for LocalContainerService {
                 .parent_task(&self.db.pool)
                 .await?
                 .ok_or(sqlx::Error::RowNotFound)?;
+            let project = Project::find_by_id(&self.db.pool, task.project_id)
+                .await?
+                .ok_or(sqlx::Error::RowNotFound)?;
             let workspace_dir_name =
                 LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
-            WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+            WorkspaceManager::get_workspace_base_dir_with_config(
+                project.worktree_base_dir.as_deref(),
+            )
+            .join(&workspace_dir_name)
         };
 
         WorkspaceManager::ensure_workspace_exists(&workspace_dir, &repositories, &workspace.branch)

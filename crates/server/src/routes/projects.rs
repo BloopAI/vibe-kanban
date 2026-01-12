@@ -27,6 +27,7 @@ use services::services::{
 use ts_rs::TS;
 use utils::{
     api::projects::{RemoteProject, RemoteProjectMembersResponse},
+    path::validate_worktree_dir,
     response::ApiResponse,
 };
 use uuid::Uuid;
@@ -265,7 +266,13 @@ pub async fn update_project(
     Extension(existing_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateProject>,
-) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    if let Some(ref path) = payload.worktree_base_dir {
+        if let Err(msg) = validate_worktree_dir(path) {
+            return Err(ApiError::BadRequest(msg));
+        }
+    }
+
     match deployment
         .project()
         .update_project(&deployment.db().pool, &existing_project, payload)
@@ -274,7 +281,7 @@ pub async fn update_project(
         Ok(project) => Ok(ResponseJson(ApiResponse::success(project))),
         Err(e) => {
             tracing::error!("Failed to update project: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(ProjectError::CreateFailed(e.to_string()).into())
         }
     }
 }

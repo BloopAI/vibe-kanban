@@ -341,6 +341,11 @@
           "helper": "The absolute path to your git repository on disk."
         }
       },
+      "worktreeBaseDir": {
+        "label": "Worktree Base Directory",
+        "placeholder": "e.g., ~/worktrees or /var/tmp/my-project",
+        "helper": "Directory where git worktrees are created for this project. Supports absolute paths or ~ for home directory. Leave empty to use the system default. Only affects new workspaces."
+      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",

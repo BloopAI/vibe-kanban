@@ -341,6 +341,11 @@
           "helper": "磁盘上 git 仓库的绝对路径。"
         }
       },
+      "worktreeBaseDir": {
+        "label": "工作树基础目录",
+        "placeholder": "例如：~/worktrees 或 /var/tmp/my-project",
+        "helper": "为此项目创建Git工作树的目录。支持绝对路径或~（主目录）。留空使用系统默认值。仅影响新工作区。"
+      },
       "save": {
         "button": "保存项目设置",
         "success": "✓ 项目设置保存成功！",

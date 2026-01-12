@@ -31,11 +31,13 @@ import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
+  worktree_base_dir: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
+    worktree_base_dir: project.worktree_base_dir ?? '',
   };
 }
 
@@ -152,9 +154,13 @@ export function ProjectSettings() {
       ? projects.find((p) => p.id === selectedProjectId)
       : null;
 
-    setSelectedProject((prev) =>
-      prev?.id === nextProject?.id ? prev : (nextProject ?? null)
-    );
+    setSelectedProject((prev) => {
+      if (prev?.id === nextProject?.id && prev) {
+        const prevIsNewer = nextProject && prev.updated_at >= nextProject.updated_at;
+        return prevIsNewer ? prev : (nextProject ?? prev);
+      }
+      return nextProject ?? null;
+    });
 
     if (!nextProject) {
       if (!hasUnsavedChanges) setDraft(null);
@@ -163,7 +169,7 @@ export function ProjectSettings() {
 
     if (hasUnsavedChanges) return;
 
-    setDraft(projectToFormState(nextProject));
+    setDraft((prevDraft) => prevDraft ?? projectToFormState(nextProject));
   }, [projects, selectedProjectId, hasUnsavedChanges]);
 
   // Warn on tab close/navigation with unsaved changes
@@ -292,6 +298,7 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        worktree_base_dir: draft.worktree_base_dir.trim() || null,
       };
 
       updateProject.mutate({
@@ -422,6 +429,26 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.general.name.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="worktree-base-dir">
+                  {t('settings.projects.worktreeBaseDir.label')}
+                </Label>
+                <Input
+                  id="worktree-base-dir"
+                  value={draft.worktree_base_dir}
+                  onChange={(e) =>
+                    updateDraft({ worktree_base_dir: e.target.value })
+                  }
+                  placeholder={t(
+                    'settings.projects.worktreeBaseDir.placeholder'
+                  )}
+                  className="font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.worktreeBaseDir.helper')}
                 </p>
               </div>
 

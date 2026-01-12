@@ -341,6 +341,11 @@
           "helper": "La ruta absoluta a tu repositorio git en disco."
         }
       },
+      "worktreeBaseDir": {
+        "label": "Directorio Base de Worktree",
+        "placeholder": "ej., ~/worktrees o /var/tmp/mi-proyecto",
+        "helper": "Directorio donde se crean los worktrees de Git para este proyecto. Soporta rutas absolutas o ~ para el directorio home. Déjalo vacío para usar el valor predeterminado del sistema. Solo afecta a nuevos workspaces."
+      },
       "save": {
         "button": "Guardar Configuración del Proyecto",
         "success": "✓ ¡Configuración del proyecto guardada exitosamente!",

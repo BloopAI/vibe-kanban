@@ -125,6 +125,36 @@ pub fn expand_tilde(path_str: &str) -> std::path::PathBuf {
     shellexpand::tilde(path_str).as_ref().into()
 }
 
+pub fn validate_worktree_dir(path: &str) -> Result<(), String> {
+    let path = path.trim();
+    if path.is_empty() {
+        return Ok(());
+    }
+
+    let expanded = expand_tilde(path);
+
+    if !expanded.is_absolute() {
+        return Err("Path must be absolute or start with ~".to_string());
+    }
+
+    if !expanded.exists() {
+        return Err(format!("Directory does not exist: {}", expanded.display()));
+    }
+
+    if !expanded.is_dir() {
+        return Err(format!("Path is not a directory: {}", expanded.display()));
+    }
+
+    let test_file = expanded.join(".vibe-kanban-write-test");
+    match std::fs::File::create(&test_file) {
+        Ok(_) => {
+            let _ = std::fs::remove_file(&test_file);
+            Ok(())
+        }
+        Err(_) => Err(format!("Directory is not writable: {}", expanded.display())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,5 +201,24 @@ mod tests {
             make_path_relative(&path_under_var, &worktree_private),
             "hello-world.txt"
         );
+    }
+
+    #[test]
+    fn test_validate_worktree_dir_empty_is_ok() {
+        assert!(validate_worktree_dir("").is_ok());
+        assert!(validate_worktree_dir("   ").is_ok());
+    }
+
+    #[test]
+    fn test_validate_worktree_dir_nonexistent_fails() {
+        let result = validate_worktree_dir("/nonexistent/path/abc123xyz");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_validate_worktree_dir_valid_path() {
+        let result = validate_worktree_dir("/tmp");
+        assert!(result.is_ok());
     }
 }

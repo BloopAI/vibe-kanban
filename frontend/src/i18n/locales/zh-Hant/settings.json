@@ -341,6 +341,11 @@
           "helper": "磁碟上的 Git 儲存庫絕對路徑。"
         }
       },
+      "worktreeBaseDir": {
+        "label": "工作樹基礎目錄",
+        "placeholder": "例如：~/worktrees 或 /var/tmp/my-project",
+        "helper": "為此專案建立Git工作樹的目錄。支援絕對路徑或~（主目錄）。留空使用系統預設值。僅影響新工作區。"
+      },
       "save": {
         "button": "儲存專案設定",
         "success": "✓ 專案設定儲存成功！",
