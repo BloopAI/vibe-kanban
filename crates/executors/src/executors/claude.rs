@@ -56,6 +56,11 @@ pub fn get_current_account_index() -> usize {
     ACCOUNT_ROTATION_INDEX.load(Ordering::Relaxed)
 }
 
+/// Set the current account rotation index
+pub fn set_current_account_index(index: usize) {
+    ACCOUNT_ROTATION_INDEX.store(index, Ordering::Relaxed);
+}
+
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"

@@ -30,6 +30,7 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  Star,
 } from 'lucide-react';
 import {
   claudeAccountsApi,
@@ -100,6 +101,17 @@ export function ClaudeAccountsSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['claude-accounts'] });
       showSuccess('Rotation setting updated.');
+    },
+    onError: (err: Error) => {
+      showError(err.message);
+    },
+  });
+
+  const setActiveMutation = useMutation({
+    mutationFn: (id: string) => claudeAccountsApi.setActive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['claude-accounts'] });
+      showSuccess('Active account updated.');
     },
     onError: (err: Error) => {
       showError(err.message);
@@ -289,6 +301,21 @@ export function ClaudeAccountsSettings() {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    {!isCurrent && account.is_logged_in && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveMutation.mutate(account.id)}
+                        disabled={setActiveMutation.isPending}
+                      >
+                        {setActiveMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Star className="h-4 w-4 mr-1" />
+                        )}
+                        Set Active
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

@@ -128,6 +128,8 @@ interface SessionChatBoxProps {
   inProgressTodo?: TodoItem | null;
   /** Local images for immediate preview (before saved to server) */
   localImages?: LocalImageMetadata[];
+  /** Name of the active Claude account (when rotation is enabled) */
+  activeClaudeAccountName?: string | null;
 }
 
 /**
@@ -151,6 +153,7 @@ export function SessionChatBox({
   executor,
   inProgressTodo,
   localImages,
+  activeClaudeAccountName,
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -575,6 +578,12 @@ export function SessionChatBox({
           {/* Agent icon for existing session mode */}
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
+          )}
+          {/* Active Claude account indicator */}
+          {activeClaudeAccountName && (
+            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-full">
+              {activeClaudeAccountName}
+            </span>
           )}
           <ToolbarDropdown
             label={sessionLabel}

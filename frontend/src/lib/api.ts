@@ -1048,6 +1048,12 @@ export const claudeAccountsApi = {
     });
     return handleApiResponse<string>(response);
   },
+  setActive: async (id: string): Promise<ClaudeAccountsResponse> => {
+    const response = await makeRequest(`/api/claude-accounts/${id}/set-active`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ClaudeAccountsResponse>(response);
+  },
 };
 
 // Images API

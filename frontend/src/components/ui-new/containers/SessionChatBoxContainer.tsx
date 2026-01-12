@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { claudeAccountsApi } from '@/lib/api';
 import {
   type Session,
   type ToolStatus,
@@ -92,6 +93,24 @@ export function SessionChatBoxContainer({
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+
+  // Get active Claude account for display
+  const { data: claudeAccountsData } = useQuery({
+    queryKey: ['claude-accounts'],
+    queryFn: claudeAccountsApi.list,
+    refetchInterval: 10000, // Poll every 10 seconds
+  });
+
+  // Compute active account name
+  const activeClaudeAccountName = useMemo(() => {
+    if (!claudeAccountsData?.rotation_enabled || !claudeAccountsData?.current_account_id) {
+      return null;
+    }
+    const activeAccount = claudeAccountsData.accounts.find(
+      (a) => a.id === claudeAccountsData.current_account_id
+    );
+    return activeAccount?.name || null;
+  }, [claudeAccountsData]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -560,6 +579,7 @@ export function SessionChatBoxContainer({
       }}
       error={sendError}
       agent={latestProfileId?.executor}
+      activeClaudeAccountName={activeClaudeAccountName}
       inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode

@@ -11,7 +11,7 @@ use axum::{
 use deployment::{Deployment, DeploymentError};
 use executors::{
     claude_accounts::{ClaudeAccount, ClaudeAccountsConfig, spawn_login_terminal},
-    executors::claude::get_current_account_index,
+    executors::claude::{get_current_account_index, set_current_account_index},
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
     },
@@ -56,6 +56,10 @@ pub fn router() -> Router<DeploymentImpl> {
         .route(
             "/claude-accounts/{id}/login",
             axum::routing::post(login_claude_account),
+        )
+        .route(
+            "/claude-accounts/{id}/set-active",
+            axum::routing::post(set_active_claude_account),
         )
 }
 
@@ -663,5 +667,31 @@ async fn login_claude_account(
             "Failed to open login terminal: {}",
             e
         ))),
+    }
+}
+
+/// Set a specific account as the active one
+async fn set_active_claude_account(
+    State(_deployment): State<DeploymentImpl>,
+    Path(id): Path<String>,
+) -> ResponseJson<ApiResponse<ClaudeAccountsResponse>> {
+    let config = ClaudeAccountsConfig::load().await;
+
+    // Find the index of the account with the given ID
+    let account_index = config.accounts.iter().position(|a| a.id == id);
+
+    match account_index {
+        Some(index) => {
+            set_current_account_index(index);
+            let accounts: Vec<ClaudeAccountWithStatus> =
+                config.accounts.iter().map(|a| a.into()).collect();
+
+            ResponseJson(ApiResponse::success(ClaudeAccountsResponse {
+                accounts,
+                rotation_enabled: config.rotation_enabled,
+                current_account_id: Some(id),
+            }))
+        }
+        None => ResponseJson(ApiResponse::error("Account not found")),
     }
 }
