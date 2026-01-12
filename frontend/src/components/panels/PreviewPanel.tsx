@@ -175,10 +175,14 @@ export function PreviewPanel() {
       target_branch: 'main', // Default target branch
     }));
 
+    // Get session ID from the latest dev server process
+    const sessionId = devServerProcesses[0]?.session_id;
+
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos: reposWithTargetBranch,
       workspaceId: attemptId,
+      sessionId,
       initialRepoId: projectRepos.length === 1 ? projectRepos[0].id : undefined,
     });
   };

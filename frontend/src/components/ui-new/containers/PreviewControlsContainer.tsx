@@ -92,13 +92,17 @@ export function PreviewControlsContainer({
   const handleFixScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
 
+    // Get session ID from the latest dev server process
+    const sessionId = devServerProcesses[0]?.session_id;
+
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos,
       workspaceId: attemptId,
+      sessionId,
       initialRepoId: repos.length === 1 ? repos[0].id : undefined,
     });
-  }, [attemptId, repos]);
+  }, [attemptId, repos, devServerProcesses]);
 
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''

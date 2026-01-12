@@ -21,7 +21,7 @@ export function PreviewBrowserContainer({
   const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
   const { repos } = useWorkspaceContext();
 
-  const { start, isStarting, runningDevServers } =
+  const { start, isStarting, runningDevServers, devServerProcesses } =
     usePreviewDevServer(attemptId);
 
   const primaryDevServer = runningDevServers[0];
@@ -48,13 +48,17 @@ export function PreviewBrowserContainer({
   const handleFixDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
 
+    // Get session ID from the latest dev server process
+    const sessionId = devServerProcesses[0]?.session_id;
+
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos,
       workspaceId: attemptId,
+      sessionId,
       initialRepoId: repos.length === 1 ? repos[0].id : undefined,
     });
-  }, [attemptId, repos]);
+  }, [attemptId, repos, devServerProcesses]);
 
   return (
     <PreviewBrowser
