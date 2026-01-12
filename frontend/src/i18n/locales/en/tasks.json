@@ -660,7 +660,7 @@
     "title": "Fix Script",
     "setupScriptTitle": "Fix Setup Script",
     "devServerTitle": "Fix Dev Server Script",
-    "scriptLabel": "Script",
+    "scriptLabel": "Script (edit)",
     "logsLabel": "Last Execution Logs",
     "saveButton": "Save",
     "saveAndTestButton": "Save and Test",

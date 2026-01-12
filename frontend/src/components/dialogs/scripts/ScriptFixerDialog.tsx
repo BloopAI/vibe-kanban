@@ -289,7 +289,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
             {/* Script editor */}
             <div className="flex flex-col gap-2 flex-1 min-h-0 min-w-0">
               <Label>{t('scriptFixer.scriptLabel')}</Label>
-              <div className="flex-1 min-h-[150px] max-h-[300px] overflow-auto border rounded-md min-w-0">
+              <div className="bg-panel flex-1 min-h-[150px] max-h-[300px] overflow-auto border rounded-md min-w-0">
                 {isLoadingRepo ? (
                   <div className="h-full flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -298,7 +298,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                   <AutoExpandingTextarea
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
-                    className="font-mono text-sm p-3 border-0 min-h-full"
+                    className="font-mono text-sm p-3 border-0 min-h-full bg-panel"
                     placeholder={
                       scriptType === 'setup'
                         ? '#!/bin/bash\nnpm install'
@@ -354,7 +354,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
                   </div>
                 )}
               </div>
-              <div className="flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
+              <div className="bg-secondary py-base flex-1 border rounded-md bg-muted overflow-hidden min-w-0">
                 {latestProcess ? (
                   <VirtualizedProcessLogs logs={logs} error={logsError} />
                 ) : (
