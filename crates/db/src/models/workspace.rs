@@ -345,7 +345,7 @@ impl Workspace {
                     WHERE ep2.completed_at IS NULL
                 )
             GROUP BY w.id, w.container_ref, w.updated_at
-            HAVING datetime('now',
+            HAVING datetime('now', 'localtime',
                 CASE
                     WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview')
                     THEN '-1 hours'
@@ -353,10 +353,10 @@ impl Workspace {
                 END
             ) > datetime(
                 MAX(
-                    CASE
-                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at
-                        ELSE w.updated_at
-                    END
+                    max(
+                        datetime(w.updated_at),
+                        datetime(ep.completed_at)
+                    )
                 )
             )
             ORDER BY MAX(
