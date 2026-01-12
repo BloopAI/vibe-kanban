@@ -73,6 +73,18 @@ function GitPanelContainer({
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentPushRepoRef = useRef<string | null>(null);
 
+  // Reset push-related state when the selected workspace changes to avoid
+  // leaking push state across workspaces with repos that share the same ID.
+  useEffect(() => {
+    setPushStates({});
+    pushStatesRef.current = {};
+    currentPushRepoRef.current = null;
+
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+  }, [selectedWorkspace?.id]);
   // Use push hook for direct API access with proper error handling
   const pushMutation = usePush(
     selectedWorkspace?.id,
