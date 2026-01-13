@@ -42,6 +42,14 @@ export function PreviewBrowserContainer({
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
   const urlInfo = usePreviewUrl(logs);
 
+  // Detect failed dev server process (failed status or completed with non-zero exit code)
+  const failedDevServerProcess = devServerProcesses.find(
+    (p) =>
+      p.status === 'failed' ||
+      (p.status === 'completed' && p.exit_code !== null && p.exit_code !== 0n)
+  );
+  const hasFailedDevServer = Boolean(failedDevServerProcess);
+
   // Preview settings (URL override and screen size)
   const {
     overrideUrl,
@@ -286,6 +294,7 @@ export function PreviewBrowserContainer({
       handleFixDevScript={
         attemptId && repos.length > 0 ? handleFixDevScript : undefined
       }
+      hasFailedDevServer={hasFailedDevServer}
       className={className}
     />
   );

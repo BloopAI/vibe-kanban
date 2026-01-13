@@ -55,6 +55,7 @@ interface PreviewBrowserProps {
   repos: Repo[];
   handleEditDevScript: () => void;
   handleFixDevScript?: () => void;
+  hasFailedDevServer?: boolean;
   className?: string;
 }
 
@@ -83,6 +84,7 @@ export function PreviewBrowser({
   repos,
   handleEditDevScript,
   handleFixDevScript,
+  hasFailedDevServer,
   className,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
@@ -340,7 +342,7 @@ export function PreviewBrowser({
                 <p className="text-xs text-low">
                   Click &quot;Start&quot; in the toolbar above to begin
                 </p>
-                {handleFixDevScript && (
+                {hasFailedDevServer && handleFixDevScript && (
                   <PrimaryButton
                     variant="tertiary"
                     value={t('scriptFixer.fixScript')}
