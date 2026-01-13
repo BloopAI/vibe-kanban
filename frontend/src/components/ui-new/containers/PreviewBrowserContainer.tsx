@@ -117,16 +117,18 @@ export function PreviewBrowserContainer({
         let newHeight = startDimensionsRef.current!.height;
 
         if (direction === 'right' || direction === 'corner') {
+          // Double delta to compensate for centered element (grows on both sides)
           newWidth = Math.max(
             MIN_RESPONSIVE_WIDTH,
-            startDimensionsRef.current!.width + deltaX
+            startDimensionsRef.current!.width + deltaX * 2
           );
         }
 
         if (direction === 'bottom' || direction === 'corner') {
+          // Double delta to compensate for centered element (grows on both sides)
           newHeight = Math.max(
             MIN_RESPONSIVE_HEIGHT,
-            startDimensionsRef.current!.height + deltaY
+            startDimensionsRef.current!.height + deltaY * 2
           );
         }
 
