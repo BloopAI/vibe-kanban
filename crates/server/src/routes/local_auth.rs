@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     Router,
@@ -9,7 +8,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::user::{GitHubUserProfile, User};
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use services::services::{
     github_oauth::{GitHubOAuthConfig, GitHubOAuthService},
@@ -148,13 +147,13 @@ async fn github_auth_callback(
         ));
     }
 
-    let code = query.code.ok_or_else(|| {
-        ApiError::BadRequest("Missing authorization code".to_string())
-    })?;
+    let code = query
+        .code
+        .ok_or_else(|| ApiError::BadRequest("Missing authorization code".to_string()))?;
 
-    let oauth_state = query.state.ok_or_else(|| {
-        ApiError::BadRequest("Missing state parameter".to_string())
-    })?;
+    let oauth_state = query
+        .state
+        .ok_or_else(|| ApiError::BadRequest("Missing state parameter".to_string()))?;
 
     // Validate state
     {
@@ -237,34 +236,42 @@ async fn auth_status(
     let session_service = match state.session_service.as_ref() {
         Some(s) => s,
         None => {
-            return Ok(ResponseJson(ApiResponse::success(LocalAuthStatusResponse {
-                authenticated: false,
-                user: None,
-            })));
+            return Ok(ResponseJson(ApiResponse::success(
+                LocalAuthStatusResponse {
+                    authenticated: false,
+                    user: None,
+                },
+            )));
         }
     };
 
     let token = match extract_bearer_token(&headers) {
         Ok(t) => t,
         Err(_) => {
-            return Ok(ResponseJson(ApiResponse::success(LocalAuthStatusResponse {
-                authenticated: false,
-                user: None,
-            })));
+            return Ok(ResponseJson(ApiResponse::success(
+                LocalAuthStatusResponse {
+                    authenticated: false,
+                    user: None,
+                },
+            )));
         }
     };
 
     let pool = state.deployment.db().pool.clone();
 
     match session_service.validate_token(&pool, &token).await {
-        Ok(user) => Ok(ResponseJson(ApiResponse::success(LocalAuthStatusResponse {
-            authenticated: true,
-            user: Some(user),
-        }))),
-        Err(_) => Ok(ResponseJson(ApiResponse::success(LocalAuthStatusResponse {
-            authenticated: false,
-            user: None,
-        }))),
+        Ok(user) => Ok(ResponseJson(ApiResponse::success(
+            LocalAuthStatusResponse {
+                authenticated: true,
+                user: Some(user),
+            },
+        ))),
+        Err(_) => Ok(ResponseJson(ApiResponse::success(
+            LocalAuthStatusResponse {
+                authenticated: false,
+                user: None,
+            },
+        ))),
     }
 }
 
