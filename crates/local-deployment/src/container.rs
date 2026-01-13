@@ -920,7 +920,6 @@ impl LocalContainerService {
         }
     }
 
-
     /// Start a commit reminder follow-up execution to ask the agent to commit its changes
     async fn start_commit_reminder_follow_up(
         &self,
