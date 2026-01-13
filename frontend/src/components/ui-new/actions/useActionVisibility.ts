@@ -4,7 +4,7 @@ import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useDevServer } from '@/hooks/useDevServer';
+import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import type { Workspace, Merge } from 'shared/types';
@@ -30,7 +30,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const expanded = useUiPreferencesStore((s) => s.expanded);
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
-    useDevServer(workspaceId);
+    usePreviewDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
   const { isAttemptRunningVisible } = useExecutionProcessesContext();
 

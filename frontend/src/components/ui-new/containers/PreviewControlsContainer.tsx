@@ -6,21 +6,20 @@ import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface PreviewControlsContainerProps {
-  attemptId?: string;
   onViewProcessInPanel?: (processId: string) => void;
   className?: string;
 }
 
 export function PreviewControlsContainer({
-  attemptId,
   onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
-  const { repos } = useWorkspaceContext();
+  const { repos, workspaceId } = useWorkspaceContext();
   const setLogsMode = useLayoutStore((s) => s.setLogsMode);
 
+  // Use workspace-scoped dev server streaming (visible across all sessions)
   const { isStarting, runningDevServers, devServerProcesses } =
-    usePreviewDevServer(attemptId);
+    usePreviewDevServer(workspaceId);
 
   const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
 

@@ -1,13 +1,9 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useWorkspaceDevServers } from '@/hooks/useWorkspaceDevServers';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
-import {
-  filterRunningDevServers,
-  filterDevServerProcesses,
-  deduplicateDevServersByWorkingDir,
-} from '@/lib/devServerUtils';
+import { deduplicateDevServersByWorkingDir } from '@/lib/devServerUtils';
 
 interface UsePreviewDevServerOptions {
   onStartSuccess?: () => void;
@@ -17,34 +13,28 @@ interface UsePreviewDevServerOptions {
 }
 
 export function usePreviewDevServer(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   options?: UsePreviewDevServerOptions
 ) {
   const queryClient = useQueryClient();
-  const { attemptData } = useAttemptExecution(attemptId);
 
-  const runningDevServers = useMemo(
-    () => filterRunningDevServers(attemptData.processes),
-    [attemptData.processes]
-  );
+  // Use workspace-scoped dev server streaming (visible across all sessions)
+  const { devServers, runningDevServers } = useWorkspaceDevServers(workspaceId);
 
   const devServerProcesses = useMemo(
-    () =>
-      deduplicateDevServersByWorkingDir(
-        filterDevServerProcesses(attemptData.processes)
-      ),
-    [attemptData.processes]
+    () => deduplicateDevServersByWorkingDir(devServers),
+    [devServers]
   );
 
   const startMutation = useMutation({
-    mutationKey: ['startDevServer', attemptId],
+    mutationKey: ['startDevServer', workspaceId],
     mutationFn: async () => {
-      if (!attemptId) return;
-      await attemptsApi.startDevServer(attemptId);
+      if (!workspaceId) return;
+      await attemptsApi.startDevServer(workspaceId);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['workspaceDevServers', workspaceId],
       });
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStartSuccess?.();
@@ -56,7 +46,7 @@ export function usePreviewDevServer(
   });
 
   const stopMutation = useMutation({
-    mutationKey: ['stopDevServer', attemptId],
+    mutationKey: ['stopDevServer', workspaceId],
     mutationFn: async () => {
       if (runningDevServers.length === 0) return;
       await Promise.all(
@@ -67,7 +57,7 @@ export function usePreviewDevServer(
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['workspaceDevServers', workspaceId],
       });
       for (const ds of runningDevServers) {
         queryClient.invalidateQueries({

@@ -691,7 +691,6 @@ export function WorkspacesLayout() {
         <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
           <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
             <PreviewControlsContainer
-              attemptId={selectedWorkspace?.id}
               onViewProcessInPanel={handleViewProcessInPanel}
             />
           </Allotment.Pane>
@@ -823,9 +822,7 @@ export function WorkspacesLayout() {
                 onMatchIndicesChange={setLogMatchIndices}
               />
             )}
-            {isPreviewMode && (
-              <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
-            )}
+            {isPreviewMode && <PreviewBrowserContainer />}
           </div>
         </Allotment.Pane>
 
