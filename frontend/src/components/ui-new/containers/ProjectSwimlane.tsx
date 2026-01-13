@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { DndContext, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { KanbanIcon, PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { FilterState } from '@/components/ui-new/primitives/FilterDisplayControls';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -72,6 +73,7 @@ interface ProjectSwimlaneProps {
   onMoveToGroup?: (projectId: string, groupId: string | null) => void;
   onOpenBoard?: (projectId: string) => void;
   onStatusChange: (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => void;
+  filterState?: FilterState;
 }
 
 export function ProjectSwimlane({
@@ -84,8 +86,41 @@ export function ProjectSwimlane({
   onMoveToGroup,
   onOpenBoard,
   onStatusChange,
+  filterState,
 }: ProjectSwimlaneProps) {
   const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(project.id);
+
+  // Apply status filter to tasks
+  const filteredTasksByStatus = useMemo(() => {
+    if (!filterState || filterState.statuses.length === 0) {
+      return tasksByStatus;
+    }
+    // Filter tasks by selected statuses
+    const filtered: typeof tasksByStatus = {
+      todo: [],
+      inprogress: [],
+      inreview: [],
+      done: [],
+      cancelled: [],
+    };
+    for (const status of STATUS_ORDER) {
+      if (filterState.statuses.includes(status)) {
+        filtered[status] = tasksByStatus[status];
+      }
+    }
+    return filtered;
+  }, [tasksByStatus, filterState]);
+
+  // Calculate filtered total count
+  const filteredTotalCount = useMemo(() => {
+    if (!filterState || filterState.statuses.length === 0) {
+      return totalCount;
+    }
+    return Object.values(filteredTasksByStatus).reduce(
+      (sum, tasks) => sum + tasks.length,
+      0
+    );
+  }, [filteredTasksByStatus, filterState, totalCount]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -146,7 +181,7 @@ export function ProjectSwimlane({
             <KanbanIcon weight="fill" className="size-3.5 text-brand shrink-0" />
             <span className="text-xs text-normal font-medium truncate">{project.name}</span>
             <span className="text-[10px] text-low/50 tabular-nums shrink-0">
-              {isLoading ? '—' : totalCount}
+              {isLoading ? '—' : filteredTotalCount}
             </span>
 
             {/* Actions - visible on row hover */}
@@ -232,7 +267,7 @@ export function ProjectSwimlane({
 
         {/* Status columns */}
         {STATUS_ORDER.map((status) => {
-          const tasks = tasksByStatus[status];
+          const tasks = filteredTasksByStatus[status];
 
           return (
             <StatusCell

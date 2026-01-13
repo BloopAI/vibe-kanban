@@ -14,6 +14,11 @@ import type { ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/typ
 import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
+import {
+  FilterDisplayControls,
+  type FilterState,
+  type DisplayState,
+} from '@/components/ui-new/primitives/FilterDisplayControls';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -47,6 +52,11 @@ interface SwimlaneKanbanProps {
   onNewGroupNameChange: (value: string) => void;
   onSubmitCreateGroup: () => void;
   onCancelCreateGroup: () => void;
+  // Filter and display props
+  filterState: FilterState;
+  onFilterChange: (filter: FilterState) => void;
+  displayState: DisplayState;
+  onDisplayChange: (display: DisplayState) => void;
 }
 
 export function SwimlaneKanban({
@@ -72,6 +82,10 @@ export function SwimlaneKanban({
   onNewGroupNameChange,
   onSubmitCreateGroup,
   onCancelCreateGroup,
+  filterState,
+  onFilterChange,
+  displayState,
+  onDisplayChange,
 }: SwimlaneKanbanProps) {
   // Filter projects by search query
   const filteredGroupedProjects = useMemo(() => {
@@ -132,6 +146,17 @@ export function SwimlaneKanban({
             )}
           />
         </div>
+
+        {/* Filter and Display controls */}
+        <FilterDisplayControls
+          filterState={filterState}
+          displayState={displayState}
+          onFilterChange={onFilterChange}
+          onDisplayChange={onDisplayChange}
+        />
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-panel/40" />
 
         {/* Actions */}
         <div className="flex items-center gap-1">
@@ -327,6 +352,7 @@ export function SwimlaneKanban({
                             onMoveToGroup={onMoveToGroup}
                             onOpenBoard={onOpenBoard}
                             onStatusChange={onStatusChange}
+                            filterState={filterState}
                           />
                         ))
                       )}

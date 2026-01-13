@@ -10,6 +10,12 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { TaskDetailsPanel } from '@/components/ui-new/containers/TaskDetailsPanel';
 import { tasksApi } from '@/lib/api';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import {
+  type FilterState,
+  type DisplayState,
+  defaultFilterState,
+  defaultDisplayState,
+} from '@/components/ui-new/primitives/FilterDisplayControls';
 
 export function AllBoardsLayout() {
   const navigate = useNavigate();
@@ -20,6 +26,10 @@ export function AllBoardsLayout() {
     error,
   } = useAllBoards();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter and display state
+  const [filterState, setFilterState] = useState<FilterState>(defaultFilterState);
+  const [displayState, setDisplayState] = useState<DisplayState>(defaultDisplayState);
 
   // Track which groups are expanded - default all expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -179,6 +189,10 @@ export function AllBoardsLayout() {
               onNewGroupNameChange={setNewGroupName}
               onSubmitCreateGroup={handleSubmitCreateGroup}
               onCancelCreateGroup={handleCancelCreateGroup}
+              filterState={filterState}
+              onFilterChange={setFilterState}
+              displayState={displayState}
+              onDisplayChange={setDisplayState}
             />
           </Allotment.Pane>
           <Allotment.Pane
