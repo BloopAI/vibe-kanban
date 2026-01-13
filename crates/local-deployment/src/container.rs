@@ -442,8 +442,7 @@ impl LocalContainerService {
 
                     // Check if we should send a commit reminder instead of auto-committing
                     let mut sent_commit_reminder = false;
-                    if is_coding_agent
-                        && !container.has_sent_commit_reminder(ctx.session.id).await
+                    if is_coding_agent && !container.has_sent_commit_reminder(ctx.session.id).await
                     {
                         // Check for uncommitted changes before try_commit_changes would auto-commit them
                         if container.has_uncommitted_changes(&ctx) {
