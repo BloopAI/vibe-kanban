@@ -190,7 +190,7 @@ export type UserSystemInfo = { config: Config, analytics_user_id: string, login_
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
-capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in string]?: CodingAgentStub }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -207,8 +207,6 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type CurrentUserResponse = { user_id: string, };
-
-export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
 
@@ -230,8 +228,6 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
-
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
@@ -241,12 +237,6 @@ export type ImageMetadata = { exists: boolean, file_name: string | null, path: s
 export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
 export type WorkspaceRepoInput = { repo_id: string, target_branch: string, };
-
-export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
-
-export type RunAgentSetupResponse = Record<string, never>;
-
-export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { "OTHER": { message: string, } };
 
 export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
 
@@ -346,150 +336,19 @@ export type QueueStatus = { "status": "empty" } | { "status": "queued", message:
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
-export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
+export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: string | null, };
 
-export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
+export type BaseCodingAgent = "ClaudeCode" | "Cursor" | "Codex" | "Amp" | "GeminiCli";
 
-export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+export type AvailabilityInfo = { "status": "available" } | { "status": "not_available", reason: string | null, } | { "status": "not_found" };
 
-export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
+export type ExecutorProfileId = { executor: string, variant: string | null, };
 
-export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, 
-/**
- * Optional relative path to execute the script in (relative to container_ref).
- * If None, uses the container_ref directory directly.
- */
-working_dir: string | null, };
+export type ExecutorConfigs = { executors: { [key in string]?: CodingAgentStub }, };
 
-export type ScriptRequestLanguage = "Bash";
+export type BaseAgentCapability = "Chat" | "Edit" | "Terminal";
 
-export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR_AGENT = "CURSOR_AGENT", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT", DROID = "DROID" }
-
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid };
-
-export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
-
-export type CommandBuilder = { 
-/**
- * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
- */
-base: string, 
-/**
- * Optional parameters to append to the base command
- */
-params: Array<string> | null, };
-
-export type ExecutorProfileId = { 
-/**
- * The executor type (e.g., "CLAUDE_CODE", "AMP")
- */
-executor: BaseCodingAgent, 
-/**
- * Optional variant name (e.g., "PLAN", "ROUTER")
- */
-variant: string | null, };
-
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
-
-export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
-
-export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER" }
-
-export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, disable_api_key?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Gemini = { append_prompt: AppendPrompt, model?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Amp = { append_prompt: AppendPrompt, dangerously_allow_all?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Codex = { append_prompt: AppendPrompt, sandbox?: SandboxMode | null, ask_for_approval?: AskForApproval | null, oss?: boolean | null, model?: string | null, model_reasoning_effort?: ReasoningEffort | null, model_reasoning_summary?: ReasoningSummary | null, model_reasoning_summary_format?: ReasoningSummaryFormat | null, profile?: string | null, base_instructions?: string | null, include_apply_patch_tool?: boolean | null, model_provider?: string | null, compact_prompt?: string | null, developer_instructions?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type SandboxMode = "auto" | "read-only" | "workspace-write" | "danger-full-access";
-
-export type AskForApproval = "unless-trusted" | "on-failure" | "on-request" | "never";
-
-export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
-
-export type ReasoningSummary = "auto" | "concise" | "detailed" | "none";
-
-export type ReasoningSummaryFormat = "none" | "experimental";
-
-export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Copilot = { append_prompt: AppendPrompt, model?: string | null, allow_all_tools?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Opencode = { append_prompt: AppendPrompt, model?: string | null, mode?: string | null, 
-/**
- * Auto-approve agent actions
- */
-auto_approve: boolean, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Droid = { append_prompt: AppendPrompt, autonomy: Autonomy, model?: string | null, reasoning_effort?: DroidReasoningEffort | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
-
-export type Autonomy = "normal" | "low" | "medium" | "high" | "skip-permissions-unsafe";
-
-export type DroidReasoningEffort = "none" | "dynamic" | "off" | "low" | "medium" | "high";
-
-export type AppendPrompt = string | null;
-
-export type CodingAgentInitialRequest = { prompt: string, 
-/**
- * Executor profile specification
- */
-executor_profile_id: ExecutorProfileId, 
-/**
- * Optional relative path to execute the agent in (relative to container_ref).
- * If None, uses the container_ref directory directly.
- */
-working_dir: string | null, };
-
-export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
-/**
- * Executor profile specification
- */
-executor_profile_id: ExecutorProfileId, 
-/**
- * Optional relative path to execute the agent in (relative to container_ref).
- * If None, uses the container_ref directory directly.
- */
-working_dir: string | null, };
-
-export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
-
-export type CommandRunResult = { exit_status: CommandExitStatus | null, output: string | null, };
-
-export type NormalizedEntry = { timestamp: string | null, entry_type: NormalizedEntryType, content: string, };
-
-export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, };
-
-export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | { "action": "edit", 
-/**
- * Unified diff containing file header and hunks.
- */
-unified_diff: string, 
-/**
- * Whether line number in the hunks are reliable.
- */
-has_line_numbers: boolean, };
-
-export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, changes: Array<FileChange>, } | { "action": "command_run", command: string, result: CommandRunResult | null, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "tool", tool_name: string, arguments: JsonValue | null, result: ToolResult | null, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
-
-export type TodoItem = { content: string, status: string, priority: string | null, };
-
-export type NormalizedEntryError = { "type": "setup_required" } | { "type": "other" };
-
-export type ToolResult = { type: ToolResultValueType, 
-/**
- * For Markdown, this will be a JSON string; for JSON, a structured value
- */
-value: JsonValue, };
-
-export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
-
-export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
-
-export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
+export type CodingAgentStub = { name: string, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
