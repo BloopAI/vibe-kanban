@@ -521,7 +521,12 @@ executor_profile_id: ExecutorProfileId,
  * Optional relative path to execute the agent in (relative to container_ref).
  * If None, uses the container_ref directory directly.
  */
-working_dir: string | null, };
+working_dir: string | null, 
+/**
+ * If true, this follow-up is a system-generated commit reminder.
+ * After completion, uncommitted changes will be auto-committed as fallback.
+ */
+is_commit_reminder: boolean, };
 
 export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
 /**

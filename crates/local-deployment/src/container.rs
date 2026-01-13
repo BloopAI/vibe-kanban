@@ -431,38 +431,67 @@ impl LocalContainerService {
                 );
 
                 if success || cleanup_done {
-                    // Commit changes (if any) and get feedback about whether changes were made
-                    let changes_committed = match container.try_commit_changes(&ctx).await {
-                        Ok(committed) => committed,
-                        Err(e) => {
-                            tracing::error!("Failed to commit changes after execution: {}", e);
-                            // Treat commit failures as if changes were made to be safe
-                            true
-                        }
-                    };
-
-                    let should_start_next = if matches!(
+                    let is_coding_agent = matches!(
                         ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
-                    ) {
-                        changes_committed
-                    } else {
-                        true
-                    };
+                    );
 
-                    if should_start_next {
-                        // If the process exited successfully, start the next action
-                        if let Err(e) = container.try_start_next_action(&ctx).await {
-                            tracing::error!("Failed to start next action after completion: {}", e);
+                    // Check if we should send a commit reminder instead of auto-committing
+                    let mut sent_commit_reminder = false;
+                    if is_coding_agent && !Self::is_commit_reminder_execution(&ctx) {
+                        // Check for uncommitted changes before try_commit_changes would auto-commit them
+                        if container.has_uncommitted_changes(&ctx) {
+                            match container.start_commit_reminder_follow_up(&ctx).await {
+                                Ok(_) => {
+                                    sent_commit_reminder = true;
+                                    tracing::info!(
+                                        "Started commit reminder follow-up for workspace {}",
+                                        ctx.workspace.id
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to start commit reminder, falling back to auto-commit: {}",
+                                        e
+                                    );
+                                }
+                            }
                         }
-                    } else {
-                        tracing::info!(
-                            "Skipping cleanup script for workspace {} - no changes made by coding agent",
-                            ctx.workspace.id
-                        );
+                    }
 
-                        // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                    // If we sent a commit reminder, skip the rest of this block
+                    // The commit reminder will handle commit/cleanup when it completes
+                    if !sent_commit_reminder {
+                        // Commit changes (if any) and get feedback about whether changes were made
+                        let changes_committed = match container.try_commit_changes(&ctx).await {
+                            Ok(committed) => committed,
+                            Err(e) => {
+                                tracing::error!("Failed to commit changes after execution: {}", e);
+                                // Treat commit failures as if changes were made to be safe
+                                true
+                            }
+                        };
+
+                        let should_start_next = if is_coding_agent {
+                            changes_committed
+                        } else {
+                            true
+                        };
+
+                        if should_start_next {
+                            // If the process exited successfully, start the next action
+                            if let Err(e) = container.try_start_next_action(&ctx).await {
+                                tracing::error!("Failed to start next action after completion: {}", e);
+                            }
+                        } else {
+                            tracing::info!(
+                                "Skipping cleanup script for workspace {} - no changes made by coding agent",
+                                ctx.workspace.id
+                            );
+
+                            // Manually finalize task since we're bypassing normal execution flow
+                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        }
                     }
                 }
 
@@ -844,6 +873,7 @@ impl LocalContainerService {
                 session_id: agent_session_id,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
+                is_commit_reminder: false,
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
@@ -852,6 +882,122 @@ impl LocalContainerService {
                 working_dir,
             })
         };
+
+        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
+
+        self.start_execution(
+            &ctx.workspace,
+            &ctx.session,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await
+    }
+
+    /// Check if there are uncommitted changes in the workspace repositories
+    fn has_uncommitted_changes(&self, ctx: &ExecutionContext) -> bool {
+        let container_ref = match &ctx.workspace.container_ref {
+            Some(ref_) => ref_,
+            None => return false,
+        };
+        let workspace_root = PathBuf::from(container_ref);
+
+        match self.check_repos_for_changes(&workspace_root, &ctx.repos) {
+            Ok(repos_with_changes) => !repos_with_changes.is_empty(),
+            Err(e) => {
+                tracing::warn!("Failed to check for uncommitted changes: {}", e);
+                false // Assume no changes on error to avoid blocking
+            }
+        }
+    }
+
+    /// Check if the current execution was a commit reminder follow-up
+    fn is_commit_reminder_execution(ctx: &ExecutionContext) -> bool {
+        if let Ok(action) = ctx.execution_process.executor_action() {
+            if let ExecutorActionType::CodingAgentFollowUpRequest(req) = action.typ() {
+                return req.is_commit_reminder;
+            }
+        }
+        false
+    }
+
+    /// Start a commit reminder follow-up execution to ask the agent to commit its changes
+    async fn start_commit_reminder_follow_up(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<ExecutionProcess, ContainerError> {
+        const COMMIT_REMINDER_PROMPT: &str =
+            "Please commit your changes now. Review what you've done and create an appropriate \
+             git commit with a descriptive message summarizing the changes you made.";
+
+        // Get executor profile (same logic as start_queued_follow_up)
+        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
+        {
+            Some(profile) => profile.executor,
+            None => {
+                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
+                    ContainerError::Other(anyhow!(
+                        "No prior execution and no executor configured on session"
+                    ))
+                })?;
+                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
+                    .map_err(|_| {
+                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
+                    })?
+            }
+        };
+
+        // Get variant from the latest execution process
+        let variant = ExecutionProcess::latest_executor_profile_for_session(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor variant: {e}")))?
+        .and_then(|p| p.variant);
+
+        let executor_profile_id = ExecutorProfileId {
+            executor: base_executor,
+            variant,
+        };
+
+        // Get latest agent session ID for session continuity
+        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get agent session ID: {e}")))?;
+
+        // Must have an agent session ID for follow-up
+        let agent_session_id = latest_agent_session_id.ok_or_else(|| {
+            ContainerError::Other(anyhow!("Cannot send commit reminder without agent session ID"))
+        })?;
+
+        let repos =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
+
+        let working_dir = ctx
+            .workspace
+            .agent_working_dir
+            .as_ref()
+            .filter(|dir| !dir.is_empty())
+            .cloned();
+
+        let action_type =
+            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                prompt: COMMIT_REMINDER_PROMPT.to_string(),
+                session_id: agent_session_id,
+                executor_profile_id,
+                working_dir,
+                is_commit_reminder: true,
+            });
 
         let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
