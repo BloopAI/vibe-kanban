@@ -211,7 +211,9 @@ function App() {
         <LocalAuthProvider>
           <ClickedElementsProvider>
             <ProjectProvider>
-              <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
+              <HotkeysProvider
+                initiallyActiveScopes={['*', 'global', 'kanban']}
+              >
                 <AppContent />
               </HotkeysProvider>
             </ProjectProvider>

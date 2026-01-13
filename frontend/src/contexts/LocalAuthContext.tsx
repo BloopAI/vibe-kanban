@@ -8,7 +8,11 @@ import {
   useState,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LocalAuthUser, LocalAuthStatusResponse, LocalAuthInitResponse } from '@/lib/api';
+import type {
+  LocalAuthUser,
+  LocalAuthStatusResponse,
+  LocalAuthInitResponse,
+} from '@/lib/api';
 
 // Constants for localStorage keys
 const AUTH_TOKEN_KEY = 'vk_auth_token';
@@ -61,7 +65,7 @@ const localAuthApi = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
   },
@@ -70,7 +74,7 @@ const localAuthApi = {
     const response = await fetch('/api/local-auth/me', {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
     const result = await response.json();
@@ -82,7 +86,10 @@ const localAuthApi = {
 };
 
 // Get initial token and user from localStorage
-function getInitialState(): { token: string | null; user: LocalAuthUser | null } {
+function getInitialState(): {
+  token: string | null;
+  user: LocalAuthUser | null;
+} {
   if (typeof window === 'undefined') {
     return { token: null, user: null };
   }
@@ -108,7 +115,9 @@ interface LocalAuthProviderProps {
 
 export function LocalAuthProvider({ children }: LocalAuthProviderProps) {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => getInitialState().token);
+  const [token, setToken] = useState<string | null>(
+    () => getInitialState().token
+  );
   const [isLocalAuthConfigured, setIsLocalAuthConfigured] = useState(true);
 
   // Query to validate and refresh auth status
@@ -217,7 +226,15 @@ export function LocalAuthProvider({ children }: LocalAuthProviderProps) {
       logout,
       refreshAuth,
     }),
-    [authStatus, token, isLoading, isLocalAuthConfigured, login, logout, refreshAuth]
+    [
+      authStatus,
+      token,
+      isLoading,
+      isLocalAuthConfigured,
+      login,
+      logout,
+      refreshAuth,
+    ]
   );
 
   return (

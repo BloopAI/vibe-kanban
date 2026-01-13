@@ -5,7 +5,8 @@ import { useLocalAuth } from '@/contexts/LocalAuthContext';
 
 export function Login() {
   const { t } = useTranslation();
-  const { isAuthenticated, isLoading, isLocalAuthConfigured, login } = useLocalAuth();
+  const { isAuthenticated, isLoading, isLocalAuthConfigured, login } =
+    useLocalAuth();
   const navigate = useNavigate();
 
   // Redirect to home if already authenticated
@@ -32,9 +33,7 @@ export function Login() {
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {t('localAuth.appName')}
             </h1>
-            <p className="text-muted-foreground">
-              {t('localAuth.tagline')}
-            </p>
+            <p className="text-muted-foreground">{t('localAuth.tagline')}</p>
           </div>
 
           <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
@@ -82,9 +81,7 @@ export function Login() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             {t('localAuth.appName')}
           </h1>
-          <p className="text-muted-foreground">
-            {t('localAuth.tagline')}
-          </p>
+          <p className="text-muted-foreground">{t('localAuth.tagline')}</p>
         </div>
 
         <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
@@ -109,7 +106,9 @@ export function Login() {
                 clipRule="evenodd"
               />
             </svg>
-            {isLoading ? t('states.loading') : t('localAuth.continueWithGitHub')}
+            {isLoading
+              ? t('states.loading')
+              : t('localAuth.continueWithGitHub')}
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">

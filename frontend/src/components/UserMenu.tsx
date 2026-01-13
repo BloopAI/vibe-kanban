@@ -4,7 +4,8 @@ import { useLocalAuth } from '@/contexts/LocalAuthContext';
 
 export function UserMenu() {
   const { t } = useTranslation();
-  const { user, isAuthenticated, isLocalAuthConfigured, login, logout } = useLocalAuth();
+  const { user, isAuthenticated, isLocalAuthConfigured, login, logout } =
+    useLocalAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +66,9 @@ export function UserMenu() {
           />
         ) : (
           <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground">
-            {(user?.display_name || user?.username || '?').charAt(0).toUpperCase()}
+            {(user?.display_name || user?.username || '?')
+              .charAt(0)
+              .toUpperCase()}
           </div>
         )}
       </button>
@@ -81,9 +84,7 @@ export function UserMenu() {
                 {user.email}
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              @{user?.username}
-            </p>
+            <p className="text-xs text-muted-foreground">@{user?.username}</p>
           </div>
 
           <div className="py-1">
