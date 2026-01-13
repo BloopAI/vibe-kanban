@@ -110,18 +110,15 @@ const ResolveConflictsDialogImpl =
 
         try {
           let targetSessionId = selectedSessionId;
+          const creatingNewSession = createNewSession || !selectedSessionId;
 
           // Create new session if user selected that option or no existing session
-          if (createNewSession || !selectedSessionId) {
+          if (creatingNewSession) {
             const session = await sessionsApi.create({
               workspace_id: workspaceId,
               executor: effectiveProfile.executor,
             });
             targetSessionId = session.id;
-
-            queryClient.invalidateQueries({
-              queryKey: ['workspaceSessions', workspaceId],
-            });
           }
 
           if (!targetSessionId) {
@@ -139,22 +136,28 @@ const ResolveConflictsDialogImpl =
             perform_git_reset: null,
           });
 
-          queryClient.invalidateQueries({
-            queryKey: ['processes', workspaceId],
-          });
-          queryClient.invalidateQueries({
-            queryKey: ['branchStatus', workspaceId],
-          });
+          // Invalidate queries and wait for them to complete
+          await Promise.all([
+            queryClient.invalidateQueries({
+              queryKey: ['workspaceSessions', workspaceId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ['processes', workspaceId],
+            }),
+            queryClient.invalidateQueries({
+              queryKey: ['branchStatus', workspaceId],
+            }),
+          ]);
 
           // Navigate to the new session if one was created
-          const createdNewSession = targetSessionId !== selectedSessionId;
-          if (createdNewSession && targetSessionId) {
+          // Do this after queries are refreshed so the session exists in the list
+          if (creatingNewSession && targetSessionId) {
             selectSession(targetSessionId);
           }
 
           modal.resolve({
             action: 'resolved',
-            sessionId: createdNewSession ? targetSessionId : undefined,
+            sessionId: creatingNewSession ? targetSessionId : undefined,
           } as ResolveConflictsDialogResult);
           modal.hide();
         } catch (err) {
