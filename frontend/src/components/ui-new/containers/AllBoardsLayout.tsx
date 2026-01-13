@@ -13,6 +13,12 @@ import { tasksApi } from '@/lib/api';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { usePaneSize, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import {
+  type FilterState,
+  type DisplayState,
+  defaultFilterState,
+  defaultDisplayState,
+} from '@/components/ui-new/primitives/FilterDisplayControls';
 
 export function AllBoardsLayout() {
   const navigate = useNavigate();
@@ -47,6 +53,10 @@ export function AllBoardsLayout() {
     },
     [isLeftSidebarVisible, setLeftSidebarWidth]
   );
+
+  // Filter and display state
+  const [filterState, setFilterState] = useState<FilterState>(defaultFilterState);
+  const [displayState, setDisplayState] = useState<DisplayState>(defaultDisplayState);
 
   // Track which groups are expanded - default all expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -158,6 +168,9 @@ export function AllBoardsLayout() {
           status: newStatus,
           parent_workspace_id: task.parent_workspace_id,
           image_ids: null,
+          priority: null,
+          due_date: null,
+          labels: null,
         });
       } catch (err) {
         console.error('Failed to update task status:', err);
@@ -220,6 +233,10 @@ export function AllBoardsLayout() {
               onCancelCreateGroup={handleCancelCreateGroup}
               isLeftSidebarVisible={isLeftSidebarVisible}
               onToggleLeftSidebar={toggleLeftSidebar}
+              filterState={filterState}
+              onFilterChange={setFilterState}
+              displayState={displayState}
+              onDisplayChange={setDisplayState}
             />
           </Allotment.Pane>
           <Allotment.Pane

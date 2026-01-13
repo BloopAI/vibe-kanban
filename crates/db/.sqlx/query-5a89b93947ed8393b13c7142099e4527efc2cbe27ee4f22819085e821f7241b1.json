@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      group_id as \"group_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      default_agent_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      group_id as \"group_id: Uuid\",\n                      task_prefix,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -29,13 +29,18 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "task_prefix",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
@@ -48,9 +53,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "2617a1df750839f704364e684b807a70c14cf2c42332318d8ef703d01ac3f399"
+  "hash": "5a89b93947ed8393b13c7142099e4527efc2cbe27ee4f22819085e821f7241b1"
 }

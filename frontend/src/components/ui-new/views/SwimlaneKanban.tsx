@@ -15,6 +15,12 @@ import type { ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/typ
 import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
+import {
+  FilterDisplayControls,
+  type FilterState,
+  type DisplayState,
+} from '@/components/ui-new/primitives/FilterDisplayControls';
+import { useAggregateTaskCountsProvider, useAggregateTaskCounts } from '@/hooks/useAggregateTaskCounts';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -23,6 +29,62 @@ const STATUS_ORDER: TaskStatus[] = [
   'done',
   'cancelled',
 ];
+
+function StatusHeader({ status }: { status: TaskStatus }) {
+  const { counts, isLoading } = useAggregateTaskCounts();
+  const count = counts[status];
+
+  return (
+    <div
+      className={cn(
+        'group/col flex items-center gap-1.5',
+        'py-1.5 px-2',
+        'border-l border-panel/40'
+      )}
+    >
+      <span
+        className="h-1.5 w-1.5 rounded-full shrink-0"
+        style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
+      />
+      <span className="text-[10px] text-normal/80 font-medium uppercase tracking-wide">
+        {statusLabels[status]}
+      </span>
+      <span className="text-[10px] text-low/50 tabular-nums">
+        {isLoading ? '—' : count}
+      </span>
+      <div className={cn(
+        'flex items-center gap-0.5 ml-auto',
+        'opacity-0 group-hover/col:opacity-100',
+        'transition-opacity duration-100'
+      )}>
+        <button
+          type="button"
+          className={cn(
+            'p-0.5 rounded-sm',
+            'text-low/60 hover:text-normal',
+            'hover:bg-panel/30',
+            'transition-colors duration-100'
+          )}
+          title="Column options"
+        >
+          <DotsThreeIcon weight="bold" className="size-3" />
+        </button>
+        <button
+          type="button"
+          className={cn(
+            'p-0.5 rounded-sm',
+            'text-low/60 hover:text-normal',
+            'hover:bg-panel/30',
+            'transition-colors duration-100'
+          )}
+          title="Add task"
+        >
+          <PlusIcon className="size-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface SwimlaneKanbanProps {
   groupedProjects: GroupedProjects[];
@@ -51,9 +113,24 @@ interface SwimlaneKanbanProps {
   // Left sidebar props
   isLeftSidebarVisible?: boolean;
   onToggleLeftSidebar?: () => void;
+  // Filter and display props
+  filterState: FilterState;
+  onFilterChange: (filter: FilterState) => void;
+  displayState: DisplayState;
+  onDisplayChange: (display: DisplayState) => void;
 }
 
-export function SwimlaneKanban({
+export function SwimlaneKanban(props: SwimlaneKanbanProps) {
+  const { Provider, value } = useAggregateTaskCountsProvider();
+
+  return (
+    <Provider value={value}>
+      <SwimlaneKanbanContent {...props} />
+    </Provider>
+  );
+}
+
+function SwimlaneKanbanContent({
   groupedProjects,
   groups,
   expandedGroups,
@@ -78,6 +155,10 @@ export function SwimlaneKanban({
   onCancelCreateGroup,
   isLeftSidebarVisible,
   onToggleLeftSidebar,
+  filterState,
+  onFilterChange,
+  displayState,
+  onDisplayChange,
 }: SwimlaneKanbanProps) {
   // Filter projects by search query
   const filteredGroupedProjects = useMemo(() => {
@@ -155,6 +236,17 @@ export function SwimlaneKanban({
           />
         </div>
 
+        {/* Filter and Display controls */}
+        <FilterDisplayControls
+          filterState={filterState}
+          displayState={displayState}
+          onFilterChange={onFilterChange}
+          onDisplayChange={onDisplayChange}
+        />
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-panel/40" />
+
         {/* Actions */}
         <div className="flex items-center gap-1">
           <button
@@ -204,52 +296,7 @@ export function SwimlaneKanban({
       )}>
         <div className="py-1.5 px-2" />
         {STATUS_ORDER.map((status) => (
-          <div
-            key={status}
-            className={cn(
-              'group/col flex items-center gap-1.5',
-              'py-1.5 px-2',
-              'border-l border-panel/40'
-            )}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
-            />
-            <span className="text-[10px] text-normal/80 font-medium uppercase tracking-wide flex-1">
-              {statusLabels[status]}
-            </span>
-            <div className={cn(
-              'flex items-center gap-0.5',
-              'opacity-0 group-hover/col:opacity-100',
-              'transition-opacity duration-100'
-            )}>
-              <button
-                type="button"
-                className={cn(
-                  'p-0.5 rounded-sm',
-                  'text-low/60 hover:text-normal',
-                  'hover:bg-panel/30',
-                  'transition-colors duration-100'
-                )}
-                title="Column options"
-              >
-                <DotsThreeIcon weight="bold" className="size-3" />
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  'p-0.5 rounded-sm',
-                  'text-low/60 hover:text-normal',
-                  'hover:bg-panel/30',
-                  'transition-colors duration-100'
-                )}
-                title="Add task"
-              >
-                <PlusIcon className="size-3" />
-              </button>
-            </div>
-          </div>
+          <StatusHeader key={status} status={status} />
         ))}
       </div>
 
@@ -349,6 +396,7 @@ export function SwimlaneKanban({
                             onMoveToGroup={onMoveToGroup}
                             onOpenBoard={onOpenBoard}
                             onStatusChange={onStatusChange}
+                            filterState={filterState}
                           />
                         ))
                       )}

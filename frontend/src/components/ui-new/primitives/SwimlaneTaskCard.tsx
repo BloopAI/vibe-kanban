@@ -2,6 +2,8 @@ import { useDraggable } from '@dnd-kit/core';
 import { SpinnerIcon, XCircleIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
+import { TaskMetadata } from '@/components/tasks/TaskMetadata';
+import { useProject } from '@/contexts/ProjectContext';
 
 interface SwimlaneTaskCardProps {
   task: TaskWithAttemptStatus;
@@ -16,6 +18,7 @@ export function SwimlaneTaskCard({
   onClick,
   isSelected,
 }: SwimlaneTaskCardProps) {
+  const { project } = useProject();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -25,6 +28,12 @@ export function SwimlaneTaskCard({
         projectId,
       },
     });
+
+  // Generate task ID from project prefix and task number
+  const taskId =
+    project?.task_prefix && task.task_number
+      ? `${project.task_prefix}-${task.task_number}`
+      : undefined;
 
   const style = {
     transform: transform
@@ -101,6 +110,14 @@ export function SwimlaneTaskCard({
             {task.description}
           </p>
         )}
+        <TaskMetadata
+          taskId={taskId}
+          priority={task.priority}
+          dueDate={task.due_date}
+          labels={task.labels}
+          compact
+          className="mt-1"
+        />
       </div>
     </button>
   );

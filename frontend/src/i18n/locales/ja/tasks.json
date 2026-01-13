@@ -13,6 +13,11 @@
   "actions": {
     "addTask": "タスクを追加"
   },
+  "kanban": {
+    "hiddenColumns": "{{count}}件非表示",
+    "hiddenColumnsTooltip": "列の表示/非表示を切り替え",
+    "hiddenColumnsLabel": "列の表示を切り替え"
+  },
   "filters": {
     "sharedToggleAria": "共有タスクを切り替える",
     "sharedToggleTooltip": "共有コンテンツを表示/非表示"

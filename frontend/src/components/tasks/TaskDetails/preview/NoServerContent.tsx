@@ -66,6 +66,8 @@ export function NoServerContent({
         parent_workspace_id: null,
         image_ids: null,
         shared_task_id: null,
+        source: 'manual',
+        external_ref: null,
       },
       executor_profile_id: config.executor_profile,
       repos,

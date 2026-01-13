@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
+import type { TaskStatus } from 'shared/types';
 
 export type ContextBarPosition =
   | 'top-left'
@@ -75,6 +76,7 @@ type State = {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  hiddenKanbanColumns: Record<string, TaskStatus[]>;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
@@ -82,6 +84,8 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+  setHiddenKanbanColumns: (projectId: string, columns: TaskStatus[]) => void;
+  toggleHiddenKanbanColumn: (projectId: string, column: TaskStatus) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -92,6 +96,7 @@ export const useUiPreferencesStore = create<State>()(
       contextBarPosition: 'middle-right',
       paneSizes: {},
       collapsedPaths: {},
+      hiddenKanbanColumns: {},
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -116,6 +121,21 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
       setCollapsedPaths: (key, paths) =>
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+      setHiddenKanbanColumns: (projectId, columns) =>
+        set((s) => ({
+          hiddenKanbanColumns: { ...s.hiddenKanbanColumns, [projectId]: columns },
+        })),
+      toggleHiddenKanbanColumn: (projectId, column) =>
+        set((s) => {
+          const current = s.hiddenKanbanColumns[projectId] ?? [];
+          const isHidden = current.includes(column);
+          const updated = isHidden
+            ? current.filter((c) => c !== column)
+            : [...current, column];
+          return {
+            hiddenKanbanColumns: { ...s.hiddenKanbanColumns, [projectId]: updated },
+          };
+        }),
     }),
     { name: 'ui-preferences' }
   )
@@ -197,4 +217,35 @@ export function usePersistedCollapsedPaths(
   );
 
   return [pathSet, setPathSet];
+}
+
+// Hook for hidden kanban columns (per project)
+export function useHiddenKanbanColumns(
+  projectId: string | undefined
+): [
+  TaskStatus[],
+  (column: TaskStatus) => void,
+  (columns: TaskStatus[]) => void,
+] {
+  const hiddenColumns = useUiPreferencesStore(
+    (s) => (projectId ? s.hiddenKanbanColumns[projectId] ?? [] : [])
+  );
+  const toggleColumn = useUiPreferencesStore((s) => s.toggleHiddenKanbanColumn);
+  const setColumns = useUiPreferencesStore((s) => s.setHiddenKanbanColumns);
+
+  const toggle = useCallback(
+    (column: TaskStatus) => {
+      if (projectId) toggleColumn(projectId, column);
+    },
+    [projectId, toggleColumn]
+  );
+
+  const set = useCallback(
+    (columns: TaskStatus[]) => {
+      if (projectId) setColumns(projectId, columns);
+    },
+    [projectId, setColumns]
+  );
+
+  return [hiddenColumns, toggle, set];
 }

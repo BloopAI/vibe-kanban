@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useAuth } from '@/hooks';
 import {
   type DragEndEvent,
@@ -12,6 +12,7 @@ import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
+import { HiddenColumnsDropdown } from './HiddenColumnsDropdown';
 
 export type KanbanColumnItem =
   | {
@@ -35,6 +36,8 @@ interface TaskKanbanBoardProps {
   selectedSharedTaskId?: string | null;
   onCreateTask?: () => void;
   projectId: string;
+  hiddenColumns?: TaskStatus[];
+  onToggleHiddenColumn?: (column: TaskStatus) => void;
 }
 
 function TaskKanbanBoard({
@@ -46,12 +49,31 @@ function TaskKanbanBoard({
   selectedSharedTaskId,
   onCreateTask,
   projectId,
+  hiddenColumns = [],
+  onToggleHiddenColumn,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
 
+  const visibleColumns = useMemo(() => {
+    return Object.entries(columns).filter(
+      ([status]) => !hiddenColumns.includes(status as TaskStatus)
+    );
+  }, [columns, hiddenColumns]);
+
   return (
-    <KanbanProvider onDragEnd={onDragEnd}>
-      {Object.entries(columns).map(([status, items]) => {
+    <KanbanProvider
+      onDragEnd={onDragEnd}
+      rightContent={
+        onToggleHiddenColumn && (
+          <HiddenColumnsDropdown
+            hiddenColumns={hiddenColumns}
+            onToggleColumn={onToggleHiddenColumn}
+            columns={columns}
+          />
+        )
+      }
+    >
+      {visibleColumns.map(([status, items]) => {
         const statusKey = status as TaskStatus;
         return (
           <KanbanBoard key={status} id={statusKey}>
@@ -59,6 +81,7 @@ function TaskKanbanBoard({
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              count={items.length}
             />
             <KanbanCards>
               {items.map((item, index) => {

@@ -153,6 +153,7 @@ export type KanbanHeaderProps =
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      count?: number;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -180,6 +181,11 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         />
 
         <p className="m-0 text-sm">{props.name}</p>
+        {props.count !== undefined && (
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {props.count}
+          </span>
+        )}
       </span>
       <TooltipProvider>
         <Tooltip>
@@ -263,12 +269,14 @@ export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
   className?: string;
+  rightContent?: ReactNode;
 };
 
 export const KanbanProvider = ({
   children,
   onDragEnd,
   className,
+  rightContent,
 }: KanbanProviderProps) => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -283,13 +291,18 @@ export const KanbanProvider = ({
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
-      <div
-        className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
-          className
+      <div className="flex min-h-full">
+        <div
+          className={cn(
+            'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
+            className
+          )}
+        >
+          {children}
+        </div>
+        {rightContent && (
+          <div className="sticky top-0 h-fit p-3 shrink-0">{rightContent}</div>
         )}
-      >
-        {children}
       </div>
     </DndContext>
   );
