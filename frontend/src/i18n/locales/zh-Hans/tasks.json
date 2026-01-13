@@ -425,6 +425,20 @@
     "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
     "newSession": "新会话"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "解决冲突",
+      "description": "检测到冲突。选择您希望代理如何解决它们。",
+      "sessionLabel": "会话",
+      "existingSession": "在当前会话中继续",
+      "newSession": "新会话",
+      "resolve": "解决冲突",
+      "resolving": "开始中...",
+      "filesWithConflicts_one": "{{count}} 个文件有冲突",
+      "filesWithConflicts_other": "{{count}} 个文件有冲突",
+      "andMore": "...还有 {{count}} 个"
+    }
+  },
   "stopShareDialog": {
     "title": "停止共享任务",
     "description": "停止与您的组织共享 {{title}} ？",

@@ -89,6 +89,20 @@
     "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "競合を解決",
+      "description": "競合が検出されました。エージェントにどのように解決させるか選択してください。",
+      "sessionLabel": "セッション",
+      "existingSession": "現在のセッションで続行",
+      "newSession": "新規セッション",
+      "resolve": "競合を解決",
+      "resolving": "開始中...",
+      "filesWithConflicts_one": "{{count}}件のファイルに競合があります",
+      "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
+      "andMore": "...他{{count}}件"
+    }
+  },
   "stopShareDialog": {
     "title": "タスクの共有を停止",
     "description": "「{{title}}」の共有を組織向けに停止しますか？",

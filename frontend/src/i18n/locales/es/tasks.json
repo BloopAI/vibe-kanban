@@ -89,6 +89,20 @@
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolver Conflictos",
+      "description": "Se detectaron conflictos. Elige cómo quieres que el agente los resuelva.",
+      "sessionLabel": "Sesión",
+      "existingSession": "Continuar en la sesión actual",
+      "newSession": "Nueva sesión",
+      "resolve": "Resolver Conflictos",
+      "resolving": "Iniciando...",
+      "filesWithConflicts_one": "{{count}} archivo tiene conflictos",
+      "filesWithConflicts_other": "{{count}} archivos tienen conflictos",
+      "andMore": "...y {{count}} más"
+    }
+  },
   "stopShareDialog": {
     "title": "Detener uso compartido de la tarea",
     "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",

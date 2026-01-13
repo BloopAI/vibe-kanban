@@ -89,6 +89,20 @@
     "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "충돌 해결",
+      "description": "충돌이 감지되었습니다. 에이전트가 어떻게 해결하기를 원하는지 선택하세요.",
+      "sessionLabel": "세션",
+      "existingSession": "현재 세션에서 계속",
+      "newSession": "새 세션",
+      "resolve": "충돌 해결",
+      "resolving": "시작 중...",
+      "filesWithConflicts_one": "{{count}}개 파일에 충돌이 있습니다",
+      "filesWithConflicts_other": "{{count}}개 파일에 충돌이 있습니다",
+      "andMore": "...외 {{count}}개"
+    }
+  },
   "stopShareDialog": {
     "title": "작업 공유 중지",
     "description": "\"{{title}}\" 작업의 공유를 조직에서 중지하시겠습니까?",
