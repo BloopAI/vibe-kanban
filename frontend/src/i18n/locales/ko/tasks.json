@@ -413,9 +413,10 @@
     },
     "browser": {
       "title": "개발 서버 미리보기",
-      "startButton": "개발 서버 시작",
-      "stopButton": "중지",
-      "startingButton": "시작"
+      "devServerFallback": "개발 서버"
+    },
+    "urlInput": {
+      "placeholder": "URL 입력..."
     },
     "noDevScript": "개발 스크립트가 설정되지 않았습니다",
     "noDevScriptHint": "미리보기를 활성화하려면 프로젝트 설정에서 개발 스크립트를 추가하세요."

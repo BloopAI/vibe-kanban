@@ -380,7 +380,8 @@
         },
         "copyFiles": {
           "label": "复制文件",
-          "helper": "要从原始仓库目录复制到工作树的文件的逗号分隔列表。对 .env 等环境文件很有用。确保这些文件被 gitignore！"
+          "helper": "要从原始仓库目录复制到工作树的文件的逗号分隔列表。对 .env 等环境文件很有用。确保这些文件被 gitignore！",
+          "placeholder": "文件路径或 glob 模式（例如：.env、config/*.json）"
         },
         "devServer": {
           "label": "开发服务器脚本",

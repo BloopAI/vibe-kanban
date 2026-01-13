@@ -137,9 +137,10 @@
     },
     "browser": {
       "title": "Dev Server Preview",
-      "startButton": "Start Dev Server",
-      "stopButton": "Stop",
-      "startingButton": "Start"
+      "devServerFallback": "Dev Server"
+    },
+    "urlInput": {
+      "placeholder": "Enter URL..."
     }
   },
   "diff": {

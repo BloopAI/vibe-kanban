@@ -75,7 +75,8 @@ export function PreviewControls({
                   )}
                   onClick={() => onTabChange(process.id)}
                 >
-                  {getDevServerWorkingDir(process) ?? 'Dev Server'}
+                  {getDevServerWorkingDir(process) ??
+                    t('preview.browser.devServerFallback')}
                 </button>
               ))}
             </div>

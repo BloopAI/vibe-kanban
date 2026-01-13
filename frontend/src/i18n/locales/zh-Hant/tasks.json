@@ -130,9 +130,10 @@
     "noDevScriptHint": "在專案設定中新增開發指令碼以啟用預覽。",
     "browser": {
       "title": "開發伺服器預覽",
-      "startButton": "啟動開發伺服器",
-      "stopButton": "停止",
-      "startingButton": "啟動"
+      "devServerFallback": "開發伺服器"
+    },
+    "urlInput": {
+      "placeholder": "輸入 URL..."
     },
     "iframe": {
       "title": "開發伺服器預覽"

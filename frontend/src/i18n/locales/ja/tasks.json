@@ -371,9 +371,10 @@
     },
     "browser": {
       "title": "開発サーバープレビュー",
-      "startButton": "開発サーバーを開始",
-      "stopButton": "停止",
-      "startingButton": "開始"
+      "devServerFallback": "開発サーバー"
+    },
+    "urlInput": {
+      "placeholder": "URLを入力..."
     },
     "noDevScript": "開発スクリプトが設定されていません",
     "noDevScriptHint": "プレビューを有効にするには、プロジェクト設定で開発スクリプトを追加してください。",

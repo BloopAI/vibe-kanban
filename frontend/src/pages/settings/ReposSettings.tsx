@@ -426,7 +426,9 @@ export function ReposSettings() {
                 <MultiFileSearchTextarea
                   value={draft.copy_files}
                   onChange={(value) => updateDraft({ copy_files: value })}
-                  placeholder=".env, .env.local"
+                  placeholder={t(
+                    'settings.repos.scripts.copyFiles.placeholder'
+                  )}
                   maxRows={6}
                   repoId={selectedRepo.id}
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"

@@ -380,7 +380,8 @@
         },
         "copyFiles": {
           "label": "파일 복사",
-          "helper": "원래 저장소 디렉토리에서 워크트리로 복사할 파일의 쉼표로 구분된 목록입니다. .env와 같은 환경 파일에 유용합니다. gitignore되었는지 확인하세요!"
+          "helper": "원래 저장소 디렉토리에서 워크트리로 복사할 파일의 쉼표로 구분된 목록입니다. .env와 같은 환경 파일에 유용합니다. gitignore되었는지 확인하세요!",
+          "placeholder": "파일 경로 또는 glob 패턴 (예: .env, config/*.json)"
         },
         "devServer": {
           "label": "개발 서버 스크립트",

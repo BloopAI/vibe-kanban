@@ -22,6 +22,7 @@ import {
   CreateProject,
   CreateProjectRepo,
   UpdateRepo,
+  SearchMode,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -283,7 +284,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -899,7 +900,7 @@ export const repoApi = {
   searchFiles: async (
     repoId: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';

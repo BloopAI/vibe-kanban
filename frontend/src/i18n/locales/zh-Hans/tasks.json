@@ -130,9 +130,10 @@
     "noDevScriptHint": "在项目设置中添加开发脚本以启用预览。",
     "browser": {
       "title": "开发服务器预览",
-      "startButton": "启动开发服务器",
-      "stopButton": "停止",
-      "startingButton": "启动"
+      "devServerFallback": "开发服务器"
+    },
+    "urlInput": {
+      "placeholder": "输入 URL..."
     },
     "iframe": {
       "title": "开发服务器预览"

@@ -380,7 +380,8 @@
         },
         "copyFiles": {
           "label": "Copy Files",
-          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!"
+          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!",
+          "placeholder": "File paths or glob patterns (e.g., .env, config/*.json)"
         },
         "devServer": {
           "label": "Dev Server Script",

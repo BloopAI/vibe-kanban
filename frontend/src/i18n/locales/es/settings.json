@@ -380,7 +380,8 @@
         },
         "copyFiles": {
           "label": "Copiar Archivos",
-          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!"
+          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!",
+          "placeholder": "Rutas de archivos o patrones glob (ej., .env, config/*.json)"
         },
         "devServer": {
           "label": "Script del Servidor de Desarrollo",

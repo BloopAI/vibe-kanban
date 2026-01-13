@@ -373,9 +373,10 @@
     "noDevScriptHint": "Agrega un script de desarrollo en la configuración del proyecto para habilitar la vista previa.",
     "browser": {
       "title": "Vista previa del servidor de desarrollo",
-      "startButton": "Iniciar servidor de desarrollo",
-      "stopButton": "Detener",
-      "startingButton": "Iniciar"
+      "devServerFallback": "Servidor de desarrollo"
+    },
+    "urlInput": {
+      "placeholder": "Ingresar URL..."
     },
     "noServer": {
       "companionLink": "Ver guía de instalación",

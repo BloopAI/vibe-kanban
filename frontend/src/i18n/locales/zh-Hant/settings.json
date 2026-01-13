@@ -380,7 +380,8 @@
         },
         "copyFiles": {
           "label": "複製檔案",
-          "helper": "要從原始儲存庫目錄複製到工作樹的檔案清單（以逗號分隔）。適合用於 .env 等環境檔案。請確保這些檔案已加入 gitignore！"
+          "helper": "要從原始儲存庫目錄複製到工作樹的檔案清單（以逗號分隔）。適合用於 .env 等環境檔案。請確保這些檔案已加入 gitignore！",
+          "placeholder": "檔案路徑或 glob 模式（例如：.env、config/*.json）"
         },
         "devServer": {
           "label": "開發伺服器腳本",
