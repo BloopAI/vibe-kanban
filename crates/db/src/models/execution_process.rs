@@ -56,7 +56,6 @@ pub enum ExecutionProcessRunReason {
     SetupScript,
     CleanupScript,
     CodingAgent,
-    CommitReminder,
     DevServer,
 }
 

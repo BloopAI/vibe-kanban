@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io,
     path::{Path, PathBuf},
     str::FromStr,
@@ -78,6 +78,8 @@ pub struct LocalContainerService {
     queued_message_service: QueuedMessageService,
     publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     notification_service: NotificationService,
+    /// Tracks session IDs that have already received a commit reminder (prevents infinite loops)
+    commit_reminder_sent: Arc<RwLock<HashSet<Uuid>>>,
 }
 
 impl LocalContainerService {
@@ -96,6 +98,7 @@ impl LocalContainerService {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
+        let commit_reminder_sent = Arc::new(RwLock::new(HashSet::new()));
 
         let container = LocalContainerService {
             db,
@@ -110,6 +113,7 @@ impl LocalContainerService {
             queued_message_service,
             publisher,
             notification_service,
+            commit_reminder_sent,
         };
 
         container.spawn_workspace_cleanup();
@@ -438,12 +442,15 @@ impl LocalContainerService {
 
                     // Check if we should send a commit reminder instead of auto-committing
                     let mut sent_commit_reminder = false;
-                    if is_coding_agent && !Self::is_commit_reminder_execution(&ctx) {
+                    if is_coding_agent
+                        && !container.has_sent_commit_reminder(ctx.session.id).await
+                    {
                         // Check for uncommitted changes before try_commit_changes would auto-commit them
                         if container.has_uncommitted_changes(&ctx) {
                             match container.start_commit_reminder_follow_up(&ctx).await {
                                 Ok(_) => {
                                     sent_commit_reminder = true;
+                                    container.mark_commit_reminder_sent(ctx.session.id).await;
                                     tracing::info!(
                                         "Started commit reminder follow-up for workspace {}",
                                         ctx.workspace.id
@@ -913,12 +920,14 @@ impl LocalContainerService {
         }
     }
 
-    /// Check if the current execution was a commit reminder follow-up
-    fn is_commit_reminder_execution(ctx: &ExecutionContext) -> bool {
-        matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::CommitReminder
-        )
+    /// Check if a commit reminder has already been sent for this session
+    async fn has_sent_commit_reminder(&self, session_id: Uuid) -> bool {
+        self.commit_reminder_sent.read().await.contains(&session_id)
+    }
+
+    /// Mark that a commit reminder has been sent for this session
+    async fn mark_commit_reminder_sent(&self, session_id: Uuid) {
+        self.commit_reminder_sent.write().await.insert(session_id);
     }
 
     /// Start a commit reminder follow-up execution to ask the agent to commit its changes
@@ -1003,7 +1012,7 @@ impl LocalContainerService {
             &ctx.workspace,
             &ctx.session,
             &action,
-            &ExecutionProcessRunReason::CommitReminder,
+            &ExecutionProcessRunReason::CodingAgent,
         )
         .await
     }
