@@ -17,6 +17,14 @@ pub enum TagError {
     Database(#[from] sqlx::Error),
 }
 
+/// Default tags that are created for each new project
+pub const DEFAULT_TAGS: &[(&str, &str)] = &[
+    ("bug", "#d73a4a"),
+    ("feature", "#0e8a16"),
+    ("documentation", "#0075ca"),
+    ("enhancement", "#a2eeef"),
+];
+
 pub struct TagRepository;
 
 impl TagRepository {
@@ -139,5 +147,37 @@ impl TagRepository {
         .await?;
 
         Ok(records)
+    }
+
+    pub async fn create_default_tags<'e, E>(
+        executor: E,
+        project_id: Uuid,
+    ) -> Result<Vec<Tag>, TagError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let names: Vec<String> = DEFAULT_TAGS.iter().map(|(n, _)| (*n).to_string()).collect();
+        let colors: Vec<String> = DEFAULT_TAGS.iter().map(|(_, c)| (*c).to_string()).collect();
+
+        let tags = sqlx::query_as!(
+            Tag,
+            r#"
+            INSERT INTO tags (id, project_id, name, color)
+            SELECT gen_random_uuid(), $1, name, color
+            FROM UNNEST($2::text[], $3::text[]) AS t(name, color)
+            RETURNING
+                id          AS "id!: Uuid",
+                project_id  AS "project_id!: Uuid",
+                name        AS "name!",
+                color       AS "color!"
+            "#,
+            project_id,
+            &names,
+            &colors
+        )
+        .fetch_all(executor)
+        .await?;
+
+        Ok(tags)
     }
 }

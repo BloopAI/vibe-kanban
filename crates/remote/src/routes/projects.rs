@@ -13,6 +13,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::projects::{Project, ProjectRepository},
+    db::tags::TagRepository,
 };
 
 #[derive(Debug, Serialize)]
@@ -113,12 +114,30 @@ async fn create_project(
 
     ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
-    let project = ProjectRepository::create(state.pool(), organization_id, name, color)
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let project = ProjectRepository::create(&mut *tx, organization_id, name, color)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to create remote project");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
+
+    if let Err(error) = TagRepository::create_default_tags(&mut *tx, project.id).await {
+        tracing::error!(?error, project_id = %project.id, "failed to create default tags");
+        return Err(ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal server error",
+        ));
+    }
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
 
     Ok(Json(project))
 }
