@@ -202,7 +202,10 @@ impl GitService {
         "origin".to_string()
     }
 
-    pub fn default_remote_name_for_path(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+    pub fn default_remote_name_for_path(
+        &self,
+        repo_path: &Path,
+    ) -> Result<String, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         Ok(self.default_remote_name(&repo))
     }
