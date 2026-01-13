@@ -4,10 +4,6 @@ use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
-use remote::routes::tasks::{
-    AssignSharedTaskRequest, CheckTasksRequest, CreateSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
-};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -543,58 +539,6 @@ impl RemoteClient {
             request,
         )
         .await
-    }
-
-    /// Creates a shared task.
-    pub async fn create_shared_task(
-        &self,
-        request: &CreateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.post_authed("/v1/tasks", Some(request)).await
-    }
-
-    /// Updates a shared task.
-    pub async fn update_shared_task(
-        &self,
-        task_id: Uuid,
-        request: &UpdateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
-            .await
-    }
-
-    /// Assigns a shared task to a user.
-    pub async fn assign_shared_task(
-        &self,
-        task_id: Uuid,
-        request: &AssignSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.post_authed(&format!("/v1/tasks/{task_id}/assign"), Some(request))
-            .await
-    }
-
-    /// Deletes a shared task.
-    pub async fn delete_shared_task(
-        &self,
-        task_id: Uuid,
-    ) -> Result<SharedTaskResponse, RemoteClientError> {
-        let res = self
-            .send(
-                reqwest::Method::DELETE,
-                &format!("/v1/tasks/{task_id}"),
-                true,
-                None::<&()>,
-            )
-            .await?;
-        res.json::<SharedTaskResponse>()
-            .await
-            .map_err(|e| RemoteClientError::Serde(e.to_string()))
-    }
-
-    /// Checks if shared tasks exist.
-    pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
-        let request = CheckTasksRequest { task_ids };
-        self.post_authed("/v1/tasks/check", Some(&request)).await
     }
 }
 

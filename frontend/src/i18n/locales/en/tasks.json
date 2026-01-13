@@ -481,9 +481,6 @@
     "startReview": "Start Review",
     "startingReview": "Starting Review...",
     "task": "Task",
-    "share": "Share",
-    "reassign": "Reassign",
-    "stopShare": "Stop share",
     "duplicate": "Duplicate"
   },
   "editBranchName": {
@@ -518,41 +515,6 @@
       "filesWithConflicts_other": "{{count}} files have conflicts",
       "andMore": "...and {{count}} more"
     }
-  },
-  "stopShareDialog": {
-    "title": "Stop Sharing Task",
-    "description": "Stop sharing \"{{title}}\" with your organization?",
-    "warning": "Stops sharing the task with your organization, but keeps your local task.",
-    "confirm": "Stop share task",
-    "inProgress": "Stop sharing...",
-    "genericError": "Failed to stop sharing task. Please try again."
-  },
-  "shareDialog": {
-    "title": "Share Task",
-    "description": "Share \"{{title}}\" with your organization?",
-    "success": "Task shared successfully.",
-    "genericError": "Failed to share task. Please try again.",
-    "loadingSystem": "Loading account status...",
-    "loginRequired": {
-      "title": "Sign in to continue",
-      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
-      "action": "Go to sign in"
-    },
-    "gitProviderRequired": {
-      "title": "Connect Git Provider",
-      "description": "Connect your Git provider account to share tasks. This project must have a remote repository.",
-      "action": "Connect"
-    },
-    "linkProjectRequired": {
-      "description": "Link this project to an organization before sharing tasks.",
-      "action": "Link Project"
-    },
-    "confirmationTitle": "Confirm sharing",
-    "confirmationBody": "Sharing will publish this task to your shared workspace.",
-    "cancel": "Cancel",
-    "confirm": "Share task",
-    "inProgress": "Sharing...",
-    "closeButton": "Close"
   },
   "createPrDialog": {
     "title": "Create Pull Request",

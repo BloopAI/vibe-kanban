@@ -11,7 +11,6 @@ use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
-use tokio;
 use ts_rs::TS;
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -206,15 +205,6 @@ async fn handoff_complete(
                 "email": profile.email,
             })),
         );
-    }
-
-    // Trigger shared task cleanup in background
-    if let Ok(publisher) = deployment.share_publisher() {
-        tokio::spawn(async move {
-            if let Err(e) = publisher.cleanup_shared_tasks().await {
-                tracing::error!("Failed to cleanup shared tasks on login: {}", e);
-            }
-        });
     }
 
     Ok(close_window_response(format!(
