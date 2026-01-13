@@ -91,13 +91,14 @@ impl Approvals {
 
             if let Some((idx, matching_tool)) = matching_tool {
                 let approval_entry = matching_tool
+                    .clone()
                     .with_tool_status(ToolStatus::PendingApproval {
                         approval_id: req_id.clone(),
                         requested_at: request.created_at,
                         timeout_at: request.timeout_at,
                     })
                     .ok_or(ApprovalError::NoToolUseEntry)?;
-                store.push_patch(ConversationPatch::replace(idx, approval_entry));
+                store.push_patch(ConversationPatch::replace(idx, approval_entry).to_json_patch());
 
                 self.pending.insert(
                     req_id.clone(),
@@ -145,15 +146,13 @@ impl Approvals {
             let _ = p.response_tx.send(req.status.clone());
 
             if let Some(store) = self.msg_store_by_id(&p.execution_process_id).await {
-                let status = ToolStatus::from_approval_status(&req.status).ok_or(
-                    ApprovalError::Custom(anyhow::anyhow!("Invalid approval status")),
-                )?;
+                let status = ToolStatus::from_approval_status(req.status.clone());
                 let updated_entry = p
                     .entry
                     .with_tool_status(status)
                     .ok_or(ApprovalError::NoToolUseEntry)?;
 
-                store.push_patch(ConversationPatch::replace(p.entry_index, updated_entry));
+                store.push_patch(ConversationPatch::replace(p.entry_index, updated_entry).to_json_patch());
             } else {
                 tracing::warn!(
                     "No msg_store found for execution_process_id: {}",
@@ -235,7 +234,7 @@ impl Approvals {
                         store.push_patch(ConversationPatch::replace(
                             pending_approval.entry_index,
                             updated_entry,
-                        ));
+                        ).to_json_patch());
                     } else {
                         tracing::warn!(
                             "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",

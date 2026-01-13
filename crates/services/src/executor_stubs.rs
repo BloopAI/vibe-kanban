@@ -128,8 +128,9 @@ impl ToolStatus {
     pub fn from_approval_status(status: utils::approvals::ApprovalStatus) -> Self {
         match status {
             utils::approvals::ApprovalStatus::Approved => ToolStatus::Approved,
-            utils::approvals::ApprovalStatus::Rejected => ToolStatus::Rejected,
+            utils::approvals::ApprovalStatus::Denied { .. } => ToolStatus::Rejected,
             utils::approvals::ApprovalStatus::TimedOut => ToolStatus::TimedOut,
+            utils::approvals::ApprovalStatus::Pending => ToolStatus::Pending,
         }
     }
 }
@@ -150,6 +151,14 @@ pub struct ToolCallMetadata {
 #[derive(Debug, Error)]
 pub enum ExecutorApprovalError {
     #[error("Approval error: {0}")]
+    Generic(String),
+}
+
+#[derive(Debug, Error)]
+pub enum ExecutorError {
+    #[error("Executable not found: {program}")]
+    ExecutableNotFound { program: String },
+    #[error("Executor error: {0}")]
     Generic(String),
 }
 
@@ -189,8 +198,36 @@ impl CommandBuilder {
         self
     }
 
-    pub fn build_initial(self) -> Result<(String, Vec<String>, HashMap<String, String>), String> {
-        Ok((self.command, self.args, self.env))
+    pub fn build_initial(self) -> Result<CommandParts, String> {
+        Ok(CommandParts {
+            command: self.command,
+            args: self.args,
+            env: self.env,
+        })
+    }
+}
+
+// Command parts with resolve capability
+pub struct CommandParts {
+    pub command: String,
+    pub args: Vec<String>,
+    pub env: HashMap<String, String>,
+}
+
+impl CommandParts {
+    pub async fn into_resolved(self) -> Result<(std::path::PathBuf, Vec<String>), ExecutorError> {
+        // Simple resolution - just convert to PathBuf
+        // In actual usage, the system will check if executable exists
+        let path = std::path::PathBuf::from(&self.command);
+
+        // Check if it's an absolute path or needs PATH resolution
+        if path.is_absolute() && path.exists() {
+            Ok((path, self.args))
+        } else {
+            // For relative paths or commands, assume they're in PATH
+            // The actual spawn will fail if not found
+            Ok((path, self.args))
+        }
     }
 }
 
@@ -219,21 +256,49 @@ pub mod patch {
             Self::Remove { index }
         }
 
-        // Aliases for diff operations
-        pub fn add_diff(path: String, diff: serde_json::Value) -> Self {
-            let entry = super::NormalizedEntry {
-                timestamp: None,
-                entry_type: super::NormalizedEntryType::Message {
-                    content: serde_json::to_string(&diff).unwrap_or_default(),
-                },
-                content: format!("Diff at {}", path),
-                metadata: Some(diff),
+        // Convert to json_patch::Patch for MsgStore
+        pub fn to_json_patch(&self) -> json_patch::Patch {
+            use json_patch::{PatchOperation, ReplaceOperation, AddOperation, RemoveOperation};
+
+            let operations: Vec<PatchOperation> = match self {
+                Self::Add { index, entry } => {
+                    vec![PatchOperation::Add(AddOperation {
+                        path: format!("/-"),
+                        value: serde_json::to_value(entry).unwrap_or(serde_json::Value::Null),
+                    })]
+                }
+                Self::Replace { index, entry } => {
+                    vec![PatchOperation::Replace(ReplaceOperation {
+                        path: format!("/{}", index),
+                        value: serde_json::to_value(entry).unwrap_or(serde_json::Value::Null),
+                    })]
+                }
+                Self::Remove { index } => {
+                    vec![PatchOperation::Remove(RemoveOperation {
+                        path: format!("/{}", index),
+                    })]
+                }
             };
-            Self::Add { index: 0, entry }
+
+            json_patch::Patch(operations)
         }
 
-        pub fn remove_diff(path: String) -> Self {
-            Self::Remove { index: 0 }
+        // Aliases for diff operations - return json_patch::Patch directly
+        pub fn add_diff(path: String, diff: serde_json::Value) -> json_patch::Patch {
+            use json_patch::{PatchOperation, AddOperation};
+
+            json_patch::Patch(vec![PatchOperation::Add(AddOperation {
+                path,
+                value: diff,
+            })])
+        }
+
+        pub fn remove_diff(path: String) -> json_patch::Patch {
+            use json_patch::{PatchOperation, RemoveOperation};
+
+            json_patch::Patch(vec![PatchOperation::Remove(RemoveOperation {
+                path,
+            })])
         }
     }
 
