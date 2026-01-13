@@ -1626,6 +1626,18 @@ impl GitService {
         self.get_remote_url(repo_path, &remote_name)
     }
 
+    pub fn check_remote_branch_exists(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        branch_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let git_cli = GitCli::new();
+        git_cli
+            .check_remote_branch_exists(repo_path, remote_url, branch_name)
+            .map_err(GitServiceError::GitCLI)
+    }
+
     fn get_remote_from_branch_ref<'a>(
         &self,
         repo: &'a Repository,

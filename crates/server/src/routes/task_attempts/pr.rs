@@ -22,7 +22,7 @@ use executors::actions::{
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{GitCli, GitCliError, GitServiceError},
+    git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
     },
@@ -243,8 +243,7 @@ pub async fn create_pr(
     let target_remote_url = git.get_remote_url(&repo_path, &target_remote)?;
 
     // Check target branch exists on remote
-    let git_cli = GitCli::new();
-    match git_cli.check_remote_branch_exists(&repo_path, &target_remote_url, &base_branch) {
+    match git.check_remote_branch_exists(&repo_path, &target_remote_url, &base_branch) {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::TargetBranchNotFound {
