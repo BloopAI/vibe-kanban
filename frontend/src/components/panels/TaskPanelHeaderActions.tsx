@@ -11,6 +11,7 @@ interface TaskPanelHeaderActionsProps {
   sharedTask?: SharedTaskRecord;
   onClose: () => void;
   projectId?: string;
+  onAttemptCreated?: (attemptId: string) => void;
 }
 
 export const TaskPanelHeaderActions = ({
@@ -18,10 +19,16 @@ export const TaskPanelHeaderActions = ({
   sharedTask,
   onClose,
   projectId,
+  onAttemptCreated,
 }: TaskPanelHeaderActionsProps) => {
   return (
     <>
-      <ActionsDropdown task={task} sharedTask={sharedTask} projectId={projectId} />
+      <ActionsDropdown
+        task={task}
+        sharedTask={sharedTask}
+        projectId={projectId}
+        onAttemptCreated={onAttemptCreated}
+      />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>

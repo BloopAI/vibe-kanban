@@ -33,6 +33,7 @@ interface ActionsDropdownProps {
   attempt?: WorkspaceWithSession | null;
   sharedTask?: SharedTaskRecord;
   projectId?: string;
+  onAttemptCreated?: (attemptId: string) => void;
 }
 
 export function ActionsDropdown({
@@ -40,6 +41,7 @@ export function ActionsDropdown({
   attempt,
   sharedTask,
   projectId: propProjectId,
+  onAttemptCreated,
 }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId: contextProjectId } = useProject();
@@ -111,6 +113,7 @@ export function ActionsDropdown({
     CreateAttemptDialog.show({
       taskId: task.id,
       projectId,
+      onSuccess: onAttemptCreated,
     });
   };
 

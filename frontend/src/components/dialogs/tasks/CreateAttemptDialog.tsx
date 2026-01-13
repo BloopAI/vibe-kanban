@@ -31,10 +31,11 @@ import { useKeySubmitTask, Scope } from '@/keyboard';
 export interface CreateAttemptDialogProps {
   taskId: string;
   projectId?: string;
+  onSuccess?: (attemptId: string) => void;
 }
 
 const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
-  ({ taskId, projectId: propProjectId }) => {
+  ({ taskId, projectId: propProjectId, onSuccess: propOnSuccess }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
     const { projectId: contextProjectId } = useProject();
@@ -44,7 +45,9 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const { createAttempt, isCreating, error } = useAttemptCreation({
       taskId,
       onSuccess: (attempt) => {
-        if (projectId) {
+        if (propOnSuccess) {
+          propOnSuccess(attempt.id);
+        } else if (projectId) {
           navigate(paths.attempt(projectId, taskId, attempt.id));
         }
       },

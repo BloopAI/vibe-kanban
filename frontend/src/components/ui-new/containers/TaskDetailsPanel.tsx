@@ -107,6 +107,11 @@ function TaskDetailsPanelContent({
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [mode, setMode] = useState<LayoutMode>(null);
 
+  // Handler for when a new attempt is created - stay on page and show attempt
+  const handleAttemptCreated = useCallback((attemptId: string) => {
+    setSelectedAttemptId(attemptId);
+  }, []);
+
   const {
     tasksById,
     sharedTasksById,
@@ -231,6 +236,7 @@ function TaskDetailsPanelContent({
             sharedTask={getSharedTask(selectedTask)}
             onClose={onClose}
             projectId={projectId}
+            onAttemptCreated={handleAttemptCreated}
           />
         ) : (
           <AttemptHeaderActions
@@ -283,7 +289,7 @@ function TaskDetailsPanelContent({
   const attemptContent = (
     <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       {isTaskView ? (
-        <TaskPanel task={selectedTask} projectId={projectId} />
+        <TaskPanel task={selectedTask} projectId={projectId} onAttemptCreated={handleAttemptCreated} />
       ) : (
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
           {({ logs, followUp }) => (
