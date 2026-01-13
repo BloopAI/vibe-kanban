@@ -1,8 +1,7 @@
 use chrono::{Duration, Utc};
-use db::models::auth_session::AuthSession;
-use db::models::user::User;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use rand::{distributions::Alphanumeric, Rng};
+use db::models::{auth_session::AuthSession, user::User};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
@@ -187,7 +186,11 @@ impl LocalSessionService {
     }
 
     /// Revoke a specific session
-    pub async fn revoke_session(&self, pool: &SqlitePool, session_id: Uuid) -> Result<(), SessionError> {
+    pub async fn revoke_session(
+        &self,
+        pool: &SqlitePool,
+        session_id: Uuid,
+    ) -> Result<(), SessionError> {
         AuthSession::revoke(pool, session_id).await?;
         Ok(())
     }

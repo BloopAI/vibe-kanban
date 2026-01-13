@@ -110,7 +110,10 @@ impl GitHubOAuthService {
     }
 
     /// Fetch user profile from GitHub using access token
-    pub async fn fetch_user(&self, access_token: &str) -> Result<GitHubUserProfile, GitHubOAuthError> {
+    pub async fn fetch_user(
+        &self,
+        access_token: &str,
+    ) -> Result<GitHubUserProfile, GitHubOAuthError> {
         let response = self
             .client
             .get("https://api.github.com/user")
@@ -145,7 +148,10 @@ impl GitHubOAuthService {
     }
 
     /// Fetch primary email from GitHub /user/emails endpoint
-    async fn fetch_primary_email(&self, access_token: &str) -> Result<Option<String>, GitHubOAuthError> {
+    async fn fetch_primary_email(
+        &self,
+        access_token: &str,
+    ) -> Result<Option<String>, GitHubOAuthError> {
         #[derive(Debug, Deserialize)]
         struct GitHubEmail {
             email: String,
