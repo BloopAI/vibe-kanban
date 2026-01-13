@@ -4,7 +4,7 @@ import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
 import { useAllBoards } from '@/hooks/useAllBoards';
 import { SwimlaneKanban } from '@/components/ui-new/views/SwimlaneKanban';
-import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
+import { Navbar } from '@/components/layout/Navbar';
 import { useProjectGroupMutations } from '@/hooks/useProjectGroupMutations';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { TaskDetailsPanel } from '@/components/ui-new/containers/TaskDetailsPanel';
@@ -142,7 +142,7 @@ export function AllBoardsLayout() {
   if (error) {
     return (
       <div className="flex flex-col h-screen">
-        <NavbarContainer />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center bg-primary text-error">
           Error loading boards: {error.message}
         </div>
@@ -152,7 +152,7 @@ export function AllBoardsLayout() {
 
   return (
     <div className="flex flex-col h-screen">
-      <NavbarContainer />
+      <Navbar />
       <div className="flex-1 min-h-0">
         <Allotment>
           <Allotment.Pane minSize={600}>

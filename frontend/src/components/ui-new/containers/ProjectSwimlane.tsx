@@ -74,7 +74,7 @@ export function ProjectSwimlane({
   onOpenBoard,
   onStatusChange,
 }: ProjectSwimlaneProps) {
-  const { tasksByStatus, isLoading, error } = useBoardTasksOverview(project.id);
+  const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(project.id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -128,7 +128,8 @@ export function ProjectSwimlane({
         <div className="px-half py-half flex items-center">
           <div className="flex items-center gap-half flex-1 min-w-0">
             <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
-            <span className="text-xs text-normal flex-1 font-medium">{project.name}</span>
+            <span className="text-xs text-normal font-medium">{project.name}</span>
+            <span className="text-xs text-low/60 tabular-nums">{totalCount}</span>
 
             {/* Actions - visible on row hover */}
             <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">

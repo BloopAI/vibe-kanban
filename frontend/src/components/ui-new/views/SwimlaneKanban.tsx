@@ -5,6 +5,7 @@ import {
   ArrowsInIcon,
   MagnifyingGlassIcon,
   PlusIcon,
+  DotsThreeIcon,
 } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -151,21 +152,31 @@ export function SwimlaneKanban({
         {STATUS_ORDER.map((status) => (
           <div
             key={status}
-            className="flex items-center justify-between py-half px-base border-l border-panel"
+            className="group/col flex items-center gap-half py-half px-base border-l border-panel"
           >
-            <span className="flex items-center gap-half text-xs text-normal font-medium tracking-wide">
-              <span
-                className="h-[6px] w-[6px] rounded-full shrink-0"
-                style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
-              />
+            <span
+              className="h-[6px] w-[6px] rounded-full shrink-0"
+              style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
+            />
+            <span className="text-xs text-normal font-medium flex-1">
               {statusLabels[status]}
             </span>
-            <button
-              type="button"
-              className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
-            >
-              <PlusIcon className="size-icon-xs" />
-            </button>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/col:opacity-100 transition-opacity">
+              <button
+                type="button"
+                className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
+                title="Column options"
+              >
+                <DotsThreeIcon weight="bold" className="size-icon-xs" />
+              </button>
+              <button
+                type="button"
+                className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
+                title="Add task"
+              >
+                <PlusIcon className="size-icon-xs" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
