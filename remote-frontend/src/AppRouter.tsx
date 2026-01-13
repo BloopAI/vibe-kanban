@@ -7,6 +7,7 @@ import AccountPage from "./pages/AccountPage";
 import AccountCompletePage from "./pages/AccountCompletePage";
 import OrganizationPage from "./pages/OrganizationPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import SentryTestPage from "./pages/SentryTestPage";
 
 const router = createBrowserRouter([
   {
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
   {
     path: "/account/organizations/:orgId",
     element: <OrganizationPage />,
+  },
+  {
+    path: "/sentry-test",
+    element: <SentryTestPage />,
   },
   {
     path: "*",
