@@ -706,6 +706,34 @@ export const Actions = {
         return;
       }
 
+      // Check if branch is behind - need to rebase first
+      const commitsBehind = repoStatus?.commits_behind ?? 0;
+      if (commitsBehind > 0) {
+        // Prompt user to rebase first
+        const confirmRebase = await ConfirmDialog.show({
+          title: 'Rebase Required',
+          message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
+          confirmText: 'Rebase',
+          cancelText: 'Cancel',
+        });
+
+        if (confirmRebase === 'confirmed') {
+          // Trigger the rebase action
+          const repos = await attemptsApi.getRepos(workspaceId);
+          const repo = repos.find((r) => r.id === repoId);
+          if (!repo) throw new Error('Repository not found');
+
+          const branches = await repoApi.getBranches(repoId);
+          await RebaseDialog.show({
+            attemptId: workspaceId,
+            repoId,
+            branches,
+            initialTargetBranch: repo.target_branch,
+          });
+        }
+        return;
+      }
+
       const confirmResult = await ConfirmDialog.show({
         title: 'Merge Branch',
         message:
