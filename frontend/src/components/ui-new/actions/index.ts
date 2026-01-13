@@ -32,6 +32,7 @@ import {
   PencilSimpleIcon,
   ArrowUpIcon,
   HighlighterIcon,
+  ListIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -352,6 +353,20 @@ export const Actions = {
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/settings');
+    },
+  },
+
+  OpenCommandBar: {
+    id: 'open-command-bar',
+    label: 'Open Command Bar',
+    icon: ListIcon,
+    requiresTarget: false,
+    execute: async () => {
+      // Dynamic import to avoid circular dependency (pages.ts imports Actions)
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      CommandBarDialog.show();
     },
   },
 
@@ -911,6 +926,7 @@ export const NavbarActionGroups = {
     Actions.TogglePreviewMode,
     Actions.ToggleGitPanel,
     NavbarDivider,
+    Actions.OpenCommandBar,
     Actions.Settings,
   ] as NavbarItem[],
 };
