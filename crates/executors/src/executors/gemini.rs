@@ -10,7 +10,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -35,7 +35,7 @@ pub struct Gemini {
 }
 
 impl Gemini {
-    fn build_command_builder(&self) -> CommandBuilder {
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.23.0");
 
         if let Some(model) = &self.model {
@@ -67,7 +67,7 @@ impl StandardCodingAgentExecutor for Gemini {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder().build_initial()?;
+        let gemini_command = self.build_command_builder()?.build_initial()?;
         let approvals = if self.yolo.unwrap_or(false) {
             None
         } else {
@@ -94,7 +94,7 @@ impl StandardCodingAgentExecutor for Gemini {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder().build_follow_up(&[])?;
+        let gemini_command = self.build_command_builder()?.build_follow_up(&[])?;
         let approvals = if self.yolo.unwrap_or(false) {
             None
         } else {

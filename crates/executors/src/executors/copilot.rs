@@ -22,7 +22,7 @@ use uuid::Uuid;
 use workspace_utils::{msg_store::MsgStore, path::get_vibe_kanban_temp_dir};
 
 use crate::{
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -55,7 +55,7 @@ pub struct Copilot {
 }
 
 impl Copilot {
-    fn build_command_builder(&self, log_dir: &str) -> CommandBuilder {
+    fn build_command_builder(&self, log_dir: &str) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder = CommandBuilder::new("npx -y @github/copilot@0.0.375").params([
             "--no-color",
             "--log-level",
@@ -106,7 +106,7 @@ impl StandardCodingAgentExecutor for Copilot {
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
-            .build_command_builder(&log_dir.to_string_lossy())
+            .build_command_builder(&log_dir.to_string_lossy())?
             .build_initial()?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -149,7 +149,7 @@ impl StandardCodingAgentExecutor for Copilot {
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
-            .build_command_builder(&log_dir.to_string_lossy())
+            .build_command_builder(&log_dir.to_string_lossy())?
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
         let (program_path, args) = command_parts.into_resolved().await?;
 

@@ -10,7 +10,7 @@ use db::models::{
     workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
-use executors::executors::ExecutorError;
+use executors::{command::CommandBuildError, executors::ExecutorError};
 use git2::Error as Git2Error;
 use services::services::{
     config::{ConfigError, EditorOpenError},
@@ -76,6 +76,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error(transparent)]
+    CommandBuilder(#[from] CommandBuildError),
 }
 
 impl From<&'static str> for ApiError {
@@ -124,6 +126,7 @@ impl IntoResponse for ApiError {
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
+            ApiError::CommandBuilder(_) => (StatusCode::INTERNAL_SERVER_ERROR, "CommandBuildError"),
             ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
             ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),

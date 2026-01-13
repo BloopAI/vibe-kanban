@@ -24,7 +24,7 @@ use self::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -76,7 +76,7 @@ pub struct ClaudeCode {
 }
 
 impl ClaudeCode {
-    async fn build_command_builder(&self) -> CommandBuilder {
+    async fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         // If base_command_override is provided and claude_code_router is also set, log a warning
         if self.cmd.base_command_override.is_some() && self.claude_code_router.is_some() {
             tracing::warn!(
@@ -169,7 +169,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_builder = self.build_command_builder().await;
+        let command_builder = self.build_command_builder().await?;
         let command_parts = command_builder.build_initial()?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
@@ -182,7 +182,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_builder = self.build_command_builder().await;
+        let command_builder = self.build_command_builder().await?;
         let command_parts = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),

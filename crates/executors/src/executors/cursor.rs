@@ -16,7 +16,7 @@ use workspace_utils::{
 };
 
 use crate::{
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -53,7 +53,7 @@ impl CursorAgent {
         "cursor-agent"
     }
 
-    fn build_command_builder(&self) -> CommandBuilder {
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder =
             CommandBuilder::new(Self::base_command()).params(["-p", "--output-format=stream-json"]);
 
@@ -79,7 +79,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
 
         let (executable_path, args) = command_parts.into_resolved().await?;
 
@@ -118,7 +118,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self
-            .build_command_builder()
+            .build_command_builder()?
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
         let (executable_path, args) = command_parts.into_resolved().await?;
 
