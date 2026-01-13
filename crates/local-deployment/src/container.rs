@@ -447,7 +447,12 @@ impl LocalContainerService {
                     {
                         // Check for uncommitted changes before try_commit_changes would auto-commit them
                         if container.has_uncommitted_changes(&ctx) {
-                            match container.start_commit_reminder_follow_up(&ctx).await {
+                            use services::services::commit_reminder::CommitReminderService;
+                            let reminder_data = DraftFollowUpData {
+                                message: CommitReminderService::PROMPT.to_string(),
+                                variant: None,
+                            };
+                            match container.start_queued_follow_up(&ctx, &reminder_data).await {
                                 Ok(_) => {
                                     sent_commit_reminder = true;
                                     container.commit_reminder_service.mark_sent(ctx.session.id);
@@ -920,92 +925,6 @@ impl LocalContainerService {
         }
     }
 
-    /// Start a commit reminder follow-up execution to ask the agent to commit its changes
-    async fn start_commit_reminder_follow_up(
-        &self,
-        ctx: &ExecutionContext,
-    ) -> Result<ExecutionProcess, ContainerError> {
-        const COMMIT_REMINDER_PROMPT: &str = "You left uncommitted changes. You are expected to commit your work before finishing - \
-             please do so now. Review what you've done and create an appropriate git commit with a descriptive message summarizing the changes.";
-
-        // Get executor profile (same logic as start_queued_follow_up)
-        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
-        {
-            Some(profile) => profile.executor,
-            None => {
-                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
-                    ContainerError::Other(anyhow!(
-                        "No prior execution and no executor configured on session"
-                    ))
-                })?;
-                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
-                    .map_err(|_| {
-                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
-                    })?
-            }
-        };
-
-        // Get variant from the latest execution process
-        let variant =
-            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
-                .await
-                .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor variant: {e}")))?
-                .and_then(|p| p.variant);
-
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant,
-        };
-
-        // Get latest agent session ID for session continuity
-        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get agent session ID: {e}")))?;
-
-        // Must have an agent session ID for follow-up
-        let agent_session_id = latest_agent_session_id.ok_or_else(|| {
-            ContainerError::Other(anyhow!(
-                "Cannot send commit reminder without agent session ID"
-            ))
-        })?;
-
-        let repos =
-            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
-        let cleanup_action = self.cleanup_actions_for_repos(&repos);
-
-        let working_dir = ctx
-            .workspace
-            .agent_working_dir
-            .as_ref()
-            .filter(|dir| !dir.is_empty())
-            .cloned();
-
-        let action_type =
-            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-                prompt: COMMIT_REMINDER_PROMPT.to_string(),
-                session_id: agent_session_id,
-                executor_profile_id,
-                working_dir,
-            });
-
-        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
-
-        self.start_execution(
-            &ctx.workspace,
-            &ctx.session,
-            &action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await
-    }
 }
 
 fn failure_exit_status() -> std::process::ExitStatus {

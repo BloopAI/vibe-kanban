@@ -11,6 +11,10 @@ pub struct CommitReminderService {
 }
 
 impl CommitReminderService {
+    /// The prompt sent to the agent when reminding them to commit their changes.
+    pub const PROMPT: &'static str = "You left uncommitted changes. You are expected to commit your work before finishing - \
+        please do so now. Review what you've done and create an appropriate git commit with a descriptive message summarizing the changes.";
+
     pub fn new() -> Self {
         Self {
             sent: Arc::new(DashSet::new()),
