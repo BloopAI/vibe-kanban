@@ -536,9 +536,7 @@ export const Actions = {
       // Fetch task lazily to get project_id
       const task = await tasksApi.getById(workspace.task_id);
       if (task?.project_id) {
-        ctx.navigate(
-          `/projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${workspace.id}`
-        );
+        ctx.navigate(`/projects/${task.project_id}/tasks/${workspace.task_id}`);
       } else {
         ctx.navigate('/');
       }
