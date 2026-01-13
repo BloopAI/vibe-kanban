@@ -76,7 +76,9 @@ export function PreviewBrowserContainer({
   const resizeDirectionRef = useRef<'right' | 'bottom' | 'corner' | null>(null);
   const localDimensionsRef = useRef(localDimensions);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
-  const startDimensionsRef = useRef<{ width: number; height: number } | null>(null);
+  const startDimensionsRef = useRef<{ width: number; height: number } | null>(
+    null
+  );
 
   // Store callback in ref to avoid effect re-runs when callback identity changes
   const setResponsiveDimensionsRef = useRef(setResponsiveDimensions);
