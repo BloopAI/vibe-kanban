@@ -2,7 +2,10 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import { PreviewBrowser } from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
-import { usePreviewSettings, type ScreenSize } from '@/hooks/usePreviewSettings';
+import {
+  usePreviewSettings,
+  type ScreenSize,
+} from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
