@@ -232,6 +232,14 @@
           "description": "重設入門流程。",
           "button": "重設"
         }
+      },
+      "beta": {
+        "title": "Beta 功能",
+        "description": "在正式發布前試用實驗性功能。",
+        "workspaces": {
+          "label": "啟用工作區 Beta",
+          "helper": "查看任務嘗試時使用新的工作區介面。任務將首先在任務檢視中開啟，嘗試將在新的工作區檢視中開啟。"
+        }
       }
     },
     "agents": {

@@ -202,5 +202,25 @@
     "createFirstPrompt": "Crea un proyecto primero para comenzar a trabajar en tareas.",
     "createNew": "Crear nuevo proyecto",
     "noProjectsFound": "No se encontraron proyectos"
+  },
+  "betaWorkspaces": {
+    "title": "Prueba la nueva interfaz",
+    "intro": "Hemos reconstruido la interfaz de Vibe Kanban desde cero, y has sido invitado a probarla.",
+    "newUiDescription": "La nueva interfaz está optimizada para el trabajo diario: gestionar agentes, previsualizar cambios y revisar código. También desbloquea funciones que no están disponibles en la interfaz anterior:",
+    "newFeatures": {
+      "multiRepo": "Edita múltiples repositorios al mismo tiempo",
+      "multiAgent": "Ejecuta múltiples conversaciones de agentes (incluso entre diferentes agentes) en un solo espacio de trabajo",
+      "commandBar": "Navegación más rápida con la barra de comandos"
+    },
+    "oldUiDescription": "Por ahora, algunas cosas todavía permanecen en la interfaz actual:",
+    "oldFeatures": {
+      "kanban": "Gestión de tareas en el tablero kanban",
+      "settings": "Cambiar configuración",
+      "projects": "Gestión de proyectos"
+    },
+    "transition": "Durante la transición en las próximas semanas, te moverás entre ambas.",
+    "optOutNote": "¿Quieres salir? Puedes volver a la interfaz actual en cualquier momento en Configuración.",
+    "joinBeta": "Unirse a Beta",
+    "maybeLater": "Quizás más tarde"
   }
 }

@@ -232,6 +232,14 @@
           "description": "Reset the onboarding flow.",
           "button": "Reset"
         }
+      },
+      "beta": {
+        "title": "Beta Features",
+        "description": "Try out experimental features before they're released.",
+        "workspaces": {
+          "label": "Enable Workspaces Beta",
+          "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
+        }
       }
     },
     "agents": {

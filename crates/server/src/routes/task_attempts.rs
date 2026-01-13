@@ -111,6 +111,14 @@ pub async fn get_task_attempts(
     Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
+pub async fn get_workspace_count(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<i64>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let count = Workspace::count_all(pool).await?;
+    Ok(ResponseJson(ApiResponse::success(count)))
+}
+
 pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
@@ -1725,6 +1733,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/count", get(get_workspace_count))
         .route("/stream/ws", get(stream_workspaces_ws))
         .route("/summary", post(workspace_summary::get_workspace_summaries))
         .nest("/{id}", task_attempt_id_router)

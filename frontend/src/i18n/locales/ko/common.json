@@ -202,5 +202,25 @@
     "createFirstPrompt": "작업을 시작하려면 먼저 프로젝트를 만드세요.",
     "createNew": "새 프로젝트 만들기",
     "noProjectsFound": "프로젝트를 찾을 수 없습니다"
+  },
+  "betaWorkspaces": {
+    "title": "새로운 UI 사용해보기",
+    "intro": "Vibe Kanban의 UI를 처음부터 다시 구축했으며, 체험에 초대되었습니다.",
+    "newUiDescription": "새로운 UI는 일상 업무에 최적화되어 있습니다: 에이전트 관리, 변경 사항 미리보기, 코드 검토. 또한 기존 UI에서는 사용할 수 없는 기능도 제공합니다:",
+    "newFeatures": {
+      "multiRepo": "여러 저장소를 동시에 편집",
+      "multiAgent": "단일 워크스페이스에서 여러 에이전트 대화(다른 에이전트 간에도) 실행",
+      "commandBar": "명령 바로 더 빠른 탐색"
+    },
+    "oldUiDescription": "현재로서는 일부 기능이 기존 UI에 남아 있습니다:",
+    "oldFeatures": {
+      "kanban": "칸반 보드에서 작업 관리",
+      "settings": "설정 변경",
+      "projects": "프로젝트 관리"
+    },
+    "transition": "앞으로 몇 주 동안의 전환 기간 동안 두 UI를 오가게 됩니다.",
+    "optOutNote": "옵트아웃하시겠습니까? 설정에서 언제든지 기존 UI로 돌아갈 수 있습니다.",
+    "joinBeta": "베타 참여",
+    "maybeLater": "나중에"
   }
 }

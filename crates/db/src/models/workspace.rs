@@ -609,6 +609,14 @@ impl Workspace {
         Ok(result.rows_affected())
     }
 
+    /// Count total workspaces across all projects
+    pub async fn count_all(pool: &SqlitePool) -> Result<i64, WorkspaceError> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM workspaces"#)
+            .fetch_one(pool)
+            .await
+            .map_err(WorkspaceError::Database)
+    }
+
     pub async fn find_by_id_with_status(
         pool: &SqlitePool,
         id: Uuid,

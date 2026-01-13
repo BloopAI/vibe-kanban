@@ -232,6 +232,14 @@
           "description": "Restablece el flujo de Introducción.",
           "button": "Restablecer"
         }
+      },
+      "beta": {
+        "title": "Funciones Beta",
+        "description": "Prueba funciones experimentales antes de su lanzamiento.",
+        "workspaces": {
+          "label": "Habilitar Beta de Workspaces",
+          "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
+        }
       }
     },
     "agents": {
