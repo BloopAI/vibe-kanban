@@ -433,9 +433,9 @@ impl Workspace {
         })
     }
 
-    /// Find workspace by a path that starts with the container_ref.
-    /// Used by VSCode extension which opens a repo worktree subfolder,
-    /// not the workspace root directory.
+    /// Find workspace by path, also trying the parent directory.
+    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
+    /// rather than the workspace root directory (multi-repo case).
     pub async fn resolve_container_ref_by_prefix(
         pool: &SqlitePool,
         path: &str,
@@ -445,31 +445,14 @@ impl Workspace {
             return Ok(info);
         }
 
-        // Then try prefix match - find workspace where path starts with container_ref
-        // Handle both Unix (/) and Windows (\) path separators
-        let result = sqlx::query!(
-            r#"SELECT w.id as "workspace_id!: Uuid",
-                      w.task_id as "task_id!: Uuid",
-                      t.project_id as "project_id!: Uuid"
-               FROM workspaces w
-               JOIN tasks t ON w.task_id = t.id
-               WHERE w.container_ref IS NOT NULL
-                 AND (? GLOB w.container_ref || '/*'
-                      OR ? GLOB w.container_ref || '\*')
-               ORDER BY length(w.container_ref) DESC
-               LIMIT 1"#,
-            path,
-            path
-        )
-        .fetch_optional(pool)
-        .await?
-        .ok_or(sqlx::Error::RowNotFound)?;
+        if let Some(parent) = std::path::Path::new(path).parent()
+            && let Some(parent_str) = parent.to_str()
+            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
+        {
+            return Ok(info);
+        }
 
-        Ok(ContainerInfo {
-            workspace_id: result.workspace_id,
-            task_id: result.task_id,
-            project_id: result.project_id,
-        })
+        Err(sqlx::Error::RowNotFound)
     }
 
     pub async fn set_archived(

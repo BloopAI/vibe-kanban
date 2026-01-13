@@ -29,7 +29,6 @@ pub async fn get_container_info(
     Query(query): Query<ContainerQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ContainerInfo>>, ApiError> {
-    // Use prefix matching since VSCode opens a repo subfolder, not the workspace root
     let info =
         Workspace::resolve_container_ref_by_prefix(&deployment.db().pool, &query.container_ref)
             .await
