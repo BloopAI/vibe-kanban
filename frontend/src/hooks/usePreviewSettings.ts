@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
 import {
@@ -63,11 +63,15 @@ export function usePreviewSettings(
 
   const screenSize: ScreenSize =
     (scratchData?.screen_size as ScreenSize) ?? 'desktop';
-  const responsiveDimensions: ResponsiveDimensions = {
-    width: scratchData?.responsive_width ?? DEFAULT_RESPONSIVE_DIMENSIONS.width,
-    height:
-      scratchData?.responsive_height ?? DEFAULT_RESPONSIVE_DIMENSIONS.height,
-  };
+  const responsiveDimensions: ResponsiveDimensions = useMemo(
+    () => ({
+      width:
+        scratchData?.responsive_width ?? DEFAULT_RESPONSIVE_DIMENSIONS.width,
+      height:
+        scratchData?.responsive_height ?? DEFAULT_RESPONSIVE_DIMENSIONS.height,
+    }),
+    [scratchData?.responsive_width, scratchData?.responsive_height]
+  );
 
   // Helper to save settings
   const saveSettings = useCallback(
