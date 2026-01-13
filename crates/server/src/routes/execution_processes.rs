@@ -30,6 +30,11 @@ pub struct SessionExecutionProcessQuery {
     pub show_soft_deleted: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceDevServerQuery {
+    pub workspace_id: Uuid,
+}
+
 pub async fn get_execution_process_by_id(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(_deployment): State<DeploymentImpl>,
@@ -233,6 +238,55 @@ async fn handle_execution_processes_by_session_ws(
     Ok(())
 }
 
+pub async fn stream_dev_servers_by_workspace_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<WorkspaceDevServerQuery>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) =
+            handle_dev_servers_by_workspace_ws(socket, deployment, query.workspace_id).await
+        {
+            tracing::warn!("dev servers by workspace WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_dev_servers_by_workspace_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    workspace_id: uuid::Uuid,
+) -> anyhow::Result<()> {
+    // Get the raw stream and convert LogMsg to WebSocket messages
+    let mut stream = deployment
+        .events()
+        .stream_dev_servers_for_workspace_raw(workspace_id)
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    // Split socket into sender and receiver
+    let (mut sender, mut receiver) = socket.split();
+
+    // Drain (and ignore) any client->server messages so pings/pongs work
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    // Forward server messages
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break; // client disconnected
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn get_execution_process_repo_states(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(deployment): State<DeploymentImpl>,
@@ -259,6 +313,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route(
             "/stream/session/ws",
             get(stream_execution_processes_by_session_ws),
+        )
+        .route(
+            "/stream/workspace-dev-servers/ws",
+            get(stream_dev_servers_by_workspace_ws),
         )
         .nest("/{id}", workspace_id_router);
 

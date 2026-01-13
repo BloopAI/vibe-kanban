@@ -16,12 +16,10 @@ const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
 interface PreviewBrowserContainerProps {
-  attemptId?: string;
   className?: string;
 }
 
 export function PreviewBrowserContainer({
-  attemptId,
   className,
 }: PreviewBrowserContainerProps) {
   const navigate = useNavigate();
@@ -29,6 +27,7 @@ export function PreviewBrowserContainer({
   const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
   const { repos, workspaceId } = useWorkspaceContext();
 
+  // Use workspace-scoped dev server streaming (visible across all sessions)
   const {
     start,
     stop,
@@ -36,7 +35,7 @@ export function PreviewBrowserContainer({
     isStopping,
     runningDevServers,
     devServerProcesses,
-  } = usePreviewDevServer(attemptId);
+  } = usePreviewDevServer(workspaceId);
 
   const primaryDevServer = runningDevServers[0];
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
@@ -252,7 +251,7 @@ export function PreviewBrowserContainer({
   };
 
   const handleFixDevScript = useCallback(() => {
-    if (!attemptId || repos.length === 0) return;
+    if (!workspaceId || repos.length === 0) return;
 
     // Get session ID from the latest dev server process
     const sessionId = devServerProcesses[0]?.session_id;
@@ -260,11 +259,11 @@ export function PreviewBrowserContainer({
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos,
-      workspaceId: attemptId,
+      workspaceId,
       sessionId,
       initialRepoId: repos.length === 1 ? repos[0].id : undefined,
     });
-  }, [attemptId, repos, devServerProcesses]);
+  }, [workspaceId, repos, devServerProcesses]);
 
   return (
     <PreviewBrowser
@@ -292,7 +291,7 @@ export function PreviewBrowserContainer({
       repos={repos}
       handleEditDevScript={handleEditDevScript}
       handleFixDevScript={
-        attemptId && repos.length > 0 ? handleFixDevScript : undefined
+        workspaceId && repos.length > 0 ? handleFixDevScript : undefined
       }
       hasFailedDevServer={hasFailedDevServer}
       className={className}
