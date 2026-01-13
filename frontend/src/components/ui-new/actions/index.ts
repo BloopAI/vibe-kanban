@@ -370,6 +370,7 @@ export const Actions = {
         : 'Show Sidebar',
     icon: SidebarSimpleIcon,
     requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.isSidebarVisible,
     execute: () => {
       useLayoutStore.getState().toggleSidebar();
@@ -384,6 +385,7 @@ export const Actions = {
         : 'Show Chat Panel',
     icon: ChatsTeardropIcon,
     requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.isMainPanelVisible,
     isEnabled: (ctx) => !(ctx.isMainPanelVisible && !ctx.isChangesMode),
     execute: () => {
@@ -399,6 +401,7 @@ export const Actions = {
         : 'Show Git Panel',
     icon: SidebarSimpleIcon,
     requiresTarget: false,
+    isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.isGitPanelVisible,
     execute: () => {
       useLayoutStore.getState().toggleGitPanel();
@@ -413,7 +416,7 @@ export const Actions = {
         : 'Show Changes Panel',
     icon: GitDiffIcon,
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => ctx.hasWorkspace && !ctx.isCreateMode,
     isActive: (ctx) => ctx.isChangesMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
@@ -429,7 +432,7 @@ export const Actions = {
         : 'Show Logs Panel',
     icon: TerminalIcon,
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => ctx.hasWorkspace && !ctx.isCreateMode,
     isActive: (ctx) => ctx.isLogsMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
@@ -445,7 +448,7 @@ export const Actions = {
         : 'Show Preview Panel',
     icon: DesktopIcon,
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => ctx.hasWorkspace && !ctx.isCreateMode,
     isActive: (ctx) => ctx.isPreviewMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
