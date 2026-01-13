@@ -24,11 +24,7 @@ pub struct Session {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-pub struct CreateSession {
-    pub executor: Option<String>,
-}
-
+// HISTORICAL DATA ONLY - No new sessions can be created
 impl Session {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -86,28 +82,5 @@ impl Session {
         )
         .fetch_optional(pool)
         .await
-    }
-
-    pub async fn create(
-        pool: &SqlitePool,
-        data: &CreateSession,
-        id: Uuid,
-        workspace_id: Uuid,
-    ) -> Result<Self, SessionError> {
-        Ok(sqlx::query_as!(
-            Session,
-            r#"INSERT INTO sessions (id, workspace_id, executor)
-               VALUES ($1, $2, $3)
-               RETURNING id AS "id!: Uuid",
-                         workspace_id AS "workspace_id!: Uuid",
-                         executor,
-                         created_at AS "created_at!: DateTime<Utc>",
-                         updated_at AS "updated_at!: DateTime<Utc>""#,
-            id,
-            workspace_id,
-            data.executor
-        )
-        .fetch_one(pool)
-        .await?)
     }
 }

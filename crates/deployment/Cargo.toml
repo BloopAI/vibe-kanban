@@ -7,7 +7,6 @@ edition = "2024"
 db = { path = "../db" }
 utils = { path = "../utils" }
 services = { path = "../services" }
-executors = { path = "../executors" }
 async-trait = { workspace = true } 
 thiserror = { workspace = true } 
 anyhow = { workspace = true }

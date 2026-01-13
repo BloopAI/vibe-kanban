@@ -10,7 +10,7 @@ use db::models::{
     workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
-use executors::executors::ExecutorError;
+// use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     config::{ConfigError, EditorOpenError},

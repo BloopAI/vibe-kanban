@@ -10,7 +10,7 @@ use std::{
 };
 
 use db::{DBService, models::workspace_repo::WorkspaceRepo};
-use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
+// use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{

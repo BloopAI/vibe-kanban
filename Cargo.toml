@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/server",
     "crates/db",
-    "crates/executors",
     "crates/services",
     "crates/utils",
     "crates/local-deployment",

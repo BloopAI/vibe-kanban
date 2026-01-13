@@ -9,7 +9,6 @@ cloud = []
 
 [dependencies]
 utils = { path = "../utils" }
-executors = { path = "../executors" }
 db = { path = "../db" }
 remote = { path = "../remote" }
 tokio = { workspace = true }

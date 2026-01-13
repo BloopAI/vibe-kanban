@@ -7,7 +7,7 @@ use db::models::{
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     workspace::{Workspace, WorkspaceContext},
 };
-use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+// use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use regex::Regex;
 use rmcp::{
     ErrorData, ServerHandler,
@@ -207,33 +207,6 @@ pub struct DeleteTaskRequest {
     pub task_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct McpWorkspaceRepoInput {
-    #[schemars(description = "The repository ID")]
-    pub repo_id: Uuid,
-    #[schemars(description = "The base branch for this repository")]
-    pub base_branch: String,
-}
-
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct StartWorkspaceSessionRequest {
-    #[schemars(description = "The ID of the task to start")]
-    pub task_id: Uuid,
-    #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
-    )]
-    pub executor: String,
-    #[schemars(description = "Optional executor variant, if needed")]
-    pub variant: Option<String>,
-    #[schemars(description = "Base branch for each repository in the project")]
-    pub repos: Vec<McpWorkspaceRepoInput>,
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct StartWorkspaceSessionResponse {
-    pub task_id: String,
-    pub workspace_id: String,
-}
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct DeleteTaskResponse {
@@ -635,84 +608,6 @@ impl TaskServer {
                 status: status.clone(),
                 limit: task_limit as i32,
             },
-        };
-
-        TaskServer::success(&response)
-    }
-
-    #[tool(
-        description = "Start working on a task by creating and launching a new workspace session."
-    )]
-    async fn start_workspace_session(
-        &self,
-        Parameters(StartWorkspaceSessionRequest {
-            task_id,
-            executor,
-            variant,
-            repos,
-        }): Parameters<StartWorkspaceSessionRequest>,
-    ) -> Result<CallToolResult, ErrorData> {
-        if repos.is_empty() {
-            return Self::err(
-                "At least one repository must be specified.".to_string(),
-                None::<String>,
-            );
-        }
-
-        let executor_trimmed = executor.trim();
-        if executor_trimmed.is_empty() {
-            return Self::err("Executor must not be empty.".to_string(), None::<String>);
-        }
-
-        let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
-        let base_executor = match BaseCodingAgent::from_str(&normalized_executor) {
-            Ok(exec) => exec,
-            Err(_) => {
-                return Self::err(
-                    format!("Unknown executor '{executor_trimmed}'."),
-                    None::<String>,
-                );
-            }
-        };
-
-        let variant = variant.and_then(|v| {
-            let trimmed = v.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        });
-
-        let executor_profile_id = ExecutorProfileId {
-            executor: base_executor,
-            variant,
-        };
-
-        let workspace_repos: Vec<WorkspaceRepoInput> = repos
-            .into_iter()
-            .map(|r| WorkspaceRepoInput {
-                repo_id: r.repo_id,
-                target_branch: r.base_branch,
-            })
-            .collect();
-
-        let payload = CreateTaskAttemptBody {
-            task_id,
-            executor_profile_id,
-            repos: workspace_repos,
-        };
-
-        let url = self.url("/api/task-attempts");
-        let workspace: Workspace = match self.send_json(self.client.post(&url).json(&payload)).await
-        {
-            Ok(workspace) => workspace,
-            Err(e) => return Ok(e),
-        };
-
-        let response = StartWorkspaceSessionResponse {
-            task_id: workspace.task_id.to_string(),
-            workspace_id: workspace.id.to_string(),
         };
 
         TaskServer::success(&response)

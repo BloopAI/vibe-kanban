@@ -32,7 +32,7 @@ use db::models::{
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
-use executors::{
+// use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
@@ -54,7 +54,6 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
-    routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -117,12 +116,8 @@ pub struct WorkspaceRepoInput {
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct RunAgentSetupRequest {
-    pub executor_profile_id: ExecutorProfileId,
-}
 
 #[derive(Debug, Serialize, TS)]
-pub struct RunAgentSetupResponse {}
 
 #[axum::debug_handler]
 pub async fn create_task_attempt(
@@ -180,13 +175,14 @@ pub async fn create_task_attempt(
         .collect();
 
     WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
-    if let Err(err) = deployment
-        .container()
-        .start_workspace(&workspace, executor_profile_id.clone())
-        .await
-    {
-        tracing::error!("Failed to start task attempt: {}", err);
-    }
+    // Execution-related code removed:
+    // if let Err(err) = deployment
+    //     .container()
+    //     .start_workspace(&workspace, executor_profile_id.clone())
+    //     .await
+    // {
+    //     tracing::error!("Failed to start task attempt: {}", err);
+    // }
 
     deployment
         .track_if_analytics_allowed(
@@ -206,37 +202,6 @@ pub async fn create_task_attempt(
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
-#[axum::debug_handler]
-pub async fn run_agent_setup(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<RunAgentSetupRequest>,
-) -> Result<ResponseJson<ApiResponse<RunAgentSetupResponse>>, ApiError> {
-    let executor_profile_id = payload.executor_profile_id;
-    let config = ExecutorConfigs::get_cached();
-    let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
-    match coding_agent {
-        CodingAgent::CursorAgent(_) => {
-            cursor_setup::run_cursor_setup(&deployment, &workspace).await?;
-        }
-        CodingAgent::Codex(codex) => {
-            codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
-        }
-        _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
-    }
-
-    deployment
-        .track_if_analytics_allowed(
-            "agent_setup_script_executed",
-            serde_json::json!({
-                "executor_profile_id": executor_profile_id.to_string(),
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {})))
-}
 
 #[axum::debug_handler]
 pub async fn stream_task_attempt_diff_ws(
@@ -1092,122 +1057,6 @@ pub async fn abort_conflicts_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-#[axum::debug_handler]
-pub async fn start_dev_server(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    // Get parent task
-    let task = workspace
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Get parent project
-    let project = task
-        .parent_project(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    // Stop any existing dev servers for this project
-    let existing_dev_servers =
-        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
-            Ok(servers) => servers,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to find running dev servers for project {}: {}",
-                    project.id,
-                    e
-                );
-                return Err(ApiError::Workspace(WorkspaceError::ValidationError(
-                    e.to_string(),
-                )));
-            }
-        };
-
-    for dev_server in existing_dev_servers {
-        tracing::info!(
-            "Stopping existing dev server {} for project {}",
-            dev_server.id,
-            project.id
-        );
-
-        if let Err(e) = deployment
-            .container()
-            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
-            .await
-        {
-            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
-        }
-    }
-
-    // Get dev script from project (dev_script is project-level, not per-repo)
-    let dev_script = match &project.dev_script {
-        Some(script) if !script.is_empty() => script.clone(),
-        _ => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "No dev server script configured for this project",
-            )));
-        }
-    };
-
-    let working_dir = project
-        .dev_script_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
-
-    let executor_action = ExecutorAction::new(
-        ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: dev_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::DevServer,
-            working_dir,
-        }),
-        None,
-    );
-
-    // Get or create a session for dev server
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
-        None => {
-            Session::create(
-                pool,
-                &CreateSession {
-                    executor: Some("dev-server".to_string()),
-                },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
-        }
-    };
-
-    deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::DevServer,
-        )
-        .await?;
-
-    deployment
-        .track_if_analytics_allowed(
-            "dev_server_started",
-            serde_json::json!({
-                "task_id": task.id.to_string(),
-                "project_id": project.id.to_string(),
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(())))
-}
 
 pub async fn get_task_attempt_children(
     Extension(workspace): Extension<Workspace>,
@@ -1239,23 +1088,6 @@ pub async fn get_task_attempt_children(
     }
 }
 
-pub async fn stop_task_attempt_execution(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    deployment.container().try_stop(&workspace, false).await;
-
-    deployment
-        .track_if_analytics_allowed(
-            "task_attempt_stopped",
-            serde_json::json!({
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(())))
-}
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -1265,210 +1097,6 @@ pub enum RunScriptError {
     ProcessAlreadyRunning,
 }
 
-#[axum::debug_handler]
-pub async fn run_setup_script(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    // Check if any non-dev-server processes are already running for this workspace
-    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
-        .await?
-    {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunScriptError::ProcessAlreadyRunning,
-        )));
-    }
-
-    deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-
-    // Get parent task and project
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .setup_actions_for_repos(&project_repos)
-    {
-        Some(action) => action,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                RunScriptError::NoScriptConfigured,
-            )));
-        }
-    };
-
-    // Get or create a session for setup script
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
-        None => {
-            Session::create(
-                pool,
-                &CreateSession {
-                    executor: Some("setup-script".to_string()),
-                },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
-        }
-    };
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::SetupScript,
-        )
-        .await?;
-
-    deployment
-        .track_if_analytics_allowed(
-            "setup_script_executed",
-            serde_json::json!({
-                "task_id": task.id.to_string(),
-                "project_id": project.id.to_string(),
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(execution_process)))
-}
-
-#[axum::debug_handler]
-pub async fn run_cleanup_script(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    // Check if any non-dev-server processes are already running for this workspace
-    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
-        .await?
-    {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunScriptError::ProcessAlreadyRunning,
-        )));
-    }
-
-    deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-
-    // Get parent task and project
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .cleanup_actions_for_repos(&project_repos)
-    {
-        Some(action) => action,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                RunScriptError::NoScriptConfigured,
-            )));
-        }
-    };
-
-    // Get or create a session for cleanup script
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
-        None => {
-            Session::create(
-                pool,
-                &CreateSession {
-                    executor: Some("cleanup-script".to_string()),
-                },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
-        }
-    };
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::CleanupScript,
-        )
-        .await?;
-
-    deployment
-        .track_if_analytics_allowed(
-            "cleanup_script_executed",
-            serde_json::json!({
-                "task_id": task.id.to_string(),
-                "project_id": project.id.to_string(),
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(execution_process)))
-}
-
-#[axum::debug_handler]
-pub async fn gh_cli_setup_handler(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, GhCliSetupError>>, ApiError> {
-    match gh_cli_setup::run_gh_cli_setup(&deployment, &workspace).await {
-        Ok(execution_process) => {
-            deployment
-                .track_if_analytics_allowed(
-                    "gh_cli_setup_executed",
-                    serde_json::json!({
-                        "workspace_id": workspace.id.to_string(),
-                    }),
-                )
-                .await;
-
-            Ok(ResponseJson(ApiResponse::success(execution_process)))
-        }
-        Err(ApiError::Executor(ExecutorError::ExecutableNotFound { program }))
-            if program == "brew" =>
-        {
-            Ok(ResponseJson(ApiResponse::error_with_data(
-                GhCliSetupError::BrewMissing,
-            )))
-        }
-        Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)) => Ok(ResponseJson(
-            ApiResponse::error_with_data(GhCliSetupError::SetupHelperNotSupported),
-        )),
-        Err(ApiError::Executor(err)) => Ok(ResponseJson(ApiResponse::error_with_data(
-            GhCliSetupError::Other {
-                message: err.to_string(),
-            },
-        ))),
-        Err(err) => Err(err),
-    }
-}
 
 pub async fn get_task_attempt_repos(
     Extension(workspace): Extension<Workspace>,
@@ -1485,11 +1113,6 @@ pub async fn get_task_attempt_repos(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
-        .route("/run-agent-setup", post(run_agent_setup))
-        .route("/gh-cli-setup", post(gh_cli_setup_handler))
-        .route("/start-dev-server", post(start_dev_server))
-        .route("/run-setup-script", post(run_setup_script))
-        .route("/run-cleanup-script", post(run_cleanup_script))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))
@@ -1502,7 +1125,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/pr/comments", get(pr::get_pr_comments))
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/children", get(get_task_attempt_children))
-        .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))

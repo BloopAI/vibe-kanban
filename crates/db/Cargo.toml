@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 utils = { path = "../utils" }
-executors = { path = "../executors" }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

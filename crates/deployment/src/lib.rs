@@ -11,7 +11,7 @@ use db::{
         workspace::WorkspaceError,
     },
 };
-use executors::executors::ExecutorError;
+// use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git2::Error as Git2Error;
 use serde_json::Value;
