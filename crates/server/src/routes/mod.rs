@@ -9,7 +9,7 @@ pub mod approvals;
 pub mod config;
 pub mod containers;
 pub mod filesystem;
-// pub mod github;
+pub mod github;
 pub mod events;
 pub mod execution_processes;
 pub mod frontend;
@@ -44,6 +44,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(organizations::router())
         .merge(filesystem::router())
         .merge(repo::router())
+        .merge(github::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))

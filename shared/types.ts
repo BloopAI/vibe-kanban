@@ -54,13 +54,13 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, source: string | null, external_ref: string | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
@@ -299,6 +299,24 @@ export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, };
 
 export type GetPrCommentsQuery = { repo_id: string, };
+
+export type ListGitHubIssuesQuery = { 
+/**
+ * The repository ID to fetch issues from.
+ */
+repo_id: string, 
+/**
+ * Issue state filter: "open", "closed", or "all" (default: "open").
+ */
+state: string | null, 
+/**
+ * Maximum number of issues to return (default: 100).
+ */
+limit: number | null, };
+
+export type GitHubIssueResponse = { number: bigint, title: string, body: string | null, state: string, url: string, created_at: string, labels: Array<string>, };
+
+export type GitHubRepoInfoResponse = { owner: string, repo_name: string, };
 
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, diff_hunk: string | null, };
 

@@ -91,6 +91,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  GitHubIssueResponse,
+  GitHubRepoInfoResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1389,5 +1391,32 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// GitHub API
+export const githubApi = {
+  /**
+   * List GitHub issues for a repository
+   */
+  listIssues: async (
+    repoId: string,
+    state?: 'open' | 'closed' | 'all',
+    limit?: number
+  ): Promise<GitHubIssueResponse[]> => {
+    const params = new URLSearchParams({ repo_id: repoId });
+    if (state) params.set('state', state);
+    if (limit) params.set('limit', limit.toString());
+    const response = await makeRequest(`/api/github/issues?${params.toString()}`);
+    return handleApiResponse<GitHubIssueResponse[]>(response);
+  },
+
+  /**
+   * Get repository info (owner/repo name) for a repository
+   */
+  getRepoInfo: async (repoId: string): Promise<GitHubRepoInfoResponse> => {
+    const params = new URLSearchParams({ repo_id: repoId });
+    const response = await makeRequest(`/api/github/repo-info?${params.toString()}`);
+    return handleApiResponse<GitHubRepoInfoResponse>(response);
   },
 };

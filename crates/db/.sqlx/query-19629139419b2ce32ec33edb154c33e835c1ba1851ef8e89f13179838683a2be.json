@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", source, external_ref, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -39,13 +39,23 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "source",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "external_ref",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
@@ -60,9 +70,11 @@
       false,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "a5b88fa071f981b5607d13e982bfb43c390ba6fb2fc6a856d7b1d849b74b3745"
+  "hash": "19629139419b2ce32ec33edb154c33e835c1ba1851ef8e89f13179838683a2be"
 }
