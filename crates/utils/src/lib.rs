@@ -7,6 +7,7 @@ pub mod approvals;
 pub mod assets;
 pub mod browser;
 pub mod diff;
+pub mod execution_logs;
 pub mod git;
 pub mod jwt;
 pub mod log_msg;

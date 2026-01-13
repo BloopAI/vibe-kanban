@@ -11,6 +11,7 @@ use services::services::{
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
+    execution_logs::migrate_execution_process_logs_to_files,
     file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
@@ -113,6 +114,15 @@ impl Deployment for LocalDeployment {
             );
             DBService::new_with_after_connect(hook).await?
         };
+
+        {
+            let pool = db.pool.clone();
+            tokio::spawn(async move {
+                if let Err(e) = migrate_execution_process_logs_to_files(&pool).await {
+                    tracing::error!("Execution log migration failed: {:#}", e);
+                }
+            });
+        }
 
         let image = ImageService::new(db.clone().pool)?;
         {

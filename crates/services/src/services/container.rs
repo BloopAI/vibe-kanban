@@ -44,6 +44,7 @@ use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
 use utils::{
+    execution_logs::ExecutionLogWriter,
     log_msg::LogMsg,
     msg_store::MsgStore,
     text::{git_branch_id, short_uuid},
@@ -58,6 +59,55 @@ use crate::services::{
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
+
+static EXECUTION_PROCESS_LOGS_TABLE_MISSING: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+fn parse_log_jsonl_lossy(execution_id: Uuid, jsonl: &str) -> Vec<LogMsg> {
+    let mut messages = Vec::new();
+    let mut bad_lines = 0usize;
+
+    for line in jsonl.lines() {
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        match serde_json::from_str::<LogMsg>(line) {
+            Ok(msg) => messages.push(msg),
+            Err(e) => {
+                bad_lines += 1;
+                if bad_lines <= 3 {
+                    tracing::warn!(
+                        "Skipping unparsable log line for execution {}: {}",
+                        execution_id,
+                        e
+                    );
+                }
+            }
+        }
+    }
+
+    if bad_lines > 3 {
+        tracing::warn!(
+            "Skipped {} unparsable log lines for execution {}",
+            bad_lines,
+            execution_id
+        );
+    }
+
+    messages
+}
+
+fn is_missing_execution_process_logs_table_error(err: &SqlxError) -> bool {
+    match err {
+        SqlxError::Database(db_err) => {
+            db_err
+                .message()
+                .contains("no such table: execution_process_logs")
+        }
+        _ => false,
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
@@ -592,28 +642,73 @@ pub trait ContainerService {
                     .boxed(),
             );
         } else {
-            // Fallback: load from DB and create direct stream
-            let log_records =
-                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
-                    Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
-                        return None;
-                    }
-                };
-
-            let messages = match ExecutionProcessLogs::parse_logs(&log_records) {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
+            // Fallback: try FS first; if the file doesn't exist, fallback to DB.
+            if let Ok(Some(jsonl)) =
+                crate::services::execution_logs::read_execution_logs_for_execution(
+                    &self.db().pool,
+                    *id,
+                )
+                .await
+            {
+                let messages = parse_log_jsonl_lossy(*id, &jsonl);
+                if messages.is_empty() {
                     return None;
                 }
-            };
+
+                let stream = futures::stream::iter(
+                    messages
+                        .into_iter()
+                        .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
+                        .chain(std::iter::once(LogMsg::Finished))
+                        .map(Ok::<_, std::io::Error>),
+                )
+                .boxed();
+
+                return Some(stream);
+            }
+
+            let db_messages: Vec<LogMsg> =
+                if EXECUTION_PROCESS_LOGS_TABLE_MISSING.load(std::sync::atomic::Ordering::Relaxed) {
+                    Vec::new()
+                } else {
+                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
+                    Ok(records) if !records.is_empty() => {
+                        match ExecutionProcessLogs::parse_logs(&records) {
+                            Ok(msgs) => msgs,
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to parse DB logs for execution {}: {}",
+                                    id,
+                                    e
+                                );
+                                Vec::new()
+                            }
+                        }
+                    }
+                    Ok(_) => Vec::new(),
+                    Err(e) => {
+                        if !is_missing_execution_process_logs_table_error(&e) {
+                            tracing::error!(
+                                "Failed to fetch DB logs for execution {}: {}",
+                                id,
+                                e
+                            );
+                        } else {
+                            EXECUTION_PROCESS_LOGS_TABLE_MISSING
+                                .store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
+                        Vec::new()
+                    }
+                }
+                };
+
+            if db_messages.is_empty() {
+                return None;
+            }
 
             // Direct stream from parsed messages
             let stream = futures::stream::iter(
-                messages
+                db_messages
                     .into_iter()
                     .filter(|m| matches!(m, LogMsg::Stdout(_) | LogMsg::Stderr(_)))
                     .chain(std::iter::once(LogMsg::Finished))
@@ -641,22 +736,51 @@ pub trait ContainerService {
                     .boxed(),
             )
         } else {
-            // Fallback: load from DB and normalize
-            let log_records =
+            // Fallback: try FS first; if the file doesn't exist, fallback to DB.
+            let raw_messages: Vec<LogMsg> = if let Ok(Some(jsonl)) =
+                crate::services::execution_logs::read_execution_logs_for_execution(
+                    &self.db().pool,
+                    *id,
+                )
+                .await
+            {
+                let messages = parse_log_jsonl_lossy(*id, &jsonl);
+                if messages.is_empty() {
+                    return None;
+                }
+                messages
+            } else if EXECUTION_PROCESS_LOGS_TABLE_MISSING.load(std::sync::atomic::Ordering::Relaxed)
+            {
+                return None;
+            } else {
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => {
+                        match ExecutionProcessLogs::parse_logs(&records) {
+                            Ok(msgs) => msgs,
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to parse DB logs for execution {}: {}",
+                                    id,
+                                    e
+                                );
+                                return None;
+                            }
+                        }
+                    }
+                    Ok(_) => return None,
                     Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
+                        if !is_missing_execution_process_logs_table_error(&e) {
+                            tracing::error!(
+                                "Failed to fetch DB logs for execution {}: {}",
+                                id,
+                                e
+                            );
+                        } else {
+                            EXECUTION_PROCESS_LOGS_TABLE_MISSING
+                                .store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
                         return None;
                     }
-                };
-
-            let raw_messages = match ExecutionProcessLogs::parse_logs(&log_records) {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
-                    return None;
                 }
             };
 
@@ -797,12 +921,32 @@ pub trait ContainerService {
         }
     }
 
-    fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
+    fn spawn_stream_raw_logs_to_fs(
+        &self,
+        execution_id: &Uuid,
+        project_id: Uuid,
+        session_id: Uuid,
+    ) -> JoinHandle<()> {
         let execution_id = *execution_id;
         let msg_stores = self.msg_stores().clone();
         let db = self.db().clone();
 
         tokio::spawn(async move {
+            let log_writer =
+                match ExecutionLogWriter::new_for_execution(project_id, session_id, execution_id)
+                    .await
+                {
+                    Ok(w) => w,
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to create log file writer for execution {}: {}",
+                            execution_id,
+                            e
+                        );
+                        return;
+                    }
+                };
+
             // Get the message store for this execution
             let store = {
                 let map = msg_stores.read().await;
@@ -818,15 +962,11 @@ pub trait ContainerService {
                             // Serialize this individual message as a JSONL line
                             match serde_json::to_string(&msg) {
                                 Ok(jsonl_line) => {
-                                    let jsonl_line_with_newline = format!("{jsonl_line}\n");
+                                    let mut jsonl_line_with_newline = jsonl_line;
+                                    jsonl_line_with_newline.push('\n');
 
-                                    // Append this line to the database
-                                    if let Err(e) = ExecutionProcessLogs::append_log_line(
-                                        &db.pool,
-                                        execution_id,
-                                        &jsonl_line_with_newline,
-                                    )
-                                    .await
+                                    if let Err(e) =
+                                        log_writer.append_jsonl_line(&jsonl_line_with_newline).await
                                     {
                                         tracing::error!(
                                             "Failed to append log line for execution {}: {}",
@@ -845,7 +985,6 @@ pub trait ContainerService {
                             }
                         }
                         LogMsg::SessionId(agent_session_id) => {
-                            // Append this line to the database
                             if let Err(e) = CodingAgentTurn::update_agent_session_id(
                                 &db.pool,
                                 execution_id,
@@ -1082,14 +1221,18 @@ pub trait ContainerService {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
 
             // Emit stderr error message
+            let log_writer = ExecutionLogWriter::new_for_execution(
+                task.project_id,
+                session.id,
+                execution_process.id,
+            )
+            .await
+            .ok();
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
             if let Ok(json_line) = serde_json::to_string(&log_message) {
-                let _ = ExecutionProcessLogs::append_log_line(
-                    &self.db().pool,
-                    execution_process.id,
-                    &format!("{json_line}\n"),
-                )
-                .await;
+                if let Some(writer) = &log_writer {
+                    let _ = writer.append_jsonl_line(&format!("{json_line}\n")).await;
+                }
             }
 
             // Emit NextAction with failure context for coding agent requests
@@ -1107,12 +1250,9 @@ pub trait ContainerService {
                 };
                 let patch = ConversationPatch::add_normalized_entry(2, error_message);
                 if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
-                    let _ = ExecutionProcessLogs::append_log_line(
-                        &self.db().pool,
-                        execution_process.id,
-                        &format!("{json_line}\n"),
-                    )
-                    .await;
+                    if let Some(writer) = &log_writer {
+                        let _ = writer.append_jsonl_line(&format!("{json_line}\n")).await;
+                    }
                 }
             };
             return Err(start_error);
@@ -1158,7 +1298,7 @@ pub trait ContainerService {
             }
         }
 
-        self.spawn_stream_raw_logs_to_db(&execution_process.id);
+        self.spawn_stream_raw_logs_to_fs(&execution_process.id, task.project_id, session.id);
         Ok(execution_process)
     }
 

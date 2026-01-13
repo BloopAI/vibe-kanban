@@ -1615,6 +1615,14 @@ pub async fn delete_workspace(
     // Gather data needed for background cleanup
     let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
     let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let project_id = Task::find_by_id(pool, workspace.task_id)
+        .await?
+        .map(|t| t.project_id);
+    let session_ids: Vec<Uuid> = Session::find_by_workspace_id(pool, workspace.id)
+        .await?
+        .into_iter()
+        .map(|s| s.id)
+        .collect();
 
     // Nullify parent_workspace_id for any child tasks before deletion
     let children_affected = Task::nullify_children_by_workspace_id(pool, workspace.id).await?;
@@ -1643,29 +1651,48 @@ pub async fn delete_workspace(
         )
         .await;
 
-    // Spawn background cleanup task for filesystem resources
-    if let Some(workspace_dir) = workspace_dir {
+    // Spawn background cleanup task for filesystem resources (workspace files + execution logs)
+    {
         let workspace_id = workspace.id;
         tokio::spawn(async move {
-            tracing::info!(
-                "Starting background cleanup for workspace {} at {}",
-                workspace_id,
-                workspace_dir.display()
-            );
+            if let Some(project_id) = project_id {
+                for session_id in session_ids {
+                    if let Err(e) = services::services::execution_logs::remove_session_process_logs(
+                        project_id, session_id,
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Failed to remove filesystem process logs for session {}: {}",
+                            session_id,
+                            e
+                        );
+                    }
+                }
+            }
 
-            if let Err(e) = WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
-            {
-                tracing::error!(
-                    "Background workspace cleanup failed for {} at {}: {}",
-                    workspace_id,
-                    workspace_dir.display(),
-                    e
-                );
-            } else {
+            if let Some(workspace_dir) = workspace_dir {
                 tracing::info!(
-                    "Background cleanup completed for workspace {}",
-                    workspace_id
+                    "Starting background cleanup for workspace {} at {}",
+                    workspace_id,
+                    workspace_dir.display()
                 );
+
+                if let Err(e) =
+                    WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+                {
+                    tracing::error!(
+                        "Background workspace cleanup failed for {} at {}: {}",
+                        workspace_id,
+                        workspace_dir.display(),
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Background cleanup completed for workspace {}",
+                        workspace_id
+                    );
+                }
             }
         });
     }

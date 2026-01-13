@@ -19,18 +19,17 @@ impl ExecutionProcessLogs {
         pool: &SqlitePool,
         execution_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutionProcessLogs,
-            r#"SELECT 
-                execution_id as "execution_id!: Uuid",
+        sqlx::query_as::<_, ExecutionProcessLogs>(
+            r#"SELECT
+                execution_id,
                 logs,
                 byte_size,
-                inserted_at as "inserted_at!: DateTime<Utc>"
-               FROM execution_process_logs 
-               WHERE execution_id = $1
+                inserted_at
+               FROM execution_process_logs
+               WHERE execution_id = ?
                ORDER BY inserted_at ASC"#,
-            execution_id
         )
+        .bind(execution_id)
         .fetch_all(pool)
         .await
     }
@@ -45,25 +44,5 @@ impl ExecutionProcessLogs {
             }
         }
         Ok(messages)
-    }
-
-    /// Append a JSONL line to the logs for an execution process
-    pub async fn append_log_line(
-        pool: &SqlitePool,
-        execution_id: Uuid,
-        jsonl_line: &str,
-    ) -> Result<(), sqlx::Error> {
-        let byte_size = jsonl_line.len() as i64;
-        sqlx::query!(
-            r#"INSERT INTO execution_process_logs (execution_id, logs, byte_size, inserted_at)
-               VALUES ($1, $2, $3, datetime('now', 'subsec'))"#,
-            execution_id,
-            jsonl_line,
-            byte_size
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
     }
 }

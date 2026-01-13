@@ -16,6 +16,7 @@ use utils::api::projects::RemoteProject;
 use uuid::Uuid;
 
 use super::{
+    execution_logs::remove_project_execution_logs,
     file_ranker::FileRanker,
     file_search_cache::{CacheError, FileSearchCache, SearchMode, SearchQuery},
     repo::{RepoError, RepoService},
@@ -250,6 +251,14 @@ impl ProjectService {
 
         if let Err(e) = Repo::delete_orphaned(pool).await {
             tracing::error!("Failed to delete orphaned repos: {}", e);
+        }
+
+        if let Err(e) = remove_project_execution_logs(project_id).await {
+            tracing::warn!(
+                "Failed to remove filesystem execution logs for project {}: {}",
+                project_id,
+                e
+            );
         }
 
         Ok(rows_affected)
