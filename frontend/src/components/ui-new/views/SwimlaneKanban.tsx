@@ -166,13 +166,13 @@ export function SwimlaneKanban({
             const isGroupExpanded = expandedGroups.has(groupKey);
 
             return (
-              <div key={groupKey} className="bg-secondary rounded overflow-hidden">
+              <div key={groupKey} className="rounded overflow-hidden">
                 {/* Group header */}
-                <div className="flex items-center justify-between px-half py-1">
+                <div className="flex items-center justify-between px-half py-1 bg-secondary/50">
                   <button
                     type="button"
                     onClick={() => onToggleGroup(group?.id ?? null)}
-                    className="flex items-center gap-half flex-1 text-left"
+                    className="flex items-center gap-half flex-1 text-left group"
                   >
                     <CaretDownIcon
                       weight="fill"
@@ -181,17 +181,17 @@ export function SwimlaneKanban({
                         !isGroupExpanded && '-rotate-90'
                       )}
                     />
-                    <span className="text-xs font-medium text-normal">
+                    <span className="text-xs font-medium text-low group-hover:text-normal transition-colors">
                       {group?.name ?? 'Ungrouped'}
                     </span>
-                    <span className="text-xs text-low">
-                      ({projects.length})
+                    <span className="text-xs text-low/60">
+                      {projects.length}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onExpandOnly(group?.id ?? null)}
-                    className="px-half py-0.5 text-xs text-low hover:text-normal hover:bg-panel rounded transition-colors"
+                    className="px-1 py-0.5 text-xs text-low/60 hover:text-normal rounded transition-colors"
                     title="Focus on this group"
                   >
                     Focus
@@ -209,21 +209,26 @@ export function SwimlaneKanban({
                       className="overflow-hidden"
                     >
                       {/* Table header */}
-                      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel sticky top-0 z-10 bg-secondary">
-                        <div className="p-half border-r border-panel" />
+                      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] sticky top-0 z-10 bg-primary">
+                        <div className="py-half px-half" />
                         {STATUS_ORDER.map((status) => (
                           <div
                             key={status}
-                            className="flex items-center justify-between p-half border-r border-panel last:border-r-0"
+                            className="flex items-center justify-between py-half px-base"
                           >
-                            <span className="flex items-center gap-half text-xs text-normal font-medium">
+                            <span className="flex items-center gap-half text-xs text-normal font-medium tracking-wide">
                               <span
-                                className="h-2 w-2 rounded-full shrink-0"
+                                className="h-[6px] w-[6px] rounded-full shrink-0"
                                 style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
                               />
                               {statusLabels[status]}
                             </span>
-                            <PlusIcon className="size-icon-xs text-low hover:text-normal cursor-pointer" />
+                            <button
+                              type="button"
+                              className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
+                            >
+                              <PlusIcon className="size-icon-xs" />
+                            </button>
                           </div>
                         ))}
                       </div>

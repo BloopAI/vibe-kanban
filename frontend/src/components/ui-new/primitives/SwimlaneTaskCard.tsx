@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
-import { SpinnerIcon, XCircleIcon } from '@phosphor-icons/react';
+import { SpinnerIcon, XCircleIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
 
@@ -43,33 +43,35 @@ export function SwimlaneTaskCard({
       {...listeners}
       {...attributes}
       className={cn(
-        'w-full text-left px-half py-1 rounded border transition-all cursor-grab active:cursor-grabbing',
-        'hover:bg-panel/80 hover:border-panel',
-        isDragging && 'shadow-md scale-[1.02] bg-primary',
+        'group/card w-full text-left p-half rounded transition-all cursor-grab active:cursor-grabbing',
+        'hover:ring-1 hover:ring-panel',
+        isDragging && 'shadow-lg scale-[1.02] opacity-90',
         isSelected
-          ? 'bg-panel border-brand ring-1 ring-inset ring-brand'
-          : 'bg-secondary border-transparent'
+          ? 'bg-panel ring-1 ring-brand'
+          : 'bg-[hsl(0_0%_18%)]'
       )}
     >
       <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-half">
-          <span className="flex-1 text-xs text-normal truncate leading-snug font-medium">
+        <div className="flex items-start gap-half">
+          <span className="flex-1 text-xs text-normal leading-snug font-medium">
             {task.title}
           </span>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             {task.has_in_progress_attempt && (
               <SpinnerIcon className="size-icon-xs animate-spin text-info" />
             )}
             {task.last_attempt_failed && (
               <XCircleIcon className="size-icon-xs text-error" />
             )}
+            <DotsThreeIcon
+              weight="bold"
+              className="size-icon-xs text-low opacity-0 group-hover/card:opacity-100 transition-opacity"
+            />
           </div>
         </div>
         {task.description && (
-          <p className="text-xs text-low leading-snug line-clamp-1">
-            {task.description.length > 60
-              ? `${task.description.substring(0, 60)}...`
-              : task.description}
+          <p className="text-xs text-low/70 leading-snug line-clamp-2">
+            {task.description}
           </p>
         )}
       </div>

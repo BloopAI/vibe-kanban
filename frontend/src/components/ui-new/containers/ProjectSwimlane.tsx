@@ -27,10 +27,9 @@ const STATUS_ORDER: TaskStatus[] = [
 interface StatusCellProps {
   status: TaskStatus;
   children: React.ReactNode;
-  onAddTask: () => void;
 }
 
-function StatusCell({ status, children, onAddTask }: StatusCellProps) {
+function StatusCell({ status, children }: StatusCellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
     data: { type: 'status', status },
@@ -40,26 +39,14 @@ function StatusCell({ status, children, onAddTask }: StatusCellProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'group/cell p-half border-r border-panel last:border-r-0 min-h-[60px]',
-        'transition-colors relative',
-        isOver && 'bg-brand/10 ring-1 ring-inset ring-brand/30'
+        'group/cell px-half py-half border-r border-panel/50 last:border-r-0 min-h-[70px]',
+        'transition-all relative',
+        isOver && 'bg-brand/5'
       )}
     >
-      <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
+      <div className="flex flex-col gap-1">
         {children}
       </div>
-      <button
-        type="button"
-        onClick={onAddTask}
-        className={cn(
-          'absolute bottom-1 right-1 p-0.5 rounded',
-          'text-low hover:text-normal hover:bg-panel',
-          'opacity-0 group-hover/cell:opacity-100 transition-opacity'
-        )}
-        title="Add task"
-      >
-        <PlusIcon className="size-icon-xs" />
-      </button>
     </div>
   );
 }
@@ -136,34 +123,35 @@ export function ProjectSwimlane({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel hover:bg-panel/20 transition-colors">
+      <div className="group/row grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel/30 hover:bg-panel/10 transition-colors">
         {/* Project name cell */}
-        <div className="p-half border-r border-panel">
-          <div className="flex items-center gap-half">
+        <div className="px-half py-half border-r border-panel/50 flex items-center">
+          <div className="flex items-center gap-half flex-1 min-w-0">
             <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
             <span className="text-xs text-normal truncate flex-1 font-medium">{project.name}</span>
 
-            {/* Add task button */}
-            <button
-              type="button"
-              onClick={() => onCreateTask(project.id)}
-              className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
-              title="New task"
-            >
-              <PlusIcon className="size-icon-xs" />
-            </button>
+            {/* Actions - visible on row hover */}
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
+              <button
+                type="button"
+                onClick={() => onCreateTask(project.id)}
+                className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
+                title="New task"
+              >
+                <PlusIcon className="size-icon-xs" />
+              </button>
 
-            {/* Actions dropdown */}
-            {(onMoveToGroup || onOpenBoard) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
-                  >
-                    <DotsThreeIcon weight="bold" className="size-icon-xs" />
-                  </button>
-                </DropdownMenuTrigger>
+              {/* Actions dropdown */}
+              {(onMoveToGroup || onOpenBoard) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
+                    >
+                      <DotsThreeIcon weight="bold" className="size-icon-xs" />
+                    </button>
+                  </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {onOpenBoard && (
                     <>
@@ -204,7 +192,8 @@ export function ProjectSwimlane({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -216,13 +205,10 @@ export function ProjectSwimlane({
             <StatusCell
               key={status}
               status={status}
-              onAddTask={() => onCreateTask(project.id, status)}
             >
               {isLoading ? (
-                <div className="text-xs text-low">...</div>
-              ) : tasks.length === 0 ? (
-                <div className="text-xs text-low opacity-50">-</div>
-              ) : (
+                <div className="text-xs text-low animate-pulse">...</div>
+              ) : tasks.length === 0 ? null : (
                 tasks.map((task) => (
                   <SwimlaneTaskCard
                     key={task.id}
