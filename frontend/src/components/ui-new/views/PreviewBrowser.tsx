@@ -125,7 +125,7 @@ export function PreviewBrowser({
     >
       {/* Floating Toolbar */}
       <div className="p-double">
-        <div className="backdrop-blur-sm bg-panel/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
+        <div className="backdrop-blur-sm bg-primary/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
           {/* URL Input */}
           <div
             className={cn(
