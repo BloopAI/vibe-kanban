@@ -36,6 +36,7 @@ import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndi
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
+import { useGoogleFonts } from '@/hooks/useGoogleFonts';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -52,6 +53,8 @@ export function GeneralSettings() {
     loading,
     updateAndSaveConfig, // Use this on Save
   } = useUserSystem();
+
+  const { fonts, loading: fontsLoading } = useGoogleFonts();
 
   // Draft state management
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
@@ -279,6 +282,83 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="font-family">
+                {t('settings.general.appearance.fontFamily.label')}
+              </Label>
+              {draft?.font_family && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => updateDraft({ font_family: null })}
+                  className="h-auto py-1 px-2 text-xs"
+                >
+                  {t('settings.general.appearance.fontFamily.resetToDefault')}
+                </Button>
+              )}
+            </div>
+            <Select
+              value={draft?.font_family ?? 'default'}
+              onValueChange={(value: string) =>
+                updateDraft({
+                  font_family: value === 'default' ? null : value,
+                })
+              }
+              disabled={fontsLoading}
+            >
+              <SelectTrigger id="font-family">
+                <SelectValue
+                  placeholder={
+                    fontsLoading
+                      ? t('settings.general.appearance.fontFamily.loading')
+                      : t('settings.general.appearance.fontFamily.placeholder')
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">
+                  <span className="font-chivo-mono">
+                    Default (Chivo Mono)
+                  </span>
+                </SelectItem>
+                {fonts.map((font) => (
+                  <SelectItem key={font.family} value={font.family}>
+                    <span style={{ fontFamily: font.family }}>
+                      {font.family}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.fontFamily.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="font-size">
+              {t('settings.general.appearance.fontSize.label')}
+            </Label>
+            <Input
+              id="font-size"
+              type="number"
+              min="10"
+              max="24"
+              placeholder={t('settings.general.appearance.fontSize.placeholder')}
+              value={draft?.font_size ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateDraft({
+                  font_size: value === '' ? null : parseInt(value, 10),
+                });
+              }}
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.fontSize.helper')}
             </p>
           </div>
         </CardContent>
