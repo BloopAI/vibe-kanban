@@ -69,4 +69,26 @@ impl ProjectTaskRepository {
 
         Ok(record)
     }
+
+    pub async fn organization_id<'e, E>(
+        executor: E,
+        task_id: Uuid,
+    ) -> Result<Option<Uuid>, ProjectTaskError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let record = sqlx::query_scalar!(
+            r#"
+            SELECT p.organization_id
+            FROM tasks t
+            INNER JOIN projects p ON p.id = t.project_id
+            WHERE t.id = $1
+            "#,
+            task_id
+        )
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(record)
+    }
 }

@@ -14,8 +14,8 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        project_tasks::ProjectTaskRepository,
         task_comments::{TaskComment, TaskCommentRepository},
-        tasks::SharedTaskRepository,
     },
 };
 
@@ -61,7 +61,7 @@ async fn ensure_task_access(
     ctx: &RequestContext,
     task_id: Uuid,
 ) -> Result<(), ErrorResponse> {
-    let organization_id = SharedTaskRepository::organization_id(state.pool(), task_id)
+    let organization_id = ProjectTaskRepository::organization_id(state.pool(), task_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %task_id, "failed to load task organization");
