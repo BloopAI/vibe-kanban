@@ -1,5 +1,4 @@
 import type { RefObject } from 'react';
-import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   PlayIcon,
   SpinnerIcon,
@@ -9,9 +8,9 @@ import {
   ArrowClockwiseIcon,
   CopyIcon,
   XIcon,
-  Monitor,
-  DeviceMobile,
-  ArrowsOutCardinal,
+  MonitorIcon,
+  DeviceMobileIcon,
+  ArrowsOutCardinalIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -24,8 +23,6 @@ import type {
 
 const MOBILE_WIDTH = 390;
 const MOBILE_HEIGHT = 844;
-const MIN_RESPONSIVE_WIDTH = 320;
-const MIN_RESPONSIVE_HEIGHT = 480;
 
 interface PreviewBrowserProps {
   url?: string;
@@ -44,9 +41,12 @@ interface PreviewBrowserProps {
   isStopping: boolean;
   isServerRunning: boolean;
   screenSize: ScreenSize;
-  responsiveDimensions: ResponsiveDimensions;
+  localDimensions: ResponsiveDimensions;
   onScreenSizeChange: (size: ScreenSize) => void;
-  onResponsiveDimensionsChange: (dimensions: ResponsiveDimensions) => void;
+  onResizeStart: (
+    direction: 'right' | 'bottom' | 'corner'
+  ) => (e: React.MouseEvent | React.TouchEvent) => void;
+  containerRef: RefObject<HTMLDivElement>;
   repos: Repo[];
   handleEditDevScript: () => void;
   handleFixDevScript?: () => void;
@@ -70,9 +70,10 @@ export function PreviewBrowser({
   isStopping,
   isServerRunning,
   screenSize,
-  responsiveDimensions,
+  localDimensions,
   onScreenSizeChange,
-  onResponsiveDimensionsChange,
+  onResizeStart,
+  containerRef,
   repos,
   handleEditDevScript,
   handleFixDevScript,
@@ -86,94 +87,6 @@ export function PreviewBrowser({
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
   );
-
-  // Responsive resize state
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState<
-    'right' | 'bottom' | 'corner' | null
-  >(null);
-  const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Sync local dimensions with prop when not resizing
-  useEffect(() => {
-    if (!isResizing) {
-      setLocalDimensions(responsiveDimensions);
-    }
-  }, [responsiveDimensions, isResizing]);
-
-  const handleResizeStart = useCallback(
-    (direction: 'right' | 'bottom' | 'corner') =>
-      (e: React.MouseEvent | React.TouchEvent) => {
-        e.preventDefault();
-        setIsResizing(true);
-        setResizeDirection(direction);
-      },
-    []
-  );
-
-  useEffect(() => {
-    if (!isResizing || !resizeDirection) return;
-
-    const handleMove = (clientX: number, clientY: number) => {
-      if (!containerRef.current) return;
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-
-      setLocalDimensions((prev) => {
-        let newWidth = prev.width;
-        let newHeight = prev.height;
-
-        if (resizeDirection === 'right' || resizeDirection === 'corner') {
-          newWidth = Math.max(
-            MIN_RESPONSIVE_WIDTH,
-            clientX - containerRect.left
-          );
-        }
-
-        if (resizeDirection === 'bottom' || resizeDirection === 'corner') {
-          newHeight = Math.max(
-            MIN_RESPONSIVE_HEIGHT,
-            clientY - containerRect.top
-          );
-        }
-
-        return { width: newWidth, height: newHeight };
-      });
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      handleMove(e.clientX, e.clientY);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      handleMove(touch.clientX, touch.clientY);
-    };
-
-    const handleEnd = () => {
-      setIsResizing(false);
-      setResizeDirection(null);
-      onResponsiveDimensionsChange(localDimensions);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleEnd);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleEnd);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleEnd);
-    };
-  }, [
-    isResizing,
-    resizeDirection,
-    localDimensions,
-    onResponsiveDimensionsChange,
-  ]);
 
   const getIframeContainerStyle = (): React.CSSProperties => {
     switch (screenSize) {
@@ -275,7 +188,7 @@ export function PreviewBrowser({
               aria-label="Desktop view"
               title="Desktop view"
             >
-              <Monitor className="size-icon-sm" />
+              <MonitorIcon className="size-icon-sm" />
             </button>
             <button
               type="button"
@@ -289,7 +202,7 @@ export function PreviewBrowser({
               aria-label="Mobile view (390x844)"
               title="Mobile view (390x844)"
             >
-              <DeviceMobile className="size-icon-sm" />
+              <DeviceMobileIcon className="size-icon-sm" />
             </button>
             <button
               type="button"
@@ -303,7 +216,7 @@ export function PreviewBrowser({
               aria-label="Responsive view (resizable)"
               title="Responsive view (resizable)"
             >
-              <ArrowsOutCardinal className="size-icon-sm" />
+              <ArrowsOutCardinalIcon className="size-icon-sm" />
             </button>
           </div>
 
@@ -358,20 +271,20 @@ export function PreviewBrowser({
                   {/* Right edge handle */}
                   <div
                     className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={handleResizeStart('right')}
-                    onTouchStart={handleResizeStart('right')}
+                    onMouseDown={onResizeStart('right')}
+                    onTouchStart={onResizeStart('right')}
                   />
                   {/* Bottom edge handle */}
                   <div
                     className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={handleResizeStart('bottom')}
-                    onTouchStart={handleResizeStart('bottom')}
+                    onMouseDown={onResizeStart('bottom')}
+                    onTouchStart={onResizeStart('bottom')}
                   />
                   {/* Corner handle */}
                   <div
                     className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={handleResizeStart('corner')}
-                    onTouchStart={handleResizeStart('corner')}
+                    onMouseDown={onResizeStart('corner')}
+                    onTouchStart={onResizeStart('corner')}
                   />
                 </>
               )}

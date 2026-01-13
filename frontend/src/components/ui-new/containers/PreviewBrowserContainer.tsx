@@ -2,16 +2,15 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import { PreviewBrowser } from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
-import {
-  usePreviewSettings,
-  type ScreenSize,
-  type ResponsiveDimensions,
-} from '@/hooks/usePreviewSettings';
+import { usePreviewSettings, type ScreenSize } from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
+
+const MIN_RESPONSIVE_WIDTH = 320;
+const MIN_RESPONSIVE_HEIGHT = 480;
 
 interface PreviewBrowserContainerProps {
   attemptId?: string;
@@ -66,6 +65,90 @@ export function PreviewBrowserContainer({
     }
   }, [effectiveUrl]);
 
+  // Responsive resize state
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<
+    'right' | 'bottom' | 'corner' | null
+  >(null);
+  const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync local dimensions with prop when not resizing
+  useEffect(() => {
+    if (!isResizing) {
+      setLocalDimensions(responsiveDimensions);
+    }
+  }, [responsiveDimensions, isResizing]);
+
+  // Handle resize events
+  useEffect(() => {
+    if (!isResizing || !resizeDirection) return;
+
+    const handleMove = (clientX: number, clientY: number) => {
+      if (!containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+
+      setLocalDimensions((prev) => {
+        let newWidth = prev.width;
+        let newHeight = prev.height;
+
+        if (resizeDirection === 'right' || resizeDirection === 'corner') {
+          newWidth = Math.max(
+            MIN_RESPONSIVE_WIDTH,
+            clientX - containerRect.left
+          );
+        }
+
+        if (resizeDirection === 'bottom' || resizeDirection === 'corner') {
+          newHeight = Math.max(
+            MIN_RESPONSIVE_HEIGHT,
+            clientY - containerRect.top
+          );
+        }
+
+        return { width: newWidth, height: newHeight };
+      });
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    };
+
+    const handleEnd = () => {
+      setIsResizing(false);
+      setResizeDirection(null);
+      setResponsiveDimensions(localDimensions);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
+    };
+  }, [isResizing, resizeDirection, localDimensions, setResponsiveDimensions]);
+
+  const handleResizeStart = useCallback(
+    (direction: 'right' | 'bottom' | 'corner') =>
+      (e: React.MouseEvent | React.TouchEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+        setResizeDirection(direction);
+      },
+    []
+  );
+
   const handleUrlInputChange = useCallback(
     (value: string) => {
       setUrlInputValue(value);
@@ -108,13 +191,6 @@ export function PreviewBrowserContainer({
       setScreenSize(size);
     },
     [setScreenSize]
-  );
-
-  const handleResponsiveDimensionsChange = useCallback(
-    (dimensions: ResponsiveDimensions) => {
-      setResponsiveDimensions(dimensions);
-    },
-    [setResponsiveDimensions]
   );
 
   // Use previewRefreshKey from store to force iframe reload
@@ -163,9 +239,10 @@ export function PreviewBrowserContainer({
       isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}
       screenSize={screenSize}
-      responsiveDimensions={responsiveDimensions}
+      localDimensions={localDimensions}
       onScreenSizeChange={handleScreenSizeChange}
-      onResponsiveDimensionsChange={handleResponsiveDimensionsChange}
+      onResizeStart={handleResizeStart}
+      containerRef={containerRef}
       repos={repos}
       handleEditDevScript={handleEditDevScript}
       handleFixDevScript={
