@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT p.organization_id\n            FROM tasks t\n            INNER JOIN projects p ON p.id = t.project_id\n            WHERE t.id = $1\n            ",
+  "query": "\n            SELECT p.organization_id\n            FROM issues i\n            INNER JOIN projects p ON p.id = i.project_id\n            WHERE i.id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "9f55c210291e4608923f53d65afa79bec776ac7e99cb1bc2d4d8e76bfa8104d4"
+  "hash": "0a57abb390861f8e9ce1da411934bef0a1a4edcea151cbf78fdf4cb510a0d450"
 }

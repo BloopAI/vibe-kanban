@@ -11,7 +11,7 @@ pub struct RemoteWorkspace {
     pub id: Uuid,
     pub organization_id: Uuid,
     pub owner_user_id: Uuid,
-    pub task_id: Option<Uuid>,
+    pub issue_id: Option<Uuid>,
     pub local_workspace_id: Uuid,
     pub archived: bool,
     pub files_changed: Option<i32>,

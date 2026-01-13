@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "task_priority", rename_all = "snake_case")]
+#[sqlx(type_name = "issue_priority", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
-pub enum TaskPriority {
+pub enum IssuePriority {
     Urgent,
     High,
     Medium,

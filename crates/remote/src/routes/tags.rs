@@ -8,27 +8,16 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_member_access};
+use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        projects::ProjectRepository,
-        tags::{Tag, TagRepository},
-    },
+    db::tags::{Tag, TagRepository},
 };
 
 #[derive(Debug, Serialize)]
-pub struct TagResponse {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ListTagsResponse {
-    pub tags: Vec<TagResponse>,
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,23 +41,6 @@ pub fn router() -> Router<AppState> {
         .route("/tags/{tag_id}", patch(update_tag).delete(delete_tag))
 }
 
-async fn ensure_project_access(
-    state: &AppState,
-    ctx: &RequestContext,
-    project_id: Uuid,
-) -> Result<(), ErrorResponse> {
-    let project = ProjectRepository::find_by_id(state.pool(), project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to load project");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
-        })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
-
-    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
-    Ok(())
-}
-
 #[instrument(
     name = "tags.list_tags",
     skip(state, ctx),
@@ -79,17 +51,14 @@ async fn list_tags(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<ListTagsResponse>, ErrorResponse> {
-    ensure_project_access(&state, &ctx, project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
     let tags = TagRepository::list_by_project(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to list tags");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list tags")
-        })?
-        .into_iter()
-        .map(to_tag_response)
-        .collect();
+        })?;
 
     Ok(Json(ListTagsResponse { tags }))
 }
@@ -104,8 +73,8 @@ async fn create_tag(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateTagRequest>,
-) -> Result<Json<TagResponse>, ErrorResponse> {
-    ensure_project_access(&state, &ctx, project_id).await?;
+) -> Result<Json<Tag>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
     let tag = TagRepository::create(state.pool(), project_id, payload.name, payload.color)
         .await
@@ -114,7 +83,7 @@ async fn create_tag(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(to_tag_response(tag)))
+    Ok(Json(tag))
 }
 
 #[instrument(
@@ -127,7 +96,7 @@ async fn update_tag(
     Extension(ctx): Extension<RequestContext>,
     Path(tag_id): Path<Uuid>,
     Json(payload): Json<UpdateTagRequest>,
-) -> Result<Json<TagResponse>, ErrorResponse> {
+) -> Result<Json<Tag>, ErrorResponse> {
     let tag = TagRepository::find_by_id(state.pool(), tag_id)
         .await
         .map_err(|error| {
@@ -136,7 +105,7 @@ async fn update_tag(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
 
-    ensure_project_access(&state, &ctx, tag.project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
     let updated_tag = TagRepository::update(state.pool(), tag_id, payload.name, payload.color)
         .await
@@ -145,7 +114,7 @@ async fn update_tag(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(to_tag_response(updated_tag)))
+    Ok(Json(updated_tag))
 }
 
 #[instrument(
@@ -166,7 +135,7 @@ async fn delete_tag(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "tag not found"))?;
 
-    ensure_project_access(&state, &ctx, tag.project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, tag.project_id).await?;
 
     TagRepository::delete(state.pool(), tag_id)
         .await
@@ -176,13 +145,4 @@ async fn delete_tag(
         })?;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-fn to_tag_response(tag: Tag) -> TagResponse {
-    TagResponse {
-        id: tag.id,
-        project_id: tag.project_id,
-        name: tag.name,
-        color: tag.color,
-    }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                task_id     AS \"task_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            FROM task_comments\n            WHERE id = $1\n            ",
+  "query": "\n            UPDATE issue_comments\n            SET\n                message = $1,\n                updated_at = $2\n            WHERE id = $3\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "task_id!: Uuid",
+        "name": "issue_id!: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -36,6 +36,8 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Timestamptz",
         "Uuid"
       ]
     },
@@ -48,5 +50,5 @@
       false
     ]
   },
-  "hash": "64575e3aa0fd9da1b2e4f16da827240d2fa653f9c9448d61895c7bb85b8f53cc"
+  "hash": "2d3890f90eb351e209160db7a1a6374fc3f8987b05c96bb9994a2d22cd1c281b"
 }

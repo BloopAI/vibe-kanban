@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: TaskPriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_task_id      AS \"parent_task_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM tasks\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority!: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM issues\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -30,10 +30,10 @@
       },
       {
         "ordinal": 5,
-        "name": "priority!: TaskPriority",
+        "name": "priority!: IssuePriority",
         "type_info": {
           "Custom": {
-            "name": "task_priority",
+            "name": "issue_priority",
             "kind": {
               "Enum": [
                 "urgent",
@@ -67,7 +67,7 @@
       },
       {
         "ordinal": 10,
-        "name": "parent_task_id?: Uuid",
+        "name": "parent_issue_id?: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -108,5 +108,5 @@
       false
     ]
   },
-  "hash": "d9c45efddd7371ec8defa9bd8f37079434331931a1e1ee1c7054b9efc32a9147"
+  "hash": "af512fcd45402eb52abaa262e4e6127a4d8fbcb52d6f385381f55c9f207816a4"
 }

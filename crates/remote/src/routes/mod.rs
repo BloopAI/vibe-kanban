@@ -18,6 +18,8 @@ mod electric_proxy;
 mod error;
 mod github_app;
 mod identity;
+mod issue_comment_reactions;
+mod issue_comments;
 mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
@@ -26,8 +28,6 @@ mod project_statuses;
 mod projects;
 mod review;
 mod tags;
-mod task_comment_reactions;
-mod task_comments;
 mod tokens;
 
 pub fn router(state: AppState) -> Router {
@@ -69,8 +69,8 @@ pub fn router(state: AppState) -> Router {
         .merge(github_app::protected_router())
         .merge(project_statuses::router())
         .merge(tags::router())
-        .merge(task_comments::router())
-        .merge(task_comment_reactions::router())
+        .merge(issue_comments::router())
+        .merge(issue_comment_reactions::router())
         .merge(notifications::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),

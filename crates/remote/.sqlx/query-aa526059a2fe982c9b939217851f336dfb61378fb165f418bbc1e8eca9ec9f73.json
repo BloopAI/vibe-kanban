@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE notifications\n            SET seen = TRUE\n            WHERE id = $1\n            RETURNING\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                task_id           AS \"task_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE notifications\n            SET dismissed_at = $1\n            WHERE id = $2\n            RETURNING\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                issue_id          AS \"issue_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -26,10 +26,10 @@
             "name": "notification_type",
             "kind": {
               "Enum": [
-                "task_comment_added",
-                "task_status_changed",
-                "task_assignee_changed",
-                "task_deleted"
+                "issue_comment_added",
+                "issue_status_changed",
+                "issue_assignee_changed",
+                "issue_deleted"
               ]
             }
           }
@@ -42,7 +42,7 @@
       },
       {
         "ordinal": 5,
-        "name": "task_id: Uuid",
+        "name": "issue_id: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -68,6 +68,7 @@
     ],
     "parameters": {
       "Left": [
+        "Timestamptz",
         "Uuid"
       ]
     },
@@ -84,5 +85,5 @@
       false
     ]
   },
-  "hash": "ae02f7661c280bd1997b36e54f1bc36ca3db7d9b138014a70b4b8059872f2ce5"
+  "hash": "aa526059a2fe982c9b939217851f336dfb61378fb165f418bbc1e8eca9ec9f73"
 }

@@ -4,38 +4,38 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskFollower {
-    pub task_id: Uuid,
+pub struct IssueFollower {
+    pub issue_id: Uuid,
     pub user_id: Uuid,
 }
 
 #[derive(Debug, Error)]
-pub enum TaskFollowerError {
+pub enum IssueFollowerError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
 
-pub struct TaskFollowerRepository;
+pub struct IssueFollowerRepository;
 
-impl TaskFollowerRepository {
+impl IssueFollowerRepository {
     pub async fn find<'e, E>(
         executor: E,
-        task_id: Uuid,
+        issue_id: Uuid,
         user_id: Uuid,
-    ) -> Result<Option<TaskFollower>, TaskFollowerError>
+    ) -> Result<Option<IssueFollower>, IssueFollowerError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let record = sqlx::query_as!(
-            TaskFollower,
+            IssueFollower,
             r#"
             SELECT
-                task_id AS "task_id!: Uuid",
-                user_id AS "user_id!: Uuid"
-            FROM task_followers
-            WHERE task_id = $1 AND user_id = $2
+                issue_id AS "issue_id!: Uuid",
+                user_id  AS "user_id!: Uuid"
+            FROM issue_followers
+            WHERE issue_id = $1 AND user_id = $2
             "#,
-            task_id,
+            issue_id,
             user_id
         )
         .fetch_optional(executor)
