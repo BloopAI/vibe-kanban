@@ -924,7 +924,6 @@ impl LocalContainerService {
             }
         }
     }
-
 }
 
 fn failure_exit_status() -> std::process::ExitStatus {
