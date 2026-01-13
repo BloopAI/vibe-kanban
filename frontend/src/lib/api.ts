@@ -17,6 +17,9 @@ import {
   ExecutionProcessRepoState,
   GitBranch,
   Project,
+  ProjectGroup,
+  CreateProjectGroup,
+  UpdateProjectGroup,
   Repo,
   RepoWithTargetBranch,
   CreateProject,
@@ -88,6 +91,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  GitHubIssueResponse,
+  GitHubRepoInfoResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -355,6 +360,51 @@ export const projectsApi = {
         method: 'DELETE',
       }
     );
+    return handleApiResponse<void>(response);
+  },
+
+  setGroup: async (
+    projectId: string,
+    groupId: string | null
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ group_id: groupId }),
+    });
+    return handleApiResponse<Project>(response);
+  },
+};
+
+// Project Groups APIs
+export const projectGroupsApi = {
+  getAll: async (): Promise<ProjectGroup[]> => {
+    const response = await makeRequest('/api/project-groups');
+    return handleApiResponse<ProjectGroup[]>(response);
+  },
+
+  create: async (data: CreateProjectGroup): Promise<ProjectGroup> => {
+    const response = await makeRequest('/api/project-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectGroup>(response);
+  },
+
+  update: async (
+    id: string,
+    data: UpdateProjectGroup
+  ): Promise<ProjectGroup> => {
+    const response = await makeRequest(`/api/project-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ProjectGroup>(response);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/project-groups/${id}`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 };
@@ -1341,5 +1391,32 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// GitHub API
+export const githubApi = {
+  /**
+   * List GitHub issues for a repository
+   */
+  listIssues: async (
+    repoId: string,
+    state?: 'open' | 'closed' | 'all',
+    limit?: number
+  ): Promise<GitHubIssueResponse[]> => {
+    const params = new URLSearchParams({ repo_id: repoId });
+    if (state) params.set('state', state);
+    if (limit) params.set('limit', limit.toString());
+    const response = await makeRequest(`/api/github/issues?${params.toString()}`);
+    return handleApiResponse<GitHubIssueResponse[]>(response);
+  },
+
+  /**
+   * Get repository info (owner/repo name) for a repository
+   */
+  getRepoInfo: async (repoId: string): Promise<GitHubRepoInfoResponse> => {
+    const params = new URLSearchParams({ repo_id: repoId });
+    const response = await makeRequest(`/api/github/repo-info?${params.toString()}`);
+    return handleApiResponse<GitHubRepoInfoResponse>(response);
   },
 };

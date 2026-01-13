@@ -19,6 +19,8 @@ import {
   Plus,
   LogOut,
   LogIn,
+  Github,
+  ChevronDown,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -38,6 +40,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
+import { ImportGitHubIssuesDialog } from '@/components/dialogs/github/ImportGitHubIssuesDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
@@ -112,6 +115,12 @@ export function Navbar() {
   const handleCreateTask = () => {
     if (projectId) {
       openTaskForm({ mode: 'create', projectId });
+    }
+  };
+
+  const handleImportGitHubIssues = () => {
+    if (projectId) {
+      ImportGitHubIssuesDialog.show({ projectId });
     }
   };
 
@@ -219,15 +228,29 @@ export function Navbar() {
                       className="h-9 w-9"
                     />
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={handleCreateTask}
-                    aria-label="Create new task"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 gap-1 px-2"
+                        aria-label="Add task options"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={handleCreateTask}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Task
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={handleImportGitHubIssues}>
+                        <Github className="mr-2 h-4 w-4" />
+                        Import from GitHub
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <NavDivider />
               </>

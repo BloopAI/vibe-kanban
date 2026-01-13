@@ -9,7 +9,7 @@ pub mod approvals;
 pub mod config;
 pub mod containers;
 pub mod filesystem;
-// pub mod github;
+pub mod github;
 pub mod events;
 pub mod execution_processes;
 pub mod frontend;
@@ -17,6 +17,7 @@ pub mod health;
 pub mod images;
 pub mod oauth;
 pub mod organizations;
+pub mod project_groups;
 pub mod projects;
 pub mod repo;
 pub mod scratch;
@@ -33,6 +34,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(config::router())
         .merge(containers::router(&deployment))
         .merge(projects::router(&deployment))
+        .merge(project_groups::router(&deployment))
         .merge(tasks::router(&deployment))
         .merge(shared_tasks::router())
         .merge(task_attempts::router(&deployment))
@@ -42,6 +44,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(organizations::router())
         .merge(filesystem::router())
         .merge(repo::router())
+        .merge(github::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .merge(scratch::router(&deployment))

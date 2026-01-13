@@ -1,6 +1,6 @@
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, scratch::Scratch,
-    task::TaskWithAttemptStatus, workspace::WorkspaceWithStatus,
+    execution_process::ExecutionProcess, project::Project, project_group::ProjectGroup,
+    scratch::Scratch, task::TaskWithAttemptStatus, workspace::WorkspaceWithStatus,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -85,6 +85,47 @@ pub mod project_patch {
             path: project_path(project_id)
                 .try_into()
                 .expect("Project path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating project group-specific patches
+pub mod project_group_patch {
+    use super::*;
+
+    fn project_group_path(group_id: Uuid) -> String {
+        format!(
+            "/groups/{}",
+            escape_pointer_segment(&group_id.to_string())
+        )
+    }
+
+    /// Create patch for adding a new project group
+    pub fn add(group: &ProjectGroup) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: project_group_path(group.id)
+                .try_into()
+                .expect("ProjectGroup path should be valid"),
+            value: serde_json::to_value(group).expect("ProjectGroup serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing project group
+    pub fn replace(group: &ProjectGroup) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: project_group_path(group.id)
+                .try_into()
+                .expect("ProjectGroup path should be valid"),
+            value: serde_json::to_value(group).expect("ProjectGroup serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a project group
+    pub fn remove(group_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: project_group_path(group_id)
+                .try_into()
+                .expect("ProjectGroup path should be valid"),
         })])
     }
 }

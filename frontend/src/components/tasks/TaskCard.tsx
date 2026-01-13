@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
+import { TaskSourceBadge } from './TaskSourceBadge';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
 
@@ -139,6 +140,10 @@ export function TaskCard({
               : task.description}
           </p>
         )}
+        <TaskSourceBadge
+          source={task.source ?? null}
+          externalRef={task.external_ref ?? null}
+        />
       </div>
     </KanbanCard>
   );

@@ -42,6 +42,7 @@ import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
+import { AllBoards } from '@/pages/ui-new/AllBoards';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -139,6 +140,25 @@ function AppContent() {
               }
             />
 
+            {/* Default view - AllBoards (grouped projects) */}
+            <Route
+              path="/"
+              element={
+                <NewDesignScope>
+                  <AllBoards />
+                </NewDesignScope>
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <NewDesignScope>
+                  <AllBoards />
+                </NewDesignScope>
+              }
+            />
+
+            {/* Legacy design routes for project tasks and settings */}
             <Route
               element={
                 <LegacyDesignScope>
@@ -146,8 +166,6 @@ function AppContent() {
                 </LegacyDesignScope>
               }
             >
-              <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<Projects />} />
               <Route
                 path="/projects/:projectId/tasks"
@@ -192,6 +210,7 @@ function AppContent() {
               <Route path="create" element={<Workspaces />} />
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
+
           </SentryRoutes>
         </SearchProvider>
       </ThemeProvider>
