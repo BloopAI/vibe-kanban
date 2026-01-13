@@ -1,4 +1,4 @@
-import { PlayIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { PlayIcon, SpinnerIcon, WrenchIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../primitives/PrimaryButton';
@@ -11,6 +11,7 @@ interface PreviewBrowserProps {
   isServerRunning: boolean;
   repos: Repo[];
   handleEditDevScript: () => void;
+  handleFixDevScript?: () => void;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export function PreviewBrowser({
   isServerRunning,
   repos,
   handleEditDevScript,
+  handleFixDevScript,
   className,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
@@ -62,12 +64,22 @@ export function PreviewBrowser({
             ) : hasDevScript ? (
               <>
                 <p className="text-sm">{t('preview.noServer.title')}</p>
-                <PrimaryButton
-                  value={t('preview.browser.startButton')}
-                  actionIcon={PlayIcon}
-                  onClick={onStart}
-                  disabled={isStarting}
-                />
+                <div className="flex gap-base">
+                  <PrimaryButton
+                    value={t('preview.browser.startButton')}
+                    actionIcon={PlayIcon}
+                    onClick={onStart}
+                    disabled={isStarting}
+                  />
+                  {handleFixDevScript && (
+                    <PrimaryButton
+                      variant="tertiary"
+                      value={t('scriptFixer.fixScript')}
+                      actionIcon={WrenchIcon}
+                      onClick={handleFixDevScript}
+                    />
+                  )}
+                </div>
               </>
             ) : (
               <div className="flex flex-col gap-double p-double max-w-md">

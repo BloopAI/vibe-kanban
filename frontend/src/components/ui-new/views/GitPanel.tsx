@@ -16,12 +16,17 @@ export interface RepoInfo {
   name: string;
   targetBranch: string;
   commitsAhead: number;
+  remoteCommitsAhead?: number;
   filesChanged: number;
   linesAdded: number;
   linesRemoved: number;
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  showPushButton?: boolean;
+  isPushPending?: boolean;
+  isPushSuccess?: boolean;
+  isPushError?: boolean;
 }
 
 interface GitPanelProps {
@@ -29,6 +34,7 @@ interface GitPanelProps {
   workingBranchName: string;
   onWorkingBranchNameChange: (name: string) => void;
   onActionsClick?: (repoId: string, action: RepoAction) => void;
+  onPushClick?: (repoId: string) => void;
   onOpenInEditor?: (repoId: string) => void;
   onCopyPath?: (repoId: string) => void;
   onAddRepo?: () => void;
@@ -41,6 +47,7 @@ export function GitPanel({
   workingBranchName,
   onWorkingBranchNameChange,
   onActionsClick,
+  onPushClick,
   onOpenInEditor,
   onCopyPath,
   className,
@@ -75,9 +82,14 @@ export function GitPanel({
               prNumber={repo.prNumber}
               prUrl={repo.prUrl}
               prStatus={repo.prStatus}
+              showPushButton={repo.showPushButton}
+              isPushPending={repo.isPushPending}
+              isPushSuccess={repo.isPushSuccess}
+              isPushError={repo.isPushError}
               onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
               onRebase={() => onActionsClick?.(repo.id, 'rebase')}
               onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+              onPushClick={() => onPushClick?.(repo.id)}
               onOpenInEditor={() => onOpenInEditor?.(repo.id)}
               onCopyPath={() => onCopyPath?.(repo.id)}
             />

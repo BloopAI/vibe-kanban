@@ -7,6 +7,7 @@ import {
   getAllFolderPaths,
 } from '@/utils/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
@@ -29,6 +30,14 @@ export function FileTreeContainer({
     usePersistedCollapsedPaths(workspaceId);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Get GitHub comments state from workspace context
+  const {
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentCountForFile,
+    isGitHubCommentsLoading,
+  } = useWorkspaceContext();
 
   // Sync selectedPath with external selectedFilePath prop and scroll into view
   useEffect(() => {
@@ -129,6 +138,10 @@ export function FileTreeContainer({
       isAllExpanded={isAllExpanded}
       onToggleExpandAll={handleToggleExpandAll}
       className={className}
+      showGitHubComments={showGitHubComments}
+      onToggleGitHubComments={setShowGitHubComments}
+      getGitHubCommentCountForFile={getGitHubCommentCountForFile}
+      isGitHubCommentsLoading={isGitHubCommentsLoading}
     />
   );
 }

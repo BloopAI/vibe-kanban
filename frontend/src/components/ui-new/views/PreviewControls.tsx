@@ -1,3 +1,4 @@
+import type { RefObject } from 'react';
 import {
   PlayIcon,
   StopIcon,
@@ -5,6 +6,8 @@ import {
   ArrowClockwiseIcon,
   SpinnerIcon,
   CopyIcon,
+  WrenchIcon,
+  XIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -23,6 +26,12 @@ interface PreviewControlsProps {
   logs: LogEntry[];
   logsError: string | null;
   url?: string;
+  autoDetectedUrl?: string;
+  isUsingOverride?: boolean;
+  urlInputValue: string;
+  urlInputRef: RefObject<HTMLInputElement>;
+  onUrlInputChange: (value: string) => void;
+  onClearOverride?: () => void;
   onViewFullLogs: () => void;
   onTabChange: (processId: string) => void;
   onStart: () => void;
@@ -30,6 +39,7 @@ interface PreviewControlsProps {
   onRefresh: () => void;
   onCopyUrl: () => void;
   onOpenInNewTab: () => void;
+  onFixScript?: () => void;
   isStarting: boolean;
   isStopping: boolean;
   isServerRunning: boolean;
@@ -42,6 +52,12 @@ export function PreviewControls({
   logs,
   logsError,
   url,
+  autoDetectedUrl,
+  isUsingOverride,
+  urlInputValue,
+  urlInputRef,
+  onUrlInputChange,
+  onClearOverride,
   onViewFullLogs,
   onTabChange,
   onStart,
@@ -49,6 +65,7 @@ export function PreviewControls({
   onRefresh,
   onCopyUrl,
   onOpenInNewTab,
+  onFixScript,
   isStarting,
   isStopping,
   isServerRunning,
@@ -70,11 +87,32 @@ export function PreviewControls({
         contentClassName="flex flex-col flex-1 overflow-hidden"
       >
         <div className="flex items-center gap-half p-base">
-          {url && (
+          {(url || autoDetectedUrl) && (
             <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
-              <span className="flex-1 font-mono text-sm text-low truncate">
-                {url}
-              </span>
+              <input
+                ref={urlInputRef}
+                type="text"
+                value={urlInputValue}
+                onChange={(e) => onUrlInputChange(e.target.value)}
+                placeholder={autoDetectedUrl ?? 'Enter URL...'}
+                className={cn(
+                  'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
+                  isUsingOverride
+                    ? 'text-normal'
+                    : 'text-low placeholder:text-low'
+                )}
+              />
+              {isUsingOverride && (
+                <button
+                  type="button"
+                  onClick={onClearOverride}
+                  className="text-low hover:text-normal"
+                  aria-label="Clear URL override"
+                  title="Revert to auto-detected URL"
+                >
+                  <XIcon className="size-icon-sm" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onCopyUrl}
@@ -116,6 +154,14 @@ export function PreviewControls({
               actionIcon={isStarting ? 'spinner' : PlayIcon}
               onClick={onStart}
               disabled={isStarting}
+            />
+          )}
+          {onFixScript && (
+            <PrimaryButton
+              variant="tertiary"
+              value={t('scriptFixer.fixScript')}
+              actionIcon={WrenchIcon}
+              onClick={onFixScript}
             />
           )}
         </div>

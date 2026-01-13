@@ -142,6 +142,8 @@ interface DropdownMenuItemProps
   icon?: Icon;
   badge?: string;
   variant?: 'default' | 'destructive';
+  /** When true, prevents hover from stealing focus (useful for searchable dropdowns) */
+  preventFocusOnHover?: boolean;
 }
 
 const DropdownMenuItem = React.forwardRef<
@@ -154,6 +156,9 @@ const DropdownMenuItem = React.forwardRef<
       icon: IconComponent,
       badge,
       variant = 'default',
+      preventFocusOnHover = false,
+      onPointerMove,
+      onPointerLeave,
       children,
       ...props
     },
@@ -171,6 +176,22 @@ const DropdownMenuItem = React.forwardRef<
         variant === 'destructive' && 'text-error',
         className
       )}
+      onPointerMove={
+        preventFocusOnHover
+          ? (e) => {
+              e.preventDefault();
+              onPointerMove?.(e);
+            }
+          : onPointerMove
+      }
+      onPointerLeave={
+        preventFocusOnHover
+          ? (e) => {
+              e.preventDefault();
+              onPointerLeave?.(e);
+            }
+          : onPointerLeave
+      }
       {...props}
     >
       {IconComponent && <IconComponent weight="bold" />}

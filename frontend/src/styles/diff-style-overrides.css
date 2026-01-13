@@ -470,7 +470,7 @@
 .diff-tailwindcss-wrapper .diff-add-widget,
 .diff-tailwindcss-wrapper .diff-widget-tooltip {
   font-family: inherit;
-  font-feature-settings: inherit;
+  font-feature-settings: 'liga' off;
   font-variation-settings: inherit;
   font-size: 100%;
   font-weight: inherit;

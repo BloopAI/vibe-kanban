@@ -5,7 +5,9 @@ import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
-import type { Workspace } from 'shared/types';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
   ActionDefinition,
@@ -29,6 +31,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
+  const { data: branchStatus } = useBranchStatus(workspaceId);
+  const { isAttemptRunningVisible } = useExecutionProcessesContext();
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -44,6 +48,18 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
         : runningDevServers.length > 0
           ? 'running'
           : 'stopped';
+
+    // Compute git state from branch status
+    const hasOpenPR =
+      branchStatus?.some((repo) =>
+        repo.merges?.some(
+          (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+        )
+      ) ?? false;
+
+    const hasUnpushedCommits =
+      branchStatus?.some((repo) => (repo.remote_commits_ahead ?? 0) > 0) ??
+      false;
 
     return {
       isChangesMode: layout.isChangesMode,
@@ -63,6 +79,9 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       runningDevServers,
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
+      hasOpenPR,
+      hasUnpushedCommits,
+      isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
     layout.isChangesMode,
@@ -81,6 +100,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     isStarting,
     isStopping,
     runningDevServers,
+    branchStatus,
+    isAttemptRunningVisible,
   ]);
 }
 

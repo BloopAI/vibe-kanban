@@ -27,7 +27,10 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -37,7 +40,10 @@ import {
   useExpandedAll,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useLayoutStore,
+  useIsRightMainPanelVisible,
+} from '@/stores/useLayoutStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
@@ -53,6 +59,8 @@ interface GitPanelContainerProps {
   onBranchNameChange: (name: string) => void;
 }
 
+type PushState = 'idle' | 'pending' | 'success' | 'error';
+
 function GitPanelContainer({
   selectedWorkspace,
   repos,
@@ -60,6 +68,101 @@ function GitPanelContainer({
   onBranchNameChange,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
+
+  // Track push state per repo: idle, pending, success, or error
+  const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
+  const pushStatesRef = useRef<Record<string, PushState>>({});
+  pushStatesRef.current = pushStates;
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentPushRepoRef = useRef<string | null>(null);
+
+  // Reset push-related state when the selected workspace changes to avoid
+  // leaking push state across workspaces with repos that share the same ID.
+  useEffect(() => {
+    setPushStates({});
+    pushStatesRef.current = {};
+    currentPushRepoRef.current = null;
+
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+  }, [selectedWorkspace?.id]);
+  // Use push hook for direct API access with proper error handling
+  const pushMutation = usePush(
+    selectedWorkspace?.id,
+    // onSuccess
+    () => {
+      const repoId = currentPushRepoRef.current;
+      if (!repoId) return;
+      setPushStates((prev) => ({ ...prev, [repoId]: 'success' }));
+      // Clear success state after 2 seconds
+      successTimeoutRef.current = setTimeout(() => {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+      }, 2000);
+    },
+    // onError
+    async (err, errorData) => {
+      const repoId = currentPushRepoRef.current;
+      if (!repoId) return;
+
+      // Handle force push required - show confirmation dialog
+      if (errorData?.type === 'force_push_required' && selectedWorkspace?.id) {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+        await ForcePushDialog.show({
+          attemptId: selectedWorkspace.id,
+          repoId,
+        });
+        return;
+      }
+
+      // Show error state and dialog for other errors
+      setPushStates((prev) => ({ ...prev, [repoId]: 'error' }));
+      const message =
+        err instanceof Error ? err.message : 'Failed to push changes';
+      ConfirmDialog.show({
+        title: 'Error',
+        message,
+        confirmText: 'OK',
+        showCancelButton: false,
+        variant: 'destructive',
+      });
+      // Clear error state after 3 seconds
+      successTimeoutRef.current = setTimeout(() => {
+        setPushStates((prev) => ({ ...prev, [repoId]: 'idle' }));
+      }, 3000);
+    }
+  );
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Compute repoInfos with push button state
+  const repoInfosWithPushButton = useMemo(
+    () =>
+      repoInfos.map((repo) => {
+        const state = pushStates[repo.id] ?? 'idle';
+        const hasUnpushedCommits =
+          repo.prStatus === 'open' && (repo.remoteCommitsAhead ?? 0) > 0;
+        // Show push button if there are unpushed commits OR if we're in a push flow
+        // (pending/success/error states keep the button visible for feedback)
+        const isInPushFlow = state !== 'idle';
+        return {
+          ...repo,
+          showPushButton: hasUnpushedCommits && !isInPushFlow,
+          isPushPending: state === 'pending',
+          isPushSuccess: state === 'success',
+          isPushError: state === 'error',
+        };
+      }),
+    [repoInfos, pushStates]
+  );
 
   // Handle copying repo path to clipboard
   const handleCopyPath = useCallback(
@@ -100,6 +203,7 @@ function GitPanelContainer({
         merge: Actions.GitMerge,
         rebase: Actions.GitRebase,
         'change-target': Actions.GitChangeTarget,
+        push: Actions.GitPush,
       };
 
       const actionDef = actionMap[action];
@@ -111,12 +215,33 @@ function GitPanelContainer({
     [selectedWorkspace, executeAction]
   );
 
+  // Handle push button click - use mutation for proper state tracking
+  const handlePushClick = useCallback(
+    (repoId: string) => {
+      // Use ref to check current state to avoid stale closure
+      if (pushStatesRef.current[repoId] === 'pending') return;
+
+      // Clear any existing timeout
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = null;
+      }
+
+      // Track which repo we're pushing
+      currentPushRepoRef.current = repoId;
+      setPushStates((prev) => ({ ...prev, [repoId]: 'pending' }));
+      pushMutation.mutate({ repo_id: repoId });
+    },
+    [pushMutation]
+  );
+
   return (
     <GitPanel
-      repos={repoInfos}
+      repos={repoInfosWithPushButton}
       workingBranchName={selectedWorkspace?.branch ?? ''}
       onWorkingBranchNameChange={onBranchNameChange}
       onActionsClick={handleActionsClick}
+      onPushClick={handlePushClick}
       onOpenInEditor={handleOpenInEditor}
       onCopyPath={handleCopyPath}
       onAddRepo={() => console.log('Add repo clicked')}
@@ -159,7 +284,11 @@ export function WorkspacesLayout() {
     setLogsMode,
     resetForCreateMode,
     setSidebarVisible,
+    setMainPanelVisible,
   } = useLayoutStore();
+
+  // Derived state: right main panel (Changes/Logs/Preview) is visible
+  const isRightMainPanelVisible = useIsRightMainPanelVisible();
 
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
   const { scratch: draftScratch } = useScratch(
@@ -256,6 +385,7 @@ export function WorkspacesLayout() {
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
+          remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
           filesChanged: diffStats.filesChanged,
           linesAdded: diffStats.linesAdded,
           linesRemoved: diffStats.linesRemoved,
@@ -312,16 +442,13 @@ export function WorkspacesLayout() {
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
-  // Reset Allotment sizes when changes, logs, or preview panel becomes visible
+  // Reset Allotment sizes when right main panel becomes visible
   // This re-applies preferredSize percentages based on current window size
   useEffect(() => {
-    if (
-      (isChangesMode || isLogsMode || isPreviewMode) &&
-      allotmentRef.current
-    ) {
+    if (isRightMainPanelVisible && allotmentRef.current) {
       allotmentRef.current.reset();
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode]);
+  }, [isRightMainPanelVisible]);
 
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
@@ -330,12 +457,20 @@ export function WorkspacesLayout() {
     }
   }, [isCreateMode, resetForCreateMode]);
 
-  // Show sidebar when no panel is open
+  // Show sidebar when right main panel is hidden
   useEffect(() => {
-    if (!isChangesMode && !isLogsMode && !isPreviewMode) {
+    if (!isRightMainPanelVisible) {
       setSidebarVisible(true);
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode, setSidebarVisible]);
+  }, [isRightMainPanelVisible, setSidebarVisible]);
+
+  // Ensure left main panel (chat) is visible when right main panel is hidden
+  // This prevents invalid state where only sidebars are visible after page reload
+  useEffect(() => {
+    if (!isMainPanelVisible && !isRightMainPanelVisible) {
+      setMainPanelVisible(true);
+    }
+  }, [isMainPanelVisible, isRightMainPanelVisible, setMainPanelVisible]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
@@ -370,26 +505,6 @@ export function WorkspacesLayout() {
       if (sizes[0] !== undefined) setFileTreeHeight(sizes[0]);
     },
     [setFileTreeHeight]
-  );
-
-  // Handle pane resize end
-  const handlePaneResize = useCallback(
-    (sizes: number[]) => {
-      // sizes[0] = sidebar, sizes[1] = main, sizes[2] = changes/logs panel, sizes[3] = git panel
-      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
-      if (sizes[3] !== undefined) setGitPanelWidth(sizes[3]);
-
-      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
-      if (total > 0) {
-        // Store changes/logs panel as percentage of TOTAL container width
-        const centerPaneWidth = sizes[2];
-        if (centerPaneWidth !== undefined) {
-          const percent = Math.round((centerPaneWidth / total) * 100);
-          setChangesPanelWidth(`${percent}%`);
-        }
-      }
-    },
-    [setSidebarWidth, setGitPanelWidth, setChangesPanelWidth]
   );
 
   // Navigate to logs panel and select a specific process
@@ -575,23 +690,39 @@ export function WorkspacesLayout() {
     />
   );
 
+  // Handle inner pane resize (main, changes/logs, git panel)
+  const handleInnerPaneResize = useCallback(
+    (sizes: number[]) => {
+      // sizes[0] = main (no persistence needed, uses LayoutPriority.High)
+      // sizes[1] = changes/logs panel
+      // sizes[2] = git panel
+      if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
+
+      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
+      if (total > 0) {
+        const centerPaneWidth = sizes[1];
+        if (centerPaneWidth !== undefined) {
+          const percent = Math.round((centerPaneWidth / total) * 100);
+          setChangesPanelWidth(`${percent}%`);
+        }
+      }
+    },
+    [setGitPanelWidth, setChangesPanelWidth]
+  );
+
+  // Handle outer pane resize (sidebar only)
+  const handleOuterPaneResize = useCallback(
+    (sizes: number[]) => {
+      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
+    },
+    [setSidebarWidth]
+  );
+
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
-    const allotmentContent = (
-      <Allotment
-        ref={allotmentRef}
-        className="flex-1 min-h-0"
-        onDragEnd={handlePaneResize}
-      >
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={sidebarWidth}
-          maxSize={600}
-          visible={isSidebarVisible}
-        >
-          <div className="h-full overflow-hidden">{renderSidebar()}</div>
-        </Allotment.Pane>
-
+    // Inner Allotment with panes 2-4 (main, changes/logs, git panel)
+    const innerAllotment = (
+      <Allotment onDragEnd={handleInnerPaneResize}>
         <Allotment.Pane
           visible={isMainPanelVisible}
           priority={LayoutPriority.High}
@@ -629,7 +760,7 @@ export function WorkspacesLayout() {
         <Allotment.Pane
           minSize={300}
           preferredSize={changesPanelWidth}
-          visible={isChangesMode || isLogsMode || isPreviewMode}
+          visible={isRightMainPanelVisible}
         >
           <div className="h-full overflow-hidden">
             {isChangesMode && (
@@ -668,29 +799,49 @@ export function WorkspacesLayout() {
       </Allotment>
     );
 
-    if (isCreateMode) {
-      return (
-        <CreateModeProvider
-          initialProjectId={lastWorkspaceTask?.project_id}
-          initialRepos={lastWorkspaceRepos}
-        >
-          <ReviewProvider attemptId={selectedWorkspace?.id}>
-            {allotmentContent}
-          </ReviewProvider>
-        </CreateModeProvider>
-      );
-    }
-
-    return (
+    // Wrap inner Allotment with providers
+    const wrappedInnerContent = isCreateMode ? (
+      <CreateModeProvider
+        initialProjectId={lastWorkspaceTask?.project_id}
+        initialRepos={lastWorkspaceRepos}
+      >
+        <ReviewProvider attemptId={selectedWorkspace?.id}>
+          {innerAllotment}
+        </ReviewProvider>
+      </CreateModeProvider>
+    ) : (
       <ExecutionProcessesProvider
         key={`${selectedWorkspace?.id}-${selectedSessionId}`}
         attemptId={selectedWorkspace?.id}
         sessionId={selectedSessionId}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {allotmentContent}
+          {innerAllotment}
         </ReviewProvider>
       </ExecutionProcessesProvider>
+    );
+
+    return (
+      <Allotment
+        ref={allotmentRef}
+        className="flex-1 min-h-0"
+        onDragEnd={handleOuterPaneResize}
+      >
+        {/* Sidebar pane - OUTSIDE providers, won't remount on workspace switch */}
+        <Allotment.Pane
+          minSize={300}
+          preferredSize={sidebarWidth}
+          maxSize={600}
+          visible={isSidebarVisible}
+        >
+          <div className="h-full overflow-hidden">{renderSidebar()}</div>
+        </Allotment.Pane>
+
+        {/* Container for provider-wrapped inner content */}
+        <Allotment.Pane priority={LayoutPriority.High}>
+          {wrappedInnerContent}
+        </Allotment.Pane>
+      </Allotment>
     );
   };
 

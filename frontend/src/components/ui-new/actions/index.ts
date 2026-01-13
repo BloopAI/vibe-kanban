@@ -30,6 +30,8 @@ import {
   CrosshairIcon,
   DesktopIcon,
   PencilSimpleIcon,
+  ArrowUpIcon,
+  HighlighterIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -45,6 +47,7 @@ import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspa
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
+import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -99,6 +102,11 @@ export interface ActionVisibilityContext {
   // Git panel state
   hasGitRepos: boolean;
   hasMultipleRepos: boolean;
+  hasOpenPR: boolean;
+  hasUnpushedCommits: boolean;
+
+  // Execution state
+  isAttemptRunning: boolean;
 }
 
 // Base properties shared by all actions
@@ -153,18 +161,19 @@ export type ActionDefinition =
   | WorkspaceActionDefinition
   | GitActionDefinition;
 
-// Helper to get workspace from query cache
-function getWorkspaceFromCache(
+// Helper to get workspace from query cache or fetch from API
+async function getWorkspace(
   queryClient: QueryClient,
   workspaceId: string
-): Workspace {
-  const workspace = queryClient.getQueryData<Workspace>(
+): Promise<Workspace> {
+  const cached = queryClient.getQueryData<Workspace>(
     attemptKeys.byId(workspaceId)
   );
-  if (!workspace) {
-    throw new Error('Workspace not found');
+  if (cached) {
+    return cached;
   }
-  return workspace;
+  // Fetch from API if not in cache
+  return attemptsApi.get(workspaceId);
 }
 
 // Helper to invalidate workspace-related queries
@@ -174,6 +183,22 @@ function invalidateWorkspaceQueries(
 ) {
   queryClient.invalidateQueries({ queryKey: attemptKeys.byId(workspaceId) });
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+}
+
+// Helper to find the next workspace to navigate to when removing current workspace
+function getNextWorkspaceId(
+  activeWorkspaces: SidebarWorkspace[],
+  removingWorkspaceId: string
+): string | null {
+  const currentIndex = activeWorkspaces.findIndex(
+    (ws) => ws.id === removingWorkspaceId
+  );
+  if (currentIndex >= 0 && activeWorkspaces.length > 1) {
+    const nextWorkspace =
+      activeWorkspaces[currentIndex + 1] || activeWorkspaces[currentIndex - 1];
+    return nextWorkspace?.id ?? null;
+  }
+  return null;
 }
 
 // All application actions
@@ -203,7 +228,7 @@ export const Actions = {
     icon: PencilSimpleIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
         workspaceId,
         currentName: workspace.name || workspace.branch,
@@ -217,7 +242,7 @@ export const Actions = {
     icon: PushPinIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await attemptsApi.update(workspaceId, {
         pinned: !workspace.pinned,
       });
@@ -234,22 +259,13 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const wasArchived = workspace.archived;
 
       // Calculate next workspace before archiving
-      let nextWorkspaceId: string | null = null;
-      if (!wasArchived) {
-        const currentIndex = ctx.activeWorkspaces.findIndex(
-          (ws) => ws.id === workspaceId
-        );
-        if (currentIndex >= 0 && ctx.activeWorkspaces.length > 1) {
-          const nextWorkspace =
-            ctx.activeWorkspaces[currentIndex + 1] ||
-            ctx.activeWorkspaces[currentIndex - 1];
-          nextWorkspaceId = nextWorkspace?.id ?? null;
-        }
-      }
+      const nextWorkspaceId = !wasArchived
+        ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+        : null;
 
       // Perform the archive/unarchive
       await attemptsApi.update(workspaceId, { archived: !wasArchived });
@@ -269,7 +285,7 @@ export const Actions = {
     variant: 'destructive',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const result = await ConfirmDialog.show({
         title: 'Delete Workspace',
         message:
@@ -279,12 +295,41 @@ export const Actions = {
         variant: 'destructive',
       });
       if (result === 'confirmed') {
+        // Calculate next workspace before deleting (only if deleting current)
+        const isCurrentWorkspace = ctx.currentWorkspaceId === workspaceId;
+        const nextWorkspaceId = isCurrentWorkspace
+          ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+          : null;
+
         await tasksApi.delete(workspace.task_id);
         ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
+
+        // Navigate away if we deleted the current workspace
+        if (isCurrentWorkspace) {
+          if (nextWorkspaceId) {
+            ctx.selectWorkspace(nextWorkspaceId);
+          } else {
+            ctx.navigate('/workspaces/create');
+          }
+        }
       }
+    },
+  },
+
+  StartReview: {
+    id: 'start-review',
+    label: 'Start Review',
+    icon: HighlighterIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    getTooltip: () => 'Ask the agent to review your changes',
+    execute: async (_ctx, workspaceId) => {
+      await StartReviewDialog.show({
+        workspaceId,
+      });
     },
   },
 
@@ -463,7 +508,7 @@ export const Actions = {
         return;
       }
 
-      const workspace = getWorkspaceFromCache(
+      const workspace = await getWorkspace(
         ctx.queryClient,
         ctx.currentWorkspaceId
       );
@@ -604,7 +649,7 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const task = await tasksApi.getById(workspace.task_id);
 
       const repos = await attemptsApi.getRepos(workspaceId);
@@ -684,6 +729,73 @@ export const Actions = {
         repoId,
         branches,
       });
+    },
+  },
+
+  GitPush: {
+    id: 'git-push',
+    label: 'Push',
+    icon: ArrowUpIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) =>
+      ctx.hasWorkspace &&
+      ctx.hasGitRepos &&
+      ctx.hasOpenPR &&
+      ctx.hasUnpushedCommits,
+    execute: async (ctx, workspaceId, repoId) => {
+      const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
+      if (!result.success) {
+        if (result.error?.type === 'force_push_required') {
+          throw new Error(
+            'Force push required. The remote branch has diverged.'
+          );
+        }
+        throw new Error('Failed to push changes');
+      }
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  // === Script Actions ===
+  RunSetupScript: {
+    id: 'run-setup-script',
+    label: 'Run Setup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runSetupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No setup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run setup script');
+      }
+    },
+  },
+
+  RunCleanupScript: {
+    id: 'run-cleanup-script',
+    label: 'Run Cleanup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runCleanupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No cleanup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run cleanup script');
+      }
     },
   },
 } as const satisfies Record<string, ActionDefinition>;

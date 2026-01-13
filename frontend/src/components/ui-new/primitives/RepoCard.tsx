@@ -11,6 +11,8 @@ import {
   CopyIcon,
   GitMergeIcon,
   CheckCircleIcon,
+  SpinnerGapIcon,
+  WarningCircleIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,7 +26,12 @@ import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
-export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
+export type RepoAction =
+  | 'pull-request'
+  | 'merge'
+  | 'change-target'
+  | 'rebase'
+  | 'push';
 
 const repoActionOptions: SplitButtonOption<RepoAction>[] = [
   {
@@ -46,10 +53,15 @@ interface RepoCardProps {
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  showPushButton?: boolean;
+  isPushPending?: boolean;
+  isPushSuccess?: boolean;
+  isPushError?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
+  onPushClick?: () => void;
   onOpenInEditor?: () => void;
   onCopyPath?: () => void;
 }
@@ -65,10 +77,15 @@ export function RepoCard({
   prNumber,
   prUrl,
   prStatus,
+  showPushButton = false,
+  isPushPending = false,
+  isPushSuccess = false,
+  isPushError = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
   onActionsClick,
+  onPushClick,
   onOpenInEditor,
   onCopyPath,
 }: RepoCardProps) {
@@ -204,6 +221,40 @@ export function RepoCard({
               <GitPullRequestIcon className="size-icon-xs" weight="fill" />
               {t('git.pr.open', { number: prNumber })}
             </span>
+          )}
+          {/* Push button - shows loading/success/error state */}
+          {(showPushButton ||
+            isPushPending ||
+            isPushSuccess ||
+            isPushError) && (
+            <button
+              onClick={onPushClick}
+              disabled={isPushPending || isPushSuccess || isPushError}
+              className={`inline-flex items-center gap-half px-base py-half rounded-sm text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                isPushSuccess
+                  ? 'bg-success/20 text-success'
+                  : isPushError
+                    ? 'bg-error/20 text-error'
+                    : 'bg-panel text-normal hover:bg-tertiary disabled:opacity-50'
+              }`}
+            >
+              {isPushPending ? (
+                <SpinnerGapIcon className="size-icon-xs animate-spin" />
+              ) : isPushSuccess ? (
+                <CheckCircleIcon className="size-icon-xs" weight="fill" />
+              ) : isPushError ? (
+                <WarningCircleIcon className="size-icon-xs" weight="fill" />
+              ) : (
+                <ArrowUpIcon className="size-icon-xs" weight="bold" />
+              )}
+              {isPushPending
+                ? t('git.states.pushing')
+                : isPushSuccess
+                  ? t('git.states.pushed')
+                  : isPushError
+                    ? t('git.states.pushFailed')
+                    : t('git.states.push')}
+            </button>
           )}
         </div>
       )}

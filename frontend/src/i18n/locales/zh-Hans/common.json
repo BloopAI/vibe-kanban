@@ -49,7 +49,8 @@
       "ranCommand": "执行命令",
       "createdTask": "创建任务：{{description}}",
       "todoOperation": "{{operation}} 待办事项"
-    }
+    },
+    "fixScript": "修复脚本"
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",
@@ -142,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "搜索文件...",
     "noResults": "没有匹配的文件",
-    "title": "文件"
+    "title": "文件",
+    "showGitHubComments": "显示 GitHub 评论",
+    "hideGitHubComments": "隐藏 GitHub 评论"
   },
   "sections": {
     "changes": "更改",

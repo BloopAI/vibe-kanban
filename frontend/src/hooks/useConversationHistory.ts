@@ -179,7 +179,8 @@ export const useConversationHistory = ({
           p.executionProcess.executor_action.typ.type ===
             'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest'
+            'CodingAgentInitialRequest' ||
+          p.executionProcess.executor_action.typ.type === 'ReviewRequest'
       )
       .sort(
         (a, b) =>
@@ -227,14 +228,16 @@ export const useConversationHistory = ({
             p.executionProcess.executor_action.typ.type ===
               'CodingAgentInitialRequest' ||
             p.executionProcess.executor_action.typ.type ===
-              'CodingAgentFollowUpRequest'
+              'CodingAgentFollowUpRequest' ||
+            p.executionProcess.executor_action.typ.type === 'ReviewRequest'
           ) {
             // New user message
+            const actionType = p.executionProcess.executor_action.typ;
             const userNormalizedEntry: NormalizedEntry = {
               entry_type: {
                 type: 'user_message',
               },
-              content: p.executionProcess.executor_action.typ.prompt,
+              content: actionType.prompt,
               timestamp: null,
             };
             const userPatch: PatchType = {

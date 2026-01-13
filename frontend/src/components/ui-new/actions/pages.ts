@@ -102,11 +102,20 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         type: 'group',
         label: 'Workspace',
         items: [
+          { type: 'action', action: Actions.StartReview },
           { type: 'action', action: Actions.RenameWorkspace },
           { type: 'action', action: Actions.DuplicateWorkspace },
           { type: 'action', action: Actions.PinWorkspace },
           { type: 'action', action: Actions.ArchiveWorkspace },
           { type: 'action', action: Actions.DeleteWorkspace },
+        ],
+      },
+      {
+        type: 'group',
+        label: 'Scripts',
+        items: [
+          { type: 'action', action: Actions.RunSetupScript },
+          { type: 'action', action: Actions.RunCleanupScript },
         ],
       },
     ],
@@ -166,6 +175,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
         items: [
           { type: 'action', action: Actions.GitCreatePR },
           { type: 'action', action: Actions.GitMerge },
+          { type: 'action', action: Actions.GitPush },
           { type: 'action', action: Actions.GitRebase },
           { type: 'action', action: Actions.GitChangeTarget },
         ],

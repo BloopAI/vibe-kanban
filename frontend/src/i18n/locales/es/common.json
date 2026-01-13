@@ -60,7 +60,8 @@
       "ranCommand": "Ejecutó comando",
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
-    }
+    },
+    "fixScript": "Corregir Script"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"
@@ -142,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",
     "noResults": "No hay archivos coincidentes",
-    "title": "Archivos"
+    "title": "Archivos",
+    "showGitHubComments": "Mostrar comentarios de GitHub",
+    "hideGitHubComments": "Ocultar comentarios de GitHub"
   },
   "sections": {
     "changes": "Cambios",

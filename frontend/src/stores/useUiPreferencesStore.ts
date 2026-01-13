@@ -30,6 +30,8 @@ export const PERSIST_KEYS = {
   devServerSection: 'dev-server-section',
   // Context bar
   contextBarPosition: 'context-bar-position',
+  // GitHub comments toggle
+  showGitHubComments: 'show-github-comments',
   // Pane sizes
   sidebarWidth: 'workspaces-sidebar-width',
   gitPanelWidth: 'workspaces-git-panel-width',
@@ -50,6 +52,7 @@ export type PersistKey =
   | typeof PERSIST_KEYS.processesSection
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
+  | typeof PERSIST_KEYS.showGitHubComments
   | typeof PERSIST_KEYS.sidebarWidth
   | typeof PERSIST_KEYS.gitPanelWidth
   | typeof PERSIST_KEYS.changesPanelWidth

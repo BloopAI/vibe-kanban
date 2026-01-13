@@ -1,4 +1,5 @@
 pub mod queue;
+pub mod review;
 
 use std::str::FromStr;
 
@@ -239,6 +240,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
         .route("/follow-up", post(follow_up))
+        .route("/review", post(review::start_review))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_session_middleware,

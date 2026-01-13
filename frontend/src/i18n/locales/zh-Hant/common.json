@@ -49,7 +49,8 @@
       "ranCommand": "執行命令",
       "createdTask": "建立任務：{{description}}",
       "todoOperation": "{{operation}} 待辦事項"
-    }
+    },
+    "fixScript": "修復腳本"
   },
   "folderPicker": {
     "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",
@@ -142,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",
     "noResults": "沒有匹配的檔案",
-    "title": "檔案"
+    "title": "檔案",
+    "showGitHubComments": "顯示 GitHub 評論",
+    "hideGitHubComments": "隱藏 GitHub 評論"
   },
   "sections": {
     "changes": "變更",

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { TerminalIcon } from '@phosphor-icons/react';
+import { TerminalIcon, WrenchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
@@ -11,6 +11,7 @@ interface ChatScriptEntryProps {
   exitCode?: number | null;
   className?: string;
   status: ToolStatus;
+  onFix?: () => void;
 }
 
 export function ChatScriptEntry({
@@ -19,12 +20,18 @@ export function ChatScriptEntry({
   exitCode,
   className,
   status,
+  onFix,
 }: ChatScriptEntryProps) {
   const { t } = useTranslation('tasks');
   const { viewProcessInPanel } = useLogNavigation();
   const isRunning = status.status === 'created';
   const isSuccess = status.status === 'success';
   const isFailed = status.status === 'failed';
+
+  const handleFixClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onFix?.();
+  };
 
   const handleClick = () => {
     viewProcessInPanel(processId);
@@ -66,10 +73,21 @@ export function ChatScriptEntry({
           className="absolute -bottom-0.5 -left-0.5"
         />
       </span>
-      <div className="flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0 flex-1">
         <span className="text-normal font-medium">{title}</span>
         <span className="text-low text-xs">{getSubtitle()}</span>
       </div>
+      {isFailed && onFix && (
+        <button
+          type="button"
+          onClick={handleFixClick}
+          className="shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-brand hover:text-brand-hover hover:bg-secondary rounded transition-colors"
+          title={t('scriptFixer.fixScript')}
+        >
+          <WrenchIcon className="size-icon-xs" />
+          <span>{t('scriptFixer.fixScript')}</span>
+        </button>
+      )}
     </div>
   );
 }

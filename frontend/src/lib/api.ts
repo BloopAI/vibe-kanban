@@ -88,6 +88,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  StartReviewRequest,
+  ReviewError,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -475,6 +477,17 @@ export const sessionsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<ExecutionProcess>(response);
+  },
+
+  startReview: async (
+    sessionId: string,
+    data: StartReviewRequest
+  ): Promise<ExecutionProcess> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ExecutionProcess, ReviewError>(response);
   },
 };
 

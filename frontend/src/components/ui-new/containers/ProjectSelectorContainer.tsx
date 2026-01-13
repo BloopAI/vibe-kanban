@@ -180,6 +180,7 @@ export function ProjectSelectorContainer({
         <DropdownMenuItem
           onSelect={handleCreateClick}
           onMouseEnter={() => setHighlightedIndex(0)}
+          preventFocusOnHover
           icon={PlusIcon}
           className={cn(
             'text-accent',
@@ -208,6 +209,7 @@ export function ProjectSelectorContainer({
                 <DropdownMenuItem
                   onSelect={() => handleSelect(item)}
                   onMouseEnter={() => setHighlightedIndex(idx + 1)}
+                  preventFocusOnHover
                   className={cn(
                     isSelected && 'bg-secondary',
                     isHighlighted && 'bg-secondary'

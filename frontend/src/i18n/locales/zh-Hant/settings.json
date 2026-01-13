@@ -248,8 +248,8 @@
         "loginDetectedTooltip": "找到此代理的最近驗證憑證",
         "installationFound": "偵測到曾使用",
         "installationFoundTooltip": "找到代理設定。您可能需要登入才能使用。",
-        "notFound": "未找到",
-        "notFoundTooltip": "未偵測到曾使用。代理可能需要安裝和/或登入。"
+        "notFound": "未知",
+        "notFoundTooltip": "我們無法驗證此代理是否已設定，但請繼續嘗試。"
       },
       "editor": {
         "formLabel": "編輯 JSON",
@@ -332,11 +332,6 @@
           "placeholder": "/path/to/your/existing/repo",
           "helper": "磁碟上的 Git 儲存庫絕對路徑。"
         }
-      },
-      "agentWorkingDir": {
-        "label": "代理工作目錄",
-        "placeholder": "例如：my-repo",
-        "helper": "新工作區執行編碼代理的預設目錄，相對於工作區根目錄。此值在建立工作區時保存，不會影響現有工作區。單一儲存庫專案預設為儲存庫名稱。留空則從工作區根目錄執行。"
       },
       "save": {
         "button": "儲存專案設定",

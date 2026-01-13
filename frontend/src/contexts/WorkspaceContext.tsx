@@ -15,12 +15,19 @@ import {
 import { useAttempt } from '@/hooks/useAttempt';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
+import {
+  useGitHubComments,
+  type NormalizedGitHubComment,
+} from '@/hooks/useGitHubComments';
 import { attemptsApi } from '@/lib/api';
 import type {
   Workspace as ApiWorkspace,
   Session,
   RepoWithTargetBranch,
+  UnifiedPrComment,
 } from 'shared/types';
+
+export type { NormalizedGitHubComment } from '@/hooks/useGitHubComments';
 
 interface WorkspaceContextValue {
   workspaceId: string | undefined;
@@ -48,6 +55,13 @@ interface WorkspaceContextValue {
   /** Repos for the current workspace */
   repos: RepoWithTargetBranch[];
   isReposLoading: boolean;
+  /** GitHub PR Comments */
+  gitHubComments: UnifiedPrComment[];
+  isGitHubCommentsLoading: boolean;
+  showGitHubComments: boolean;
+  setShowGitHubComments: (show: boolean) => void;
+  getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
+  getGitHubCommentCountForFile: (filePath: string) => number;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -92,6 +106,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   // Fetch repos for the current workspace
   const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
+    enabled: !isCreateMode,
+  });
+
+  // Get first repo ID for PR comments.
+  // TODO: Support multiple repos - currently only fetches comments from the primary repo.
+  const primaryRepoId = repos[0]?.id;
+
+  // GitHub comments hook (fetching, normalization, and helpers)
+  const {
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+  } = useGitHubComments({
+    workspaceId,
+    repoId: primaryRepoId,
     enabled: !isCreateMode,
   });
 
@@ -142,6 +174,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      getGitHubCommentCountForFile,
     }),
     [
       workspaceId,
@@ -162,6 +200,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       startNewSession,
       repos,
       isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      getGitHubCommentCountForFile,
     ]
   );
 

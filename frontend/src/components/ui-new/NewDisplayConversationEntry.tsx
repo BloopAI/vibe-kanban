@@ -7,6 +7,7 @@ import {
   ToolStatus,
   TodoItem,
   type TaskWithAttemptStatus,
+  type RepoWithTargetBranch,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { DiffLineType, parseInstance } from '@git-diff-view/react';
@@ -18,7 +19,12 @@ import DisplayConversationEntry from '@/components/NormalizedConversation/Displa
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useFileNavigation } from '@/contexts/FileNavigationContext';
 import { useLogNavigation } from '@/contexts/LogNavigationContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
+import {
+  ScriptFixerDialog,
+  type ScriptType,
+} from '@/components/dialogs/scripts/ScriptFixerDialog';
 import {
   ChatToolSummary,
   ChatTodoList,
@@ -215,11 +221,13 @@ function renderToolUseEntry(
         : null;
 
     return (
-      <ChatScriptEntry
+      <ScriptEntryWithFix
         title={entryType.tool_name}
         processId={executionProcessId ?? ''}
         exitCode={exitCode}
         status={status}
+        workspaceId={taskAttempt?.id}
+        sessionId={taskAttempt?.session?.id}
       />
     );
   }
@@ -564,9 +572,8 @@ function ToolSummaryEntry({
     }
   }, [summary, expanded]);
 
-  // Only Bash tools with output should open the logs panel
-  const isBash = toolName === 'Bash';
-  const hasOutput = isBash && content && content.trim().length > 0;
+  // Any tool with output can open the logs panel
+  const hasOutput = content && content.trim().length > 0;
 
   const handleViewContent = useCallback(() => {
     viewToolContentInPanel(toolName, content, command);
@@ -624,6 +631,72 @@ function SystemMessageEntry({
       content={content}
       expanded={expanded}
       onToggle={toggle}
+    />
+  );
+}
+
+/**
+ * Script entry with fix button for failed scripts
+ */
+function ScriptEntryWithFix({
+  title,
+  processId,
+  exitCode,
+  status,
+  workspaceId,
+  sessionId,
+}: {
+  title: string;
+  processId: string;
+  exitCode: number | null;
+  status: ToolStatus;
+  workspaceId?: string;
+  sessionId?: string;
+}) {
+  // Try to get repos from workspace context - may not be available in all contexts
+  let repos: RepoWithTargetBranch[] = [];
+  try {
+    const workspaceContext = useWorkspaceContext();
+    repos = workspaceContext.repos;
+  } catch {
+    // Context not available, fix button won't be shown
+  }
+
+  // Use ref to access current repos without causing callback recreation
+  const reposRef = useRef(repos);
+  reposRef.current = repos;
+
+  const handleFix = useCallback(() => {
+    const currentRepos = reposRef.current;
+    if (!workspaceId || currentRepos.length === 0) return;
+
+    // Determine script type based on title
+    const scriptType: ScriptType =
+      title === 'Setup Script'
+        ? 'setup'
+        : title === 'Cleanup Script'
+          ? 'cleanup'
+          : 'dev_server';
+
+    ScriptFixerDialog.show({
+      scriptType,
+      repos: currentRepos,
+      workspaceId,
+      sessionId,
+      initialRepoId: currentRepos.length === 1 ? currentRepos[0].id : undefined,
+    });
+  }, [title, workspaceId, sessionId]);
+
+  // Only show fix button if we have the necessary context
+  const canFix = workspaceId && repos.length > 0;
+
+  return (
+    <ChatScriptEntry
+      title={title}
+      processId={processId}
+      exitCode={exitCode}
+      status={status}
+      onFix={canFix ? handleFix : undefined}
     />
   );
 }

@@ -65,7 +65,7 @@ pub fn get_qa_repos() -> Result<Vec<DirectoryEntry>, FilesystemError> {
 }
 
 /// Clone QA repositories if they don't already exist
-fn clone_qa_repos_if_needed(base_dir: &PathBuf) {
+fn clone_qa_repos_if_needed(base_dir: &std::path::Path) {
     for (name, url) in QA_REPOS {
         let repo_path = base_dir.join(name);
 

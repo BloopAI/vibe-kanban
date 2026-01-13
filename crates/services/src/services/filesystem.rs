@@ -1,12 +1,15 @@
+#[cfg(not(feature = "qa-mode"))]
+use std::collections::HashSet;
 use std::{
-    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
 
+#[cfg(not(feature = "qa-mode"))]
 use ignore::WalkBuilder;
 use serde::Serialize;
 use thiserror::Error;
+#[cfg(not(feature = "qa-mode"))]
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 
@@ -48,6 +51,7 @@ impl FilesystemService {
         FilesystemService {}
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     fn get_directories_to_skip() -> HashSet<String> {
         let mut skip_dirs = HashSet::from(
             [
@@ -86,6 +90,7 @@ impl FilesystemService {
         skip_dirs
     }
 
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     pub async fn list_git_repos(
         &self,
         path: Option<String>,
@@ -96,7 +101,7 @@ impl FilesystemService {
         #[cfg(feature = "qa-mode")]
         {
             tracing::info!("QA mode: returning hardcoded QA repos instead of scanning filesystem");
-            return super::qa_repos::get_qa_repos();
+            super::qa_repos::get_qa_repos()
         }
 
         #[cfg(not(feature = "qa-mode"))]
@@ -115,6 +120,7 @@ impl FilesystemService {
         }
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     async fn list_git_repos_with_timeout(
         &self,
         paths: Vec<PathBuf>,
@@ -159,6 +165,7 @@ impl FilesystemService {
         }
     }
 
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     pub async fn list_common_git_repos(
         &self,
         timeout_ms: u64,
@@ -170,7 +177,7 @@ impl FilesystemService {
             tracing::info!(
                 "QA mode: returning hardcoded QA repos instead of scanning common directories"
             );
-            return super::qa_repos::get_qa_repos();
+            super::qa_repos::get_qa_repos()
         }
 
         #[cfg(not(feature = "qa-mode"))]
@@ -194,6 +201,7 @@ impl FilesystemService {
         }
     }
 
+    #[cfg(not(feature = "qa-mode"))]
     async fn list_git_repos_inner(
         &self,
         path: Vec<PathBuf>,

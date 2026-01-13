@@ -30,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "Iniciar revisión",
+    "startingReview": "Iniciando revisión..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +43,15 @@
       "renaming": "Renombrando...",
       "action": "Renombrar rama"
     }
+  },
+  "startReviewDialog": {
+    "title": "Iniciar revisión",
+    "description": "Pide al agente de codificación que revise tus cambios y proporcione comentarios.",
+    "additionalInstructions": "Instrucciones adicionales (opcional)",
+    "reviewComments": "Comentarios de revisión ({{count}})",
+    "includeGitContext": "Incluir contexto de git",
+    "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
+    "newSession": "Nueva sesión"
   },
   "attempt": {
     "actions": {
@@ -309,6 +320,7 @@
       "push": "Enviar",
       "pushed": "¡Enviado!",
       "pushing": "Enviando...",
+      "pushFailed": "Falló",
       "rebase": "Rebase",
       "rebasing": "Rebaseando..."
     },
@@ -359,7 +371,8 @@
       "startButton": "Iniciar Servidor de Desarrollo",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
       "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas",
-      "title": "No hay servidor de desarrollo en ejecución"
+      "title": "No hay servidor de desarrollo en ejecución",
+      "fixScript": "Corregir Script de Desarrollo"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -377,7 +390,8 @@
       "item2Suffix": "? (así es como sabemos que está funcionando)",
       "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
       "item3Link": "sigue las instrucciones de instalación aquí",
-      "title": "Tenemos problemas al previsualizar tu aplicación:"
+      "title": "Tenemos problemas al previsualizar tu aplicación:",
+      "fixScript": "Corregir Script de Desarrollo"
     }
   },
   "processes": {
@@ -654,5 +668,24 @@
       "deleted": "Eliminado",
       "renamed": "Renombrado"
     }
+  },
+  "scriptFixer": {
+    "title": "Corregir Script",
+    "setupScriptTitle": "Corregir Script de Configuración",
+    "cleanupScriptTitle": "Corregir Script de Limpieza",
+    "devServerTitle": "Corregir Script del Servidor de Desarrollo",
+    "scriptLabel": "Script (editar)",
+    "logsLabel": "Últimos Registros de Ejecución",
+    "saveButton": "Guardar",
+    "saveAndTestButton": "Guardar y Probar",
+    "saving": "Guardando...",
+    "testing": "Probando...",
+    "noLogs": "No hay registros de ejecución disponibles",
+    "selectRepo": "Repositorio",
+    "fixScript": "Corregir Script",
+    "statusRunning": "Ejecutando...",
+    "statusSuccess": "Completado exitosamente",
+    "statusFailed": "Falló con código de salida {{exitCode}}",
+    "statusKilled": "El proceso fue terminado"
   }
 }

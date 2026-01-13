@@ -60,7 +60,8 @@
       "ranCommand": "명령 실행",
       "createdTask": "작업 생성: {{description}}",
       "todoOperation": "{{operation}} 할 일"
-    }
+    },
+    "fixScript": "스크립트 수정"
   },
   "language": {
     "browserDefault": "브라우저 기본값"
@@ -142,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "파일 검색...",
     "noResults": "일치하는 파일 없음",
-    "title": "파일"
+    "title": "파일",
+    "showGitHubComments": "GitHub 댓글 표시",
+    "hideGitHubComments": "GitHub 댓글 숨기기"
   },
   "sections": {
     "changes": "변경사항",

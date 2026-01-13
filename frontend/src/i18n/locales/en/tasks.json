@@ -79,7 +79,8 @@
       "item2": "Did your dev server print the URL and port to the terminal in the format",
       "item2Suffix": "? (this is how we know it's running)",
       "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
-      "item3Link": "follow the installation instructions here"
+      "item3Link": "follow the installation instructions here",
+      "fixScript": "Fix Dev Script"
     },
     "noServer": {
       "title": "No dev server running",
@@ -89,7 +90,8 @@
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "configureButton": "Configure",
-      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues",
+      "fixScript": "Fix Dev Script"
     },
     "devScript": {
       "saveAndStart": "Save & Start",
@@ -352,6 +354,7 @@
       "pushed": "Pushed!",
       "pushing": "Pushing...",
       "push": "Push",
+      "pushFailed": "Failed",
       "forcePush": "Force Push",
       "forcePushing": "Force Pushing...",
       "creating": "Creating...",
@@ -462,6 +465,8 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
+    "startReview": "Start Review",
+    "startingReview": "Starting Review...",
     "task": "Task",
     "share": "Share",
     "reassign": "Reassign",
@@ -477,6 +482,15 @@
       "renaming": "Renaming...",
       "action": "Rename Branch"
     }
+  },
+  "startReviewDialog": {
+    "title": "Start Review",
+    "description": "Ask the coding agent to review your changes and provide feedback.",
+    "additionalInstructions": "Additional Instructions (optional)",
+    "reviewComments": "Review Comments ({{count}})",
+    "includeGitContext": "Include git context",
+    "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
+    "newSession": "New Session"
   },
   "stopShareDialog": {
     "title": "Stop Sharing Task",
@@ -654,5 +668,24 @@
     "buttons": {
       "retry": "Retry"
     }
+  },
+  "scriptFixer": {
+    "title": "Fix Script",
+    "setupScriptTitle": "Fix Setup Script",
+    "cleanupScriptTitle": "Fix Cleanup Script",
+    "devServerTitle": "Fix Dev Server Script",
+    "scriptLabel": "Script (edit)",
+    "logsLabel": "Last Execution Logs",
+    "saveButton": "Save",
+    "saveAndTestButton": "Save and Test",
+    "saving": "Saving...",
+    "testing": "Testing...",
+    "noLogs": "No execution logs available",
+    "selectRepo": "Repository",
+    "fixScript": "Fix Script",
+    "statusRunning": "Running...",
+    "statusSuccess": "Completed successfully",
+    "statusFailed": "Failed with exit code {{exitCode}}",
+    "statusKilled": "Process was killed"
   }
 }

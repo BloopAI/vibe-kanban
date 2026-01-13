@@ -16,7 +16,7 @@ export type Project = { id: string, name: string, default_agent_working_dir: str
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, default_agent_working_dir: string | null, };
+export type UpdateProject = { name: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
 /**
@@ -64,9 +64,11 @@ export type DraftWorkspaceData = { message: string, project_id: string | null, r
 
 export type DraftWorkspaceRepo = { repo_id: string, target_branch: string, };
 
-export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData };
+export type PreviewUrlOverrideData = { url: string, };
 
-export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP", DRAFT_WORKSPACE = "DRAFT_WORKSPACE" }
+export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "PREVIEW_URL_OVERRIDE", "data": PreviewUrlOverrideData };
+
+export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP", DRAFT_WORKSPACE = "DRAFT_WORKSPACE", PREVIEW_URL_OVERRIDE = "PREVIEW_URL_OVERRIDE" }
 
 export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
 
@@ -232,6 +234,10 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, };
+
+export type ReviewError = { "type": "process_already_running" };
+
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
 export type OpenEditorResponse = { url: string | null, };
@@ -294,7 +300,7 @@ export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_n
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
-export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, diff_hunk: string | null, };
+export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, side: string | null, diff_hunk: string | null, };
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
@@ -410,7 +416,7 @@ export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAct
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
-export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
 export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
 
@@ -514,6 +520,18 @@ executor_profile_id: ExecutorProfileId,
  * If None, uses the container_ref directory directly.
  */
 working_dir: string | null, };
+
+export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
+/**
+ * Optional session ID to resume an existing session
+ */
+session_id: string | null, 
+/**
+ * Optional relative path to execute the agent in (relative to container_ref).
+ */
+working_dir: string | null, };
+
+export type RepoReviewContext = { repo_id: string, repo_name: string, base_commit: string, };
 
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 

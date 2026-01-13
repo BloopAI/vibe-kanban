@@ -4,12 +4,14 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+#[cfg(not(feature = "qa-mode"))]
+use crate::profile::ExecutorConfigs;
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::ExecutorProfileId,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -46,6 +48,7 @@ impl CodingAgentFollowUpRequest {
 
 #[async_trait]
 impl Executable for CodingAgentFollowUpRequest {
+    #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
     async fn spawn(
         &self,
         current_dir: &Path,

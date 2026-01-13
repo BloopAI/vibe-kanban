@@ -248,8 +248,8 @@
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
         "installationFound": "Uso previo detectado",
         "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
-        "notFound": "No encontrado",
-        "notFoundTooltip": "No se detectó uso previo. El agente puede requerir instalación y/o inicio de sesión."
+        "notFound": "Desconocido",
+        "notFoundTooltip": "No pudimos verificar que este agente esté configurado, pero pruébalo."
       },
       "editor": {
         "formLabel": "Editar JSON",
@@ -332,11 +332,6 @@
           "placeholder": "/ruta/a/tu/repositorio/existente",
           "helper": "La ruta absoluta a tu repositorio git en disco."
         }
-      },
-      "agentWorkingDir": {
-        "label": "Directorio de Trabajo del Agente",
-        "placeholder": "ej., mi-repo",
-        "helper": "Directorio predeterminado para nuevos workspaces donde ejecutar el agente de codificación, relativo a la raíz del workspace. Este valor se captura cuando se crea un workspace y no afectará a los workspaces existentes. Para proyectos de un solo repositorio, esto se establece por defecto al nombre del repositorio. Déjalo vacío para ejecutar desde la raíz del workspace."
       },
       "save": {
         "button": "Guardar Configuración del Proyecto",

@@ -248,8 +248,8 @@
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
         "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
-        "notFound": "Not Found",
-        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
+        "notFound": "Unknown",
+        "notFoundTooltip": "We couldn't verify this agent is set up, but go ahead and try it."
       },
       "editor": {
         "formLabel": "Edit JSON",
@@ -333,11 +333,6 @@
           "helper": "The absolute path to your git repository on disk."
         }
       },
-      "agentWorkingDir": {
-        "label": "Agent Working Directory",
-        "placeholder": "e.g., my-repo",
-        "helper": "Default directory for new workspaces to run the coding agent from, relative to the workspace root. This value is captured when a workspace is created and won't affect existing workspaces. For single-repo projects, this defaults to the repo name. Leave empty to run from the workspace root."
-      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",
@@ -372,7 +367,7 @@
       },
       "scripts": {
         "title": "Scripts & Configuration",
-        "description": "Configure setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
+        "description": "Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
         "setup": {
           "label": "Setup Script",
           "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",

@@ -12,6 +12,7 @@ import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext'
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
+import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
 import { getLatestProfileFromProcesses } from '@/utils/executor';
 import { useExecutorSelection } from '@/hooks/useExecutorSelection';
@@ -27,6 +28,11 @@ import {
   SessionChatBox,
   type ExecutionStatus,
 } from '../primitives/SessionChatBox';
+import { Actions, type ActionDefinition } from '../actions';
+import {
+  isActionVisible,
+  useActionVisibilityContext,
+} from '../actions/useActionVisibility';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -92,6 +98,9 @@ export function SessionChatBoxContainer({
   const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+
+  const { executeAction } = useActions();
+  const actionCtx = useActionVisibilityContext();
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();
@@ -288,7 +297,6 @@ export function SessionChatBoxContainer({
   });
 
   const handleSend = useCallback(async () => {
-    // Combine review comments with user message
     const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
     const combinedMessage = messageParts.join('\n\n');
 
@@ -298,7 +306,6 @@ export function SessionChatBoxContainer({
       setLocalMessage('');
       clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
-      // Clear review comments after successful send
       reviewContext?.clearComments();
     }
   }, [
@@ -439,6 +446,27 @@ export function SessionChatBoxContainer({
     prevEditRef.current = editContext.activeEdit;
   }, [editContext.activeEdit, setLocalMessage]);
 
+  // Toolbar actions handler - intercepts action execution to provide extra context
+  const handleToolbarAction = useCallback(
+    (action: ActionDefinition) => {
+      if (action.requiresTarget && workspaceId) {
+        executeAction(action, workspaceId);
+      } else {
+        executeAction(action);
+      }
+    },
+    [executeAction, workspaceId]
+  );
+
+  // Define which actions appear in the toolbar
+  const toolbarActionsList = useMemo(
+    () =>
+      [Actions.StartReview].filter((action) =>
+        isActionVisible(action, actionCtx)
+      ),
+    [actionCtx]
+  );
+
   // Handle approve action
   const handleApprove = useCallback(async () => {
     if (!pendingApproval) return;
@@ -493,7 +521,6 @@ export function SessionChatBoxContainer({
     ? new Date() > new Date(pendingApproval.timeoutAt)
     : false;
 
-  // Compute execution status
   const status = computeExecutionStatus({
     isInFeedbackMode,
     isInEditMode,
@@ -549,6 +576,11 @@ export function SessionChatBoxContainer({
         onSelectSession: onSelectSession ?? (() => {}),
         isNewSessionMode,
         onNewSession: onStartNewSession,
+      }}
+      toolbarActions={{
+        actions: toolbarActionsList,
+        context: actionCtx,
+        onExecuteAction: handleToolbarAction,
       }}
       stats={{
         filesChanged,
