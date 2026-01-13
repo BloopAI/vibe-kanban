@@ -68,42 +68,45 @@ export function PreviewBrowserContainer({
     }
   }, [effectiveUrl]);
 
-  // Responsive resize state
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState<
-    'right' | 'bottom' | 'corner' | null
-  >(null);
+  // Responsive resize state - use refs for values that shouldn't trigger re-renders
   const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isResizingRef = useRef(false);
+  const resizeDirectionRef = useRef<'right' | 'bottom' | 'corner' | null>(null);
+  const localDimensionsRef = useRef(localDimensions);
+
+  // Keep ref in sync with state for use in event handlers
+  useEffect(() => {
+    localDimensionsRef.current = localDimensions;
+  }, [localDimensions]);
 
   // Sync local dimensions with prop when not resizing
   useEffect(() => {
-    if (!isResizing) {
+    if (!isResizingRef.current) {
       setLocalDimensions(responsiveDimensions);
     }
-  }, [responsiveDimensions, isResizing]);
+  }, [responsiveDimensions]);
 
-  // Handle resize events
+  // Handle resize events - register listeners once on mount
   useEffect(() => {
-    if (!isResizing || !resizeDirection) return;
-
     const handleMove = (clientX: number, clientY: number) => {
-      if (!containerRef.current) return;
+      if (!isResizingRef.current || !containerRef.current) return;
 
       const containerRect = containerRef.current.getBoundingClientRect();
+      const direction = resizeDirectionRef.current;
 
       setLocalDimensions((prev) => {
         let newWidth = prev.width;
         let newHeight = prev.height;
 
-        if (resizeDirection === 'right' || resizeDirection === 'corner') {
+        if (direction === 'right' || direction === 'corner') {
           newWidth = Math.max(
             MIN_RESPONSIVE_WIDTH,
             clientX - containerRect.left
           );
         }
 
-        if (resizeDirection === 'bottom' || resizeDirection === 'corner') {
+        if (direction === 'bottom' || direction === 'corner') {
           newHeight = Math.max(
             MIN_RESPONSIVE_HEIGHT,
             clientY - containerRect.top
@@ -124,9 +127,11 @@ export function PreviewBrowserContainer({
     };
 
     const handleEnd = () => {
-      setIsResizing(false);
-      setResizeDirection(null);
-      setResponsiveDimensions(localDimensions);
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        resizeDirectionRef.current = null;
+        setResponsiveDimensions(localDimensionsRef.current);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -140,14 +145,14 @@ export function PreviewBrowserContainer({
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleEnd);
     };
-  }, [isResizing, resizeDirection, localDimensions, setResponsiveDimensions]);
+  }, [setResponsiveDimensions]);
 
   const handleResizeStart = useCallback(
     (direction: 'right' | 'bottom' | 'corner') =>
       (e: React.MouseEvent | React.TouchEvent) => {
         e.preventDefault();
-        setIsResizing(true);
-        setResizeDirection(direction);
+        isResizingRef.current = true;
+        resizeDirectionRef.current = direction;
       },
     []
   );
