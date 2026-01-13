@@ -7,13 +7,15 @@ use axum::{
         Path, Query, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
 use db::models::{
-    project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
+    project::{
+        CreateProject, Project, ProjectError, ProjectWithCreator, SearchResult, UpdateProject,
+    },
     project_repo::{CreateProjectRepo, ProjectRepo},
     repo::Repo,
 };
@@ -31,7 +33,10 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
+use crate::{
+    DeploymentImpl, error::ApiError,
+    middleware::{get_user_id, load_project_middleware, try_get_authenticated_user},
+};
 
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
@@ -46,8 +51,8 @@ pub struct CreateRemoteProjectRequest {
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
-    let projects = Project::find_all(&deployment.db().pool).await?;
+) -> Result<ResponseJson<ApiResponse<Vec<ProjectWithCreator>>>, ApiError> {
+    let projects = Project::find_all_with_creators(&deployment.db().pool).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 
@@ -95,8 +100,10 @@ async fn handle_projects_ws(socket: WebSocket, deployment: DeploymentImpl) -> an
 
 pub async fn get_project(
     Extension(project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    Ok(ResponseJson(ApiResponse::success(project)))
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ProjectWithCreator>>, ApiError> {
+    let project_with_creator = project.with_creator(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(project_with_creator)))
 }
 
 pub async fn link_project_to_existing_remote(
@@ -217,14 +224,24 @@ async fn apply_remote_project_link(
 
 pub async fn create_project(
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateProject>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     tracing::debug!("Creating project '{}'", payload.name);
     let repo_count = payload.repositories.len();
 
+    // Get the authenticated user if available
+    let user = try_get_authenticated_user(&deployment, &headers).await;
+    let creator_user_id = get_user_id(&user);
+
     match deployment
         .project()
-        .create_project(&deployment.db().pool, deployment.repo(), payload)
+        .create_project(
+            &deployment.db().pool,
+            deployment.repo(),
+            payload,
+            creator_user_id,
+        )
         .await
     {
         Ok(project) => {
@@ -236,6 +253,7 @@ pub async fn create_project(
                         "project_id": project.id.to_string(),
                         "repository_count": repo_count,
                         "trigger": "manual",
+                        "creator_user_id": creator_user_id.map(|id| id.to_string()),
                     }),
                 )
                 .await;

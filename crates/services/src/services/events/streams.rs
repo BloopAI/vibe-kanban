@@ -1,6 +1,6 @@
 use db::models::{
     execution_process::ExecutionProcess,
-    project::Project,
+    project::{Project, ProjectWithCreator},
     scratch::Scratch,
     task::{Task, TaskWithAttemptStatus},
     workspace::Workspace,
@@ -152,13 +152,13 @@ impl EventService {
         &self,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        fn build_projects_snapshot(projects: Vec<Project>) -> LogMsg {
+        fn build_projects_snapshot(projects: Vec<ProjectWithCreator>) -> LogMsg {
             // Convert projects array to object keyed by project ID
             let projects_map: serde_json::Map<String, serde_json::Value> = projects
                 .into_iter()
                 .map(|project| {
                     (
-                        project.id.to_string(),
+                        project.project.id.to_string(),
                         serde_json::to_value(project).unwrap(),
                     )
                 })
@@ -175,8 +175,8 @@ impl EventService {
             LogMsg::JsonPatch(serde_json::from_value(patch).unwrap())
         }
 
-        // Get initial snapshot of projects
-        let projects = Project::find_all(&self.db.pool).await?;
+        // Get initial snapshot of projects with creator info
+        let projects = Project::find_all_with_creators(&self.db.pool).await?;
         let initial_msg = build_projects_snapshot(projects);
 
         let db_pool = self.db.pool.clone();
@@ -202,7 +202,7 @@ impl EventService {
                                 "projects stream lagged; resyncing snapshot"
                             );
 
-                            match Project::find_all(&db_pool).await {
+                            match Project::find_all_with_creators(&db_pool).await {
                                 Ok(projects) => Some(Ok(build_projects_snapshot(projects))),
                                 Err(err) => {
                                     tracing::error!(

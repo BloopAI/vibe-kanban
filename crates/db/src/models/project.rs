@@ -6,6 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::project_repo::CreateProjectRepo;
+use super::user::User;
 
 #[derive(Debug, Error)]
 pub enum ProjectError {
@@ -23,10 +24,46 @@ pub struct Project {
     pub name: String,
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
+    pub creator_user_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
     pub updated_at: DateTime<Utc>,
+}
+
+/// Compact representation of a user for API responses
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectCreator {
+    pub id: Uuid,
+    pub username: String,
+    pub avatar_url: Option<String>,
+}
+
+impl From<User> for ProjectCreator {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            avatar_url: user.avatar_url,
+        }
+    }
+}
+
+/// Project with creator information for API responses
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ProjectWithCreator {
+    #[serde(flatten)]
+    pub project: Project,
+    pub creator: Option<ProjectCreator>,
+}
+
+impl ProjectWithCreator {
+    pub fn new(project: Project, creator: Option<User>) -> Self {
+        Self {
+            project,
+            creator: creator.map(ProjectCreator::from),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -71,6 +108,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      creator_user_id as "creator_user_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -88,6 +126,7 @@ impl Project {
             SELECT p.id as "id!: Uuid", p.name,
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
+                   p.creator_user_id as "creator_user_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -111,6 +150,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      creator_user_id as "creator_user_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -128,6 +168,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      creator_user_id as "creator_user_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -148,6 +189,7 @@ impl Project {
                       name,
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
+                      creator_user_id as "creator_user_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -163,23 +205,27 @@ impl Project {
         executor: impl Executor<'_, Database = Sqlite>,
         data: &CreateProject,
         project_id: Uuid,
+        creator_user_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (
                     id,
-                    name
+                    name,
+                    creator_user_id
                 ) VALUES (
-                    $1, $2
+                    $1, $2, $3
                 )
                 RETURNING id as "id!: Uuid",
                           name,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
+                          creator_user_id as "creator_user_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
+            creator_user_id,
         )
         .fetch_one(executor)
         .await
@@ -205,6 +251,7 @@ impl Project {
                          name,
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
+                         creator_user_id as "creator_user_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -259,5 +306,55 @@ impl Project {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    /// Fetch the creator user for this project, if one exists
+    pub async fn get_creator(&self, pool: &SqlitePool) -> Result<Option<User>, sqlx::Error> {
+        match self.creator_user_id {
+            Some(user_id) => User::find_by_id(pool, user_id).await,
+            None => Ok(None),
+        }
+    }
+
+    /// Convert this project to a ProjectWithCreator, fetching the creator if available
+    pub async fn with_creator(self, pool: &SqlitePool) -> Result<ProjectWithCreator, sqlx::Error> {
+        let creator = self.get_creator(pool).await?;
+        Ok(ProjectWithCreator::new(self, creator))
+    }
+
+    /// Fetch all projects with their creator information
+    pub async fn find_all_with_creators(
+        pool: &SqlitePool,
+    ) -> Result<Vec<ProjectWithCreator>, sqlx::Error> {
+        let projects = Self::find_all(pool).await?;
+
+        // Collect unique creator user IDs
+        let creator_ids: Vec<Uuid> = projects
+            .iter()
+            .filter_map(|p| p.creator_user_id)
+            .collect();
+
+        // Fetch all creators in one query
+        let creators: std::collections::HashMap<Uuid, User> = if !creator_ids.is_empty() {
+            User::find_all(pool)
+                .await?
+                .into_iter()
+                .filter(|u| creator_ids.contains(&u.id))
+                .map(|u| (u.id, u))
+                .collect()
+        } else {
+            std::collections::HashMap::new()
+        };
+
+        // Build ProjectWithCreator for each project
+        let projects_with_creators = projects
+            .into_iter()
+            .map(|p| {
+                let creator = p.creator_user_id.and_then(|id| creators.get(&id).cloned());
+                ProjectWithCreator::new(p, creator)
+            })
+            .collect();
+
+        Ok(projects_with_creators)
     }
 }
