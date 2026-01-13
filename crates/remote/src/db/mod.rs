@@ -11,7 +11,6 @@ pub mod project_notification_preferences;
 pub mod project_statuses;
 pub mod project_tasks;
 pub mod projects;
-pub mod remote_projects;
 pub mod remote_workspaces;
 pub mod reviews;
 pub mod tags;

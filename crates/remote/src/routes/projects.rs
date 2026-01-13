@@ -13,7 +13,7 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::remote_projects::{RemoteProject, RemoteProjectRepository},
+    db::projects::{Project, ProjectRepository},
 };
 
 #[derive(Debug, Serialize)]
@@ -73,7 +73,7 @@ async fn list_projects(
     let target_org = params.organization_id;
     ensure_member_access(state.pool(), target_org, ctx.user.id).await?;
 
-    let projects = RemoteProjectRepository::list_by_organization(state.pool(), target_org)
+    let projects = ProjectRepository::list_by_organization(state.pool(), target_org)
         .await
         .map_err(|error| {
             tracing::error!(?error, org_id = %target_org, "failed to list remote projects");
@@ -96,7 +96,7 @@ async fn get_project(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<RemoteProjectResponse>, ErrorResponse> {
-    let record = RemoteProjectRepository::find_by_id(state.pool(), project_id)
+    let record = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -127,7 +127,7 @@ async fn create_project(
 
     ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
-    let project = RemoteProjectRepository::create(state.pool(), organization_id, name, color)
+    let project = ProjectRepository::create(state.pool(), organization_id, name, color)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to create remote project");
@@ -148,7 +148,7 @@ async fn update_project(
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectRequest>,
 ) -> Result<Json<RemoteProjectResponse>, ErrorResponse> {
-    let record = RemoteProjectRepository::find_by_id(state.pool(), project_id)
+    let record = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -158,13 +158,12 @@ async fn update_project(
 
     ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
 
-    let project =
-        RemoteProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, "failed to update remote project");
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-            })?;
+    let project = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update remote project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
     Ok(Json(to_remote_project_response(project)))
 }
@@ -179,7 +178,7 @@ async fn delete_project(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let record = RemoteProjectRepository::find_by_id(state.pool(), project_id)
+    let record = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -189,7 +188,7 @@ async fn delete_project(
 
     ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
 
-    RemoteProjectRepository::delete(state.pool(), project_id)
+    ProjectRepository::delete(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete remote project");
@@ -199,7 +198,7 @@ async fn delete_project(
     Ok(StatusCode::NO_CONTENT)
 }
 
-fn to_remote_project_response(project: RemoteProject) -> RemoteProjectResponse {
+fn to_remote_project_response(project: Project) -> RemoteProjectResponse {
     RemoteProjectResponse {
         id: project.id,
         organization_id: project.organization_id,

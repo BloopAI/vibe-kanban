@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                      AS \"id!: Uuid\",\n                organization_id         AS \"organization_id!: Uuid\",\n                name                    AS \"name!\",\n                color                   AS \"color!\",\n                created_at              AS \"created_at!: DateTime<Utc>\",\n                updated_at              AS \"updated_at!: DateTime<Utc>\"\n            FROM remote_projects\n            WHERE id = $1\n            ",
+  "query": "\n            UPDATE projects\n            SET\n                name = $1,\n                color = $2,\n                updated_at = $3\n            WHERE id = $4\n            RETURNING\n                id               AS \"id!: Uuid\",\n                organization_id  AS \"organization_id!: Uuid\",\n                name             AS \"name!\",\n                color            AS \"color!\",\n                created_at       AS \"created_at!: DateTime<Utc>\",\n                updated_at       AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -16,7 +16,7 @@
       {
         "ordinal": 2,
         "name": "name!",
-        "type_info": "Varchar"
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
@@ -36,6 +36,9 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Varchar",
+        "Timestamptz",
         "Uuid"
       ]
     },
@@ -48,5 +51,5 @@
       false
     ]
   },
-  "hash": "a999de57a62139b234be0fb01ce0f989884c6e90e69fb7ac5d481381103fb9ea"
+  "hash": "c1f6ccff85fb04b96a93b4d0e982156ff9f74c54f1cab0d2f09aee7e67c4a8ce"
 }

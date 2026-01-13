@@ -15,7 +15,7 @@ use crate::{
     auth::RequestContext,
     db::{
         project_statuses::{ProjectStatus, ProjectStatusRepository},
-        remote_projects::RemoteProjectRepository,
+        projects::ProjectRepository,
     },
 };
 
@@ -65,7 +65,7 @@ async fn ensure_project_access(
     ctx: &RequestContext,
     project_id: Uuid,
 ) -> Result<(), ErrorResponse> {
-    let project = RemoteProjectRepository::find_by_id(state.pool(), project_id)
+    let project = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
