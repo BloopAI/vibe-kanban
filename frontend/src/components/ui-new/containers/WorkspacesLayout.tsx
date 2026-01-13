@@ -311,12 +311,13 @@ export function WorkspacesLayout() {
   useEffect(() => {
     if (configLoading || hasSeenGuide) return;
 
+    // Mark as seen immediately before showing, so page reload doesn't re-trigger
+    void updateAndSaveConfig({
+      showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
+    });
+
     WorkspacesGuideDialog.show().finally(() => {
       WorkspacesGuideDialog.hide();
-      if (seenFeatures.includes(WORKSPACES_GUIDE_ID)) return;
-      void updateAndSaveConfig({
-        showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
-      });
     });
   }, [configLoading, hasSeenGuide, seenFeatures, updateAndSaveConfig]);
 
