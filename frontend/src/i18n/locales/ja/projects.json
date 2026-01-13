@@ -55,6 +55,5 @@
   "projectNotFound": "お探しのプロジェクトは存在しないか、削除されました。",
   "viewProject": "プロジェクトを表示",
   "openInIDE": "IDEで開く",
-  "createdDate": "作成日 {{date}}",
-  "copyFilesPlaceholderWithSearch": "パスまたはglobパターンを入力 (.env, config/*.json)"
+  "createdDate": "作成日 {{date}}"
 }
