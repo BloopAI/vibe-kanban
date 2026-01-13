@@ -43,13 +43,17 @@ export function PreviewBrowser({
       {/* Content area */}
       <div className="flex-1 min-h-0 relative">
         {showIframe ? (
-          <iframe
-            src={url}
-            title={t('preview.browser.title')}
-            className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-            referrerPolicy="no-referrer"
-          />
+          <div className="bg-brand/20 border p-double h-full">
+            <div className="rounded-sm border h-full overflow-hidden">
+              <iframe
+                src={url}
+                title={t('preview.browser.title')}
+                className="w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-base text-low">
             {isLoading ? (
