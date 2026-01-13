@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Allotment } from 'allotment';
+import { Allotment, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useAllBoards } from '@/hooks/useAllBoards';
 import { SwimlaneKanban } from '@/components/ui-new/views/SwimlaneKanban';
@@ -8,7 +8,10 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useProjectGroupMutations } from '@/hooks/useProjectGroupMutations';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { TaskDetailsPanel } from '@/components/ui-new/containers/TaskDetailsPanel';
+import { LeftSidebar } from '@/components/ui-new/views/LeftSidebar';
 import { tasksApi } from '@/lib/api';
+import { useLayoutStore } from '@/stores/useLayoutStore';
+import { usePaneSize, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import {
   type FilterState,
@@ -26,6 +29,30 @@ export function AllBoardsLayout() {
     error,
   } = useAllBoards();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Left sidebar state
+  const allotmentRef = useRef<AllotmentHandle>(null);
+  const isLeftSidebarVisible = useLayoutStore((s) => s.isLeftSidebarVisible);
+  const toggleLeftSidebar = useLayoutStore((s) => s.toggleLeftSidebar);
+  const [leftSidebarWidth, setLeftSidebarWidth] = usePaneSize(
+    PERSIST_KEYS.leftSidebarWidth,
+    240
+  );
+
+  // Convert groups to teams for the sidebar
+  const teams = groups.map((group) => ({
+    id: group.id,
+    name: group.name,
+  }));
+
+  const handlePaneResize = useCallback(
+    (sizes: number[]) => {
+      if (sizes[0] !== undefined && isLeftSidebarVisible) {
+        setLeftSidebarWidth(sizes[0]);
+      }
+    },
+    [isLeftSidebarVisible, setLeftSidebarWidth]
+  );
 
   // Filter and display state
   const [filterState, setFilterState] = useState<FilterState>(defaultFilterState);
@@ -167,8 +194,20 @@ export function AllBoardsLayout() {
     <div className="flex flex-col h-screen">
       <Navbar />
       <div className="flex-1 min-h-0">
-        <Allotment>
-          <Allotment.Pane minSize={600}>
+        <Allotment ref={allotmentRef} onDragEnd={handlePaneResize}>
+          <Allotment.Pane
+            minSize={isLeftSidebarVisible ? 200 : 0}
+            maxSize={isLeftSidebarVisible ? 400 : 0}
+            preferredSize={isLeftSidebarVisible ? Number(leftSidebarWidth) : 0}
+            visible={isLeftSidebarVisible}
+          >
+            <LeftSidebar
+              workspaceName="Vibe Kanban"
+              teams={teams}
+              onToggleSidebar={toggleLeftSidebar}
+            />
+          </Allotment.Pane>
+          <Allotment.Pane minSize={400}>
             <SwimlaneKanban
               groupedProjects={groupedProjects}
               groups={groups}
@@ -192,6 +231,8 @@ export function AllBoardsLayout() {
               onNewGroupNameChange={setNewGroupName}
               onSubmitCreateGroup={handleSubmitCreateGroup}
               onCancelCreateGroup={handleCancelCreateGroup}
+              isLeftSidebarVisible={isLeftSidebarVisible}
+              onToggleLeftSidebar={toggleLeftSidebar}
               filterState={filterState}
               onFilterChange={setFilterState}
               displayState={displayState}

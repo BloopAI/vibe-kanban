@@ -6,6 +6,7 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   DotsThreeIcon,
+  SidebarSimpleIcon,
 } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -109,6 +110,9 @@ interface SwimlaneKanbanProps {
   onNewGroupNameChange: (value: string) => void;
   onSubmitCreateGroup: () => void;
   onCancelCreateGroup: () => void;
+  // Left sidebar props
+  isLeftSidebarVisible?: boolean;
+  onToggleLeftSidebar?: () => void;
   // Filter and display props
   filterState: FilterState;
   onFilterChange: (filter: FilterState) => void;
@@ -149,6 +153,8 @@ function SwimlaneKanbanContent({
   onNewGroupNameChange,
   onSubmitCreateGroup,
   onCancelCreateGroup,
+  isLeftSidebarVisible,
+  onToggleLeftSidebar,
   filterState,
   onFilterChange,
   displayState,
@@ -190,6 +196,22 @@ function SwimlaneKanbanContent({
         'bg-primary/95 backdrop-blur-sm',
         'border-b border-panel/30'
       )}>
+        {/* Sidebar toggle button - only show when sidebar is hidden */}
+        {!isLeftSidebarVisible && onToggleLeftSidebar && (
+          <button
+            type="button"
+            onClick={onToggleLeftSidebar}
+            className={cn(
+              'p-1.5 rounded-sm',
+              'text-low hover:text-normal',
+              'hover:bg-secondary/60',
+              'transition-colors duration-100'
+            )}
+            title="Show sidebar"
+          >
+            <SidebarSimpleIcon className="size-4" />
+          </button>
+        )}
         {/* Search input */}
         <div className={cn(
           'flex items-center gap-2 flex-1 max-w-sm',

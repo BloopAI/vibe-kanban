@@ -17,6 +17,8 @@ export const PERSIST_KEYS = {
   // Sidebar sections
   workspacesSidebarActive: 'workspaces-sidebar-active',
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
+  // Left sidebar (AllBoards)
+  leftSidebarWidth: 'left-sidebar-width',
   // Git panel sections
   gitAdvancedSettings: 'git-advanced-settings',
   gitPanelCreateAddRepo: 'git-panel-create-add-repo',
@@ -43,6 +45,7 @@ export const PERSIST_KEYS = {
 export type PersistKey =
   | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
+  | typeof PERSIST_KEYS.leftSidebarWidth
   | typeof PERSIST_KEYS.gitAdvancedSettings
   | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.gitPanelRepositories
@@ -64,7 +67,8 @@ export type PersistKey =
   | `user:${string}`
   | `system:${string}`
   | `error:${string}`
-  | `entry:${string}`;
+  | `entry:${string}`
+  | `left-sidebar-team-${string}`;
 
 type State = {
   repoActions: Record<string, RepoAction>;
