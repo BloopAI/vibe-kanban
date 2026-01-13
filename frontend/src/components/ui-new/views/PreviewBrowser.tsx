@@ -338,16 +338,19 @@ export function PreviewBrowser({
               </>
             ) : hasDevScript ? (
               <>
-                <p className="text-sm">{t('preview.noServer.title')}</p>
-                <p className="text-xs text-low">
-                  Click &quot;Start&quot; in the toolbar above to begin
-                </p>
-                {hasFailedDevServer && handleFixDevScript && (
+                <p>{t('preview.noServer.title')}</p>
+                {hasFailedDevServer && handleFixDevScript ? (
                   <PrimaryButton
                     variant="tertiary"
                     value={t('scriptFixer.fixScript')}
                     actionIcon={WrenchIcon}
                     onClick={handleFixDevScript}
+                  />
+                ) : (
+                  <PrimaryButton
+                    value={t('attempt.actions.startDevServer')}
+                    actionIcon={PlayIcon}
+                    onClick={onStart}
                   />
                 )}
               </>
