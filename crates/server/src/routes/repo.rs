@@ -1,13 +1,17 @@
 use axum::{
     Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
+    http::StatusCode,
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::repo::{Repo, UpdateRepo};
+use db::models::{
+    project::SearchResult,
+    repo::{Repo, UpdateRepo},
+};
 use deployment::Deployment;
 use serde::Deserialize;
-use services::services::git::GitBranch;
+use services::services::{file_search::SearchQuery, git::GitBranch};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -166,6 +170,42 @@ pub async fn open_repo_in_editor(
     }
 }
 
+pub async fn search_repo(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+    Query(search_query): Query<SearchQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
+    if search_query.q.trim().is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Query parameter 'q' is required and cannot be empty",
+        )));
+    }
+
+    let repo = match deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await
+    {
+        Ok(repo) => repo,
+        Err(e) => {
+            tracing::error!("Failed to get repo {}: {}", repo_id, e);
+            return Err(StatusCode::NOT_FOUND);
+        }
+    };
+
+    match deployment
+        .file_search_cache()
+        .search_repo(&repo.path, &search_query.q, search_query.mode)
+        .await
+    {
+        Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
+        Err(e) => {
+            tracing::error!("Failed to search files in repo {}: {}", repo_id, e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
@@ -173,5 +213,6 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
+        .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
 }

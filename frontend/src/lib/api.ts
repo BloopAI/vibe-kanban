@@ -895,6 +895,20 @@ export const repoApi = {
     });
     return handleApiResponse<OpenEditorResponse>(response);
   },
+
+  searchFiles: async (
+    repoId: string,
+    query: string,
+    mode?: string,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/repos/${repoId}/search?q=${encodeURIComponent(query)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
+  },
 };
 
 // Config APIs (backwards compatible)

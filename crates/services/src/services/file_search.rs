@@ -276,6 +276,153 @@ impl FileSearchCache {
         results
     }
 
+    /// Search files in a single repository with cache + fallback
+    pub async fn search_repo(
+        &self,
+        repo_path: &Path,
+        query: &str,
+        mode: SearchMode,
+    ) -> Result<Vec<SearchResult>, String> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Try cache first
+        match self.search(repo_path, query, mode.clone()).await {
+            Ok(results) => Ok(results),
+            Err(CacheError::Miss) | Err(CacheError::BuildError(_)) => {
+                // Fall back to filesystem search
+                self.search_files_no_cache(repo_path, query, mode).await
+            }
+        }
+    }
+
+    /// Fallback filesystem search when cache is not available
+    async fn search_files_no_cache(
+        &self,
+        repo_path: &Path,
+        query: &str,
+        mode: SearchMode,
+    ) -> Result<Vec<SearchResult>, String> {
+        if !repo_path.exists() {
+            return Err(format!("Path not found: {:?}", repo_path));
+        }
+
+        let mut results = Vec::new();
+        let query_lower = query.to_lowercase();
+
+        let walker = match mode {
+            SearchMode::Settings => {
+                // Settings mode: Include ignored files but exclude performance killers
+                WalkBuilder::new(repo_path)
+                    .git_ignore(false)
+                    .git_global(false)
+                    .git_exclude(false)
+                    .hidden(false)
+                    .filter_entry(|entry| {
+                        let name = entry.file_name().to_string_lossy();
+                        name != ".git"
+                            && name != "node_modules"
+                            && name != "target"
+                            && name != "dist"
+                            && name != "build"
+                    })
+                    .build()
+            }
+            SearchMode::TaskForm => WalkBuilder::new(repo_path)
+                .git_ignore(true)
+                .git_global(true)
+                .git_exclude(true)
+                .hidden(false)
+                .filter_entry(|entry| {
+                    let name = entry.file_name().to_string_lossy();
+                    name != ".git"
+                })
+                .build(),
+        };
+
+        for result in walker {
+            let entry = match result {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let path = entry.path();
+
+            // Skip the root directory itself
+            if path == repo_path {
+                continue;
+            }
+
+            let relative_path = match path.strip_prefix(repo_path) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+            let relative_path_str = relative_path.to_string_lossy().to_lowercase();
+
+            let file_name = path
+                .file_name()
+                .map(|name| name.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
+
+            if file_name.contains(&query_lower) {
+                results.push(SearchResult {
+                    path: relative_path.to_string_lossy().to_string(),
+                    is_file: path.is_file(),
+                    match_type: SearchMatchType::FileName,
+                    score: 0,
+                });
+            } else if relative_path_str.contains(&query_lower) {
+                let match_type = if path
+                    .parent()
+                    .and_then(|p| p.file_name())
+                    .map(|name| name.to_string_lossy().to_lowercase())
+                    .unwrap_or_default()
+                    .contains(&query_lower)
+                {
+                    SearchMatchType::DirectoryName
+                } else {
+                    SearchMatchType::FullPath
+                };
+
+                results.push(SearchResult {
+                    path: relative_path.to_string_lossy().to_string(),
+                    is_file: path.is_file(),
+                    match_type,
+                    score: 0,
+                });
+            }
+        }
+
+        // Apply git history-based ranking
+        match self.file_ranker.get_stats(repo_path).await {
+            Ok(stats) => {
+                self.file_ranker.rerank(&mut results, &stats);
+                // Populate scores for sorted results
+                for result in &mut results {
+                    result.score = self.file_ranker.calculate_score(result, &stats);
+                }
+            }
+            Err(_) => {
+                // Fallback to basic priority sorting
+                results.sort_by(|a, b| {
+                    let priority = |match_type: &SearchMatchType| match match_type {
+                        SearchMatchType::FileName => 0,
+                        SearchMatchType::DirectoryName => 1,
+                        SearchMatchType::FullPath => 2,
+                    };
+
+                    priority(&a.match_type)
+                        .cmp(&priority(&b.match_type))
+                        .then_with(|| a.path.cmp(&b.path))
+                });
+            }
+        }
+
+        results.truncate(10);
+        Ok(results)
+    }
+
     /// Build cache entry for a repository
     async fn build_repo_cache(&self, repo_path: &Path) -> Result<CachedRepo, String> {
         let repo_path_buf = repo_path.to_path_buf();
