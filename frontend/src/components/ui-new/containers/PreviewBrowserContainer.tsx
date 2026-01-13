@@ -1,8 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { PreviewBrowser } from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
-import { usePreviewUrlOverride } from '@/hooks/usePreviewUrlOverride';
+import {
+  usePreviewSettings,
+  type ScreenSize,
+  type ResponsiveDimensions,
+} from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -20,24 +24,98 @@ export function PreviewBrowserContainer({
 }: PreviewBrowserContainerProps) {
   const navigate = useNavigate();
   const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
+  const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
   const { repos, workspaceId } = useWorkspaceContext();
 
-  const { start, isStarting, runningDevServers, devServerProcesses } =
-    usePreviewDevServer(attemptId);
+  const {
+    start,
+    stop,
+    isStarting,
+    isStopping,
+    runningDevServers,
+    devServerProcesses,
+  } = usePreviewDevServer(attemptId);
 
   const primaryDevServer = runningDevServers[0];
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
   const urlInfo = usePreviewUrl(logs);
 
-  // URL override for this workspace
-  const { overrideUrl, hasOverride } = usePreviewUrlOverride(workspaceId);
+  // Preview settings (URL override and screen size)
+  const {
+    overrideUrl,
+    hasOverride,
+    setOverrideUrl,
+    clearOverride,
+    screenSize,
+    responsiveDimensions,
+    setScreenSize,
+    setResponsiveDimensions,
+  } = usePreviewSettings(workspaceId);
 
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
 
+  // Local state for URL input to prevent updates from disrupting typing
+  const urlInputRef = useRef<HTMLInputElement>(null);
+  const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
+
+  // Sync from prop only when input is not focused
+  useEffect(() => {
+    if (document.activeElement !== urlInputRef.current) {
+      setUrlInputValue(effectiveUrl ?? '');
+    }
+  }, [effectiveUrl]);
+
+  const handleUrlInputChange = useCallback(
+    (value: string) => {
+      setUrlInputValue(value);
+      setOverrideUrl(value);
+    },
+    [setOverrideUrl]
+  );
+
   const handleStart = useCallback(() => {
     start();
   }, [start]);
+
+  const handleStop = useCallback(() => {
+    stop();
+  }, [stop]);
+
+  const handleRefresh = useCallback(() => {
+    triggerPreviewRefresh();
+  }, [triggerPreviewRefresh]);
+
+  const handleClearOverride = useCallback(async () => {
+    await clearOverride();
+    setUrlInputValue('');
+  }, [clearOverride]);
+
+  const handleCopyUrl = useCallback(async () => {
+    if (effectiveUrl) {
+      await navigator.clipboard.writeText(effectiveUrl);
+    }
+  }, [effectiveUrl]);
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (effectiveUrl) {
+      window.open(effectiveUrl, '_blank');
+    }
+  }, [effectiveUrl]);
+
+  const handleScreenSizeChange = useCallback(
+    (size: ScreenSize) => {
+      setScreenSize(size);
+    },
+    [setScreenSize]
+  );
+
+  const handleResponsiveDimensionsChange = useCallback(
+    (dimensions: ResponsiveDimensions) => {
+      setResponsiveDimensions(dimensions);
+    },
+    [setResponsiveDimensions]
+  );
 
   // Use previewRefreshKey from store to force iframe reload
   const iframeUrl = effectiveUrl
@@ -70,9 +148,24 @@ export function PreviewBrowserContainer({
   return (
     <PreviewBrowser
       url={iframeUrl}
+      autoDetectedUrl={urlInfo?.url}
+      urlInputValue={urlInputValue}
+      urlInputRef={urlInputRef}
+      isUsingOverride={hasOverride}
+      onUrlInputChange={handleUrlInputChange}
+      onClearOverride={handleClearOverride}
+      onCopyUrl={handleCopyUrl}
+      onOpenInNewTab={handleOpenInNewTab}
+      onRefresh={handleRefresh}
       onStart={handleStart}
+      onStop={handleStop}
       isStarting={isStarting}
+      isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}
+      screenSize={screenSize}
+      responsiveDimensions={responsiveDimensions}
+      onScreenSizeChange={handleScreenSizeChange}
+      onResponsiveDimensionsChange={handleResponsiveDimensionsChange}
       repos={repos}
       handleEditDevScript={handleEditDevScript}
       handleFixDevScript={
