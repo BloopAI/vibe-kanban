@@ -500,7 +500,10 @@
       "existingSession": "Continue in current session",
       "newSession": "Start a new session",
       "resolve": "Resolve Conflicts",
-      "resolving": "Starting..."
+      "resolving": "Starting...",
+      "filesWithConflicts_one": "{{count}} file has conflicts",
+      "filesWithConflicts_other": "{{count}} files have conflicts",
+      "andMore": "...and {{count}} more"
     }
   },
   "stopShareDialog": {

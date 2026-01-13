@@ -215,10 +215,9 @@ const ResolveConflictsDialogImpl =
               {/* Conflict summary */}
               <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
                 <p className="font-medium text-warning-foreground dark:text-warning">
-                  {conflictedFiles.length}{' '}
-                  {conflictedFiles.length === 1
-                    ? 'file has conflicts'
-                    : 'files have conflicts'}
+                  {t('resolveConflicts.dialog.filesWithConflicts', {
+                    count: conflictedFiles.length,
+                  })}
                 </p>
                 {conflictedFiles.length > 0 && (
                   <ul className="mt-2 space-y-1 text-xs text-warning-foreground/80 dark:text-warning/80">
@@ -229,7 +228,9 @@ const ResolveConflictsDialogImpl =
                     ))}
                     {conflictedFiles.length > 5 && (
                       <li className="text-warning-foreground/60 dark:text-warning/60">
-                        ...and {conflictedFiles.length - 5} more
+                        {t('resolveConflicts.dialog.andMore', {
+                          count: conflictedFiles.length - 5,
+                        })}
                       </li>
                     )}
                   </ul>
