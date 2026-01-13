@@ -140,111 +140,16 @@ pub async fn create_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
-#[derive(Debug, Deserialize, TS)]
-pub struct CreateAndStartTaskRequest {
-    pub task: CreateTask,
-    pub executor_profile_id: ExecutorProfileId,
-    pub repos: Vec<WorkspaceRepoInput>,
-}
+// REMOVED: Execution functionality disabled
+// #[derive(Debug, Deserialize, TS)]
+// pub struct CreateAndStartTaskRequest {
+//     pub task: CreateTask,
+//     pub executor_profile_id: ExecutorProfileId,
+//     pub repos: Vec<WorkspaceRepoInput>,
+// }
 
-pub async fn create_task_and_start(
-    State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateAndStartTaskRequest>,
-) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
-    if payload.repos.is_empty() {
-        return Err(ApiError::BadRequest(
-            "At least one repository is required".to_string(),
-        ));
-    }
-
-    let pool = &deployment.db().pool;
-
-    let task_id = Uuid::new_v4();
-    let task = Task::create(pool, &payload.task, task_id).await?;
-
-    if let Some(image_ids) = &payload.task.image_ids {
-        TaskImage::associate_many_dedup(pool, task.id, image_ids).await?;
-    }
-
-    deployment
-        .track_if_analytics_allowed(
-            "task_created",
-            serde_json::json!({
-                "task_id": task.id.to_string(),
-                "project_id": task.project_id,
-                "has_description": task.description.is_some(),
-                "has_images": payload.task.image_ids.is_some(),
-            }),
-        )
-        .await;
-
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
-    let attempt_id = Uuid::new_v4();
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&attempt_id, &task.title)
-        .await;
-
-    let agent_working_dir = project
-        .default_agent_working_dir
-        .as_ref()
-        .filter(|dir: &&String| !dir.is_empty())
-        .cloned();
-
-    let workspace = Workspace::create(
-        pool,
-        &CreateWorkspace {
-            branch: git_branch_name,
-            agent_working_dir,
-        },
-        attempt_id,
-        task.id,
-    )
-    .await?;
-
-    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
-        .repos
-        .iter()
-        .map(|r| CreateWorkspaceRepo {
-            repo_id: r.repo_id,
-            target_branch: r.target_branch.clone(),
-        })
-        .collect();
-    WorkspaceRepo::create_many(&deployment.db().pool, workspace.id, &workspace_repos).await?;
-
-    let is_attempt_running = deployment
-        .container()
-        .start_workspace(&workspace, payload.executor_profile_id.clone())
-        .await
-        .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
-        .is_ok();
-    deployment
-        .track_if_analytics_allowed(
-            "task_attempt_started",
-            serde_json::json!({
-                "task_id": task.id.to_string(),
-                "executor": &payload.executor_profile_id.executor,
-                "variant": &payload.executor_profile_id.variant,
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    let task = Task::find_by_id(pool, task.id)
-        .await?
-        .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
-
-    tracing::info!("Started attempt for task {}", task.id);
-    Ok(ResponseJson(ApiResponse::success(TaskWithAttemptStatus {
-        task,
-        has_in_progress_attempt: is_attempt_running,
-        last_attempt_failed: false,
-        executor: payload.executor_profile_id.executor.to_string(),
-    })))
-}
+// REMOVED: Code execution functionality removed - board management only
+// pub async fn create_task_and_start(...) { ... }
 
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
@@ -474,7 +379,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let inner = Router::new()
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
-        .route("/create-and-start", post(create_task_and_start))
+        // REMOVED: Code execution disabled
+        // .route("/create-and-start", post(create_task_and_start))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks

@@ -336,30 +336,8 @@ pub async fn merge_task_attempt(
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
 
-    // Stop any running dev servers for this workspace
-    let dev_servers =
-        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
-
-    for dev_server in dev_servers {
-        tracing::info!(
-            "Stopping dev server {} for completed task attempt {}",
-            dev_server.id,
-            workspace.id
-        );
-
-        if let Err(e) = deployment
-            .container()
-            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
-            .await
-        {
-            tracing::error!(
-                "Failed to stop dev server {} for task attempt {}: {}",
-                dev_server.id,
-                workspace.id,
-                e
-            );
-        }
-    }
+    // REMOVED: Dev server execution no longer supported
+    // Code execution functionality has been disabled
 
     // Try broadcast update to other users in organization
     if let Ok(publisher) = deployment.share_publisher() {

@@ -85,15 +85,17 @@ pub async fn create_session(
     Ok(ResponseJson(ApiResponse::success(session)))
 }
 
-#[derive(Debug, Deserialize, TS)]
-pub struct CreateFollowUpAttempt {
-    pub prompt: String,
-    pub variant: Option<String>,
-    pub retry_process_id: Option<Uuid>,
-    pub force_when_dirty: Option<bool>,
-    pub perform_git_reset: Option<bool>,
-}
+// REMOVED: Code execution functionality disabled
+// #[derive(Debug, Deserialize, TS)]
+// pub struct CreateFollowUpAttempt {
+//     pub prompt: String,
+//     pub variant: Option<String>,
+//     pub retry_process_id: Option<Uuid>,
+//     pub force_when_dirty: Option<bool>,
+//     pub perform_git_reset: Option<bool>,
+// }
 
+/* REMOVED: follow_up execution endpoint
 pub async fn follow_up(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
@@ -229,11 +231,13 @@ pub async fn follow_up(
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
+*/
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
-        .route("/follow-up", post(follow_up))
+        // REMOVED: Code execution disabled
+        // .route("/follow-up", post(follow_up))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_session_middleware,
