@@ -13,6 +13,11 @@
   "actions": {
     "addTask": "작업 추가"
   },
+  "kanban": {
+    "hiddenColumns": "{{count}}개 숨김",
+    "hiddenColumnsTooltip": "열 표시 또는 숨기기",
+    "hiddenColumnsLabel": "열 표시 전환"
+  },
   "filters": {
     "sharedToggleAria": "공유 작업 전환",
     "sharedToggleTooltip": "공유 콘텐츠 표시/숨기기"

@@ -9,8 +9,11 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
+import { TaskMetadata } from './TaskMetadata';
+import { TaskSourceBadge } from './TaskSourceBadge';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks';
+import { useProject } from '@/contexts/ProjectContext';
 
 type Task = TaskWithAttemptStatus;
 
@@ -37,6 +40,13 @@ export function TaskCard({
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
   const { isSignedIn } = useAuth();
+  const { project } = useProject();
+
+  // Generate task ID from project prefix and task number
+  const taskId =
+    project?.task_prefix && task.task_number
+      ? `${project.task_prefix}-${task.task_number}`
+      : undefined;
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -139,6 +149,16 @@ export function TaskCard({
               : task.description}
           </p>
         )}
+        <TaskSourceBadge
+          source={task.source ?? null}
+          externalRef={task.external_ref ?? null}
+        />
+        <TaskMetadata
+          taskId={taskId}
+          priority={task.priority}
+          dueDate={task.due_date}
+          labels={task.labels}
+        />
       </div>
     </KanbanCard>
   );

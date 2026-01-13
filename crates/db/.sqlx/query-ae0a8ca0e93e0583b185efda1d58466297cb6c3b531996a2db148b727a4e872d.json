@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    task_prefix\n                ) VALUES (\n                    $1, $2, $3\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          default_agent_working_dir,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          group_id as \"group_id: Uuid\",\n                          task_prefix,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_agent_working_dir",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 3,
+        "type_info": "Blob"
+      },
+      {
+        "name": "group_id: Uuid",
+        "ordinal": 4,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_prefix",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ae0a8ca0e93e0583b185efda1d58466297cb6c3b531996a2db148b727a4e872d"
+}

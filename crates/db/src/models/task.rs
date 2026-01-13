@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Sqlite, SqlitePool, Type};
+use sqlx::{Executor, Sqlite, SqlitePool, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -22,7 +22,36 @@ pub enum TaskStatus {
     Cancelled,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+#[derive(
+    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
+)]
+#[sqlx(type_name = "task_priority", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum TaskPriority {
+    #[default]
+    None,
+    Low,
+    Medium,
+    High,
+    Urgent,
+}
+
+/// A label with a name and color for categorizing tasks
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+pub struct TaskLabel {
+    pub name: String,
+    pub color: String,
+}
+
+/// Helper to parse labels JSON string into Vec<TaskLabel>
+fn parse_labels(labels_json: Option<String>) -> Vec<TaskLabel> {
+    labels_json
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct Task {
     pub id: Uuid,
     pub project_id: Uuid, // Foreign key to Project
@@ -31,6 +60,14 @@ pub struct Task {
     pub status: TaskStatus,
     pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
     pub shared_task_id: Option<Uuid>,
+    pub task_number: Option<i64>,
+    pub priority: TaskPriority,
+    #[ts(type = "string | null")]
+    pub due_date: Option<NaiveDate>,
+    #[serde(default)]
+    pub labels: Vec<TaskLabel>,
+    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -74,6 +111,8 @@ pub struct CreateTask {
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
+    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
 }
 
 impl CreateTask {
@@ -90,6 +129,8 @@ impl CreateTask {
             parent_workspace_id: None,
             image_ids: None,
             shared_task_id: None,
+            source: None,
+            external_ref: None,
         }
     }
 
@@ -108,6 +149,8 @@ impl CreateTask {
             parent_workspace_id: None,
             image_ids: None,
             shared_task_id: Some(shared_task_id),
+            source: None,
+            external_ref: None,
         }
     }
 }
@@ -119,6 +162,10 @@ pub struct UpdateTask {
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub priority: Option<TaskPriority>,
+    #[ts(type = "string | null")]
+    pub due_date: Option<NaiveDate>,
+    pub labels: Option<Vec<TaskLabel>>,
 }
 
 impl Task {
@@ -147,6 +194,12 @@ impl Task {
   t.status                        AS "status!: TaskStatus",
   t.parent_workspace_id           AS "parent_workspace_id: Uuid",
   t.shared_task_id                AS "shared_task_id: Uuid",
+  t.task_number                   AS "task_number: i64",
+  t.priority                      AS "priority!: TaskPriority",
+  t.due_date                      AS "due_date: NaiveDate",
+  t.labels                        AS "labels: String",
+  t.source,
+  t.external_ref,
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -200,6 +253,12 @@ ORDER BY t.created_at DESC"#,
                     status: rec.status,
                     parent_workspace_id: rec.parent_workspace_id,
                     shared_task_id: rec.shared_task_id,
+                    task_number: rec.task_number,
+                    priority: rec.priority,
+                    due_date: rec.due_date,
+                    labels: parse_labels(rec.labels),
+                    source: rec.source,
+                    external_ref: rec.external_ref,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -213,27 +272,91 @@ ORDER BY t.created_at DESC"#,
     }
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+        let record = sqlx::query!(
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+
+        Ok(record.map(|rec| Task {
+            id: rec.id,
+            project_id: rec.project_id,
+            title: rec.title,
+            description: rec.description,
+            status: rec.status,
+            parent_workspace_id: rec.parent_workspace_id,
+            shared_task_id: rec.shared_task_id,
+            task_number: rec.task_number,
+            priority: rec.priority,
+            due_date: rec.due_date,
+            labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
+            created_at: rec.created_at,
+            updated_at: rec.updated_at,
+        }))
     }
 
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+        let record = sqlx::query!(
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
         )
         .fetch_optional(pool)
-        .await
+        .await?;
+
+        Ok(record.map(|rec| Task {
+            id: rec.id,
+            project_id: rec.project_id,
+            title: rec.title,
+            description: rec.description,
+            status: rec.status,
+            parent_workspace_id: rec.parent_workspace_id,
+            shared_task_id: rec.shared_task_id,
+            task_number: rec.task_number,
+            priority: rec.priority,
+            due_date: rec.due_date,
+            labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
+            created_at: rec.created_at,
+            updated_at: rec.updated_at,
+        }))
     }
 
     pub async fn find_by_shared_task_id<'e, E>(
@@ -243,27 +366,94 @@ ORDER BY t.created_at DESC"#,
     where
         E: Executor<'e, Database = Sqlite>,
     {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+        let record = sqlx::query!(
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
             shared_task_id
         )
         .fetch_optional(executor)
-        .await
+        .await?;
+
+        Ok(record.map(|rec| Task {
+            id: rec.id,
+            project_id: rec.project_id,
+            title: rec.title,
+            description: rec.description,
+            status: rec.status,
+            parent_workspace_id: rec.parent_workspace_id,
+            shared_task_id: rec.shared_task_id,
+            task_number: rec.task_number,
+            priority: rec.priority,
+            due_date: rec.due_date,
+            labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
+            created_at: rec.created_at,
+            updated_at: rec.updated_at,
+        }))
     }
 
     pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+        let records = sqlx::query!(
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE shared_task_id IS NOT NULL"#
         )
         .fetch_all(pool)
-        .await
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|rec| Task {
+                id: rec.id,
+                project_id: rec.project_id,
+                title: rec.title,
+                description: rec.description,
+                status: rec.status,
+                parent_workspace_id: rec.parent_workspace_id,
+                shared_task_id: rec.shared_task_id,
+                task_number: rec.task_number,
+                priority: rec.priority,
+                due_date: rec.due_date,
+                labels: parse_labels(rec.labels),
+                source: rec.source,
+                external_ref: rec.external_ref,
+                created_at: rec.created_at,
+                updated_at: rec.updated_at,
+            })
+            .collect())
     }
 
     pub async fn create(
@@ -272,21 +462,64 @@ ORDER BY t.created_at DESC"#,
         task_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
         let status = data.status.clone().unwrap_or_default();
-        sqlx::query_as!(
-            Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+        // Get the next task_number for this project
+        let next_number = sqlx::query_scalar!(
+            r#"SELECT COALESCE(MAX(task_number), 0) + 1 as "next!: i64" FROM tasks WHERE project_id = $1"#,
+            data.project_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        let record = sqlx::query!(
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, task_number, source, external_ref)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+               RETURNING
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             status,
             data.parent_workspace_id,
-            data.shared_task_id
+            data.shared_task_id,
+            next_number,
+            data.source,
+            data.external_ref
         )
         .fetch_one(pool)
-        .await
+        .await?;
+
+        Ok(Task {
+            id: record.id,
+            project_id: record.project_id,
+            title: record.title,
+            description: record.description,
+            status: record.status,
+            parent_workspace_id: record.parent_workspace_id,
+            shared_task_id: record.shared_task_id,
+            task_number: record.task_number,
+            priority: record.priority,
+            due_date: record.due_date,
+            labels: parse_labels(record.labels),
+            source: record.source,
+            external_ref: record.external_ref,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
     }
 
     pub async fn update(
@@ -298,12 +531,26 @@ ORDER BY t.created_at DESC"#,
         status: TaskStatus,
         parent_workspace_id: Option<Uuid>,
     ) -> Result<Self, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
+        let record = sqlx::query!(
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -312,7 +559,25 @@ ORDER BY t.created_at DESC"#,
             parent_workspace_id
         )
         .fetch_one(pool)
-        .await
+        .await?;
+
+        Ok(Task {
+            id: record.id,
+            project_id: record.project_id,
+            title: record.title,
+            description: record.description,
+            status: record.status,
+            parent_workspace_id: record.parent_workspace_id,
+            shared_task_id: record.shared_task_id,
+            task_number: record.task_number,
+            priority: record.priority,
+            due_date: record.due_date,
+            labels: parse_labels(record.labels),
+            source: record.source,
+            external_ref: record.external_ref,
+            created_at: record.created_at,
+            updated_at: record.updated_at,
+        })
     }
 
     pub async fn update_status(
@@ -444,16 +709,51 @@ ORDER BY t.created_at DESC"#,
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         // Find only child tasks that have this workspace as their parent
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+        let records = sqlx::query!(
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                title,
+                description,
+                status as "status!: TaskStatus",
+                parent_workspace_id as "parent_workspace_id: Uuid",
+                shared_task_id as "shared_task_id: Uuid",
+                task_number as "task_number: i64",
+                priority as "priority!: TaskPriority",
+                due_date as "due_date: NaiveDate",
+                labels as "labels: String",
+                source,
+                external_ref,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,
             workspace_id,
         )
         .fetch_all(pool)
-        .await
+        .await?;
+
+        Ok(records
+            .into_iter()
+            .map(|rec| Task {
+                id: rec.id,
+                project_id: rec.project_id,
+                title: rec.title,
+                description: rec.description,
+                status: rec.status,
+                parent_workspace_id: rec.parent_workspace_id,
+                shared_task_id: rec.shared_task_id,
+                task_number: rec.task_number,
+                priority: rec.priority,
+                due_date: rec.due_date,
+                labels: parse_labels(rec.labels),
+                source: rec.source,
+                external_ref: rec.external_ref,
+                created_at: rec.created_at,
+                updated_at: rec.updated_at,
+            })
+            .collect())
     }
 
     pub async fn find_relationships_for_workspace(

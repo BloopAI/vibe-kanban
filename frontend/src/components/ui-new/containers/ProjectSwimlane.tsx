@@ -3,6 +3,7 @@ import { DndContext, useDroppable, PointerSensor, useSensor, useSensors, type Dr
 import { KanbanIcon, PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useBoardTasksOverview } from '@/hooks/useBoardTasksOverview';
+import { useRegisterProjectCounts } from '@/hooks/useAggregateTaskCounts';
 import { SwimlaneTaskCard } from '@/components/ui-new/primitives/SwimlaneTaskCard';
 import {
   DropdownMenu,
@@ -89,6 +90,9 @@ export function ProjectSwimlane({
   filterState,
 }: ProjectSwimlaneProps) {
   const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(project.id);
+
+  // Register task counts with the aggregate context for column header totals
+  useRegisterProjectCounts(project.id, tasksByStatus, isLoading);
 
   // Apply status filter to tasks
   const filteredTasksByStatus = useMemo(() => {
