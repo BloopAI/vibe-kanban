@@ -3,7 +3,6 @@ import {
   PlayIcon,
   SpinnerIcon,
   WrenchIcon,
-  StopIcon,
   ArrowSquareOutIcon,
   ArrowClockwiseIcon,
   CopyIcon,
@@ -11,6 +10,7 @@ import {
   MonitorIcon,
   DeviceMobileIcon,
   ArrowsOutCardinalIcon,
+  PauseIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -114,173 +114,179 @@ export function PreviewBrowser({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col overflow-hidden',
+        'bg-brand/20 w-full h-full flex flex-col overflow-hidden',
         className
       )}
     >
       {/* Floating Toolbar */}
-      <div className="flex items-center gap-half p-base bg-panel rounded-md shadow-md m-base shrink-0">
-        {/* URL Input */}
-        <div
-          className={cn(
-            'flex items-center gap-half bg-secondary rounded-sm px-base py-half flex-1 min-w-0',
-            !hasUrl && 'opacity-50'
-          )}
-        >
-          <input
-            ref={urlInputRef}
-            type="text"
-            value={urlInputValue}
-            onChange={(e) => onUrlInputChange(e.target.value)}
-            placeholder={autoDetectedUrl ?? 'Enter URL...'}
-            disabled={!hasUrl}
+      <div className="p-double">
+        <div className="backdrop-blur-sm bg-panel/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
+          {/* URL Input */}
+          <div
             className={cn(
-              'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
-              isUsingOverride ? 'text-normal' : 'text-low placeholder:text-low',
-              !hasUrl && 'cursor-not-allowed'
+              'flex items-center gap-half rounded-sm px-base py-half flex-1 min-w-0',
+              !hasUrl && 'opacity-50'
             )}
-          />
-          {isUsingOverride && (
+          >
+            <input
+              ref={urlInputRef}
+              type="text"
+              value={urlInputValue}
+              onChange={(e) => onUrlInputChange(e.target.value)}
+              placeholder={autoDetectedUrl ?? 'Enter URL...'}
+              disabled={!hasUrl}
+              className={cn(
+                'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
+                isUsingOverride
+                  ? 'text-normal'
+                  : 'text-low placeholder:text-low',
+                !hasUrl && 'cursor-not-allowed'
+              )}
+            />
+            {isUsingOverride && (
+              <button
+                type="button"
+                onClick={onClearOverride}
+                className="text-low hover:text-normal"
+                aria-label="Clear URL override"
+                title="Revert to auto-detected URL"
+              >
+                <XIcon className="size-icon-sm" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={onClearOverride}
-              className="text-low hover:text-normal"
-              aria-label="Clear URL override"
-              title="Revert to auto-detected URL"
+              onClick={onCopyUrl}
+              disabled={!hasUrl}
+              className={cn(
+                'text-low',
+                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
+              )}
+              aria-label="Copy URL"
+              title="Copy URL"
             >
-              <XIcon className="size-icon-sm" />
+              <CopyIcon className="size-icon-sm" />
             </button>
+            <button
+              type="button"
+              onClick={onOpenInNewTab}
+              disabled={!hasUrl}
+              className={cn(
+                'text-low',
+                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
+              )}
+              aria-label="Open in new tab"
+              title="Open in new tab"
+            >
+              <ArrowSquareOutIcon className="size-icon-sm" />
+            </button>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={!hasUrl}
+              className={cn(
+                'text-low',
+                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
+              )}
+              aria-label="Refresh"
+              title="Refresh preview"
+            >
+              <ArrowClockwiseIcon className="size-icon-sm" />
+            </button>
+          </div>
+
+          {/* Screen Size Toggle */}
+          <div className="flex items-center rounded-sm border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => onScreenSizeChange('desktop')}
+              className={cn(
+                'p-half transition-colors',
+                screenSize === 'desktop'
+                  ? 'bg-secondary text-normal'
+                  : 'text-low hover:text-normal hover:bg-secondary/50'
+              )}
+              aria-label="Desktop view"
+              title="Desktop view"
+            >
+              <MonitorIcon className="size-icon-sm" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onScreenSizeChange('mobile')}
+              className={cn(
+                'p-half transition-colors',
+                screenSize === 'mobile'
+                  ? 'bg-secondary text-normal'
+                  : 'text-low hover:text-normal hover:bg-secondary/50'
+              )}
+              aria-label="Mobile view (390x844)"
+              title="Mobile view (390x844)"
+            >
+              <DeviceMobileIcon className="size-icon-sm" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onScreenSizeChange('responsive')}
+              className={cn(
+                'p-half transition-colors',
+                screenSize === 'responsive'
+                  ? 'bg-secondary text-normal'
+                  : 'text-low hover:text-normal hover:bg-secondary/50'
+              )}
+              aria-label="Responsive view (resizable)"
+              title="Responsive view (resizable)"
+            >
+              <ArrowsOutCardinalIcon className="size-icon-sm" />
+            </button>
+          </div>
+
+          {/* Dimensions display for responsive mode */}
+          {screenSize === 'responsive' && (
+            <span className="text-xs text-low font-mono whitespace-nowrap">
+              {Math.round(localDimensions.width)} x{' '}
+              {Math.round(localDimensions.height)}
+            </span>
           )}
-          <button
-            type="button"
-            onClick={onCopyUrl}
-            disabled={!hasUrl}
-            className={cn(
-              'text-low',
-              hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-            )}
-            aria-label="Copy URL"
-            title="Copy URL"
-          >
-            <CopyIcon className="size-icon-sm" />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenInNewTab}
-            disabled={!hasUrl}
-            className={cn(
-              'text-low',
-              hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-            )}
-            aria-label="Open in new tab"
-            title="Open in new tab"
-          >
-            <ArrowSquareOutIcon className="size-icon-sm" />
-          </button>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={!hasUrl}
-            className={cn(
-              'text-low',
-              hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-            )}
-            aria-label="Refresh"
-            title="Refresh preview"
-          >
-            <ArrowClockwiseIcon className="size-icon-sm" />
-          </button>
+
+          {/* Start/Stop Button */}
+          {isServerRunning ? (
+            <PrimaryButton
+              variant="tertiary"
+              actionIcon={isStopping ? 'spinner' : PauseIcon}
+              onClick={onStop}
+              disabled={isStopping}
+            />
+          ) : (
+            <PrimaryButton
+              value={t('preview.browser.startButton')}
+              actionIcon={isStarting ? 'spinner' : PlayIcon}
+              onClick={onStart}
+              disabled={isStarting || !hasDevScript}
+            />
+          )}
         </div>
-
-        {/* Screen Size Toggle */}
-        <div className="flex items-center rounded-sm border border-border overflow-hidden">
-          <button
-            type="button"
-            onClick={() => onScreenSizeChange('desktop')}
-            className={cn(
-              'p-half transition-colors',
-              screenSize === 'desktop'
-                ? 'bg-secondary text-normal'
-                : 'text-low hover:text-normal hover:bg-secondary/50'
-            )}
-            aria-label="Desktop view"
-            title="Desktop view"
-          >
-            <MonitorIcon className="size-icon-sm" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onScreenSizeChange('mobile')}
-            className={cn(
-              'p-half transition-colors',
-              screenSize === 'mobile'
-                ? 'bg-secondary text-normal'
-                : 'text-low hover:text-normal hover:bg-secondary/50'
-            )}
-            aria-label="Mobile view (390x844)"
-            title="Mobile view (390x844)"
-          >
-            <DeviceMobileIcon className="size-icon-sm" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onScreenSizeChange('responsive')}
-            className={cn(
-              'p-half transition-colors',
-              screenSize === 'responsive'
-                ? 'bg-secondary text-normal'
-                : 'text-low hover:text-normal hover:bg-secondary/50'
-            )}
-            aria-label="Responsive view (resizable)"
-            title="Responsive view (resizable)"
-          >
-            <ArrowsOutCardinalIcon className="size-icon-sm" />
-          </button>
-        </div>
-
-        {/* Dimensions display for responsive mode */}
-        {screenSize === 'responsive' && (
-          <span className="text-xs text-low font-mono whitespace-nowrap">
-            {Math.round(localDimensions.width)} x{' '}
-            {Math.round(localDimensions.height)}
-          </span>
-        )}
-
-        {/* Start/Stop Button */}
-        {isServerRunning ? (
-          <PrimaryButton
-            variant="tertiary"
-            value={t('preview.browser.stopButton')}
-            actionIcon={isStopping ? 'spinner' : StopIcon}
-            onClick={onStop}
-            disabled={isStopping}
-          />
-        ) : (
-          <PrimaryButton
-            value={t('preview.browser.startButton')}
-            actionIcon={isStarting ? 'spinner' : PlayIcon}
-            onClick={onStart}
-            disabled={isStarting || !hasDevScript}
-          />
-        )}
       </div>
 
       {/* Content area */}
-      <div ref={containerRef} className="flex-1 min-h-0 relative overflow-auto">
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0 relative overflow-auto px-double pb-double"
+      >
         {showIframe ? (
           <div
             className={cn(
               'h-full',
               screenSize === 'desktop'
-                ? 'bg-brand/20 border p-double'
+                ? ''
                 : 'flex items-center justify-center p-double'
             )}
           >
             {screenSize === 'mobile' ? (
               // Phone frame for mobile mode
-              <div className="bg-gray-900 rounded-[3rem] p-3 shadow-xl">
+              <div className="bg-primary rounded-[2rem] p-3 shadow-xl">
                 <div
-                  className="rounded-[2.5rem] overflow-hidden"
+                  className="rounded-[1.5rem] overflow-hidden"
                   style={{ width: MOBILE_WIDTH, height: MOBILE_HEIGHT }}
                 >
                   <iframe
