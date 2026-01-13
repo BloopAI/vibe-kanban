@@ -78,7 +78,10 @@ function RebaseDialogContent({
       const errorType =
         resultErr && !resultErr.success ? resultErr.error?.type : undefined;
 
-      if (errorType === 'merge_conflicts' || errorType === 'rebase_in_progress') {
+      if (
+        errorType === 'merge_conflicts' ||
+        errorType === 'rebase_in_progress'
+      ) {
         // Hide this dialog and show the resolve conflicts dialog
         modal.hide();
 

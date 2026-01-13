@@ -39,261 +39,262 @@ export type ResolveConflictsDialogResult =
   | { action: 'resolved'; sessionId?: string }
   | { action: 'cancelled' };
 
-const ResolveConflictsDialogImpl = NiceModal.create<ResolveConflictsDialogProps>(
-  ({
-    workspaceId,
-    conflictOp,
-    sourceBranch,
-    targetBranch,
-    conflictedFiles,
-    repoName,
-  }) => {
-    const modal = useModal();
-    const queryClient = useQueryClient();
-    const { profiles, config } = useUserSystem();
-    const { sessions, selectedSession, selectedSessionId, selectSession } =
-      useWorkspaceContext();
-    const { t } = useTranslation(['tasks', 'common']);
+const ResolveConflictsDialogImpl =
+  NiceModal.create<ResolveConflictsDialogProps>(
+    ({
+      workspaceId,
+      conflictOp,
+      sourceBranch,
+      targetBranch,
+      conflictedFiles,
+      repoName,
+    }) => {
+      const modal = useModal();
+      const queryClient = useQueryClient();
+      const { profiles, config } = useUserSystem();
+      const { sessions, selectedSession, selectedSessionId, selectSession } =
+        useWorkspaceContext();
+      const { t } = useTranslation(['tasks', 'common']);
 
-    const resolvedSession = useMemo(() => {
-      if (!selectedSessionId) return selectedSession ?? null;
-      return (
-        sessions.find((session) => session.id === selectedSessionId) ??
-        selectedSession ??
-        null
+      const resolvedSession = useMemo(() => {
+        if (!selectedSessionId) return selectedSession ?? null;
+        return (
+          sessions.find((session) => session.id === selectedSessionId) ??
+          selectedSession ??
+          null
+        );
+      }, [sessions, selectedSessionId, selectedSession]);
+      const sessionExecutor =
+        resolvedSession?.executor as BaseCodingAgent | null;
+
+      const resolvedDefaultProfile = useMemo(() => {
+        if (sessionExecutor) {
+          const variant =
+            config?.executor_profile?.executor === sessionExecutor
+              ? config.executor_profile.variant
+              : null;
+          return { executor: sessionExecutor, variant };
+        }
+        return config?.executor_profile ?? null;
+      }, [sessionExecutor, config?.executor_profile]);
+
+      // Default to creating a new session if no existing session
+      const [createNewSession, setCreateNewSession] =
+        useState(!selectedSessionId);
+      const [userSelectedProfile, setUserSelectedProfile] =
+        useState<ExecutorProfileId | null>(null);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [error, setError] = useState<string | null>(null);
+
+      const effectiveProfile = userSelectedProfile ?? resolvedDefaultProfile;
+      const canSubmit = Boolean(effectiveProfile && !isSubmitting);
+
+      // Build the conflict resolution instructions
+      const conflictInstructions = useMemo(
+        () =>
+          buildResolveConflictsInstructions(
+            sourceBranch,
+            targetBranch,
+            conflictedFiles,
+            conflictOp,
+            repoName
+          ),
+        [sourceBranch, targetBranch, conflictedFiles, conflictOp, repoName]
       );
-    }, [sessions, selectedSessionId, selectedSession]);
-    const sessionExecutor = resolvedSession?.executor as BaseCodingAgent | null;
 
-    const resolvedDefaultProfile = useMemo(() => {
-      if (sessionExecutor) {
-        const variant =
-          config?.executor_profile?.executor === sessionExecutor
-            ? config.executor_profile.variant
-            : null;
-        return { executor: sessionExecutor, variant };
-      }
-      return config?.executor_profile ?? null;
-    }, [sessionExecutor, config?.executor_profile]);
+      const handleSubmit = useCallback(async () => {
+        if (!effectiveProfile) return;
 
-    // Default to creating a new session if no existing session
-    const [createNewSession, setCreateNewSession] = useState(
-      !selectedSessionId
-    );
-    const [userSelectedProfile, setUserSelectedProfile] =
-      useState<ExecutorProfileId | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+        setIsSubmitting(true);
+        setError(null);
 
-    const effectiveProfile = userSelectedProfile ?? resolvedDefaultProfile;
-    const canSubmit = Boolean(effectiveProfile && !isSubmitting);
+        try {
+          let targetSessionId = selectedSessionId;
 
-    // Build the conflict resolution instructions
-    const conflictInstructions = useMemo(
-      () =>
-        buildResolveConflictsInstructions(
-          sourceBranch,
-          targetBranch,
-          conflictedFiles,
-          conflictOp,
-          repoName
-        ),
-      [sourceBranch, targetBranch, conflictedFiles, conflictOp, repoName]
-    );
+          // Create new session if user selected that option or no existing session
+          if (createNewSession || !selectedSessionId) {
+            const session = await sessionsApi.create({
+              workspace_id: workspaceId,
+              executor: effectiveProfile.executor,
+            });
+            targetSessionId = session.id;
 
-    const handleSubmit = useCallback(async () => {
-      if (!effectiveProfile) return;
+            queryClient.invalidateQueries({
+              queryKey: ['workspaceSessions', workspaceId],
+            });
+          }
 
-      setIsSubmitting(true);
-      setError(null);
+          if (!targetSessionId) {
+            setError('Failed to create session');
+            setIsSubmitting(false);
+            return;
+          }
 
-      try {
-        let targetSessionId = selectedSessionId;
-
-        // Create new session if user selected that option or no existing session
-        if (createNewSession || !selectedSessionId) {
-          const session = await sessionsApi.create({
-            workspace_id: workspaceId,
-            executor: effectiveProfile.executor,
+          // Send follow-up with conflict resolution instructions
+          await sessionsApi.followUp(targetSessionId, {
+            prompt: conflictInstructions,
+            variant: effectiveProfile.variant,
+            retry_process_id: null,
+            force_when_dirty: null,
+            perform_git_reset: null,
           });
-          targetSessionId = session.id;
 
           queryClient.invalidateQueries({
-            queryKey: ['workspaceSessions', workspaceId],
+            queryKey: ['processes', workspaceId],
           });
-        }
+          queryClient.invalidateQueries({
+            queryKey: ['branchStatus', workspaceId],
+          });
 
-        if (!targetSessionId) {
-          setError('Failed to create session');
+          // Navigate to the new session if one was created
+          const createdNewSession = targetSessionId !== selectedSessionId;
+          if (createdNewSession && targetSessionId) {
+            selectSession(targetSessionId);
+          }
+
+          modal.resolve({
+            action: 'resolved',
+            sessionId: createdNewSession ? targetSessionId : undefined,
+          } as ResolveConflictsDialogResult);
+          modal.hide();
+        } catch (err) {
+          console.error('Failed to resolve conflicts:', err);
+          setError('Failed to start conflict resolution. Please try again.');
+        } finally {
           setIsSubmitting(false);
-          return;
         }
+      }, [
+        effectiveProfile,
+        selectedSessionId,
+        createNewSession,
+        workspaceId,
+        conflictInstructions,
+        queryClient,
+        selectSession,
+        modal,
+      ]);
 
-        // Send follow-up with conflict resolution instructions
-        await sessionsApi.followUp(targetSessionId, {
-          prompt: conflictInstructions,
-          variant: effectiveProfile.variant,
-          retry_process_id: null,
-          force_when_dirty: null,
-          perform_git_reset: null,
-        });
-
-        queryClient.invalidateQueries({
-          queryKey: ['processes', workspaceId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ['branchStatus', workspaceId],
-        });
-
-        // Navigate to the new session if one was created
-        const createdNewSession = targetSessionId !== selectedSessionId;
-        if (createdNewSession && targetSessionId) {
-          selectSession(targetSessionId);
-        }
-
-        modal.resolve({
-          action: 'resolved',
-          sessionId: createdNewSession ? targetSessionId : undefined,
-        } as ResolveConflictsDialogResult);
+      const handleCancel = useCallback(() => {
+        modal.resolve({ action: 'cancelled' } as ResolveConflictsDialogResult);
         modal.hide();
-      } catch (err) {
-        console.error('Failed to resolve conflicts:', err);
-        setError('Failed to start conflict resolution. Please try again.');
-      } finally {
-        setIsSubmitting(false);
-      }
-    }, [
-      effectiveProfile,
-      selectedSessionId,
-      createNewSession,
-      workspaceId,
-      conflictInstructions,
-      queryClient,
-      selectSession,
-      modal,
-    ]);
+      }, [modal]);
 
-    const handleCancel = useCallback(() => {
-      modal.resolve({ action: 'cancelled' } as ResolveConflictsDialogResult);
-      modal.hide();
-    }, [modal]);
+      const handleOpenChange = (open: boolean) => {
+        if (!open) handleCancel();
+      };
 
-    const handleOpenChange = (open: boolean) => {
-      if (!open) handleCancel();
-    };
+      const handleNewSessionChange = (checked: boolean) => {
+        setCreateNewSession(checked);
+        // Reset to default profile when toggling back to existing session
+        if (!checked && resolvedDefaultProfile) {
+          setUserSelectedProfile(resolvedDefaultProfile);
+        }
+      };
 
-    const handleNewSessionChange = (checked: boolean) => {
-      setCreateNewSession(checked);
-      // Reset to default profile when toggling back to existing session
-      if (!checked && resolvedDefaultProfile) {
-        setUserSelectedProfile(resolvedDefaultProfile);
-      }
-    };
+      const hasExistingSession = Boolean(selectedSessionId);
 
-    const hasExistingSession = Boolean(selectedSessionId);
+      return (
+        <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>
+                {t('resolveConflicts.dialog.title', 'Resolve Conflicts')}
+              </DialogTitle>
+              <DialogDescription>
+                {t(
+                  'resolveConflicts.dialog.description',
+                  'Conflicts were detected. Choose how you want the agent to resolve them.'
+                )}
+              </DialogDescription>
+            </DialogHeader>
 
-    return (
-      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>
-              {t('resolveConflicts.dialog.title', 'Resolve Conflicts')}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                'resolveConflicts.dialog.description',
-                'Conflicts were detected. Choose how you want the agent to resolve them.'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Conflict summary */}
-            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
-              <p className="font-medium text-warning-foreground dark:text-warning">
-                {conflictedFiles.length}{' '}
-                {conflictedFiles.length === 1
-                  ? 'file has conflicts'
-                  : 'files have conflicts'}
-              </p>
-              {conflictedFiles.length > 0 && (
-                <ul className="mt-2 space-y-1 text-xs text-warning-foreground/80 dark:text-warning/80">
-                  {conflictedFiles.slice(0, 5).map((file) => (
-                    <li key={file} className="truncate">
-                      {file}
-                    </li>
-                  ))}
-                  {conflictedFiles.length > 5 && (
-                    <li className="text-warning-foreground/60 dark:text-warning/60">
-                      ...and {conflictedFiles.length - 5} more
-                    </li>
-                  )}
-                </ul>
-              )}
-            </div>
-
-            {error && <div className="text-sm text-destructive">{error}</div>}
-
-            {/* Agent/profile selector - only show when creating new session */}
-            {profiles && createNewSession && (
-              <div className="flex gap-3 flex-col sm:flex-row">
-                <AgentSelector
-                  profiles={profiles}
-                  selectedExecutorProfile={effectiveProfile}
-                  onChange={setUserSelectedProfile}
-                  showLabel={false}
-                />
-                <ConfigSelector
-                  profiles={profiles}
-                  selectedExecutorProfile={effectiveProfile}
-                  onChange={setUserSelectedProfile}
-                  showLabel={false}
-                />
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="sm:!justify-between">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              {t('common:buttons.cancel')}
-            </Button>
-            <div className="flex items-center gap-3">
-              {hasExistingSession && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="new-session-switch"
-                    checked={createNewSession}
-                    onCheckedChange={handleNewSessionChange}
-                    className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
-                    aria-label={t(
-                      'resolveConflicts.dialog.newSession',
-                      'New Session'
+            <div className="space-y-4">
+              {/* Conflict summary */}
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+                <p className="font-medium text-warning-foreground dark:text-warning">
+                  {conflictedFiles.length}{' '}
+                  {conflictedFiles.length === 1
+                    ? 'file has conflicts'
+                    : 'files have conflicts'}
+                </p>
+                {conflictedFiles.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-warning-foreground/80 dark:text-warning/80">
+                    {conflictedFiles.slice(0, 5).map((file) => (
+                      <li key={file} className="truncate">
+                        {file}
+                      </li>
+                    ))}
+                    {conflictedFiles.length > 5 && (
+                      <li className="text-warning-foreground/60 dark:text-warning/60">
+                        ...and {conflictedFiles.length - 5} more
+                      </li>
                     )}
+                  </ul>
+                )}
+              </div>
+
+              {error && <div className="text-sm text-destructive">{error}</div>}
+
+              {/* Agent/profile selector - only show when creating new session */}
+              {profiles && createNewSession && (
+                <div className="flex gap-3 flex-col sm:flex-row">
+                  <AgentSelector
+                    profiles={profiles}
+                    selectedExecutorProfile={effectiveProfile}
+                    onChange={setUserSelectedProfile}
+                    showLabel={false}
                   />
-                  <Label
-                    htmlFor="new-session-switch"
-                    className="text-sm cursor-pointer"
-                  >
-                    {t('resolveConflicts.dialog.newSession', 'New Session')}
-                  </Label>
+                  <ConfigSelector
+                    profiles={profiles}
+                    selectedExecutorProfile={effectiveProfile}
+                    onChange={setUserSelectedProfile}
+                    showLabel={false}
+                  />
                 </div>
               )}
-              <Button onClick={handleSubmit} disabled={!canSubmit}>
-                {isSubmitting
-                  ? t('resolveConflicts.dialog.resolving', 'Starting...')
-                  : t('resolveConflicts.dialog.resolve', 'Resolve Conflicts')}
-              </Button>
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-);
+
+            <DialogFooter className="sm:!justify-between">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isSubmitting}
+              >
+                {t('common:buttons.cancel')}
+              </Button>
+              <div className="flex items-center gap-3">
+                {hasExistingSession && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="new-session-switch"
+                      checked={createNewSession}
+                      onCheckedChange={handleNewSessionChange}
+                      className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
+                      aria-label={t(
+                        'resolveConflicts.dialog.newSession',
+                        'New Session'
+                      )}
+                    />
+                    <Label
+                      htmlFor="new-session-switch"
+                      className="text-sm cursor-pointer"
+                    >
+                      {t('resolveConflicts.dialog.newSession', 'New Session')}
+                    </Label>
+                  </div>
+                )}
+                <Button onClick={handleSubmit} disabled={!canSubmit}>
+                  {isSubmitting
+                    ? t('resolveConflicts.dialog.resolving', 'Starting...')
+                    : t('resolveConflicts.dialog.resolve', 'Resolve Conflicts')}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+  );
 
 export const ResolveConflictsDialog = defineModal<
   ResolveConflictsDialogProps,
