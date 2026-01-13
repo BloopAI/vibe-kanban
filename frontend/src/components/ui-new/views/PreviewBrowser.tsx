@@ -157,30 +157,30 @@ export function PreviewBrowser({
                 icon={XIcon}
                 onClick={onClearOverride}
                 disabled={!isServerRunning}
-                aria-label="Clear URL override"
-                title="Revert to auto-detected URL"
+                aria-label={t('preview.toolbar.clearUrlOverride')}
+                title={t('preview.toolbar.resetUrl')}
               />
             )}
             <IconButtonGroupItem
               icon={CopyIcon}
               onClick={onCopyUrl}
               disabled={!isServerRunning}
-              aria-label="Copy URL"
-              title="Copy URL"
+              aria-label={t('preview.toolbar.copyUrl')}
+              title={t('preview.toolbar.copyUrl')}
             />
             <IconButtonGroupItem
               icon={ArrowSquareOutIcon}
               onClick={onOpenInNewTab}
               disabled={!isServerRunning}
-              aria-label="Open in new tab"
-              title="Open in new tab"
+              aria-label={t('preview.toolbar.openInTab')}
+              title={t('preview.toolbar.openInTab')}
             />
             <IconButtonGroupItem
               icon={ArrowClockwiseIcon}
               onClick={onRefresh}
               disabled={!isServerRunning}
-              aria-label="Refresh"
-              title="Refresh preview"
+              aria-label={t('preview.toolbar.refresh')}
+              title={t('preview.toolbar.refresh')}
             />
           </IconButtonGroup>
 
@@ -191,24 +191,24 @@ export function PreviewBrowser({
               onClick={() => onScreenSizeChange('desktop')}
               active={screenSize === 'desktop'}
               disabled={!isServerRunning}
-              aria-label="Desktop view"
-              title="Desktop view"
+              aria-label={t('preview.toolbar.desktopView')}
+              title={t('preview.toolbar.desktopView')}
             />
             <IconButtonGroupItem
               icon={DeviceMobileIcon}
               onClick={() => onScreenSizeChange('mobile')}
               active={screenSize === 'mobile'}
               disabled={!isServerRunning}
-              aria-label="Mobile view (390x844)"
-              title="Mobile view (390x844)"
+              aria-label={t('preview.toolbar.mobileView')}
+              title={t('preview.toolbar.mobileView')}
             />
             <IconButtonGroupItem
               icon={ArrowsOutCardinalIcon}
               onClick={() => onScreenSizeChange('responsive')}
               active={screenSize === 'responsive'}
               disabled={!isServerRunning}
-              aria-label="Responsive view (resizable)"
-              title="Responsive view (resizable)"
+              aria-label={t('preview.toolbar.responsiveView')}
+              title={t('preview.toolbar.responsiveView')}
             />
           </IconButtonGroup>
 
@@ -242,8 +242,16 @@ export function PreviewBrowser({
               disabled={
                 isServerRunning ? isStopping : isStarting || !hasDevScript
               }
-              aria-label={isServerRunning ? 'Stop server' : 'Start dev server'}
-              title={isServerRunning ? 'Stop dev server' : 'Start dev server'}
+              aria-label={
+                isServerRunning
+                  ? t('preview.toolbar.stopDevServer')
+                  : t('preview.toolbar.startDevServer')
+              }
+              title={
+                isServerRunning
+                  ? t('preview.toolbar.stopDevServer')
+                  : t('preview.toolbar.startDevServer')
+              }
             />
           </IconButtonGroup>
         </div>
@@ -332,8 +340,8 @@ export function PreviewBrowser({
                 <SpinnerIcon className="size-icon-lg animate-spin text-brand" />
                 <p className="text-sm">
                   {isStarting
-                    ? 'Starting dev server...'
-                    : 'Waiting for server...'}
+                    ? t('preview.loading.startingServer')
+                    : t('preview.loading.waitingForServer')}
                 </p>
               </>
             ) : hasDevScript ? (

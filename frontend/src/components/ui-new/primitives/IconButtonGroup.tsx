@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { Icon } from '@phosphor-icons/react';
+import { Tooltip } from './Tooltip';
 
 interface IconButtonGroupProps {
   children: React.ReactNode;
@@ -46,14 +47,13 @@ export function IconButtonGroupItem({
       ? 'bg-secondary text-normal'
       : 'text-low hover:text-normal hover:bg-secondary/50';
 
-  return (
+  const button = (
     <button
       type="button"
       className={cn('p-half transition-colors', stateStyles, className)}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      title={title}
     >
       <IconComponent
         className={cn('size-icon-sm', iconClassName)}
@@ -61,4 +61,6 @@ export function IconButtonGroupItem({
       />
     </button>
   );
+
+  return title ? <Tooltip content={title}>{button}</Tooltip> : button;
 }
