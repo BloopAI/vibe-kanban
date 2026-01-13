@@ -35,16 +35,27 @@ function StatusCell({ status, children }: StatusCellProps) {
     data: { type: 'status', status },
   });
 
+  const hasChildren = Array.isArray(children)
+    ? children.some(Boolean)
+    : Boolean(children);
+
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'group/cell px-base py-half border-l border-panel min-h-[70px]',
-        'transition-all relative',
-        isOver && 'bg-brand/5'
+        'group/cell relative px-2 py-1.5 border-l border-panel/40 min-h-[60px]',
+        'transition-all duration-150',
+        // Drop target indicator
+        isOver && 'bg-brand/8 border-l-brand/30',
+        // Empty state subtle indicator on hover
+        !hasChildren && !isOver && 'hover:bg-panel/5'
       )}
     >
-      <div className="flex flex-col gap-1">
+      {/* Drop zone visual indicator */}
+      {isOver && (
+        <div className="absolute inset-1 rounded-sm border border-dashed border-brand/30 pointer-events-none" />
+      )}
+      <div className="relative flex flex-col gap-1">
         {children}
       </div>
     </div>
@@ -123,23 +134,39 @@ export function ProjectSwimlane({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))] border-b border-panel/30 hover:bg-panel/10 transition-colors">
+      <div className={cn(
+        'group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
+        'border-b border-panel/20',
+        'transition-colors duration-100',
+        'hover:bg-panel/5'
+      )}>
         {/* Project name cell */}
-        <div className="px-half py-half flex items-center">
-          <div className="flex items-center gap-half flex-1 min-w-0">
-            <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
-            <span className="text-xs text-normal font-medium">{project.name}</span>
-            <span className="text-xs text-low/60 tabular-nums">{totalCount}</span>
+        <div className="px-2 py-1.5 flex items-center">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <KanbanIcon weight="fill" className="size-3.5 text-brand shrink-0" />
+            <span className="text-xs text-normal font-medium truncate">{project.name}</span>
+            <span className="text-[10px] text-low/50 tabular-nums shrink-0">
+              {isLoading ? '—' : totalCount}
+            </span>
 
             {/* Actions - visible on row hover */}
-            <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
+            <div className={cn(
+              'flex items-center gap-0.5 ml-auto shrink-0',
+              'opacity-0 group-hover/row:opacity-100',
+              'transition-opacity duration-100'
+            )}>
               <button
                 type="button"
                 onClick={() => onCreateTask(project.id)}
-                className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
+                className={cn(
+                  'p-0.5 rounded-sm',
+                  'text-low hover:text-normal',
+                  'hover:bg-panel/50',
+                  'transition-colors duration-100'
+                )}
                 title="New task"
               >
-                <PlusIcon className="size-icon-xs" />
+                <PlusIcon className="size-3" />
               </button>
 
               {/* Actions dropdown */}
@@ -148,9 +175,14 @@ export function ProjectSwimlane({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="p-0.5 rounded hover:bg-panel text-low hover:text-normal transition-colors"
+                      className={cn(
+                        'p-0.5 rounded-sm',
+                        'text-low hover:text-normal',
+                        'hover:bg-panel/50',
+                        'transition-colors duration-100'
+                      )}
                     >
-                      <DotsThreeIcon weight="bold" className="size-icon-xs" />
+                      <DotsThreeIcon weight="bold" className="size-3" />
                     </button>
                   </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -208,7 +240,9 @@ export function ProjectSwimlane({
               status={status}
             >
               {isLoading ? (
-                <div className="text-xs text-low animate-pulse">...</div>
+                <div className="flex flex-col gap-1">
+                  <div className="h-8 bg-panel/20 rounded-sm animate-pulse" />
+                </div>
               ) : tasks.length === 0 ? null : (
                 tasks.map((task) => (
                   <SwimlaneTaskCard

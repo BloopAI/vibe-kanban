@@ -28,10 +28,8 @@ export function SwimlaneTaskCard({
 
   const style = {
     transform: transform
-      ? `translateX(${transform.x}px) translateY(${transform.y}px)`
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 1,
   };
 
   return (
@@ -43,34 +41,63 @@ export function SwimlaneTaskCard({
       {...listeners}
       {...attributes}
       className={cn(
-        'group/card w-full text-left p-half rounded transition-all cursor-grab active:cursor-grabbing',
-        'hover:ring-1 hover:ring-panel',
-        isDragging && 'shadow-lg scale-[1.02] opacity-90',
-        isSelected
-          ? 'bg-panel ring-1 ring-brand'
-          : 'bg-[hsl(0_0%_18%)]'
+        'group/card w-full text-left px-2 py-1.5 rounded-sm',
+        'transition-all duration-150 ease-out',
+        'cursor-grab active:cursor-grabbing',
+        'border border-transparent',
+        // Default state
+        !isSelected && !isDragging && [
+          'bg-secondary/80',
+          'hover:bg-secondary hover:border-panel/50',
+        ],
+        // Selected state
+        isSelected && !isDragging && [
+          'bg-panel border-brand/50',
+          'ring-1 ring-brand/30',
+        ],
+        // Dragging state
+        isDragging && [
+          'bg-panel border-brand/30',
+          'shadow-xl shadow-black/20',
+          'scale-[1.02] rotate-[0.5deg]',
+          'opacity-95',
+          'z-50',
+        ]
       )}
     >
       <div className="flex flex-col gap-0.5">
-        <div className="flex items-start gap-half">
-          <span className="flex-1 text-xs text-normal leading-snug font-medium">
+        <div className="flex items-start gap-1">
+          <span className={cn(
+            'flex-1 text-xs leading-snug font-medium',
+            'text-normal/90',
+            isSelected && 'text-high'
+          )}>
             {task.title}
           </span>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0 mt-px">
             {task.has_in_progress_attempt && (
-              <SpinnerIcon className="size-icon-xs animate-spin text-info" />
+              <SpinnerIcon className="size-3 animate-spin text-info" />
             )}
             {task.last_attempt_failed && (
-              <XCircleIcon className="size-icon-xs text-error" />
+              <XCircleIcon weight="fill" className="size-3 text-error" />
             )}
             <DotsThreeIcon
               weight="bold"
-              className="size-icon-xs text-low opacity-0 group-hover/card:opacity-100 transition-opacity"
+              className={cn(
+                'size-3 text-low',
+                'opacity-0 group-hover/card:opacity-100',
+                'transition-opacity duration-100'
+              )}
             />
           </div>
         </div>
         {task.description && (
-          <p className="text-xs text-low/70 leading-snug line-clamp-2">
+          <p className={cn(
+            'text-[10px] leading-snug',
+            'text-low/60 line-clamp-2',
+            'group-hover/card:text-low/80',
+            'transition-colors duration-100'
+          )}>
             {task.description}
           </p>
         )}
