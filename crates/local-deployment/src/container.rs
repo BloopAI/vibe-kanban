@@ -876,7 +876,6 @@ impl LocalContainerService {
                 session_id: agent_session_id,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir: working_dir.clone(),
-                is_commit_reminder: false,
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
@@ -916,12 +915,10 @@ impl LocalContainerService {
 
     /// Check if the current execution was a commit reminder follow-up
     fn is_commit_reminder_execution(ctx: &ExecutionContext) -> bool {
-        if let Ok(action) = ctx.execution_process.executor_action() {
-            if let ExecutorActionType::CodingAgentFollowUpRequest(req) = action.typ() {
-                return req.is_commit_reminder;
-            }
-        }
-        false
+        matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::CommitReminder
+        )
     }
 
     /// Start a commit reminder follow-up execution to ask the agent to commit its changes
@@ -998,7 +995,6 @@ impl LocalContainerService {
                 session_id: agent_session_id,
                 executor_profile_id,
                 working_dir,
-                is_commit_reminder: true,
             });
 
         let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
@@ -1007,7 +1003,7 @@ impl LocalContainerService {
             &ctx.workspace,
             &ctx.session,
             &action,
-            &ExecutionProcessRunReason::CodingAgent,
+            &ExecutionProcessRunReason::CommitReminder,
         )
         .await
     }

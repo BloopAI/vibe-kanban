@@ -26,10 +26,6 @@ pub struct CodingAgentFollowUpRequest {
     /// If None, uses the container_ref directory directly.
     #[serde(default)]
     pub working_dir: Option<String>,
-    /// If true, this follow-up is a system-generated commit reminder.
-    /// After completion, uncommitted changes will be auto-committed as fallback.
-    #[serde(default)]
-    pub is_commit_reminder: bool,
 }
 
 impl CodingAgentFollowUpRequest {
