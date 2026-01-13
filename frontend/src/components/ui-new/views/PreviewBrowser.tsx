@@ -276,48 +276,67 @@ export function PreviewBrowser({
                 : 'flex items-center justify-center p-double'
             )}
           >
-            <div
-              className={cn(
-                'rounded-sm border overflow-hidden relative',
-                screenSize !== 'desktop' && 'shadow-lg'
-              )}
-              style={getIframeContainerStyle()}
-            >
-              <iframe
-                src={url}
-                title={t('preview.browser.title')}
+            {screenSize === 'mobile' ? (
+              // Phone frame for mobile mode
+              <div className="bg-gray-900 rounded-[3rem] p-3 shadow-xl">
+                <div
+                  className="rounded-[2.5rem] overflow-hidden"
+                  style={{ width: MOBILE_WIDTH, height: MOBILE_HEIGHT }}
+                >
+                  <iframe
+                    src={url}
+                    title={t('preview.browser.title')}
+                    className="w-full h-full border-0"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </div>
+            ) : (
+              // Desktop and responsive modes
+              <div
                 className={cn(
-                  'w-full h-full border-0',
-                  isResizing && 'pointer-events-none'
+                  'rounded-sm border overflow-hidden relative',
+                  screenSize === 'responsive' && 'shadow-lg'
                 )}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                referrerPolicy="no-referrer"
-              />
+                style={getIframeContainerStyle()}
+              >
+                <iframe
+                  src={url}
+                  title={t('preview.browser.title')}
+                  className={cn(
+                    'w-full h-full border-0',
+                    isResizing && 'pointer-events-none'
+                  )}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                  referrerPolicy="no-referrer"
+                />
 
-              {/* Resize handles for responsive mode */}
-              {screenSize === 'responsive' && (
-                <>
-                  {/* Right edge handle */}
-                  <div
-                    className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={onResizeStart('right')}
-                    onTouchStart={onResizeStart('right')}
-                  />
-                  {/* Bottom edge handle */}
-                  <div
-                    className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={onResizeStart('bottom')}
-                    onTouchStart={onResizeStart('bottom')}
-                  />
-                  {/* Corner handle */}
-                  <div
-                    className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-brand/30 transition-colors"
-                    onMouseDown={onResizeStart('corner')}
-                    onTouchStart={onResizeStart('corner')}
-                  />
-                </>
-              )}
-            </div>
+                {/* Resize handles for responsive mode */}
+                {screenSize === 'responsive' && (
+                  <>
+                    {/* Right edge handle */}
+                    <div
+                      className="absolute top-0 right-0 w-2 h-full cursor-ew-resize hover:bg-brand/30 transition-colors"
+                      onMouseDown={onResizeStart('right')}
+                      onTouchStart={onResizeStart('right')}
+                    />
+                    {/* Bottom edge handle */}
+                    <div
+                      className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize hover:bg-brand/30 transition-colors"
+                      onMouseDown={onResizeStart('bottom')}
+                      onTouchStart={onResizeStart('bottom')}
+                    />
+                    {/* Corner handle */}
+                    <div
+                      className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize hover:bg-brand/30 transition-colors"
+                      onMouseDown={onResizeStart('corner')}
+                      onTouchStart={onResizeStart('corner')}
+                    />
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-base text-low">
