@@ -44,7 +44,7 @@ export function XTermInstance({
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 12,
-      fontFamily: 'var(--font-ibm-plex-mono), monospace',
+      fontFamily: '"IBM Plex Mono", monospace',
       theme: {
         background: '#1a1b26',
         foreground: '#c0caf5',
