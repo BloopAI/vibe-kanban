@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM remote_projects WHERE id = $1",
+  "query": "DELETE FROM projects WHERE id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "eae47de30b9ce4c1221e6261b99a1c0e805f310985d27345bb7818c68ae002b3"
+  "hash": "a5ba908419fb3e456bdd2daca41ba06cc3212ffffb8520fc7dbbcc8b60ada314"
 }

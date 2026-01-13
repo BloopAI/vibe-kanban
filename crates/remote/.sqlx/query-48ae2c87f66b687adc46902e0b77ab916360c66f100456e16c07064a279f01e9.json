@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO remote_projects (\n                id, organization_id, name, color,\n                created_at, updated_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id                      AS \"id!: Uuid\",\n                organization_id         AS \"organization_id!: Uuid\",\n                name                    AS \"name!\",\n                color                   AS \"color!\",\n                created_at              AS \"created_at!: DateTime<Utc>\",\n                updated_at              AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO projects (\n                id, organization_id, name, color,\n                created_at, updated_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id               AS \"id!: Uuid\",\n                organization_id  AS \"organization_id!: Uuid\",\n                name             AS \"name!\",\n                color            AS \"color!\",\n                created_at       AS \"created_at!: DateTime<Utc>\",\n                updated_at       AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -16,7 +16,7 @@
       {
         "ordinal": 2,
         "name": "name!",
-        "type_info": "Varchar"
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
@@ -38,7 +38,7 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Varchar",
+        "Text",
         "Varchar",
         "Timestamptz",
         "Timestamptz"
@@ -53,5 +53,5 @@
       false
     ]
   },
-  "hash": "f62071564fc884c05f0a825acf25b1705894047436a03fb5066cb0454a0ad39a"
+  "hash": "48ae2c87f66b687adc46902e0b77ab916360c66f100456e16c07064a279f01e9"
 }

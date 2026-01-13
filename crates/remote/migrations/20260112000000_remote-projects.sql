@@ -2,22 +2,23 @@
 -- We define enums for fields with a fixed set of options
 CREATE TYPE task_priority AS ENUM ('urgent', 'high', 'medium', 'low');
 
--- 3. PROJECTS
-CREATE TABLE remote_projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    color VARCHAR(7) NOT NULL DEFAULT '#000000', -- Hex code
+-- 2. MODIFY EXISTING PROJECTS TABLE
+-- Add color and updated_at columns, drop unused metadata column
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#000000';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE projects DROP COLUMN IF EXISTS metadata;
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Add updated_at trigger for projects
+CREATE TRIGGER trg_projects_updated_at
+    BEFORE UPDATE ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
 
 -- 4. PROJECT STATUSES
 -- Configurable statuses per project (Backlog, Todo, etc.)
 CREATE TABLE project_statuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
     color VARCHAR(7) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -31,7 +32,7 @@ CREATE TABLE project_statuses (
 
 -- 6. PROJECT NOTIFICATION PREFERENCES
 CREATE TABLE project_notification_preferences (
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     notify_on_task_created BOOLEAN NOT NULL DEFAULT TRUE,
@@ -43,7 +44,7 @@ CREATE TABLE project_notification_preferences (
 -- 6. TASKS
 CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 
     -- Status inherits from project_statuses
     status_id UUID NOT NULL REFERENCES project_statuses(id),
@@ -102,7 +103,7 @@ CREATE TABLE task_dependencies (
 -- 12. TAGS
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
     color VARCHAR(7) NOT NULL,
     
