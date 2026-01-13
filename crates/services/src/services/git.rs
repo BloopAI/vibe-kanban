@@ -202,14 +202,6 @@ impl GitService {
         "origin".to_string()
     }
 
-    pub fn default_remote_name_for_path(
-        &self,
-        repo_path: &Path,
-    ) -> Result<String, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        Ok(self.default_remote_name(&repo))
-    }
-
     /// Initialize a new git repository with a main branch and initial commit
     pub fn initialize_repo_with_main_branch(
         &self,
@@ -1615,15 +1607,6 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
-    pub fn get_remote_url_from_branch_or_default(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<String, GitServiceError> {
-        let remote_name = self.resolve_remote_name_for_branch(repo_path, branch_name)?;
-        self.get_remote_url(repo_path, &remote_name)
-    }
-
     pub fn check_remote_branch_exists(
         &self,
         repo_path: &Path,
@@ -1636,13 +1619,16 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
-    fn resolve_remote_name_for_branch(
+    pub fn resolve_remote_name_for_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<String, GitServiceError> {
         self.get_remote_name_from_branch_name(repo_path, branch_name)
-            .or_else(|_| self.default_remote_name_for_path(repo_path))
+            .or_else(|_| {
+                let repo = self.open_repo(repo_path)?;
+                Ok(self.default_remote_name(&repo))
+            })
     }
 
     fn get_remote_from_branch_ref<'a>(

@@ -224,7 +224,7 @@ pub async fn create_pr(
 
     // Resolve remotes and branch names
     let git = deployment.git();
-    let push_remote = git.default_remote_name_for_path(&repo_path)?;
+    let push_remote = git.resolve_remote_name_for_branch(&repo_path, &workspace.branch)?;
 
     // Try to get the remote from the branch name (works for remote-tracking branches like "upstream/main").
     // Fall back to push_remote if the branch doesn't exist locally or isn't a remote-tracking branch.
@@ -417,9 +417,11 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    let remote_url = deployment
-        .git()
-        .get_remote_url_from_branch_or_default(&repo.path, &workspace_repo.target_branch)?;
+    let git = deployment.git();
+    let remote_url = git.get_remote_url(
+        &repo.path,
+        &git.resolve_remote_name_for_branch(&repo.path, &workspace_repo.target_branch)?,
+    )?;
 
     let git_host = match git_host::GitHostService::from_url(&remote_url) {
         Ok(host) => host,
@@ -551,9 +553,11 @@ pub async fn get_pr_comments(
         }
     };
 
-    let remote_url = deployment
-        .git()
-        .get_remote_url_from_branch_or_default(&repo.path, &workspace_repo.target_branch)?;
+    let git = deployment.git();
+    let remote_url = git.get_remote_url(
+        &repo.path,
+        &git.resolve_remote_name_for_branch(&repo.path, &workspace_repo.target_branch)?,
+    )?;
 
     let git_host = match git_host::GitHostService::from_url(&remote_url) {
         Ok(host) => host,
