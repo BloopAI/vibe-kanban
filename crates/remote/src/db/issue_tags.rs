@@ -4,38 +4,38 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskTag {
-    pub task_id: Uuid,
+pub struct IssueTag {
+    pub issue_id: Uuid,
     pub tag_id: Uuid,
 }
 
 #[derive(Debug, Error)]
-pub enum TaskTagError {
+pub enum IssueTagError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
 
-pub struct TaskTagRepository;
+pub struct IssueTagRepository;
 
-impl TaskTagRepository {
+impl IssueTagRepository {
     pub async fn find<'e, E>(
         executor: E,
-        task_id: Uuid,
+        issue_id: Uuid,
         tag_id: Uuid,
-    ) -> Result<Option<TaskTag>, TaskTagError>
+    ) -> Result<Option<IssueTag>, IssueTagError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let record = sqlx::query_as!(
-            TaskTag,
+            IssueTag,
             r#"
             SELECT
-                task_id AS "task_id!: Uuid",
-                tag_id  AS "tag_id!: Uuid"
-            FROM task_tags
-            WHERE task_id = $1 AND tag_id = $2
+                issue_id AS "issue_id!: Uuid",
+                tag_id   AS "tag_id!: Uuid"
+            FROM issue_tags
+            WHERE issue_id = $1 AND tag_id = $2
             "#,
-            task_id,
+            issue_id,
             tag_id
         )
         .fetch_optional(executor)

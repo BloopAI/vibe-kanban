@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM task_comment_reactions WHERE id = $1",
+  "query": "DELETE FROM issue_comment_reactions WHERE id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "d8b3ec775a9528aec7291f268c1548b55d706be157a61f782ee47c73c8841a62"
+  "hash": "56efc697008a751a659452d95248636ce60c7f13fb2a3ef3f5440a7c795b13eb"
 }

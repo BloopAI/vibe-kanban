@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO task_comments (id, task_id, author_id, message, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                task_id     AS \"task_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            INSERT INTO issue_comments (id, issue_id, author_id, message, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                issue_id    AS \"issue_id!: Uuid\",\n                author_id   AS \"author_id!: Uuid\",\n                message     AS \"message!\",\n                created_at  AS \"created_at!: DateTime<Utc>\",\n                updated_at  AS \"updated_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "task_id!: Uuid",
+        "name": "issue_id!: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -53,5 +53,5 @@
       false
     ]
   },
-  "hash": "84cf9e92f192bbe275fda70881c4ae4d5c9826141a669ed7a04338d7ae870a71"
+  "hash": "e9d0fd9854cf0585265f75106f66ed4ecf122c151bde19e506375c4c23d50cb2"
 }

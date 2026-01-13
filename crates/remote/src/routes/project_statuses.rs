@@ -4,34 +4,20 @@ use axum::{
     http::StatusCode,
     routing::{get, patch},
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::{error::ErrorResponse, organization_members::ensure_member_access};
+use super::{error::ErrorResponse, organization_members::ensure_project_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        project_statuses::{ProjectStatus, ProjectStatusRepository},
-        projects::ProjectRepository,
-    },
+    db::project_statuses::{ProjectStatus, ProjectStatusRepository},
 };
 
 #[derive(Debug, Serialize)]
-pub struct ProjectStatusResponse {
-    pub id: Uuid,
-    pub project_id: Uuid,
-    pub name: String,
-    pub color: String,
-    pub sort_order: i32,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ListProjectStatusesResponse {
-    pub statuses: Vec<ProjectStatusResponse>,
+    pub statuses: Vec<ProjectStatus>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,23 +46,6 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-async fn ensure_project_access(
-    state: &AppState,
-    ctx: &RequestContext,
-    project_id: Uuid,
-) -> Result<(), ErrorResponse> {
-    let project = ProjectRepository::find_by_id(state.pool(), project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to load project");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
-        })?
-        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
-
-    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
-    Ok(())
-}
-
 #[instrument(
     name = "project_statuses.list_statuses",
     skip(state, ctx),
@@ -87,7 +56,7 @@ async fn list_statuses(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
 ) -> Result<Json<ListProjectStatusesResponse>, ErrorResponse> {
-    ensure_project_access(&state, &ctx, project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
     let statuses = ProjectStatusRepository::list_by_project(state.pool(), project_id)
         .await
@@ -97,10 +66,7 @@ async fn list_statuses(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to list project statuses",
             )
-        })?
-        .into_iter()
-        .map(to_project_status_response)
-        .collect();
+        })?;
 
     Ok(Json(ListProjectStatusesResponse { statuses }))
 }
@@ -115,8 +81,8 @@ async fn create_status(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<CreateProjectStatusRequest>,
-) -> Result<Json<ProjectStatusResponse>, ErrorResponse> {
-    ensure_project_access(&state, &ctx, project_id).await?;
+) -> Result<Json<ProjectStatus>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
     let status = ProjectStatusRepository::create(
         state.pool(),
@@ -131,7 +97,7 @@ async fn create_status(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(to_project_status_response(status)))
+    Ok(Json(status))
 }
 
 #[instrument(
@@ -144,7 +110,7 @@ async fn update_status(
     Extension(ctx): Extension<RequestContext>,
     Path(status_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectStatusRequest>,
-) -> Result<Json<ProjectStatusResponse>, ErrorResponse> {
+) -> Result<Json<ProjectStatus>, ErrorResponse> {
     let status = ProjectStatusRepository::find_by_id(state.pool(), status_id)
         .await
         .map_err(|error| {
@@ -156,7 +122,7 @@ async fn update_status(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
 
-    ensure_project_access(&state, &ctx, status.project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, status.project_id).await?;
 
     let updated_status = ProjectStatusRepository::update(
         state.pool(),
@@ -171,7 +137,7 @@ async fn update_status(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    Ok(Json(to_project_status_response(updated_status)))
+    Ok(Json(updated_status))
 }
 
 #[instrument(
@@ -195,7 +161,7 @@ async fn delete_status(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project status not found"))?;
 
-    ensure_project_access(&state, &ctx, status.project_id).await?;
+    ensure_project_access(state.pool(), ctx.user.id, status.project_id).await?;
 
     ProjectStatusRepository::delete(state.pool(), status_id)
         .await
@@ -205,15 +171,4 @@ async fn delete_status(
         })?;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-fn to_project_status_response(status: ProjectStatus) -> ProjectStatusResponse {
-    ProjectStatusResponse {
-        id: status.id,
-        project_id: status.project_id,
-        name: status.name,
-        color: status.color,
-        sort_order: status.sort_order,
-        created_at: status.created_at,
-    }
 }

@@ -5,7 +5,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskCommentReaction {
+pub struct IssueCommentReaction {
     pub id: Uuid,
     pub comment_id: Uuid,
     pub user_id: Uuid,
@@ -14,23 +14,23 @@ pub struct TaskCommentReaction {
 }
 
 #[derive(Debug, Error)]
-pub enum TaskCommentReactionError {
+pub enum IssueCommentReactionError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
 
-pub struct TaskCommentReactionRepository;
+pub struct IssueCommentReactionRepository;
 
-impl TaskCommentReactionRepository {
+impl IssueCommentReactionRepository {
     pub async fn find_by_id<'e, E>(
         executor: E,
         id: Uuid,
-    ) -> Result<Option<TaskCommentReaction>, TaskCommentReactionError>
+    ) -> Result<Option<IssueCommentReaction>, IssueCommentReactionError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let record = sqlx::query_as!(
-            TaskCommentReaction,
+            IssueCommentReaction,
             r#"
             SELECT
                 id          AS "id!: Uuid",
@@ -38,7 +38,7 @@ impl TaskCommentReactionRepository {
                 user_id     AS "user_id!: Uuid",
                 emoji       AS "emoji!",
                 created_at  AS "created_at!: DateTime<Utc>"
-            FROM task_comment_reactions
+            FROM issue_comment_reactions
             WHERE id = $1
             "#,
             id
@@ -54,16 +54,16 @@ impl TaskCommentReactionRepository {
         comment_id: Uuid,
         user_id: Uuid,
         emoji: String,
-    ) -> Result<TaskCommentReaction, TaskCommentReactionError>
+    ) -> Result<IssueCommentReaction, IssueCommentReactionError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let id = Uuid::new_v4();
         let created_at = Utc::now();
         let record = sqlx::query_as!(
-            TaskCommentReaction,
+            IssueCommentReaction,
             r#"
-            INSERT INTO task_comment_reactions (id, comment_id, user_id, emoji, created_at)
+            INSERT INTO issue_comment_reactions (id, comment_id, user_id, emoji, created_at)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING
                 id          AS "id!: Uuid",
@@ -84,11 +84,11 @@ impl TaskCommentReactionRepository {
         Ok(record)
     }
 
-    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), TaskCommentReactionError>
+    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueCommentReactionError>
     where
         E: Executor<'e, Database = Postgres>,
     {
-        sqlx::query!("DELETE FROM task_comment_reactions WHERE id = $1", id)
+        sqlx::query!("DELETE FROM issue_comment_reactions WHERE id = $1", id)
             .execute(executor)
             .await?;
         Ok(())
@@ -97,12 +97,12 @@ impl TaskCommentReactionRepository {
     pub async fn list_by_comment<'e, E>(
         executor: E,
         comment_id: Uuid,
-    ) -> Result<Vec<TaskCommentReaction>, TaskCommentReactionError>
+    ) -> Result<Vec<IssueCommentReaction>, IssueCommentReactionError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let records = sqlx::query_as!(
-            TaskCommentReaction,
+            IssueCommentReaction,
             r#"
             SELECT
                 id          AS "id!: Uuid",
@@ -110,7 +110,7 @@ impl TaskCommentReactionRepository {
                 user_id     AS "user_id!: Uuid",
                 emoji       AS "emoji!",
                 created_at  AS "created_at!: DateTime<Utc>"
-            FROM task_comment_reactions
+            FROM issue_comment_reactions
             WHERE comment_id = $1
             "#,
             comment_id

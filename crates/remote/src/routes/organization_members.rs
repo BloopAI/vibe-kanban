@@ -22,9 +22,9 @@ use crate::{
     db::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
+        issues::IssueRepository,
         organization_members::{self, MemberRole},
         organizations::OrganizationRepository,
-        project_tasks::ProjectTaskRepository,
         projects::ProjectRepository,
     },
 };
@@ -555,24 +555,24 @@ pub(crate) async fn ensure_project_access(
     Ok(organization_id)
 }
 
-pub(crate) async fn ensure_task_access(
+pub(crate) async fn ensure_issue_access(
     pool: &PgPool,
     user_id: Uuid,
-    task_id: Uuid,
+    issue_id: Uuid,
 ) -> Result<Uuid, ErrorResponse> {
-    let organization_id = ProjectTaskRepository::organization_id(pool, task_id)
+    let organization_id = IssueRepository::organization_id(pool, issue_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %task_id, "failed to load task");
+            tracing::error!(?error, %issue_id, "failed to load issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?
         .ok_or_else(|| {
             warn!(
-                %task_id,
+                %issue_id,
                 %user_id,
-                "task not found for access check"
+                "issue not found for access check"
             );
-            ErrorResponse::new(StatusCode::NOT_FOUND, "task not found")
+            ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found")
         })?;
 
     organization_members::assert_membership(pool, organization_id, user_id)
@@ -582,19 +582,19 @@ pub(crate) async fn ensure_task_access(
                 tracing::error!(
                     ?error,
                     %organization_id,
-                    %task_id,
-                    "failed to authorize task access"
+                    %issue_id,
+                    "failed to authorize issue access"
                 );
             } else {
                 warn!(
                     ?err,
                     %organization_id,
-                    %task_id,
+                    %issue_id,
                     %user_id,
-                    "task access denied"
+                    "issue access denied"
                 );
             }
-            membership_error(err, "task not accessible")
+            membership_error(err, "issue not accessible")
         })?;
 
     Ok(organization_id)

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                comment_id  AS \"comment_id!: Uuid\",\n                user_id     AS \"user_id!: Uuid\",\n                emoji       AS \"emoji!\",\n                created_at  AS \"created_at!: DateTime<Utc>\"\n            FROM task_comment_reactions\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                comment_id  AS \"comment_id!: Uuid\",\n                user_id     AS \"user_id!: Uuid\",\n                emoji       AS \"emoji!\",\n                created_at  AS \"created_at!: DateTime<Utc>\"\n            FROM issue_comment_reactions\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -42,5 +42,5 @@
       false
     ]
   },
-  "hash": "4f12cc57c23bb1e38158107dc1dcf48f2a42555a40b3bc6e88b898c46e7e5c27"
+  "hash": "883490bd163237d721488136ba8efbe81f42357213817ce1efe61e6036184b3e"
 }

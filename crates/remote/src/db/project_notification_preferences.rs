@@ -7,8 +7,8 @@ use uuid::Uuid;
 pub struct ProjectNotificationPreference {
     pub project_id: Uuid,
     pub user_id: Uuid,
-    pub notify_on_task_created: bool,
-    pub notify_on_task_assigned: bool,
+    pub notify_on_issue_created: bool,
+    pub notify_on_issue_assigned: bool,
 }
 
 #[derive(Debug, Error)]
@@ -32,10 +32,10 @@ impl ProjectNotificationPreferenceRepository {
             ProjectNotificationPreference,
             r#"
             SELECT
-                project_id              AS "project_id!: Uuid",
-                user_id                 AS "user_id!: Uuid",
-                notify_on_task_created  AS "notify_on_task_created!",
-                notify_on_task_assigned AS "notify_on_task_assigned!"
+                project_id               AS "project_id!: Uuid",
+                user_id                  AS "user_id!: Uuid",
+                notify_on_issue_created  AS "notify_on_issue_created!",
+                notify_on_issue_assigned AS "notify_on_issue_assigned!"
             FROM project_notification_preferences
             WHERE project_id = $1 AND user_id = $2
             "#,

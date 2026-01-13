@@ -4,7 +4,6 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -17,18 +16,8 @@ use crate::{
 };
 
 #[derive(Debug, Serialize)]
-pub struct RemoteProjectResponse {
-    pub id: Uuid,
-    pub organization_id: Uuid,
-    pub name: String,
-    pub color: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ListProjectsResponse {
-    pub projects: Vec<RemoteProjectResponse>,
+    pub projects: Vec<Project>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,10 +67,7 @@ async fn list_projects(
         .map_err(|error| {
             tracing::error!(?error, org_id = %target_org, "failed to list remote projects");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list projects")
-        })?
-        .into_iter()
-        .map(to_remote_project_response)
-        .collect();
+        })?;
 
     Ok(Json(ListProjectsResponse { projects }))
 }
@@ -95,8 +81,8 @@ async fn get_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
-) -> Result<Json<RemoteProjectResponse>, ErrorResponse> {
-    let record = ProjectRepository::find_by_id(state.pool(), project_id)
+) -> Result<Json<Project>, ErrorResponse> {
+    let project = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -104,9 +90,9 @@ async fn get_project(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
 
-    Ok(Json(to_remote_project_response(record)))
+    Ok(Json(project))
 }
 
 #[instrument(
@@ -118,7 +104,7 @@ async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
-) -> Result<Json<RemoteProjectResponse>, ErrorResponse> {
+) -> Result<Json<Project>, ErrorResponse> {
     let CreateProjectRequest {
         organization_id,
         name,
@@ -134,7 +120,7 @@ async fn create_project(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(to_remote_project_response(project)))
+    Ok(Json(project))
 }
 
 #[instrument(
@@ -147,8 +133,8 @@ async fn update_project(
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
     Json(payload): Json<UpdateProjectRequest>,
-) -> Result<Json<RemoteProjectResponse>, ErrorResponse> {
-    let record = ProjectRepository::find_by_id(state.pool(), project_id)
+) -> Result<Json<Project>, ErrorResponse> {
+    let existing = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -156,7 +142,7 @@ async fn update_project(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
+    ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
 
     let project = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
         .await
@@ -165,7 +151,7 @@ async fn update_project(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(to_remote_project_response(project)))
+    Ok(Json(project))
 }
 
 #[instrument(
@@ -196,15 +182,4 @@ async fn delete_project(
         })?;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-fn to_remote_project_response(project: Project) -> RemoteProjectResponse {
-    RemoteProjectResponse {
-        id: project.id,
-        organization_id: project.organization_id,
-        name: project.name,
-        color: project.color,
-        created_at: project.created_at,
-        updated_at: project.updated_at,
-    }
 }

@@ -8,10 +8,10 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
 pub enum NotificationType {
-    TaskCommentAdded,
-    TaskStatusChanged,
-    TaskAssigneeChanged,
-    TaskDeleted,
+    IssueCommentAdded,
+    IssueStatusChanged,
+    IssueAssigneeChanged,
+    IssueDeleted,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,7 +21,7 @@ pub struct Notification {
     pub user_id: Uuid,
     pub notification_type: NotificationType,
     pub payload: Value,
-    pub task_id: Option<Uuid>,
+    pub issue_id: Option<Uuid>,
     pub comment_id: Option<Uuid>,
     pub seen: bool,
     pub dismissed_at: Option<DateTime<Utc>>,
@@ -53,7 +53,7 @@ impl NotificationRepository {
                 user_id           AS "user_id!: Uuid",
                 notification_type AS "notification_type!: NotificationType",
                 payload           AS "payload!: Value",
-                task_id           AS "task_id: Uuid",
+                issue_id          AS "issue_id: Uuid",
                 comment_id        AS "comment_id: Uuid",
                 seen              AS "seen!",
                 dismissed_at      AS "dismissed_at: DateTime<Utc>",
@@ -75,7 +75,7 @@ impl NotificationRepository {
         user_id: Uuid,
         notification_type: NotificationType,
         payload: Value,
-        task_id: Option<Uuid>,
+        issue_id: Option<Uuid>,
         comment_id: Option<Uuid>,
     ) -> Result<Notification, NotificationError>
     where
@@ -86,7 +86,7 @@ impl NotificationRepository {
         let record = sqlx::query_as!(
             Notification,
             r#"
-            INSERT INTO notifications (id, organization_id, user_id, notification_type, payload, task_id, comment_id, created_at)
+            INSERT INTO notifications (id, organization_id, user_id, notification_type, payload, issue_id, comment_id, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING
                 id                AS "id!: Uuid",
@@ -94,7 +94,7 @@ impl NotificationRepository {
                 user_id           AS "user_id!: Uuid",
                 notification_type AS "notification_type!: NotificationType",
                 payload           AS "payload!: Value",
-                task_id           AS "task_id: Uuid",
+                issue_id          AS "issue_id: Uuid",
                 comment_id        AS "comment_id: Uuid",
                 seen              AS "seen!",
                 dismissed_at      AS "dismissed_at: DateTime<Utc>",
@@ -105,7 +105,7 @@ impl NotificationRepository {
             user_id,
             notification_type as NotificationType,
             payload,
-            task_id,
+            issue_id,
             comment_id,
             now
         )
@@ -133,7 +133,7 @@ impl NotificationRepository {
                     user_id           AS "user_id!: Uuid",
                     notification_type AS "notification_type!: NotificationType",
                     payload           AS "payload!: Value",
-                    task_id           AS "task_id: Uuid",
+                    issue_id          AS "issue_id: Uuid",
                     comment_id        AS "comment_id: Uuid",
                     seen              AS "seen!",
                     dismissed_at      AS "dismissed_at: DateTime<Utc>",
@@ -156,7 +156,7 @@ impl NotificationRepository {
                     user_id           AS "user_id!: Uuid",
                     notification_type AS "notification_type!: NotificationType",
                     payload           AS "payload!: Value",
-                    task_id           AS "task_id: Uuid",
+                    issue_id          AS "issue_id: Uuid",
                     comment_id        AS "comment_id: Uuid",
                     seen              AS "seen!",
                     dismissed_at      AS "dismissed_at: DateTime<Utc>",
@@ -190,7 +190,7 @@ impl NotificationRepository {
                 user_id           AS "user_id!: Uuid",
                 notification_type AS "notification_type!: NotificationType",
                 payload           AS "payload!: Value",
-                task_id           AS "task_id: Uuid",
+                issue_id          AS "issue_id: Uuid",
                 comment_id        AS "comment_id: Uuid",
                 seen              AS "seen!",
                 dismissed_at      AS "dismissed_at: DateTime<Utc>",
@@ -235,7 +235,7 @@ impl NotificationRepository {
                 user_id           AS "user_id!: Uuid",
                 notification_type AS "notification_type!: NotificationType",
                 payload           AS "payload!: Value",
-                task_id           AS "task_id: Uuid",
+                issue_id          AS "issue_id: Uuid",
                 comment_id        AS "comment_id: Uuid",
                 seen              AS "seen!",
                 dismissed_at      AS "dismissed_at: DateTime<Utc>",

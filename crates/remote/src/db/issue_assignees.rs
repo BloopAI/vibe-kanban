@@ -5,40 +5,40 @@ use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskAssignee {
-    pub task_id: Uuid,
+pub struct IssueAssignee {
+    pub issue_id: Uuid,
     pub user_id: Uuid,
     pub assigned_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Error)]
-pub enum TaskAssigneeError {
+pub enum IssueAssigneeError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
 
-pub struct TaskAssigneeRepository;
+pub struct IssueAssigneeRepository;
 
-impl TaskAssigneeRepository {
+impl IssueAssigneeRepository {
     pub async fn find<'e, E>(
         executor: E,
-        task_id: Uuid,
+        issue_id: Uuid,
         user_id: Uuid,
-    ) -> Result<Option<TaskAssignee>, TaskAssigneeError>
+    ) -> Result<Option<IssueAssignee>, IssueAssigneeError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let record = sqlx::query_as!(
-            TaskAssignee,
+            IssueAssignee,
             r#"
             SELECT
-                task_id     AS "task_id!: Uuid",
+                issue_id    AS "issue_id!: Uuid",
                 user_id     AS "user_id!: Uuid",
                 assigned_at AS "assigned_at!: DateTime<Utc>"
-            FROM task_assignees
-            WHERE task_id = $1 AND user_id = $2
+            FROM issue_assignees
+            WHERE issue_id = $1 AND user_id = $2
             "#,
-            task_id,
+            issue_id,
             user_id
         )
         .fetch_optional(executor)

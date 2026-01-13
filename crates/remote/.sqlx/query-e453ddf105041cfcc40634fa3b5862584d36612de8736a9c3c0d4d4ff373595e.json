@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                task_id AS \"task_id!: Uuid\",\n                tag_id  AS \"tag_id!: Uuid\"\n            FROM task_tags\n            WHERE task_id = $1 AND tag_id = $2\n            ",
+  "query": "\n            SELECT\n                issue_id AS \"issue_id!: Uuid\",\n                tag_id   AS \"tag_id!: Uuid\"\n            FROM issue_tags\n            WHERE issue_id = $1 AND tag_id = $2\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "task_id!: Uuid",
+        "name": "issue_id!: Uuid",
         "type_info": "Uuid"
       },
       {
@@ -25,5 +25,5 @@
       false
     ]
   },
-  "hash": "0b2d259fbe04067a03327d9cb9c1e6f4b95b3cce36a3553f46ecf577270d011e"
+  "hash": "e453ddf105041cfcc40634fa3b5862584d36612de8736a9c3c0d4d4ff373595e"
 }
