@@ -228,7 +228,10 @@ export function PreviewBrowser({
                     : PlayIcon
               }
               iconClassName={
-                isStopping || isStarting ? 'animate-spin' : undefined
+                (isServerRunning && isStopping) ||
+                (!isServerRunning && isStarting)
+                  ? 'animate-spin'
+                  : undefined
               }
               onClick={isServerRunning ? onStop : onStart}
               disabled={
