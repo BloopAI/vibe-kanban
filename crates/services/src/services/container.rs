@@ -9,21 +9,21 @@ use async_trait::async_trait;
 use db::{
     DBService,
     models::{
-#        coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
+//        coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
-#            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
+//            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
             ExecutionProcessStatus,
         },
-#        execution_process_logs::ExecutionProcessLogs,
+//        execution_process_logs::ExecutionProcessLogs,
         execution_process_repo_state::{
-#            CreateExecutionProcessRepoState, ExecutionProcessRepoState,
+//            CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         project::{Project, UpdateProject},
         project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
-#        session::{CreateSession, Session, SessionError},
-#        task::{Task, TaskStatus},
-#        workspace::{Workspace, WorkspaceError},
+//        session::{CreateSession, Session, SessionError},
+//        task::{Task, TaskStatus},
+//        workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
 };
@@ -57,22 +57,22 @@ use crate::services::{
 };
 pub type ContainerRef = String;
 
-#[derive(Debug, Error)]
+//[derive(Debug, Error)]
 pub enum ContainerError {
     #[error(transparent)]
     GitServiceError(#[from] GitServiceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
     #[error(transparent)]
-#    ExecutorError(#[from] ExecutorError),
+//    ExecutorError(#[from] ExecutorError),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
-#    Workspace(#[from] WorkspaceError),
+//    Workspace(#[from] WorkspaceError),
     #[error(transparent)]
-#    WorkspaceManager(#[from] WorkspaceManagerError),
+//    WorkspaceManager(#[from] WorkspaceManagerError),
     #[error(transparent)]
-#    Session(#[from] SessionError),
+//    Session(#[from] SessionError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
@@ -81,7 +81,7 @@ pub enum ContainerError {
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
 
-#[async_trait]
+//[async_trait]
 pub trait ContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
 

@@ -276,8 +276,9 @@ impl DiffStreamManager {
                 diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
             }
 
+            let diff_value = serde_json::to_value(&diff).unwrap_or(serde_json::Value::Null);
             let patch =
-                ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
+                ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff_value);
             if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
                 return Ok(());
             }
@@ -498,8 +499,9 @@ fn process_file_changes(
             diff.new_path = Some(prefix_path(new, path_prefix));
         }
 
+        let diff_value = serde_json::to_value(&diff).unwrap_or(serde_json::Value::Null);
         let patch =
-            ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);
+            ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff_value);
         msgs.push(LogMsg::JsonPatch(patch));
     }
 

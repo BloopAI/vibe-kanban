@@ -272,38 +272,12 @@ pub(crate) async fn ensure_task_in_review(pool: &SqlitePool, execution_process_i
 /// Find a matching tool use entry that hasn't been assigned to an approval yet
 /// Matches by tool call id from tool metadata
 fn find_matching_tool_use(
-    store: Arc<MsgStore>,
-    tool_call_id: &str,
+    _store: Arc<MsgStore>,
+    _tool_call_id: &str,
 ) -> Option<(usize, NormalizedEntry)> {
-    let history = store.get_history();
-
-    // Single loop through history
-    for msg in history.iter().rev() {
-        if let LogMsg::JsonPatch(patch) = msg
-            && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
-            && let NormalizedEntryType::ToolUse { status, .. } = &entry.entry_type
-        {
-            // Only match tools that are in Created state
-            if !matches!(status, ToolStatus::Created) {
-                continue;
-            }
-
-            // Match by tool call id from metadata
-            if let Some(metadata) = &entry.metadata
-                && let Ok(ToolCallMetadata {
-                    tool_call_id: entry_call_id,
-                    ..
-                }) = serde_json::from_value::<ToolCallMetadata>(metadata.clone())
-                && entry_call_id == tool_call_id
-            {
-                tracing::debug!(
-                    "Matched tool use entry at index {idx} for tool call id '{tool_call_id}'"
-                );
-                return Some((idx, entry));
-            }
-        }
-    }
-
+    // STUB: Execution disabled - no tool tracking
+    // This was used to find tool use entries in conversation patches for approval tracking
+    // Since we've removed code execution, this always returns None
     None
 }
 

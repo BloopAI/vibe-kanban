@@ -258,47 +258,51 @@ pub mod patch {
 
         // Convert to json_patch::Patch for MsgStore
         pub fn to_json_patch(&self) -> json_patch::Patch {
-            use json_patch::{PatchOperation, ReplaceOperation, AddOperation, RemoveOperation};
-
-            let operations: Vec<PatchOperation> = match self {
+            // Create patch using JSON string representation
+            let patch_json = match self {
                 Self::Add { index, entry } => {
-                    vec![PatchOperation::Add(AddOperation {
-                        path: format!("/-"),
-                        value: serde_json::to_value(entry).unwrap_or(serde_json::Value::Null),
-                    })]
+                    let value = serde_json::to_value(entry).unwrap_or(serde_json::Value::Null);
+                    serde_json::json!([{
+                        "op": "add",
+                        "path": "/-",
+                        "value": value
+                    }])
                 }
                 Self::Replace { index, entry } => {
-                    vec![PatchOperation::Replace(ReplaceOperation {
-                        path: format!("/{}", index),
-                        value: serde_json::to_value(entry).unwrap_or(serde_json::Value::Null),
-                    })]
+                    let value = serde_json::to_value(entry).unwrap_or(serde_json::Value::Null);
+                    serde_json::json!([{
+                        "op": "replace",
+                        "path": format!("/{}", index),
+                        "value": value
+                    }])
                 }
                 Self::Remove { index } => {
-                    vec![PatchOperation::Remove(RemoveOperation {
-                        path: format!("/{}", index),
-                    })]
+                    serde_json::json!([{
+                        "op": "remove",
+                        "path": format!("/{}", index)
+                    }])
                 }
             };
 
-            json_patch::Patch(operations)
+            serde_json::from_value(patch_json).unwrap_or_else(|_| json_patch::Patch(vec![]))
         }
 
         // Aliases for diff operations - return json_patch::Patch directly
         pub fn add_diff(path: String, diff: serde_json::Value) -> json_patch::Patch {
-            use json_patch::{PatchOperation, AddOperation};
-
-            json_patch::Patch(vec![PatchOperation::Add(AddOperation {
-                path,
-                value: diff,
-            })])
+            let patch_json = serde_json::json!([{
+                "op": "add",
+                "path": path,
+                "value": diff
+            }]);
+            serde_json::from_value(patch_json).unwrap_or_else(|_| json_patch::Patch(vec![]))
         }
 
         pub fn remove_diff(path: String) -> json_patch::Patch {
-            use json_patch::{PatchOperation, RemoveOperation};
-
-            json_patch::Patch(vec![PatchOperation::Remove(RemoveOperation {
-                path,
-            })])
+            let patch_json = serde_json::json!([{
+                "op": "remove",
+                "path": path
+            }]);
+            serde_json::from_value(patch_json).unwrap_or_else(|_| json_patch::Patch(vec![]))
         }
     }
 
