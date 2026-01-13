@@ -13,6 +13,11 @@
   "actions": {
     "addTask": "Agregar tarea"
   },
+  "kanban": {
+    "hiddenColumns": "{{count}} ocultas",
+    "hiddenColumnsTooltip": "Mostrar u ocultar columnas",
+    "hiddenColumnsLabel": "Alternar visibilidad de columnas"
+  },
   "filters": {
     "sharedToggleAria": "Alternar tareas compartidas",
     "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"

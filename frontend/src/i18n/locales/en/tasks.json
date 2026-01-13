@@ -19,6 +19,11 @@
   "actions": {
     "addTask": "Add task"
   },
+  "kanban": {
+    "hiddenColumns": "{{count}} hidden",
+    "hiddenColumnsTooltip": "Show or hide columns",
+    "hiddenColumnsLabel": "Toggle Column Visibility"
+  },
   "filters": {
     "sharedToggleAria": "Toggle shared tasks",
     "sharedToggleTooltip": "Show/hide shared content"
