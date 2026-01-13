@@ -1,4 +1,4 @@
-import { useRef, useEffect, type KeyboardEvent } from 'react';
+import type { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 
 interface InlineGroupCreatorProps {
@@ -18,14 +18,6 @@ export function InlineGroupCreator({
   onCancel,
   className,
 }: InlineGroupCreatorProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isCreating) {
-      inputRef.current?.focus();
-    }
-  }, [isCreating]);
-
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && value.trim()) {
       e.preventDefault();
@@ -41,7 +33,7 @@ export function InlineGroupCreator({
   return (
     <div className={cn('border border-brand rounded p-base bg-secondary', className)}>
       <input
-        ref={inputRef}
+        autoFocus
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

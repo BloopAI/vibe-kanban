@@ -1,40 +1,25 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Allotment } from 'allotment';
 import 'allotment/dist/style.css';
 import { useAllBoards } from '@/hooks/useAllBoards';
-import { AllBoardsSidebar } from '@/components/ui-new/views/AllBoardsSidebar';
-import { AllBoardsMain } from '@/components/ui-new/views/AllBoardsMain';
-import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
-import {
-  usePaneSize,
-  PERSIST_KEYS,
-} from '@/stores/useUiPreferencesStore';
+import { SwimlaneKanban } from '@/components/ui-new/views/SwimlaneKanban';
+import { Navbar } from '@/components/layout/Navbar';
 import { useProjectGroupMutations } from '@/hooks/useProjectGroupMutations';
-import {
-  BoardsDndContext,
-  type DragEndEvent,
-  type DragStartEvent,
-} from '@/components/ui-new/dnd';
-import type { Project } from 'shared/types';
+import { openTaskForm } from '@/lib/openTaskForm';
+import { TaskDetailsPanel } from '@/components/ui-new/containers/TaskDetailsPanel';
+import { tasksApi } from '@/lib/api';
+import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 
 export function AllBoardsLayout() {
+  const navigate = useNavigate();
   const {
     groupedProjects,
     groups,
-    projects,
     isLoading,
     error,
   } = useAllBoards();
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Create lookup for projects by ID
-  const projectsById = useMemo(() => {
-    const map: Record<string, Project> = {};
-    projects.forEach(p => {
-      map[p.id] = p;
-    });
-    return map;
-  }, [projects]);
 
   // Track which groups are expanded - default all expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -45,20 +30,16 @@ export function AllBoardsLayout() {
     return initial;
   });
 
-  // Drag-and-drop state
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
-
   // Inline group creation state
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
 
+  // Track selected project and task for the details panel
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
   // Mutations for creating/managing groups
   const { createGroup, assignProjectToGroup } = useProjectGroupMutations();
-
-  const [sidebarWidth, setSidebarWidth] = usePaneSize(
-    PERSIST_KEYS.sidebarWidth,
-    300
-  );
 
   const handleToggleGroup = useCallback((groupId: string | null) => {
     const key = groupId ?? 'ungrouped';
@@ -89,12 +70,29 @@ export function AllBoardsLayout() {
     setExpandedGroups(new Set());
   }, []);
 
-  const handlePaneResize = useCallback(
-    (sizes: number[]) => {
-      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
+  const handleTaskClick = useCallback(
+    (projectId: string, taskId: string) => {
+      setSelectedProjectId(projectId);
+      setSelectedTaskId(taskId);
     },
-    [setSidebarWidth]
+    []
   );
+
+  const handleClosePanel = useCallback(() => {
+    setSelectedProjectId(null);
+    setSelectedTaskId(null);
+  }, []);
+
+  const handleOpenBoard = useCallback(
+    (projectId: string) => {
+      navigate(`/projects/${projectId}/tasks`);
+    },
+    [navigate]
+  );
+
+  const handleCreateTask = useCallback((projectId: string, status?: TaskStatus) => {
+    openTaskForm({ mode: 'create', projectId, initialStatus: status });
+  }, []);
 
   // Inline group creation handlers
   const handleStartCreateGroup = useCallback(() => {
@@ -124,47 +122,27 @@ export function AllBoardsLayout() {
     [assignProjectToGroup]
   );
 
-  // Drag-and-drop handlers
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const project = projectsById[event.active.id as string];
-      setActiveProject(project ?? null);
-    },
-    [projectsById]
-  );
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveProject(null);
-      const { active, over } = event;
-
-      if (!over) return;
-
-      const projectId = active.id as string;
-      const overData = over.data.current;
-
-      // Determine target group
-      let targetGroupId: string | null = null;
-      if (overData?.type === 'group') {
-        targetGroupId = overData.groupId;
-      } else if (overData?.type === 'project') {
-        // Dropped on another project - use that project's group
-        targetGroupId = overData.project?.group_id ?? null;
-      }
-
-      // Check if actually changing groups
-      const sourceGroupId = active.data.current?.sourceGroupId ?? null;
-      if (targetGroupId !== sourceGroupId) {
-        assignProjectToGroup.mutate({ projectId, groupId: targetGroupId });
+  const handleStatusChange = useCallback(
+    async (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => {
+      try {
+        await tasksApi.update(taskId, {
+          title: task.title,
+          description: task.description,
+          status: newStatus,
+          parent_workspace_id: task.parent_workspace_id,
+          image_ids: null,
+        });
+      } catch (err) {
+        console.error('Failed to update task status:', err);
       }
     },
-    [assignProjectToGroup]
+    []
   );
 
   if (error) {
     return (
       <div className="flex flex-col h-screen">
-        <NavbarContainer />
+        <Navbar />
         <div className="flex-1 flex items-center justify-center bg-primary text-error">
           Error loading boards: {error.message}
         </div>
@@ -174,31 +152,11 @@ export function AllBoardsLayout() {
 
   return (
     <div className="flex flex-col h-screen">
-      <NavbarContainer />
-      <BoardsDndContext
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        activeProject={activeProject}
-        groups={groups}
-      >
-        <Allotment className="flex-1 min-h-0" onDragEnd={handlePaneResize}>
-          <Allotment.Pane
-            minSize={250}
-            preferredSize={sidebarWidth}
-            maxSize={400}
-          >
-            <AllBoardsSidebar
-              groups={groups}
-              projects={projects}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onCreateGroup={handleStartCreateGroup}
-              expandedGroups={expandedGroups}
-              onToggleGroup={handleToggleGroup}
-            />
-          </Allotment.Pane>
-          <Allotment.Pane minSize={400}>
-            <AllBoardsMain
+      <Navbar />
+      <div className="flex-1 min-h-0">
+        <Allotment>
+          <Allotment.Pane minSize={600}>
+            <SwimlaneKanban
               groupedProjects={groupedProjects}
               groups={groups}
               expandedGroups={expandedGroups}
@@ -207,8 +165,15 @@ export function AllBoardsLayout() {
               onExpandAll={handleExpandAll}
               onCollapseAll={handleCollapseAll}
               searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
               isLoading={isLoading}
+              selectedTaskId={selectedTaskId}
+              onTaskClick={handleTaskClick}
+              onCreateTask={handleCreateTask}
               onMoveToGroup={handleMoveToGroup}
+              onOpenBoard={handleOpenBoard}
+              onCreateGroup={handleStartCreateGroup}
+              onStatusChange={handleStatusChange}
               isCreatingGroup={isCreatingGroup}
               newGroupName={newGroupName}
               onNewGroupNameChange={setNewGroupName}
@@ -216,8 +181,20 @@ export function AllBoardsLayout() {
               onCancelCreateGroup={handleCancelCreateGroup}
             />
           </Allotment.Pane>
+          <Allotment.Pane
+            minSize={selectedTaskId ? 400 : 0}
+            visible={!!selectedTaskId}
+          >
+            {selectedProjectId && selectedTaskId && (
+              <TaskDetailsPanel
+                projectId={selectedProjectId}
+                taskId={selectedTaskId}
+                onClose={handleClosePanel}
+              />
+            )}
+          </Allotment.Pane>
         </Allotment>
-      </BoardsDndContext>
+      </div>
     </div>
   );
 }

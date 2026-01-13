@@ -40,12 +40,14 @@ export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
     queryKey: taskAttemptKeys.byTaskWithSessions(taskId),
     queryFn: async () => {
       const attempts = await attemptsApi.getAll(taskId!);
-      // Fetch sessions for all attempts in parallel
-      const sessionsResults = await Promise.all(
+      // Use allSettled to handle individual session fetch failures gracefully
+      const sessionsResults = await Promise.allSettled(
         attempts.map((attempt) => sessionsApi.getByWorkspace(attempt.id))
       );
       return attempts.map((attempt, i) => {
-        const session = sessionsResults[i][0];
+        const result = sessionsResults[i];
+        // Get session if fetch succeeded, undefined if it failed
+        const session = result.status === 'fulfilled' ? result.value[0] : undefined;
         return createWorkspaceWithSession(attempt, session);
       });
     },

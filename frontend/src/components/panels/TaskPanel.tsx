@@ -15,12 +15,15 @@ import { DataTable, type ColumnDef } from '@/components/ui/table';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
+  projectId?: string;
+  onAttemptCreated?: (attemptId: string) => void;
 }
 
-const TaskPanel = ({ task }: TaskPanelProps) => {
+const TaskPanel = ({ task, projectId: propProjectId, onAttemptCreated }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
-  const { projectId } = useProject();
+  const { projectId: contextProjectId } = useProject();
+  const projectId = propProjectId ?? contextProjectId;
 
   const {
     data: attempts = [],
@@ -158,6 +161,8 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                         onClick={() =>
                           CreateAttemptDialog.show({
                             taskId: task.id,
+                            projectId,
+                            onSuccess: onAttemptCreated,
                           })
                         }
                       >

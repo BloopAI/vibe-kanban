@@ -19,6 +19,11 @@
   "actions": {
     "addTask": "添加任务"
   },
+  "kanban": {
+    "hiddenColumns": "{{count}}个隐藏",
+    "hiddenColumnsTooltip": "显示或隐藏列",
+    "hiddenColumnsLabel": "切换列可见性"
+  },
   "filters": {
     "sharedToggleAria": "切换共享任务",
     "sharedToggleTooltip": "显示/隐藏共享内容"

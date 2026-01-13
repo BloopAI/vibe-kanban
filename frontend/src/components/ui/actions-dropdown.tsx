@@ -32,15 +32,20 @@ interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: WorkspaceWithSession | null;
   sharedTask?: SharedTaskRecord;
+  projectId?: string;
+  onAttemptCreated?: (attemptId: string) => void;
 }
 
 export function ActionsDropdown({
   task,
   attempt,
   sharedTask,
+  projectId: propProjectId,
+  onAttemptCreated,
 }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
-  const { projectId } = useProject();
+  const { projectId: contextProjectId } = useProject();
+  const projectId = propProjectId ?? contextProjectId;
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
@@ -107,6 +112,8 @@ export function ActionsDropdown({
     if (!task?.id) return;
     CreateAttemptDialog.show({
       taskId: task.id,
+      projectId,
+      onSuccess: onAttemptCreated,
     });
   };
 
