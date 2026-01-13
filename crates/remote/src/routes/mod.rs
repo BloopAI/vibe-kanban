@@ -28,7 +28,6 @@ mod review;
 mod tags;
 mod task_comment_reactions;
 mod task_comments;
-pub mod tasks;
 mod tokens;
 
 pub fn router(state: AppState) -> Router {
@@ -63,7 +62,6 @@ pub fn router(state: AppState) -> Router {
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(projects::router())
-        .merge(tasks::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())

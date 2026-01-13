@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/shape/shared_tasks", get(proxy_shared_tasks))
+    Router::new()
 }
 
 /// Electric protocol query parameters that are safe to forward.
@@ -43,37 +43,37 @@ fn empty_shape_response() -> Response {
 ///
 /// The `require_session` middleware has already validated the Bearer token
 /// before this handler is called.
-pub async fn proxy_shared_tasks(
-    State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<Response, ProxyError> {
-    // Get user's organization memberships
-    let org_repo = OrganizationRepository::new(state.pool());
-    let orgs = org_repo
-        .list_user_organizations(ctx.user.id)
-        .await
-        .map_err(|e| ProxyError::Authorization(format!("failed to fetch organizations: {e}")))?;
-
-    if orgs.is_empty() {
-        // User has no org memberships - return empty result
-        return Ok(empty_shape_response());
-    }
-
-    // Build org_id filter using compile-time validated WHERE clause
-    let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
-    let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
-    let query_params = &[format!(
-        "{{{}}}",
-        org_uuids
-            .iter()
-            .map(|u| u.to_string())
-            .collect::<Vec<_>>()
-            .join(",")
-    )];
-    tracing::debug!("Proxying Electric Shape request for shared_tasks table{query:?}");
-    proxy_table(&state, &query, &params, query_params).await
-}
+//pub async fn proxy_shared_tasks(
+//    State(state): State<AppState>,
+//    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+//    Query(params): Query<HashMap<String, String>>,
+//) -> Result<Response, ProxyError> {
+//    // Get user's organization memberships
+//    let org_repo = OrganizationRepository::new(state.pool());
+//    let orgs = org_repo
+//        .list_user_organizations(ctx.user.id)
+//        .await
+//        .map_err(|e| ProxyError::Authorization(format!("failed to fetch organizations: {e}")))?;
+//
+//    if orgs.is_empty() {
+//        // User has no org memberships - return empty result
+//        return Ok(empty_shape_response());
+//    }
+//
+//    // Build org_id filter using compile-time validated WHERE clause
+//    let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
+//    let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
+//    let query_params = &[format!(
+//        "{{{}}}",
+//        org_uuids
+//            .iter()
+//            .map(|u| u.to_string())
+//            .collect::<Vec<_>>()
+//            .join(",")
+//    )];
+//    tracing::debug!("Proxying Electric Shape request for shared_tasks table{query:?}");
+//    proxy_table(&state, &query, &params, query_params).await
+//}
 
 /// Proxy a Shape request to Electric for a specific table.
 ///

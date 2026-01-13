@@ -20,7 +20,6 @@ pub mod task_comments;
 pub mod task_dependencies;
 pub mod task_followers;
 pub mod task_tags;
-pub mod tasks;
 pub mod types;
 pub mod users;
 

@@ -24,8 +24,8 @@ use crate::{
         invitations::{Invitation, InvitationRepository},
         organization_members::{self, MemberRole},
         organizations::OrganizationRepository,
+        project_tasks::ProjectTaskRepository,
         projects::ProjectRepository,
-        tasks::SharedTaskRepository,
     },
 };
 
@@ -560,19 +560,19 @@ pub(crate) async fn ensure_task_access(
     user_id: Uuid,
     task_id: Uuid,
 ) -> Result<Uuid, ErrorResponse> {
-    let organization_id = SharedTaskRepository::organization_id(pool, task_id)
+    let organization_id = ProjectTaskRepository::organization_id(pool, task_id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, %task_id, "failed to load shared task");
+            tracing::error!(?error, %task_id, "failed to load task");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?
         .ok_or_else(|| {
             warn!(
                 %task_id,
                 %user_id,
-                "shared task not found for access check"
+                "task not found for access check"
             );
-            ErrorResponse::new(StatusCode::NOT_FOUND, "shared task not found")
+            ErrorResponse::new(StatusCode::NOT_FOUND, "task not found")
         })?;
 
     organization_members::assert_membership(pool, organization_id, user_id)
@@ -583,7 +583,7 @@ pub(crate) async fn ensure_task_access(
                     ?error,
                     %organization_id,
                     %task_id,
-                    "failed to authorize shared task access"
+                    "failed to authorize task access"
                 );
             } else {
                 warn!(
@@ -591,7 +591,7 @@ pub(crate) async fn ensure_task_access(
                     %organization_id,
                     %task_id,
                     %user_id,
-                    "shared task access denied"
+                    "task access denied"
                 );
             }
             membership_error(err, "task not accessible")

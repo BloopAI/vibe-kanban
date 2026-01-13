@@ -1,3 +1,8 @@
+-- 0. DROP SHARED TASKS
+-- Remove the old shared_tasks table and related objects
+DROP TABLE IF EXISTS shared_tasks CASCADE;
+DROP TYPE IF EXISTS task_status;
+
 -- 1. ENUMS
 -- We define enums for fields with a fixed set of options
 CREATE TYPE task_priority AS ENUM ('urgent', 'high', 'medium', 'low');
