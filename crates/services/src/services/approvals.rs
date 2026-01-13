@@ -281,94 +281,95 @@ fn find_matching_tool_use(
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use crate::executor_stubs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
-    use utils::msg_store::MsgStore;
-
-    use super::*;
-
-    fn create_tool_use_entry(
-        tool_name: &str,
-        file_path: &str,
-        id: &str,
-        status: ToolStatus,
-    ) -> NormalizedEntry {
-        NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::ToolUse {
-                tool_name: tool_name.to_string(),
-                action_type: ActionType::FileRead {
-                    path: file_path.to_string(),
-                },
-                status,
-            },
-            content: format!("Reading {file_path}"),
-            metadata: Some(
-                serde_json::to_value(ToolCallMetadata {
-                    tool_call_id: id.to_string(),
-                })
-                .unwrap(),
-            ),
-        }
-    }
-
-    #[test]
-    fn test_parallel_tool_call_approval_matching() {
-        let store = Arc::new(MsgStore::new());
-
-        // Setup: Simulate 3 parallel Read tool calls with different files
-        let read_foo = create_tool_use_entry("Read", "foo.rs", "foo-id", ToolStatus::Created);
-        let read_bar = create_tool_use_entry("Read", "bar.rs", "bar-id", ToolStatus::Created);
-        let read_baz = create_tool_use_entry("Read", "baz.rs", "baz-id", ToolStatus::Created);
-
-        store.push_patch(
-            ConversationPatch::add(0, read_foo),
-        );
-        store.push_patch(
-            ConversationPatch::add(1, read_bar),
-        );
-        store.push_patch(
-            ConversationPatch::add(2, read_baz),
-        );
-
-        let (idx_foo, _) =
-            find_matching_tool_use(store.clone(), "foo-id").expect("Should match foo.rs");
-        let (idx_bar, _) =
-            find_matching_tool_use(store.clone(), "bar-id").expect("Should match bar.rs");
-        let (idx_baz, _) =
-            find_matching_tool_use(store.clone(), "baz-id").expect("Should match baz.rs");
-
-        assert_eq!(idx_foo, 0, "foo.rs should match first entry");
-        assert_eq!(idx_bar, 1, "bar.rs should match second entry");
-        assert_eq!(idx_baz, 2, "baz.rs should match third entry");
-
-        // Test 2: Already pending tools are skipped
-        let read_pending = create_tool_use_entry(
-            "Read",
-            "pending.rs",
-            "pending-id",
-            ToolStatus::PendingApproval {
-                approval_id: "test-id".to_string(),
-                requested_at: chrono::Utc::now(),
-                timeout_at: chrono::Utc::now(),
-            },
-        );
-        store.push_patch(
-            ConversationPatch::add(3, read_pending),
-        );
-
-        assert!(
-            find_matching_tool_use(store.clone(), "pending-id").is_none(),
-            "Should not match tools in PendingApproval state"
-        );
-
-        // Test 3: Wrong tool id returns None
-        assert!(
-            find_matching_tool_use(store.clone(), "wrong-id").is_none(),
-            "Should not match different tool ids"
-        );
-    }
-}
+// REMOVED: Execution disabled - approval tests removed (used executor types)
+// #[cfg(test)]
+// mod tests {
+//     use std::sync::Arc;
+//
+//     use crate::executor_stubs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
+//     use utils::msg_store::MsgStore;
+//
+//     use super::*;
+//
+//     fn create_tool_use_entry(
+//         tool_name: &str,
+//         file_path: &str,
+//         id: &str,
+//         status: ToolStatus,
+//     ) -> NormalizedEntry {
+//         NormalizedEntry {
+//             timestamp: None,
+//             entry_type: NormalizedEntryType::ToolUse {
+//                 tool_name: tool_name.to_string(),
+//                 action_type: ActionType::FileRead {
+//                     path: file_path.to_string(),
+//                 },
+//                 status,
+//             },
+//             content: format!("Reading {file_path}"),
+//             metadata: Some(
+//                 serde_json::to_value(ToolCallMetadata {
+//                     tool_call_id: id.to_string(),
+//                 })
+//                 .unwrap(),
+//             ),
+//         }
+//     }
+//
+//     #[test]
+//     fn test_parallel_tool_call_approval_matching() {
+//         let store = Arc::new(MsgStore::new());
+//
+//         // Setup: Simulate 3 parallel Read tool calls with different files
+//         let read_foo = create_tool_use_entry("Read", "foo.rs", "foo-id", ToolStatus::Created);
+//         let read_bar = create_tool_use_entry("Read", "bar.rs", "bar-id", ToolStatus::Created);
+//         let read_baz = create_tool_use_entry("Read", "baz.rs", "baz-id", ToolStatus::Created);
+//
+//         store.push_patch(
+//             ConversationPatch::add(0, read_foo),
+//         );
+//         store.push_patch(
+//             ConversationPatch::add(1, read_bar),
+//         );
+//         store.push_patch(
+//             ConversationPatch::add(2, read_baz),
+//         );
+//
+//         let (idx_foo, _) =
+//             find_matching_tool_use(store.clone(), "foo-id").expect("Should match foo.rs");
+//         let (idx_bar, _) =
+//             find_matching_tool_use(store.clone(), "bar-id").expect("Should match bar.rs");
+//         let (idx_baz, _) =
+//             find_matching_tool_use(store.clone(), "baz-id").expect("Should match baz.rs");
+//
+//         assert_eq!(idx_foo, 0, "foo.rs should match first entry");
+//         assert_eq!(idx_bar, 1, "bar.rs should match second entry");
+//         assert_eq!(idx_baz, 2, "baz.rs should match third entry");
+//
+//         // Test 2: Already pending tools are skipped
+//         let read_pending = create_tool_use_entry(
+//             "Read",
+//             "pending.rs",
+//             "pending-id",
+//             ToolStatus::PendingApproval {
+//                 approval_id: "test-id".to_string(),
+//                 requested_at: chrono::Utc::now(),
+//                 timeout_at: chrono::Utc::now(),
+//             },
+//         );
+//         store.push_patch(
+//             ConversationPatch::add(3, read_pending),
+//         );
+//
+//         assert!(
+//             find_matching_tool_use(store.clone(), "pending-id").is_none(),
+//             "Should not match tools in PendingApproval state"
+//         );
+//
+//         // Test 3: Wrong tool id returns None
+//         assert!(
+//             find_matching_tool_use(store.clone(), "wrong-id").is_none(),
+//             "Should not match different tool ids"
+//         );
+//     }
+// }
