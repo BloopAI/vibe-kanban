@@ -9,14 +9,11 @@ use axum::{
     routing::{get, put},
 };
 use deployment::{Deployment, DeploymentError};
-// REMOVED: Execution disabled - executor types removed
-// use executors::{
-//     executors::{
-//         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
-//     },
-//     mcp_config::{McpConfig, read_agent_config, write_agent_config},
-//     profile::{ExecutorConfigs, ExecutorProfileId},
-// };
+// REMOVED: Execution disabled - using stub types for API compatibility
+use services::executor_stubs::{
+    AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, ExecutorConfigs, ExecutorProfileId,
+    McpConfig,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::services::config::{

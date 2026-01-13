@@ -24,7 +24,8 @@ impl ExecutorProfileId {
 }
 
 // Stub for BaseCodingAgent (legacy type from executors crate)
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub enum BaseCodingAgent {
     ClaudeCode,
     Cursor,
@@ -317,4 +318,53 @@ pub mod patch {
     pub fn escape_json_pointer_segment(segment: &str) -> String {
         segment.replace('~', "~0").replace('/', "~1")
     }
+}
+
+// Additional stubs for server crate compatibility
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutorConfigs;
+
+impl ExecutorConfigs {
+    pub fn get_cached() -> Self {
+        Self
+    }
+
+    pub async fn get_recommended_executor_profile(&self) -> Result<ExecutorProfileId, String> {
+        Ok(ExecutorProfileId::from(BaseCodingAgent::ClaudeCode))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct McpConfig {
+    pub servers: HashMap<String, serde_json::Value>,
+}
+
+impl McpConfig {
+    pub fn new() -> Self {
+        Self {
+            servers: HashMap::new(),
+        }
+    }
+}
+
+impl Default for McpConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AvailabilityInfo {
+    pub available: bool,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub enum BaseAgentCapability {
+    Chat,
+    Edit,
+    Terminal,
 }

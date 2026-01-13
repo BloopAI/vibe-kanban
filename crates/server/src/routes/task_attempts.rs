@@ -117,9 +117,9 @@ pub struct WorkspaceRepoInput {
     pub target_branch: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
-
-#[derive(Debug, Serialize, TS)]
+// REMOVED: Execution disabled - empty derive attributes from removed types
+// #[derive(Debug, Deserialize, Serialize, TS)]
+// #[derive(Debug, Serialize, TS)]
 
 #[axum::debug_handler]
 pub async fn create_task_attempt(

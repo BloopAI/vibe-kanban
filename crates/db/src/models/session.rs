@@ -83,4 +83,34 @@ impl Session {
         .fetch_optional(pool)
         .await
     }
+
+    // STUB: Execution disabled - session creation for historical compatibility only
+    pub async fn create(
+        pool: &SqlitePool,
+        _data: &CreateSession,
+        id: Uuid,
+        workspace_id: Uuid,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query_as!(
+            Session,
+            r#"INSERT INTO sessions (id, workspace_id, executor)
+               VALUES ($1, $2, $3)
+               RETURNING id AS "id!: Uuid",
+                         workspace_id AS "workspace_id!: Uuid",
+                         executor,
+                         created_at AS "created_at!: DateTime<Utc>",
+                         updated_at AS "updated_at!: DateTime<Utc>""#,
+            id,
+            workspace_id,
+            None::<String> // executor always None since execution is disabled
+        )
+        .fetch_one(pool)
+        .await
+    }
+}
+
+// STUB: Execution disabled - kept for API compatibility
+#[derive(Debug)]
+pub struct CreateSession {
+    pub executor: Option<String>,
 }

@@ -60,6 +60,7 @@ pub async fn get_session(
     Ok(ResponseJson(ApiResponse::success(session)))
 }
 
+// STUB: Execution disabled - creates stub session without executor functionality
 pub async fn create_session(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateSessionRequest>,

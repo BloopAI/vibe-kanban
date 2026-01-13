@@ -10,7 +10,8 @@ use db::models::{
     workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
-// use executors::executors::ExecutorError;
+// REMOVED: Execution disabled - using stub type
+use services::executor_stubs::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     config::{ConfigError, EditorOpenError},
