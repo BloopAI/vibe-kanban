@@ -100,87 +100,16 @@ Analyze the changes in this branch and write:
 
 Use `gh pr edit` to update the PR."#;
 
+// REMOVED: Execution disabled - PR description automation requires code execution
+// This function is kept as a no-op stub for API compatibility
 async fn trigger_pr_description_follow_up(
-    deployment: &DeploymentImpl,
-    workspace: &Workspace,
-    pr_number: i64,
-    pr_url: &str,
+    _deployment: &DeploymentImpl,
+    _workspace: &Workspace,
+    _pr_number: i64,
+    _pr_url: &str,
 ) -> Result<(), ApiError> {
-    // Get the custom prompt from config, or use default
-    let config = deployment.config().read().await;
-    let prompt_template = config
-        .pr_auto_description_prompt
-        .as_deref()
-        .unwrap_or(DEFAULT_PR_DESCRIPTION_PROMPT);
-
-    // Replace placeholders in prompt
-    let prompt = prompt_template
-        .replace("{pr_number}", &pr_number.to_string())
-        .replace("{pr_url}", pr_url);
-
-    drop(config); // Release the lock before async operations
-
-    // Get or create a session for this follow-up
-    let session =
-        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
-            Some(s) => s,
-            None => {
-                Session::create(
-                    &deployment.db().pool,
-                    &CreateSession { executor: None },
-                    Uuid::new_v4(),
-                    workspace.id,
-                )
-                .await?
-            }
-        };
-
-    // Get executor profile from the latest coding agent process in this session
-    let executor_profile_id =
-        ExecutionProcess::latest_executor_profile_for_session(&deployment.db().pool, session.id)
-            .await?;
-
-    // Get latest agent session ID if one exists (for coding agent continuity)
-    let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
-        &deployment.db().pool,
-        session.id,
-    )
-    .await?;
-
-    let working_dir = workspace
-        .agent_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
-
-    // Build the action type (follow-up if session exists, otherwise initial)
-    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
-        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-            prompt,
-            session_id: agent_session_id,
-            executor_profile_id: executor_profile_id.clone(),
-            working_dir: working_dir.clone(),
-        })
-    } else {
-        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-            prompt,
-            executor_profile_id: executor_profile_id.clone(),
-            working_dir,
-        })
-    };
-
-    let action = ExecutorAction::new(action_type, None);
-
-    deployment
-        .container()
-        .start_execution(
-            workspace,
-            &session,
-            &action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?;
-
+    // No-op: automatic PR description updates disabled (requires code execution)
+    tracing::debug!("trigger_pr_description_follow_up called but execution is disabled");
     Ok(())
 }
 

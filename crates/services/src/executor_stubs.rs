@@ -15,10 +15,19 @@ pub struct ExecutorProfileId {
 }
 
 impl ExecutorProfileId {
-    pub fn new(executor: impl Into<String>, variant: Option<impl Into<String>>) -> Self {
+    // Two-argument constructor for full specification
+    pub fn new_with_variant(executor: impl Into<String>, variant: Option<impl Into<String>>) -> Self {
         Self {
             executor: executor.into(),
             variant: variant.map(|v| v.into()),
+        }
+    }
+
+    // Single-argument constructor (common case, no variant)
+    pub fn new(executor: impl Into<String>) -> Self {
+        Self {
+            executor: executor.into(),
+            variant: None,
         }
     }
 }
@@ -46,6 +55,12 @@ impl std::str::FromStr for BaseCodingAgent {
             "GEMINI_CLI" | "GEMINICLI" => Ok(Self::GeminiCli),
             _ => Err(format!("Unknown executor: {}", s)),
         }
+    }
+}
+
+impl From<String> for BaseCodingAgent {
+    fn from(s: String) -> Self {
+        s.parse().unwrap_or(Self::ClaudeCode)
     }
 }
 
@@ -322,15 +337,46 @@ pub mod patch {
 
 // Additional stubs for server crate compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutorConfigs;
+pub struct ExecutorConfigs {
+    pub executors: HashMap<String, CodingAgentStub>,
+}
 
 impl ExecutorConfigs {
     pub fn get_cached() -> Self {
-        Self
+        Self {
+            executors: HashMap::new(),
+        }
     }
 
     pub async fn get_recommended_executor_profile(&self) -> Result<ExecutorProfileId, String> {
         Ok(ExecutorProfileId::from(BaseCodingAgent::ClaudeCode))
+    }
+
+    pub fn get_coding_agent(&self, _profile_id: &ExecutorProfileId) -> Option<&CodingAgentStub> {
+        None
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodingAgentStub {
+    pub name: String,
+}
+
+impl CodingAgentStub {
+    pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
+        vec![]
+    }
+
+    pub fn supports_mcp(&self) -> bool {
+        false // Execution disabled, MCP not supported
+    }
+
+    pub fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
+        None
+    }
+
+    pub async fn get_mcp_config(&self) -> Result<Option<McpConfig>, std::io::Error> {
+        Ok(None)
     }
 }
 
@@ -338,12 +384,14 @@ impl ExecutorConfigs {
 #[ts(export)]
 pub struct McpConfig {
     pub servers: HashMap<String, serde_json::Value>,
+    pub servers_path: Option<std::path::PathBuf>,
 }
 
 impl McpConfig {
     pub fn new() -> Self {
         Self {
             servers: HashMap::new(),
+            servers_path: None,
         }
     }
 }
@@ -367,4 +415,21 @@ pub enum BaseAgentCapability {
     Chat,
     Edit,
     Terminal,
+}
+
+// Stub functions for MCP config file operations
+pub async fn read_agent_config(
+    _config_path: &std::path::Path,
+    _default_config: &McpConfig,
+) -> Result<McpConfig, std::io::Error> {
+    // Return empty config - execution disabled
+    Ok(McpConfig::new())
+}
+
+pub async fn write_agent_config(
+    _config_path: &std::path::Path,
+    _config: &McpConfig,
+) -> Result<(), std::io::Error> {
+    // No-op - execution disabled
+    Ok(())
 }

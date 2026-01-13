@@ -33,15 +33,8 @@ use db::models::{
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
-// REMOVED: Execution disabled - executor types removed
-// use executors::{
-//     actions::{
-//         ExecutorAction, ExecutorActionType,
-//         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-//     },
-//     executors::{CodingAgent, ExecutorError},
-//     profile::{ExecutorConfigs, ExecutorProfileId},
-// };
+// REMOVED: Execution disabled - using stub types for API compatibility
+use services::executor_stubs::ExecutorProfileId;
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
