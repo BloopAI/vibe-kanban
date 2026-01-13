@@ -222,5 +222,39 @@
     "optOutNote": "Want to opt out? You can switch back to the current UI at any time in Settings.",
     "joinBeta": "Join Beta",
     "maybeLater": "Maybe Later"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Welcome",
+      "content": "Welcome to Workspaces, a redesigned UI for Vibe Kanban. We're rolling this out to select users for early feedback. Share your thoughts anytime using the feedback icon in the navbar."
+    },
+    "commandBar": {
+      "title": "Command Bar",
+      "content": "The command bar is your central hub for navigation. Open it with CMD+K to search and access every action available in a workspace."
+    },
+    "sidebar": {
+      "title": "Workspace Sidebar",
+      "content": "See the status of all your workspaces at a glance. Notifications highlight which ones need attention. Archive merged workspaces to keep your sidebar clean."
+    },
+    "multiRepo": {
+      "title": "Multi-Repo Support",
+      "content": "Add multiple repos to a single workspace. Reference code from one repo while working in another, or implement changes across several repos at once."
+    },
+    "sessions": {
+      "title": "Multiple Sessions",
+      "content": "Create multiple agent conversation sessions within a single workspace, including sessions with different agents. This helps you work around conversation limits or spin up review agents in separate threads."
+    },
+    "preview": {
+      "title": "Preview Changes",
+      "content": "Preview your work in a built-in browser without switching contexts. Test across desktop, mobile, and custom viewport sizes."
+    },
+    "diffs": {
+      "title": "Diffs and Comments",
+      "content": "The redesigned diffs panel includes a file tree of your changes. Comment directly on diffs to give feedback to the agent, and view GitHub comments when your workspace is linked to a PR."
+    },
+    "classicUi": {
+      "title": "Return to Classic UI",
+      "content": "The previous UI will remain available for a few more weeks. Switch back anytime from the settings page by updating the \"Workspaces\" option under \"Betas.\""
+    }
   }
 }

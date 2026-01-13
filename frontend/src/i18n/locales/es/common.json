@@ -222,5 +222,39 @@
     "optOutNote": "¿Quieres salir? Puedes volver a la interfaz actual en cualquier momento en Configuración.",
     "joinBeta": "Unirse a Beta",
     "maybeLater": "Quizás más tarde"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Bienvenido",
+      "content": "Bienvenido a Workspaces, una interfaz rediseñada para Vibe Kanban. Estamos lanzando esto a usuarios seleccionados para recibir comentarios tempranos. Comparte tus opiniones en cualquier momento usando el ícono de comentarios en la barra de navegación."
+    },
+    "commandBar": {
+      "title": "Barra de comandos",
+      "content": "La barra de comandos es tu centro principal de navegación. Ábrela con CMD+K para buscar y acceder a cada acción disponible en un espacio de trabajo."
+    },
+    "sidebar": {
+      "title": "Barra lateral de espacios de trabajo",
+      "content": "Ve el estado de todos tus espacios de trabajo de un vistazo. Las notificaciones resaltan cuáles necesitan atención. Archiva los espacios de trabajo fusionados para mantener tu barra lateral limpia."
+    },
+    "multiRepo": {
+      "title": "Soporte multi-repositorio",
+      "content": "Agrega múltiples repositorios a un solo espacio de trabajo. Referencia código de un repositorio mientras trabajas en otro, o implementa cambios en varios repositorios a la vez."
+    },
+    "sessions": {
+      "title": "Múltiples sesiones",
+      "content": "Crea múltiples sesiones de conversación con agentes dentro de un solo espacio de trabajo, incluyendo sesiones con diferentes agentes. Esto te ayuda a superar los límites de conversación o iniciar agentes de revisión en hilos separados."
+    },
+    "preview": {
+      "title": "Vista previa de cambios",
+      "content": "Previsualiza tu trabajo en un navegador integrado sin cambiar de contexto. Prueba en escritorio, móvil y tamaños de ventana personalizados."
+    },
+    "diffs": {
+      "title": "Diferencias y comentarios",
+      "content": "El panel de diferencias rediseñado incluye un árbol de archivos con tus cambios. Comenta directamente en las diferencias para dar retroalimentación al agente, y ve los comentarios de GitHub cuando tu espacio de trabajo está vinculado a un PR."
+    },
+    "classicUi": {
+      "title": "Volver a la interfaz clásica",
+      "content": "La interfaz anterior estará disponible por unas semanas más. Vuelve en cualquier momento desde la página de configuración actualizando la opción \"Workspaces\" en \"Betas\"."
+    }
   }
 }
