@@ -12,8 +12,10 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{Project, ProjectRepository},
-    db::tags::TagRepository,
+    db::{
+        projects::{Project, ProjectRepository},
+        tags::TagRepository,
+    },
 };
 
 #[derive(Debug, Serialize)]

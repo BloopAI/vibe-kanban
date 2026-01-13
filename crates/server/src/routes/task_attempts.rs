@@ -499,22 +499,6 @@ pub async fn merge_task_attempt(
         }
     }
 
-    // Try broadcast update to other users in organization
-    if let Ok(publisher) = deployment.share_publisher() {
-        if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
-            tracing::warn!(
-                ?err,
-                "Failed to propagate shared task update for {}",
-                task.id
-            );
-        }
-    } else {
-        tracing::debug!(
-            "Share publisher unavailable; skipping remote update for {}",
-            task.id
-        );
-    }
-
     deployment
         .track_if_analytics_allowed(
             "task_attempt_merged",
