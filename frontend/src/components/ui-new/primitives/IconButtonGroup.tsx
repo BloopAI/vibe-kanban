@@ -21,6 +21,7 @@ export function IconButtonGroup({ children, className }: IconButtonGroupProps) {
 
 interface IconButtonGroupItemProps {
   icon: Icon;
+  iconClassName?: string;
   onClick?: () => void;
   disabled?: boolean;
   active?: boolean;
@@ -31,6 +32,7 @@ interface IconButtonGroupItemProps {
 
 export function IconButtonGroupItem({
   icon: IconComponent,
+  iconClassName,
   onClick,
   disabled,
   active,
@@ -53,7 +55,7 @@ export function IconButtonGroupItem({
       aria-label={ariaLabel}
       title={title}
     >
-      <IconComponent className="size-icon-sm" weight="bold" />
+      <IconComponent className={cn('size-icon-sm', iconClassName)} weight="bold" />
     </button>
   );
 }

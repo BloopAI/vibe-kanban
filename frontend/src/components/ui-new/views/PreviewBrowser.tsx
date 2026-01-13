@@ -15,7 +15,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../primitives/PrimaryButton';
-import { IconButton } from '../primitives/IconButton';
 import {
   IconButtonGroup,
   IconButtonGroupItem,
@@ -148,18 +147,18 @@ export function PreviewBrowser({
                 !hasUrl && 'cursor-not-allowed'
               )}
             />
+          </div>
+
+          {/* URL Actions */}
+          <IconButtonGroup>
             {isUsingOverride && (
-              <IconButton
+              <IconButtonGroupItem
                 icon={XIcon}
                 onClick={onClearOverride}
                 aria-label="Clear URL override"
                 title="Revert to auto-detected URL"
               />
             )}
-          </div>
-
-          {/* URL Actions */}
-          <IconButtonGroup>
             <IconButtonGroupItem
               icon={CopyIcon}
               onClick={onCopyUrl}
@@ -218,12 +217,16 @@ export function PreviewBrowser({
 
           {/* Start/Stop Button */}
           {isServerRunning ? (
-            <PrimaryButton
-              variant="tertiary"
-              actionIcon={isStopping ? 'spinner' : PauseIcon}
-              onClick={onStop}
-              disabled={isStopping}
-            />
+            <IconButtonGroup>
+              <IconButtonGroupItem
+                icon={isStopping ? SpinnerIcon : PauseIcon}
+                iconClassName={isStopping ? 'animate-spin' : undefined}
+                onClick={onStop}
+                disabled={isStopping}
+                aria-label="Stop server"
+                title="Stop dev server"
+              />
+            </IconButtonGroup>
           ) : (
             <PrimaryButton
               value={t('preview.browser.startButton')}
