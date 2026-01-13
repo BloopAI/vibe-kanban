@@ -75,6 +75,8 @@ export function PreviewBrowserContainer({
   const isResizingRef = useRef(false);
   const resizeDirectionRef = useRef<'right' | 'bottom' | 'corner' | null>(null);
   const localDimensionsRef = useRef(localDimensions);
+  const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const startDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 
   // Store callback in ref to avoid effect re-runs when callback identity changes
   const setResponsiveDimensionsRef = useRef(setResponsiveDimensions);
@@ -97,26 +99,32 @@ export function PreviewBrowserContainer({
   // Handle resize events - register listeners once on mount
   useEffect(() => {
     const handleMove = (clientX: number, clientY: number) => {
-      if (!isResizingRef.current || !containerRef.current) return;
+      if (
+        !isResizingRef.current ||
+        !startPosRef.current ||
+        !startDimensionsRef.current
+      )
+        return;
 
-      const containerRect = containerRef.current.getBoundingClientRect();
       const direction = resizeDirectionRef.current;
+      const deltaX = clientX - startPosRef.current.x;
+      const deltaY = clientY - startPosRef.current.y;
 
-      setLocalDimensions((prev) => {
-        let newWidth = prev.width;
-        let newHeight = prev.height;
+      setLocalDimensions(() => {
+        let newWidth = startDimensionsRef.current!.width;
+        let newHeight = startDimensionsRef.current!.height;
 
         if (direction === 'right' || direction === 'corner') {
           newWidth = Math.max(
             MIN_RESPONSIVE_WIDTH,
-            clientX - containerRect.left
+            startDimensionsRef.current!.width + deltaX
           );
         }
 
         if (direction === 'bottom' || direction === 'corner') {
           newHeight = Math.max(
             MIN_RESPONSIVE_HEIGHT,
-            clientY - containerRect.top
+            startDimensionsRef.current!.height + deltaY
           );
         }
 
@@ -137,6 +145,8 @@ export function PreviewBrowserContainer({
       if (isResizingRef.current) {
         isResizingRef.current = false;
         resizeDirectionRef.current = null;
+        startPosRef.current = null;
+        startDimensionsRef.current = null;
         setIsResizing(false);
         setResponsiveDimensionsRef.current(localDimensionsRef.current);
       }
@@ -162,6 +172,12 @@ export function PreviewBrowserContainer({
         isResizingRef.current = true;
         resizeDirectionRef.current = direction;
         setIsResizing(true);
+
+        // Capture starting position and dimensions for delta-based resizing
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        startPosRef.current = { x: clientX, y: clientY };
+        startDimensionsRef.current = { ...localDimensionsRef.current };
       },
     []
   );
