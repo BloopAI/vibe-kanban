@@ -59,6 +59,7 @@ function TaskKanbanBoard({
               name={statusLabels[statusKey]}
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              count={items.length}
             />
             <KanbanCards>
               {items.map((item, index) => {

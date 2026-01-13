@@ -153,6 +153,7 @@ export type KanbanHeaderProps =
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      count?: number;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -180,6 +181,11 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         />
 
         <p className="m-0 text-sm">{props.name}</p>
+        {props.count !== undefined && (
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {props.count}
+          </span>
+        )}
       </span>
       <TooltipProvider>
         <Tooltip>
