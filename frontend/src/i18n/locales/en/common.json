@@ -232,6 +232,10 @@
       "title": "Command Bar",
       "content": "The command bar is your central hub for navigation. Open it with CMD+K to search and access every action available in a workspace."
     },
+    "contextBar": {
+      "title": "Context Bar",
+      "content": "The context bar lets you switch between panes quickly. Drag it wherever works best for you."
+    },
     "sidebar": {
       "title": "Workspace Sidebar",
       "content": "See the status of all your workspaces at a glance. Notifications highlight which ones need attention. Archive merged workspaces to keep your sidebar clean."
@@ -254,7 +258,7 @@
     },
     "classicUi": {
       "title": "Return to Classic UI",
-      "content": "The previous UI will remain available for a few more weeks. Switch back anytime from the settings page by updating the \"Workspaces\" option under \"Betas.\""
+      "content": "Click the exit icon on the left side of the navbar to return to the classic kanban board. To disable the new UI entirely, update the \"Enable Workspaces Beta\" option under \"Beta Features\" in settings."
     }
   }
 }

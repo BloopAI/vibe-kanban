@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 const TOPIC_IDS = [
   'welcome',
   'commandBar',
+  'contextBar',
   'sidebar',
   'multiRepo',
   'sessions',
@@ -21,6 +22,7 @@ const TOPIC_IDS = [
 const TOPIC_IMAGES: Record<(typeof TOPIC_IDS)[number], string> = {
   welcome: '/guide-images/welcome.png',
   commandBar: '/guide-images/command-bar.png',
+  contextBar: '/guide-images/context-bar.png',
   sidebar: '/guide-images/sidebar.png',
   multiRepo: '/guide-images/multi-repo.png',
   sessions: '/guide-images/sessions.png',
@@ -67,7 +69,7 @@ const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
         {/* Dialog content - handles animation */}
         <div
           className={cn(
-            'w-[800px] h-[500px] flex rounded-sm overflow-hidden',
+            'w-[800px] h-[600px] flex rounded-sm overflow-hidden',
             'bg-panel/95 backdrop-blur-sm border border-border/50 shadow-lg',
             'animate-in fade-in-0 slide-in-from-bottom-4 duration-200'
           )}
