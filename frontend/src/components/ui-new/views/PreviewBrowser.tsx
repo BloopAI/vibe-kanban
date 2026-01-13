@@ -168,7 +168,12 @@ export function PreviewBrowser({
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleEnd);
     };
-  }, [isResizing, resizeDirection, localDimensions, onResponsiveDimensionsChange]);
+  }, [
+    isResizing,
+    resizeDirection,
+    localDimensions,
+    onResponsiveDimensionsChange,
+  ]);
 
   const getIframeContainerStyle = (): React.CSSProperties => {
     switch (screenSize) {
@@ -322,10 +327,7 @@ export function PreviewBrowser({
       )}
 
       {/* Content area */}
-      <div
-        ref={containerRef}
-        className="flex-1 min-h-0 relative overflow-auto"
-      >
+      <div ref={containerRef} className="flex-1 min-h-0 relative overflow-auto">
         {showIframe ? (
           <div
             className={cn(
