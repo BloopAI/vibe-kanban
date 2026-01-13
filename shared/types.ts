@@ -12,6 +12,8 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export type User = { id: string, github_id: bigint, username: string, email: string | null, display_name: string | null, avatar_url: string | null, created_at: Date, updated_at: Date, };
+
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
@@ -219,6 +221,12 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type CurrentUserResponse = { user_id: string, };
+
+export type LocalAuthInitResponse = { authorize_url: string, state: string, };
+
+export type LocalAuthStatusResponse = { authenticated: boolean, user: User | null, };
+
+export type LocalAuthTokenResponse = { access_token: string, };
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 

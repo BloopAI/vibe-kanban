@@ -7,7 +7,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::user::{GitHubUserProfile, User};
+use db::models::user::User;
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,6 @@ use services::services::{
 use tokio::sync::RwLock;
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
