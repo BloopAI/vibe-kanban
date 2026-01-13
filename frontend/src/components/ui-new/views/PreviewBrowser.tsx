@@ -88,7 +88,6 @@ export function PreviewBrowser({
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
   const showIframe = url && !isLoading && isServerRunning;
-  const hasUrl = !!(url || autoDetectedUrl);
 
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
@@ -129,7 +128,7 @@ export function PreviewBrowser({
           <div
             className={cn(
               'flex items-center gap-half rounded-sm px-base py-half flex-1 min-w-0',
-              !hasUrl && 'opacity-50'
+              !isServerRunning && 'opacity-50'
             )}
           >
             <input
@@ -138,13 +137,13 @@ export function PreviewBrowser({
               value={urlInputValue}
               onChange={(e) => onUrlInputChange(e.target.value)}
               placeholder={autoDetectedUrl ?? 'Enter URL...'}
-              disabled={!hasUrl}
+              disabled={!isServerRunning}
               className={cn(
                 'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
                 isUsingOverride
                   ? 'text-normal'
                   : 'text-low placeholder:text-low',
-                !hasUrl && 'cursor-not-allowed'
+                !isServerRunning && 'cursor-not-allowed'
               )}
             />
           </div>
@@ -155,6 +154,7 @@ export function PreviewBrowser({
               <IconButtonGroupItem
                 icon={XIcon}
                 onClick={onClearOverride}
+                disabled={!isServerRunning}
                 aria-label="Clear URL override"
                 title="Revert to auto-detected URL"
               />
@@ -162,21 +162,21 @@ export function PreviewBrowser({
             <IconButtonGroupItem
               icon={CopyIcon}
               onClick={onCopyUrl}
-              disabled={!hasUrl}
+              disabled={!isServerRunning}
               aria-label="Copy URL"
               title="Copy URL"
             />
             <IconButtonGroupItem
               icon={ArrowSquareOutIcon}
               onClick={onOpenInNewTab}
-              disabled={!hasUrl}
+              disabled={!isServerRunning}
               aria-label="Open in new tab"
               title="Open in new tab"
             />
             <IconButtonGroupItem
               icon={ArrowClockwiseIcon}
               onClick={onRefresh}
-              disabled={!hasUrl}
+              disabled={!isServerRunning}
               aria-label="Refresh"
               title="Refresh preview"
             />
@@ -188,6 +188,7 @@ export function PreviewBrowser({
               icon={MonitorIcon}
               onClick={() => onScreenSizeChange('desktop')}
               active={screenSize === 'desktop'}
+              disabled={!isServerRunning}
               aria-label="Desktop view"
               title="Desktop view"
             />
@@ -195,6 +196,7 @@ export function PreviewBrowser({
               icon={DeviceMobileIcon}
               onClick={() => onScreenSizeChange('mobile')}
               active={screenSize === 'mobile'}
+              disabled={!isServerRunning}
               aria-label="Mobile view (390x844)"
               title="Mobile view (390x844)"
             />
@@ -202,6 +204,7 @@ export function PreviewBrowser({
               icon={ArrowsOutCardinalIcon}
               onClick={() => onScreenSizeChange('responsive')}
               active={screenSize === 'responsive'}
+              disabled={!isServerRunning}
               aria-label="Responsive view (resizable)"
               title="Responsive view (resizable)"
             />
