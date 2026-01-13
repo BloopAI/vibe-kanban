@@ -1,6 +1,7 @@
 use std::{path::Path, str::FromStr};
 
-// use executors::{command::CommandBuilder, executors::ExecutorError};
+// Use stub type for compilation
+use crate::executor_stubs::CommandBuilder;
 use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use thiserror::Error;

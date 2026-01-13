@@ -1,5 +1,6 @@
 use anyhow::Error;
-// use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+// Use stub type for compilation
+use crate::executor_stubs::ExecutorProfileId;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 use ts_rs::TS;

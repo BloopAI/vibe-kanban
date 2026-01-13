@@ -123,6 +123,7 @@ pub trait ContainerService {
         Ok(false)
     }
 
+    /* REMOVED: Execution disabled - no finalization logic
     /// A context is finalized when
     /// - Always when the execution process has failed or been killed
     /// - Never when the run reason is DevServer
@@ -160,7 +161,9 @@ pub trait ContainerService {
         // Otherwise, finalize only if no next action
         action.next_action.is_none()
     }
+    */ // End should_finalize removal
 
+    /* REMOVED: Execution disabled - no automatic task finalization
     /// Finalize task execution by updating status to InReview and sending notifications
     async fn finalize_task(
         &self,
@@ -209,6 +212,7 @@ pub trait ContainerService {
         };
         self.notification_service().notify(&title, &message).await;
     }
+    */ // End finalize_task removal
 
     /// Cleanup executions marked as running in the db, call at startup
     async fn cleanup_orphan_executions(&self) -> Result<(), ContainerError> {
@@ -424,6 +428,7 @@ pub trait ContainerService {
         Ok(())
     }
 
+    /* REMOVED: Execution disabled - no cleanup scripts
     fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
@@ -460,7 +465,9 @@ pub trait ContainerService {
 
         Some(root_action)
     }
+    */ // End cleanup_actions_for_repos removal
 
+    /* REMOVED: Execution disabled - no setup scripts
     fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -529,7 +536,9 @@ pub trait ContainerService {
         }
         chained
     }
+    */ // End setup helper methods removal
 
+    /* REMOVED: Execution disabled - no process stopping
     async fn try_stop(&self, workspace: &Workspace, include_dev_server: bool) {
         // stop execution processes for this workspace's sessions
         let sessions = match Session::find_by_workspace_id(&self.db().pool, workspace.id).await {
@@ -564,6 +573,7 @@ pub trait ContainerService {
             }
         }
     }
+    */ // End try_stop removal
 
     async fn ensure_container_exists(
         &self,
@@ -572,27 +582,14 @@ pub trait ContainerService {
 
     async fn is_container_clean(&self, workspace: &Workspace) -> Result<bool, ContainerError>;
 
-    async fn start_execution_inner(
-        &self,
-        workspace: &Workspace,
-        execution_process: &ExecutionProcess,
-        executor_action: &ExecutorAction,
-    ) -> Result<(), ContainerError>;
-
-    async fn stop_execution(
-        &self,
-        execution_process: &ExecutionProcess,
-        status: ExecutionProcessStatus,
-    ) -> Result<(), ContainerError>;
+    // REMOVED: Execution methods disabled
+    // async fn start_execution_inner(...) -> Result<(), ContainerError>;
+    // async fn stop_execution(...) -> Result<(), ContainerError>;
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError>;
 
-    async fn copy_project_files(
-        &self,
-        source_dir: &Path,
-        target_dir: &Path,
-        copy_files: &str,
-    ) -> Result<(), ContainerError>;
+    // REMOVED: Execution setup disabled
+    // async fn copy_project_files(...) -> Result<(), ContainerError>;
 
     /// Stream diff updates as LogMsg for WebSocket endpoints.
     async fn stream_diff(
@@ -880,6 +877,7 @@ pub trait ContainerService {
         })
     }
 
+    /* REMOVED: Execution disabled - workspace creation for code execution removed
     async fn start_workspace(
         &self,
         workspace: &Workspace,
@@ -981,7 +979,9 @@ pub trait ContainerService {
 
         Ok(execution_process)
     }
+    */ // End start_workspace removal
 
+    /* REMOVED: Execution disabled - no more code execution starting
     async fn start_execution(
         &self,
         workspace: &Workspace,
@@ -1162,7 +1162,9 @@ pub trait ContainerService {
         self.spawn_stream_raw_logs_to_db(&execution_process.id);
         Ok(execution_process)
     }
+    */ // End start_execution removal
 
+    /* REMOVED: Execution disabled - no chained actions
     async fn try_start_next_action(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
         let action = ctx.execution_process.executor_action()?;
         let next_action = if let Some(next_action) = action.next_action() {
@@ -1195,4 +1197,5 @@ pub trait ContainerService {
         tracing::debug!("Started next action: {:?}", next_action);
         Ok(())
     }
+    */ // End try_start_next_action removal
 }

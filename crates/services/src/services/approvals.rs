@@ -1,4 +1,5 @@
-pub mod executor_approvals;
+// REMOVED: Execution disabled
+// pub mod executor_approvals;
 
 use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
@@ -7,12 +8,11 @@ use db::models::{
     execution_process::ExecutionProcess,
     task::{Task, TaskStatus},
 };
-// use executors::{
-    approvals::ToolCallMetadata,
-    logs::{
-        NormalizedEntry, NormalizedEntryType, ToolStatus,
-        utils::patch::{ConversationPatch, extract_normalized_entry_from_patch},
-    },
+// Use stub types for compilation
+use crate::executor_stubs::{
+    ToolCallMetadata,
+    NormalizedEntry, NormalizedEntryType, ToolStatus,
+    patch::{ConversationPatch, extract_normalized_entry_from_patch},
 };
 use futures::future::{BoxFuture, FutureExt, Shared};
 use sqlx::{Error as SqlxError, SqlitePool};
@@ -312,7 +312,7 @@ fn find_matching_tool_use(
 mod tests {
     use std::sync::Arc;
 
-    use executors::logs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
+    use crate::executor_stubs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
     use utils::msg_store::MsgStore;
 
     use super::*;
@@ -352,13 +352,13 @@ mod tests {
         let read_baz = create_tool_use_entry("Read", "baz.rs", "baz-id", ToolStatus::Created);
 
         store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(0, read_foo),
+            ConversationPatch::add(0, read_foo),
         );
         store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(1, read_bar),
+            ConversationPatch::add(1, read_bar),
         );
         store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(2, read_baz),
+            ConversationPatch::add(2, read_baz),
         );
 
         let (idx_foo, _) =
@@ -384,7 +384,7 @@ mod tests {
             },
         );
         store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(3, read_pending),
+            ConversationPatch::add(3, read_pending),
         );
 
         assert!(

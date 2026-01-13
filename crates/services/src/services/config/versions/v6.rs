@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use anyhow::Error;
-// use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+// Use stub type for compilation
+use crate::executor_stubs::ExecutorProfileId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils;
