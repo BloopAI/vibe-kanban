@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 type LayoutState = {
   // Panel visibility
   isSidebarVisible: boolean;
+  isLeftSidebarVisible: boolean;
   isMainPanelVisible: boolean;
   isGitPanelVisible: boolean;
   isChangesMode: boolean;
@@ -15,6 +16,7 @@ type LayoutState = {
 
   // Toggle functions
   toggleSidebar: () => void;
+  toggleLeftSidebar: () => void;
   toggleMainPanel: () => void;
   toggleGitPanel: () => void;
   toggleChangesMode: () => void;
@@ -26,6 +28,7 @@ type LayoutState = {
   setLogsMode: (value: boolean) => void;
   setPreviewMode: (value: boolean) => void;
   setSidebarVisible: (value: boolean) => void;
+  setLeftSidebarVisible: (value: boolean) => void;
 
   // Preview actions
   triggerPreviewRefresh: () => void;
@@ -41,6 +44,7 @@ export const useLayoutStore = create<LayoutState>()(
   persist(
     (set, get) => ({
       isSidebarVisible: true,
+      isLeftSidebarVisible: true,
       isMainPanelVisible: true,
       isGitPanelVisible: true,
       isChangesMode: false,
@@ -50,6 +54,9 @@ export const useLayoutStore = create<LayoutState>()(
 
       toggleSidebar: () =>
         set((s) => ({ isSidebarVisible: !s.isSidebarVisible })),
+
+      toggleLeftSidebar: () =>
+        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
 
       toggleMainPanel: () => {
         const { isMainPanelVisible, isChangesMode } = get();
@@ -168,6 +175,8 @@ export const useLayoutStore = create<LayoutState>()(
 
       setSidebarVisible: (value) => set({ isSidebarVisible: value }),
 
+      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+
       triggerPreviewRefresh: () =>
         set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
 
@@ -183,6 +192,7 @@ export const useLayoutStore = create<LayoutState>()(
       // Only persist panel visibility preferences, not mode states
       partialize: (state) => ({
         isSidebarVisible: state.isSidebarVisible,
+        isLeftSidebarVisible: state.isLeftSidebarVisible,
         isMainPanelVisible: state.isMainPanelVisible,
         isGitPanelVisible: state.isGitPanelVisible,
       }),
@@ -193,6 +203,8 @@ export const useLayoutStore = create<LayoutState>()(
 // Convenience hooks for individual state values
 export const useIsSidebarVisible = () =>
   useLayoutStore((s) => s.isSidebarVisible);
+export const useIsLeftSidebarVisible = () =>
+  useLayoutStore((s) => s.isLeftSidebarVisible);
 export const useIsMainPanelVisible = () =>
   useLayoutStore((s) => s.isMainPanelVisible);
 export const useIsGitPanelVisible = () =>
