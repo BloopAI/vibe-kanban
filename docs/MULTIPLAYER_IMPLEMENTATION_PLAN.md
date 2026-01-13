@@ -19,290 +19,221 @@ Transform Vibe Kanban from a single-user local application to a multi-user colla
 
 ---
 
-## Phase 1: Database Schema & User Model
+## Phase 1: User Authentication Flow
 
-**Duration**: 1-2 days
+**Duration**: 4-5 days
 
 ### What
-Create a users table and add user attribution to all existing entities.
+Complete end-to-end GitHub SSO authentication - from clicking "Sign in" to being logged in with a session.
 
 ### Why
-Every action in the system needs to be traceable to a specific user. Without user identity at the data layer, we cannot implement any multi-user features.
+Authentication is the foundation. Nothing else can be scoped to users until we know who the user is.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| GitHub OAuth initiation returns valid authorization URL | Integration | Verify `/auth/github` returns a properly formatted GitHub OAuth URL with correct client_id, redirect_uri, and state parameter |
+| OAuth callback creates user on first login | Integration | Mock GitHub token exchange and user API; verify new user record created in database with correct GitHub profile data |
+| OAuth callback updates user on subsequent login | Integration | Existing user logs in again; verify profile data updated, same user ID retained |
+| Invalid OAuth state rejected | Integration | Callback with mismatched state parameter returns 400 |
+| Session token issued after successful auth | Integration | Verify JWT token returned after OAuth completion contains correct user ID and expiration |
+| Valid session token returns user | Integration | Request to `/auth/me` with valid Bearer token returns user profile |
+| Invalid session token returns 401 | Integration | Request with malformed/expired token returns 401 Unauthorized |
+| Logout clears session | Integration | After logout, previously valid token returns 401 |
+| Frontend redirects unauthenticated users to login | E2E | Visiting protected route without auth redirects to `/login` |
+| Frontend stores token and loads user on OAuth callback | E2E | After OAuth redirect, token stored in localStorage, user displayed in UI |
 
 ### Changes Required
 
-**New Migration: Users Table**
-- Create `users` table with fields for GitHub identity (github_id, username, email, display_name, avatar_url)
-- Index on `github_id` for OAuth lookups
-- Index on `username` for display queries
+**Backend**
+- Users table migration (id, github_id, username, email, display_name, avatar_url, timestamps)
+- User model with find/upsert operations
+- GitHub OAuth service (auth URL generation, token exchange, profile fetch)
+- Session service (JWT creation, validation)
+- Auth routes (`/auth/github`, `/auth/github/callback`, `/auth/me`, `/auth/logout`)
+- Auth middleware extractor for protected routes
+- LocalDeployment updates to hold auth services
 
-**New Migration: User References**
-Add user foreign keys to existing tables:
-
-| Table | New Column(s) | Purpose |
-|-------|---------------|---------|
-| `projects` | `creator_user_id` (required) | Track who created the project |
-| `tasks` | `creator_user_id` (required), `assignee_user_id` (optional) | Track creator and assignment |
-| `workspaces` | `owner_user_id` (required) | Track workspace ownership |
-| `sessions` | `initiated_by_user_id` (required) | Track who started the session |
-| `coding_agent_turns` | `user_id` (required) | Track which user was interacting with the agent |
-
-**New Model: User**
-- Create `crates/db/src/models/user.rs` with CRUD operations
-- Implement upsert logic for OAuth (create on first login, update profile on subsequent logins)
-- Export module from `crates/db/src/models/mod.rs`
-
-**Update Existing Models**
-- Add new user fields to all affected model structs
-- Update all create/update queries to accept and store user IDs
-- Update TypeScript types via `pnpm run generate-types`
-
----
-
-## Phase 2: GitHub OAuth Authentication
-
-**Duration**: 3-4 days
-
-### What
-Implement GitHub SSO using OAuth 2.0 flow with secure session management.
-
-### Why
-GitHub SSO provides a trusted identity source that developers already use. It eliminates the need for password management and provides profile data (username, avatar) for display.
-
-### Changes Required
-
-**OAuth Service** (`crates/services/src/services/github_auth.rs`)
-- OAuth 2.0 client configuration for GitHub
-- Authorization URL generation with CSRF protection
-- Code-to-token exchange
-- GitHub API calls to fetch user profile
-
-**Session Service** (`crates/services/src/services/session.rs`)
-- JWT token creation with user ID as subject
-- Token validation and expiration handling
-- Configurable session duration (recommend 30 days)
-
-**Auth Routes** (`crates/server/src/routes/github_auth.rs`)
-- `GET /auth/github` - Initiate OAuth flow, return authorization URL
-- `GET /auth/github/callback` - Handle OAuth callback, create/update user, issue session token
-- `GET /auth/me` - Return current authenticated user
-- `POST /auth/logout` - Clear session
-
-**Auth Middleware** (`crates/server/src/middleware/auth.rs`)
-- Request extractor that validates Bearer token from Authorization header
-- Returns authenticated user or 401 Unauthorized
-- Optional variant for endpoints that work with or without auth
-
-**LocalDeployment Updates** (`crates/local-deployment/src/lib.rs`)
-- Add GitHub auth service instance
-- Add session service instance
-- Add current user state management
-- Add CSRF token storage for OAuth flow
+**Frontend**
+- AuthContext for user state and token management
+- Login page with GitHub button
+- OAuth callback page to handle redirect
+- ProtectedRoute wrapper component
+- API client updates to include Authorization header
 
 **Configuration**
-- Environment variables for GitHub OAuth credentials (client ID, secret)
-- Environment variable for session signing secret
-- Document setup in `.env.example`
+- Environment variables for GitHub OAuth credentials and session secret
+- `.env.example` documentation
 
 ---
 
-## Phase 3: API Layer Updates
+## Phase 2: Project Ownership
 
 **Duration**: 2-3 days
 
 ### What
-Require authentication on all API routes and pass user context to all data operations.
+Projects are created by and belong to authenticated users.
 
 ### Why
-Every data modification must be attributed to the user who performed it. This enables audit trails, access control, and collaborative features.
+Projects are the top-level container. Once projects have owners, we can scope everything inside them.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| Create project requires authentication | Integration | POST `/projects` without token returns 401 |
+| Create project sets creator_user_id | Integration | Authenticated POST `/projects` creates project with current user as creator |
+| Project response includes creator info | Integration | GET `/projects/:id` returns creator user details (id, username, avatar) |
+| UI shows project creator | E2E | Project list/detail displays creator avatar and name |
 
 ### Changes Required
 
-**Route Handler Updates**
-Every route that creates or modifies data needs to:
-1. Use the auth middleware extractor to get the current user
-2. Pass the user ID to database operations
+**Backend**
+- Migration to add `creator_user_id` column to projects table
+- Update Project model to include creator field
+- Update project create route to require auth and set creator
+- Update project query routes to join/include creator info
 
-| Route File | Endpoints Affected |
-|------------|-------------------|
-| `routes/projects/mod.rs` | POST (create) - pass `creator_user_id` |
-| `routes/tasks.rs` | POST (create) - pass `creator_user_id`; PATCH (update) - handle `assignee_user_id` |
-| `routes/workspaces.rs` | POST (create) - pass `owner_user_id` |
-| `routes/sessions/mod.rs` | POST (create) - pass `initiated_by_user_id` |
-| `routes/sessions/coding_agent.rs` | POST (create turns) - pass `user_id` |
-
-**New Routes** (`crates/server/src/routes/users.rs`)
-- `GET /users` - List all users (for assignee selection)
-- `GET /users/me` - Alias for `/auth/me`
-
-**Router Updates** (`crates/server/src/routes/mod.rs`)
-- Mount new auth routes
-- Mount new user routes
+**Frontend**
+- Update project displays to show creator information
+- Ensure project creation goes through authenticated API client
 
 ---
 
-## Phase 4: Message Attribution System
+## Phase 3: Task Attribution & Assignment
+
+**Duration**: 2-3 days
+
+### What
+Tasks track who created them and can be assigned to users.
+
+### Why
+Tasks are the core work unit. Knowing who created and who is responsible for a task enables collaboration.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| Create task requires authentication | Integration | POST `/tasks` without token returns 401 |
+| Create task sets creator_user_id | Integration | Authenticated POST creates task with current user as creator |
+| Task can be assigned to a user | Integration | PATCH `/tasks/:id` with assignee_user_id updates assignment |
+| Task can be unassigned | Integration | PATCH with null assignee_user_id clears assignment |
+| List users returns all users for assignment picker | Integration | GET `/users` returns list of users with id, username, avatar |
+| Task response includes creator and assignee info | Integration | GET `/tasks/:id` returns full user details for creator and assignee |
+| UI shows task creator on card | E2E | Task card displays creator avatar |
+| UI shows assignee on card | E2E | Task card displays assignee avatar (or "Unassigned") |
+| Assignee can be changed via UI | E2E | Assignee selector updates task assignment |
+
+### Changes Required
+
+**Backend**
+- Migration to add `creator_user_id` and `assignee_user_id` columns to tasks table
+- Update Task model with creator/assignee fields
+- Update task routes for auth and user attribution
+- Add users list route for assignment picker
+
+**Frontend**
+- Update task cards to display creator and assignee avatars
+- Create AssigneeSelector component
+- Integrate assignee selection into task create/edit dialogs
+
+---
+
+## Phase 4: Workspace & Session Ownership
 
 **Duration**: 2 days
 
 ### What
-Extend the normalized conversation entry type to include sender information.
+Workspaces and sessions track which user initiated them.
 
 ### Why
-Chat messages currently display as generic "You" for all user messages. To show which user sent each message in a multi-user context, we need sender identity attached to each entry.
+When an agent runs, we need to know which user triggered it. This enables showing "User X started this session" and attributing agent actions to the requesting user.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| Create workspace requires authentication | Integration | POST `/workspaces` without token returns 401 |
+| Create workspace sets owner_user_id | Integration | Authenticated POST creates workspace with current user as owner |
+| Create session sets initiated_by_user_id | Integration | Session creation records which user started it |
+| Workspace/session responses include user info | Integration | Queries return owner/initiator details |
+| UI shows who started a workspace session | E2E | Workspace view displays initiating user |
 
 ### Changes Required
 
-**Extend NormalizedEntry Type**
-Add new fields to the `NormalizedEntry` struct:
-- `sender_user_id: Option<Uuid>` - The user who sent the message
-- `sender_username: Option<String>` - Username for display
-- `sender_avatar_url: Option<String>` - Avatar URL for display
+**Backend**
+- Migration to add `owner_user_id` to workspaces, `initiated_by_user_id` to sessions
+- Update Workspace and Session models
+- Update workspace/session routes for auth and user attribution
 
-These fields are optional because:
-- System messages have no sender
-- Assistant messages come from the AI, not a user
-- Historical data (if any) won't have this info
-
-**Update Log Normalizers**
-All executor normalizers need to populate sender fields when creating user message entries:
-- `crates/executors/src/executors/droid/normalize_logs.rs`
-- Other executor normalizers as applicable
-
-The normalizers need access to the current user context, which should be passed through the execution pipeline.
-
-**Regenerate TypeScript Types**
-Run `pnpm run generate-types` to update `shared/types.ts` with new fields.
+**Frontend**
+- Display workspace owner in workspace views
+- Show session initiator in session/execution views
 
 ---
 
-## Phase 5: Frontend Authentication
+## Phase 5: Chat Message Attribution
 
-**Duration**: 2-3 days
+**Duration**: 3-4 days
 
 ### What
-Create authentication UI and state management in the React frontend.
+Chat messages in the conversation view show which user sent them.
 
 ### Why
-Users need a way to log in, and the app needs to track authentication state to make authenticated API requests and display user-specific UI.
+In multi-user, multiple people may interact with the same agent session. The UI must show who said what - "You" for the current user, actual names for others.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| User message entries include sender info | Integration | When user sends message, normalized entry contains sender_user_id, sender_username, sender_avatar_url |
+| Assistant messages have no sender | Integration | AI responses have null sender fields |
+| Coding agent turn records user_id | Integration | Turn creation stores which user was interacting |
+| Current user's messages show "You" | E2E | Messages from logged-in user display "You" label |
+| Other users' messages show their name | E2E | Messages from other users display username and avatar |
+| User avatar appears next to messages | E2E | User messages have avatar, assistant messages do not |
 
 ### Changes Required
 
-**Auth Context** (`frontend/src/contexts/AuthContext.tsx`)
-- Store current user state
-- Store authentication token (persisted to localStorage)
-- Provide login/logout functions
-- Auto-fetch user profile on app load if token exists
-- Handle token expiration/invalidation
+**Backend**
+- Migration to add `user_id` to coding_agent_turns table
+- Extend NormalizedEntry type with sender fields (sender_user_id, sender_username, sender_avatar_url)
+- Update log normalizers to populate sender info for user messages
+- Thread user context through execution pipeline to normalizers
+- Regenerate TypeScript types
 
-**Login Page** (`frontend/src/pages/Login.tsx`)
-- Simple page with GitHub login button
-- Initiates OAuth flow via `/auth/github` endpoint
-
-**Auth Callback Page** (`frontend/src/pages/AuthCallback.tsx`)
-- Handles OAuth redirect
-- Extracts token from URL
-- Stores token and redirects to main app
-
-**Protected Route Wrapper** (`frontend/src/components/ProtectedRoute.tsx`)
-- Wraps routes that require authentication
-- Redirects to login if not authenticated
-- Shows loading state while checking auth
-
-**API Client Updates** (`frontend/src/lib/api/client.ts`)
-- Add Authorization header with Bearer token to all API requests
-- Handle 401 responses (redirect to login)
-
-**App Router Updates** (`frontend/src/App.tsx`)
-- Wrap app in AuthProvider
-- Add login and callback routes
-- Wrap authenticated routes in ProtectedRoute
+**Frontend**
+- Update ChatUserMessage to show sender info dynamically
+- Update DisplayConversationEntry to render sender avatar/name
+- Logic: if sender_user_id === current user → "You", else → username
 
 ---
 
-## Phase 6: Frontend Display Updates
+## Phase 6: User Menu & Profile Display
 
-**Duration**: 2-3 days
+**Duration**: 1-2 days
 
 ### What
-Update UI components to display actual user information instead of generic labels.
+Header displays current user with avatar and provides logout.
 
 ### Why
-The current UI shows "You" for all user messages and doesn't display user avatars. Multi-user requires showing who performed each action.
+Users need visual confirmation of who they're logged in as and a way to sign out.
+
+### Tests
+
+| Test | Type | Description |
+|------|------|-------------|
+| User menu shows current user avatar and name | E2E | Logged-in user sees their avatar in header |
+| User menu dropdown shows username | E2E | Clicking avatar shows dropdown with full name/username |
+| Logout from menu clears session | E2E | Clicking logout redirects to login page, clears token |
 
 ### Changes Required
 
-**Chat Message Components**
-Update to show sender information:
-- `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx`
-- `frontend/src/components/NormalizedConversation/DisplayConversationEntry.tsx`
-- `frontend/src/components/NormalizedConversation/UserMessage.tsx`
-
-Logic needed:
-- If `sender_user_id` matches current user → show "You"
-- Otherwise → show sender's username
-- Display sender's avatar alongside message
-
-**User Menu Component** (new: `frontend/src/components/UserMenu.tsx`)
-- Dropdown showing current user's avatar and name
-- Sign out option
-- Location: Header/navigation area
-
-**Task Card Updates**
-- `frontend/src/components/tasks/TaskCardHeader.tsx` - Already has UserAvatar support, ensure it displays creator and assignee
-
-**Assignee Selector** (new: `frontend/src/components/tasks/AssigneeSelector.tsx`)
-- Dropdown to select task assignee from list of users
-- Shows user avatars and names
-- Used in task create/edit dialogs
-
-**Translation Updates**
-- Verify `conversation.you` translation key is used correctly
-- Add any new translation keys for user-related UI
-
----
-
-## Phase 7: Testing & QA
-
-**Duration**: 2-3 days
-
-### What
-Comprehensive testing of the new authentication and multi-user features.
-
-### Why
-Authentication is security-critical. Multi-user data scoping must be correct to prevent data leaks between users.
-
-### Testing Areas
-
-**Backend Unit Tests**
-- User model CRUD operations
-- Session token creation and validation
-- OAuth flow helpers
-
-**Backend Integration Tests**
-- Full OAuth flow (mocked GitHub responses)
-- Auth middleware rejects invalid tokens
-- Routes return 401 without authentication
-- Data operations correctly store user IDs
-
-**Frontend Tests**
-- AuthContext state management
-- ProtectedRoute redirect behavior
-- Login/logout flow
-
-**Manual QA Checklist**
-- [ ] GitHub OAuth login completes successfully
-- [ ] User profile (name, avatar) displays correctly
-- [ ] Logout clears session and redirects to login
-- [ ] Creating a project sets current user as creator
-- [ ] Creating a task sets current user as creator
-- [ ] Task assignment can be changed
-- [ ] Chat messages show correct sender name/avatar
-- [ ] "You" displays for current user's messages
-- [ ] Other users' messages show their username
-- [ ] Session persists across browser refresh
-- [ ] Expired/invalid tokens redirect to login
-- [ ] API requests without token return 401
+**Frontend**
+- Create UserMenu component with avatar, dropdown, sign out option
+- Add UserMenu to app header/navigation
+- Wire logout action to auth context
 
 ---
 
@@ -312,14 +243,13 @@ Authentication is security-critical. Multi-user data scoping must be correct to 
 
 | Location | File | Purpose |
 |----------|------|---------|
-| `crates/db/migrations/` | Users table migration | Create users table |
-| `crates/db/migrations/` | User references migration | Add user FKs to existing tables |
+| `crates/db/migrations/` | Auth & users migration | Users table, user FK columns on all entities |
 | `crates/db/src/models/` | `user.rs` | User model and queries |
 | `crates/services/src/services/` | `github_auth.rs` | GitHub OAuth service |
 | `crates/services/src/services/` | `session.rs` | JWT session service |
 | `crates/server/src/routes/` | `github_auth.rs` | Auth API routes |
-| `crates/server/src/routes/` | `users.rs` | User API routes |
-| `crates/server/src/middleware/` | `auth.rs` | Auth middleware |
+| `crates/server/src/routes/` | `users.rs` | User list route |
+| `crates/server/src/middleware/` | `auth.rs` | Auth middleware extractor |
 | `frontend/src/contexts/` | `AuthContext.tsx` | Auth state management |
 | `frontend/src/pages/` | `Login.tsx` | Login page |
 | `frontend/src/pages/` | `AuthCallback.tsx` | OAuth callback handler |
@@ -332,23 +262,23 @@ Authentication is security-critical. Multi-user data scoping must be correct to 
 | Location | File | Changes |
 |----------|------|---------|
 | `crates/db/src/models/` | `mod.rs` | Export user module |
-| `crates/db/src/models/` | `project.rs` | Add creator_user_id field |
+| `crates/db/src/models/` | `project.rs` | Add creator_user_id |
 | `crates/db/src/models/` | `task.rs` | Add creator/assignee fields |
-| `crates/db/src/models/` | `workspace.rs` | Add owner_user_id field |
-| `crates/db/src/models/` | `session.rs` | Add initiated_by_user_id field |
-| `crates/db/src/models/` | `coding_agent_turn.rs` | Add user_id field |
+| `crates/db/src/models/` | `workspace.rs` | Add owner_user_id |
+| `crates/db/src/models/` | `session.rs` | Add initiated_by_user_id |
+| `crates/db/src/models/` | `coding_agent_turn.rs` | Add user_id |
 | `crates/local-deployment/src/` | `lib.rs` | Add auth services |
 | `crates/server/src/routes/` | `mod.rs` | Mount new routes |
-| `crates/server/src/routes/` | `projects/mod.rs` | Add auth, pass user_id |
-| `crates/server/src/routes/` | `tasks.rs` | Add auth, pass user_id |
-| `crates/server/src/routes/` | `workspaces.rs` | Add auth, pass user_id |
-| `crates/server/src/routes/` | `sessions/mod.rs` | Add auth, pass user_id |
+| `crates/server/src/routes/` | `projects/mod.rs` | Add auth, set creator |
+| `crates/server/src/routes/` | `tasks.rs` | Add auth, set creator/assignee |
+| `crates/server/src/routes/` | `workspaces.rs` | Add auth, set owner |
+| `crates/server/src/routes/` | `sessions/mod.rs` | Add auth, set initiator |
 | `crates/executors/src/` | Normalized entry type | Add sender fields |
-| `crates/executors/src/executors/` | Log normalizers | Populate sender fields |
+| `crates/executors/src/executors/` | Log normalizers | Populate sender info |
 | `shared/` | `types.ts` | Auto-regenerated |
 | `frontend/src/` | `App.tsx` | Add AuthProvider, routes |
 | `frontend/src/components/` | Chat message components | Display sender info |
-| `frontend/src/components/tasks/` | `TaskCardHeader.tsx` | Show creator/assignee |
+| `frontend/src/components/tasks/` | Task card components | Show creator/assignee |
 | `frontend/src/lib/api/` | `client.ts` | Add auth headers |
 | Root | `.env.example` | Document OAuth config |
 
@@ -360,8 +290,8 @@ Authentication is security-critical. Multi-user data scoping must be correct to 
 
 1. Go to GitHub → Settings → Developer settings → OAuth Apps
 2. Create new OAuth App with:
-   - Application name: `Vibe Kanban` (or your preferred name)
-   - Homepage URL: `http://localhost:3000` (adjust for production)
+   - Application name: `Vibe Kanban`
+   - Homepage URL: `http://localhost:3000`
    - Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
 3. Note the Client ID and generate a Client Secret
 
@@ -379,14 +309,15 @@ Authentication is security-critical. Multi-user data scoping must be correct to 
 
 | Phase | Duration | Dependencies |
 |-------|----------|--------------|
-| Phase 1: Database | 1-2 days | None |
-| Phase 2: Auth Backend | 3-4 days | Phase 1 |
-| Phase 3: API Updates | 2-3 days | Phase 2 |
-| Phase 4: Message Attribution | 2 days | Phase 1 |
-| Phase 5: Frontend Auth | 2-3 days | Phase 2 |
-| Phase 6: Frontend Display | 2-3 days | Phase 4, 5 |
-| Phase 7: Testing | 2-3 days | All phases |
+| Phase 1: User Authentication Flow | 4-5 days | None |
+| Phase 2: Project Ownership | 2-3 days | Phase 1 |
+| Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 |
+| Phase 4: Workspace & Session Ownership | 2 days | Phase 1 |
+| Phase 5: Chat Message Attribution | 3-4 days | Phase 4 |
+| Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 |
 | **Total** | **~2-3 weeks** | |
+
+Note: Phases 2, 3, 4, and 6 can run in parallel after Phase 1 completes. Phase 5 depends on Phase 4.
 
 ---
 
@@ -394,10 +325,9 @@ Authentication is security-critical. Multi-user data scoping must be correct to 
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| OAuth flow complexity | Medium | Reference existing remote mode OAuth patterns |
-| Session security | High | Use established JWT libraries, secure defaults |
-| Breaking API changes | Low | Greenfield - no backwards compatibility needed |
-| User context threading | Medium | Design middleware carefully, test thoroughly |
+| OAuth flow complexity | Medium | Reference existing remote mode patterns in `crates/remote/` |
+| Session security | High | Use established JWT libraries with secure defaults |
+| User context threading to normalizers | Medium | Design execution pipeline to carry user context early |
 
 ---
 
