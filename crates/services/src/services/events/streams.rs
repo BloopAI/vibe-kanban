@@ -410,9 +410,11 @@ impl EventService {
                                                     == ExecutionProcessRunReason::DevServer
                                             {
                                                 // Check if this process belongs to our workspace
-                                                if let Ok(Some(session)) =
-                                                    Session::find_by_id(&db_pool, process.session_id)
-                                                        .await
+                                                if let Ok(Some(session)) = Session::find_by_id(
+                                                    &db_pool,
+                                                    process.session_id,
+                                                )
+                                                .await
                                                     && session.workspace_id == workspace_id
                                                 {
                                                     return Some(Ok(LogMsg::JsonPatch(patch)));
@@ -429,9 +431,11 @@ impl EventService {
                                                     == ExecutionProcessRunReason::DevServer
                                             {
                                                 // Check if this process belongs to our workspace
-                                                if let Ok(Some(session)) =
-                                                    Session::find_by_id(&db_pool, process.session_id)
-                                                        .await
+                                                if let Ok(Some(session)) = Session::find_by_id(
+                                                    &db_pool,
+                                                    process.session_id,
+                                                )
+                                                .await
                                                     && session.workspace_id == workspace_id
                                                 {
                                                     return Some(Ok(LogMsg::JsonPatch(patch)));
