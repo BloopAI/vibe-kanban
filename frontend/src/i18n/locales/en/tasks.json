@@ -85,13 +85,16 @@
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
+      "setupTitle": "You must set up a dev server script to use the preview feature",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "configureButton": "Configure",
       "stopAndEditButton": "Stop Dev Server & Resolve Issues",
-      "fixScript": "Fix Dev Script"
+      "fixScript": "Fix Dev Script",
+      "editDevScript": "Edit Dev Server Script",
+      "learnMore": "Learn more about testing applications"
     },
     "devScript": {
       "saveAndStart": "Save & Start",

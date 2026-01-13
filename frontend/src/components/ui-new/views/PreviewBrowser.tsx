@@ -215,7 +215,7 @@ export function PreviewBrowser({
           {/* Dimensions display for responsive mode */}
           {screenSize === 'responsive' && (
             <span className="text-xs text-low font-mono whitespace-nowrap">
-              {Math.round(localDimensions.width)} x{' '}
+              {Math.round(localDimensions.width)} &times;{' '}
               {Math.round(localDimensions.height)}
             </span>
           )}
@@ -366,19 +366,14 @@ export function PreviewBrowser({
               <div className="flex flex-col gap-double p-double max-w-md">
                 <div className="flex flex-col gap-base">
                   <p className="text-xl text-high max-w-xs">
-                    You must set up a dev server script to use the preview
-                    feature
+                    {t('preview.noServer.setupTitle')}
                   </p>
-                  <p>
-                    Vibe Kanban can run dev servers to help you test your
-                    changes. You can set up a dev server script in the
-                    repository section of the settings page.
-                  </p>
+                  <p>{t('preview.noServer.setupPrompt')}</p>
                 </div>
                 <div className="flex flex-col gap-base">
                   <div>
                     <PrimaryButton
-                      value="Edit Dev Server Script"
+                      value={t('preview.noServer.editDevScript')}
                       onClick={handleEditDevScript}
                     />
                   </div>
@@ -388,7 +383,7 @@ export function PreviewBrowser({
                     rel="noopener noreferrer"
                     className="text-brand hover:text-brand-hover underline"
                   >
-                    Learn more about testing applications
+                    {t('preview.noServer.learnMore')}
                   </a>
                 </div>
               </div>

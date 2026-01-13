@@ -359,12 +359,15 @@
       "companionLink": "설치 가이드 보기",
       "companionPrompt": "클릭하여 편집 기능을 사용하려면 프로젝트에 브라우저 컴패니언을 추가하세요.",
       "configureButton": "구성",
+      "setupTitle": "미리보기 기능을 사용하려면 개발 서버 스크립트를 설정해야 합니다",
       "setupPrompt": "라이브 미리보기 및 클릭하여 편집을 사용하려면 이 프로젝트에 개발 서버 스크립트를 추가하세요.",
       "startButton": "개발 서버 시작",
       "startPrompt": "미리보기를 보려면 개발 서버를 시작하세요",
       "stopAndEditButton": "개발 서버 중지 및 문제 해결",
       "title": "실행 중인 개발 서버 없음",
-      "fixScript": "개발 스크립트 수정"
+      "fixScript": "개발 스크립트 수정",
+      "editDevScript": "개발 서버 스크립트 편집",
+      "learnMore": "애플리케이션 테스트에 대해 자세히 알아보기"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -374,7 +377,16 @@
       "refresh": "미리보기 새로고침",
       "stopDevServer": "개발 서버 중지",
       "clickToEdit": "URL 편집하려면 클릭",
-      "resetUrl": "감지된 URL로 재설정"
+      "resetUrl": "감지된 URL로 재설정",
+      "clearUrlOverride": "URL 오버라이드 지우기",
+      "desktopView": "데스크탑 보기",
+      "mobileView": "모바일 보기 (390x844)",
+      "responsiveView": "반응형 보기 (크기 조절 가능)",
+      "startDevServer": "개발 서버 시작"
+    },
+    "loading": {
+      "startingServer": "개발 서버 시작 중...",
+      "waitingForServer": "서버 대기 중..."
     },
     "troubleAlert": {
       "item1": "개발 서버가 성공적으로 시작되었나요? 해결해야 할 버그가 있거나 종속성을 설치해야 할 수 있습니다.",

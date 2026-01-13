@@ -367,12 +367,15 @@
       "companionLink": "インストールガイドを表示",
       "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
       "configureButton": "設定",
+      "setupTitle": "プレビュー機能を使用するには、開発サーバースクリプトを設定する必要があります",
       "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
       "startButton": "開発サーバーを開始",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
       "stopAndEditButton": "開発サーバーを停止して問題を解決",
       "title": "開発サーバーが実行されていません",
-      "fixScript": "開発スクリプトを修正"
+      "fixScript": "開発スクリプトを修正",
+      "editDevScript": "開発サーバースクリプトを編集",
+      "learnMore": "アプリケーションのテストについてもっと詳しく"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -382,7 +385,16 @@
       "refresh": "プレビューを更新",
       "stopDevServer": "開発サーバーを停止",
       "clickToEdit": "クリックしてURLを編集",
-      "resetUrl": "検出されたURLにリセット"
+      "resetUrl": "検出されたURLにリセット",
+      "clearUrlOverride": "URL オーバーライドをクリア",
+      "desktopView": "デスクトップ表示",
+      "mobileView": "モバイル表示 (390x844)",
+      "responsiveView": "レスポンシブ表示（リサイズ可能）",
+      "startDevServer": "開発サーバーを開始"
+    },
+    "loading": {
+      "startingServer": "開発サーバーを起動中...",
+      "waitingForServer": "サーバーを待機中..."
     },
     "troubleAlert": {
       "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",
