@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocalAuth } from '@/contexts/LocalAuthContext';
 
 export function UserMenu() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLocalAuthConfigured, login, logout } = useLocalAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -42,7 +44,7 @@ export function UserMenu() {
             clipRule="evenodd"
           />
         </svg>
-        Sign in
+        {t('localAuth.signIn')}
       </button>
     );
   }
@@ -92,7 +94,7 @@ export function UserMenu() {
               }}
               className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
             >
-              Sign out
+              {t('localAuth.signOut')}
             </button>
           </div>
         </div>

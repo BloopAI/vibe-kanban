@@ -107,6 +107,18 @@
     "errorDescription": "驗證您的帳號時發生問題",
     "tryAgain": "重試"
   },
+  "localAuth": {
+    "appName": "Vibe Kanban",
+    "tagline": "面向代理的協作任務管理",
+    "signInToContinue": "登入以繼續",
+    "continueWithGitHub": "使用 GitHub 繼續",
+    "privacyNote": "登入即表示您同意與此應用程式共享您的 GitHub 個人資料資訊。",
+    "notConfiguredTitle": "未設定身分驗證",
+    "notConfiguredDescription": "要啟用多使用者功能，請透過設定以下環境變數來設定 GitHub OAuth：",
+    "seeDocumentation": "請參閱文件取得設定說明。",
+    "signIn": "登入",
+    "signOut": "登出"
+  },
   "navbar": {
     "tryNewUI": "試用新界面"
   },

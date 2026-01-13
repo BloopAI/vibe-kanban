@@ -110,6 +110,18 @@
     "errorDescription": "アカウントの認証中に問題が発生しました",
     "tryAgain": "再試行"
   },
+  "localAuth": {
+    "appName": "Vibe Kanban",
+    "tagline": "エージェント向けの共同タスク管理",
+    "signInToContinue": "続行するにはサインインしてください",
+    "continueWithGitHub": "GitHubで続行",
+    "privacyNote": "サインインすると、GitHubプロフィール情報をこのアプリケーションと共有することに同意したことになります。",
+    "notConfiguredTitle": "認証が設定されていません",
+    "notConfiguredDescription": "マルチユーザー機能を有効にするには、次の環境変数を設定してGitHub OAuthを構成してください:",
+    "seeDocumentation": "設定手順についてはドキュメントを参照してください。",
+    "signIn": "サインイン",
+    "signOut": "サインアウト"
+  },
   "toolbar": {
     "sortBy": "並べ替え",
     "groupBy": "グループ化"

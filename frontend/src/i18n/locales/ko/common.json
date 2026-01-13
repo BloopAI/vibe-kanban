@@ -110,6 +110,18 @@
     "errorDescription": "계정 인증 중 문제가 발생했습니다",
     "tryAgain": "다시 시도"
   },
+  "localAuth": {
+    "appName": "Vibe Kanban",
+    "tagline": "에이전트를 위한 협업 작업 관리",
+    "signInToContinue": "계속하려면 로그인하세요",
+    "continueWithGitHub": "GitHub로 계속",
+    "privacyNote": "로그인하면 GitHub 프로필 정보를 이 애플리케이션과 공유하는 데 동의하는 것입니다.",
+    "notConfiguredTitle": "인증이 구성되지 않음",
+    "notConfiguredDescription": "다중 사용자 기능을 활성화하려면 다음 환경 변수를 설정하여 GitHub OAuth를 구성하세요:",
+    "seeDocumentation": "설정 지침은 문서를 참조하세요.",
+    "signIn": "로그인",
+    "signOut": "로그아웃"
+  },
   "toolbar": {
     "sortBy": "정렬 기준",
     "groupBy": "그룹화 기준"

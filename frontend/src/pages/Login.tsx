@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useLocalAuth } from '@/contexts/LocalAuthContext';
 
 export function Login() {
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading, isLocalAuthConfigured, login } = useLocalAuth();
   const navigate = useNavigate();
 
@@ -28,10 +30,10 @@ export function Login() {
         <div className="max-w-md w-full px-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              Vibe Kanban
+              {t('localAuth.appName')}
             </h1>
             <p className="text-muted-foreground">
-              Collaborative task management for agents
+              {t('localAuth.tagline')}
             </p>
           </div>
 
@@ -53,11 +55,10 @@ export function Login() {
                 </svg>
               </div>
               <h2 className="text-lg font-medium text-foreground mb-2">
-                Authentication Not Configured
+                {t('localAuth.notConfiguredTitle')}
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                To enable multi-user features, please configure GitHub OAuth by
-                setting the following environment variables:
+                {t('localAuth.notConfiguredDescription')}
               </p>
               <ul className="text-sm text-left text-muted-foreground bg-muted rounded-md p-3 font-mono">
                 <li>GITHUB_CLIENT_ID</li>
@@ -65,7 +66,7 @@ export function Login() {
                 <li>SESSION_SECRET</li>
               </ul>
               <p className="text-sm text-muted-foreground mt-4">
-                See the documentation for setup instructions.
+                {t('localAuth.seeDocumentation')}
               </p>
             </div>
           </div>
@@ -79,16 +80,16 @@ export function Login() {
       <div className="max-w-md w-full px-6">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Vibe Kanban
+            {t('localAuth.appName')}
           </h1>
           <p className="text-muted-foreground">
-            Collaborative task management for agents
+            {t('localAuth.tagline')}
           </p>
         </div>
 
         <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
           <h2 className="text-lg font-medium text-foreground mb-4 text-center">
-            Sign in to continue
+            {t('localAuth.signInToContinue')}
           </h2>
 
           <button
@@ -108,12 +109,11 @@ export function Login() {
                 clipRule="evenodd"
               />
             </svg>
-            {isLoading ? 'Loading...' : 'Continue with GitHub'}
+            {isLoading ? t('states.loading') : t('localAuth.continueWithGitHub')}
           </button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
-            By signing in, you agree to share your GitHub profile information
-            with this application.
+            {t('localAuth.privacyNote')}
           </p>
         </div>
       </div>

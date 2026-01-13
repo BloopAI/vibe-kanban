@@ -110,6 +110,18 @@
     "errorDescription": "Hubo un problema al autenticar tu cuenta",
     "tryAgain": "Intentar de nuevo"
   },
+  "localAuth": {
+    "appName": "Vibe Kanban",
+    "tagline": "Gestión colaborativa de tareas para agentes",
+    "signInToContinue": "Inicia sesión para continuar",
+    "continueWithGitHub": "Continuar con GitHub",
+    "privacyNote": "Al iniciar sesión, aceptas compartir la información de tu perfil de GitHub con esta aplicación.",
+    "notConfiguredTitle": "Autenticación no configurada",
+    "notConfiguredDescription": "Para habilitar las funciones multiusuario, configura GitHub OAuth estableciendo las siguientes variables de entorno:",
+    "seeDocumentation": "Consulta la documentación para obtener instrucciones de configuración.",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión"
+  },
   "toolbar": {
     "sortBy": "Ordenar por",
     "groupBy": "Agrupar por"
