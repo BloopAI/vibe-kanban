@@ -249,17 +249,17 @@ pub async fn create_pr(
                 },
             )));
         }
-        Err(GitCliError::AuthFailed(_)) => {
+        Err(GitServiceError::GitCLI(GitCliError::AuthFailed(_))) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotLoggedIn,
             )));
         }
-        Err(GitCliError::NotAvailable) => {
+        Err(GitServiceError::GitCLI(GitCliError::NotAvailable)) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 PrError::GitCliNotInstalled,
             )));
         }
-        Err(e) => return Err(ApiError::GitService(e.into())),
+        Err(e) => return Err(ApiError::GitService(e)),
         Ok(true) => {}
     }
 
