@@ -14,11 +14,10 @@ use std::{
 /// Checks the `CODEX_HOME` environment variable first, then falls back to `~/.codex`.
 /// This allows users to configure a custom location for Codex configuration and state.
 pub fn codex_home() -> Option<PathBuf> {
-    if let Ok(codex_home) = env::var("CODEX_HOME") {
-        let path = PathBuf::from(codex_home);
-        if !path.as_os_str().is_empty() {
-            return Some(path);
-        }
+    if let Ok(codex_home) = env::var("CODEX_HOME")
+        && !codex_home.trim().is_empty()
+    {
+        return Some(PathBuf::from(codex_home));
     }
     dirs::home_dir().map(|home| home.join(".codex"))
 }
@@ -469,8 +468,9 @@ impl Codex {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::env;
+
+    use super::*;
 
     #[test]
     fn test_codex_home_uses_env_var() {

@@ -174,8 +174,9 @@ impl SessionHandler {
     }
 
     fn sessions_root() -> Result<PathBuf, SessionError> {
-        let codex_dir = codex_home()
-            .ok_or_else(|| SessionError::Io("Could not determine Codex home directory".to_string()))?;
+        let codex_dir = codex_home().ok_or_else(|| {
+            SessionError::Io("Could not determine Codex home directory".to_string())
+        })?;
         Ok(codex_dir.join("sessions"))
     }
 
