@@ -1,11 +1,11 @@
 export { useBranchStatus } from './useBranchStatus';
-export { useAttemptExecution } from './useAttemptExecution';
+// REMOVED: Execution disabled - useAttemptExecution hook removed
 export { useOpenInEditor } from './useOpenInEditor';
 export { useTaskAttempt, useTaskAttemptWithSession } from './useTaskAttempt';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
 export { useTaskMutations } from './useTaskMutations';
-export { useDevServer } from './useDevServer';
+// REMOVED: Execution disabled - useDevServer hook removed
 export { useRebase } from './useRebase';
 export { useChangeTargetBranch } from './useChangeTargetBranch';
 export { useRenameBranch } from './useRenameBranch';
@@ -31,4 +31,4 @@ export { useOrganizationMembers } from './useOrganizationMembers';
 export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useVariant } from './useVariant';
-export { useRetryProcess } from './useRetryProcess';
+// REMOVED: Execution disabled - useRetryProcess hook removed

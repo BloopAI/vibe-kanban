@@ -1,1 +1,1 @@
-export { default as ExecutorProfileSelector } from './ExecutorProfileSelector';
+// REMOVED: Execution disabled - ExecutorProfileSelector component removed

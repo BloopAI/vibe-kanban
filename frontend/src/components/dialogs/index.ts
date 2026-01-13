@@ -63,23 +63,11 @@ export {
   type RebaseDialogProps,
   type RebaseDialogResult,
 } from './tasks/RebaseDialog';
-export {
-  RestoreLogsDialog,
-  type RestoreLogsDialogProps,
-  type RestoreLogsDialogResult,
-} from './tasks/RestoreLogsDialog';
-export {
-  ViewProcessesDialog,
-  type ViewProcessesDialogProps,
-} from './tasks/ViewProcessesDialog';
+// REMOVED: Execution disabled - RestoreLogsDialog, ViewProcessesDialog, GitActionsDialog, CreateAttemptDialog removed
 export {
   ViewRelatedTasksDialog,
   type ViewRelatedTasksDialogProps,
 } from './tasks/ViewRelatedTasksDialog';
-export {
-  GitActionsDialog,
-  type GitActionsDialogProps,
-} from './tasks/GitActionsDialog';
 export {
   ReassignDialog,
   type ReassignDialogProps,
@@ -92,22 +80,10 @@ export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
-export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
 
-// Auth dialogs
-export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
+// REMOVED: Execution disabled - GhCliSetupDialog removed
 
-// Settings dialogs
-export {
-  CreateConfigurationDialog,
-  type CreateConfigurationDialogProps,
-  type CreateConfigurationResult,
-} from './settings/CreateConfigurationDialog';
-export {
-  DeleteConfigurationDialog,
-  type DeleteConfigurationDialogProps,
-  type DeleteConfigurationResult,
-} from './settings/DeleteConfigurationDialog';
+// REMOVED: Execution disabled - CreateConfigurationDialog and DeleteConfigurationDialog removed
 
 // Shared/Generic dialogs
 export { ConfirmDialog, type ConfirmDialogProps } from './shared/ConfirmDialog';
