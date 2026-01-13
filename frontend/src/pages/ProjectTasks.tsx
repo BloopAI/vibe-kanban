@@ -70,6 +70,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { useHiddenKanbanColumns } from '@/stores/useUiPreferencesStore';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -168,6 +169,7 @@ export function ProjectTasks() {
     }
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();
+  const [hiddenColumns, toggleHiddenColumn] = useHiddenKanbanColumns(projectId);
 
   const {
     tasks,
@@ -867,6 +869,8 @@ export function ProjectTasks() {
           selectedSharedTaskId={selectedSharedTaskId}
           onCreateTask={handleCreateNewTask}
           projectId={projectId!}
+          hiddenColumns={hiddenColumns}
+          onToggleHiddenColumn={toggleHiddenColumn}
         />
       </div>
     );
