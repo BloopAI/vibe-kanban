@@ -110,6 +110,18 @@
     "errorDescription": "验证您的账户时出现问题",
     "tryAgain": "重试"
   },
+  "localAuth": {
+    "appName": "Vibe Kanban",
+    "tagline": "面向代理的协作任务管理",
+    "signInToContinue": "登录以继续",
+    "continueWithGitHub": "使用 GitHub 继续",
+    "privacyNote": "登录即表示您同意与此应用程序共享您的 GitHub 个人资料信息。",
+    "notConfiguredTitle": "未配置身份验证",
+    "notConfiguredDescription": "要启用多用户功能，请通过设置以下环境变量来配置 GitHub OAuth：",
+    "seeDocumentation": "请参阅文档获取设置说明。",
+    "signIn": "登录",
+    "signOut": "退出登录"
+  },
   "toolbar": {
     "sortBy": "排序方式",
     "groupBy": "分组方式"

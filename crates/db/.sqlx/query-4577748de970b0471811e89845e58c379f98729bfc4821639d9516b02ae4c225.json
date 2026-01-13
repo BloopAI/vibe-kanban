@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\",\n                      github_id,\n                      username,\n                      email,\n                      display_name,\n                      avatar_url,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM users\n               WHERE github_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "github_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "username",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "avatar_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "4577748de970b0471811e89845e58c379f98729bfc4821639d9516b02ae4c225"
+}

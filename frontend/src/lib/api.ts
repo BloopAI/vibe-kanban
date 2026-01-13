@@ -111,10 +111,25 @@ export class ApiError<E = unknown> extends Error {
   }
 }
 
+// Constants for localStorage keys
+const AUTH_TOKEN_KEY = 'vk_auth_token';
+
+// Get auth token from localStorage
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  // Add Authorization header if token exists
+  const token = getAuthToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   return fetch(url, {
@@ -1354,5 +1369,72 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// Local Auth API types
+export interface LocalAuthUser {
+  id: string;
+  github_id: number;
+  username: string;
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocalAuthStatusResponse {
+  authenticated: boolean;
+  user: LocalAuthUser | null;
+}
+
+export interface LocalAuthInitResponse {
+  authorize_url: string;
+  state: string;
+}
+
+// Local Auth API (for multiplayer mode)
+export const localAuthApi = {
+  /**
+   * Get the current authentication status
+   */
+  getStatus: async (): Promise<LocalAuthStatusResponse> => {
+    const response = await makeRequest('/api/local-auth/status');
+    return handleApiResponse<LocalAuthStatusResponse>(response);
+  },
+
+  /**
+   * Initiate GitHub OAuth flow
+   */
+  initGitHub: async (): Promise<LocalAuthInitResponse> => {
+    const response = await makeRequest('/api/local-auth/github');
+    return handleApiResponse<LocalAuthInitResponse>(response);
+  },
+
+  /**
+   * Get the current authenticated user
+   */
+  getMe: async (): Promise<LocalAuthUser> => {
+    const response = await makeRequest('/api/local-auth/me');
+    return handleApiResponse<LocalAuthUser>(response);
+  },
+
+  /**
+   * Log out the current user
+   */
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/local-auth/logout', {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  /**
+   * List all users (for assignment picker in multiplayer mode)
+   */
+  listUsers: async (): Promise<LocalAuthUser[]> => {
+    const response = await makeRequest('/api/local-auth/users');
+    return handleApiResponse<LocalAuthUser[]>(response);
   },
 };

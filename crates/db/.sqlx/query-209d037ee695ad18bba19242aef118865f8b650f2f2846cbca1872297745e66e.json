@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO auth_sessions (id, user_id, token_hash, expires_at)\n               VALUES ($1, $2, $3, $4)\n               RETURNING id as \"id!: Uuid\",\n                         user_id as \"user_id!: Uuid\",\n                         token_hash,\n                         expires_at as \"expires_at!: DateTime<Utc>\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         last_used_at as \"last_used_at!: DateTime<Utc>\",\n                         revoked_at as \"revoked_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "user_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "token_hash",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_used_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "revoked_at: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "209d037ee695ad18bba19242aef118865f8b650f2f2846cbca1872297745e66e"
+}

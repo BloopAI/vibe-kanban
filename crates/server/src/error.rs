@@ -17,7 +17,9 @@ use services::services::{
     container::ContainerError,
     git::GitServiceError,
     git_host::GitHostError,
+    github_oauth::GitHubOAuthError,
     image::ImageError,
+    local_session::SessionError as LocalSessionError,
     project::ProjectServiceError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
@@ -76,6 +78,10 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("GitHub OAuth error: {0}")]
+    GitHubOAuth(#[from] GitHubOAuthError),
+    #[error("Local session error: {0}")]
+    LocalSession(#[from] LocalSessionError),
 }
 
 impl From<&'static str> for ApiError {
@@ -177,6 +183,14 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::GitHubOAuth(_) => (StatusCode::BAD_GATEWAY, "GitHubOAuthError"),
+            ApiError::LocalSession(err) => match err {
+                LocalSessionError::InvalidToken
+                | LocalSessionError::SessionExpired
+                | LocalSessionError::SessionRevoked => (StatusCode::UNAUTHORIZED, "SessionError"),
+                LocalSessionError::UserNotFound => (StatusCode::NOT_FOUND, "SessionError"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "SessionError"),
+            },
         };
 
         let error_message = match &self {
@@ -253,6 +267,14 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
+            ApiError::GitHubOAuth(err) => format!("GitHub authentication failed: {}", err),
+            ApiError::LocalSession(err) => match err {
+                LocalSessionError::InvalidToken => "Invalid session token.".to_string(),
+                LocalSessionError::SessionExpired => "Session expired. Please sign in again.".to_string(),
+                LocalSessionError::SessionRevoked => "Session revoked. Please sign in again.".to_string(),
+                LocalSessionError::UserNotFound => "User not found.".to_string(),
+                _ => format!("Session error: {}", err),
+            },
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);

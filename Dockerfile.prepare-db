@@ -1,0 +1,20 @@
+FROM rustlang/rust:nightly-slim
+
+# Install sqlx-cli and dependencies for building
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libclang-dev \
+    clang \
+    && rm -rf /var/lib/apt/lists/* \
+    && cargo install sqlx-cli --no-default-features --features sqlite
+
+WORKDIR /app
+
+# Copy necessary files
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+COPY assets ./assets
+
+# Run prepare-db - run from crates/db and output to crates/db/.sqlx
+CMD ["sh", "-c", "cd crates/db && touch prepare_db.sqlite && DATABASE_URL=sqlite:$(pwd)/prepare_db.sqlite cargo sqlx migrate run && DATABASE_URL=sqlite:$(pwd)/prepare_db.sqlite cargo sqlx prepare && rm -f prepare_db.sqlite && ls -la .sqlx/"]

@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
+import { Login } from '@/pages/Login';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
@@ -23,6 +24,7 @@ import {
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
+import { LocalAuthProvider } from '@/contexts/LocalAuthContext';
 
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
@@ -128,6 +130,9 @@ function AppContent() {
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
           <SentryRoutes>
+            {/* ========== LOGIN ROUTE ========== */}
+            <Route path="/login" element={<Login />} />
+
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
@@ -203,13 +208,17 @@ function App() {
   return (
     <BrowserRouter>
       <UserSystemProvider>
-        <ClickedElementsProvider>
-          <ProjectProvider>
-            <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <AppContent />
-            </HotkeysProvider>
-          </ProjectProvider>
-        </ClickedElementsProvider>
+        <LocalAuthProvider>
+          <ClickedElementsProvider>
+            <ProjectProvider>
+              <HotkeysProvider
+                initiallyActiveScopes={['*', 'global', 'kanban']}
+              >
+                <AppContent />
+              </HotkeysProvider>
+            </ProjectProvider>
+          </ClickedElementsProvider>
+        </LocalAuthProvider>
       </UserSystemProvider>
     </BrowserRouter>
   );
