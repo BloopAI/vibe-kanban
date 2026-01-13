@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::user::{GitHubUserProfile, User};
+use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use services::services::{
