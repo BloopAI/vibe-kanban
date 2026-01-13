@@ -15,6 +15,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../primitives/PrimaryButton';
+import { IconButton } from '../primitives/IconButton';
+import {
+  IconButtonGroup,
+  IconButtonGroupItem,
+} from '../primitives/IconButtonGroup';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,
@@ -144,102 +149,60 @@ export function PreviewBrowser({
               )}
             />
             {isUsingOverride && (
-              <button
-                type="button"
+              <IconButton
+                icon={XIcon}
                 onClick={onClearOverride}
-                className="text-low hover:text-normal"
                 aria-label="Clear URL override"
                 title="Revert to auto-detected URL"
-              >
-                <XIcon className="size-icon-sm" />
-              </button>
+              />
             )}
-            <button
-              type="button"
+            <IconButton
+              icon={CopyIcon}
               onClick={onCopyUrl}
               disabled={!hasUrl}
-              className={cn(
-                'text-low',
-                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-              )}
               aria-label="Copy URL"
               title="Copy URL"
-            >
-              <CopyIcon className="size-icon-sm" />
-            </button>
-            <button
-              type="button"
+            />
+            <IconButton
+              icon={ArrowSquareOutIcon}
               onClick={onOpenInNewTab}
               disabled={!hasUrl}
-              className={cn(
-                'text-low',
-                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-              )}
               aria-label="Open in new tab"
               title="Open in new tab"
-            >
-              <ArrowSquareOutIcon className="size-icon-sm" />
-            </button>
-            <button
-              type="button"
+            />
+            <IconButton
+              icon={ArrowClockwiseIcon}
               onClick={onRefresh}
               disabled={!hasUrl}
-              className={cn(
-                'text-low',
-                hasUrl ? 'hover:text-normal' : 'cursor-not-allowed'
-              )}
               aria-label="Refresh"
               title="Refresh preview"
-            >
-              <ArrowClockwiseIcon className="size-icon-sm" />
-            </button>
+            />
           </div>
 
           {/* Screen Size Toggle */}
-          <div className="flex items-center rounded-sm border border-border overflow-hidden">
-            <button
-              type="button"
+          <IconButtonGroup>
+            <IconButtonGroupItem
+              icon={MonitorIcon}
               onClick={() => onScreenSizeChange('desktop')}
-              className={cn(
-                'p-half transition-colors',
-                screenSize === 'desktop'
-                  ? 'bg-secondary text-normal'
-                  : 'text-low hover:text-normal hover:bg-secondary/50'
-              )}
+              active={screenSize === 'desktop'}
               aria-label="Desktop view"
               title="Desktop view"
-            >
-              <MonitorIcon className="size-icon-sm" />
-            </button>
-            <button
-              type="button"
+            />
+            <IconButtonGroupItem
+              icon={DeviceMobileIcon}
               onClick={() => onScreenSizeChange('mobile')}
-              className={cn(
-                'p-half transition-colors',
-                screenSize === 'mobile'
-                  ? 'bg-secondary text-normal'
-                  : 'text-low hover:text-normal hover:bg-secondary/50'
-              )}
+              active={screenSize === 'mobile'}
               aria-label="Mobile view (390x844)"
               title="Mobile view (390x844)"
-            >
-              <DeviceMobileIcon className="size-icon-sm" />
-            </button>
-            <button
-              type="button"
+            />
+            <IconButtonGroupItem
+              icon={ArrowsOutCardinalIcon}
               onClick={() => onScreenSizeChange('responsive')}
-              className={cn(
-                'p-half transition-colors',
-                screenSize === 'responsive'
-                  ? 'bg-secondary text-normal'
-                  : 'text-low hover:text-normal hover:bg-secondary/50'
-              )}
+              active={screenSize === 'responsive'}
               aria-label="Responsive view (resizable)"
               title="Responsive view (resizable)"
-            >
-              <ArrowsOutCardinalIcon className="size-icon-sm" />
-            </button>
-          </div>
+            />
+          </IconButtonGroup>
 
           {/* Dimensions display for responsive mode */}
           {screenSize === 'responsive' && (
