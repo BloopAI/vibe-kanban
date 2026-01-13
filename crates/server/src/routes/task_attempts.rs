@@ -46,7 +46,7 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    file_search_cache::SearchQuery,
+    file_search::SearchQuery,
     git::{ConflictOp, GitCliError, GitServiceError},
     workspace_manager::WorkspaceManager,
 };
