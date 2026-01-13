@@ -15,10 +15,11 @@ use db::models::{
     workspace_repo::WorkspaceRepo,
 };
 use deployment::Deployment;
+// REMOVED: Execution disabled - executor types removed
 // use executors::actions::{
-    ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
-    coding_agent_initial::CodingAgentInitialRequest,
-};
+//     ExecutorAction, ExecutorActionType, coding_agent_follow_up::CodingAgentFollowUpRequest,
+//     coding_agent_initial::CodingAgentInitialRequest,
+// };
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{

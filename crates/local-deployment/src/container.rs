@@ -12,7 +12,8 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        coding_agent_turn::CodingAgentTurn,
+        // REMOVED: Execution disabled - coding agent functionality removed
+        // coding_agent_turn::CodingAgentTurn,
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
@@ -26,23 +27,26 @@ use db::{
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
+// REMOVED: Execution disabled - all executor types removed
 // use executors::{
-    actions::{
-        Executable, ExecutorAction, ExecutorActionType,
-        coding_agent_follow_up::CodingAgentFollowUpRequest,
-        coding_agent_initial::CodingAgentInitialRequest,
-    },
-    approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    env::ExecutionEnv,
-    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
-    logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
-    profile::ExecutorProfileId,
-};
+//     actions::{
+//         Executable, ExecutorAction, ExecutorActionType,
+//         coding_agent_follow_up::CodingAgentFollowUpRequest,
+//         coding_agent_initial::CodingAgentInitialRequest,
+//     },
+//     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
+//     env::ExecutionEnv,
+//     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
+//     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
+//     profile::ExecutorProfileId,
+// };
 use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
-    approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
+    approvals::Approvals,
+    // REMOVED: Execution disabled - executor approvals removed
+    // approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
@@ -68,7 +72,8 @@ use crate::{command, copy};
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
-    interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
+    // REMOVED: Execution disabled - InterruptSender type removed
+    // interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
@@ -94,13 +99,15 @@ impl LocalContainerService {
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
-        let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
+        // REMOVED: Execution disabled - InterruptSender type removed
+        // let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
             child_store,
-            interrupt_senders,
+            // REMOVED: Execution disabled
+            // interrupt_senders,
             msg_stores,
             config,
             git,
@@ -132,15 +139,16 @@ impl LocalContainerService {
         map.remove(id);
     }
 
-    async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
-        let mut map = self.interrupt_senders.write().await;
-        map.insert(id, sender);
-    }
+    // REMOVED: Execution disabled - InterruptSender type removed
+    // async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
+    //     let mut map = self.interrupt_senders.write().await;
+    //     map.insert(id, sender);
+    // }
 
-    async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
-        let mut map = self.interrupt_senders.write().await;
-        map.remove(id)
-    }
+    // async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
+    //     let mut map = self.interrupt_senders.write().await;
+    //     map.remove(id)
+    // }
 
     pub async fn cleanup_workspace(db: &DBService, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
@@ -237,37 +245,27 @@ impl LocalContainerService {
     async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
         match ctx.execution_process.run_reason {
             ExecutionProcessRunReason::CodingAgent => {
+                // REMOVED: Execution disabled - CodingAgentTurn removed, use default message
                 // Try to retrieve the task summary from the coding agent turn
                 // otherwise fallback to default message
-                match CodingAgentTurn::find_by_execution_process_id(
-                    &self.db().pool,
-                    ctx.execution_process.id,
+                // match CodingAgentTurn::find_by_execution_process_id(
+                //     &self.db().pool,
+                //     ctx.execution_process.id,
+                // )
+                // .await
+                // {
+                //     Ok(Some(turn)) if turn.summary.is_some() => turn.summary.unwrap(),
+                //     Ok(_) => {
+                //         ...
+                //     }
+                //     Err(e) => {
+                //         ...
+                //     }
+                // }
+                format!(
+                    "Commit changes from coding agent for workspace {}",
+                    ctx.workspace.id
                 )
-                .await
-                {
-                    Ok(Some(turn)) if turn.summary.is_some() => turn.summary.unwrap(),
-                    Ok(_) => {
-                        tracing::debug!(
-                            "No summary found for execution process {}, using default message",
-                            ctx.execution_process.id
-                        );
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "Failed to retrieve summary for execution process {}: {}",
-                            ctx.execution_process.id,
-                            e
-                        );
-                        format!(
-                            "Commit changes from coding agent for workspace {}",
-                            ctx.workspace.id
-                        )
-                    }
-                }
             }
             ExecutionProcessRunReason::CleanupScript => {
                 format!("Cleanup script changes for workspace {}", ctx.workspace.id)
@@ -339,6 +337,8 @@ impl LocalContainerService {
         any_committed
     }
 
+    // REMOVED: Execution disabled - ExecutorExitSignal and ExecutorExitResult removed
+    /*
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
     pub fn spawn_exit_monitor(
@@ -561,6 +561,7 @@ impl LocalContainerService {
             child_store.write().await.remove(&exec_id);
         })
     }
+    */
 
     pub fn spawn_os_exit_watcher(
         &self,
@@ -639,55 +640,57 @@ impl LocalContainerService {
             .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
 
-    /// Extract the last assistant message from the MsgStore history
-    fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
-        // Get the MsgStore for this execution
-        let msg_stores = self.msg_stores.try_read().ok()?;
-        let msg_store = msg_stores.get(exec_id)?;
+    // REMOVED: Execution disabled - extract_normalized_entry_from_patch and NormalizedEntryType removed
+    // /// Extract the last assistant message from the MsgStore history
+    // fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
+    //     // Get the MsgStore for this execution
+    //     let msg_stores = self.msg_stores.try_read().ok()?;
+    //     let msg_store = msg_stores.get(exec_id)?;
+    //
+    //     // Get the history and scan in reverse for the last assistant message
+    //     let history = msg_store.get_history();
+    //
+    //     for msg in history.iter().rev() {
+    //         if let LogMsg::JsonPatch(patch) = msg {
+    //             // Try to extract a NormalizedEntry from the patch
+    //             if let Some((_, entry)) = extract_normalized_entry_from_patch(patch)
+    //                 && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage)
+    //             {
+    //                 let content = entry.content.trim();
+    //                 if !content.is_empty() {
+    //                     const MAX_SUMMARY_LENGTH: usize = 4096;
+    //                     if content.len() > MAX_SUMMARY_LENGTH {
+    //                         let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
+    //                         return Some(format!("{truncated}..."));
+    //                     }
+    //                     return Some(content.to_string());
+    //                 }
+    //             }
+    //         }
+    //     }
+    //
+    //     None
+    // }
 
-        // Get the history and scan in reverse for the last assistant message
-        let history = msg_store.get_history();
-
-        for msg in history.iter().rev() {
-            if let LogMsg::JsonPatch(patch) = msg {
-                // Try to extract a NormalizedEntry from the patch
-                if let Some((_, entry)) = extract_normalized_entry_from_patch(patch)
-                    && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage)
-                {
-                    let content = entry.content.trim();
-                    if !content.is_empty() {
-                        const MAX_SUMMARY_LENGTH: usize = 4096;
-                        if content.len() > MAX_SUMMARY_LENGTH {
-                            let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
-                            return Some(format!("{truncated}..."));
-                        }
-                        return Some(content.to_string());
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Update the coding agent turn summary with the final assistant message
-    async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
-        // Check if there's a coding agent turn for this execution process
-        let turn = CodingAgentTurn::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
-
-        if let Some(turn) = turn {
-            // Only update if summary is not already set
-            if turn.summary.is_none() {
-                if let Some(summary) = self.extract_last_assistant_message(exec_id) {
-                    CodingAgentTurn::update_summary(&self.db.pool, *exec_id, &summary).await?;
-                } else {
-                    tracing::debug!("No assistant message found for execution {}", exec_id);
-                }
-            }
-        }
-
-        Ok(())
-    }
+    // REMOVED: Execution disabled - CodingAgentTurn removed
+    // /// Update the coding agent turn summary with the final assistant message
+    // async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
+    //     // Check if there's a coding agent turn for this execution process
+    //     let turn = CodingAgentTurn::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
+    //
+    //     if let Some(turn) = turn {
+    //         // Only update if summary is not already set
+    //         if turn.summary.is_none() {
+    //             if let Some(summary) = self.extract_last_assistant_message(exec_id) {
+    //                 CodingAgentTurn::update_summary(&self.db.pool, *exec_id, &summary).await?;
+    //             } else {
+    //                 tracing::debug!("No assistant message found for execution {}", exec_id);
+    //             }
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
 
     /// Copy project files and images to the workspace.
     /// Skips files/images that already exist (fast no-op if all exist).
@@ -696,24 +699,25 @@ impl LocalContainerService {
         workspace_dir: &Path,
         workspace: &Workspace,
     ) -> Result<(), ContainerError> {
-        let repos = WorkspaceRepo::find_repos_with_copy_files(&self.db.pool, workspace.id).await?;
-
-        for repo in &repos {
-            if let Some(copy_files) = &repo.copy_files
-                && !copy_files.trim().is_empty()
-            {
-                let worktree_path = workspace_dir.join(&repo.name);
-                self.copy_project_files(&repo.path, &worktree_path, copy_files)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::warn!(
-                            "Failed to copy project files for repo '{}': {}",
-                            repo.name,
-                            e
-                        );
-                    });
-            }
-        }
+        // REMOVED: Execution disabled - copy_project_files method removed
+        // let repos = WorkspaceRepo::find_repos_with_copy_files(&self.db.pool, workspace.id).await?;
+        //
+        // for repo in &repos {
+        //     if let Some(copy_files) = &repo.copy_files
+        //         && !copy_files.trim().is_empty()
+        //     {
+        //         let worktree_path = workspace_dir.join(&repo.name);
+        //         self.copy_project_files(&repo.path, &worktree_path, copy_files)
+        //             .await
+        //             .unwrap_or_else(|e| {
+        //                 tracing::warn!(
+        //                     "Failed to copy project files for repo '{}': {}",
+        //                     repo.name,
+        //                     e
+        //                 );
+        //             });
+        //     }
+        // }
 
         if let Err(e) = self
             .image_service
@@ -786,68 +790,69 @@ impl LocalContainerService {
         Ok(())
     }
 
-    /// Start a follow-up execution from a queued message
-    async fn start_queued_follow_up(
-        &self,
-        ctx: &ExecutionContext,
-        queued_data: &DraftFollowUpData,
-    ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor profile from the latest CodingAgent process in this session
-        let initial_executor_profile_id =
-            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
-                .await
-                .map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
-                })?;
-
-        let executor_profile_id = ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
-            variant: queued_data.variant.clone(),
-        };
-
-        // Get latest agent session ID for session continuity (from coding agent turns)
-        let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await?;
-
-        let project_repos =
-            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
-        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
-
-        let working_dir = ctx
-            .workspace
-            .agent_working_dir
-            .as_ref()
-            .filter(|dir| !dir.is_empty())
-            .cloned();
-
-        let action_type = if let Some(agent_session_id) = latest_agent_session_id {
-            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-                prompt: queued_data.message.clone(),
-                session_id: agent_session_id,
-                executor_profile_id: executor_profile_id.clone(),
-                working_dir: working_dir.clone(),
-            })
-        } else {
-            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                prompt: queued_data.message.clone(),
-                executor_profile_id: executor_profile_id.clone(),
-                working_dir,
-            })
-        };
-
-        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
-
-        self.start_execution(
-            &ctx.workspace,
-            &ctx.session,
-            &action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await
-    }
+    // REMOVED: Execution disabled - ExecutorProfileId, CodingAgentFollowUpRequest, etc. removed
+    // /// Start a follow-up execution from a queued message
+    // async fn start_queued_follow_up(
+    //     &self,
+    //     ctx: &ExecutionContext,
+    //     queued_data: &DraftFollowUpData,
+    // ) -> Result<ExecutionProcess, ContainerError> {
+    //     // Get executor profile from the latest CodingAgent process in this session
+    //     let initial_executor_profile_id =
+    //         ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+    //             .await
+    //             .map_err(|e| {
+    //                 ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
+    //             })?;
+    //
+    //     let executor_profile_id = ExecutorProfileId {
+    //         executor: initial_executor_profile_id.executor,
+    //         variant: queued_data.variant.clone(),
+    //     };
+    //
+    //     // Get latest agent session ID for session continuity (from coding agent turns)
+    //     let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+    //         &self.db.pool,
+    //         ctx.session.id,
+    //     )
+    //     .await?;
+    //
+    //     let project_repos =
+    //         ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
+    //     let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+    //
+    //     let working_dir = ctx
+    //         .workspace
+    //         .agent_working_dir
+    //         .as_ref()
+    //         .filter(|dir| !dir.is_empty())
+    //         .cloned();
+    //
+    //     let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+    //         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+    //             prompt: queued_data.message.clone(),
+    //             session_id: agent_session_id,
+    //             executor_profile_id: executor_profile_id.clone(),
+    //             working_dir: working_dir.clone(),
+    //         })
+    //     } else {
+    //         ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+    //             prompt: queued_data.message.clone(),
+    //             executor_profile_id: executor_profile_id.clone(),
+    //             working_dir,
+    //         })
+    //     };
+    //
+    //     let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
+    //
+    //     self.start_execution(
+    //         &ctx.workspace,
+    //         &ctx.session,
+    //         &action,
+    //         &ExecutionProcessRunReason::CodingAgent,
+    //     )
+    //     .await
+    // }
 }
 
 fn failure_exit_status() -> std::process::ExitStatus {
@@ -955,7 +960,8 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError> {
-        self.try_stop(workspace, true).await;
+        // REMOVED: Execution disabled - try_stop method removed from trait
+        // self.try_stop(workspace, true).await;
         Self::cleanup_workspace(&self.db, workspace).await;
         Ok(())
     }
@@ -1030,6 +1036,8 @@ impl ContainerService for LocalContainerService {
         Ok(true)
     }
 
+    // REMOVED: Execution disabled - not in ContainerService trait, uses ExecutorAction
+    /*
     async fn start_execution_inner(
         &self,
         workspace: &Workspace,
@@ -1112,7 +1120,10 @@ impl ContainerService for LocalContainerService {
 
         Ok(())
     }
+    */
 
+    // REMOVED: Execution disabled - not in ContainerService trait
+    /*
     async fn stop_execution(
         &self,
         execution_process: &ExecutionProcess,
@@ -1217,6 +1228,7 @@ impl ContainerService for LocalContainerService {
 
         Ok(())
     }
+    */
 
     async fn stream_diff(
         &self,
@@ -1319,46 +1331,35 @@ impl ContainerService for LocalContainerService {
         Ok(self.commit_repos(repos_with_changes, &message))
     }
 
-    /// Copy files from the original project directory to the worktree.
-    /// Skips files that already exist at target with same size.
-    async fn copy_project_files(
-        &self,
-        source_dir: &Path,
-        target_dir: &Path,
-        copy_files: &str,
-    ) -> Result<(), ContainerError> {
-        let source_dir = source_dir.to_path_buf();
-        let target_dir = target_dir.to_path_buf();
-        let copy_files = copy_files.to_string();
+    // REMOVED: Execution disabled - not in ContainerService trait
+    // /// Copy files from the original project directory to the worktree.
+    // /// Skips files that already exist at target with same size.
+    // async fn copy_project_files(
+    //     &self,
+    //     source_dir: &Path,
+    //     target_dir: &Path,
+    //     copy_files: &str,
+    // ) -> Result<(), ContainerError> {
+    //     let source_dir = source_dir.to_path_buf();
+    //     let target_dir = target_dir.to_path_buf();
+    //     let copy_files = copy_files.to_string();
+    //
+    //     tokio::time::timeout(
+    //         std::time::Duration::from_secs(30),
+    //         tokio::task::spawn_blocking(move || {
+    //             copy::copy_project_files_impl(&source_dir, &target_dir, &copy_files)
+    //         }),
+    //     )
+    //     .await
+    //     .map_err(|_| ContainerError::Other(anyhow!("Copy project files timed out after 30s")))?
+    //     .map_err(|e| ContainerError::Other(anyhow!("Copy files task failed: {e}")))?
+    // }
 
-        tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            tokio::task::spawn_blocking(move || {
-                copy::copy_project_files_impl(&source_dir, &target_dir, &copy_files)
-            }),
-        )
-        .await
-        .map_err(|_| ContainerError::Other(anyhow!("Copy project files timed out after 30s")))?
-        .map_err(|e| ContainerError::Other(anyhow!("Copy files task failed: {e}")))?
-    }
-
+    // REMOVED: Execution disabled - find_running and stop_execution removed
+    // Stub implementation required by trait
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError> {
-        tracing::info!("Killing all running processes");
-        let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
-
-        for process in running_processes {
-            if let Err(error) = self
-                .stop_execution(&process, ExecutionProcessStatus::Killed)
-                .await
-            {
-                tracing::error!(
-                    "Failed to cleanly kill running execution process {:?}: {:?}",
-                    process,
-                    error
-                );
-            }
-        }
-
+        tracing::debug!("kill_all_running_processes called but execution is disabled");
+        // No-op: execution disabled, no processes to kill
         Ok(())
     }
 }

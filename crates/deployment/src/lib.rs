@@ -59,8 +59,8 @@ pub enum DeploymentError {
     Workspace(#[from] WorkspaceError),
     #[error(transparent)]
     Container(#[from] ContainerError),
-    #[error(transparent)]
-    Executor(#[from] ExecutorError),
+//    #[error(transparent)]
+//    Executor(#[from] ExecutorError),  // REMOVED: Execution disabled
     #[error(transparent)]
     Image(#[from] ImageError),
     #[error(transparent)]

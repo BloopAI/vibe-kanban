@@ -11,19 +11,20 @@ use db::{
     models::{
 //        coding_agent_turn::{CodingAgentTurn, CreateCodingAgentTurn},
         execution_process::{
-//            CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
+//            CreateExecutionProcess,
+            ExecutionContext,
+            ExecutionProcess,
+            ExecutionProcessRunReason,
             ExecutionProcessStatus,
         },
-//        execution_process_logs::ExecutionProcessLogs,
-        execution_process_repo_state::{
-//            CreateExecutionProcessRepoState, ExecutionProcessRepoState,
-        },
+        execution_process_logs::ExecutionProcessLogs,
+        execution_process_repo_state::ExecutionProcessRepoState,
         project::{Project, UpdateProject},
         project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
-//        session::{CreateSession, Session, SessionError},
-//        task::{Task, TaskStatus},
-//        workspace::{Workspace, WorkspaceError},
+        session::{Session, SessionError},
+        task::{Task, TaskStatus},
+        workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
 };
@@ -57,22 +58,22 @@ use crate::services::{
 };
 pub type ContainerRef = String;
 
-//[derive(Debug, Error)]
+#[derive(Debug, Error)]
 pub enum ContainerError {
     #[error(transparent)]
     GitServiceError(#[from] GitServiceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
-    #[error(transparent)]
+//    #[error(transparent)]
 //    ExecutorError(#[from] ExecutorError),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
-//    Workspace(#[from] WorkspaceError),
+    Workspace(#[from] WorkspaceError),
     #[error(transparent)]
-//    WorkspaceManager(#[from] WorkspaceManagerError),
+    WorkspaceManager(#[from] WorkspaceManagerError),
     #[error(transparent)]
-//    Session(#[from] SessionError),
+    Session(#[from] SessionError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
@@ -81,7 +82,7 @@ pub enum ContainerError {
     Other(#[from] AnyhowError), // Catches any unclassified errors
 }
 
-//[async_trait]
+#[async_trait]
 pub trait ContainerService {
     fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>;
 
@@ -216,6 +217,12 @@ pub trait ContainerService {
 
     /// Cleanup executions marked as running in the db, call at startup
     async fn cleanup_orphan_executions(&self) -> Result<(), ContainerError> {
+        // STUB: Execution disabled - no new processes to cleanup
+        // Historical execution processes remain in database as archived data
+        tracing::debug!("Skipping orphan execution cleanup - execution disabled");
+        return Ok(());
+
+        /* REMOVED: Original cleanup logic
         let running_processes = ExecutionProcess::find_running(&self.db().pool).await?;
         for process in running_processes {
             tracing::info!(
@@ -300,6 +307,7 @@ pub trait ContainerService {
             }
         }
         Ok(())
+        */ // End cleanup_orphan_executions removal
     }
 
     /// Backfill before_head_commit for legacy execution processes.
@@ -757,8 +765,14 @@ pub trait ContainerService {
                 );
             }
 
-            let current_dir = self.workspace_to_current_dir(&workspace);
+            let _current_dir = self.workspace_to_current_dir(&workspace);
 
+            // STUB: Execution disabled - executor normalization removed
+            // Historical logs are already normalized and stored as JsonPatch messages
+            // We just return them as-is from the temp_store without re-normalizing
+            tracing::debug!("Returning pre-normalized logs for execution {}", id);
+
+            /* REMOVED: Executor normalization logic
             let executor_action = if let Ok(executor_action) = process.executor_action() {
                 executor_action
             } else {
@@ -791,6 +805,7 @@ pub trait ContainerService {
                     return None;
                 }
             }
+            */ // End executor normalization
             Some(
                 temp_store
                     .history_plus_stream()
@@ -850,8 +865,11 @@ pub trait ContainerService {
                                 }
                             }
                         }
-                        LogMsg::SessionId(agent_session_id) => {
-                            // Append this line to the database
+                        LogMsg::SessionId(_agent_session_id) => {
+                            // STUB: Execution disabled - CodingAgentTurn tracking removed
+                            // Historical data only - no new agent sessions
+                            tracing::debug!("Skipping agent session tracking - execution disabled");
+                            /* REMOVED: CodingAgentTurn update
                             if let Err(e) = CodingAgentTurn::update_agent_session_id(
                                 &db.pool,
                                 execution_id,
@@ -866,6 +884,7 @@ pub trait ContainerService {
                                     e
                                 );
                             }
+                            */
                         }
                         LogMsg::Finished => {
                             break;
