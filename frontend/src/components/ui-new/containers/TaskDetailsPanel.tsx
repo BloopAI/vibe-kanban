@@ -107,6 +107,12 @@ function TaskDetailsPanelContent({
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [mode, setMode] = useState<LayoutMode>(null);
 
+  // Reset state when task changes - ensures panel shows the new task
+  useEffect(() => {
+    setSelectedAttemptId(null);
+    setMode(null);
+  }, [initialTaskId]);
+
   // Handler for when a new attempt is created - stay on page and show attempt
   const handleAttemptCreated = useCallback((attemptId: string) => {
     setSelectedAttemptId(attemptId);
