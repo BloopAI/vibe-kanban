@@ -809,7 +809,9 @@ export function WorkspacesLayout() {
             {isPreviewMode && (
               <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
             )}
-            {isTerminalMode && <TerminalPanelContainer />}
+            <div style={{ display: isTerminalMode ? 'contents' : 'none' }}>
+              <TerminalPanelContainer />
+            </div>
           </div>
         </Allotment.Pane>
 
