@@ -46,6 +46,7 @@ interface PreviewBrowserProps {
   onResizeStart: (
     direction: 'right' | 'bottom' | 'corner'
   ) => (e: React.MouseEvent | React.TouchEvent) => void;
+  isResizing: boolean;
   containerRef: RefObject<HTMLDivElement>;
   repos: Repo[];
   handleEditDevScript: () => void;
@@ -73,6 +74,7 @@ export function PreviewBrowser({
   localDimensions,
   onScreenSizeChange,
   onResizeStart,
+  isResizing,
   containerRef,
   repos,
   handleEditDevScript,
@@ -284,7 +286,10 @@ export function PreviewBrowser({
               <iframe
                 src={url}
                 title={t('preview.browser.title')}
-                className="w-full h-full border-0"
+                className={cn(
+                  'w-full h-full border-0',
+                  isResizing && 'pointer-events-none'
+                )}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                 referrerPolicy="no-referrer"
               />

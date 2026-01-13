@@ -70,10 +70,17 @@ export function PreviewBrowserContainer({
 
   // Responsive resize state - use refs for values that shouldn't trigger re-renders
   const [localDimensions, setLocalDimensions] = useState(responsiveDimensions);
+  const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
   const resizeDirectionRef = useRef<'right' | 'bottom' | 'corner' | null>(null);
   const localDimensionsRef = useRef(localDimensions);
+
+  // Store callback in ref to avoid effect re-runs when callback identity changes
+  const setResponsiveDimensionsRef = useRef(setResponsiveDimensions);
+  useEffect(() => {
+    setResponsiveDimensionsRef.current = setResponsiveDimensions;
+  }, [setResponsiveDimensions]);
 
   // Keep ref in sync with state for use in event handlers
   useEffect(() => {
@@ -130,7 +137,8 @@ export function PreviewBrowserContainer({
       if (isResizingRef.current) {
         isResizingRef.current = false;
         resizeDirectionRef.current = null;
-        setResponsiveDimensions(localDimensionsRef.current);
+        setIsResizing(false);
+        setResponsiveDimensionsRef.current(localDimensionsRef.current);
       }
     };
 
@@ -145,7 +153,7 @@ export function PreviewBrowserContainer({
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleEnd);
     };
-  }, [setResponsiveDimensions]);
+  }, []); // Empty deps - mount only, uses refs for all external values
 
   const handleResizeStart = useCallback(
     (direction: 'right' | 'bottom' | 'corner') =>
@@ -153,6 +161,7 @@ export function PreviewBrowserContainer({
         e.preventDefault();
         isResizingRef.current = true;
         resizeDirectionRef.current = direction;
+        setIsResizing(true);
       },
     []
   );
@@ -250,6 +259,7 @@ export function PreviewBrowserContainer({
       localDimensions={localDimensions}
       onScreenSizeChange={handleScreenSizeChange}
       onResizeStart={handleResizeStart}
+      isResizing={isResizing}
       containerRef={containerRef}
       repos={repos}
       handleEditDevScript={handleEditDevScript}
