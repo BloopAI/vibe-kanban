@@ -29,7 +29,6 @@ pub struct CreatePrRequest {
     pub base_branch: String,
     pub draft: Option<bool>,
     /// URL of the repo containing the head branch (for cross-fork PRs).
-    /// If different from target repo, the head branch will be prefixed with fork owner.
     pub head_repo_url: Option<String>,
 }
 

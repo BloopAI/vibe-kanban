@@ -222,7 +222,6 @@ pub async fn create_pr(
     let workspace_path = PathBuf::from(&container_ref);
     let worktree_path = workspace_path.join(&repo.name);
 
-    // Resolve remotes and branch names
     let git = deployment.git();
     let push_remote = git.resolve_remote_name_for_branch(&repo_path, &workspace.branch)?;
 
@@ -242,7 +241,6 @@ pub async fn create_pr(
     let push_remote_url = git.get_remote_url(&repo_path, &push_remote)?;
     let target_remote_url = git.get_remote_url(&repo_path, &target_remote)?;
 
-    // Check target branch exists on remote
     match git.check_remote_branch_exists(&repo_path, &target_remote_url, &base_branch) {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -265,7 +263,6 @@ pub async fn create_pr(
         Ok(true) => {}
     }
 
-    // Push the branch to remote
     if let Err(e) = git.push_to_remote(&worktree_path, &workspace.branch, false) {
         tracing::error!("Failed to push branch to remote: {}", e);
         match e {
