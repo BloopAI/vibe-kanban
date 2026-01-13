@@ -156,28 +156,32 @@ export function PreviewBrowser({
                 title="Revert to auto-detected URL"
               />
             )}
-            <IconButton
+          </div>
+
+          {/* URL Actions */}
+          <IconButtonGroup>
+            <IconButtonGroupItem
               icon={CopyIcon}
               onClick={onCopyUrl}
               disabled={!hasUrl}
               aria-label="Copy URL"
               title="Copy URL"
             />
-            <IconButton
+            <IconButtonGroupItem
               icon={ArrowSquareOutIcon}
               onClick={onOpenInNewTab}
               disabled={!hasUrl}
               aria-label="Open in new tab"
               title="Open in new tab"
             />
-            <IconButton
+            <IconButtonGroupItem
               icon={ArrowClockwiseIcon}
               onClick={onRefresh}
               disabled={!hasUrl}
               aria-label="Refresh"
               title="Refresh preview"
             />
-          </div>
+          </IconButtonGroup>
 
           {/* Screen Size Toggle */}
           <IconButtonGroup>
