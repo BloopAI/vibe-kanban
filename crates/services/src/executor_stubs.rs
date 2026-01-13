@@ -336,13 +336,20 @@ pub mod patch {
 }
 
 // Additional stubs for server crate compatibility
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ExecutorConfigs {
     pub executors: HashMap<String, CodingAgentStub>,
 }
 
 impl ExecutorConfigs {
     pub fn get_cached() -> Self {
+        Self {
+            executors: HashMap::new(),
+        }
+    }
+
+    pub fn from_defaults() -> Self {
         Self {
             executors: HashMap::new(),
         }
@@ -355,9 +362,19 @@ impl ExecutorConfigs {
     pub fn get_coding_agent(&self, _profile_id: &ExecutorProfileId) -> Option<&CodingAgentStub> {
         None
     }
+
+    pub fn save_overrides(&self) -> Result<(), std::io::Error> {
+        // No-op: execution disabled
+        Ok(())
+    }
+
+    pub fn reload() {
+        // No-op: execution disabled
+    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CodingAgentStub {
     pub name: String,
 }
@@ -377,6 +394,12 @@ impl CodingAgentStub {
 
     pub async fn get_mcp_config(&self) -> Result<Option<McpConfig>, std::io::Error> {
         Ok(None)
+    }
+
+    pub fn get_availability_info(&self) -> AvailabilityInfo {
+        AvailabilityInfo::NotAvailable {
+            reason: Some("Execution disabled".to_string()),
+        }
     }
 }
 
@@ -404,9 +427,11 @@ impl Default for McpConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct AvailabilityInfo {
-    pub available: bool,
-    pub reason: Option<String>,
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum AvailabilityInfo {
+    Available,
+    NotAvailable { reason: Option<String> },
+    NotFound,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

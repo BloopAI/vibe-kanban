@@ -97,7 +97,7 @@ async fn get_user_system_info(
             let mut caps: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
             let profs = ExecutorConfigs::get_cached();
             for key in profs.executors.keys() {
-                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(*key)) {
+                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(key.clone())) {
                     caps.insert(key.to_string(), agent.capabilities());
                 }
             }
@@ -213,113 +213,38 @@ pub struct UpdateMcpServersBody {
     servers: HashMap<String, Value>,
 }
 
+// STUB: Execution disabled - MCP config always empty
 async fn get_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
-    Query(query): Query<McpServerQuery>,
+    Query(_query): Query<McpServerQuery>,
 ) -> Result<ResponseJson<ApiResponse<GetMcpServerResponse>>, ApiError> {
-    let coding_agent = ExecutorConfigs::get_cached()
-        .get_coding_agent(&ExecutorProfileId::new(query.executor))
-        .ok_or(ConfigError::ValidationError(
-            "Executor not found".to_string(),
-        ))?;
-
-    if !coding_agent.supports_mcp() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "MCP not supported by this executor",
-        )));
-    }
-
-    // Resolve supplied config path or agent default
-    let config_path = match coding_agent.default_mcp_config_path() {
-        Some(path) => path,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Could not determine config file path",
-            )));
-        }
-    };
-
-    let mut mcpc = coding_agent.get_mcp_config();
-    let raw_config = read_agent_config(&config_path, &mcpc).await?;
-    let servers = get_mcp_servers_from_config_path(&raw_config, &mcpc.servers_path);
-    mcpc.set_servers(servers);
+    // MCP not supported when execution is disabled
     Ok(ResponseJson(ApiResponse::success(GetMcpServerResponse {
-        mcp_config: mcpc,
-        config_path: config_path.to_string_lossy().to_string(),
+        mcp_config: McpConfig::new(),
+        config_path: String::new(),
     })))
 }
 
+// STUB: Execution disabled - MCP config updates disabled
 async fn update_mcp_servers(
     State(_deployment): State<DeploymentImpl>,
-    Query(query): Query<McpServerQuery>,
-    Json(payload): Json<UpdateMcpServersBody>,
+    Query(_query): Query<McpServerQuery>,
+    Json(_payload): Json<UpdateMcpServersBody>,
 ) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
-    let profiles = ExecutorConfigs::get_cached();
-    let agent = profiles
-        .get_coding_agent(&ExecutorProfileId::new(query.executor))
-        .ok_or(ConfigError::ValidationError(
-            "Executor not found".to_string(),
-        ))?;
-
-    if !agent.supports_mcp() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "This executor does not support MCP servers",
-        )));
-    }
-
-    // Resolve supplied config path or agent default
-    let config_path = match agent.default_mcp_config_path() {
-        Some(path) => path.to_path_buf(),
-        None => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "Could not determine config file path",
-            )));
-        }
-    };
-
-    let mcpc = agent.get_mcp_config();
-    match update_mcp_servers_in_config(&config_path, &mcpc, payload.servers).await {
-        Ok(message) => Ok(ResponseJson(ApiResponse::success(message))),
-        Err(e) => Ok(ResponseJson(ApiResponse::error(&format!(
-            "Failed to update MCP servers: {}",
-            e
-        )))),
-    }
+    // No-op: MCP not supported when execution is disabled
+    Ok(ResponseJson(ApiResponse::error(
+        "MCP servers not supported - execution disabled",
+    )))
 }
 
+// STUB: Execution disabled - MCP config updates not supported
 async fn update_mcp_servers_in_config(
-    config_path: &std::path::Path,
-    mcpc: &McpConfig,
-    new_servers: HashMap<String, Value>,
+    _config_path: &std::path::Path,
+    _mcpc: &McpConfig,
+    _new_servers: HashMap<String, Value>,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    // Ensure parent directory exists
-    if let Some(parent) = config_path.parent() {
-        fs::create_dir_all(parent).await?;
-    }
-    // Read existing config (JSON or TOML depending on agent)
-    let mut config = read_agent_config(config_path, mcpc).await?;
-
-    // Get the current server count for comparison
-    let old_servers = get_mcp_servers_from_config_path(&config, &mcpc.servers_path).len();
-
-    // Set the MCP servers using the correct attribute path
-    set_mcp_servers_in_config_path(&mut config, &mcpc.servers_path, &new_servers)?;
-
-    // Write the updated config back to file (JSON or TOML depending on agent)
-    write_agent_config(config_path, mcpc, &config).await?;
-
-    let new_count = new_servers.len();
-    let message = match (old_servers, new_count) {
-        (0, 0) => "No MCP servers configured".to_string(),
-        (0, n) => format!("Added {} MCP server(s)", n),
-        (old, new) if old == new => format!("Updated MCP server configuration ({} server(s))", new),
-        (old, new) => format!(
-            "Updated MCP server configuration (was {}, now {})",
-            old, new
-        ),
-    };
-
-    Ok(message)
+    // No-op: MCP not supported when execution is disabled
+    Ok("MCP not supported - execution disabled".to_string())
 }
 
 /// Helper function to get MCP servers from config using a path
@@ -474,7 +399,7 @@ async fn check_agent_availability(
     Query(query): Query<CheckAgentAvailabilityQuery>,
 ) -> ResponseJson<ApiResponse<AvailabilityInfo>> {
     let profiles = ExecutorConfigs::get_cached();
-    let profile_id = ExecutorProfileId::new(query.executor);
+    let profile_id = ExecutorProfileId::new(query.executor.to_string());
 
     let info = match profiles.get_coding_agent(&profile_id) {
         Some(agent) => agent.get_availability_info(),
