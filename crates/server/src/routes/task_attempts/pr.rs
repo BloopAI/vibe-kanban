@@ -290,12 +290,8 @@ pub async fn create_github_pr(
     let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
 
     // Use GitHubService to create the PR
-    // Pass repo_path for compatibility with older gh CLI versions that require being in a git repo
     let github_service = GitHubService::new()?;
-    match github_service
-        .create_pr(&repo_info, &pr_request, Some(repo_path.clone()))
-        .await
-    {
+    match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the workspace with PR information
             if let Err(e) = Merge::create_pr(

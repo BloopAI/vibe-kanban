@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
 use chrono::{DateTime, Utc};
@@ -187,17 +187,12 @@ impl GitHubService {
     }
 
     /// Create a pull request on GitHub
-    ///
-    /// The `repo_path` parameter is optional but recommended for compatibility with older
-    /// versions of the GitHub CLI that require running inside a git repository.
     pub async fn create_pr(
         &self,
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
-        repo_path: Option<PathBuf>,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        let repo_path_clone = repo_path.clone();
-        (|| async { self.create_pr_via_cli(repo_info, request, repo_path_clone.clone()).await })
+        (|| async { self.create_pr_via_cli(repo_info, request).await })
             .retry(
                 &ExponentialBuilder::default()
                     .with_min_delay(Duration::from_secs(1))
@@ -220,21 +215,18 @@ impl GitHubService {
         &self,
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
-        repo_path: Option<PathBuf>,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
         let cli = self.gh_cli.clone();
         let request_clone = request.clone();
         let repo_clone = repo_info.clone();
-        let cli_result = task::spawn_blocking(move || {
-            cli.create_pr(&request_clone, &repo_clone, repo_path.as_deref())
-        })
-        .await
-        .map_err(|err| {
-            GitHubServiceError::PullRequest(format!(
-                "Failed to execute GitHub CLI for PR creation: {err}"
-            ))
-        })?
-        .map_err(GitHubServiceError::from)?;
+        let cli_result = task::spawn_blocking(move || cli.create_pr(&request_clone, &repo_clone))
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for PR creation: {err}"
+                ))
+            })?
+            .map_err(GitHubServiceError::from)?;
 
         info!(
             "Created GitHub PR #{} for branch {} in {}/{}",
