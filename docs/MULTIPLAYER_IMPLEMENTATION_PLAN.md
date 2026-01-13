@@ -19,9 +19,11 @@ Transform Vibe Kanban from a single-user local application to a multi-user colla
 
 ---
 
-## Phase 1: User Authentication Flow
+## Phase 1: User Authentication Flow ✅ COMPLETED
 
 **Duration**: 4-5 days
+
+**Status**: Completed - PR #2 merged
 
 ### What
 Complete end-to-end GitHub SSO authentication - from clicking "Sign in" to being logged in with a session.
@@ -47,24 +49,24 @@ Authentication is the foundation. Nothing else can be scoped to users until we k
 ### Changes Required
 
 **Backend**
-- Users table migration (id, github_id, username, email, display_name, avatar_url, timestamps)
-- User model with find/upsert operations
-- GitHub OAuth service (auth URL generation, token exchange, profile fetch)
-- Session service (JWT creation, validation)
-- Auth routes (`/auth/github`, `/auth/github/callback`, `/auth/me`, `/auth/logout`)
-- Auth middleware extractor for protected routes
-- LocalDeployment updates to hold auth services
+- ~~Users table migration (id, github_id, username, email, display_name, avatar_url, timestamps)~~ ✅
+- ~~User model with find/upsert operations~~ ✅
+- ~~GitHub OAuth service (auth URL generation, token exchange, profile fetch)~~ ✅
+- ~~Session service (JWT creation, validation)~~ ✅
+- ~~Auth routes (`/api/local-auth/github`, `/api/local-auth/github/callback`, `/api/local-auth/me`, `/api/local-auth/logout`)~~ ✅
+- Auth middleware extractor for protected routes (deferred to Phase 2+)
+- ~~LocalDeployment updates to hold auth services~~ ✅
 
 **Frontend**
-- AuthContext for user state and token management
-- Login page with GitHub button
-- OAuth callback page to handle redirect
-- ProtectedRoute wrapper component
-- API client updates to include Authorization header
+- ~~AuthContext for user state and token management~~ ✅
+- ~~Login page with GitHub button~~ ✅
+- OAuth callback handled via HTML response with localStorage (no separate page needed) ✅
+- ProtectedRoute wrapper component (deferred to Phase 2+)
+- ~~API client updates to include Authorization header~~ ✅
 
 **Configuration**
-- Environment variables for GitHub OAuth credentials and session secret
-- `.env.example` documentation
+- ~~Environment variables for GitHub OAuth credentials and session secret~~ ✅
+- ~~`.env.example` documentation~~ ✅
 
 ---
 
@@ -292,7 +294,7 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 2. Create new OAuth App with:
    - Application name: `Vibe Kanban`
    - Homepage URL: `http://localhost:3000`
-   - Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
+   - Authorization callback URL: `http://localhost:3000/api/local-auth/github/callback`
 3. Note the Client ID and generate a Client Secret
 
 ### Environment Variables
@@ -307,15 +309,15 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 
 ## Timeline Summary
 
-| Phase | Duration | Dependencies |
-|-------|----------|--------------|
-| Phase 1: User Authentication Flow | 4-5 days | None |
-| Phase 2: Project Ownership | 2-3 days | Phase 1 |
-| Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 |
-| Phase 4: Workspace & Session Ownership | 2 days | Phase 1 |
-| Phase 5: Chat Message Attribution | 3-4 days | Phase 4 |
-| Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 |
-| **Total** | **~2-3 weeks** | |
+| Phase | Duration | Dependencies | Status |
+|-------|----------|--------------|--------|
+| Phase 1: User Authentication Flow | 4-5 days | None | ✅ Completed |
+| Phase 2: Project Ownership | 2-3 days | Phase 1 | Ready |
+| Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 | Ready |
+| Phase 4: Workspace & Session Ownership | 2 days | Phase 1 | Ready |
+| Phase 5: Chat Message Attribution | 3-4 days | Phase 4 | Blocked |
+| Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 | Ready |
+| **Total** | **~2-3 weeks** | | |
 
 Note: Phases 2, 3, 4, and 6 can run in parallel after Phase 1 completes. Phase 5 depends on Phase 4.
 
