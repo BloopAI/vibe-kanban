@@ -14,6 +14,11 @@ import type { ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/typ
 import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
+import {
+  FilterDisplayControls,
+  type FilterState,
+  type DisplayState,
+} from '@/components/ui-new/primitives/FilterDisplayControls';
 import { useAggregateTaskCountsProvider, useAggregateTaskCounts } from '@/hooks/useAggregateTaskCounts';
 
 const STATUS_ORDER: TaskStatus[] = [
@@ -104,6 +109,11 @@ interface SwimlaneKanbanProps {
   onNewGroupNameChange: (value: string) => void;
   onSubmitCreateGroup: () => void;
   onCancelCreateGroup: () => void;
+  // Filter and display props
+  filterState: FilterState;
+  onFilterChange: (filter: FilterState) => void;
+  displayState: DisplayState;
+  onDisplayChange: (display: DisplayState) => void;
 }
 
 export function SwimlaneKanban(props: SwimlaneKanbanProps) {
@@ -139,6 +149,10 @@ function SwimlaneKanbanContent({
   onNewGroupNameChange,
   onSubmitCreateGroup,
   onCancelCreateGroup,
+  filterState,
+  onFilterChange,
+  displayState,
+  onDisplayChange,
 }: SwimlaneKanbanProps) {
   // Filter projects by search query
   const filteredGroupedProjects = useMemo(() => {
@@ -199,6 +213,17 @@ function SwimlaneKanbanContent({
             )}
           />
         </div>
+
+        {/* Filter and Display controls */}
+        <FilterDisplayControls
+          filterState={filterState}
+          displayState={displayState}
+          onFilterChange={onFilterChange}
+          onDisplayChange={onDisplayChange}
+        />
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-panel/40" />
 
         {/* Actions */}
         <div className="flex items-center gap-1">
@@ -349,6 +374,7 @@ function SwimlaneKanbanContent({
                             onMoveToGroup={onMoveToGroup}
                             onOpenBoard={onOpenBoard}
                             onStatusChange={onStatusChange}
+                            filterState={filterState}
                           />
                         ))
                       )}
