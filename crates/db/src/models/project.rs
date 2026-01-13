@@ -24,6 +24,7 @@ pub struct Project {
     pub default_agent_working_dir: Option<String>,
     pub remote_project_id: Option<Uuid>,
     pub group_id: Option<Uuid>,
+    pub task_prefix: Option<String>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -74,6 +75,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       group_id as "group_id: Uuid",
+                      task_prefix,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -92,6 +94,7 @@ impl Project {
                    p.default_agent_working_dir,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.group_id as "group_id: Uuid",
+                   p.task_prefix,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -116,6 +119,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       group_id as "group_id: Uuid",
+                      task_prefix,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -134,6 +138,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       group_id as "group_id: Uuid",
+                      task_prefix,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -155,6 +160,7 @@ impl Project {
                       default_agent_working_dir,
                       remote_project_id as "remote_project_id: Uuid",
                       group_id as "group_id: Uuid",
+                      task_prefix,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -171,23 +177,40 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        // Generate task_prefix from first 3 letters of project name (uppercase)
+        let task_prefix = data
+            .name
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .take(3)
+            .collect::<String>()
+            .to_uppercase();
+        let task_prefix = if task_prefix.is_empty() {
+            "TSK".to_string()
+        } else {
+            task_prefix
+        };
+
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (
                     id,
-                    name
+                    name,
+                    task_prefix
                 ) VALUES (
-                    $1, $2
+                    $1, $2, $3
                 )
                 RETURNING id as "id!: Uuid",
                           name,
                           default_agent_working_dir,
                           remote_project_id as "remote_project_id: Uuid",
                           group_id as "group_id: Uuid",
+                          task_prefix,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
+            task_prefix,
         )
         .fetch_one(executor)
         .await
@@ -215,6 +238,7 @@ impl Project {
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          group_id as "group_id: Uuid",
+                         task_prefix,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -240,6 +264,7 @@ impl Project {
                          default_agent_working_dir,
                          remote_project_id as "remote_project_id: Uuid",
                          group_id as "group_id: Uuid",
+                         task_prefix,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,

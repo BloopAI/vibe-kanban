@@ -183,6 +183,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             status: value.status,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
+            priority: null,
+            due_date: null,
+            labels: null,
           },
         },
         { onSuccess: () => modal.remove() }

@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks\n               SET title = $3, description = $4, status = $5, parent_workspace_id = $6\n               WHERE id = $1 AND project_id = $2\n               RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                description,\n                status as \"status!: TaskStatus\",\n                parent_workspace_id as \"parent_workspace_id: Uuid\",\n                shared_task_id as \"shared_task_id: Uuid\",\n                task_number as \"task_number: i64\",\n                priority as \"priority!: TaskPriority\",\n                due_date as \"due_date: NaiveDate\",\n                labels as \"labels: String\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_workspace_id: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "shared_task_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_number: i64",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "priority!: TaskPriority",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "due_date: NaiveDate",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "labels: String",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "00c3e30e32d9700678c748f3c266ea9a6c27c4a0b1bb651f63a56950b99486ea"
+}
