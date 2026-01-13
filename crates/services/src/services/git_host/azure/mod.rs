@@ -98,12 +98,12 @@ impl GitHostProvider for AzureDevOpsProvider {
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
         // Cross-fork PRs are not supported for Azure DevOps
-        if let Some(head_url) = &request.head_repo_url {
-            if head_url != remote_url {
-                return Err(GitHostError::PullRequest(
-                    "Cross-fork pull requests are not supported for Azure DevOps".to_string(),
-                ));
-            }
+        if let Some(head_url) = &request.head_repo_url
+            && head_url != remote_url
+        {
+            return Err(GitHostError::PullRequest(
+                "Cross-fork pull requests are not supported for Azure DevOps".to_string(),
+            ));
         }
 
         // Check auth first

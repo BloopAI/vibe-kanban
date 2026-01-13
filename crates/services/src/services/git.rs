@@ -188,16 +188,16 @@ impl GitService {
     }
 
     pub fn default_remote_name(&self, repo: &Repository) -> String {
-        if let Ok(config) = repo.config() {
-            if let Ok(default) = config.get_string("remote.pushDefault") {
-                return default;
-            }
+        if let Ok(config) = repo.config()
+            && let Ok(default) = config.get_string("remote.pushDefault")
+        {
+            return default;
         }
 
-        if let Ok(remotes) = repo.remotes() {
-            if let Some(first) = remotes.iter().flatten().next() {
-                return first.to_string();
-            }
+        if let Ok(remotes) = repo.remotes()
+            && let Some(first) = remotes.iter().flatten().next()
+        {
+            return first.to_string();
         }
         "origin".to_string()
     }
