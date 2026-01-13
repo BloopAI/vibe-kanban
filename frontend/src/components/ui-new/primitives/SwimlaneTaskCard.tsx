@@ -43,17 +43,17 @@ export function SwimlaneTaskCard({
       {...listeners}
       {...attributes}
       className={cn(
-        'w-full text-left px-half py-half rounded border transition-colors cursor-grab active:cursor-grabbing',
-        'hover:bg-panel hover:border-brand/50',
-        isDragging && 'shadow-lg',
+        'w-full text-left px-half py-1 rounded border transition-all cursor-grab active:cursor-grabbing',
+        'hover:bg-panel/80 hover:border-panel',
+        isDragging && 'shadow-md scale-[1.02] bg-primary',
         isSelected
-          ? 'bg-panel border-brand ring-1 ring-brand'
+          ? 'bg-panel border-brand ring-1 ring-inset ring-brand'
           : 'bg-secondary border-transparent'
       )}
     >
       <div className="flex flex-col gap-0.5">
         <div className="flex items-center gap-half">
-          <span className="flex-1 text-xs text-normal truncate leading-tight font-medium">
+          <span className="flex-1 text-xs text-normal truncate leading-snug font-medium">
             {task.title}
           </span>
           <div className="flex items-center gap-1 shrink-0">
@@ -66,9 +66,9 @@ export function SwimlaneTaskCard({
           </div>
         </div>
         {task.description && (
-          <p className="text-xs text-low leading-tight line-clamp-2">
-            {task.description.length > 80
-              ? `${task.description.substring(0, 80)}...`
+          <p className="text-xs text-low leading-snug line-clamp-1">
+            {task.description.length > 60
+              ? `${task.description.substring(0, 60)}...`
               : task.description}
           </p>
         )}

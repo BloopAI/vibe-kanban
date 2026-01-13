@@ -168,7 +168,7 @@ export function SwimlaneKanban({
             return (
               <div key={groupKey} className="bg-secondary rounded overflow-hidden">
                 {/* Group header */}
-                <div className="flex items-center justify-between px-base py-half border-b border-panel">
+                <div className="flex items-center justify-between px-half py-1">
                   <button
                     type="button"
                     onClick={() => onToggleGroup(group?.id ?? null)}
@@ -177,21 +177,21 @@ export function SwimlaneKanban({
                     <CaretDownIcon
                       weight="fill"
                       className={cn(
-                        'size-icon-sm text-low transition-transform duration-200',
+                        'size-icon-xs text-low transition-transform duration-200',
                         !isGroupExpanded && '-rotate-90'
                       )}
                     />
-                    <span className="font-medium text-normal">
+                    <span className="text-xs font-medium text-normal">
                       {group?.name ?? 'Ungrouped'}
                     </span>
-                    <span className="text-sm text-low">
+                    <span className="text-xs text-low">
                       ({projects.length})
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onExpandOnly(group?.id ?? null)}
-                    className="px-half py-half text-xs text-low hover:text-normal hover:bg-panel rounded transition-colors"
+                    className="px-half py-0.5 text-xs text-low hover:text-normal hover:bg-panel rounded transition-colors"
                     title="Focus on this group"
                   >
                     Focus
@@ -209,22 +209,21 @@ export function SwimlaneKanban({
                       className="overflow-hidden"
                     >
                       {/* Table header */}
-                      <div className="flex border-b border-panel bg-panel/50">
-                        <div className="w-[150px] shrink-0 p-half border-r border-panel">
-                          <span className="text-xs text-low font-medium">Board</span>
-                        </div>
+                      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel sticky top-0 z-10 bg-secondary">
+                        <div className="p-half border-r border-panel" />
                         {STATUS_ORDER.map((status) => (
                           <div
                             key={status}
-                            className="flex-1 min-w-[120px] p-half border-r border-panel last:border-r-0"
+                            className="flex items-center justify-between p-half border-r border-panel last:border-r-0"
                           >
-                            <span className="flex items-center gap-half text-xs text-low font-medium">
+                            <span className="flex items-center gap-half text-xs text-normal font-medium">
                               <span
-                                className="size-dot rounded-full shrink-0"
+                                className="h-2 w-2 rounded-full shrink-0"
                                 style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
                               />
                               {statusLabels[status]}
                             </span>
+                            <PlusIcon className="size-icon-xs text-low hover:text-normal cursor-pointer" />
                           </div>
                         ))}
                       </div>

@@ -40,12 +40,12 @@ function StatusCell({ status, children, onAddTask }: StatusCellProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'group/cell flex-1 min-w-[120px] p-half border-r border-panel last:border-r-0 min-h-[60px]',
+        'group/cell p-half border-r border-panel last:border-r-0 min-h-[60px]',
         'transition-colors relative',
-        isOver && 'bg-brand/10'
+        isOver && 'bg-brand/10 ring-1 ring-inset ring-brand/30'
       )}
     >
-      <div className="space-y-half max-h-[200px] overflow-y-auto">
+      <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
         {children}
       </div>
       <button
@@ -120,14 +120,14 @@ export function ProjectSwimlane({
 
   if (error) {
     return (
-      <div className="flex border-b border-panel">
-        <div className="w-[150px] shrink-0 p-half border-r border-panel bg-secondary">
+      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel">
+        <div className="p-half border-r border-panel">
           <div className="flex items-center gap-half">
-            <KanbanIcon weight="fill" className="size-icon-sm text-brand shrink-0" />
-            <span className="text-sm text-normal truncate">{project.name}</span>
+            <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
+            <span className="text-xs text-normal truncate font-medium">{project.name}</span>
           </div>
         </div>
-        <div className="flex-1 p-half text-xs text-error">
+        <div className="col-span-5 p-base text-sm text-error">
           Failed to load tasks
         </div>
       </div>
@@ -136,12 +136,12 @@ export function ProjectSwimlane({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex border-b border-panel hover:bg-secondary/50 transition-colors">
+      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel hover:bg-panel/20 transition-colors">
         {/* Project name cell */}
-        <div className="w-[150px] shrink-0 p-half border-r border-panel bg-secondary">
+        <div className="p-half border-r border-panel">
           <div className="flex items-center gap-half">
-            <KanbanIcon weight="fill" className="size-icon-sm text-brand shrink-0" />
-            <span className="text-sm text-normal truncate flex-1">{project.name}</span>
+            <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
+            <span className="text-xs text-normal truncate flex-1 font-medium">{project.name}</span>
 
             {/* Add task button */}
             <button
