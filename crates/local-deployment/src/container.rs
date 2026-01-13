@@ -929,8 +929,8 @@ impl LocalContainerService {
         &self,
         ctx: &ExecutionContext,
     ) -> Result<ExecutionProcess, ContainerError> {
-        const COMMIT_REMINDER_PROMPT: &str = "Please commit your changes now. Review what you've done and create an appropriate \
-             git commit with a descriptive message summarizing the changes you made.";
+        const COMMIT_REMINDER_PROMPT: &str = "You left uncommitted changes. You are expected to commit your work before finishing - \
+             please do so now. Review what you've done and create an appropriate git commit with a descriptive message summarizing the changes.";
 
         // Get executor profile (same logic as start_queued_follow_up)
         let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
