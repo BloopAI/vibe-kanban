@@ -492,6 +492,17 @@
     "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
     "newSession": "New Session"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolve Conflicts",
+      "description": "Conflicts were detected. Choose how you want the agent to resolve them.",
+      "sessionLabel": "Session",
+      "existingSession": "Continue in current session",
+      "newSession": "Start a new session",
+      "resolve": "Resolve Conflicts",
+      "resolving": "Starting..."
+    }
+  },
   "stopShareDialog": {
     "title": "Stop Sharing Task",
     "description": "Stop sharing \"{{title}}\" with your organization?",
