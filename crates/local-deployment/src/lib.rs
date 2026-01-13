@@ -8,6 +8,7 @@ use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
     auth::AuthContext,
+    commit_reminder::CommitReminderService,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
@@ -51,6 +52,7 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
+    commit_reminder_service: CommitReminderService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
@@ -127,6 +129,7 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new(msg_stores.clone());
         let queued_message_service = QueuedMessageService::new();
+        let commit_reminder_service = CommitReminderService::new();
 
         let share_config = ShareConfig::from_env();
 
@@ -181,6 +184,7 @@ impl Deployment for LocalDeployment {
             analytics_ctx,
             approvals.clone(),
             queued_message_service.clone(),
+            commit_reminder_service.clone(),
             share_publisher.clone(),
         )
         .await;
@@ -204,6 +208,7 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             queued_message_service,
+            commit_reminder_service,
             share_publisher,
             share_config: share_config.clone(),
             remote_client,
@@ -268,6 +273,10 @@ impl Deployment for LocalDeployment {
 
     fn queued_message_service(&self) -> &QueuedMessageService {
         &self.queued_message_service
+    }
+
+    fn commit_reminder_service(&self) -> &CommitReminderService {
+        &self.commit_reminder_service
     }
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {

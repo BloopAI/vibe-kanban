@@ -19,6 +19,7 @@ use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
     auth::AuthContext,
+    commit_reminder::CommitReminderService,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
@@ -108,6 +109,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn queued_message_service(&self) -> &QueuedMessageService;
+
+    fn commit_reminder_service(&self) -> &CommitReminderService;
 
     fn auth_context(&self) -> &AuthContext;
 
