@@ -558,6 +558,18 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
+  },
+
   runAgentSetup: async (
     attemptId: string,
     data: RunAgentSetupRequest

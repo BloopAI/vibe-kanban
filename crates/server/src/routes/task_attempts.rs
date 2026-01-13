@@ -26,6 +26,7 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
+    project::SearchResult,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
@@ -45,6 +46,7 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
+    file_search_cache::SearchQuery,
     git::{ConflictOp, GitCliError, GitServiceError},
     workspace_manager::WorkspaceManager,
 };
@@ -1560,6 +1562,43 @@ pub async fn get_task_attempt_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+pub async fn search_workspace_files(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Query(search_query): Query<SearchQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
+    if search_query.q.trim().is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Query parameter 'q' is required and cannot be empty",
+        )));
+    }
+
+    let repos =
+        match WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to get workspace repos: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+
+    match deployment
+        .project()
+        .search_files(
+            deployment.file_search_cache().as_ref(),
+            &repos,
+            &search_query,
+        )
+        .await
+    {
+        Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
+        Err(e) => {
+            tracing::error!("Failed to search files: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn get_first_user_message(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1716,6 +1755,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
+        .route("/search", get(search_workspace_files))
         .route("/first-message", get(get_first_user_message))
         .route("/mark-seen", put(mark_seen))
         .layer(from_fn_with_state(

@@ -62,7 +62,13 @@ function getMenuPosition(anchorEl: HTMLElement) {
   return { top, bottom, left };
 }
 
-export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
+export function FileTagTypeaheadPlugin({
+  workspaceId,
+  projectId,
+}: {
+  workspaceId?: string;
+  projectId?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -77,7 +83,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       }
 
       // Here query is a string, including possible empty string ''
-      searchTagsAndFiles(query, projectId)
+      searchTagsAndFiles(query, { workspaceId, projectId })
         .then((results) => {
           setOptions(results.map((r) => new FileTagOption(r)));
         })
@@ -85,7 +91,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
           console.error('Failed to search tags/files', err);
         });
     },
-    [projectId]
+    [workspaceId, projectId]
   );
 
   return (
