@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, task_number)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                description,\n                status as \"status!: TaskStatus\",\n                parent_workspace_id as \"parent_workspace_id: Uuid\",\n                shared_task_id as \"shared_task_id: Uuid\",\n                task_number as \"task_number: i64\",\n                priority as \"priority!: TaskPriority\",\n                due_date as \"due_date: NaiveDate\",\n                labels as \"labels: String\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                description,\n                status as \"status!: TaskStatus\",\n                parent_workspace_id as \"parent_workspace_id: Uuid\",\n                shared_task_id as \"shared_task_id: Uuid\",\n                task_number as \"task_number: i64\",\n                priority as \"priority!: TaskPriority\",\n                due_date as \"due_date: NaiveDate\",\n                labels as \"labels: String\",\n                source,\n                external_ref,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_workspace_id = $1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -59,18 +59,28 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "source",
         "ordinal": 11,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "external_ref",
         "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 14,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 8
+      "Right": 1
     },
     "nullable": [
       true,
@@ -84,9 +94,11 @@
       false,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "2662c79202406b8b7e2bc4ec0c68ed82e89a0d3d7a4f3c1072e8fd0a4a215da3"
+  "hash": "86c1602fa6259be1afd7efcddc593fde8ca08bad0ddf60e3fb8a35c353525d31"
 }

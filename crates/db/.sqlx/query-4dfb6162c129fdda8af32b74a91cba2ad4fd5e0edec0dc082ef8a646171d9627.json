@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                description,\n                status as \"status!: TaskStatus\",\n                parent_workspace_id as \"parent_workspace_id: Uuid\",\n                shared_task_id as \"shared_task_id: Uuid\",\n                task_number as \"task_number: i64\",\n                priority as \"priority!: TaskPriority\",\n                due_date as \"due_date: NaiveDate\",\n                labels as \"labels: String\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE id = $1",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                title,\n                description,\n                status as \"status!: TaskStatus\",\n                parent_workspace_id as \"parent_workspace_id: Uuid\",\n                shared_task_id as \"shared_task_id: Uuid\",\n                task_number as \"task_number: i64\",\n                priority as \"priority!: TaskPriority\",\n                due_date as \"due_date: NaiveDate\",\n                labels as \"labels: String\",\n                source,\n                external_ref,\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -59,13 +59,23 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "source",
         "ordinal": 11,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "external_ref",
         "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 14,
         "type_info": "Text"
       }
     ],
@@ -84,9 +94,11 @@
       false,
       true,
       true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "6dd5bbabda42b648c2620d2177709a10b1693d9a2430cdd665fef129a415a94a"
+  "hash": "4dfb6162c129fdda8af32b74a91cba2ad4fd5e0edec0dc082ef8a646171d9627"
 }

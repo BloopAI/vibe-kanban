@@ -66,6 +66,8 @@ pub struct Task {
     pub due_date: Option<NaiveDate>,
     #[serde(default)]
     pub labels: Vec<TaskLabel>,
+    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -109,6 +111,8 @@ pub struct CreateTask {
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
+    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
 }
 
 impl CreateTask {
@@ -125,6 +129,8 @@ impl CreateTask {
             parent_workspace_id: None,
             image_ids: None,
             shared_task_id: None,
+            source: None,
+            external_ref: None,
         }
     }
 
@@ -143,6 +149,8 @@ impl CreateTask {
             parent_workspace_id: None,
             image_ids: None,
             shared_task_id: Some(shared_task_id),
+            source: None,
+            external_ref: None,
         }
     }
 }
@@ -190,6 +198,8 @@ impl Task {
   t.priority                      AS "priority!: TaskPriority",
   t.due_date                      AS "due_date: NaiveDate",
   t.labels                        AS "labels: String",
+  t.source,
+  t.external_ref,
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -247,6 +257,8 @@ ORDER BY t.created_at DESC"#,
                     priority: rec.priority,
                     due_date: rec.due_date,
                     labels: parse_labels(rec.labels),
+                    source: rec.source,
+                    external_ref: rec.external_ref,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -273,6 +285,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
@@ -294,6 +308,8 @@ ORDER BY t.created_at DESC"#,
             priority: rec.priority,
             due_date: rec.due_date,
             labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
             created_at: rec.created_at,
             updated_at: rec.updated_at,
         }))
@@ -313,6 +329,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
@@ -334,6 +352,8 @@ ORDER BY t.created_at DESC"#,
             priority: rec.priority,
             due_date: rec.due_date,
             labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
             created_at: rec.created_at,
             updated_at: rec.updated_at,
         }))
@@ -359,6 +379,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
@@ -381,6 +403,8 @@ ORDER BY t.created_at DESC"#,
             priority: rec.priority,
             due_date: rec.due_date,
             labels: parse_labels(rec.labels),
+            source: rec.source,
+            external_ref: rec.external_ref,
             created_at: rec.created_at,
             updated_at: rec.updated_at,
         }))
@@ -400,6 +424,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
@@ -422,6 +448,8 @@ ORDER BY t.created_at DESC"#,
                 priority: rec.priority,
                 due_date: rec.due_date,
                 labels: parse_labels(rec.labels),
+                source: rec.source,
+                external_ref: rec.external_ref,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,
             })
@@ -443,8 +471,8 @@ ORDER BY t.created_at DESC"#,
         .await?;
 
         let record = sqlx::query!(
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, task_number)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id, task_number, source, external_ref)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                RETURNING
                 id as "id!: Uuid",
                 project_id as "project_id!: Uuid",
@@ -457,6 +485,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
@@ -466,7 +496,9 @@ ORDER BY t.created_at DESC"#,
             status,
             data.parent_workspace_id,
             data.shared_task_id,
-            next_number
+            next_number,
+            data.source,
+            data.external_ref
         )
         .fetch_one(pool)
         .await?;
@@ -483,6 +515,8 @@ ORDER BY t.created_at DESC"#,
             priority: record.priority,
             due_date: record.due_date,
             labels: parse_labels(record.labels),
+            source: record.source,
+            external_ref: record.external_ref,
             created_at: record.created_at,
             updated_at: record.updated_at,
         })
@@ -513,6 +547,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -537,6 +573,8 @@ ORDER BY t.created_at DESC"#,
             priority: record.priority,
             due_date: record.due_date,
             labels: parse_labels(record.labels),
+            source: record.source,
+            external_ref: record.external_ref,
             created_at: record.created_at,
             updated_at: record.updated_at,
         })
@@ -684,6 +722,8 @@ ORDER BY t.created_at DESC"#,
                 priority as "priority!: TaskPriority",
                 due_date as "due_date: NaiveDate",
                 labels as "labels: String",
+                source,
+                external_ref,
                 created_at as "created_at!: DateTime<Utc>",
                 updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
@@ -708,6 +748,8 @@ ORDER BY t.created_at DESC"#,
                 priority: rec.priority,
                 due_date: rec.due_date,
                 labels: parse_labels(rec.labels),
+                source: rec.source,
+                external_ref: rec.external_ref,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,
             })
