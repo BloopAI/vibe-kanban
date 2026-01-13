@@ -4,17 +4,13 @@ import {
   ApprovalStatus,
   ApiResponse,
   Config,
-  CreateFollowUpAttempt,
   EditorType,
   CreateGitHubPrRequest,
   CreateTask,
-  CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
   DirectoryListResponse,
   DirectoryEntry,
-  ExecutionProcess,
-  ExecutionProcessRepoState,
   GitBranch,
   Project,
   ProjectRepo,
@@ -29,7 +25,6 @@ import {
   TaskRelationships,
   Tag,
   TagSearchParams,
-  TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -48,10 +43,6 @@ import {
   CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
-  RunAgentSetupRequest,
-  RunAgentSetupResponse,
-  GhCliSetupError,
-  RunScriptError,
   StatusResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
@@ -81,7 +72,6 @@ import {
   CurrentUserResponse,
   SharedTaskResponse,
   SharedTaskDetails,
-  QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
   PushTaskAttemptRequest,
@@ -400,15 +390,8 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
-  createAndStart: async (
-    data: CreateAndStartTaskRequest
-  ): Promise<TaskWithAttemptStatus> => {
-    const response = await makeRequest(`/api/tasks/create-and-start`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<TaskWithAttemptStatus>(response);
-  },
+  // REMOVED: Execution disabled - createAndStart endpoint removed
+  // createAndStart: async (data: CreateAndStartTaskRequest): Promise<TaskWithAttemptStatus> => { ... }
 
   update: async (taskId: string, data: UpdateTask): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
@@ -492,16 +475,8 @@ export const sessionsApi = {
     return handleApiResponse<Session>(response);
   },
 
-  followUp: async (
-    sessionId: string,
-    data: CreateFollowUpAttempt
-  ): Promise<ExecutionProcess> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/follow-up`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<ExecutionProcess>(response);
-  },
+  // REMOVED: Execution disabled - followUp endpoint removed
+  // followUp: async (sessionId: string, data: CreateFollowUpAttempt): Promise<ExecutionProcess> => { ... }
 };
 
 // Task Attempts APIs
@@ -547,19 +522,8 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  runAgentSetup: async (
-    attemptId: string,
-    data: RunAgentSetupRequest
-  ): Promise<RunAgentSetupResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-agent-setup`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<RunAgentSetupResponse>(response);
-  },
+  // REMOVED: Execution disabled - runAgentSetup endpoint removed
+  // runAgentSetup: async (attemptId: string, data: RunAgentSetupRequest): Promise<RunAgentSetupResponse> => { ... }
 
   openEditor: async (
     attemptId: string,
@@ -696,53 +660,11 @@ export const attemptsApi = {
     return handleApiResponseAsResult<string, CreatePrError>(response);
   },
 
-  startDevServer: async (attemptId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/start-dev-server`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/gh-cli-setup`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
-  },
-
-  runSetupScript: async (
-    attemptId: string
-  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-setup-script`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
-      response
-    );
-  },
-
-  runCleanupScript: async (
-    attemptId: string
-  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-cleanup-script`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
-      response
-    );
-  },
+  // REMOVED: Execution disabled - dev server and script execution endpoints removed
+  // startDevServer: async (attemptId: string): Promise<void> => { ... }
+  // setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => { ... }
+  // runSetupScript: async (attemptId: string): Promise<Result<ExecutionProcess, RunScriptError>> => { ... }
+  // runCleanupScript: async (attemptId: string): Promise<Result<ExecutionProcess, RunScriptError>> => { ... }
 
   getPrComments: async (
     attemptId: string,
@@ -755,32 +677,12 @@ export const attemptsApi = {
   },
 };
 
-// Execution Process APIs
-export const executionProcessesApi = {
-  getDetails: async (processId: string): Promise<ExecutionProcess> => {
-    const response = await makeRequest(`/api/execution-processes/${processId}`);
-    return handleApiResponse<ExecutionProcess>(response);
-  },
-
-  getRepoStates: async (
-    processId: string
-  ): Promise<ExecutionProcessRepoState[]> => {
-    const response = await makeRequest(
-      `/api/execution-processes/${processId}/repo-states`
-    );
-    return handleApiResponse<ExecutionProcessRepoState[]>(response);
-  },
-
-  stopExecutionProcess: async (processId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/execution-processes/${processId}/stop`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-};
+// REMOVED: Execution disabled - entire executionProcessesApi removed
+// export const executionProcessesApi = {
+//   getDetails: async (processId: string): Promise<ExecutionProcess> => { ... }
+//   getRepoStates: async (processId: string): Promise<ExecutionProcessRepoState[]> => { ... }
+//   stopExecutionProcess: async (processId: string): Promise<void> => { ... }
+// };
 
 // File System APIs
 export const fileSystemApi = {
@@ -852,13 +754,11 @@ export const configApi = {
     );
     return handleApiResponse<CheckEditorAvailabilityResponse>(response);
   },
+  // STUB: Execution disabled - agents always return NotAvailable
   checkAgentAvailability: async (
-    agent: BaseCodingAgent
+    _agent: BaseCodingAgent
   ): Promise<AvailabilityInfo> => {
-    const response = await makeRequest(
-      `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
-    );
-    return handleApiResponse<AvailabilityInfo>(response);
+    return 'NotAvailable';
   },
 };
 
@@ -896,37 +796,24 @@ export const tagsApi = {
   },
 };
 
-// MCP Servers APIs
+// STUB: Execution disabled - MCP servers not supported
 export const mcpServersApi = {
-  load: async (query: McpServerQuery): Promise<GetMcpServerResponse> => {
-    const params = new URLSearchParams(query);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`);
-    return handleApiResponse<GetMcpServerResponse>(response);
+  load: async (_query: McpServerQuery): Promise<GetMcpServerResponse> => {
+    // Return empty MCP config - execution disabled
+    return {
+      mcp_config: { servers: {} },
+      config_path: '',
+    };
   },
   save: async (
-    query: McpServerQuery,
-    data: UpdateMcpServersBody
+    _query: McpServerQuery,
+    _data: UpdateMcpServersBody
   ): Promise<void> => {
-    const params = new URLSearchParams(query);
-    // params.set('profile', profile);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[API Error] Failed to save MCP servers', {
-        message: errorData.message,
-        status: response.status,
-        response,
-        timestamp: new Date().toISOString(),
-      });
-      throw new ApiError(
-        errorData.message || 'Failed to save MCP servers',
-        response.status,
-        response
-      );
-    }
+    // MCP configuration not supported - execution disabled
+    throw new ApiError(
+      'MCP servers not supported - execution disabled',
+      400
+    );
   },
 };
 
@@ -1256,37 +1143,9 @@ export const scratchApi = {
     `/api/scratch/${scratchType}/${id}/stream/ws`,
 };
 
-// Queue API for session follow-up messages
-export const queueApi = {
-  /**
-   * Queue a follow-up message to be executed when current execution finishes
-   */
-  queue: async (
-    sessionId: string,
-    data: { message: string; variant: string | null }
-  ): Promise<QueueStatus> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<QueueStatus>(response);
-  },
-
-  /**
-   * Cancel a queued follow-up message
-   */
-  cancel: async (sessionId: string): Promise<QueueStatus> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<QueueStatus>(response);
-  },
-
-  /**
-   * Get the current queue status for a session
-   */
-  getStatus: async (sessionId: string): Promise<QueueStatus> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
-    return handleApiResponse<QueueStatus>(response);
-  },
-};
+// REMOVED: Execution disabled - queue API for follow-up messages removed
+// export const queueApi = {
+//   queue: async (sessionId: string, data: { message: string; variant: string | null }): Promise<QueueStatus> => { ... }
+//   cancel: async (sessionId: string): Promise<QueueStatus> => { ... }
+//   getStatus: async (sessionId: string): Promise<QueueStatus> => { ... }
+// };
