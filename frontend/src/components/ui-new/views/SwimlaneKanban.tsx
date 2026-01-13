@@ -145,8 +145,33 @@ export function SwimlaneKanban({
         </div>
       </div>
 
+      {/* Single sticky status header */}
+      <div className="sticky top-[48px] z-10 grid grid-cols-[180px_repeat(5,minmax(120px,1fr))] bg-primary border-b border-panel">
+        <div className="py-half px-half" />
+        {STATUS_ORDER.map((status) => (
+          <div
+            key={status}
+            className="flex items-center justify-between py-half px-base border-l border-panel"
+          >
+            <span className="flex items-center gap-half text-xs text-normal font-medium tracking-wide">
+              <span
+                className="h-[6px] w-[6px] rounded-full shrink-0"
+                style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
+              />
+              {statusLabels[status]}
+            </span>
+            <button
+              type="button"
+              className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
+            >
+              <PlusIcon className="size-icon-xs" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* Groups and swimlanes */}
-      <div className="p-base space-y-base">
+      <div className="space-y-half">
         {/* Inline group creator */}
         <InlineGroupCreator
           isCreating={isCreatingGroup}
@@ -208,31 +233,6 @@ export function SwimlaneKanban({
                       transition={{ duration: 0.2, ease: 'easeInOut' }}
                       className="overflow-hidden"
                     >
-                      {/* Table header */}
-                      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] sticky top-0 z-10 bg-primary">
-                        <div className="py-half px-half" />
-                        {STATUS_ORDER.map((status) => (
-                          <div
-                            key={status}
-                            className="flex items-center justify-between py-half px-base"
-                          >
-                            <span className="flex items-center gap-half text-xs text-normal font-medium tracking-wide">
-                              <span
-                                className="h-[6px] w-[6px] rounded-full shrink-0"
-                                style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
-                              />
-                              {statusLabels[status]}
-                            </span>
-                            <button
-                              type="button"
-                              className="p-0.5 rounded text-low hover:text-normal hover:bg-panel transition-colors"
-                            >
-                              <PlusIcon className="size-icon-xs" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
                       {/* Project rows */}
                       {projects.length === 0 ? (
                         <div className="p-base text-sm text-low text-center">

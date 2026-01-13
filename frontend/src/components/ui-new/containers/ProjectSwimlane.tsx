@@ -39,7 +39,7 @@ function StatusCell({ status, children }: StatusCellProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'group/cell px-half py-half border-r border-panel/50 last:border-r-0 min-h-[70px]',
+        'group/cell px-base py-half border-l border-panel min-h-[70px]',
         'transition-all relative',
         isOver && 'bg-brand/5'
       )}
@@ -107,14 +107,14 @@ export function ProjectSwimlane({
 
   if (error) {
     return (
-      <div className="grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel">
-        <div className="p-half border-r border-panel">
+      <div className="grid grid-cols-[180px_repeat(5,minmax(120px,1fr))] border-b border-panel">
+        <div className="p-half">
           <div className="flex items-center gap-half">
             <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
-            <span className="text-xs text-normal truncate font-medium">{project.name}</span>
+            <span className="text-xs text-normal font-medium">{project.name}</span>
           </div>
         </div>
-        <div className="col-span-5 p-base text-sm text-error">
+        <div className="col-span-5 p-base text-sm text-error border-l border-panel">
           Failed to load tasks
         </div>
       </div>
@@ -123,12 +123,12 @@ export function ProjectSwimlane({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="group/row grid grid-cols-[140px_repeat(5,minmax(120px,1fr))] border-b border-panel/30 hover:bg-panel/10 transition-colors">
+      <div className="group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))] border-b border-panel/30 hover:bg-panel/10 transition-colors">
         {/* Project name cell */}
-        <div className="px-half py-half border-r border-panel/50 flex items-center">
+        <div className="px-half py-half flex items-center">
           <div className="flex items-center gap-half flex-1 min-w-0">
             <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
-            <span className="text-xs text-normal truncate flex-1 font-medium">{project.name}</span>
+            <span className="text-xs text-normal flex-1 font-medium">{project.name}</span>
 
             {/* Actions - visible on row hover */}
             <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
