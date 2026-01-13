@@ -1,4 +1,5 @@
-import type { Icon } from '@phosphor-icons/react';
+import { forwardRef, createElement } from 'react';
+import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
 import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
@@ -49,6 +50,17 @@ import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+
+// Mirrored sidebar icon for right sidebar toggle
+const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
+  (props, ref) =>
+    createElement(SidebarSimpleIcon, {
+      ref,
+      ...props,
+      style: { transform: 'scaleX(-1)', ...props.style },
+    })
+);
+RightSidebarIcon.displayName = 'RightSidebarIcon';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -440,7 +452,7 @@ export const Actions = {
       useLayoutStore.getState().isGitPanelVisible
         ? 'Hide Git Panel'
         : 'Show Git Panel',
-    icon: SidebarSimpleIcon,
+    icon: RightSidebarIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isGitPanelVisible,
     execute: () => {
