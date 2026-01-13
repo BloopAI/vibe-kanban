@@ -230,6 +230,7 @@ function TaskDetailsPanelContent({
             task={selectedTask}
             sharedTask={getSharedTask(selectedTask)}
             onClose={onClose}
+            projectId={projectId}
           />
         ) : (
           <AttemptHeaderActions
@@ -282,7 +283,7 @@ function TaskDetailsPanelContent({
   const attemptContent = (
     <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       {isTaskView ? (
-        <TaskPanel task={selectedTask} />
+        <TaskPanel task={selectedTask} projectId={projectId} />
       ) : (
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
           {({ logs, followUp }) => (

@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useMemo, useEffect } from 'react';
 import type { Project } from 'shared/types';
 import { useProjects } from '@/hooks/useProjects';
+import { ProjectContext } from './ProjectContext';
 
 interface ProjectContextValue {
   projectId: string | undefined;
@@ -56,7 +57,10 @@ export function ProjectProviderOverride({
 
   return (
     <ProjectOverrideContext.Provider value={value}>
-      {children}
+      {/* Also provide the regular ProjectContext for components using useProject() */}
+      <ProjectContext.Provider value={value}>
+        {children}
+      </ProjectContext.Provider>
     </ProjectOverrideContext.Provider>
   );
 }

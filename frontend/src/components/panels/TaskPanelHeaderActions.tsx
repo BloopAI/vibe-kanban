@@ -10,16 +10,18 @@ interface TaskPanelHeaderActionsProps {
   task: Task;
   sharedTask?: SharedTaskRecord;
   onClose: () => void;
+  projectId?: string;
 }
 
 export const TaskPanelHeaderActions = ({
   task,
   sharedTask,
   onClose,
+  projectId,
 }: TaskPanelHeaderActionsProps) => {
   return (
     <>
-      <ActionsDropdown task={task} sharedTask={sharedTask} />
+      <ActionsDropdown task={task} sharedTask={sharedTask} projectId={projectId} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>

@@ -30,13 +30,15 @@ import { useKeySubmitTask, Scope } from '@/keyboard';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
+  projectId?: string;
 }
 
 const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
-  ({ taskId }) => {
+  ({ taskId, projectId: propProjectId }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
-    const { projectId } = useProject();
+    const { projectId: contextProjectId } = useProject();
+    const projectId = propProjectId ?? contextProjectId;
     const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
     const { createAttempt, isCreating, error } = useAttemptCreation({
