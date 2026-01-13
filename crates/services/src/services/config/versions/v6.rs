@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use anyhow::Error;
-// Use stub type for compilation
-use crate::executor_stubs::ExecutorProfileId;
+// Use stub types for compilation
+use crate::executor_stubs::{BaseCodingAgent, ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils;
@@ -79,7 +79,7 @@ impl Config {
         let old_coding_agent = old_config.profile.profile.to_uppercase();
         let base_coding_agent =
             BaseCodingAgent::from_str(&old_coding_agent).unwrap_or(BaseCodingAgent::ClaudeCode);
-        let executor_profile = ExecutorProfileId::new(base_coding_agent);
+        let executor_profile = ExecutorProfileId::from(base_coding_agent);
 
         Ok(Self {
             config_version: "v6".to_string(),
@@ -127,7 +127,7 @@ impl Default for Config {
         Self {
             config_version: "v6".to_string(),
             theme: ThemeMode::System,
-            executor_profile: ExecutorProfileId::new(BaseCodingAgent::ClaudeCode),
+            executor_profile: ExecutorProfileId::from(BaseCodingAgent::ClaudeCode),
             disclaimer_acknowledged: false,
             onboarding_acknowledged: false,
             github_login_acknowledged: false,

@@ -1,6 +1,6 @@
 use anyhow::Error;
-// Use stub type for compilation
-use crate::executor_stubs::ExecutorProfileId;
+// Use stub types for compilation
+use crate::executor_stubs::{BaseCodingAgent, ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
