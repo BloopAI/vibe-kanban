@@ -187,7 +187,7 @@ impl GitService {
         }
     }
 
-    pub fn default_remote_name(&self, repo: &Repository) -> String {
+    fn default_remote_name(&self, repo: &Repository) -> String {
         if let Ok(config) = repo.config()
             && let Ok(default) = config.get_string("remote.pushDefault")
         {
@@ -1620,9 +1620,7 @@ impl GitService {
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<String, GitServiceError> {
-        let remote_name = self
-            .get_remote_name_from_branch_name(repo_path, branch_name)
-            .unwrap_or(self.default_remote_name(&Repository::open(repo_path)?));
+        let remote_name = self.resolve_remote_name_for_branch(repo_path, branch_name)?;
         self.get_remote_url(repo_path, &remote_name)
     }
 
@@ -1636,6 +1634,15 @@ impl GitService {
         git_cli
             .check_remote_branch_exists(repo_path, remote_url, branch_name)
             .map_err(GitServiceError::GitCLI)
+    }
+
+    fn resolve_remote_name_for_branch(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<String, GitServiceError> {
+        self.get_remote_name_from_branch_name(repo_path, branch_name)
+            .or_else(|_| self.default_remote_name_for_path(repo_path))
     }
 
     fn get_remote_from_branch_ref<'a>(
