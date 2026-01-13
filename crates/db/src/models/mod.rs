@@ -1,3 +1,4 @@
+pub mod auth_session;
 pub mod coding_agent_turn;
 pub mod execution_process;
 pub mod execution_process_logs;
@@ -11,5 +12,6 @@ pub mod scratch;
 pub mod session;
 pub mod tag;
 pub mod task;
+pub mod user;
 pub mod workspace;
 pub mod workspace_repo;
