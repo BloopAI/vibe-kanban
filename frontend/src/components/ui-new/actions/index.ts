@@ -33,6 +33,7 @@ import {
   ArrowUpIcon,
   HighlighterIcon,
   ListIcon,
+  MegaphoneIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -50,6 +51,7 @@ import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import posthog from 'posthog-js';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -353,6 +355,16 @@ export const Actions = {
     requiresTarget: false,
     execute: (ctx) => {
       ctx.navigate('/settings');
+    },
+  },
+
+  Feedback: {
+    id: 'feedback',
+    label: 'Give Feedback',
+    icon: MegaphoneIcon,
+    requiresTarget: false,
+    execute: () => {
+      posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
     },
   },
 
@@ -925,6 +937,7 @@ export const NavbarActionGroups = {
     Actions.ToggleGitPanel,
     NavbarDivider,
     Actions.OpenCommandBar,
+    Actions.Feedback,
     Actions.Settings,
   ] as NavbarItem[],
 };
