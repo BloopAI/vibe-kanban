@@ -25,11 +25,8 @@ export function useProjects(): UseProjectsResult {
   const projectsById = useMemo(() => data?.projects ?? {}, [data]);
 
   const projects = useMemo(() => {
-    return Object.values(projectsById).sort(
-      (a, b) =>
-        new Date(b.created_at as unknown as string).getTime() -
-        new Date(a.created_at as unknown as string).getTime()
-    );
+    // Backend now sorts by activity, so respect that order
+    return Object.values(projectsById);
   }, [projectsById]);
 
   const projectsData = data ? projects : undefined;

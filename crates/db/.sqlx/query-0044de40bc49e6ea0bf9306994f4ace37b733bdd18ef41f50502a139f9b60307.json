@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.id as \"id!: Uuid\",\n                      p.name,\n                      p.default_agent_working_dir,\n                      p.remote_project_id as \"remote_project_id: Uuid\",\n                      p.created_at as \"created_at!: DateTime<Utc>\",\n                      p.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects p\n               ORDER BY COALESCE(\n                   (SELECT MAX(w.updated_at)\n                    FROM workspaces w\n                    INNER JOIN tasks t ON t.id = w.task_id\n                    WHERE t.project_id = p.id),\n                   (SELECT MAX(w.created_at)\n                    FROM workspaces w\n                    INNER JOIN tasks t ON t.id = w.task_id\n                    WHERE t.project_id = p.id),\n                   (SELECT MAX(created_at)\n                    FROM tasks\n                    WHERE project_id = p.id),\n                   p.created_at\n               ) DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_agent_working_dir",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 3,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0044de40bc49e6ea0bf9306994f4ace37b733bdd18ef41f50502a139f9b60307"
+}

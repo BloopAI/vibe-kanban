@@ -67,14 +67,27 @@ impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid",
-                      name,
-                      default_agent_working_dir,
-                      remote_project_id as "remote_project_id: Uuid",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM projects
-               ORDER BY created_at DESC"#
+            r#"SELECT p.id as "id!: Uuid",
+                      p.name,
+                      p.default_agent_working_dir,
+                      p.remote_project_id as "remote_project_id: Uuid",
+                      p.created_at as "created_at!: DateTime<Utc>",
+                      p.updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects p
+               ORDER BY COALESCE(
+                   (SELECT MAX(w.updated_at)
+                    FROM workspaces w
+                    INNER JOIN tasks t ON t.id = w.task_id
+                    WHERE t.project_id = p.id),
+                   (SELECT MAX(w.created_at)
+                    FROM workspaces w
+                    INNER JOIN tasks t ON t.id = w.task_id
+                    WHERE t.project_id = p.id),
+                   (SELECT MAX(created_at)
+                    FROM tasks
+                    WHERE project_id = p.id),
+                   p.created_at
+               ) DESC"#
         )
         .fetch_all(pool)
         .await

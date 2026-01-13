@@ -231,13 +231,8 @@ export function useCreateModeState({
     const projectsList = Object.values(projectsById);
 
     if (projectsList.length > 0) {
-      // Auto-select the first project (sorted by created_at desc)
-      const sortedProjects = [...projectsList].sort(
-        (a, b) =>
-          new Date(b.created_at as unknown as string).getTime() -
-          new Date(a.created_at as unknown as string).getTime()
-      );
-      setSelectedProjectId(sortedProjects[0].id);
+      // Auto-select the first project (backend sorts by activity)
+      setSelectedProjectId(projectsList[0].id);
     } else {
       // Create "My first project" if no projects exist
       const createDefaultProject = async () => {
