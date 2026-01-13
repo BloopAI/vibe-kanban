@@ -215,18 +215,10 @@ impl WorktreeManager {
             let gitdir_path = entry.path().join("gitdir");
             if gitdir_path.exists()
                 && let Ok(gitdir_content) = fs::read_to_string(&gitdir_path)
-                && {
-                    let raw_gitdir_path = Path::new(gitdir_content.trim());
-                    let resolved_gitdir_path = if raw_gitdir_path.is_absolute() {
-                        raw_gitdir_path.to_path_buf()
-                    } else {
-                        entry.path().join(raw_gitdir_path)
-                    };
-                    normalize_macos_private_alias(&resolved_gitdir_path)
-                        .parent()
-                        .map(canonicalize_for_compare)
-                        .is_some_and(|p| p == worktree_root)
-                }
+                && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
+                    .parent()
+                    .map(canonicalize_for_compare)
+                    .is_some_and(|p| p == worktree_root)
             {
                 return Ok(Some(entry.file_name().to_string_lossy().to_string()));
             }
