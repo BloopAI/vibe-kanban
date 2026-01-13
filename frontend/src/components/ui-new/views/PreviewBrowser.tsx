@@ -216,25 +216,26 @@ export function PreviewBrowser({
           )}
 
           {/* Start/Stop Button */}
-          {isServerRunning ? (
-            <IconButtonGroup>
-              <IconButtonGroupItem
-                icon={isStopping ? SpinnerIcon : PauseIcon}
-                iconClassName={isStopping ? 'animate-spin' : undefined}
-                onClick={onStop}
-                disabled={isStopping}
-                aria-label="Stop server"
-                title="Stop dev server"
-              />
-            </IconButtonGroup>
-          ) : (
-            <PrimaryButton
-              value={t('preview.browser.startButton')}
-              actionIcon={isStarting ? 'spinner' : PlayIcon}
-              onClick={onStart}
-              disabled={isStarting || !hasDevScript}
+          <IconButtonGroup>
+            <IconButtonGroupItem
+              icon={
+                isServerRunning
+                  ? isStopping
+                    ? SpinnerIcon
+                    : PauseIcon
+                  : isStarting
+                    ? SpinnerIcon
+                    : PlayIcon
+              }
+              iconClassName={isStopping || isStarting ? 'animate-spin' : undefined}
+              onClick={isServerRunning ? onStop : onStart}
+              disabled={
+                isServerRunning ? isStopping : isStarting || !hasDevScript
+              }
+              aria-label={isServerRunning ? 'Stop server' : 'Start dev server'}
+              title={isServerRunning ? 'Stop dev server' : 'Start dev server'}
             />
-          )}
+          </IconButtonGroup>
         </div>
       </div>
 
