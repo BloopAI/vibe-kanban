@@ -481,7 +481,10 @@ impl LocalContainerService {
                         if should_start_next {
                             // If the process exited successfully, start the next action
                             if let Err(e) = container.try_start_next_action(&ctx).await {
-                                tracing::error!("Failed to start next action after completion: {}", e);
+                                tracing::error!(
+                                    "Failed to start next action after completion: {}",
+                                    e
+                                );
                             }
                         } else {
                             tracing::info!(
@@ -926,8 +929,7 @@ impl LocalContainerService {
         &self,
         ctx: &ExecutionContext,
     ) -> Result<ExecutionProcess, ContainerError> {
-        const COMMIT_REMINDER_PROMPT: &str =
-            "Please commit your changes now. Review what you've done and create an appropriate \
+        const COMMIT_REMINDER_PROMPT: &str = "Please commit your changes now. Review what you've done and create an appropriate \
              git commit with a descriptive message summarizing the changes you made.";
 
         // Get executor profile (same logic as start_queued_follow_up)
@@ -953,13 +955,11 @@ impl LocalContainerService {
         };
 
         // Get variant from the latest execution process
-        let variant = ExecutionProcess::latest_executor_profile_for_session(
-            &self.db.pool,
-            ctx.session.id,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor variant: {e}")))?
-        .and_then(|p| p.variant);
+        let variant =
+            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
+                .await
+                .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor variant: {e}")))?
+                .and_then(|p| p.variant);
 
         let executor_profile_id = ExecutorProfileId {
             executor: base_executor,
@@ -976,7 +976,9 @@ impl LocalContainerService {
 
         // Must have an agent session ID for follow-up
         let agent_session_id = latest_agent_session_id.ok_or_else(|| {
-            ContainerError::Other(anyhow!("Cannot send commit reminder without agent session ID"))
+            ContainerError::Other(anyhow!(
+                "Cannot send commit reminder without agent session ID"
+            ))
         })?;
 
         let repos =
