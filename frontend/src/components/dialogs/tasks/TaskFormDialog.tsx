@@ -62,7 +62,7 @@ interface Task {
 }
 
 export type TaskFormDialogProps =
-  | { mode: 'create'; projectId: string }
+  | { mode: 'create'; projectId: string; initialStatus?: TaskStatus }
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
@@ -149,12 +149,21 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         };
 
       case 'subtask':
+        return {
+          title: '',
+          description: '',
+          status: 'todo',
+          executorProfileId: baseProfile,
+          repoBranches: defaultRepoBranches,
+          autoStart: true,
+        };
+
       case 'create':
       default:
         return {
           title: '',
           description: '',
-          status: 'todo',
+          status: props.initialStatus ?? 'todo',
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
