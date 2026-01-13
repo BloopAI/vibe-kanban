@@ -17,7 +17,7 @@ import {
 } from '@/components/ui-new/actions';
 import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useDevServer } from '@/hooks/useDevServer';
+import { usePreviewDevServer } from '@/components/ui-new/hooks/usePreviewDevServer';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId and repoId (for git actions)
@@ -51,8 +51,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
     useWorkspaceContext();
 
-  // Get dev server state
-  const { start, stop, runningDevServers } = useDevServer(workspaceId);
+  // Get dev server state (workspace-scoped for cross-session visibility)
+  const { start, stop, runningDevServers } = usePreviewDevServer(workspaceId);
 
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(
