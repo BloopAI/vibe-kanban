@@ -311,6 +311,39 @@ impl LocalContainerService {
         Ok(repos_with_changes)
     }
 
+    /// Check if any commits were made during execution by comparing before_head_commit with current HEAD.
+    async fn has_commits_from_execution(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<bool, ContainerError> {
+        let workspace_root = self.workspace_to_current_dir(&ctx.workspace);
+
+        // Get repo states for this execution
+        let repo_states = ExecutionProcessRepoState::find_by_execution_process_id(
+            &self.db.pool,
+            ctx.execution_process.id,
+        )
+        .await?;
+
+        for repo in &ctx.repos {
+            let repo_path = workspace_root.join(&repo.name);
+            let current_head = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
+
+            // Find the before_head_commit for this repo
+            let before_head = repo_states
+                .iter()
+                .find(|s| s.repo_id == repo.id)
+                .and_then(|s| s.before_head_commit.clone());
+
+            // If HEAD changed, commits were made
+            if current_head != before_head {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
     /// Commit changes to each repo. Logs failures but continues with other repos.
     fn commit_repos(&self, repos_with_changes: Vec<(Repo, PathBuf)>, message: &str) -> bool {
         let mut any_committed = false;
@@ -445,7 +478,12 @@ impl LocalContainerService {
                         ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
                     ) {
+                        // Check if agent made commits OR if we just committed uncommitted changes
                         changes_committed
+                            || container
+                                .has_commits_from_execution(&ctx)
+                                .await
+                                .unwrap_or(false)
                     } else {
                         true
                     };
