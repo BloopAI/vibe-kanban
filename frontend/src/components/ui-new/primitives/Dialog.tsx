@@ -54,8 +54,12 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          'fixed left-[50%] top-[50%] z-[9999] translate-x-[-50%] translate-y-[-50%]',
-          'w-full max-w-lg bg-panel border border-border rounded-sm shadow-lg',
+          // Mobile: full width with margin, centered vertically
+          'fixed inset-x-4 top-[50%] z-[9999] translate-y-[-50%]',
+          // Desktop: centered horizontally with max-width
+          'sm:inset-x-auto sm:left-[50%] sm:translate-x-[-50%]',
+          'w-auto sm:w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto',
+          'bg-panel border border-border rounded-sm shadow-lg',
           'data-[state=open]:animate-in data-[state=closed]:animate-out',
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -68,8 +72,8 @@ const DialogContent = React.forwardRef<
       >
         {children}
         {!hideCloseButton && (
-          <DialogPrimitive.Close className="absolute right-base top-base rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:pointer-events-none">
-            <X className="h-4 w-4 text-normal" />
+          <DialogPrimitive.Close className="absolute right-3 top-3 sm:right-base sm:top-base rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:pointer-events-none">
+            <X className="h-5 w-5 sm:h-4 sm:w-4 text-normal" />
             <span className="sr-only">{t('buttons.close')}</span>
           </DialogPrimitive.Close>
         )}

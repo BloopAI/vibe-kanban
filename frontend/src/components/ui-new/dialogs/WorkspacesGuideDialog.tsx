@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { XIcon } from '@phosphor-icons/react';
+import { XIcon, CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
@@ -55,6 +55,14 @@ const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClose]);
 
+  const goToPrevious = useCallback(() => {
+    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : TOPIC_IDS.length - 1));
+  }, []);
+
+  const goToNext = useCallback(() => {
+    setSelectedIndex((prev) => (prev < TOPIC_IDS.length - 1 ? prev + 1 : 0));
+  }, []);
+
   if (!container) return null;
 
   return createPortal(
@@ -65,17 +73,17 @@ const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
         onClick={handleClose}
       />
       {/* Dialog wrapper - handles positioning */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999]">
+      <div className="fixed inset-4 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-[9999] flex items-center justify-center">
         {/* Dialog content - handles animation */}
         <div
           className={cn(
-            'w-[800px] h-[600px] flex rounded-sm overflow-hidden',
+            'w-full h-full sm:w-[800px] sm:h-[600px] sm:max-h-[90vh] flex flex-col sm:flex-row rounded-sm overflow-hidden',
             'bg-panel/95 backdrop-blur-sm border border-border/50 shadow-lg',
             'animate-in fade-in-0 slide-in-from-bottom-4 duration-200'
           )}
         >
-          {/* Sidebar */}
-          <div className="w-52 bg-secondary/80 border-r border-border/50 p-3 flex flex-col gap-1 overflow-y-auto">
+          {/* Sidebar - hidden on mobile, visible on sm+ */}
+          <div className="hidden sm:flex w-52 bg-secondary/80 border-r border-border/50 p-3 flex-col gap-1 overflow-y-auto shrink-0">
             {TOPIC_IDS.map((topicId, idx) => (
               <button
                 key={topicId}
@@ -92,25 +100,45 @@ const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
             ))}
           </div>
           {/* Content */}
-          <div className="flex-1 p-6 flex flex-col relative overflow-y-auto">
+          <div className="flex-1 p-4 sm:p-6 flex flex-col relative overflow-y-auto min-h-0">
             <button
               onClick={handleClose}
-              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+              className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 z-10"
             >
-              <XIcon className="h-4 w-4 text-normal" />
+              <XIcon className="h-5 w-5 sm:h-4 sm:w-4 text-normal" />
               <span className="sr-only">{t('close')}</span>
             </button>
-            <h2 className="text-xl font-semibold text-high mb-4 pr-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-high mb-3 sm:mb-4 pr-10">
               {t(`workspacesGuide.${selectedTopicId}.title`)}
             </h2>
             <img
               src={TOPIC_IMAGES[selectedTopicId]}
               alt={t(`workspacesGuide.${selectedTopicId}.title`)}
-              className="w-full rounded-sm border border-border/30 mb-4"
+              className="w-full rounded-sm border border-border/30 mb-3 sm:mb-4"
             />
-            <p className="text-normal text-sm leading-relaxed">
+            <p className="text-normal text-sm leading-relaxed flex-1">
               {t(`workspacesGuide.${selectedTopicId}.content`)}
             </p>
+            {/* Mobile navigation - visible only on mobile */}
+            <div className="flex sm:hidden items-center justify-between mt-4 pt-4 border-t border-border/30">
+              <button
+                onClick={goToPrevious}
+                className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
+              >
+                <CaretLeftIcon className="h-4 w-4" />
+                {t('workspacesGuide.previous')}
+              </button>
+              <span className="text-xs text-muted">
+                {selectedIndex + 1} / {TOPIC_IDS.length}
+              </span>
+              <button
+                onClick={goToNext}
+                className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
+              >
+                {t('workspacesGuide.next')}
+                <CaretRightIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
