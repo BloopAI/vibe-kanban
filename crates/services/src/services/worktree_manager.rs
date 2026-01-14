@@ -170,8 +170,12 @@ impl WorktreeManager {
 
             // Check 2: Worktree must be registered in git metadata using find_worktree
             let repo = Repository::open(&repo_path).map_err(WorktreeError::Git)?;
-            let worktree_name = Self::find_worktree_git_internal_name(&repo_path, &worktree_path)?
-                .ok_or_else(|| WorktreeError::InvalidPath("Invalid worktree path".to_string()))?;
+            let Some(worktree_name) =
+                Self::find_worktree_git_internal_name(&repo_path, &worktree_path)?
+            else {
+                // Directory exists but not registered in git metadata - needs recreation
+                return Ok(false);
+            };
 
             // Try to find the worktree - if it exists and is valid, we're good
             match repo.find_worktree(&worktree_name) {
@@ -192,17 +196,20 @@ impl WorktreeManager {
         }
 
         let worktree_root = canonicalize_for_compare(&normalize_macos_private_alias(worktree_path));
-        let worktree_metadata_path = git_repo_path.join(".git").join("worktrees");
-        let worktree_metadata_folders = fs::read_dir(&worktree_metadata_path)
-            .map_err(|e| {
-                WorktreeError::Repository(format!(
+        let worktree_metadata_path = Self::get_worktree_metadata_path(git_repo_path)?;
+        let worktree_metadata_folders = match fs::read_dir(&worktree_metadata_path) {
+            Ok(read_dir) => read_dir
+                .filter_map(|entry| entry.ok())
+                .collect::<Vec<fs::DirEntry>>(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => {
+                return Err(WorktreeError::Repository(format!(
                     "Failed to read worktree metadata directory at {}: {}",
                     worktree_metadata_path.display(),
                     e
-                ))
-            })?
-            .filter_map(|entry| entry.ok())
-            .collect::<Vec<fs::DirEntry>>();
+                )));
+            }
+        };
         // read the worktrees/*/gitdir and see which one matches the worktree_path
         for entry in worktree_metadata_folders {
             let gitdir_path = entry.path().join("gitdir");
@@ -211,13 +218,17 @@ impl WorktreeManager {
                 && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
                     .parent()
                     .map(canonicalize_for_compare)
-                    .map(|p| p == worktree_root)
-                    .unwrap_or(false)
+                    .is_some_and(|p| p == worktree_root)
             {
                 return Ok(Some(entry.file_name().to_string_lossy().to_string()));
             }
         }
         Ok(None)
+    }
+
+    fn get_worktree_metadata_path(git_repo_path: &Path) -> Result<PathBuf, WorktreeError> {
+        let repo = Repository::open(git_repo_path).map_err(WorktreeError::Git)?;
+        Ok(repo.commondir().join("worktrees"))
     }
 
     /// Comprehensive cleanup of worktree path and metadata to prevent "path exists" errors (blocking)
@@ -385,10 +396,8 @@ impl WorktreeManager {
         if let Some(worktree_name) =
             Self::find_worktree_git_internal_name(git_repo_path, worktree_path)?
         {
-            let git_worktree_metadata_path = git_repo_path
-                .join(".git")
-                .join("worktrees")
-                .join(worktree_name);
+            let git_worktree_metadata_path =
+                Self::get_worktree_metadata_path(git_repo_path)?.join(worktree_name);
 
             if git_worktree_metadata_path.exists() {
                 debug!(
@@ -536,4 +545,49 @@ impl WorktreeManager {
         Self::cleanup_worktree(&cleanup).await?;
         Ok(true)
     }
+}
+
+#[tokio::test]
+async fn create_worktree_when_repo_path_is_a_worktree() {
+    use tempfile::TempDir;
+    let td = TempDir::new().unwrap();
+
+    let repo_path = td.path().join("repo");
+    let git_service = GitService::new();
+    git_service
+        .initialize_repo_with_main_branch(&repo_path)
+        .unwrap();
+
+    let base_worktree_path = td.path().join("wt-base");
+    WorktreeManager::create_worktree(
+        &repo_path,
+        "wt-base-branch",
+        &base_worktree_path,
+        "main",
+        true,
+    )
+    .await
+    .unwrap();
+    assert!(base_worktree_path.join(".git").is_file());
+
+    let child_worktree_path = td.path().join("wt-child");
+    WorktreeManager::create_worktree(
+        &base_worktree_path,
+        "wt-child-branch",
+        &child_worktree_path,
+        "main",
+        true,
+    )
+    .await
+    .unwrap();
+    assert!(child_worktree_path.join(".git").is_file());
+
+    // Regression: repo_path itself is a worktree (so `.git` is a file), but metadata lookup still works.
+    WorktreeManager::ensure_worktree_exists(
+        &base_worktree_path,
+        "wt-child-branch",
+        &child_worktree_path,
+    )
+    .await
+    .unwrap();
 }

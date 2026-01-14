@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "Buscar archivos...",
     "noResults": "No hay archivos coincidentes",
-    "title": "Archivos"
+    "title": "Archivos",
+    "showGitHubComments": "Mostrar comentarios de GitHub",
+    "hideGitHubComments": "Ocultar comentarios de GitHub"
   },
   "sections": {
     "changes": "Cambios",
@@ -171,6 +173,7 @@
     "copyPath": "Copiar ruta",
     "copyWorktreePath": "Copiar ruta del worktree",
     "openInIde": "Abrir en IDE",
+    "repoSettings": "Configuración del repositorio",
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
     "copied": "Copiado"
@@ -200,5 +203,63 @@
     "createFirstPrompt": "Crea un proyecto primero para comenzar a trabajar en tareas.",
     "createNew": "Crear nuevo proyecto",
     "noProjectsFound": "No se encontraron proyectos"
+  },
+  "betaWorkspaces": {
+    "title": "Prueba la nueva interfaz",
+    "intro": "Hemos reconstruido la interfaz de Vibe Kanban desde cero, y has sido invitado a probarla.",
+    "newUiDescription": "La nueva interfaz está optimizada para el trabajo diario: gestionar agentes, previsualizar cambios y revisar código. También desbloquea funciones que no están disponibles en la interfaz anterior:",
+    "newFeatures": {
+      "multiRepo": "Edita múltiples repositorios al mismo tiempo",
+      "multiAgent": "Ejecuta múltiples conversaciones de agentes (incluso entre diferentes agentes) en un solo espacio de trabajo",
+      "commandBar": "Navegación más rápida con la barra de comandos"
+    },
+    "oldUiDescription": "Por ahora, algunas cosas todavía permanecen en la interfaz actual:",
+    "oldFeatures": {
+      "kanban": "Gestión de tareas en el tablero kanban",
+      "settings": "Cambiar configuración",
+      "projects": "Gestión de proyectos"
+    },
+    "transition": "Durante la transición en las próximas semanas, te moverás entre ambas.",
+    "optOutNote": "¿Quieres salir? Puedes volver a la interfaz actual en cualquier momento en Configuración.",
+    "joinBeta": "Unirse a Beta",
+    "maybeLater": "Quizás más tarde"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Bienvenido",
+      "content": "Bienvenido a Workspaces, una interfaz rediseñada para Vibe Kanban. Estamos lanzando esto a usuarios seleccionados para recibir comentarios tempranos. Comparte tus opiniones en cualquier momento usando el ícono de comentarios en la barra de navegación."
+    },
+    "commandBar": {
+      "title": "Barra de comandos",
+      "content": "La barra de comandos es tu centro principal de navegación. Ábrela con CMD+K para buscar y acceder a cada acción disponible en un espacio de trabajo."
+    },
+    "contextBar": {
+      "title": "Barra de contexto",
+      "content": "La barra de contexto te permite cambiar entre paneles rápidamente. Arrástrala a donde mejor te funcione."
+    },
+    "sidebar": {
+      "title": "Barra lateral de espacios de trabajo",
+      "content": "Ve el estado de todos tus espacios de trabajo de un vistazo. Las notificaciones resaltan cuáles necesitan atención. Archiva los espacios de trabajo fusionados para mantener tu barra lateral limpia."
+    },
+    "multiRepo": {
+      "title": "Soporte multi-repositorio",
+      "content": "Agrega múltiples repositorios a un solo espacio de trabajo. Referencia código de un repositorio mientras trabajas en otro, o implementa cambios en varios repositorios a la vez."
+    },
+    "sessions": {
+      "title": "Múltiples sesiones",
+      "content": "Crea múltiples sesiones de conversación con agentes dentro de un solo espacio de trabajo, incluyendo sesiones con diferentes agentes. Esto te ayuda a superar los límites de conversación o iniciar agentes de revisión en hilos separados."
+    },
+    "preview": {
+      "title": "Vista previa de cambios",
+      "content": "Previsualiza tu trabajo en un navegador integrado sin cambiar de contexto. Prueba en escritorio, móvil y tamaños de ventana personalizados."
+    },
+    "diffs": {
+      "title": "Diferencias y comentarios",
+      "content": "El panel de diferencias rediseñado incluye un árbol de archivos con tus cambios. Comenta directamente en las diferencias para dar retroalimentación al agente, y ve los comentarios de GitHub cuando tu espacio de trabajo está vinculado a un PR."
+    },
+    "classicUi": {
+      "title": "Volver a la interfaz clásica",
+      "content": "Haz clic en el icono de salida en el lado izquierdo de la barra de navegación para volver al tablero kanban clásico. Para desactivar la nueva interfaz por completo, actualiza la opción \"Habilitar Beta de Workspaces\" en \"Funciones Beta\" en la configuración."
+    }
   }
 }

@@ -1,16 +1,7 @@
-import {
-  PlayIcon,
-  StopIcon,
-  ArrowSquareOutIcon,
-  ArrowClockwiseIcon,
-  SpinnerIcon,
-  CopyIcon,
-  WrenchIcon,
-} from '@phosphor-icons/react';
+import { ArrowSquareOutIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
-import { PrimaryButton } from '../primitives/PrimaryButton';
 import { VirtualizedProcessLogs } from '../VirtualizedProcessLogs';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import { getDevServerWorkingDir } from '@/lib/devServerUtils';
@@ -23,17 +14,9 @@ interface PreviewControlsProps {
   activeProcessId: string | null;
   logs: LogEntry[];
   logsError: string | null;
-  url?: string;
   onViewFullLogs: () => void;
   onTabChange: (processId: string) => void;
-  onStart: () => void;
-  onStop: () => void;
-  onRefresh: () => void;
-  onCopyUrl: () => void;
-  onOpenInNewTab: () => void;
-  onFixScript?: () => void;
   isStarting: boolean;
-  isStopping: boolean;
   isServerRunning: boolean;
   className?: string;
 }
@@ -43,22 +26,14 @@ export function PreviewControls({
   activeProcessId,
   logs,
   logsError,
-  url,
   onViewFullLogs,
   onTabChange,
-  onStart,
-  onStop,
-  onRefresh,
-  onCopyUrl,
-  onOpenInNewTab,
-  onFixScript,
   isStarting,
-  isStopping,
   isServerRunning,
   className,
 }: PreviewControlsProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const isLoading = isStarting || (isServerRunning && !url);
+  const isLoading = isStarting || isServerRunning;
 
   return (
     <div
@@ -68,71 +43,12 @@ export function PreviewControls({
       )}
     >
       <CollapsibleSectionHeader
-        title="Dev Server"
+        title="Dev Server Logs"
         persistKey={PERSIST_KEYS.devServerSection}
         contentClassName="flex flex-col flex-1 overflow-hidden"
       >
-        <div className="flex items-center gap-half p-base">
-          {url && (
-            <div className="flex items-center gap-half bg-panel rounded-sm px-base py-half flex-1 min-w-0">
-              <span className="flex-1 font-mono text-sm text-low truncate">
-                {url}
-              </span>
-              <button
-                type="button"
-                onClick={onCopyUrl}
-                className="text-low hover:text-normal"
-                aria-label="Copy URL"
-              >
-                <CopyIcon className="size-icon-sm" />
-              </button>
-              <button
-                type="button"
-                onClick={onOpenInNewTab}
-                className="text-low hover:text-normal"
-                aria-label="Open in new tab"
-              >
-                <ArrowSquareOutIcon className="size-icon-sm" />
-              </button>
-              <button
-                type="button"
-                onClick={onRefresh}
-                className="text-low hover:text-normal"
-                aria-label="Refresh"
-              >
-                <ArrowClockwiseIcon className="size-icon-sm" />
-              </button>
-            </div>
-          )}
-
-          {isServerRunning ? (
-            <PrimaryButton
-              variant="tertiary"
-              value={t('preview.browser.stopButton')}
-              actionIcon={isStopping ? 'spinner' : StopIcon}
-              onClick={onStop}
-              disabled={isStopping}
-            />
-          ) : (
-            <PrimaryButton
-              value={t('preview.browser.startingButton')}
-              actionIcon={isStarting ? 'spinner' : PlayIcon}
-              onClick={onStart}
-              disabled={isStarting}
-            />
-          )}
-          {onFixScript && (
-            <PrimaryButton
-              variant="tertiary"
-              value={t('scriptFixer.fixScript')}
-              actionIcon={WrenchIcon}
-              onClick={onFixScript}
-            />
-          )}
-        </div>
-
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between px-base pb-half">
+          <div className="flex items-center justify-between px-base py-half">
             <span className="text-xs font-medium text-low">
               {t('preview.logs.label')}
             </span>
@@ -159,7 +75,8 @@ export function PreviewControls({
                   )}
                   onClick={() => onTabChange(process.id)}
                 >
-                  {getDevServerWorkingDir(process) ?? 'Dev Server'}
+                  {getDevServerWorkingDir(process) ??
+                    t('preview.browser.devServerFallback')}
                 </button>
               ))}
             </div>

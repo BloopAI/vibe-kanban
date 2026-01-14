@@ -20,7 +20,7 @@ use workspace_utils::{
 use self::{
     client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
     protocol::ProtocolPeer,
-    types::PermissionMode,
+    types::{ControlRequestType, ControlResponseType, PermissionMode},
 };
 use crate::{
     approvals::ExecutorApprovalService,
@@ -43,7 +43,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.76"
+        "npx -y @anthropic-ai/claude-code@2.1.2"
     }
 }
 
@@ -466,6 +466,9 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { .. } => None, // session might not have been initialized yet
             ClaudeJson::ApprovalResponse { .. } => None,
+            ClaudeJson::ControlRequest { .. } => None,
+            ClaudeJson::ControlResponse { .. } => None,
+            ClaudeJson::ControlCancelRequest { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1190,6 +1193,9 @@ impl ClaudeLogProcessor {
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
+            ClaudeJson::ControlRequest { .. }
+            | ClaudeJson::ControlResponse { .. }
+            | ClaudeJson::ControlCancelRequest { .. } => {}
         }
         patches
     }
@@ -1446,9 +1452,8 @@ impl StreamingContentState {
 
 // Data structures for parsing Claude's JSON output format
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClaudeJson {
-    #[serde(rename = "system")]
     System {
         subtype: Option<String>,
         session_id: Option<String>,
@@ -1458,30 +1463,25 @@ pub enum ClaudeJson {
         #[serde(default, rename = "apiKeySource")]
         api_key_source: Option<String>,
     },
-    #[serde(rename = "assistant")]
     Assistant {
         message: ClaudeMessage,
         session_id: Option<String>,
     },
-    #[serde(rename = "user")]
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
     },
-    #[serde(rename = "tool_use")]
     ToolUse {
         tool_name: String,
         #[serde(flatten)]
         tool_data: ClaudeToolData,
         session_id: Option<String>,
     },
-    #[serde(rename = "tool_result")]
     ToolResult {
         result: serde_json::Value,
         is_error: Option<bool>,
         session_id: Option<String>,
     },
-    #[serde(rename = "stream_event")]
     StreamEvent {
         event: ClaudeStreamEvent,
         #[serde(default)]
@@ -1491,7 +1491,6 @@ pub enum ClaudeJson {
         #[serde(default)]
         uuid: Option<String>,
     },
-    #[serde(rename = "result")]
     Result {
         #[serde(default)]
         subtype: Option<String>,
@@ -1508,11 +1507,20 @@ pub enum ClaudeJson {
         #[serde(default, alias = "sessionId")]
         session_id: Option<String>,
     },
-    #[serde(rename = "approval_response")]
     ApprovalResponse {
         call_id: String,
         tool_name: String,
         approval_status: ApprovalStatus,
+    },
+    ControlRequest {
+        request_id: String,
+        request: ControlRequestType,
+    },
+    ControlResponse {
+        response: ControlResponseType,
+    },
+    ControlCancelRequest {
+        request_id: String,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]

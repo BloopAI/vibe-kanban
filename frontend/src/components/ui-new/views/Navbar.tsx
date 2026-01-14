@@ -114,7 +114,7 @@ export function Navbar({
   return (
     <nav
       className={cn(
-        'flex items-center justify-between px-double py-half bg-secondary border-b shrink-0',
+        'flex items-center justify-between px-base py-half bg-secondary border-b shrink-0',
         className
       )}
     >

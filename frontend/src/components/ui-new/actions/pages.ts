@@ -69,7 +69,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.NewWorkspace },
           { type: 'action', action: Actions.OpenInIDE },
           { type: 'action', action: Actions.CopyPath },
-          // { type: 'action', action: Actions.ToggleDevServer },
+          { type: 'action', action: Actions.ToggleDevServer },
           { type: 'action', action: Actions.OpenInOldUI },
           { type: 'childPages', id: 'workspaceActions' },
           { type: 'childPages', id: 'gitActions' },
@@ -86,7 +86,11 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
       {
         type: 'group',
         label: 'General',
-        items: [{ type: 'action', action: Actions.Settings }],
+        items: [
+          { type: 'action', action: Actions.Feedback },
+          { type: 'action', action: Actions.WorkspacesGuide },
+          { type: 'action', action: Actions.Settings },
+        ],
       },
     ],
   },
@@ -108,6 +112,14 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.PinWorkspace },
           { type: 'action', action: Actions.ArchiveWorkspace },
           { type: 'action', action: Actions.DeleteWorkspace },
+        ],
+      },
+      {
+        type: 'group',
+        label: 'Scripts',
+        items: [
+          { type: 'action', action: Actions.RunSetupScript },
+          { type: 'action', action: Actions.RunCleanupScript },
         ],
       },
     ],

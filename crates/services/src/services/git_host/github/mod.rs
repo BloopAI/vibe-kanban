@@ -187,22 +187,25 @@ impl GitHostProvider for GitHubProvider {
 
         let cli = self.gh_cli.clone();
         let request_clone = request.clone();
+        let repo_path_buf = repo_path.to_path_buf();
 
         (|| async {
             let cli = cli.clone();
             let request = request_clone.clone();
             let owner = repo_info.owner.clone();
             let repo_name = repo_info.repo_name.clone();
+            let repo_path = repo_path_buf.clone();
 
-            let cli_result =
-                task::spawn_blocking(move || cli.create_pr(&request, &owner, &repo_name))
-                    .await
-                    .map_err(|err| {
-                        GitHostError::PullRequest(format!(
-                            "Failed to execute GitHub CLI for PR creation: {err}"
-                        ))
-                    })?
-                    .map_err(GitHostError::from)?;
+            let cli_result = task::spawn_blocking(move || {
+                cli.create_pr(&request, &owner, &repo_name, &repo_path)
+            })
+            .await
+            .map_err(|err| {
+                GitHostError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for PR creation: {err}"
+                ))
+            })?
+            .map_err(GitHostError::from)?;
 
             info!(
                 "Created GitHub PR #{} for branch {}",
@@ -352,6 +355,7 @@ impl GitHostProvider for GitHubProvider {
                 url: Some(c.html_url),
                 path: c.path,
                 line: c.line,
+                side: c.side,
                 diff_hunk: Some(c.diff_hunk),
             });
         }

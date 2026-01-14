@@ -1,3 +1,5 @@
+const path = require('path');
+
 const i18nCheck = process.env.LINT_I18N === 'true';
 
 // Presentational components - these must be stateless and receive all data via props
@@ -26,7 +28,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: path.join(__dirname, 'tsconfig.json'),
   },
   rules: {
     'eslint-comments/no-use': ['error', { allow: [] }],

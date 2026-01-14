@@ -119,6 +119,7 @@ pub enum UnifiedPrComment {
         url: Option<String>,
         path: String,
         line: Option<i64>,
+        side: Option<String>,
         diff_hunk: Option<String>,
     },
 }

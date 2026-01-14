@@ -1,4 +1,4 @@
-import { projectsApi, tagsApi } from '@/lib/api';
+import { attemptsApi, projectsApi, tagsApi } from '@/lib/api';
 import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {
@@ -11,9 +11,14 @@ export interface SearchResultItem {
   file?: FileSearchResult;
 }
 
+export interface SearchOptions {
+  workspaceId?: string;
+  projectId?: string;
+}
+
 export async function searchTagsAndFiles(
   query: string,
-  projectId?: string
+  options?: SearchOptions
 ): Promise<SearchResultItem[]> {
   const results: SearchResultItem[] = [];
 
@@ -24,16 +29,24 @@ export async function searchTagsAndFiles(
   );
   results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
 
-  // Fetch files (if projectId is available and query has content)
-  if (projectId && query.length > 0) {
-    const fileResults = await projectsApi.searchFiles(projectId, query);
-    const fileSearchResults: FileSearchResult[] = fileResults.map((item) => ({
-      ...item,
-      name: item.path.split('/').pop() || item.path,
-    }));
-    results.push(
-      ...fileSearchResults.map((file) => ({ type: 'file' as const, file }))
-    );
+  // Fetch files - prefer workspace-scoped if available
+  if (query.length > 0) {
+    let fileResults: SearchResult[] = [];
+    if (options?.workspaceId) {
+      fileResults = await attemptsApi.searchFiles(options.workspaceId, query);
+    } else if (options?.projectId) {
+      fileResults = await projectsApi.searchFiles(options.projectId, query);
+    }
+
+    if (fileResults.length > 0) {
+      const fileSearchResults: FileSearchResult[] = fileResults.map((item) => ({
+        ...item,
+        name: item.path.split('/').pop() || item.path,
+      }));
+      results.push(
+        ...fileSearchResults.map((file) => ({ type: 'file' as const, file }))
+      );
+    }
   }
 
   return results;

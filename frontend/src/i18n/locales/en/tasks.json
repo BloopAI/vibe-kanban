@@ -85,13 +85,16 @@
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
+      "setupTitle": "You must set up a dev server script to use the preview feature",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
       "companionLink": "View installation guide",
       "startButton": "Start Dev Server",
       "configureButton": "Configure",
       "stopAndEditButton": "Stop Dev Server & Resolve Issues",
-      "fixScript": "Fix Dev Script"
+      "fixScript": "Fix Dev Script",
+      "editDevScript": "Edit Dev Server Script",
+      "learnMore": "Learn more about testing applications"
     },
     "devScript": {
       "saveAndStart": "Save & Start",
@@ -121,13 +124,23 @@
       "openInTab": "Open in new tab",
       "stopDevServer": "Stop dev server",
       "clickToEdit": "Click to edit URL",
-      "resetUrl": "Reset to detected URL"
+      "resetUrl": "Reset to detected URL",
+      "clearUrlOverride": "Clear URL override",
+      "desktopView": "Desktop view",
+      "mobileView": "Mobile view (390x844)",
+      "responsiveView": "Responsive view (resizable)",
+      "startDevServer": "Start dev server"
+    },
+    "loading": {
+      "startingServer": "Starting dev server...",
+      "waitingForServer": "Waiting for server..."
     },
     "browser": {
       "title": "Dev Server Preview",
-      "startButton": "Start Dev Server",
-      "stopButton": "Stop",
-      "startingButton": "Start"
+      "devServerFallback": "Dev Server"
+    },
+    "urlInput": {
+      "placeholder": "Enter URL..."
     }
   },
   "diff": {
@@ -491,6 +504,20 @@
     "includeGitContext": "Include git context",
     "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
     "newSession": "New Session"
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolve Conflicts",
+      "description": "Conflicts were detected. Choose how you want the agent to resolve them.",
+      "sessionLabel": "Session",
+      "existingSession": "Continue in current session",
+      "newSession": "Start a new session",
+      "resolve": "Resolve Conflicts",
+      "resolving": "Starting...",
+      "filesWithConflicts_one": "{{count}} file has conflicts",
+      "filesWithConflicts_other": "{{count}} files have conflicts",
+      "andMore": "...and {{count}} more"
+    }
   },
   "stopShareDialog": {
     "title": "Stop Sharing Task",

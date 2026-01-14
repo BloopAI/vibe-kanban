@@ -6,7 +6,7 @@ pub mod container;
 pub mod diff_stream;
 pub mod events;
 pub mod file_ranker;
-pub mod file_search_cache;
+pub mod file_search;
 pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git;

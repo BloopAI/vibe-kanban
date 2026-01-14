@@ -232,6 +232,14 @@
           "description": "重置入门流程。",
           "button": "重置"
         }
+      },
+      "beta": {
+        "title": "Beta 功能",
+        "description": "在正式发布前试用实验性功能。",
+        "workspaces": {
+          "label": "启用工作区 Beta",
+          "helper": "查看任务尝试时使用新的工作区界面。任务将首先在任务视图中打开，尝试将在新的工作区视图中打开。"
+        }
       }
     },
     "agents": {
@@ -380,7 +388,8 @@
         },
         "copyFiles": {
           "label": "复制文件",
-          "helper": "要从原始仓库目录复制到工作树的文件的逗号分隔列表。对 .env 等环境文件很有用。确保这些文件被 gitignore！"
+          "helper": "要从原始仓库目录复制到工作树的文件的逗号分隔列表。对 .env 等环境文件很有用。确保这些文件被 gitignore！",
+          "placeholder": "文件路径或 glob 模式（例如：.env、config/*.json）"
         },
         "devServer": {
           "label": "开发服务器脚本",

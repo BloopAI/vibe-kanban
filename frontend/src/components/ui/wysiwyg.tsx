@@ -56,7 +56,10 @@ type WysiwygProps = {
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
   className?: string;
-  projectId?: string; // for file search in typeahead
+  /** Workspace ID for workspace-scoped file search (preferred over projectId) */
+  workspaceId?: string;
+  /** Project ID for file search in typeahead (fallback if workspaceId not provided) */
+  projectId?: string;
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
   /** Task attempt ID for resolving .vibe-images paths (preferred over taskId) */
@@ -85,6 +88,7 @@ function WYSIWYGEditor({
   disabled = false,
   onPasteFiles,
   className,
+  workspaceId,
   projectId,
   onCmdEnter,
   onShiftCmdEnter,
@@ -251,7 +255,10 @@ function WYSIWYGEditor({
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                  <FileTagTypeaheadPlugin projectId={projectId} />
+                  <FileTagTypeaheadPlugin
+                    workspaceId={workspaceId}
+                    projectId={projectId}
+                  />
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}
                     onShiftCmdEnter={onShiftCmdEnter}

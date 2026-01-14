@@ -711,6 +711,34 @@ export function GeneralSettings() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.general.beta.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.beta.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="beta-workspaces"
+              checked={draft?.beta_workspaces ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ beta_workspaces: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="beta-workspaces" className="cursor-pointer">
+                {t('settings.general.beta.workspaces.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.beta.workspaces.helper')}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Sticky Save Button */}
       <div className="sticky bottom-0 z-10 bg-background/80 backdrop-blur-sm border-t py-4">
         <div className="flex items-center justify-between">

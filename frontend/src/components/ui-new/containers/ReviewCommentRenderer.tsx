@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '../primitives/PrimaryButton';
+import { CommentCard } from '../primitives/CommentCard';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
@@ -41,18 +42,10 @@ export function ReviewCommentRenderer({
 
   if (isEditing) {
     return (
-      <div className="p-base bg-panel font-sans text-base">
-        <div className="p-base rounded-sm bg-brand/20 border border-brand">
-          <WYSIWYGEditor
-            value={editText}
-            onChange={setEditText}
-            placeholder={t('comments.editPlaceholder')}
-            className="w-full text-sm text-normal min-h-[60px]"
-            projectId={projectId}
-            onCmdEnter={handleSave}
-            autoFocus
-          />
-          <div className="mt-half flex gap-half">
+      <CommentCard
+        variant="user"
+        actions={
+          <>
             <PrimaryButton
               variant="default"
               onClick={handleSave}
@@ -63,23 +56,31 @@ export function ReviewCommentRenderer({
             <PrimaryButton variant="tertiary" onClick={handleCancel}>
               {t('actions.cancel')}
             </PrimaryButton>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      >
+        <WYSIWYGEditor
+          value={editText}
+          onChange={setEditText}
+          placeholder={t('comments.editPlaceholder')}
+          className="w-full text-sm text-normal min-h-[60px]"
+          projectId={projectId}
+          onCmdEnter={handleSave}
+          autoFocus
+        />
+      </CommentCard>
     );
   }
 
   return (
-    <div className="p-base bg-panel font-sans text-base">
-      <div className="p-base rounded-sm bg-brand/20 border border-brand">
-        <WYSIWYGEditor
-          value={comment.text}
-          disabled={true}
-          className="text-sm"
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      </div>
-    </div>
+    <CommentCard variant="user">
+      <WYSIWYGEditor
+        value={comment.text}
+        disabled={true}
+        className="text-sm"
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+    </CommentCard>
   );
 }

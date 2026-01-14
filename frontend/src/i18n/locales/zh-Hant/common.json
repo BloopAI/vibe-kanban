@@ -143,7 +143,9 @@
   "fileTree": {
     "searchPlaceholder": "搜尋檔案...",
     "noResults": "沒有匹配的檔案",
-    "title": "檔案"
+    "title": "檔案",
+    "showGitHubComments": "顯示 GitHub 評論",
+    "hideGitHubComments": "隱藏 GitHub 評論"
   },
   "sections": {
     "changes": "變更",
@@ -171,6 +173,7 @@
     "copyPath": "複製路徑",
     "copyWorktreePath": "複製工作樹路徑",
     "openInIde": "在IDE中開啟",
+    "repoSettings": "儲存庫設定",
     "cancel": "取消",
     "saveChanges": "儲存變更",
     "copied": "已複製"
@@ -200,5 +203,63 @@
     "createFirstPrompt": "請先建立專案以開始處理任務。",
     "createNew": "建立新專案",
     "noProjectsFound": "找不到專案"
+  },
+  "betaWorkspaces": {
+    "title": "試用新介面",
+    "intro": "我們從頭重建了 Vibe Kanban 的介面，您已獲邀試用。",
+    "newUiDescription": "新介面針對日常工作進行最佳化：管理代理、預覽變更和審查程式碼。它還解鎖了舊介面中無法使用的功能：",
+    "newFeatures": {
+      "multiRepo": "同時編輯多個儲存庫",
+      "multiAgent": "在單一工作區中執行多個代理對話（甚至跨不同代理）",
+      "commandBar": "使用命令列更快地導覽"
+    },
+    "oldUiDescription": "目前，部分功能仍保留在目前介面中：",
+    "oldFeatures": {
+      "kanban": "在看板上管理任務",
+      "settings": "變更設定",
+      "projects": "管理專案"
+    },
+    "transition": "在接下來幾週的過渡期間，您將在兩者之間切換。",
+    "optOutNote": "想要退出？您可以隨時在設定中切換回目前介面。",
+    "joinBeta": "加入 Beta",
+    "maybeLater": "稍後再說"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "歡迎",
+      "content": "歡迎使用 Workspaces，這是 Vibe Kanban 的全新設計介面。我們正在向部分使用者推出以獲取早期回饋。您可以隨時透過導覽列中的回饋圖示分享您的想法。"
+    },
+    "commandBar": {
+      "title": "命令列",
+      "content": "命令列是您的導覽中心。使用 CMD+K 開啟它，可以搜尋和存取工作區中的所有可用操作。"
+    },
+    "contextBar": {
+      "title": "上下文列",
+      "content": "上下文列讓您可以快速切換不同面板。將它拖曳到最適合您的位置。"
+    },
+    "sidebar": {
+      "title": "工作區側邊欄",
+      "content": "一目了然地檢視所有工作區的狀態。通知會醒目提示需要關注的工作區。封存已合併的工作區以保持側邊欄整潔。"
+    },
+    "multiRepo": {
+      "title": "多儲存庫支援",
+      "content": "將多個儲存庫新增到單一工作區。在處理一個儲存庫時可以參考另一個儲存庫的程式碼，或者同時在多個儲存庫中實作變更。"
+    },
+    "sessions": {
+      "title": "多工作階段",
+      "content": "在單一工作區內建立多個代理對話工作階段，包括與不同代理的工作階段。這可以幫助您繞過對話限制，或在單獨的執行緒中啟動審查代理。"
+    },
+    "preview": {
+      "title": "預覽變更",
+      "content": "無需切換上下文，即可在內建瀏覽器中預覽您的工作。支援桌面、行動裝置和自訂視口尺寸測試。"
+    },
+    "diffs": {
+      "title": "差異和評論",
+      "content": "重新設計的差異面板包含變更的檔案樹。直接在差異上評論以向代理提供回饋，當您的工作區連結到 PR 時還可以檢視 GitHub 評論。"
+    },
+    "classicUi": {
+      "title": "返回經典介面",
+      "content": "點擊導覽列左側的退出圖示可返回經典看板。要完全停用新介面，請在設定中的「測試版功能」下更新「啟用 Workspaces 測試版」選項。"
+    }
   }
 }

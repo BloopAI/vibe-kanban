@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -31,6 +32,8 @@ import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
+import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -40,7 +43,10 @@ import {
   useExpandedAll,
   PERSIST_KEYS,
 } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useLayoutStore,
+  useIsRightMainPanelVisible,
+} from '@/stores/useLayoutStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
@@ -65,6 +71,7 @@ function GitPanelContainer({
   onBranchNameChange,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
+  const navigate = useNavigate();
 
   // Track push state per repo: idle, pending, success, or error
   const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
@@ -232,6 +239,14 @@ function GitPanelContainer({
     [pushMutation]
   );
 
+  // Handle opening repository settings
+  const handleOpenSettings = useCallback(
+    (repoId: string) => {
+      navigate(`/settings/repos?repoId=${repoId}`);
+    },
+    [navigate]
+  );
+
   return (
     <GitPanel
       repos={repoInfosWithPushButton}
@@ -241,6 +256,7 @@ function GitPanelContainer({
       onPushClick={handlePushClick}
       onOpenInEditor={handleOpenInEditor}
       onCopyPath={handleCopyPath}
+      onOpenSettings={handleOpenSettings}
       onAddRepo={() => console.log('Add repo clicked')}
     />
   );
@@ -281,7 +297,40 @@ export function WorkspacesLayout() {
     setLogsMode,
     resetForCreateMode,
     setSidebarVisible,
+    setMainPanelVisible,
   } = useLayoutStore();
+
+  // Derived state: right main panel (Changes/Logs/Preview) is visible
+  const isRightMainPanelVisible = useIsRightMainPanelVisible();
+
+  // === Auto-show Workspaces Guide on first visit ===
+  const WORKSPACES_GUIDE_ID = 'workspaces-guide';
+  const {
+    config,
+    updateAndSaveConfig,
+    loading: configLoading,
+  } = useUserSystem();
+
+  const seenFeatures = useMemo(
+    () => config?.showcases?.seen_features ?? [],
+    [config?.showcases?.seen_features]
+  );
+
+  const hasSeenGuide =
+    !configLoading && seenFeatures.includes(WORKSPACES_GUIDE_ID);
+
+  useEffect(() => {
+    if (configLoading || hasSeenGuide) return;
+
+    // Mark as seen immediately before showing, so page reload doesn't re-trigger
+    void updateAndSaveConfig({
+      showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
+    });
+
+    WorkspacesGuideDialog.show().finally(() => {
+      WorkspacesGuideDialog.hide();
+    });
+  }, [configLoading, hasSeenGuide, seenFeatures, updateAndSaveConfig]);
 
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
   const { scratch: draftScratch } = useScratch(
@@ -335,7 +384,7 @@ export function WorkspacesLayout() {
     [renameBranch]
   );
 
-  // Compute diff stats from real diffs
+  // Compute aggregate diff stats from real diffs (for WorkspacesMainContainer)
   const diffStats = useMemo(
     () => ({
       filesChanged: realDiffs.length,
@@ -373,21 +422,33 @@ export function WorkspacesLayout() {
           }
         }
 
+        // Compute per-repo diff stats
+        const repoDiffs = realDiffs.filter((d) => d.repoId === repo.id);
+        const filesChanged = repoDiffs.length;
+        const linesAdded = repoDiffs.reduce(
+          (sum, d) => sum + (d.additions ?? 0),
+          0
+        );
+        const linesRemoved = repoDiffs.reduce(
+          (sum, d) => sum + (d.deletions ?? 0),
+          0
+        );
+
         return {
           id: repo.id,
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged: diffStats.filesChanged,
-          linesAdded: diffStats.linesAdded,
-          linesRemoved: diffStats.linesRemoved,
+          filesChanged,
+          linesAdded,
+          linesRemoved,
           prNumber,
           prUrl,
           prStatus,
         };
       }),
-    [repos, diffStats, branchStatus]
+    [repos, realDiffs, branchStatus]
   );
 
   // Content for logs panel (either process logs or tool content)
@@ -435,16 +496,13 @@ export function WorkspacesLayout() {
   // Ref to Allotment for programmatic control
   const allotmentRef = useRef<AllotmentHandle>(null);
 
-  // Reset Allotment sizes when changes, logs, or preview panel becomes visible
+  // Reset Allotment sizes when right main panel becomes visible
   // This re-applies preferredSize percentages based on current window size
   useEffect(() => {
-    if (
-      (isChangesMode || isLogsMode || isPreviewMode) &&
-      allotmentRef.current
-    ) {
+    if (isRightMainPanelVisible && allotmentRef.current) {
       allotmentRef.current.reset();
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode]);
+  }, [isRightMainPanelVisible]);
 
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
@@ -453,12 +511,20 @@ export function WorkspacesLayout() {
     }
   }, [isCreateMode, resetForCreateMode]);
 
-  // Show sidebar when no panel is open
+  // Show sidebar when right main panel is hidden
   useEffect(() => {
-    if (!isChangesMode && !isLogsMode && !isPreviewMode) {
+    if (!isRightMainPanelVisible) {
       setSidebarVisible(true);
     }
-  }, [isChangesMode, isLogsMode, isPreviewMode, setSidebarVisible]);
+  }, [isRightMainPanelVisible, setSidebarVisible]);
+
+  // Ensure left main panel (chat) is visible when right main panel is hidden
+  // This prevents invalid state where only sidebars are visible after page reload
+  useEffect(() => {
+    if (!isMainPanelVisible && !isRightMainPanelVisible) {
+      setMainPanelVisible(true);
+    }
+  }, [isMainPanelVisible, isRightMainPanelVisible, setMainPanelVisible]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
@@ -748,7 +814,7 @@ export function WorkspacesLayout() {
         <Allotment.Pane
           minSize={300}
           preferredSize={changesPanelWidth}
-          visible={isChangesMode || isLogsMode || isPreviewMode}
+          visible={isRightMainPanelVisible}
         >
           <div className="h-full overflow-hidden">
             {isChangesMode && (
