@@ -23,6 +23,7 @@ import {
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import type {
   Workspace as ApiWorkspace,
   Session,
@@ -153,6 +154,12 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       new Set(diffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)),
     [diffs]
   );
+
+  // Sync diffPaths to store for expand/collapse all functionality
+  useEffect(() => {
+    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
+    return () => useDiffViewStore.getState().setDiffPaths([]);
+  }, [diffPaths]);
 
   const diffStats: DiffStats = useMemo(
     () => ({

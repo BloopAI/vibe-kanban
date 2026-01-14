@@ -38,9 +38,12 @@ export function CreateModeProvider({ children }: CreateModeProviderProps) {
     enabled: !!mostRecentWorkspace?.taskId,
   });
 
-  const { repos: lastWorkspaceRepos } = useAttemptRepo(mostRecentWorkspace?.id, {
-    enabled: !!mostRecentWorkspace?.id,
-  });
+  const { repos: lastWorkspaceRepos } = useAttemptRepo(
+    mostRecentWorkspace?.id,
+    {
+      enabled: !!mostRecentWorkspace?.id,
+    }
+  );
 
   const state = useCreateModeState({
     initialProjectId: lastWorkspaceTask?.project_id,

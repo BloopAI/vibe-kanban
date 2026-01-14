@@ -10,6 +10,7 @@ import { ChangesPanel } from '../views/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useTask } from '@/hooks/useTask';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -131,18 +132,18 @@ function useInViewObserver(
 
 interface ChangesPanelContainerProps {
   className?: string;
-  /** Project ID for @ mentions in comments */
-  projectId?: string;
   /** Attempt ID for opening files in IDE */
   attemptId?: string;
 }
 
 export function ChangesPanelContainer({
   className,
-  projectId,
   attemptId,
 }: ChangesPanelContainerProps) {
-  const { diffs } = useWorkspaceContext();
+  const { diffs, workspace } = useWorkspaceContext();
+  const { data: task } = useTask(workspace?.task_id, {
+    enabled: !!workspace?.task_id,
+  });
   const { selectedFilePath, setFileInView } = useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -206,7 +207,7 @@ export function ChangesPanelContainer({
       className={className}
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
-      projectId={projectId}
+      projectId={task?.project_id}
       attemptId={attemptId}
     />
   );

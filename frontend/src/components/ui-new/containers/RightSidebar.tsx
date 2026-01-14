@@ -10,6 +10,7 @@ import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
   type RightMainPanelMode,
+  useExpandedAll,
 } from '@/stores/useUiPreferencesStore';
 
 export interface RightSidebarProps {
@@ -17,7 +18,6 @@ export interface RightSidebarProps {
   rightMainPanelMode: RightMainPanelMode | null;
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
-  onSetExpanded: (key: string, value: boolean) => void;
 }
 
 export function RightSidebar({
@@ -25,11 +25,11 @@ export function RightSidebar({
   rightMainPanelMode,
   selectedWorkspace,
   repos,
-  onSetExpanded,
 }: RightSidebarProps) {
   const { selectFile } = useChangesView();
   const { viewProcessInPanel } = useLogsPanel();
   const { diffs } = useWorkspaceContext();
+  const { setExpanded } = useExpandedAll();
 
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
@@ -45,7 +45,7 @@ export function RightSidebar({
             diffs={diffs}
             onSelectFile={(path) => {
               selectFile(path);
-              onSetExpanded(`diff:${path}`, true);
+              setExpanded(`diff:${path}`, true);
             }}
           />
         </div>

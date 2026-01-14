@@ -16,17 +16,14 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useTask } from '@/hooks/useTask';
 
 import {
   PERSIST_KEYS,
-  useExpandedAll,
   usePaneSize,
   useUiPreferencesStore,
-  useIsRightMainPanelVisible,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
-import { useDiffViewStore } from '@/stores/useDiffViewStore';
+
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 
@@ -73,7 +70,6 @@ export function WorkspacesLayout() {
     repos,
     isNewSessionMode,
     startNewSession,
-    diffPaths,
   } = useWorkspaceContext();
 
   const {
@@ -85,22 +81,11 @@ export function WorkspacesLayout() {
     setLeftMainPanelVisible,
   } = useUiPreferencesStore();
 
-  const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
-    PERSIST_KEYS.rightMainPanel,
-    50
-  );
-  const isRightMainPanelVisible = useIsRightMainPanelVisible();
-  const { setExpanded } = useExpandedAll();
-
   const {
     config,
     updateAndSaveConfig,
     loading: configLoading,
   } = useUserSystem();
-
-  const { data: selectedWorkspaceTask } = useTask(selectedWorkspace?.task_id, {
-    enabled: !!selectedWorkspace?.task_id,
-  });
 
   useCommandBarShortcut(() => CommandBarDialog.show());
 
@@ -117,25 +102,33 @@ export function WorkspacesLayout() {
 
   // Ensure left panels visible when right main panel hidden
   useEffect(() => {
-    if (!isRightMainPanelVisible) {
+    if (rightMainPanelMode === null) {
       setLeftSidebarVisible(true);
       if (!isLeftMainPanelVisible) setLeftMainPanelVisible(true);
     }
-  }, [isLeftMainPanelVisible, isRightMainPanelVisible, setLeftSidebarVisible, setLeftMainPanelVisible]);
+  }, [
+    isLeftMainPanelVisible,
+    rightMainPanelMode,
+    setLeftSidebarVisible,
+    setLeftMainPanelVisible,
+  ]);
 
-  // Sync diffPaths to store
-  useEffect(() => {
-    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
-    return () => useDiffViewStore.getState().setDiffPaths([]);
-  }, [diffPaths]);
+  const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
+    PERSIST_KEYS.rightMainPanel,
+    50
+  );
 
   const defaultLayout: Layout =
     typeof rightMainPanelSize === 'number'
-      ? { 'left-main': 100 - rightMainPanelSize, 'right-main': rightMainPanelSize }
+      ? {
+          'left-main': 100 - rightMainPanelSize,
+          'right-main': rightMainPanelSize,
+        }
       : { 'left-main': 50, 'right-main': 50 };
 
   const onLayoutChange = (layout: Layout) => {
-    if (isRightMainPanelVisible) setRightMainPanelSize(layout['right-main']);
+    if (rightMainPanelMode !== null)
+      setRightMainPanelSize(layout['right-main']);
   };
 
   return (
@@ -168,7 +161,11 @@ export function WorkspacesLayout() {
                       onLayoutChange={onLayoutChange}
                     >
                       {isLeftMainPanelVisible && (
-                        <Panel id="left-main" minSize={20} className="min-w-0 h-full overflow-hidden">
+                        <Panel
+                          id="left-main"
+                          minSize={20}
+                          className="min-w-0 h-full overflow-hidden"
+                        >
                           {isCreateMode ? (
                             <CreateChatBoxContainer />
                           ) : (
@@ -185,24 +182,35 @@ export function WorkspacesLayout() {
                         </Panel>
                       )}
 
-                      {isLeftMainPanelVisible && isRightMainPanelVisible && (
-                        <Separator
-                          id="main-separator"
-                          className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
-                        />
-                      )}
+                      {isLeftMainPanelVisible &&
+                        rightMainPanelMode !== null && (
+                          <Separator
+                            id="main-separator"
+                            className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+                          />
+                        )}
 
-                      {isRightMainPanelVisible && (
-                        <Panel id="right-main" minSize={20} className="min-w-0 h-full overflow-hidden">
-                          {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES && (
+                      {rightMainPanelMode !== null && (
+                        <Panel
+                          id="right-main"
+                          minSize={20}
+                          className="min-w-0 h-full overflow-hidden"
+                        >
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.CHANGES && (
                             <ChangesPanelContainer
-                              projectId={selectedWorkspaceTask?.project_id}
                               attemptId={selectedWorkspace?.id}
                             />
                           )}
-                          {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS && <LogsContentContainer />}
-                          {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW && (
-                            <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.LOGS && (
+                            <LogsContentContainer />
+                          )}
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.PREVIEW && (
+                            <PreviewBrowserContainer
+                              attemptId={selectedWorkspace?.id}
+                            />
                           )}
                         </Panel>
                       )}
@@ -215,7 +223,6 @@ export function WorkspacesLayout() {
                           rightMainPanelMode={rightMainPanelMode}
                           selectedWorkspace={selectedWorkspace}
                           repos={repos}
-                          onSetExpanded={setExpanded}
                         />
                       </div>
                     )}
