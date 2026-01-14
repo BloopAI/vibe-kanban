@@ -278,6 +278,18 @@ export type PushError = { "type": "force_push_required" };
 
 export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
 
+export type MergeConflictResolution = { "status": "no_conflicts" } | { "status": "resolved" } | { "status": "failed", conflicted_files: Array<string>, message: string, };
+
+export type CreatePrResponse = { 
+/**
+ * The URL of the created PR
+ */
+pr_url: string, 
+/**
+ * Status of merge conflict auto-resolution (if conflicts were detected)
+ */
+conflict_resolution: MergeConflictResolution | null, };
+
 export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
  * True if a `git rebase` is currently in progress in this worktree
@@ -392,7 +404,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, pr_conflict_resolution_prompt: string | null, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
