@@ -94,6 +94,11 @@ import {
   Workspace,
   GitHubIssueResponse,
   GitHubRepoInfoResponse,
+  FindDuplicatesResponse,
+  MergeTasksRequest,
+  MergeTasksResponse,
+  BulkMergeRequest,
+  BulkMergeResponse,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -489,6 +494,29 @@ export const tasksApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Task | null>(response);
+  },
+
+  findDuplicates: async (projectId: string): Promise<FindDuplicatesResponse> => {
+    const response = await makeRequest(
+      `/api/tasks/find-duplicates?project_id=${encodeURIComponent(projectId)}`
+    );
+    return handleApiResponse<FindDuplicatesResponse>(response);
+  },
+
+  mergeTasks: async (data: MergeTasksRequest): Promise<MergeTasksResponse> => {
+    const response = await makeRequest(`/api/tasks/merge`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<MergeTasksResponse>(response);
+  },
+
+  bulkMergeTasks: async (data: BulkMergeRequest): Promise<BulkMergeResponse> => {
+    const response = await makeRequest(`/api/tasks/bulk-merge`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<BulkMergeResponse>(response);
   },
 };
 

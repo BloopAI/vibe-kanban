@@ -771,6 +771,25 @@ ORDER BY t.created_at DESC"#,
             .collect())
     }
 
+    /// Update a task's description and labels (used for merging tasks)
+    pub async fn update_description_and_labels(
+        pool: &SqlitePool,
+        id: Uuid,
+        description: Option<String>,
+        labels: &[TaskLabel],
+    ) -> Result<(), sqlx::Error> {
+        let labels_json = serde_json::to_string(labels).ok();
+        sqlx::query(
+            "UPDATE tasks SET description = ?2, labels = ?3, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+        )
+        .bind(id)
+        .bind(&description)
+        .bind(&labels_json)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_relationships_for_workspace(
         pool: &SqlitePool,
         workspace: &Workspace,

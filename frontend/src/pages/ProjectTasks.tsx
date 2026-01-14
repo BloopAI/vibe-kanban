@@ -9,6 +9,7 @@ import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
+import { DeduplicateDialog } from '@/components/dialogs/tasks/DeduplicateDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { usePostHog } from 'posthog-js/react';
@@ -871,6 +872,7 @@ export function ProjectTasks() {
           projectId={projectId!}
           hiddenColumns={hiddenColumns}
           onToggleHiddenColumn={toggleHiddenColumn}
+          onDeduplicateClick={() => DeduplicateDialog.show({ projectId: projectId! })}
         />
       </div>
     );
