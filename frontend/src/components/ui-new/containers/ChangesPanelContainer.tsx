@@ -9,6 +9,7 @@ import {
 import { ChangesPanel } from '../views/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -129,7 +130,6 @@ function useInViewObserver(
 }
 
 interface ChangesPanelContainerProps {
-  diffs: Diff[];
   className?: string;
   /** Project ID for @ mentions in comments */
   projectId?: string;
@@ -138,11 +138,11 @@ interface ChangesPanelContainerProps {
 }
 
 export function ChangesPanelContainer({
-  diffs,
   className,
   projectId,
   attemptId,
 }: ChangesPanelContainerProps) {
+  const { diffs } = useWorkspaceContext();
   const { selectedFilePath, setFileInView } = useChangesView();
   const diffRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement | null>(null);

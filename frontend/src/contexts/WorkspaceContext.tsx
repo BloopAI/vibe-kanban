@@ -19,12 +19,15 @@ import {
   useGitHubComments,
   type NormalizedGitHubComment,
 } from '@/hooks/useGitHubComments';
+import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
 import type {
   Workspace as ApiWorkspace,
   Session,
   RepoWithTargetBranch,
   UnifiedPrComment,
+  Diff,
+  DiffStats,
 } from 'shared/types';
 
 export type { NormalizedGitHubComment } from '@/hooks/useGitHubComments';
@@ -62,6 +65,12 @@ interface WorkspaceContextValue {
   setShowGitHubComments: (show: boolean) => void;
   getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
   getGitHubCommentCountForFile: (filePath: string) => number;
+  /** Diffs for the current workspace */
+  diffs: Diff[];
+  /** Set of file paths in the diffs */
+  diffPaths: Set<string>;
+  /** Aggregate diff statistics */
+  diffStats: DiffStats;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -127,6 +136,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     enabled: !isCreateMode,
   });
 
+  // Stream diffs for the current workspace
+  const { diffs } = useDiffStream(workspaceId ?? null, !isCreateMode);
+
+  const diffPaths = useMemo(
+    () =>
+      new Set(diffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)),
+    [diffs]
+  );
+
+  const diffStats: DiffStats = useMemo(
+    () => ({
+      files_changed: diffs.length,
+      lines_added: diffs.reduce((sum, d) => sum + (d.additions ?? 0), 0),
+      lines_removed: diffs.reduce((sum, d) => sum + (d.deletions ?? 0), 0),
+    }),
+    [diffs]
+  );
+
   const isLoading = isLoadingList || isLoadingWorkspace;
 
   const selectWorkspace = useCallback(
@@ -180,6 +207,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setShowGitHubComments,
       getGitHubCommentsForFile,
       getGitHubCommentCountForFile,
+      diffs,
+      diffPaths,
+      diffStats,
     }),
     [
       workspaceId,
@@ -206,6 +236,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       setShowGitHubComments,
       getGitHubCommentsForFile,
       getGitHubCommentCountForFile,
+      diffs,
+      diffPaths,
+      diffStats,
     ]
   );
 

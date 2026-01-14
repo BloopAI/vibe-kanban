@@ -3,12 +3,7 @@ import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
 import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 import { useTask } from '@/hooks/useTask';
-
-interface DiffStats {
-  filesChanged: number;
-  linesAdded: number;
-  linesRemoved: number;
-}
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
@@ -22,8 +17,6 @@ interface WorkspacesMainContainerProps {
   onStartNewSession?: () => void;
   /** Callback to toggle changes panel */
   onViewCode?: () => void;
-  /** Diff statistics from the workspace */
-  diffStats?: DiffStats;
 }
 
 export function WorkspacesMainContainer({
@@ -35,8 +28,8 @@ export function WorkspacesMainContainer({
   isNewSessionMode,
   onStartNewSession,
   onViewCode,
-  diffStats,
 }: WorkspacesMainContainerProps) {
+  const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
 
   // Fetch task to get project_id for file search
@@ -61,7 +54,11 @@ export function WorkspacesMainContainer({
       onViewCode={onViewCode}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
-      diffStats={diffStats}
+      diffStats={{
+        filesChanged: diffStats.files_changed,
+        linesAdded: diffStats.lines_added,
+        linesRemoved: diffStats.lines_removed,
+      }}
     />
   );
 }

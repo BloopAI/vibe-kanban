@@ -4,26 +4,23 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import type { Merge, RepoWithTargetBranch } from 'shared/types';
+import type { RepoWithTargetBranch } from 'shared/types';
 
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
-import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
-import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
+
 import {
   PERSIST_KEYS,
   useExpandedAll,
@@ -91,6 +88,7 @@ export function WorkspacesLayout() {
     repos,
     isNewSessionMode,
     startNewSession,
+    diffPaths,
   } = useWorkspaceContext();
 
   // Layout state from store
@@ -165,92 +163,6 @@ export function WorkspacesLayout() {
     enabled: !!selectedWorkspace?.task_id,
   });
 
-  // Stream real diffs for the selected workspace
-  const { diffs: realDiffs } = useDiffStream(
-    selectedWorkspace?.id ?? null,
-    !isCreateMode && !!selectedWorkspace?.id
-  );
-
-  // Hook to rename branch via API
-  const renameBranch = useRenameBranch(selectedWorkspace?.id);
-
-  // Fetch branch status (including PR/merge info)
-  const { data: branchStatus } = useBranchStatus(selectedWorkspace?.id);
-
-  const handleBranchNameChange = useCallback(
-    (newName: string) => {
-      renameBranch.mutate(newName);
-    },
-    [renameBranch]
-  );
-
-  // Compute aggregate diff stats from real diffs (for WorkspacesMainContainer)
-  const diffStats = useMemo(
-    () => ({
-      filesChanged: realDiffs.length,
-      linesAdded: realDiffs.reduce((sum, d) => sum + (d.additions ?? 0), 0),
-      linesRemoved: realDiffs.reduce((sum, d) => sum + (d.deletions ?? 0), 0),
-    }),
-    [realDiffs]
-  );
-
-  // Transform repos to RepoInfo format for GitPanel
-  const repoInfos: RepoInfo[] = useMemo(
-    () =>
-      repos.map((repo) => {
-        // Find branch status for this repo to get PR info
-        const repoStatus = branchStatus?.find((s) => s.repo_id === repo.id);
-
-        // Find the most relevant PR (prioritize open, then merged)
-        let prNumber: number | undefined;
-        let prUrl: string | undefined;
-        let prStatus: 'open' | 'merged' | 'closed' | 'unknown' | undefined;
-
-        if (repoStatus?.merges) {
-          const openPR = repoStatus.merges.find(
-            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
-          );
-          const mergedPR = repoStatus.merges.find(
-            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
-          );
-
-          const relevantPR = openPR || mergedPR;
-          if (relevantPR && relevantPR.type === 'pr') {
-            prNumber = Number(relevantPR.pr_info.number);
-            prUrl = relevantPR.pr_info.url;
-            prStatus = relevantPR.pr_info.status;
-          }
-        }
-
-        // Compute per-repo diff stats
-        const repoDiffs = realDiffs.filter((d) => d.repoId === repo.id);
-        const filesChanged = repoDiffs.length;
-        const linesAdded = repoDiffs.reduce(
-          (sum, d) => sum + (d.additions ?? 0),
-          0
-        );
-        const linesRemoved = repoDiffs.reduce(
-          (sum, d) => sum + (d.deletions ?? 0),
-          0
-        );
-
-        return {
-          id: repo.id,
-          name: repo.display_name || repo.name,
-          targetBranch: repo.target_branch || 'main',
-          commitsAhead: repoStatus?.commits_ahead ?? 0,
-          remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged,
-          linesAdded,
-          linesRemoved,
-          prNumber,
-          prUrl,
-          prStatus,
-        };
-      }),
-    [repos, realDiffs, branchStatus]
-  );
-
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
@@ -294,13 +206,6 @@ export function WorkspacesLayout() {
       setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES);
     }
   }, [rightMainPanelMode, setRightMainPanelMode]);
-
-  // Compute diffPaths for FileNavigationContext
-  const diffPaths = useMemo(() => {
-    return new Set(
-      realDiffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)
-    );
-  }, [realDiffs]);
 
   // Sync diffPaths to store for actions (ToggleAllDiffs, ExpandAllDiffs, etc.)
   useEffect(() => {
@@ -351,7 +256,7 @@ export function WorkspacesLayout() {
           >
             <ReviewProvider attemptId={selectedWorkspace?.id}>
               <LogsPanelProvider>
-                <ChangesViewProvider diffPaths={diffPaths}>
+                <ChangesViewProvider>
                   <div className="flex h-full">
                     {/* Resizable area for main + right panels */}
                     <Group
@@ -379,7 +284,6 @@ export function WorkspacesLayout() {
                               isNewSessionMode={isNewSessionMode}
                               onStartNewSession={startNewSession}
                               onViewCode={handleToggleChangesMode}
-                              diffStats={diffStats}
                             />
                           )}
                         </Panel>
@@ -403,7 +307,6 @@ export function WorkspacesLayout() {
                           {rightMainPanelMode ===
                             RIGHT_MAIN_PANEL_MODES.CHANGES && (
                             <ChangesPanelContainer
-                              diffs={realDiffs}
                               projectId={selectedWorkspaceTask?.project_id}
                               attemptId={selectedWorkspace?.id}
                             />
@@ -430,9 +333,6 @@ export function WorkspacesLayout() {
                           rightMainPanelMode={rightMainPanelMode}
                           selectedWorkspace={selectedWorkspace}
                           repos={repos}
-                          repoInfos={repoInfos}
-                          realDiffs={realDiffs}
-                          onBranchNameChange={handleBranchNameChange}
                           onSetExpanded={setExpanded}
                         />
                       </div>

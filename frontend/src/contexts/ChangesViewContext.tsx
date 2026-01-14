@@ -9,6 +9,7 @@ import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface ChangesViewContextValue {
   /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
@@ -43,13 +44,10 @@ const ChangesViewContext = createContext<ChangesViewContextValue>(defaultValue);
 
 interface ChangesViewProviderProps {
   children: React.ReactNode;
-  diffPaths: Set<string>;
 }
 
-export function ChangesViewProvider({
-  children,
-  diffPaths,
-}: ChangesViewProviderProps) {
+export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
+  const { diffPaths } = useWorkspaceContext();
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileInView, setFileInView] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();

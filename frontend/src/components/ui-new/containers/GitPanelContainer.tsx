@@ -2,19 +2,25 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActions } from '@/contexts/ActionsContext';
 import { usePush } from '@/hooks/usePush';
+import { useRenameBranch } from '@/hooks/useRenameBranch';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { repoApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type { Workspace, RepoWithTargetBranch } from 'shared/types';
+import type {
+  Workspace,
+  RepoWithTargetBranch,
+  Diff,
+  Merge,
+} from 'shared/types';
 
 export interface GitPanelContainerProps {
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
-  repoInfos: RepoInfo[];
-  onBranchNameChange: (name: string) => void;
+  diffs: Diff[];
 }
 
 type PushState = 'idle' | 'pending' | 'success' | 'error';
@@ -22,11 +28,75 @@ type PushState = 'idle' | 'pending' | 'success' | 'error';
 export function GitPanelContainer({
   selectedWorkspace,
   repos,
-  repoInfos,
-  onBranchNameChange,
+  diffs,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
   const navigate = useNavigate();
+
+  // Hooks for branch management (moved from WorkspacesLayout)
+  const renameBranch = useRenameBranch(selectedWorkspace?.id);
+  const { data: branchStatus } = useBranchStatus(selectedWorkspace?.id);
+
+  const handleBranchNameChange = useCallback(
+    (newName: string) => {
+      renameBranch.mutate(newName);
+    },
+    [renameBranch]
+  );
+
+  // Transform repos to RepoInfo format (moved from WorkspacesLayout)
+  const repoInfos: RepoInfo[] = useMemo(
+    () =>
+      repos.map((repo) => {
+        const repoStatus = branchStatus?.find((s) => s.repo_id === repo.id);
+
+        let prNumber: number | undefined;
+        let prUrl: string | undefined;
+        let prStatus: 'open' | 'merged' | 'closed' | 'unknown' | undefined;
+
+        if (repoStatus?.merges) {
+          const openPR = repoStatus.merges.find(
+            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+          );
+          const mergedPR = repoStatus.merges.find(
+            (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
+          );
+
+          const relevantPR = openPR || mergedPR;
+          if (relevantPR && relevantPR.type === 'pr') {
+            prNumber = Number(relevantPR.pr_info.number);
+            prUrl = relevantPR.pr_info.url;
+            prStatus = relevantPR.pr_info.status;
+          }
+        }
+
+        const repoDiffs = diffs.filter((d) => d.repoId === repo.id);
+        const filesChanged = repoDiffs.length;
+        const linesAdded = repoDiffs.reduce(
+          (sum, d) => sum + (d.additions ?? 0),
+          0
+        );
+        const linesRemoved = repoDiffs.reduce(
+          (sum, d) => sum + (d.deletions ?? 0),
+          0
+        );
+
+        return {
+          id: repo.id,
+          name: repo.display_name || repo.name,
+          targetBranch: repo.target_branch || 'main',
+          commitsAhead: repoStatus?.commits_ahead ?? 0,
+          remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
+          filesChanged,
+          linesAdded,
+          linesRemoved,
+          prNumber,
+          prUrl,
+          prStatus,
+        };
+      }),
+    [repos, diffs, branchStatus]
+  );
 
   // Track push state per repo: idle, pending, success, or error
   const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
@@ -206,7 +276,7 @@ export function GitPanelContainer({
     <GitPanel
       repos={repoInfosWithPushButton}
       workingBranchName={selectedWorkspace?.branch ?? ''}
-      onWorkingBranchNameChange={onBranchNameChange}
+      onWorkingBranchNameChange={handleBranchNameChange}
       onActionsClick={handleActionsClick}
       onPushClick={handlePushClick}
       onOpenInEditor={handleOpenInEditor}

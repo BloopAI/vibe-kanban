@@ -3,10 +3,10 @@ import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContai
 import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
-import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
-import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
   type RightMainPanelMode,
@@ -17,9 +17,6 @@ export interface RightSidebarProps {
   rightMainPanelMode: RightMainPanelMode | null;
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
-  repoInfos: RepoInfo[];
-  realDiffs: Diff[];
-  onBranchNameChange: (name: string) => void;
   onSetExpanded: (key: string, value: boolean) => void;
 }
 
@@ -28,13 +25,11 @@ export function RightSidebar({
   rightMainPanelMode,
   selectedWorkspace,
   repos,
-  repoInfos,
-  realDiffs,
-  onBranchNameChange,
   onSetExpanded,
 }: RightSidebarProps) {
   const { selectFile } = useChangesView();
   const { viewProcessInPanel } = useLogsPanel();
+  const { diffs } = useWorkspaceContext();
 
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
@@ -47,7 +42,7 @@ export function RightSidebar({
           <FileTreeContainer
             key={selectedWorkspace?.id}
             workspaceId={selectedWorkspace?.id}
-            diffs={realDiffs}
+            diffs={diffs}
             onSelectFile={(path) => {
               selectFile(path);
               onSetExpanded(`diff:${path}`, true);
@@ -58,8 +53,7 @@ export function RightSidebar({
           <GitPanelContainer
             selectedWorkspace={selectedWorkspace}
             repos={repos}
-            repoInfos={repoInfos}
-            onBranchNameChange={onBranchNameChange}
+            diffs={diffs}
           />
         </div>
       </div>
@@ -76,8 +70,7 @@ export function RightSidebar({
           <GitPanelContainer
             selectedWorkspace={selectedWorkspace}
             repos={repos}
-            repoInfos={repoInfos}
-            onBranchNameChange={onBranchNameChange}
+            diffs={diffs}
           />
         </div>
       </div>
@@ -97,8 +90,7 @@ export function RightSidebar({
           <GitPanelContainer
             selectedWorkspace={selectedWorkspace}
             repos={repos}
-            repoInfos={repoInfos}
-            onBranchNameChange={onBranchNameChange}
+            diffs={diffs}
           />
         </div>
       </div>
@@ -109,8 +101,7 @@ export function RightSidebar({
     <GitPanelContainer
       selectedWorkspace={selectedWorkspace}
       repos={repos}
-      repoInfos={repoInfos}
-      onBranchNameChange={onBranchNameChange}
+      diffs={diffs}
     />
   );
 }
