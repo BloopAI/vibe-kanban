@@ -424,23 +424,6 @@ impl GitCli {
         Ok(output.trim().to_string())
     }
 
-    pub fn default_remote_name(&self, repo_path: &Path) -> Result<String, GitCliError> {
-        if let Ok(default) = self.git(repo_path, ["config", "remote.pushDefault"]) {
-            let default = default.trim();
-            if !default.is_empty() {
-                return Ok(default.to_string());
-            }
-        }
-
-        let output = self.git(repo_path, ["remote"])?;
-        Ok(output
-            .lines()
-            .map(|l| l.trim())
-            .find(|l| !l.is_empty())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "origin".to_string()))
-    }
-
     // Parse `git diff --name-status` output into structured entries.
     // Handles rename/copy scores like `R100` by matching the first letter.
     fn parse_name_status(output: &str) -> Vec<StatusDiffEntry> {
