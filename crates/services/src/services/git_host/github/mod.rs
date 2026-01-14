@@ -205,17 +205,15 @@ impl GitHostProvider for GitHubProvider {
             request.head_branch.clone()
         };
 
-        let cli = self.gh_cli.clone();
         let mut request_clone = request.clone();
         request_clone.head_branch = head_branch;
-        let repo_path_buf = repo_path.to_path_buf();
 
         (|| async {
-            let cli = cli.clone();
+            let cli = self.gh_cli.clone();
             let request = request_clone.clone();
             let owner = target_repo_info.owner.clone();
             let repo_name = target_repo_info.repo_name.clone();
-            let repo_path = repo_path_buf.clone();
+            let repo_path = repo_path.to_path_buf();
 
             let cli_result = task::spawn_blocking(move || {
                 cli.create_pr(&request, &owner, &repo_name, &repo_path)
