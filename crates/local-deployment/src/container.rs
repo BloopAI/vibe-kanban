@@ -64,6 +64,9 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
+/// Script to check for uncommitted git changes, embedded at compile time
+const CHECK_GIT_STATUS_SCRIPT: &str = include_str!("scripts/check-git-status.sh");
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -774,7 +777,7 @@ impl LocalContainerService {
     async fn create_workspace_config_files(
         workspace_dir: &Path,
         repos: &[Repo],
-        _agent_working_dir: Option<&str>,
+        agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
 
@@ -822,6 +825,55 @@ impl LocalContainerService {
             );
         }
 
+        // Create Claude Code hooks config (settings.local.json with inline Stop hook)
+        Self::create_claude_hooks_config(workspace_dir, agent_working_dir).await?;
+
+        Ok(())
+    }
+
+    /// Create .claude/settings.local.json with Stop hook to check for uncommitted changes.
+    /// Currently only supports single repo workspaces.
+    async fn create_claude_hooks_config(
+        workspace_dir: &Path,
+        agent_working_dir: Option<&str>,
+    ) -> Result<(), ContainerError> {
+        // Only support single repo for now
+        let Some(repo_dir) = agent_working_dir else {
+            tracing::debug!("Skipping Claude hooks for multi-repo workspace");
+            return Ok(());
+        };
+
+        let claude_dir = workspace_dir.join(repo_dir).join(".claude");
+        tokio::fs::create_dir_all(&claude_dir).await.map_err(|e| {
+            ContainerError::Other(anyhow!("Failed to create .claude dir: {}", e))
+        })?;
+
+        // Use shlex to properly escape script for bash -c
+        let quoted_script = shlex::try_quote(CHECK_GIT_STATUS_SCRIPT)
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to quote script: {}", e)))?;
+        let command = format!("bash -c {}", quoted_script);
+
+        let settings = serde_json::json!({
+            "hooks": {
+                "Stop": [{
+                    "hooks": [{
+                        "type": "command",
+                        "command": command
+                    }]
+                }]
+            }
+        });
+
+        let settings_path = claude_dir.join("settings.local.json");
+        let content = serde_json::to_string_pretty(&settings)
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize settings: {}", e)))?;
+        tokio::fs::write(&settings_path, content)
+            .await
+            .map_err(|e| {
+                ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
+            })?;
+
+        tracing::info!("Created Claude Code hooks in {:?}", claude_dir);
         Ok(())
     }
 
