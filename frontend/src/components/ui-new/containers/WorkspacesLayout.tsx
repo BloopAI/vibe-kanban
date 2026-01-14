@@ -40,6 +40,7 @@ import {
   PERSIST_KEYS,
   useExpandedAll,
   usePaneSize,
+  usePersistedExpanded,
 } from '@/stores/useUiPreferencesStore';
 import {
   useLayoutStore,
@@ -304,6 +305,10 @@ export function WorkspacesLayout() {
     50
   );
   const isRightMainPanelVisible = useIsRightMainPanelVisible();
+  const [showArchive, setShowArchive] = usePersistedExpanded(
+    PERSIST_KEYS.workspacesSidebarArchived,
+    false
+  );
 
   const defaultLayout = (): Layout => {
     let layout = { 'left-main': 50, 'right-main': 50 };
@@ -742,6 +747,8 @@ export function WorkspacesLayout() {
       isCreateMode={isCreateMode}
       draftTitle={persistedDraftTitle}
       onSelectCreate={navigateToCreate}
+      showArchive={showArchive}
+      onShowArchiveChange={setShowArchive}
     />
   );
 
