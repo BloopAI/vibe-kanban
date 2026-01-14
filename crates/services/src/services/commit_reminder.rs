@@ -11,9 +11,25 @@ pub struct CommitReminderService {
 }
 
 impl CommitReminderService {
-    /// The prompt sent to the agent when reminding them to commit their changes.
-    pub const PROMPT: &'static str = "You left uncommitted changes. You are expected to commit your work before finishing - \
+    /// Base prompt for commit reminder (without cleanup script)
+    const BASE_PROMPT: &'static str = "You left uncommitted changes. You are expected to commit your work before finishing - \
         please do so now. Review what you've done and create an appropriate git commit with a descriptive message summarizing the changes.";
+
+    /// Build the commit reminder prompt, optionally including cleanup scripts to run first
+    pub fn build_prompt(cleanup_scripts: &[String]) -> String {
+        let mut prompt = String::new();
+
+        if !cleanup_scripts.is_empty() {
+            prompt.push_str("Before committing, run the following cleanup script(s):\n");
+            for script in cleanup_scripts {
+                prompt.push_str(&format!("```bash\n{}\n```\n", script));
+            }
+            prompt.push('\n');
+        }
+
+        prompt.push_str(Self::BASE_PROMPT);
+        prompt
+    }
 
     pub fn new() -> Self {
         Self {

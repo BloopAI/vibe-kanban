@@ -448,8 +448,13 @@ impl LocalContainerService {
                         // Check for uncommitted changes before try_commit_changes would auto-commit them
                         if container.has_uncommitted_changes(&ctx) {
                             use services::services::commit_reminder::CommitReminderService;
+                            let cleanup_scripts: Vec<String> = ctx
+                                .repos
+                                .iter()
+                                .filter_map(|r| r.cleanup_script.clone())
+                                .collect();
                             let reminder_data = DraftFollowUpData {
-                                message: CommitReminderService::PROMPT.to_string(),
+                                message: CommitReminderService::build_prompt(&cleanup_scripts),
                                 variant: None,
                             };
                             match container.start_queued_follow_up(&ctx, &reminder_data).await {
