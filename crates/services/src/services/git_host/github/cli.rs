@@ -11,7 +11,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::{MergeStatus, PullRequestInfo};
+use db::models::merge::{CiStatus, MergeStatus, PullRequestInfo};
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -369,6 +369,22 @@ impl GhCli {
         )?;
         Self::parse_issues(&raw)
     }
+
+    /// Get CI/GitHub Actions check status for a PR.
+    /// Uses `gh pr checks` to get the status of all checks.
+    pub fn get_pr_ci_status(&self, pr_url: &str) -> Result<CiStatus, GhCliError> {
+        let raw = self.run(
+            [
+                "pr",
+                "checks",
+                pr_url,
+                "--json",
+                "name,state,conclusion",
+            ],
+            None,
+        )?;
+        Self::parse_pr_checks(&raw)
+    }
 }
 
 impl GhCli {
@@ -409,6 +425,7 @@ impl GhCli {
             status: MergeStatus::Open,
             merged_at: None,
             merge_commit_sha: None,
+            ci_status: CiStatus::Unknown,
         })
     }
 
@@ -447,6 +464,7 @@ impl GhCli {
             },
             merged_at: pr.merged_at,
             merge_commit_sha: pr.merge_commit.and_then(|c| c.oid),
+            ci_status: CiStatus::Unknown,
         }
     }
 
@@ -525,5 +543,79 @@ impl GhCli {
                 labels: i.labels.into_iter().map(|l| l.name).collect(),
             })
             .collect())
+    }
+
+    /// Parse the output of `gh pr checks --json name,state,conclusion`
+    /// Returns an aggregated CI status based on all checks:
+    /// - Passing: all checks have succeeded
+    /// - Failing: at least one check has failed
+    /// - Pending: at least one check is still running (and none failed)
+    /// - Unknown: no checks found or unable to determine
+    fn parse_pr_checks(raw: &str) -> Result<CiStatus, GhCliError> {
+        #[derive(Deserialize)]
+        struct GhCheckResponse {
+            #[serde(default)]
+            state: String, // "pending", "completed", etc.
+            #[serde(default)]
+            conclusion: Option<String>, // "success", "failure", "cancelled", etc.
+        }
+
+        let checks: Vec<GhCheckResponse> = serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse gh pr checks response: {err}; raw: {raw}"
+            ))
+        })?;
+
+        if checks.is_empty() {
+            return Ok(CiStatus::Unknown);
+        }
+
+        let mut has_pending = false;
+        let mut has_failure = false;
+        let mut all_success = true;
+
+        for check in checks {
+            let state = check.state.to_lowercase();
+            let conclusion = check.conclusion.as_deref().map(|s| s.to_lowercase());
+
+            match state.as_str() {
+                "pending" | "queued" | "in_progress" | "waiting" => {
+                    has_pending = true;
+                    all_success = false;
+                }
+                "completed" => {
+                    if let Some(conclusion) = conclusion {
+                        match conclusion.as_str() {
+                            "success" | "skipped" | "neutral" => {
+                                // These are considered passing
+                            }
+                            "failure" | "cancelled" | "timed_out" | "action_required" => {
+                                has_failure = true;
+                                all_success = false;
+                            }
+                            _ => {
+                                // Unknown conclusion, treat as not success
+                                all_success = false;
+                            }
+                        }
+                    } else {
+                        all_success = false;
+                    }
+                }
+                _ => {
+                    all_success = false;
+                }
+            }
+        }
+
+        if has_failure {
+            Ok(CiStatus::Failing)
+        } else if has_pending {
+            Ok(CiStatus::Pending)
+        } else if all_success {
+            Ok(CiStatus::Passing)
+        } else {
+            Ok(CiStatus::Unknown)
+        }
     }
 }

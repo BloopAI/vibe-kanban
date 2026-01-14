@@ -7,7 +7,7 @@ pub mod github;
 use std::path::Path;
 
 use async_trait::async_trait;
-use db::models::merge::PullRequestInfo;
+use db::models::merge::{CiStatus, PullRequestInfo};
 use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
@@ -28,6 +28,9 @@ pub trait GitHostProvider: Send + Sync {
     ) -> Result<PullRequestInfo, GitHostError>;
 
     async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError>;
+
+    /// Get the CI/GitHub Actions check status for a PR
+    async fn get_ci_status(&self, pr_url: &str) -> Result<CiStatus, GitHostError>;
 
     async fn list_prs_for_branch(
         &self,

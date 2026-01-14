@@ -787,6 +787,7 @@ pub async fn attach_existing_pr(
                 merge.id,
                 pr_info.status.clone(),
                 pr_info.merge_commit_sha.clone(),
+                pr_info.ci_status.clone(),
             )
             .await?;
         }

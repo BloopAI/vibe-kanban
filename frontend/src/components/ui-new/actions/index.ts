@@ -624,6 +624,7 @@ export const Actions = {
           last_attempt_failed: false,
           executor: '',
           pr_status: null,
+          ci_status: null,
         },
         repoId,
         targetBranch: repo?.target_branch,

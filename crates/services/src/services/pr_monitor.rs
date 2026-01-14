@@ -3,7 +3,7 @@ use std::time::Duration;
 use db::{
     DBService,
     models::{
-        merge::{Merge, MergeStatus, PrMerge},
+        merge::{CiStatus, Merge, MergeStatus, PrMerge},
         task::{Task, TaskStatus},
         workspace::{Workspace, WorkspaceError},
     },
@@ -98,19 +98,40 @@ impl PrMonitorService {
         let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
         let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 
+        // Fetch CI status for open PRs
+        let ci_status = if matches!(&pr_status.status, MergeStatus::Open) {
+            match git_host.get_ci_status(&pr_merge.pr_info.url).await {
+                Ok(status) => status,
+                Err(e) => {
+                    debug!(
+                        "Failed to fetch CI status for PR #{}: {}",
+                        pr_merge.pr_info.number, e
+                    );
+                    CiStatus::Unknown
+                }
+            }
+        } else {
+            // For merged/closed PRs, preserve existing CI status or set to Unknown
+            pr_merge.pr_info.ci_status.clone()
+        };
+
         debug!(
-            "PR #{} status: {:?} (was open)",
-            pr_merge.pr_info.number, pr_status.status
+            "PR #{} status: {:?}, CI: {:?} (was open)",
+            pr_merge.pr_info.number, pr_status.status, ci_status
         );
 
-        // Update the PR status in the database
-        if !matches!(&pr_status.status, MergeStatus::Open) {
+        // Always update CI status for open PRs, or update everything if PR status changed
+        let pr_status_changed = !matches!(&pr_status.status, MergeStatus::Open);
+        let ci_status_changed = ci_status != pr_merge.pr_info.ci_status;
+
+        if pr_status_changed {
             // Update merge status with the latest information from git host
             Merge::update_status(
                 &self.db.pool,
                 pr_merge.id,
                 pr_status.status.clone(),
                 pr_status.merge_commit_sha,
+                ci_status,
             )
             .await?;
 
@@ -155,6 +176,9 @@ impl PrMonitorService {
                     );
                 }
             }
+        } else if ci_status_changed {
+            // Only CI status changed, update just that
+            Merge::update_ci_status(&self.db.pool, pr_merge.id, ci_status).await?;
         }
 
         Ok(())

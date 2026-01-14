@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO merges (\n                id, workspace_id, repo_id, merge_type, merge_commit, created_at, target_branch_name\n            ) VALUES ($1, $2, $3, 'direct', $4, $5, $6)\n            RETURNING\n                id as \"id!: Uuid\",\n                workspace_id as \"workspace_id!: Uuid\",\n                repo_id as \"repo_id!: Uuid\",\n                merge_type as \"merge_type!: MergeType\",\n                merge_commit,\n                pr_number,\n                pr_url,\n                pr_status as \"pr_status?: MergeStatus\",\n                pr_merged_at as \"pr_merged_at?: DateTime<Utc>\",\n                pr_merge_commit_sha,\n                created_at as \"created_at!: DateTime<Utc>\",\n                target_branch_name as \"target_branch_name!: String\"\n            ",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                workspace_id as \"workspace_id!: Uuid\",\n                repo_id as \"repo_id!: Uuid\",\n                merge_type as \"merge_type!: MergeType\",\n                merge_commit,\n                pr_number,\n                pr_url,\n                pr_status as \"pr_status?: MergeStatus\",\n                pr_merged_at as \"pr_merged_at?: DateTime<Utc>\",\n                pr_merge_commit_sha,\n                pr_ci_status as \"pr_ci_status?: CiStatus\",\n                target_branch_name as \"target_branch_name!: String\",\n                created_at as \"created_at!: DateTime<Utc>\"\n            FROM merges\n            WHERE workspace_id = $1 AND repo_id = $2\n            ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -54,7 +54,7 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "pr_ci_status?: CiStatus",
         "ordinal": 10,
         "type_info": "Text"
       },
@@ -62,10 +62,15 @@
         "name": "target_branch_name!: String",
         "ordinal": 11,
         "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 6
+      "Right": 2
     },
     "nullable": [
       true,
@@ -78,9 +83,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "b4476bedb8e5c0f7bc21654dc62fb00fbd8a41e24efaba55be8278031d71cc59"
+  "hash": "c3ee3d8c189dbbf0e02f34b6b24b8368c8c720682a000c6e5f1d4bde538e367a"
 }

@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::AzCli;
 use cli::{AzCliError, AzureRepoInfo};
-use db::models::merge::PullRequestInfo;
+use db::models::merge::{CiStatus, PullRequestInfo};
 use tokio::task;
 use tracing::info;
 
@@ -181,6 +181,12 @@ impl GitHostProvider for AzureDevOpsProvider {
             );
         })
         .await
+    }
+
+    async fn get_ci_status(&self, _pr_url: &str) -> Result<CiStatus, GitHostError> {
+        // Azure DevOps CI status integration is not yet implemented
+        // Return Unknown for now - future work could fetch Azure Pipelines status
+        Ok(CiStatus::Unknown)
     }
 
     async fn list_prs_for_branch(

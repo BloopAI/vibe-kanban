@@ -12,6 +12,8 @@ use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
+use db::models::merge::CiStatus;
+
 use super::{
     GitHostProvider,
     types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
@@ -244,6 +246,40 @@ impl GitHostProvider for GitHubProvider {
                     ))
                 })?;
             pr.map_err(GitHostError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|err: &GitHostError| err.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    async fn get_ci_status(&self, pr_url: &str) -> Result<CiStatus, GitHostError> {
+        let cli = self.gh_cli.clone();
+        let url = pr_url.to_string();
+
+        (|| async {
+            let cli = cli.clone();
+            let url = url.clone();
+            let ci_status = task::spawn_blocking(move || cli.get_pr_ci_status(&url))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for getting CI status: {err}"
+                    ))
+                })?;
+            ci_status.map_err(GitHostError::from)
         })
         .retry(
             &ExponentialBuilder::default()

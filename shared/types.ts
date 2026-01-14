@@ -64,7 +64,11 @@ export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_att
 /**
  * PR status for this task (from the latest workspace PR, if any)
  */
-pr_status: MergeStatus | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, task_number: bigint | null, priority: TaskPriority, due_date: string | null, labels: Array<TaskLabel>, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
+pr_status: MergeStatus | null, 
+/**
+ * CI/GitHub Actions check status for this task (from the latest workspace PR, if any)
+ */
+ci_status: CiStatus | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, task_number: bigint | null, priority: TaskPriority, due_date: string | null, labels: Array<TaskLabel>, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
@@ -120,7 +124,13 @@ export type PrMerge = { id: string, workspace_id: string, repo_id: string, creat
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
-export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
+export type CiStatus = "passing" | "failing" | "pending" | "unknown";
+
+export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, 
+/**
+ * CI/GitHub Actions check status for this PR
+ */
+ci_status: CiStatus, };
 
 export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } | { "status": "denied", reason?: string, } | { "status": "timed_out" };
 

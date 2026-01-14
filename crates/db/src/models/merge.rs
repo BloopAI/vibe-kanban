@@ -16,6 +16,22 @@ pub enum MergeStatus {
     Unknown,
 }
 
+/// CI/GitHub Actions check status for a PR
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Type, PartialEq, Default)]
+#[sqlx(type_name = "ci_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum CiStatus {
+    /// CI checks are passing (all required checks succeeded)
+    Passing,
+    /// CI checks are failing (at least one required check failed)
+    Failing,
+    /// CI checks are still running
+    Pending,
+    /// No CI checks configured or status unknown
+    #[default]
+    Unknown,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Merge {
@@ -51,6 +67,9 @@ pub struct PullRequestInfo {
     pub status: MergeStatus,
     pub merged_at: Option<chrono::DateTime<chrono::Utc>>,
     pub merge_commit_sha: Option<String>,
+    /// CI/GitHub Actions check status for this PR
+    #[serde(default)]
+    pub ci_status: CiStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -73,6 +92,7 @@ struct MergeRow {
     pr_status: Option<MergeStatus>,
     pr_merged_at: Option<DateTime<Utc>>,
     pr_merge_commit_sha: Option<String>,
+    pr_ci_status: Option<CiStatus>,
     created_at: DateTime<Utc>,
 }
 
@@ -111,6 +131,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                pr_ci_status as "pr_ci_status?: CiStatus",
                 created_at as "created_at!: DateTime<Utc>",
                 target_branch_name as "target_branch_name!: String"
             "#,
@@ -153,6 +174,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                pr_ci_status as "pr_ci_status?: CiStatus",
                 created_at as "created_at!: DateTime<Utc>",
                 target_branch_name as "target_branch_name!: String"
             "#,
@@ -184,6 +206,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                pr_ci_status as "pr_ci_status?: CiStatus",
                 created_at as "created_at!: DateTime<Utc>",
                 target_branch_name as "target_branch_name!: String"
                FROM merges
@@ -202,6 +225,7 @@ impl Merge {
         merge_id: Uuid,
         pr_status: MergeStatus,
         merge_commit_sha: Option<String>,
+        ci_status: CiStatus,
     ) -> Result<(), sqlx::Error> {
         let merged_at = if matches!(pr_status, MergeStatus::Merged) {
             Some(Utc::now())
@@ -213,11 +237,30 @@ impl Merge {
             r#"UPDATE merges
             SET pr_status = $1,
                 pr_merge_commit_sha = $2,
-                pr_merged_at = $3
-            WHERE id = $4"#,
+                pr_merged_at = $3,
+                pr_ci_status = $4
+            WHERE id = $5"#,
             pr_status,
             merge_commit_sha,
             merged_at,
+            ci_status,
+            merge_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update just the CI status for a PR
+    pub async fn update_ci_status(
+        pool: &SqlitePool,
+        merge_id: Uuid,
+        ci_status: CiStatus,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE merges SET pr_ci_status = $1 WHERE id = $2"#,
+            ci_status,
             merge_id
         )
         .execute(pool)
@@ -244,6 +287,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                pr_ci_status as "pr_ci_status?: CiStatus",
                 target_branch_name as "target_branch_name!: String",
                 created_at as "created_at!: DateTime<Utc>"
             FROM merges
@@ -277,6 +321,7 @@ impl Merge {
                 pr_status as "pr_status?: MergeStatus",
                 pr_merged_at as "pr_merged_at?: DateTime<Utc>",
                 pr_merge_commit_sha,
+                pr_ci_status as "pr_ci_status?: CiStatus",
                 target_branch_name as "target_branch_name!: String",
                 created_at as "created_at!: DateTime<Utc>"
             FROM merges
@@ -336,10 +381,24 @@ impl Merge {
         pool: &SqlitePool,
         project_id: Uuid,
     ) -> Result<HashMap<Uuid, MergeStatus>, sqlx::Error> {
+        let statuses = Self::get_latest_pr_and_ci_status_for_tasks(pool, project_id).await?;
+        Ok(statuses
+            .into_iter()
+            .filter_map(|(task_id, (pr_status, _))| pr_status.map(|s| (task_id, s)))
+            .collect())
+    }
+
+    /// Get the latest PR and CI status for each task (via workspaces)
+    /// Returns a map of task_id -> (MergeStatus, CiStatus) for tasks that have PRs
+    pub async fn get_latest_pr_and_ci_status_for_tasks(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<HashMap<Uuid, (Option<MergeStatus>, Option<CiStatus>)>, sqlx::Error> {
         #[derive(FromRow)]
         struct TaskPrStatusRow {
             task_id: Uuid,
             pr_status: Option<MergeStatus>,
+            pr_ci_status: Option<CiStatus>,
         }
 
         // Get the latest PR status for each task by joining:
@@ -348,7 +407,8 @@ impl Merge {
         let rows = sqlx::query_as::<_, TaskPrStatusRow>(
             r#"SELECT
                 w.task_id,
-                m.pr_status
+                m.pr_status,
+                m.pr_ci_status
             FROM merges m
             INNER JOIN (
                 SELECT w2.task_id, MAX(m2.created_at) as max_created_at
@@ -367,7 +427,7 @@ impl Merge {
 
         Ok(rows
             .into_iter()
-            .filter_map(|row| row.pr_status.map(|status| (row.task_id, status)))
+            .map(|row| (row.task_id, (row.pr_status, row.pr_ci_status)))
             .collect())
     }
 }
@@ -401,6 +461,7 @@ impl From<MergeRow> for PrMerge {
                 status: row.pr_status.expect("pr merge must have status"),
                 merged_at: row.pr_merged_at,
                 merge_commit_sha: row.pr_merge_commit_sha,
+                ci_status: row.pr_ci_status.unwrap_or_default(),
             },
             created_at: row.created_at,
         }

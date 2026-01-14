@@ -245,6 +245,7 @@ pub async fn create_task_and_start(
         last_attempt_failed: false,
         executor: payload.executor_profile_id.executor.to_string(),
         pr_status: None, // New task has no PR yet
+        ci_status: None, // New task has no CI status yet
     })))
 }
 

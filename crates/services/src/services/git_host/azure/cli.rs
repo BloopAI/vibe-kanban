@@ -10,7 +10,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::{MergeStatus, PullRequestInfo};
+use db::models::merge::{CiStatus, MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
@@ -479,6 +479,7 @@ impl AzCli {
             status: Self::map_azure_status(status),
             merged_at,
             merge_commit_sha,
+            ci_status: CiStatus::Unknown,
         }
     }
 

@@ -5,9 +5,12 @@ import {
   DotsThreeIcon,
   GitPullRequestIcon,
   GitMergeIcon,
+  CheckCircleIcon,
+  XCircleIcon as XCircleCiIcon,
+  CircleNotchIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus, MergeStatus } from 'shared/types';
+import type { TaskWithAttemptStatus, MergeStatus, CiStatus } from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
 import { useProject } from '@/contexts/ProjectContext';
 
@@ -42,6 +45,39 @@ function getPrStatusIndicator(prStatus: MergeStatus | null) {
         color: 'text-low',
         title: 'PR status unknown',
       };
+  }
+}
+
+/**
+ * Returns the appropriate icon and color for a CI status
+ */
+function getCiStatusIndicator(ciStatus: CiStatus | null, prStatus: MergeStatus | null) {
+  // Only show CI status for open PRs
+  if (!ciStatus || prStatus !== 'open') return null;
+
+  switch (ciStatus) {
+    case 'passing':
+      return {
+        icon: CheckCircleIcon,
+        color: 'text-success',
+        title: 'CI passing',
+      };
+    case 'failing':
+      return {
+        icon: XCircleCiIcon,
+        color: 'text-error',
+        title: 'CI failing',
+      };
+    case 'pending':
+      return {
+        icon: CircleNotchIcon,
+        color: 'text-warning',
+        title: 'CI running',
+        animate: true,
+      };
+    default:
+      // Don't show indicator for unknown status
+      return null;
   }
 }
 
@@ -124,6 +160,24 @@ export function SwimlaneTaskCard({
             {task.title}
           </span>
           <div className="flex items-center gap-0.5 shrink-0 mt-px">
+            {/* CI status indicator (only for open PRs) */}
+            {(() => {
+              const ciIndicator = getCiStatusIndicator(task.ci_status, task.pr_status);
+              if (!ciIndicator) return null;
+              const CiIcon = ciIndicator.icon;
+              return (
+                <span title={ciIndicator.title}>
+                  <CiIcon
+                    weight="fill"
+                    className={cn(
+                      'size-3',
+                      ciIndicator.color,
+                      ciIndicator.animate && 'animate-spin'
+                    )}
+                  />
+                </span>
+              );
+            })()}
             {/* PR status indicator */}
             {(() => {
               const prIndicator = getPrStatusIndicator(task.pr_status);
