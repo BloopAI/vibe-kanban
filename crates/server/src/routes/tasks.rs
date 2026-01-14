@@ -15,7 +15,7 @@ use axum::{
 use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, Task, TaskLabel, TaskWithAttemptStatus, UpdateTask},
     task_deduplication::{
         BulkMergeRequest, BulkMergeResponse, FindDuplicatesResponse, MergeTasksRequest,
         MergeTasksResponse,
@@ -28,7 +28,10 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, share::ShareError, task_deduplication::TaskDeduplicationService,
+    categorization::CategorizationService,
+    container::ContainerService,
+    share::ShareError,
+    task_deduplication::TaskDeduplicationService,
     workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
@@ -290,6 +293,20 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    // Update labels if provided
+    if let Some(labels) = &payload.labels {
+        Task::update_labels(&deployment.db().pool, task.id, labels).await?;
+    }
+
+    // Re-fetch task to get updated labels
+    let task = if payload.labels.is_some() {
+        Task::find_by_id(&deployment.db().pool, task.id)
+            .await?
+            .ok_or(ApiError::Database(SqlxError::RowNotFound))?
+    } else {
+        task
+    };
+
     // If task has been shared, broadcast update
     if task.shared_task_id.is_some() {
         let Ok(publisher) = deployment.share_publisher() else {
@@ -536,11 +553,88 @@ pub async fn bulk_merge_tasks(
     Ok(ResponseJson(ApiResponse::success(result)))
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CategorizeTaskResponse {
+    pub labels: Vec<TaskLabel>,
+    pub applied: bool,
+}
+
+/// Auto-categorize a task using AI
+pub async fn categorize_task(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<CategorizeTaskResponse>>, ApiError> {
+    let service = CategorizationService::new();
+
+    if !service.is_available() {
+        return Err(ApiError::BadRequest(
+            "Categorization service not available. Set ANTHROPIC_API_KEY environment variable."
+                .to_string(),
+        ));
+    }
+
+    let labels = service
+        .categorize(&task.title, task.description.as_deref())
+        .await
+        .map_err(|e| {
+            tracing::error!("Categorization failed: {}", e);
+            ApiError::BadRequest(format!("Categorization failed: {}", e))
+        })?;
+
+    // Apply labels to task
+    Task::update_labels(&deployment.db().pool, task.id, &labels).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_categorized",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "labels": labels.iter().map(|l| &l.name).collect::<Vec<_>>(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(CategorizeTaskResponse {
+        labels,
+        applied: true,
+    })))
+}
+
+/// Get available categories
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CategoryInfo {
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CategoriesResponse {
+    pub categories: Vec<CategoryInfo>,
+    pub available: bool,
+}
+
+pub async fn get_categories() -> Result<ResponseJson<ApiResponse<CategoriesResponse>>, ApiError> {
+    let service = CategorizationService::new();
+    let categories = services::services::categorization::CATEGORIES
+        .iter()
+        .map(|(name, color)| CategoryInfo {
+            name: name.to_string(),
+            color: color.to_string(),
+        })
+        .collect();
+
+    Ok(ResponseJson(ApiResponse::success(CategoriesResponse {
+        categories,
+        available: service.is_available(),
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
-        .route("/share", post(share_task));
+        .route("/share", post(share_task))
+        .route("/categorize", post(categorize_task));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
@@ -554,6 +648,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/find-duplicates", get(find_duplicates))
         .route("/merge", post(merge_tasks))
         .route("/bulk-merge", post(bulk_merge_tasks))
+        .route("/categories", get(get_categories))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks
