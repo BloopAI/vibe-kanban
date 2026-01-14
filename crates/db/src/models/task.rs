@@ -360,6 +360,7 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
