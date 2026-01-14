@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
@@ -38,11 +37,7 @@ import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import {
-  usePaneSize,
-  useExpandedAll,
-  PERSIST_KEYS,
-} from '@/stores/useUiPreferencesStore';
+import { useExpandedAll } from '@/stores/useUiPreferencesStore';
 import {
   useLayoutStore,
   useIsRightMainPanelVisible,
@@ -493,17 +488,6 @@ export function WorkspacesLayout() {
     );
   }, [logMatchIndices.length]);
 
-  // Ref to Allotment for programmatic control
-  const allotmentRef = useRef<AllotmentHandle>(null);
-
-  // Reset Allotment sizes when right main panel becomes visible
-  // This re-applies preferredSize percentages based on current window size
-  useEffect(() => {
-    if (isRightMainPanelVisible && allotmentRef.current) {
-      allotmentRef.current.reset();
-    }
-  }, [isRightMainPanelVisible]);
-
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
@@ -534,32 +518,6 @@ export function WorkspacesLayout() {
 
   // Expanded state for file tree selection
   const { setExpanded } = useExpandedAll();
-
-  // Persisted pane sizes
-  const [sidebarWidth, setSidebarWidth] = usePaneSize(
-    PERSIST_KEYS.sidebarWidth,
-    300
-  );
-  const [gitPanelWidth, setGitPanelWidth] = usePaneSize(
-    PERSIST_KEYS.gitPanelWidth,
-    300
-  );
-  const [changesPanelWidth, setChangesPanelWidth] = usePaneSize(
-    PERSIST_KEYS.changesPanelWidth,
-    '40%'
-  );
-  const [fileTreeHeight, setFileTreeHeight] = usePaneSize(
-    PERSIST_KEYS.fileTreeHeight,
-    '70%'
-  );
-
-  // Handle file tree resize (vertical split within git panel)
-  const handleFileTreeResize = useCallback(
-    (sizes: number[]) => {
-      if (sizes[0] !== undefined) setFileTreeHeight(sizes[0]);
-    },
-    [setFileTreeHeight]
-  );
 
   // Navigate to logs panel and select a specific process
   const handleViewProcessInPanel = useCallback(
@@ -635,8 +593,8 @@ export function WorkspacesLayout() {
     if (isChangesMode) {
       // In changes mode, split git panel vertically: file tree on top, git on bottom
       return (
-        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
-          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+        <div className="flex flex-col h-full">
+          <div className="flex-[7] min-h-0 overflow-hidden">
             <FileTreeContainer
               key={selectedWorkspace?.id}
               workspaceId={selectedWorkspace?.id}
@@ -649,16 +607,16 @@ export function WorkspacesLayout() {
                 setExpanded(`diff:${path}`, true);
               }}
             />
-          </Allotment.Pane>
-          <Allotment.Pane minSize={200}>
+          </div>
+          <div className="flex-[3] min-h-0 overflow-hidden">
             <GitPanelContainer
               selectedWorkspace={selectedWorkspace}
               repos={repos}
               repoInfos={repoInfos}
               onBranchNameChange={handleBranchNameChange}
             />
-          </Allotment.Pane>
-        </Allotment>
+          </div>
+        </div>
       );
     }
 
@@ -670,8 +628,8 @@ export function WorkspacesLayout() {
           ? logsPanelContent.processId
           : null;
       return (
-        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
-          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+        <div className="flex flex-col h-full">
+          <div className="flex-[7] min-h-0 overflow-hidden">
             <ProcessListContainer
               selectedProcessId={selectedProcessId}
               onSelectProcess={handleViewProcessInPanel}
@@ -683,38 +641,38 @@ export function WorkspacesLayout() {
               onPrevMatch={handleLogPrevMatch}
               onNextMatch={handleLogNextMatch}
             />
-          </Allotment.Pane>
-          <Allotment.Pane minSize={200}>
+          </div>
+          <div className="flex-[3] min-h-0 overflow-hidden">
             <GitPanelContainer
               selectedWorkspace={selectedWorkspace}
               repos={repos}
               repoInfos={repoInfos}
               onBranchNameChange={handleBranchNameChange}
             />
-          </Allotment.Pane>
-        </Allotment>
+          </div>
+        </div>
       );
     }
 
     if (isPreviewMode) {
       // In preview mode, split git panel vertically: preview controls on top, git on bottom
       return (
-        <Allotment vertical onDragEnd={handleFileTreeResize} proportionalLayout>
-          <Allotment.Pane minSize={200} preferredSize={fileTreeHeight}>
+        <div className="flex flex-col h-full">
+          <div className="flex-[7] min-h-0 overflow-hidden">
             <PreviewControlsContainer
               attemptId={selectedWorkspace?.id}
               onViewProcessInPanel={handleViewProcessInPanel}
             />
-          </Allotment.Pane>
-          <Allotment.Pane minSize={200}>
+          </div>
+          <div className="flex-[3] min-h-0 overflow-hidden">
             <GitPanelContainer
               selectedWorkspace={selectedWorkspace}
               repos={repos}
               repoInfos={repoInfos}
               onBranchNameChange={handleBranchNameChange}
             />
-          </Allotment.Pane>
-        </Allotment>
+          </div>
+        </div>
       );
     }
 
@@ -744,45 +702,14 @@ export function WorkspacesLayout() {
     />
   );
 
-  // Handle inner pane resize (main, changes/logs, git panel)
-  const handleInnerPaneResize = useCallback(
-    (sizes: number[]) => {
-      // sizes[0] = main (no persistence needed, uses LayoutPriority.High)
-      // sizes[1] = changes/logs panel
-      // sizes[2] = git panel
-      if (sizes[2] !== undefined) setGitPanelWidth(sizes[2]);
-
-      const total = sizes.reduce((sum, s) => sum + (s ?? 0), 0);
-      if (total > 0) {
-        const centerPaneWidth = sizes[1];
-        if (centerPaneWidth !== undefined) {
-          const percent = Math.round((centerPaneWidth / total) * 100);
-          setChangesPanelWidth(`${percent}%`);
-        }
-      }
-    },
-    [setGitPanelWidth, setChangesPanelWidth]
-  );
-
-  // Handle outer pane resize (sidebar only)
-  const handleOuterPaneResize = useCallback(
-    (sizes: number[]) => {
-      if (sizes[0] !== undefined) setSidebarWidth(sizes[0]);
-    },
-    [setSidebarWidth]
-  );
-
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
-    // Inner Allotment with panes 2-4 (main, changes/logs, git panel)
-    const innerAllotment = (
-      <Allotment onDragEnd={handleInnerPaneResize}>
-        <Allotment.Pane
-          visible={isMainPanelVisible}
-          priority={LayoutPriority.High}
-          minSize={300}
-        >
-          <div className="h-full overflow-hidden">
+    // Inner layout with main, changes/logs, git panel
+    const innerLayout = (
+      <div className="flex h-full">
+        {/* Main panel (chat area) */}
+        {isMainPanelVisible && (
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
             {isCreateMode ? (
               <CreateChatBoxContainer />
             ) : (
@@ -809,14 +736,11 @@ export function WorkspacesLayout() {
               </FileNavigationProvider>
             )}
           </div>
-        </Allotment.Pane>
+        )}
 
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={changesPanelWidth}
-          visible={isRightMainPanelVisible}
-        >
-          <div className="h-full overflow-hidden">
+        {/* Right main panel (Changes/Logs/Preview) */}
+        {isRightMainPanelVisible && (
+          <div className="flex-[4] min-w-0 h-full overflow-hidden">
             {isChangesMode && (
               <ChangesPanelContainer
                 diffs={realDiffs}
@@ -838,29 +762,25 @@ export function WorkspacesLayout() {
               <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
             )}
           </div>
-        </Allotment.Pane>
+        )}
 
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={gitPanelWidth}
-          maxSize={600}
-          visible={isGitPanelVisible}
-        >
-          <div className="h-full overflow-hidden">
+        {/* Git panel (right sidebar) */}
+        {isGitPanelVisible && (
+          <div className="w-[300px] shrink-0 h-full overflow-hidden">
             {renderRightPanelContent()}
           </div>
-        </Allotment.Pane>
-      </Allotment>
+        )}
+      </div>
     );
 
-    // Wrap inner Allotment with providers
+    // Wrap inner layout with providers
     const wrappedInnerContent = isCreateMode ? (
       <CreateModeProvider
         initialProjectId={lastWorkspaceTask?.project_id}
         initialRepos={lastWorkspaceRepos}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {innerAllotment}
+          {innerLayout}
         </ReviewProvider>
       </CreateModeProvider>
     ) : (
@@ -870,32 +790,23 @@ export function WorkspacesLayout() {
         sessionId={selectedSessionId}
       >
         <ReviewProvider attemptId={selectedWorkspace?.id}>
-          {innerAllotment}
+          {innerLayout}
         </ReviewProvider>
       </ExecutionProcessesProvider>
     );
 
     return (
-      <Allotment
-        ref={allotmentRef}
-        className="flex-1 min-h-0"
-        onDragEnd={handleOuterPaneResize}
-      >
-        {/* Sidebar pane - OUTSIDE providers, won't remount on workspace switch */}
-        <Allotment.Pane
-          minSize={300}
-          preferredSize={sidebarWidth}
-          maxSize={600}
-          visible={isSidebarVisible}
-        >
-          <div className="h-full overflow-hidden">{renderSidebar()}</div>
-        </Allotment.Pane>
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar - OUTSIDE providers, won't remount on workspace switch */}
+        {isSidebarVisible && (
+          <div className="w-[300px] shrink-0 h-full overflow-hidden">
+            {renderSidebar()}
+          </div>
+        )}
 
         {/* Container for provider-wrapped inner content */}
-        <Allotment.Pane priority={LayoutPriority.High}>
-          {wrappedInnerContent}
-        </Allotment.Pane>
-      </Allotment>
+        <div className="flex-1 min-w-0 h-full">{wrappedInnerContent}</div>
+      </div>
     );
   };
 
