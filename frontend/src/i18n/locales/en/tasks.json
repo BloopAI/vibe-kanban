@@ -618,6 +618,26 @@
       "discardChanges": "Discard Changes"
     }
   },
+  "prioritize": {
+    "button": "Prioritize",
+    "title": "Prioritize Tasks",
+    "description": "Review AI-suggested priority changes based on task age, keywords, labels, and due dates.",
+    "noSuggestions": "All tasks already have appropriate priorities.",
+    "acceptAll": "Accept All",
+    "reset": "Reset",
+    "showing": "{{count}} suggestions",
+    "accept": "Accept suggestion",
+    "reject": "Reject suggestion",
+    "viewReasons": "View reasons",
+    "whySuggested": "Why this priority?",
+    "applyChanges": "Apply Changes ({{count}})",
+    "applying": "Applying...",
+    "successMessage": "Updated {{count}} task priorities",
+    "errorMessage": "Failed to update priorities",
+    "undo": "Undo",
+    "undoSuccess": "Changes reverted",
+    "undoFailed": "Failed to undo"
+  },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
     "historyChange": {
