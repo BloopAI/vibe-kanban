@@ -64,6 +64,9 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
+/// Script embedded at compile time for Claude Code Stop hook
+const CHECK_GIT_STATUS_SCRIPT: &str = include_str!("scripts/check-git-status.sh");
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -828,11 +831,11 @@ impl LocalContainerService {
         Ok(())
     }
 
-    /// Create .claude/settings.local.json with Stop hooks for cleanup scripts.
+    /// Create .claude/settings.local.json with Stop hook to check for uncommitted changes.
     /// Creates in agent_working_dir if set (single repo), otherwise workspace root (multi repo).
     async fn create_claude_hooks_config(
         workspace_dir: &Path,
-        repos: &[Repo],
+        _repos: &[Repo],
         agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         // Determine where to create .claude/ - where the agent runs
@@ -847,39 +850,13 @@ impl LocalContainerService {
             ContainerError::Other(anyhow!("Failed to create .claude/hooks dir: {}", e))
         })?;
 
-        // Build cleanup script
-        let mut script_content = String::from(
-            "#!/bin/bash\n# Vibe Kanban cleanup script - runs after agent commits\n\n",
-        );
-
-        // For single repo, we're already in the repo dir
-        // For multi repo, we need to cd into each repo subdir
-        let is_single_repo = agent_working_dir.is_some();
-
-        for repo in repos {
-            if let Some(cleanup_cmd) = &repo.cleanup_script {
-                if is_single_repo {
-                    // Single repo: already in repo dir, run directly
-                    script_content.push_str(&format!(
-                        "# Cleanup for {}\necho \"Running cleanup...\"\n{} || echo \"Cleanup failed (non-blocking)\"\n\n",
-                        repo.name, cleanup_cmd
-                    ));
-                } else {
-                    // Multi repo: cd into each repo subdir
-                    script_content.push_str(&format!(
-                        "# Cleanup for {}\necho \"Running cleanup for {}...\"\n(cd \"{}\" && {}) || echo \"Cleanup for {} failed (non-blocking)\"\n\n",
-                        repo.name, repo.name, repo.name, cleanup_cmd, repo.name
-                    ));
-                }
-            }
-        }
-
-        script_content.push_str("echo \"Cleanup complete\"\n");
-
-        let script_path = hooks_dir.join("run-cleanup.sh");
-        tokio::fs::write(&script_path, &script_content)
+        // Write check-git-status.sh script (embedded at compile time)
+        let script_path = hooks_dir.join("check-git-status.sh");
+        tokio::fs::write(&script_path, CHECK_GIT_STATUS_SCRIPT)
             .await
-            .map_err(|e| ContainerError::Other(anyhow!("Failed to write cleanup script: {}", e)))?;
+            .map_err(|e| {
+                ContainerError::Other(anyhow!("Failed to write check-git-status.sh: {}", e))
+            })?;
 
         // Make executable (Unix only)
         #[cfg(unix)]
@@ -898,7 +875,7 @@ impl LocalContainerService {
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": ".claude/hooks/run-cleanup.sh"
+                                "command": ".claude/hooks/check-git-status.sh"
                             }
                         ]
                     }
@@ -915,7 +892,7 @@ impl LocalContainerService {
                 ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
             })?;
 
-        tracing::info!("Created Claude Code cleanup hooks at {:?}", claude_root);
+        tracing::info!("Created Claude Code hooks at {:?}", claude_root);
 
         Ok(())
     }
