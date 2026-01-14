@@ -28,6 +28,7 @@ services:
       ELECTRIC_INSECURE: true
       ELECTRIC_MANUAL_TABLE_PUBLISHING: true
       ELECTRIC_USAGE_REPORTING: false
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
     volumes:
       - electric-data:/app/persistent
     depends_on:

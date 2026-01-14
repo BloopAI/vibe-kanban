@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT 1 AS v FROM shared_tasks WHERE \"project_id\" IN (SELECT id FROM projects WHERE organization_id IN (SELECT organization_id FROM organization_member_metadata WHERE user_id = $1))",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "v",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2bcc3edb9a9d32ae55454bf4326b638a13f798f5f7595b63e77e4343be186eae"
+}
