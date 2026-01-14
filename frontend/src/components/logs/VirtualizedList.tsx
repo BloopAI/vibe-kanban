@@ -95,7 +95,7 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   ) => {
     let scrollModifier: ScrollModifier = InitialDataScrollModifier;
 
-    if (addType === 'running' && !loading) {
+    if ((addType === 'running' || addType === 'plan') && !loading) {
       scrollModifier = AutoScrollToBottom;
     }
 

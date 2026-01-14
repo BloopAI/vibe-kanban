@@ -1,12 +1,12 @@
 [package]
 name = "executors"
-version = "0.0.143"
+version = "0.0.151"
 edition = "2024"
 
 [dependencies]
 workspace_utils = { path = "../utils", package = "utils" }
 tokio = { workspace = true }
-tokio-util = { version = "0.7", features = ["io", "compat"] }
+tokio-util = { version = "0.7", features = ["io", "compat", "rt"] }
 bytes = "1.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -44,6 +44,15 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "565488c15b8969694ec52cda3d6fcc99655a972f" }
 sha2 = "0.10"
 derivative = "2.2.0"
+reqwest = { workspace = true }
+rustls = { workspace = true }
+eventsource-stream = "0.2"
+walkdir = "2"
+rand = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"
+
+[features]
+default = []
+qa-mode = []

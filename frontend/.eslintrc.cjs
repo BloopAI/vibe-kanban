@@ -1,5 +1,11 @@
 const i18nCheck = process.env.LINT_I18N === 'true';
 
+// Presentational components - these must be stateless and receive all data via props
+const presentationalComponentPatterns = [
+  'src/components/ui-new/views/**/*.tsx',
+  'src/components/ui-new/primitives/**/*.tsx',
+];
+
 module.exports = {
   root: true,
   env: {
@@ -16,7 +22,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file'],
+  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file', 'deprecation'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -168,11 +174,137 @@ module.exports = {
       },
     },
     {
-      // Allow NiceModal usage in lib/modals.ts, App.tsx (for Provider), and dialog component files
-      files: ['src/lib/modals.ts', 'src/App.tsx', 'src/components/dialogs/**/*.{ts,tsx}'],
+      // Allow NiceModal usage in lib/modals.ts, design scope files (for Provider), and dialog component files
+      files: [
+        'src/lib/modals.ts',
+        'src/components/legacy-design/LegacyDesignScope.tsx',
+        'src/components/ui-new/scope/NewDesignScope.tsx',
+        'src/components/dialogs/**/*.{ts,tsx}',
+      ],
       rules: {
         'no-restricted-imports': 'off',
         'no-restricted-syntax': 'off',
+      },
+    },
+    {
+      // ui-new components must use Phosphor icons (not Lucide) and avoid deprecated APIs
+      files: ['src/components/ui-new/**/*.{ts,tsx}'],
+      rules: {
+        'deprecation/deprecation': 'error',
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: 'lucide-react',
+                message: 'Use @phosphor-icons/react instead of lucide-react in ui-new components.',
+              },
+            ],
+          },
+        ],
+        // Icon size restrictions - use Tailwind design system sizes
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
+            message:
+              'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
+          },
+          {
+            // Catch arbitrary pixel sizes like size-[10px], size-[7px], etc. in className
+            selector: 'Literal[value=/size-\\[\\d+px\\]/]',
+            message:
+              'Use standard icon sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of arbitrary pixel values like size-[Npx].',
+          },
+          {
+            // Catch generic tailwind sizes like size-1, size-3, size-1.5, etc. (not size-icon-* or size-dot)
+            selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
+            message:
+              'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
+          },
+        ],
+      },
+    },
+    {
+      // Logic hooks in ui-new/hooks/ - no JSX allowed
+      files: ['src/components/ui-new/hooks/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'JSXElement',
+            message: 'Logic hooks must not contain JSX. Return data and callbacks only.',
+          },
+          {
+            selector: 'JSXFragment',
+            message: 'Logic hooks must not contain JSX fragments.',
+          },
+        ],
+      },
+    },
+    {
+      // Presentational components (views & primitives) - strict presentation rules (no logic)
+      files: presentationalComponentPatterns,
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@/lib/api',
+                message: 'Presentational components cannot import API. Pass data via props.',
+              },
+              {
+                name: '@tanstack/react-query',
+                importNames: ['useQuery', 'useMutation', 'useQueryClient', 'useInfiniteQuery'],
+                message: 'Presentational components cannot use data fetching hooks. Pass data via props.',
+              },
+            ],
+          },
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'CallExpression[callee.name="useState"]',
+            message: 'Presentational components should not manage state. Use controlled props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useReducer"]',
+            message: 'Presentational components should not use useReducer. Use container component.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useContext"]',
+            message: 'Presentational components should not consume context. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useQuery"]',
+            message: 'Presentational components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useMutation"]',
+            message: 'Presentational components should not mutate data. Pass callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useInfiniteQuery"]',
+            message: 'Presentational components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useEffect"]',
+            message: 'Presentational components should avoid side effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useLayoutEffect"]',
+            message: 'Presentational components should avoid layout effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useCallback"]',
+            message: 'Presentational components should receive callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useNavigate"]',
+            message: 'Presentational components should not handle navigation. Pass callbacks via props.',
+          },
+        ],
       },
     },
   ],

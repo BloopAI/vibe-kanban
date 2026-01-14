@@ -1,4 +1,5 @@
-import { ExternalLink, RefreshCw, Copy, Loader2, Pause } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ExternalLink, RefreshCw, Copy, Loader2, Pause, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { NewCardHeader } from '@/components/ui/new-card';
+import { Input } from '@/components/ui/input';
 
 interface PreviewToolbarProps {
   mode: 'noServer' | 'error' | 'ready';
@@ -16,6 +18,9 @@ interface PreviewToolbarProps {
   onCopyUrl: () => void;
   onStop: () => void;
   isStopping?: boolean;
+  customUrl: string | null;
+  detectedUrl: string | undefined;
+  onUrlChange: (url: string | null) => void;
 }
 
 export function PreviewToolbar({
@@ -25,8 +30,49 @@ export function PreviewToolbar({
   onCopyUrl,
   onStop,
   isStopping,
+  customUrl,
+  detectedUrl,
+  onUrlChange,
 }: PreviewToolbarProps) {
   const { t } = useTranslation('tasks');
+  const [isEditing, setIsEditing] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleStartEdit = () => {
+    setUrlInput(url ?? '');
+    setIsEditing(true);
+  };
+
+  const handleSubmit = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed || trimmed === detectedUrl) {
+      // Empty input or detected URL: reset to detected
+      onUrlChange(null);
+    } else {
+      onUrlChange(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
+  const handleClearCustomUrl = () => {
+    onUrlChange(null);
+  };
 
   const actions =
     mode !== 'noServer' ? (
@@ -119,13 +165,49 @@ export function PreviewToolbar({
 
   return (
     <NewCardHeader className="shrink-0" actions={actions}>
-      <div className="flex items-center">
-        <span
-          className="text-sm text-muted-foreground font-mono truncate whitespace-nowrap"
-          aria-live="polite"
-        >
-          {url || <Loader2 className="h-4 w-4 animate-spin" />}
-        </span>
+      <div className="flex items-center gap-2 min-w-0">
+        {isEditing ? (
+          <Input
+            ref={inputRef}
+            type="text"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onBlur={handleSubmit}
+            onKeyDown={handleKeyDown}
+            className="h-7 text-sm font-mono flex-1"
+            placeholder="http://localhost:3000"
+          />
+        ) : (
+          <>
+            <button
+              onClick={handleStartEdit}
+              className="text-sm text-muted-foreground font-mono truncate hover:text-foreground transition-colors cursor-text text-left"
+              aria-live="polite"
+              title={t('preview.toolbar.clickToEdit')}
+            >
+              {url || <Loader2 className="h-4 w-4 animate-spin" />}
+            </button>
+            {customUrl !== null && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearCustomUrl}
+                      className="h-5 w-5 p-0 shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t('preview.toolbar.resetUrl')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </>
+        )}
       </div>
     </NewCardHeader>
   );

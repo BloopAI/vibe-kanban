@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     RemoteClientError,
-    services::{git::GitServiceError, github::GitHubServiceError},
+    services::{git::GitServiceError, git_host::GitHostError},
 };
 
 #[derive(Debug, Error)]
@@ -39,7 +39,7 @@ pub enum ShareError {
     #[error(transparent)]
     Git(#[from] GitServiceError),
     #[error(transparent)]
-    GitHub(#[from] GitHubServiceError),
+    GitHost(#[from] GitHostError),
     #[error("share authentication missing or expired")]
     MissingAuth,
     #[error("invalid user ID format")]

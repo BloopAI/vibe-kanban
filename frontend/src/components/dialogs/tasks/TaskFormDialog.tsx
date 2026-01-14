@@ -402,7 +402,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       <Dialog
         open={modal.visible}
         onOpenChange={handleDialogClose}
-        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden"
         uncloseable={showDiscardWarning}
       >
         <div
@@ -423,85 +422,80 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           )}
 
           {/* Title */}
-          <div className="flex-none px-4 py-2 border border-1 border-border">
-            <form.Field name="title">
-              {(field) => (
-                <Input
-                  id="task-title"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-semibold placeholder:text-muted-foreground/60 border-none p-0"
-                  disabled={isSubmitting}
-                  autoFocus
-                />
-              )}
-            </form.Field>
-          </div>
+          <form.Field name="title">
+            {(field) => (
+              <Input
+                id="task-title"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder={t('taskFormDialog.titlePlaceholder')}
+                disabled={isSubmitting}
+                className="text-base"
+                autoFocus
+              />
+            )}
+          </form.Field>
 
-          <div className="flex-1 p-4 min-h-0 overflow-y-auto overscroll-contain space-y-1 border border-1 border-border">
-            {/* Description */}
-            <form.Field name="description">
-              {(field) => (
+          {/* Description */}
+          <form.Field name="description">
+            {(field) => (
+              <div className="border p-3">
                 <WYSIWYGEditor
                   placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                  className="w-full h-24 overflow-auto"
                   value={field.state.value}
                   onChange={(desc) => field.handleChange(desc)}
                   disabled={isSubmitting}
                   projectId={projectId}
                   onPasteFiles={onDrop}
-                  className="border-none shadow-none px-0 text-md font-normal"
                   onCmdEnter={primaryAction}
                   onShiftCmdEnter={handleSubmitCreateOnly}
                   taskId={editMode ? props.task.id : undefined}
                   localImages={localImages}
                 />
+              </div>
+            )}
+          </form.Field>
+          {/* Edit mode status */}
+          {editMode && (
+            <form.Field name="status">
+              {(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor="task-status" className="text-sm font-medium">
+                    {t('taskFormDialog.statusLabel')}
+                  </Label>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(value) =>
+                      field.handleChange(value as TaskStatus)
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todo">
+                        {t('taskFormDialog.statusOptions.todo')}
+                      </SelectItem>
+                      <SelectItem value="inprogress">
+                        {t('taskFormDialog.statusOptions.inprogress')}
+                      </SelectItem>
+                      <SelectItem value="inreview">
+                        {t('taskFormDialog.statusOptions.inreview')}
+                      </SelectItem>
+                      <SelectItem value="done">
+                        {t('taskFormDialog.statusOptions.done')}
+                      </SelectItem>
+                      <SelectItem value="cancelled">
+                        {t('taskFormDialog.statusOptions.cancelled')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </form.Field>
-            {/* Edit mode status */}
-            {editMode && (
-              <form.Field name="status">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="task-status"
-                      className="text-sm font-medium"
-                    >
-                      {t('taskFormDialog.statusLabel')}
-                    </Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) =>
-                        field.handleChange(value as TaskStatus)
-                      }
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todo">
-                          {t('taskFormDialog.statusOptions.todo')}
-                        </SelectItem>
-                        <SelectItem value="inprogress">
-                          {t('taskFormDialog.statusOptions.inprogress')}
-                        </SelectItem>
-                        <SelectItem value="inreview">
-                          {t('taskFormDialog.statusOptions.inreview')}
-                        </SelectItem>
-                        <SelectItem value="done">
-                          {t('taskFormDialog.statusOptions.done')}
-                        </SelectItem>
-                        <SelectItem value="cancelled">
-                          {t('taskFormDialog.statusOptions.cancelled')}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </form.Field>
-            )}
-          </div>
+          )}
 
           {/* Create mode dropdowns */}
           {!editMode && (
@@ -511,7 +505,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                 return (
                   <div
                     className={cn(
-                      'py-2 my-2 transition-opacity duration-200',
+                      'transition-opacity duration-200',
                       isSingleRepo ? '' : 'space-y-3',
                       autoStartField.state.value
                         ? 'opacity-100'

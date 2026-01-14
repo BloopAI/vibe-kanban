@@ -10,17 +10,17 @@ import {
 } from '../ui/tooltip';
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import type { Workspace } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
 import { usePostHog } from 'posthog-js/react';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { WorkspaceWithSession } from '@/types/attempt';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
   mode?: LayoutMode;
   onModeChange?: (mode: LayoutMode) => void;
   task: TaskWithAttemptStatus;
-  attempt?: Workspace | null;
+  attempt?: WorkspaceWithSession | null;
   sharedTask?: SharedTaskRecord;
 }
 
@@ -102,6 +102,25 @@ export const AttemptHeaderActions = ({
                 {t('attemptHeaderActions.diffs')}
               </TooltipContent>
             </Tooltip>
+            {/* {attempt?.id && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/workspaces/${attempt.id}`}
+                      className="inline-flex items-center justify-center text-primary-foreground/70 hover:text-accent-foreground"
+                      aria-label="Try the new UI"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t('attemptHeaderActions.tryNewUI')}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )} */}
           </ToggleGroup>
         </TooltipProvider>
       )}

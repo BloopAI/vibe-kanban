@@ -1,3 +1,8 @@
 packages:
-  - 'frontend'
-  - 'remote-frontend'
+  - frontend
+  - remote-frontend
+
+onlyBuiltDependencies:
+  - '@sentry/cli'
+  - core-js
+  - esbuild

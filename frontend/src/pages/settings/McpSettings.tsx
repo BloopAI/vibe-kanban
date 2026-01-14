@@ -368,7 +368,7 @@ export function McpSettings() {
 
                     <div className="relative overflow-hidden rounded-xl border bg-background">
                       <Carousel className="w-full px-4 py-3">
-                        <CarouselContent className="gap-3 justify-center">
+                        <CarouselContent>
                           {Object.entries(servers).map(([key]) => {
                             const metaObj = getMetaFor(key) as {
                               name?: string;

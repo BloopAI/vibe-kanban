@@ -1,7 +1,8 @@
 /* Hide line numbers for replace (old/new) diffs rendered via DiffView */
 .edit-diff-hide-nums .diff-line-old-num,
 .edit-diff-hide-nums .diff-line-new-num,
-.edit-diff-hide-nums .diff-line-num {
+.edit-diff-hide-nums .diff-line-num,
+.edit-diff-hide-nums .diff-line-hunk-action {
   display: none !important;
 }
 

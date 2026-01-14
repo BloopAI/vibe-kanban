@@ -11,7 +11,7 @@ use services::services::{
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
-    file_search_cache::FileSearchCache,
+    file_search::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,

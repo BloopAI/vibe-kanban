@@ -6,7 +6,7 @@ import {
   Config,
   CreateFollowUpAttempt,
   EditorType,
-  CreateGitHubPrRequest,
+  CreatePrApiRequest,
   CreateTask,
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
@@ -17,12 +17,12 @@ import {
   ExecutionProcessRepoState,
   GitBranch,
   Project,
-  ProjectRepo,
   Repo,
   RepoWithTargetBranch,
   CreateProject,
   CreateProjectRepo,
-  UpdateProjectRepo,
+  UpdateRepo,
+  SearchMode,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -71,7 +71,7 @@ import {
   ListInvitationsResponse,
   OpenEditorResponse,
   OpenEditorRequest,
-  CreatePrError,
+  PrError,
   Scratch,
   ScratchType,
   CreateScratch,
@@ -89,6 +89,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  StartReviewRequest,
+  ReviewError,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -282,7 +284,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -357,31 +359,6 @@ export const projectsApi = {
       }
     );
     return handleApiResponse<void>(response);
-  },
-
-  getRepository: async (
-    projectId: string,
-    repoId: string
-  ): Promise<ProjectRepo> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/repositories/${repoId}`
-    );
-    return handleApiResponse<ProjectRepo>(response);
-  },
-
-  updateRepository: async (
-    projectId: string,
-    repoId: string,
-    data: UpdateProjectRepo
-  ): Promise<ProjectRepo> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/repositories/${repoId}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<ProjectRepo>(response);
   },
 };
 
@@ -502,6 +479,17 @@ export const sessionsApi = {
     });
     return handleApiResponse<ExecutionProcess>(response);
   },
+
+  startReview: async (
+    sessionId: string,
+    data: StartReviewRequest
+  ): Promise<ExecutionProcess> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ExecutionProcess, ReviewError>(response);
+  },
 };
 
 // Task Attempts APIs
@@ -518,8 +506,31 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
+  /** Get all workspaces across all tasks (newest first) */
+  getAllWorkspaces: async (): Promise<Workspace[]> => {
+    const response = await makeRequest('/api/task-attempts');
+    return handleApiResponse<Workspace[]>(response);
+  },
+
+  /** Get total count of workspaces */
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/task-attempts/count');
+    return handleApiResponse<number>(response);
+  },
+
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
+    return handleApiResponse<Workspace>(response);
+  },
+
+  update: async (
+    attemptId: string,
+    data: { archived?: boolean; pinned?: boolean; name?: string }
+  ): Promise<Workspace> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
     return handleApiResponse<Workspace>(response);
   },
 
@@ -545,6 +556,25 @@ export const attemptsApi = {
       method: 'POST',
     });
     return handleApiResponse<void>(response);
+  },
+
+  delete: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 
   runAgentSetup: async (
@@ -585,6 +615,13 @@ export const attemptsApi = {
   getRepos: async (attemptId: string): Promise<RepoWithTargetBranch[]> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/repos`);
     return handleApiResponse<RepoWithTargetBranch[]>(response);
+  },
+
+  getFirstUserMessage: async (attemptId: string): Promise<string | null> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/first-message`
+    );
+    return handleApiResponse<string | null>(response);
   },
 
   merge: async (
@@ -687,13 +724,13 @@ export const attemptsApi = {
 
   createPR: async (
     attemptId: string,
-    data: CreateGitHubPrRequest
-  ): Promise<Result<string, CreatePrError>> => {
+    data: CreatePrApiRequest
+  ): Promise<Result<string, PrError>> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponseAsResult<string, CreatePrError>(response);
+    return handleApiResponseAsResult<string, PrError>(response);
   },
 
   startDevServer: async (attemptId: string): Promise<void> => {
@@ -753,6 +790,17 @@ export const attemptsApi = {
     );
     return handleApiResponse<PrCommentsResponse>(response);
   },
+
+  /** Mark all coding agent turns for a workspace as seen */
+  markSeen: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/mark-seen`,
+      {
+        method: 'PUT',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Execution Process APIs
@@ -803,6 +851,24 @@ export const fileSystemApi = {
 
 // Repo APIs
 export const repoApi = {
+  list: async (): Promise<Repo[]> => {
+    const response = await makeRequest('/api/repos');
+    return handleApiResponse<Repo[]>(response);
+  },
+
+  getById: async (repoId: string): Promise<Repo> => {
+    const response = await makeRequest(`/api/repos/${repoId}`);
+    return handleApiResponse<Repo>(response);
+  },
+
+  update: async (repoId: string, data: UpdateRepo): Promise<Repo> => {
+    const response = await makeRequest(`/api/repos/${repoId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Repo>(response);
+  },
+
   register: async (data: {
     path: string;
     display_name?: string;
@@ -828,6 +894,39 @@ export const repoApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Repo>(response);
+  },
+
+  getBatch: async (ids: string[]): Promise<Repo[]> => {
+    const response = await makeRequest('/api/repos/batch', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    return handleApiResponse<Repo[]>(response);
+  },
+
+  openEditor: async (
+    repoId: string,
+    data: OpenEditorRequest
+  ): Promise<OpenEditorResponse> => {
+    const response = await makeRequest(`/api/repos/${repoId}/open-editor`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  searchFiles: async (
+    repoId: string,
+    query: string,
+    mode?: SearchMode,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/repos/${repoId}/search?q=${encodeURIComponent(query)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 

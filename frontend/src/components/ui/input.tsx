@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { twMerge } from 'tailwind-merge';
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -38,9 +39,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         type={type}
         onKeyDown={handleKeyDown}
-        className={cn(
-          'flex h-10 w-full border px-3 py-2 text-sm ring-offset-background file:border-0 bg-transparent file:text-sm file:font-medium focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-          className
+        className={twMerge(
+          cn(
+            'flex h-10 w-full border px-3 py-2 text-sm ring-offset-background file:border-0 bg-transparent file:text-sm file:font-medium focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+            className
+          )
         )}
         {...props}
       />

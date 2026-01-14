@@ -1,15 +1,30 @@
 pub mod client;
 pub mod jsonrpc;
 pub mod normalize_logs;
+pub mod review;
 pub mod session;
 use std::{
     collections::HashMap,
+    env,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
+/// Returns the Codex home directory.
+///
+/// Checks the `CODEX_HOME` environment variable first, then falls back to `~/.codex`.
+/// This allows users to configure a custom location for Codex configuration and state.
+pub fn codex_home() -> Option<PathBuf> {
+    if let Ok(codex_home) = env::var("CODEX_HOME")
+        && !codex_home.trim().is_empty()
+    {
+        return Some(PathBuf::from(codex_home));
+    }
+    dirs::home_dir().map(|home| home.join(".codex"))
+}
+
 use async_trait::async_trait;
-use codex_app_server_protocol::NewConversationParams;
+use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
 use codex_protocol::{
     config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
 };
@@ -102,6 +117,11 @@ pub enum ReasoningSummaryFormat {
     Experimental,
 }
 
+enum CodexSessionAction {
+    Chat { prompt: String },
+    Review { target: ReviewTarget },
+}
+
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Codex {
@@ -155,7 +175,11 @@ impl StandardCodingAgentExecutor for Codex {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        self.spawn_inner(current_dir, prompt, command_parts, None, env)
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let action = CodexSessionAction::Chat {
+            prompt: combined_prompt,
+        };
+        self.spawn_inner(current_dir, command_parts, action, None, env)
             .await
     }
 
@@ -167,7 +191,11 @@ impl StandardCodingAgentExecutor for Codex {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_follow_up(&[])?;
-        self.spawn_inner(current_dir, prompt, command_parts, Some(session_id), env)
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let action = CodexSessionAction::Chat {
+            prompt: combined_prompt,
+        };
+        self.spawn_inner(current_dir, command_parts, action, Some(session_id), env)
             .await
     }
 
@@ -176,12 +204,12 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
-        dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+        codex_home().map(|home| home.join("config.toml"))
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        if let Some(timestamp) = dirs::home_dir()
-            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
+        if let Some(timestamp) = codex_home()
+            .and_then(|home| std::fs::metadata(home.join("auth.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
@@ -196,8 +224,8 @@ impl StandardCodingAgentExecutor for Codex {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codex").join("version.json").exists())
+        let installation_indicator_found = codex_home()
+            .map(|home| home.join("version.json").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
@@ -206,11 +234,29 @@ impl StandardCodingAgentExecutor for Codex {
             AvailabilityInfo::NotFound
         }
     }
+
+    async fn spawn_review(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        session_id: Option<&str>,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let command_parts = self.build_command_builder().build_initial()?;
+        let review_target = ReviewTarget::Custom {
+            instructions: prompt.to_string(),
+        };
+        let action = CodexSessionAction::Review {
+            target: review_target,
+        };
+        self.spawn_inner(current_dir, command_parts, action, session_id, env)
+            .await
+    }
 }
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.75.0"
+        "npx -y @openai/codex@0.77.0"
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
@@ -294,12 +340,11 @@ impl Codex {
     async fn spawn_inner(
         &self,
         current_dir: &Path,
-        prompt: &str,
         command_parts: CommandParts,
+        action: CodexSessionAction,
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (program_path, args) = command_parts.into_resolved().await?;
 
         let mut process = Command::new(program_path);
@@ -340,19 +385,37 @@ impl Codex {
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
-            if let Err(err) = Self::launch_codex_app_server(
-                params,
-                resume_session,
-                combined_prompt,
-                child_stdout,
-                child_stdin,
-                log_writer.clone(),
-                exit_signal_tx.clone(),
-                approvals,
-                auto_approve,
-            )
-            .await
-            {
+            let launch_result = match action {
+                CodexSessionAction::Chat { prompt } => {
+                    Self::launch_codex_app_server(
+                        params,
+                        resume_session,
+                        prompt,
+                        child_stdout,
+                        child_stdin,
+                        log_writer.clone(),
+                        exit_signal_tx.clone(),
+                        approvals,
+                        auto_approve,
+                    )
+                    .await
+                }
+                CodexSessionAction::Review { target } => {
+                    review::launch_codex_review(
+                        params,
+                        resume_session,
+                        target,
+                        child_stdout,
+                        child_stdin,
+                        log_writer.clone(),
+                        exit_signal_tx.clone(),
+                        approvals,
+                        auto_approve,
+                    )
+                    .await
+                }
+            };
+            if let Err(err) = launch_result {
                 match &err {
                     ExecutorError::Io(io_err)
                         if io_err.kind() == std::io::ErrorKind::BrokenPipe =>

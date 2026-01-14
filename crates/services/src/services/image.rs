@@ -166,9 +166,16 @@ impl ImageService {
         &self,
         worktree_path: &Path,
         task_id: Uuid,
+        agent_working_dir: Option<&str>,
     ) -> Result<(), ImageError> {
         let images = Image::find_by_task_id(&self.pool, task_id).await?;
-        self.copy_images(worktree_path, images)
+        // When agent_working_dir is set, copy images to that subdirectory
+        // so relative paths like .vibe-images/xxx.png work correctly
+        let target_path = match agent_working_dir {
+            Some(dir) if !dir.is_empty() => worktree_path.join(dir),
+            _ => worktree_path.to_path_buf(),
+        };
+        self.copy_images(&target_path, images)
     }
 
     pub async fn copy_images_by_ids_to_worktree(

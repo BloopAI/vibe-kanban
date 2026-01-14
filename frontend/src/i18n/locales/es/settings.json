@@ -6,7 +6,9 @@
         "general": "General",
         "generalDesc": "Tema, notificaciones y preferencias",
         "projects": "Proyectos",
-        "projectsDesc": "Scripts y configuración de proyectos",
+        "projectsDesc": "Repositorios de proyectos y configuración",
+        "repos": "Repositorios",
+        "reposDesc": "Scripts y configuración de repositorios",
         "agents": "Agentes",
         "agentsDesc": "Configuraciones de agentes",
         "mcp": "Servidores MCP",
@@ -230,6 +232,14 @@
           "description": "Restablece el flujo de Introducción.",
           "button": "Restablecer"
         }
+      },
+      "beta": {
+        "title": "Funciones Beta",
+        "description": "Prueba funciones experimentales antes de su lanzamiento.",
+        "workspaces": {
+          "label": "Habilitar Beta de Workspaces",
+          "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
+        }
       }
     },
     "agents": {
@@ -246,8 +256,8 @@
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
         "installationFound": "Uso previo detectado",
         "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
-        "notFound": "No encontrado",
-        "notFoundTooltip": "No se detectó uso previo. El agente puede requerir instalación y/o inicio de sesión."
+        "notFound": "Desconocido",
+        "notFoundTooltip": "No pudimos verificar que este agente esté configurado, pero pruébalo."
       },
       "editor": {
         "formLabel": "Editar JSON",
@@ -331,38 +341,6 @@
           "helper": "La ruta absoluta a tu repositorio git en disco."
         }
       },
-      "scripts": {
-        "title": "Scripts y Configuración",
-        "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este proyecto.",
-        "setup": {
-          "label": "Script de Instalación",
-          "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
-          "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
-          "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
-        },
-        "dev": {
-          "label": "Script del Servidor de Desarrollo",
-          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio) a menos que se especifique un directorio de trabajo abajo."
-        },
-        "devWorkingDir": {
-          "label": "Directorio de Trabajo del Servidor de Desarrollo",
-          "placeholder": "ej., mi-repo",
-          "helper": "El directorio desde el cual ejecutar el script del servidor de desarrollo, relativo a la raíz del workspace. Déjalo vacío para ejecutar desde la raíz del workspace."
-        },
-        "agentWorkingDir": {
-          "label": "Directorio de Trabajo del Agente",
-          "placeholder": "ej., mi-repo",
-          "helper": "Directorio predeterminado para nuevos workspaces donde ejecutar el agente de codificación, relativo a la raíz del workspace. Este valor se captura cuando se crea un workspace y no afectará a los workspaces existentes. Para proyectos de un solo repositorio, esto se establece por defecto al nombre del repositorio. Déjalo vacío para ejecutar desde la raíz del workspace."
-        },
-        "cleanup": {
-          "label": "Script de Limpieza",
-          "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
-        },
-        "copyFiles": {
-          "label": "Copiar Archivos",
-          "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
-        }
-      },
       "save": {
         "button": "Guardar Configuración del Proyecto",
         "success": "✓ ¡Configuración del proyecto guardada exitosamente!",
@@ -370,6 +348,61 @@
         "unsavedChanges": "• Tienes cambios sin guardar",
         "discard": "Descartar",
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
+      }
+    },
+    "repos": {
+      "title": "Configuración del Repositorio",
+      "description": "Configura los scripts que se ejecutan cuando este repositorio se usa en workspaces.",
+      "loading": "Cargando repositorios...",
+      "loadError": "Error al cargar repositorios.",
+      "selector": {
+        "label": "Seleccionar Repositorio",
+        "placeholder": "Elige un repositorio para configurar",
+        "helper": "Selecciona un repositorio para ver y editar su configuración.",
+        "noRepos": "No hay repositorios disponibles"
+      },
+      "general": {
+        "title": "Configuración General",
+        "description": "Configura la información básica del repositorio.",
+        "displayName": {
+          "label": "Nombre para Mostrar",
+          "placeholder": "Ingresa el nombre para mostrar",
+          "helper": "Un nombre amigable para este repositorio."
+        },
+        "path": {
+          "label": "Ruta del Repositorio"
+        }
+      },
+      "scripts": {
+        "title": "Scripts y Configuración",
+        "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este repositorio. Estos scripts se ejecutan cada vez que el repositorio se usa en cualquier workspace.",
+        "setup": {
+          "label": "Script de Instalación",
+          "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
+          "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
+          "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
+        },
+        "cleanup": {
+          "label": "Script de Limpieza",
+          "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación."
+        },
+        "copyFiles": {
+          "label": "Copiar Archivos",
+          "helper": "Lista separada por comas de archivos para copiar del directorio del repositorio original al worktree. Útil para archivos de entorno como .env. ¡Asegúrate de que estén en gitignore!",
+          "placeholder": "Rutas de archivos o patrones glob (ej., .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Script del Servidor de Desarrollo",
+          "helper": "Inicia un servidor de desarrollo para este repositorio. Los scripts se ejecutan desde el directorio worktree del repositorio."
+        }
+      },
+      "save": {
+        "button": "Guardar Configuración del Repositorio",
+        "success": "¡Configuración del repositorio guardada exitosamente!",
+        "error": "Error al guardar la configuración del repositorio",
+        "unsavedChanges": "Tienes cambios sin guardar",
+        "discard": "Descartar",
+        "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de repositorio? Tus cambios se perderán."
       }
     }
   },

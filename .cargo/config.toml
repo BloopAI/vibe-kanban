@@ -1,8 +1,3 @@
-# Set macOS deployment target to avoid linker warnings
-# Use Rust project defaults: 10.12 for x86_64, 11.0 for aarch64
-[target.x86_64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "10.12"
-
 [target.x86_64-apple-darwin]
 rustflags = [
     "-C", "link-arg=-framework",
@@ -12,9 +7,6 @@ rustflags = [
     "-C", "link-arg=-framework",
     "-C", "link-arg=Foundation",
 ]
-
-[target.aarch64-apple-darwin.env]
-MACOSX_DEPLOYMENT_TARGET = "11.0"
 
 [target.aarch64-apple-darwin]
 rustflags = [

@@ -22,7 +22,7 @@ export function ProjectList() {
   const handleCreateProject = async () => {
     try {
       const result = await ProjectFormDialog.show({});
-      if (result === 'saved') return;
+      if (result.status === 'saved') return;
     } catch (error) {
       // User cancelled - do nothing
     }

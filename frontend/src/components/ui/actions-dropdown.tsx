@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import type { Workspace } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
@@ -27,10 +26,11 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
+import { WorkspaceWithSession } from '@/types/attempt';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
-  attempt?: Workspace | null;
+  attempt?: WorkspaceWithSession | null;
   sharedTask?: SharedTaskRecord;
 }
 
@@ -84,7 +84,7 @@ export function ActionsDropdown({
   const handleViewProcesses = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    ViewProcessesDialog.show({ attemptId: attempt.id });
+    ViewProcessesDialog.show({ sessionId: attempt.session?.id });
   };
 
   const handleViewRelatedTasks = (e: React.MouseEvent) => {

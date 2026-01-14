@@ -4,6 +4,7 @@ pub mod gh_cli_setup;
 pub mod images;
 pub mod pr;
 pub mod util;
+pub mod workspace_summary;
 
 use std::{
     collections::HashMap,
@@ -19,12 +20,13 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
-    project_repo::ProjectRepo,
+    project::SearchResult,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     task::{Task, TaskRelationships, TaskStatus},
@@ -44,8 +46,9 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
+    file_search::SearchQuery,
     git::{ConflictOp, GitCliError, GitServiceError},
-    github::GitHubService,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -88,6 +91,19 @@ pub struct DiffStreamQuery {
     pub stats_only: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceStreamQuery {
+    pub archived: Option<bool>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct UpdateWorkspace {
+    pub archived: Option<bool>,
+    pub pinned: Option<bool>,
+    pub name: Option<String>,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -97,10 +113,38 @@ pub async fn get_task_attempts(
     Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
+pub async fn get_workspace_count(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<i64>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let count = Workspace::count_all(pool).await?;
+    Ok(ResponseJson(ApiResponse::success(count)))
+}
+
 pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(workspace)))
+}
+
+pub async fn update_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<UpdateWorkspace>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let pool = &deployment.db().pool;
+    Workspace::update(
+        pool,
+        workspace.id,
+        request.archived,
+        request.pinned,
+        request.name.as_deref(),
+    )
+    .await?;
+    let updated = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+    Ok(ResponseJson(ApiResponse::success(updated)))
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -142,16 +186,17 @@ pub async fn create_task_attempt(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let agent_working_dir = project
-        .default_agent_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
+    // Compute agent_working_dir based on repo count:
+    // - Single repo: use repo name as working dir (agent runs in repo directory)
+    // - Multiple repos: use None (agent runs in workspace root)
+    let agent_working_dir = if payload.repos.len() == 1 {
+        let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+        Some(repo.name)
+    } else {
+        None
+    };
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
@@ -245,6 +290,8 @@ pub async fn stream_task_attempt_diff_ws(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
+    let _ = Workspace::touch(&deployment.db().pool, workspace.id).await;
+
     let stats_only = params.stats_only;
     ws.on_upgrade(move |socket| async move {
         if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only).await
@@ -290,6 +337,61 @@ async fn handle_task_attempt_diff_ws(
                 }
             }
             // Detect client disconnection
+            msg = receiver.next() => {
+                if msg.is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn stream_workspaces_ws(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WorkspaceStreamQuery>,
+    State(deployment): State<DeploymentImpl>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
+        {
+            tracing::warn!("workspaces WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_workspaces_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    archived: Option<bool>,
+    limit: Option<i64>,
+) -> anyhow::Result<()> {
+    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+
+    let mut stream = deployment
+        .events()
+        .stream_workspaces_raw(archived, limit)
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    let (mut sender, mut receiver) = socket.split();
+
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if sender.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
+                }
+            }
             msg = receiver.next() => {
                 if msg.is_none() {
                     break;
@@ -368,6 +470,9 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, task.id, TaskStatus::Done).await?;
+    if !workspace.pinned {
+        Workspace::set_archived(pool, workspace.id, true).await?;
+    }
 
     // Stop any running dev servers for this workspace
     let dev_servers =
@@ -430,9 +535,6 @@ pub async fn push_task_attempt_branch(
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let github_service = GitHubService::new()?;
-    github_service.check_token().await?;
-
     let workspace_repo =
         WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
             .await?
@@ -451,7 +553,7 @@ pub async fn push_task_attempt_branch(
 
     match deployment
         .git()
-        .push_to_github(&worktree_path, &workspace.branch, false)
+        .push_to_remote(&worktree_path, &workspace.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
@@ -467,9 +569,6 @@ pub async fn force_push_task_attempt_branch(
     Json(request): Json<PushTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
     let pool = &deployment.db().pool;
-
-    let github_service = GitHubService::new()?;
-    github_service.check_token().await?;
 
     let workspace_repo =
         WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
@@ -489,7 +588,7 @@ pub async fn force_push_task_attempt_branch(
 
     deployment
         .git()
-        .push_to_github(&worktree_path, &workspace.branch, true)?;
+        .push_to_remote(&worktree_path, &workspace.branch, true)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -520,6 +619,9 @@ pub async fn open_task_attempt_in_editor(
         .container()
         .ensure_container_exists(&workspace)
         .await?;
+
+    Workspace::touch(&deployment.db().pool, workspace.id).await?;
+
     let workspace_path = Path::new(&container_ref);
 
     // For single-repo projects, open from the repo directory
@@ -1138,33 +1240,18 @@ pub async fn start_dev_server(
         }
     }
 
-    // Get dev script from project (dev_script is project-level, not per-repo)
-    let dev_script = match &project.dev_script {
-        Some(script) if !script.is_empty() => script.clone(),
-        _ => {
-            return Ok(ResponseJson(ApiResponse::error(
-                "No dev server script configured for this project",
-            )));
-        }
-    };
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let repos_with_dev_script: Vec<_> = repos
+        .iter()
+        .filter(|r| r.dev_server_script.as_ref().is_some_and(|s| !s.is_empty()))
+        .collect();
 
-    let working_dir = project
-        .dev_script_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
+    if repos_with_dev_script.is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "No dev server script configured for any repository in this workspace",
+        )));
+    }
 
-    let executor_action = ExecutorAction::new(
-        ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: dev_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::DevServer,
-            working_dir,
-        }),
-        None,
-    );
-
-    // Get or create a session for dev server
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
         Some(s) => s,
         None => {
@@ -1180,15 +1267,27 @@ pub async fn start_dev_server(
         }
     };
 
-    deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::DevServer,
-        )
-        .await?;
+    for repo in repos_with_dev_script {
+        let executor_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: repo.dev_server_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::DevServer,
+                working_dir: Some(repo.name.clone()),
+            }),
+            None,
+        );
+
+        deployment
+            .container()
+            .start_execution(
+                &workspace,
+                &session,
+                &executor_action,
+                &ExecutionProcessRunReason::DevServer,
+            )
+            .await?;
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -1281,7 +1380,6 @@ pub async fn run_setup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1291,11 +1389,9 @@ pub async fn run_setup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .setup_actions_for_repos(&project_repos)
-    {
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().setup_actions_for_repos(&repos) {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -1365,7 +1461,6 @@ pub async fn run_cleanup_script(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // Get parent task and project
     let task = workspace
         .parent_task(pool)
         .await?
@@ -1375,11 +1470,9 @@ pub async fn run_cleanup_script(
         .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let executor_action = match deployment
-        .container()
-        .cleanup_actions_for_repos(&project_repos)
-    {
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().cleanup_actions_for_repos(&repos) {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -1477,9 +1570,178 @@ pub async fn get_task_attempt_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+pub async fn search_workspace_files(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Query(search_query): Query<SearchQuery>,
+) -> Result<ResponseJson<ApiResponse<Vec<SearchResult>>>, StatusCode> {
+    if search_query.q.trim().is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Query parameter 'q' is required and cannot be empty",
+        )));
+    }
+
+    let repos =
+        match WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Failed to get workspace repos: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
+
+    match deployment
+        .project()
+        .search_files(
+            deployment.file_search_cache().as_ref(),
+            &repos,
+            &search_query,
+        )
+        .await
+    {
+        Ok(results) => Ok(ResponseJson(ApiResponse::success(results))),
+        Err(e) => {
+            tracing::error!("Failed to search files: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+pub async fn get_first_user_message(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Option<String>>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let message = Workspace::get_first_user_message(pool, workspace.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(message)))
+}
+
+pub async fn delete_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Check for running execution processes
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Err(ApiError::Conflict(
+            "Cannot delete workspace while processes are running. Stop all processes first."
+                .to_string(),
+        ));
+    }
+
+    // Stop any running dev servers for this workspace
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} before deleting workspace {}",
+            dev_server.id,
+            workspace.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for workspace {}: {}",
+                dev_server.id,
+                workspace.id,
+                e
+            );
+        }
+    }
+
+    // Gather data needed for background cleanup
+    let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
+    let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+
+    // Nullify parent_workspace_id for any child tasks before deletion
+    let children_affected = Task::nullify_children_by_workspace_id(pool, workspace.id).await?;
+    if children_affected > 0 {
+        tracing::info!(
+            "Nullified {} child task references before deleting workspace {}",
+            children_affected,
+            workspace.id
+        );
+    }
+
+    // Delete workspace from database (FK CASCADE will handle sessions, execution_processes, etc.)
+    let rows_affected = Workspace::delete(pool, workspace.id).await?;
+
+    if rows_affected == 0 {
+        return Err(ApiError::Database(SqlxError::RowNotFound));
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "workspace_deleted",
+            serde_json::json!({
+                "workspace_id": workspace.id.to_string(),
+                "task_id": workspace.task_id.to_string(),
+            }),
+        )
+        .await;
+
+    // Spawn background cleanup task for filesystem resources
+    if let Some(workspace_dir) = workspace_dir {
+        let workspace_id = workspace.id;
+        tokio::spawn(async move {
+            tracing::info!(
+                "Starting background cleanup for workspace {} at {}",
+                workspace_id,
+                workspace_dir.display()
+            );
+
+            if let Err(e) = WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+            {
+                tracing::error!(
+                    "Background workspace cleanup failed for {} at {}: {}",
+                    workspace_id,
+                    workspace_dir.display(),
+                    e
+                );
+            } else {
+                tracing::info!(
+                    "Background cleanup completed for workspace {}",
+                    workspace_id
+                );
+            }
+        });
+    }
+
+    // Return 202 Accepted to indicate deletion was scheduled
+    Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
+}
+
+/// Mark all coding agent turns for a workspace as seen
+#[axum::debug_handler]
+pub async fn mark_seen(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    CodingAgentTurn::mark_seen_by_workspace_id(pool, workspace.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
-        .route("/", get(get_task_attempt))
+        .route(
+            "/",
+            get(get_task_attempt)
+                .put(update_workspace)
+                .delete(delete_workspace),
+        )
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route("/start-dev-server", post(start_dev_server))
@@ -1492,7 +1754,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
-        .route("/pr", post(pr::create_github_pr))
+        .route("/pr", post(pr::create_pr))
         .route("/pr/attach", post(pr::attach_existing_pr))
         .route("/pr/comments", get(pr::get_pr_comments))
         .route("/open-editor", post(open_task_attempt_in_editor))
@@ -1501,6 +1763,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
         .route("/repos", get(get_task_attempt_repos))
+        .route("/search", get(search_workspace_files))
+        .route("/first-message", get(get_first_user_message))
+        .route("/mark-seen", put(mark_seen))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
@@ -1508,6 +1773,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/count", get(get_workspace_count))
+        .route("/stream/ws", get(stream_workspaces_ws))
+        .route("/summary", post(workspace_summary::get_workspace_summaries))
         .nest("/{id}", task_attempt_id_router)
         .nest("/{id}/images", images::router(deployment));
 

@@ -14,14 +14,14 @@ use axum::{
 };
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
-    project_repo::{CreateProjectRepo, ProjectRepo, UpdateProjectRepo},
+    project_repo::{CreateProjectRepo, ProjectRepo},
     repo::Repo,
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery, project::ProjectServiceError,
+    file_search::SearchQuery, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -313,8 +313,8 @@ pub async fn delete_project(
 
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
-    editor_type: Option<String>,
-    git_repo_path: Option<PathBuf>,
+    pub editor_type: Option<String>,
+    pub git_repo_path: Option<PathBuf>,
 }
 
 #[derive(Debug, serde::Serialize, ts_rs::TS)]
@@ -568,20 +568,6 @@ pub async fn get_project_repository(
     }
 }
 
-pub async fn update_project_repository(
-    State(deployment): State<DeploymentImpl>,
-    Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
-    Json(payload): Json<UpdateProjectRepo>,
-) -> Result<ResponseJson<ApiResponse<ProjectRepo>>, ApiError> {
-    match ProjectRepo::update(&deployment.db().pool, project_id, repo_id, &payload).await {
-        Ok(project_repo) => Ok(ResponseJson(ApiResponse::success(project_repo))),
-        Err(db::models::project_repo::ProjectRepoError::NotFound) => Err(ApiError::BadRequest(
-            "Repository not found in project".to_string(),
-        )),
-        Err(e) => Err(e.into()),
-    }
-}
-
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -609,9 +595,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_projects).post(create_project))
         .route(
             "/{project_id}/repositories/{repo_id}",
-            get(get_project_repository)
-                .put(update_project_repository)
-                .delete(delete_project_repository),
+            get(get_project_repository).delete(delete_project_repository),
         )
         .route("/stream/ws", get(stream_projects_ws))
         .nest("/{id}", project_id_router);

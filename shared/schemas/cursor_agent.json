@@ -19,7 +19,7 @@
       ]
     },
     "model": {
-      "description": "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok",
+      "description": "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1",
       "type": [
         "string",
         "null"

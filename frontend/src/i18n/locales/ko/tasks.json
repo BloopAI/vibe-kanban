@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "시작하려면 최소 하나의 저장소를 선택해주세요"
+      }
+    },
+    "advanced": {
+      "workingBranch": "작업 브랜치",
+      "placeholder": "예: acme Corp"
+    }
+  },
   "actions": {
     "addTask": "작업 추가"
   },
@@ -19,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "리뷰 시작",
+    "startingReview": "리뷰 시작 중..."
   },
   "editBranchName": {
     "dialog": {
@@ -30,6 +43,15 @@
       "renaming": "이름 변경 중...",
       "action": "브랜치 이름 변경"
     }
+  },
+  "startReviewDialog": {
+    "title": "리뷰 시작",
+    "description": "코딩 에이전트에게 변경 사항을 검토하고 피드백을 제공하도록 요청합니다.",
+    "additionalInstructions": "추가 지침 (선택 사항)",
+    "reviewComments": "리뷰 댓글 ({{count}})",
+    "includeGitContext": "Git 컨텍스트 포함",
+    "includeGitContextDescription": "이 브랜치에서 수행된 모든 변경 사항을 확인하는 방법을 에이전트에게 알려줍니다",
+    "newSession": "새 세션"
   },
   "attempt": {
     "actions": {
@@ -67,6 +89,20 @@
     "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "충돌 해결",
+      "description": "충돌이 감지되었습니다. 에이전트가 어떻게 해결하기를 원하는지 선택하세요.",
+      "sessionLabel": "세션",
+      "existingSession": "현재 세션에서 계속",
+      "newSession": "새 세션",
+      "resolve": "충돌 해결",
+      "resolving": "시작 중...",
+      "filesWithConflicts_one": "{{count}}개 파일에 충돌이 있습니다",
+      "filesWithConflicts_other": "{{count}}개 파일에 충돌이 있습니다",
+      "andMore": "...외 {{count}}개"
+    }
+  },
   "stopShareDialog": {
     "title": "작업 공유 중지",
     "description": "\"{{title}}\" 작업의 공유를 조직에서 중지하시겠습니까?",
@@ -86,10 +122,10 @@
       "description": "작업을 공유하려면 로그인해야 합니다. 로그인 페이지로 이동합니다.",
       "action": "로그인으로 이동"
     },
-    "githubRequired": {
-      "title": "GitHub 연결",
-      "description": "공유 작업을 게시하려면 GitHub 계정을 연결하세요.",
-      "action": "GitHub 연결"
+    "gitProviderRequired": {
+      "title": "Git 제공자 연결",
+      "description": "작업을 공유하려면 Git 제공자 계정을 연결하세요. 이 프로젝트에는 원격 저장소가 있어야 합니다.",
+      "action": "연결"
     },
     "linkProjectRequired": {
       "description": "작업을 공유하기 전에 이 프로젝트를 조직에 연결하세요.",
@@ -103,8 +139,8 @@
     "closeButton": "닫기"
   },
   "createPrDialog": {
-    "title": "GitHub Pull Request 생성",
-    "description": "이 작업 시도에 대한 Pull Request를 GitHub에서 생성합니다.",
+    "title": "Pull Request 생성",
+    "description": "이 작업 시도에 대한 Pull Request를 생성합니다.",
     "titleLabel": "제목",
     "titlePlaceholder": "PR 제목 입력",
     "descriptionLabel": "설명 (선택사항)",
@@ -117,9 +153,9 @@
     "creating": "생성 중...",
     "createButton": "PR 생성",
     "errors": {
-      "insufficientPermissions": "권한이 부족합니다. GitHub CLI에 필요한 권한이 있는지 확인하세요.",
+      "insufficientPermissions": "권한이 부족합니다. CLI에 필요한 권한이 있는지 확인하세요.",
       "repoNotFoundOrNoAccess": "저장소를 찾을 수 없거나 액세스 권한이 없습니다. 저장소 액세스를 확인하고 인증되었는지 확인하세요.",
-      "failedToCreate": "GitHub PR 생성에 실패했습니다",
+      "failedToCreate": "PR 생성에 실패했습니다",
       "gitCliNotLoggedIn": "Git이 인증되지 않았습니다. \"gh auth login\"을 실행하거나 Git 자격 증명을 설정한 후 다시 시도하세요.",
       "gitCliNotInstalled": "Git CLI가 설치되어 있지 않습니다. PR을 생성하려면 Git을 설치하세요.",
       "targetBranchNotFound": "대상 브랜치 '{{branch}}'이(가) 원격에 존재하지 않습니다. 풀 리퀘스트를 생성하기 전에 브랜치가 존재하는지 확인하세요."
@@ -133,7 +169,8 @@
   "attemptHeaderActions": {
     "diffs": "Diffs",
     "preview": "Preview",
-    "relatedTasks": "Related tasks"
+    "relatedTasks": "Related tasks",
+    "tryNewUI": "새로운 UI 사용해보기"
   },
   "branches": {
     "changeTarget": {
@@ -221,6 +258,9 @@
     "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
+    "labels": {
+      "taskBranch": "작업 브랜치"
+    },
     "branch": {
       "current": "현재"
     },
@@ -231,21 +271,44 @@
       "note": "원격 브랜치 기록을 대체해도 확실한 경우에만 계속하세요.",
       "error": "강제 푸시에 실패했습니다"
     },
+    "status": {
+      "commits_one": "커밋",
+      "commits_other": "커밋",
+      "conflicts": "충돌",
+      "upToDate": "최신 상태",
+      "ahead": "앞서감",
+      "behind": "뒤처짐"
+    },
+    "states": {
+      "merged": "병합됨!",
+      "merging": "병합 중...",
+      "merge": "병합",
+      "rebasing": "리베이스 중...",
+      "rebase": "리베이스",
+      "pushed": "푸시됨!",
+      "pushing": "푸시 중...",
+      "push": "푸시",
+      "pushFailed": "실패",
+      "forcePush": "강제 푸시",
+      "forcePushing": "강제 푸시 중...",
+      "creating": "생성 중...",
+      "createPr": "PR 생성"
+    },
     "errors": {
       "changeTargetBranch": "대상 브랜치를 변경하지 못했습니다",
-      "mergeChanges": "변경사항을 병합하지 못했습니다",
       "pushChanges": "변경사항을 푸시하지 못했습니다",
-      "rebaseBranch": "브랜치를 리베이스하지 못했습니다"
-    },
-    "labels": {
-      "taskBranch": "작업 브랜치"
+      "mergeChanges": "변경사항을 병합하지 못했습니다",
+      "rebaseBranch": "브랜치를 리베이스하지 못했습니다",
+      "branchStatusUnavailable": "브랜치 상태를 가져올 수 없습니다. 대상 브랜치는 여전히 변경할 수 있습니다."
     },
     "pr": {
+      "open": "Open PR #{{number}}",
       "number": "PR #{{number}}",
-      "open": "Open PR #{{number}}"
+      "merged": "병합된 PR #{{prNumber}}"
     },
     "actions": {
       "title": "Git 작업",
+      "changeTarget": "대상 변경",
       "prMerged": "PR #{{number}}은(는) 이미 병합되었습니다",
       "loginRequired": {
         "title": "Git 작업을 관리하려면 로그인하세요",
@@ -253,27 +316,35 @@
         "action": "로그인"
       }
     },
-    "states": {
-      "createPr": "PR 생성",
-      "creating": "생성 중...",
-      "merge": "병합",
-      "merged": "병합됨!",
-      "merging": "병합 중...",
-      "push": "푸시",
-      "pushed": "푸시됨!",
-      "pushing": "푸시 중...",
-      "forcePush": "강제 푸시",
-      "forcePushing": "강제 푸시 중...",
-      "rebase": "리베이스",
-      "rebasing": "리베이스 중..."
+    "mergeDialog": {
+      "title": "변경사항 병합",
+      "description": "변경사항을 대상 브랜치에 병합합니다. 계속하시겠습니까?"
     },
-    "status": {
-      "ahead": "앞서감",
-      "behind": "뒤처짐",
-      "commits_one": "커밋",
-      "commits_other": "커밋",
-      "conflicts": "충돌",
-      "upToDate": "최신 상태"
+    "createRepo": {
+      "dialog": {
+        "title": "새 저장소 만들기",
+        "description": "Git으로 추적되는 새 저장소를 만듭니다."
+      },
+      "form": {
+        "nameLabel": "저장소 이름",
+        "namePlaceholder": "my-project",
+        "locationLabel": "위치",
+        "locationPlaceholder": "저장소 위치 선택"
+      },
+      "browseDialog": {
+        "title": "저장소 위치 선택",
+        "description": "새 저장소가 생성될 폴더를 선택하세요."
+      },
+      "errors": {
+        "nameRequired": "저장소 이름을 입력해주세요",
+        "createFailed": "저장소 생성에 실패했습니다"
+      },
+      "buttons": {
+        "createRepository": "리포지토리 생성"
+      },
+      "states": {
+        "creating": "생성 중..."
+      }
     }
   },
   "loading": "작업 로딩 중...",
@@ -294,17 +365,23 @@
     "logs": {
       "hide": "숨기기",
       "show": "표시",
-      "title": "개발 서버 로그"
+      "title": "개발 서버 로그",
+      "label": "로그",
+      "viewFull": "전체 로그 보기"
     },
     "noServer": {
       "companionLink": "설치 가이드 보기",
       "companionPrompt": "클릭하여 편집 기능을 사용하려면 프로젝트에 브라우저 컴패니언을 추가하세요.",
-      "editButton": "개발 스크립트 편집",
+      "configureButton": "구성",
+      "setupTitle": "미리보기 기능을 사용하려면 개발 서버 스크립트를 설정해야 합니다",
       "setupPrompt": "라이브 미리보기 및 클릭하여 편집을 사용하려면 이 프로젝트에 개발 서버 스크립트를 추가하세요.",
       "startButton": "개발 서버 시작",
       "startPrompt": "미리보기를 보려면 개발 서버를 시작하세요",
       "stopAndEditButton": "개발 서버 중지 및 문제 해결",
-      "title": "실행 중인 개발 서버 없음"
+      "title": "실행 중인 개발 서버 없음",
+      "fixScript": "개발 스크립트 수정",
+      "editDevScript": "개발 서버 스크립트 편집",
+      "learnMore": "애플리케이션 테스트에 대해 자세히 알아보기"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -312,7 +389,18 @@
       "copyUrl": "URL 복사",
       "openInTab": "새 탭에서 열기",
       "refresh": "미리보기 새로고침",
-      "stopDevServer": "개발 서버 중지"
+      "stopDevServer": "개발 서버 중지",
+      "clickToEdit": "URL 편집하려면 클릭",
+      "resetUrl": "감지된 URL로 재설정",
+      "clearUrlOverride": "URL 오버라이드 지우기",
+      "desktopView": "데스크탑 보기",
+      "mobileView": "모바일 보기 (390x844)",
+      "responsiveView": "반응형 보기 (크기 조절 가능)",
+      "startDevServer": "개발 서버 시작"
+    },
+    "loading": {
+      "startingServer": "개발 서버 시작 중...",
+      "waitingForServer": "서버 대기 중..."
     },
     "troubleAlert": {
       "item1": "개발 서버가 성공적으로 시작되었나요? 해결해야 할 버그가 있거나 종속성을 설치해야 할 수 있습니다.",
@@ -320,10 +408,21 @@
       "item2Suffix": "? (이것이 실행 중임을 아는 방법입니다)",
       "item3": "Web Companion(클릭하여 편집에 필요)을 설치했나요? 설치하지 않았다면",
       "item3Link": "여기의 설치 지침을 따르세요",
-      "title": "애플리케이션 미리보기에 문제가 발생했습니다:"
-    }
+      "title": "애플리케이션 미리보기에 문제가 발생했습니다:",
+      "fixScript": "개발 스크립트 수정"
+    },
+    "browser": {
+      "title": "개발 서버 미리보기",
+      "devServerFallback": "개발 서버"
+    },
+    "urlInput": {
+      "placeholder": "URL 입력..."
+    },
+    "noDevScript": "개발 스크립트가 설정되지 않았습니다",
+    "noDevScriptHint": "미리보기를 활성화하려면 프로젝트 설정에서 개발 스크립트를 추가하세요."
   },
   "processes": {
+    "noLogsAvailable": "로그가 없습니다",
     "agent": "Agent:",
     "backToList": "Back to list",
     "completed": "Completed: {{date}}",
@@ -401,6 +500,21 @@
       "status": "Status"
     }
   },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "프로젝트 만들기",
+        "description": "새 프로젝트의 이름을 입력하세요."
+      },
+      "form": {
+        "nameLabel": "이름",
+        "namePlaceholder": "내 프로젝트"
+      },
+      "errors": {
+        "createFailed": "프로젝트 생성에 실패했습니다"
+      }
+    }
+  },
   "showcases": {
     "taskPanel": {
       "companion": {
@@ -430,9 +544,9 @@
       "finish": "완료"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "GitHub 댓글 선택",
+      "title": "PR 댓글 선택",
       "noComments": "이 PR에 댓글이 없습니다",
       "selectAll": "모두 선택",
       "deselectAll": "모두 선택 해제",
@@ -441,7 +555,7 @@
     },
     "card": {
       "review": "리뷰",
-      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
+      "tooltip": "클릭하여 보기, 더블 클릭하여 편집"
     }
   },
   "taskFormDialog": {
@@ -514,5 +628,91 @@
     "buttons": {
       "retry": "재시도"
     }
+  },
+  "conversation": {
+    "you": "나",
+    "thinking": "생각 중",
+    "todo": "할 일",
+    "todos": "할 일",
+    "completed": "완료됨",
+    "incomplete": "미완료",
+    "pending": "대기 중",
+    "inProgress": "진행 중",
+    "skipped": "건너뜀",
+    "error": "오류",
+    "retry": "재시도",
+    "showMore": "더 보기",
+    "showLess": "간략히",
+    "actions": {
+      "cancel": "취소",
+      "submitFeedback": "피드백 제출",
+      "stop": "중지",
+      "stopping": "중지 중",
+      "loading": "로딩 중",
+      "send": "보내기",
+      "sending": "보내는 중",
+      "queue": "대기열에 추가",
+      "cancelQueue": "대기열 취소",
+      "requestChanges": "변경 요청",
+      "approve": "승인",
+      "clearReviewComments": "리뷰 댓글 지우기",
+      "edit": "메시지 편집"
+    },
+    "approval": {
+      "conflictWarning": "충돌하는 파일은 수동으로 해결해야 합니다",
+      "conflicts_one": "{{count}}개의 충돌 파일을 수동으로 해결해야 합니다",
+      "conflicts_other": "{{count}}개의 충돌 파일을 수동으로 해결해야 합니다"
+    },
+    "executors": "실행기",
+    "saveAsDefault": "기본값으로 저장",
+    "script": {
+      "clickToViewLogs": "로그를 보려면 클릭하세요",
+      "completedSuccessfully": "성공적으로 완료됨",
+      "exitCode": "종료 코드: {{code}}",
+      "running": "실행 중..."
+    },
+    "unableToRenderDiff": "차이를 표시할 수 없습니다.",
+    "updatedTodos": "업데이트된 할 일",
+    "viewInChangesPanel": "변경사항 패널에서 보기",
+    "sessions": {
+      "newSession": "새 세션",
+      "latest": "최신",
+      "previous": "이전",
+      "label": "세션",
+      "noPreviousSessions": "이전 세션이 없습니다"
+    },
+    "reviewComments": {
+      "count_one": "{{count}}개의 리뷰 댓글이 포함됩니다",
+      "count_other": "{{count}}개의 리뷰 댓글이 포함됩니다"
+    },
+    "workspace": {
+      "create": "만들기",
+      "creating": "만드는 중..."
+    },
+    "fileEntry": {
+      "created": "생성됨",
+      "modified": "수정됨",
+      "deleted": "삭제됨",
+      "renamed": "이름 변경됨"
+    }
+  },
+  "scriptFixer": {
+    "title": "스크립트 수정",
+    "setupScriptTitle": "설정 스크립트 수정",
+    "cleanupScriptTitle": "정리 스크립트 수정",
+    "devServerTitle": "개발 서버 스크립트 수정",
+    "scriptLabel": "스크립트 (편집)",
+    "logsLabel": "마지막 실행 로그",
+    "saveButton": "저장",
+    "saveAndTestButton": "저장 및 테스트",
+    "saving": "저장 중...",
+    "testing": "테스트 중...",
+    "noLogs": "실행 로그가 없습니다",
+    "selectRepo": "저장소",
+    "fixScript": "스크립트 수정",
+    "statusRunning": "실행 중...",
+    "statusSuccess": "성공적으로 완료됨",
+    "statusFailed": "종료 코드 {{exitCode}}(으)로 실패함",
+    "statusKilled": "프로세스가 종료되었습니다"
   }
 }

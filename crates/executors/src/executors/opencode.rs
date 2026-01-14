@@ -1,9 +1,11 @@
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
+use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
@@ -12,10 +14,17 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        acp::AcpAgentHarness,
+        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
+    stdout_dup::create_stdout_pipe_writer,
 };
+
+mod normalize_logs;
+mod sdk;
+mod types;
+
+use sdk::{LogWriter, RunConfig, run_session};
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -39,12 +48,143 @@ pub struct Opencode {
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.0.134").extend_params(["acp"]);
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.1.3")
+            // Pass hostname/port as separate args so OpenCode treats them as explicitly set
+            // (it checks `process.argv.includes(\"--port\")` / `\"--hostname\"`).
+            .extend_params(["serve", "--hostname", "127.0.0.1", "--port", "0"]);
         apply_overrides(builder, &self.cmd)
     }
 
-    fn harness() -> AcpAgentHarness {
-        AcpAgentHarness::with_session_namespace("opencode_sessions")
+    async fn spawn_inner(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        resume_session: Option<&str>,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+
+        let command_parts = self.build_command_builder().build_initial()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
+
+        let mut command = Command::new(program_path);
+        command
+            .kill_on_drop(true)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .current_dir(current_dir)
+            .args(&args)
+            .env("NODE_NO_WARNINGS", "1")
+            .env("NO_COLOR", "1");
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
+
+        let mut child = command.group_spawn()?;
+        let server_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other(
+                "OpenCode server missing stdout (needed to parse listening URL)",
+            ))
+        })?;
+
+        let stdout = create_stdout_pipe_writer(&mut child)?;
+        let log_writer = LogWriter::new(stdout);
+
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel();
+
+        let directory = current_dir.to_string_lossy().to_string();
+        let base_url = wait_for_server_url(server_stdout).await?;
+        let approvals = if self.auto_approve {
+            None
+        } else {
+            self.approvals.clone()
+        };
+
+        let config = RunConfig {
+            base_url,
+            directory,
+            prompt: combined_prompt,
+            resume_session_id: resume_session.map(|s| s.to_string()),
+            model: self.model.clone(),
+            agent: self.mode.clone(),
+            approvals,
+            auto_approve: self.auto_approve,
+        };
+
+        tokio::spawn(async move {
+            let result = run_session(config, log_writer.clone(), interrupt_rx).await;
+            let exit_result = match result {
+                Ok(()) => ExecutorExitResult::Success,
+                Err(err) => {
+                    let _ = log_writer
+                        .log_error(format!("OpenCode executor error: {err}"))
+                        .await;
+                    ExecutorExitResult::Failure
+                }
+            };
+            let _ = exit_signal_tx.send(exit_result);
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+            interrupt_sender: Some(interrupt_tx),
+        })
+    }
+}
+
+fn format_tail(captured: Vec<String>) -> String {
+    captured
+        .into_iter()
+        .rev()
+        .take(12)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+async fn wait_for_server_url(stdout: tokio::process::ChildStdout) -> Result<String, ExecutorError> {
+    let mut lines = tokio::io::BufReader::new(stdout).lines();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(180);
+    let mut captured: Vec<String> = Vec::new();
+
+    loop {
+        if tokio::time::Instant::now() > deadline {
+            return Err(ExecutorError::Io(std::io::Error::other(format!(
+                "Timed out waiting for OpenCode server to print listening URL.\nServer output tail:\n{}",
+                format_tail(captured)
+            ))));
+        }
+
+        let line = match tokio::time::timeout_at(deadline, lines.next_line()).await {
+            Ok(Ok(Some(line))) => line,
+            Ok(Ok(None)) => {
+                return Err(ExecutorError::Io(std::io::Error::other(format!(
+                    "OpenCode server exited before printing listening URL.\nServer output tail:\n{}",
+                    format_tail(captured)
+                ))));
+            }
+            Ok(Err(err)) => return Err(ExecutorError::Io(err)),
+            Err(_) => continue,
+        };
+
+        if captured.len() < 64 {
+            captured.push(line.clone());
+        }
+
+        if let Some(url) = line.trim().strip_prefix("opencode server listening on ") {
+            // Keep draining stdout to avoid backpressure on the server, but don't block startup.
+            tokio::spawn(async move {
+                let mut lines = tokio::io::BufReader::new(lines.into_inner()).lines();
+                while let Ok(Some(_)) = lines.next_line().await {}
+            });
+            return Ok(url.trim().to_string());
+        }
     }
 }
 
@@ -60,32 +200,8 @@ impl StandardCodingAgentExecutor for Opencode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut harness = Self::harness();
-        if let Some(model) = &self.model {
-            harness = harness.with_model(model);
-        }
-        if let Some(agent) = &self.mode {
-            harness = harness.with_mode(agent);
-        }
-        let opencode_command = self.build_command_builder().build_initial()?;
-        let approvals = if self.auto_approve {
-            None
-        } else {
-            self.approvals.clone()
-        };
         let env = setup_approvals_env(self.auto_approve, env);
-        harness
-            .spawn_with_command(
-                current_dir,
-                combined_prompt,
-                opencode_command,
-                &env,
-                &self.cmd,
-                approvals,
-            )
-            .await
+        self.spawn_inner(current_dir, prompt, None, &env).await
     }
 
     async fn spawn_follow_up(
@@ -95,36 +211,13 @@ impl StandardCodingAgentExecutor for Opencode {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let mut harness = Self::harness();
-        if let Some(model) = &self.model {
-            harness = harness.with_model(model);
-        }
-        if let Some(agent) = &self.mode {
-            harness = harness.with_mode(agent);
-        }
-        let opencode_command = self.build_command_builder().build_follow_up(&[])?;
-        let approvals = if self.auto_approve {
-            None
-        } else {
-            self.approvals.clone()
-        };
         let env = setup_approvals_env(self.auto_approve, env);
-        harness
-            .spawn_follow_up_with_command(
-                current_dir,
-                combined_prompt,
-                session_id,
-                opencode_command,
-                &env,
-                &self.cmd,
-                approvals,
-            )
+        self.spawn_inner(current_dir, prompt, Some(session_id), &env)
             .await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        crate::executors::acp::normalize_logs(msg_store, worktree_path);
+        normalize_logs::normalize_logs(msg_store, worktree_path);
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {

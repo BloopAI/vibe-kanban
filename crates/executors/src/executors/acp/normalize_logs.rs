@@ -333,7 +333,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     }
                 }
                 agent_client_protocol::ToolKind::Execute => {
-                    let command = AcpEventParser::parse_execute_command(&tc.title);
+                    let command = AcpEventParser::parse_execute_command(tc);
                     // Prefer structured raw_output, else fallback to aggregated text content
                     let completed =
                         matches!(tc.status, agent_client_protocol::ToolCallStatus::Completed);
@@ -527,7 +527,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         fn get_tool_content(tc: &PartialToolCallData) -> String {
             match tc.kind {
                 agent_client_protocol::ToolKind::Execute => {
-                    AcpEventParser::parse_execute_command(&tc.title)
+                    AcpEventParser::parse_execute_command(tc)
                 }
                 agent_client_protocol::ToolKind::Think => "Saving memory".to_string(),
                 agent_client_protocol::ToolKind::Other => {
@@ -683,7 +683,15 @@ impl AcpEventParser {
     }
 
     /// Parse command from tool title (for execute tools)
-    pub fn parse_execute_command(title: &str) -> String {
+    pub fn parse_execute_command(tc: &PartialToolCallData) -> String {
+        if let Some(command) = tc.raw_input.as_ref().and_then(|value| {
+            value
+                .as_object()
+                .and_then(|o| o.get("command").and_then(|v| v.as_str()))
+        }) {
+            return command.to_string();
+        }
+        let title = &tc.title;
         if let Some(command) = title.split(" [current working directory ").next() {
             command.trim().to_string()
         } else if let Some(command) = title.split(" (").next() {

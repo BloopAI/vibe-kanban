@@ -35,6 +35,7 @@ interface GitOperationsProps {
   selectedAttempt: Workspace;
   task: TaskWithAttemptStatus;
   branchStatus: RepoBranchStatus[] | null;
+  branchStatusError?: Error | null;
   isAttemptRunning: boolean;
   selectedBranch: string | null;
   layout?: 'horizontal' | 'vertical';
@@ -46,6 +47,7 @@ function GitOperations({
   selectedAttempt,
   task,
   branchStatus,
+  branchStatusError,
   isAttemptRunning,
   selectedBranch,
   layout = 'horizontal',
@@ -463,7 +465,12 @@ function GitOperations({
         )}
 
         {/* Right: Actions */}
-        {selectedRepoStatus && (
+        {branchStatusError && !selectedRepoStatus ? (
+          <div className="flex items-center gap-2 text-xs text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>{t('git.errors.branchStatusUnavailable')}</span>
+          </div>
+        ) : selectedRepoStatus ? (
           <div className={actionsClasses}>
             <Button
               onClick={handleMergeClick}
@@ -523,7 +530,7 @@ function GitOperations({
               <span className="truncate max-w-[10ch]">{rebaseButtonLabel}</span>
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

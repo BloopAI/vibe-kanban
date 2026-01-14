@@ -1,4 +1,15 @@
 {
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "Por favor selecciona al menos un repositorio para comenzar"
+      }
+    },
+    "advanced": {
+      "workingBranch": "Rama de trabajo",
+      "placeholder": "ej. acme Corp"
+    }
+  },
   "actions": {
     "addTask": "Agregar tarea"
   },
@@ -19,7 +30,9 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "Iniciar revisión",
+    "startingReview": "Iniciando revisión..."
   },
   "editBranchName": {
     "dialog": {
@@ -30,6 +43,15 @@
       "renaming": "Renombrando...",
       "action": "Renombrar rama"
     }
+  },
+  "startReviewDialog": {
+    "title": "Iniciar revisión",
+    "description": "Pide al agente de codificación que revise tus cambios y proporcione comentarios.",
+    "additionalInstructions": "Instrucciones adicionales (opcional)",
+    "reviewComments": "Comentarios de revisión ({{count}})",
+    "includeGitContext": "Incluir contexto de git",
+    "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
+    "newSession": "Nueva sesión"
   },
   "attempt": {
     "actions": {
@@ -67,6 +89,20 @@
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolver Conflictos",
+      "description": "Se detectaron conflictos. Elige cómo quieres que el agente los resuelva.",
+      "sessionLabel": "Sesión",
+      "existingSession": "Continuar en la sesión actual",
+      "newSession": "Nueva sesión",
+      "resolve": "Resolver Conflictos",
+      "resolving": "Iniciando...",
+      "filesWithConflicts_one": "{{count}} archivo tiene conflictos",
+      "filesWithConflicts_other": "{{count}} archivos tienen conflictos",
+      "andMore": "...y {{count}} más"
+    }
+  },
   "stopShareDialog": {
     "title": "Detener uso compartido de la tarea",
     "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
@@ -86,10 +122,10 @@
       "description": "Debes iniciar sesión antes de poder compartir tareas. Te redirigiremos a la página de inicio de sesión.",
       "action": "Ir a iniciar sesión"
     },
-    "githubRequired": {
-      "title": "Conecta GitHub",
-      "description": "Conecta tu cuenta de GitHub para que podamos publicar tareas compartidas por ti.",
-      "action": "Conectar GitHub"
+    "gitProviderRequired": {
+      "title": "Conectar proveedor de Git",
+      "description": "Conecta tu cuenta de proveedor de Git para compartir tareas. Este proyecto debe tener un repositorio remoto.",
+      "action": "Conectar"
     },
     "linkProjectRequired": {
       "description": "Vincula este proyecto a una organización antes de compartir tareas.",
@@ -103,8 +139,8 @@
     "closeButton": "Cerrar"
   },
   "createPrDialog": {
-    "title": "Crear Pull Request de GitHub",
-    "description": "Crea un pull request para este intento de tarea en GitHub.",
+    "title": "Crear Pull Request",
+    "description": "Crea un pull request para este intento de tarea.",
     "titleLabel": "Título",
     "titlePlaceholder": "Ingresar título del PR",
     "descriptionLabel": "Descripción (opcional)",
@@ -117,9 +153,9 @@
     "creating": "Creando...",
     "createButton": "Crear PR",
     "errors": {
-      "insufficientPermissions": "Permisos insuficientes. Por favor asegúrate de que la CLI de GitHub tenga los permisos necesarios.",
+      "insufficientPermissions": "Permisos insuficientes. Por favor asegúrate de que la CLI tenga los permisos necesarios.",
       "repoNotFoundOrNoAccess": "Repositorio no encontrado o sin acceso. Por favor verifica el acceso al repositorio y asegúrate de estar autenticado.",
-      "failedToCreate": "Error al crear PR de GitHub",
+      "failedToCreate": "Error al crear PR",
       "gitCliNotLoggedIn": "Git no está autenticado. Ejecuta \"gh auth login\" (o configura las credenciales de Git) e inténtalo de nuevo.",
       "gitCliNotInstalled": "Git CLI no está instalado. Instala Git para crear una PR.",
       "targetBranchNotFound": "La rama objetivo '{{branch}}' no existe en el remoto. Por favor, asegúrese de que la rama exista antes de crear una solicitud de extracción."
@@ -133,7 +169,8 @@
   "attemptHeaderActions": {
     "diffs": "Diffs",
     "preview": "Preview",
-    "relatedTasks": "Related tasks"
+    "relatedTasks": "Related tasks",
+    "tryNewUI": "prueba la nueva interfaz"
   },
   "branches": {
     "changeTarget": {
@@ -235,23 +272,56 @@
       "changeTargetBranch": "Error al cambiar rama de destino",
       "mergeChanges": "Error al fusionar cambios",
       "pushChanges": "Error al enviar cambios",
-      "rebaseBranch": "Error al hacer rebase de la rama"
+      "rebaseBranch": "Error al hacer rebase de la rama",
+      "branchStatusUnavailable": "No se puede obtener el estado de la rama. Aún puedes cambiar la rama de destino."
     },
     "labels": {
       "taskBranch": "Rama de tarea"
     },
     "pr": {
       "number": "PR #{{number}}",
-      "open": "Open PR #{{number}}"
+      "open": "Open PR #{{number}}",
+      "merged": "PR #{{prNumber}} fusionado"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Crear Nuevo Repositorio",
+        "description": "Inicializar un nuevo repositorio git"
+      },
+      "form": {
+        "nameLabel": "Nombre",
+        "namePlaceholder": "mi-proyecto",
+        "locationLabel": "Ubicación",
+        "locationPlaceholder": "Directorio actual"
+      },
+      "browseDialog": {
+        "title": "Seleccionar Directorio Principal",
+        "description": "Elige dónde crear el nuevo repositorio"
+      },
+      "errors": {
+        "nameRequired": "El nombre del repositorio es obligatorio",
+        "createFailed": "Error al crear el repositorio"
+      },
+      "buttons": {
+        "createRepository": "Crear Repositorio"
+      },
+      "states": {
+        "creating": "Creando..."
+      }
     },
     "actions": {
       "title": "Acciones de Git",
       "prMerged": "PR #{{number}} ya está fusionado",
+      "changeTarget": "Cambiar destino",
       "loginRequired": {
         "title": "Inicia sesión para gestionar acciones de Git",
         "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
         "action": "Iniciar sesión"
       }
+    },
+    "mergeDialog": {
+      "title": "Fusionar cambios",
+      "description": "Esto fusionará sus cambios en la rama de destino. ¿Está seguro de que desea continuar?"
     },
     "states": {
       "createPr": "Crear PR",
@@ -264,6 +334,7 @@
       "push": "Enviar",
       "pushed": "¡Enviado!",
       "pushing": "Enviando...",
+      "pushFailed": "Falló",
       "rebase": "Rebase",
       "rebasing": "Rebaseando..."
     },
@@ -294,17 +365,32 @@
     "logs": {
       "hide": "Ocultar",
       "show": "Mostrar",
-      "title": "Registros del Servidor de Desarrollo"
+      "title": "Registros del Servidor de Desarrollo",
+      "label": "Registros",
+      "viewFull": "Ver registros completos"
+    },
+    "noDevScript": "Script de desarrollo no configurado",
+    "noDevScriptHint": "Agrega un script de desarrollo en la configuración del proyecto para habilitar la vista previa.",
+    "browser": {
+      "title": "Vista previa del servidor de desarrollo",
+      "devServerFallback": "Servidor de desarrollo"
+    },
+    "urlInput": {
+      "placeholder": "Ingresar URL..."
     },
     "noServer": {
       "companionLink": "Ver guía de instalación",
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
-      "editButton": "Editar Script de Desarrollo",
+      "configureButton": "Configurar",
+      "setupTitle": "Debes configurar un script de servidor de desarrollo para usar la función de vista previa",
       "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
       "startButton": "Iniciar Servidor de Desarrollo",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
       "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas",
-      "title": "No hay servidor de desarrollo en ejecución"
+      "title": "No hay servidor de desarrollo en ejecución",
+      "fixScript": "Corregir Script de Desarrollo",
+      "editDevScript": "Editar Script de Servidor de Desarrollo",
+      "learnMore": "Más información sobre cómo probar aplicaciones"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -312,7 +398,18 @@
       "copyUrl": "Copiar URL",
       "openInTab": "Abrir en nueva pestaña",
       "refresh": "Actualizar vista previa",
-      "stopDevServer": "Detener servidor de desarrollo"
+      "stopDevServer": "Detener servidor de desarrollo",
+      "clickToEdit": "Clic para editar URL",
+      "resetUrl": "Restablecer a URL detectada",
+      "clearUrlOverride": "Limpiar anulación de URL",
+      "desktopView": "Vista de escritorio",
+      "mobileView": "Vista móvil (390x844)",
+      "responsiveView": "Vista adaptable (redimensionable)",
+      "startDevServer": "Iniciar servidor de desarrollo"
+    },
+    "loading": {
+      "startingServer": "Iniciando servidor de desarrollo...",
+      "waitingForServer": "Esperando servidor..."
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
@@ -320,10 +417,12 @@
       "item2Suffix": "? (así es como sabemos que está funcionando)",
       "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
       "item3Link": "sigue las instrucciones de instalación aquí",
-      "title": "Tenemos problemas al previsualizar tu aplicación:"
+      "title": "Tenemos problemas al previsualizar tu aplicación:",
+      "fixScript": "Corregir Script de Desarrollo"
     }
   },
   "processes": {
+    "noLogsAvailable": "No hay registros disponibles",
     "agent": "Agent:",
     "backToList": "Back to list",
     "completed": "Completed: {{date}}",
@@ -381,6 +480,21 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "Crear Proyecto",
+        "description": "Ingresa un nombre para tu nuevo proyecto."
+      },
+      "form": {
+        "nameLabel": "Nombre",
+        "namePlaceholder": "Mi Proyecto"
+      },
+      "errors": {
+        "createFailed": "Error al crear el proyecto"
+      }
+    }
+  },
   "toolbar": {
     "actions": "Actions",
     "noAttempts": "No attempts yet",
@@ -430,9 +544,9 @@
       "finish": "Finalizar"
     }
   },
-  "githubComments": {
+  "prComments": {
     "dialog": {
-      "title": "Seleccionar comentarios de GitHub",
+      "title": "Seleccionar comentarios del PR",
       "noComments": "No se encontraron comentarios en este PR",
       "selectAll": "Seleccionar todo",
       "deselectAll": "Deseleccionar todo",
@@ -441,7 +555,7 @@
     },
     "card": {
       "review": "Revisión",
-      "tooltip": "Clic para ver en GitHub, doble clic para editar"
+      "tooltip": "Clic para ver, doble clic para editar"
     }
   },
   "taskFormDialog": {
@@ -514,5 +628,91 @@
     "buttons": {
       "retry": "Reintentar"
     }
+  },
+  "conversation": {
+    "you": "Tú",
+    "thinking": "Pensando",
+    "todo": "Tarea pendiente",
+    "todos": "Tareas pendientes",
+    "completed": "completado",
+    "incomplete": "incompleto",
+    "pending": "pendiente",
+    "inProgress": "en progreso",
+    "skipped": "omitido",
+    "error": "Error",
+    "retry": "Reintentar",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos",
+    "actions": {
+      "cancel": "Cancelar",
+      "submitFeedback": "Enviar comentarios",
+      "stop": "Detener",
+      "stopping": "Deteniendo",
+      "loading": "Cargando",
+      "send": "Enviar",
+      "sending": "Enviando",
+      "queue": "Poner en cola",
+      "cancelQueue": "Cancelar cola",
+      "requestChanges": "Solicitar cambios",
+      "approve": "Aprobar",
+      "clearReviewComments": "Limpiar comentarios de revisión",
+      "edit": "Editar mensaje"
+    },
+    "approval": {
+      "conflictWarning": "Los archivos en conflicto necesitan resolución manual",
+      "conflicts_one": "{{count}} archivo en conflicto necesita resolución manual",
+      "conflicts_other": "{{count}} archivos en conflicto necesitan resolución manual"
+    },
+    "executors": "Ejecutores",
+    "saveAsDefault": "Guardar como predeterminado",
+    "script": {
+      "clickToViewLogs": "Haz clic para ver registros",
+      "completedSuccessfully": "Completado exitosamente",
+      "exitCode": "Código de salida: {{code}}",
+      "running": "Ejecutando..."
+    },
+    "unableToRenderDiff": "No se puede mostrar la diferencia.",
+    "updatedTodos": "Tareas actualizadas",
+    "viewInChangesPanel": "Ver en panel de cambios",
+    "sessions": {
+      "newSession": "Nueva sesión",
+      "latest": "Última",
+      "previous": "Anterior",
+      "label": "Sesiones",
+      "noPreviousSessions": "No hay sesiones anteriores"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} comentario de revisión será incluido",
+      "count_other": "{{count}} comentarios de revisión serán incluidos"
+    },
+    "workspace": {
+      "create": "Crear",
+      "creating": "Creando..."
+    },
+    "fileEntry": {
+      "created": "Creado",
+      "modified": "Modificado",
+      "deleted": "Eliminado",
+      "renamed": "Renombrado"
+    }
+  },
+  "scriptFixer": {
+    "title": "Corregir Script",
+    "setupScriptTitle": "Corregir Script de Configuración",
+    "cleanupScriptTitle": "Corregir Script de Limpieza",
+    "devServerTitle": "Corregir Script del Servidor de Desarrollo",
+    "scriptLabel": "Script (editar)",
+    "logsLabel": "Últimos Registros de Ejecución",
+    "saveButton": "Guardar",
+    "saveAndTestButton": "Guardar y Probar",
+    "saving": "Guardando...",
+    "testing": "Probando...",
+    "noLogs": "No hay registros de ejecución disponibles",
+    "selectRepo": "Repositorio",
+    "fixScript": "Corregir Script",
+    "statusRunning": "Ejecutando...",
+    "statusSuccess": "Completado exitosamente",
+    "statusFailed": "Falló con código de salida {{exitCode}}",
+    "statusKilled": "El proceso fue terminado"
   }
 }

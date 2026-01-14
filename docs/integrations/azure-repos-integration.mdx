@@ -1,0 +1,61 @@
+---
+title: "Azure Repos Integration"
+description: "Connect to Azure Repos to create pull requests and manage your workflow directly from Vibe Kanban"
+---
+
+Vibe Kanban integrates with Azure Repos to let you create pull requests directly from your task attempts. This integration relies on the [Azure CLI (`az`)](https://learn.microsoft.com/en-us/cli/azure/) with the Azure DevOps extension being installed and authenticated on your system.
+
+## Setup
+
+Before you can create pull requests from Vibe Kanban, you need to install and configure the Azure CLI manually.
+
+### Install Azure CLI
+
+Follow the [official installation instructions](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) for your operating system:
+
+- **macOS**: `brew install azure-cli`
+- **Windows**: Download and run the MSI installer from the Azure CLI documentation
+- **Linux**: Use your distribution's package manager or the install script
+
+### Install the Azure DevOps Extension
+
+The Azure DevOps extension adds repository and pull request commands to the Azure CLI. Run the following command:
+
+```bash
+az extension add --name azure-devops
+```
+
+### Authenticate
+
+1.  **Sign in to Azure**: Run the following command and follow the prompts to authenticate via the web browser:
+    ```bash
+    az login
+    ```
+
+2.  **Configure defaults** (optional but recommended): Set your default organisation and project to avoid specifying them with each command:
+    ```bash
+    az devops configure --defaults organization=https://dev.azure.com/{your-org} project={your-project}
+    ```
+
+## Supported URL Formats
+
+Vibe Kanban supports both modern and legacy Azure DevOps URL formats:
+
+- **Modern**: `https://dev.azure.com/{org}/{project}/_git/{repo}`
+- **Legacy**: `https://{org}.visualstudio.com/{project}/_git/{repo}`
+
+Both HTTPS and SSH remote URLs are supported.
+
+## Creating a Pull Request
+
+Once the Azure CLI is ready, you can create pull requests directly from a task:
+
+1.  Open a task that has changes you want to merge.
+2.  Click the **Create PR** button.
+3.  A dialog will appear pre-filled with:
+    *   **Title**: Derived from the task title.
+    *   **Description**: Derived from the task description.
+    *   **Base Branch**: The target branch for your changes (defaults to the repository's default branch or the one specified in the attempt).
+4.  Click **Create** to open the PR on Azure Repos.
+
+If the operation is successful, the task status will update, and a link to the new Pull Request will be available.
