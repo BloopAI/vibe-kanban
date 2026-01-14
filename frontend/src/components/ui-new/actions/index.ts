@@ -1,4 +1,5 @@
-import type { Icon } from '@phosphor-icons/react';
+import { forwardRef, createElement } from 'react';
+import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
 import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
@@ -32,6 +33,9 @@ import {
   PencilSimpleIcon,
   ArrowUpIcon,
   HighlighterIcon,
+  ListIcon,
+  MegaphoneIcon,
+  QuestionIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
@@ -43,11 +47,25 @@ import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
+import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import posthog from 'posthog-js';
+import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+
+// Mirrored sidebar icon for right sidebar toggle
+const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
+  (props, ref) =>
+    createElement(SidebarSimpleIcon, {
+      ref,
+      ...props,
+      style: { transform: 'scaleX(-1)', ...props.style },
+    })
+);
+RightSidebarIcon.displayName = 'RightSidebarIcon';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -354,6 +372,40 @@ export const Actions = {
     },
   },
 
+  Feedback: {
+    id: 'feedback',
+    label: 'Give Feedback',
+    icon: MegaphoneIcon,
+    requiresTarget: false,
+    execute: () => {
+      posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
+    },
+  },
+
+  WorkspacesGuide: {
+    id: 'workspaces-guide',
+    label: 'Workspaces Guide',
+    icon: QuestionIcon,
+    requiresTarget: false,
+    execute: async () => {
+      await WorkspacesGuideDialog.show();
+    },
+  },
+
+  OpenCommandBar: {
+    id: 'open-command-bar',
+    label: 'Open Command Bar',
+    icon: ListIcon,
+    requiresTarget: false,
+    execute: async () => {
+      // Dynamic import to avoid circular dependency (pages.ts imports Actions)
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      CommandBarDialog.show();
+    },
+  },
+
   // === Diff View Actions ===
   ToggleDiffViewMode: {
     id: 'toggle-diff-view-mode',
@@ -439,7 +491,7 @@ export const Actions = {
       useLayoutStore.getState().isGitPanelVisible
         ? 'Hide Git Panel'
         : 'Show Git Panel',
-    icon: SidebarSimpleIcon,
+    icon: RightSidebarIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isGitPanelVisible,
     execute: () => {
@@ -520,9 +572,7 @@ export const Actions = {
       // Fetch task lazily to get project_id
       const task = await tasksApi.getById(workspace.task_id);
       if (task?.project_id) {
-        ctx.navigate(
-          `/projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${workspace.id}`
-        );
+        ctx.navigate(`/projects/${task.project_id}/tasks/${workspace.task_id}`);
       } else {
         ctx.navigate('/');
       }
@@ -680,6 +730,59 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'merge',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+
+        if (result.action === 'resolved') {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
+      // Check if branch is behind - need to rebase first
+      const commitsBehind = repoStatus?.commits_behind ?? 0;
+      if (commitsBehind > 0) {
+        // Prompt user to rebase first
+        const confirmRebase = await ConfirmDialog.show({
+          title: 'Rebase Required',
+          message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
+          confirmText: 'Rebase',
+          cancelText: 'Cancel',
+        });
+
+        if (confirmRebase === 'confirmed') {
+          // Trigger the rebase action
+          const repos = await attemptsApi.getRepos(workspaceId);
+          const repo = repos.find((r) => r.id === repoId);
+          if (!repo) throw new Error('Repository not found');
+
+          const branches = await repoApi.getBranches(repoId);
+          await RebaseDialog.show({
+            attemptId: workspaceId,
+            repoId,
+            branches,
+            initialTargetBranch: repo.target_branch,
+          });
+        }
+        return;
+      }
+
       const confirmResult = await ConfirmDialog.show({
         title: 'Merge Branch',
         message:
@@ -701,7 +804,32 @@ export const Actions = {
     icon: ArrowsClockwiseIcon,
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, workspaceId, repoId) => {
+    execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'rebase',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+
+        if (result.action === 'resolved') {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
       const repos = await attemptsApi.getRepos(workspaceId);
       const repo = repos.find((r) => r.id === repoId);
       if (!repo) throw new Error('Repository not found');
@@ -816,7 +944,11 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
+  left: [
+    Actions.OpenInOldUI,
+    NavbarDivider,
+    Actions.ArchiveWorkspace,
+  ] as ActionDefinition[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
@@ -827,6 +959,11 @@ export const NavbarActionGroups = {
     Actions.ToggleLogsMode,
     Actions.TogglePreviewMode,
     Actions.ToggleGitPanel,
+    NavbarDivider,
+    Actions.OpenCommandBar,
+    Actions.Feedback,
+    Actions.WorkspacesGuide,
+    Actions.Settings,
   ] as NavbarItem[],
 };
 

@@ -98,13 +98,16 @@
     "noServer": {
       "title": "没有运行开发服务器",
       "startPrompt": "请启动开发服务器以查看预览",
+      "setupTitle": "必须设置开发服务器脚本才能使用预览功能",
       "setupPrompt": "要使用实时预览和点击编辑，请为此项目添加开发服务器脚本。",
       "companionPrompt": "要使用点击编辑功能，请将浏览器伴侣添加到您的项目。",
       "companionLink": "查看安装指南",
       "startButton": "启动开发服务器",
       "configureButton": "配置",
       "stopAndEditButton": "停止开发服务器并解决问题",
-      "fixScript": "修复开发脚本"
+      "fixScript": "修复开发脚本",
+      "editDevScript": "编辑开发服务器脚本",
+      "learnMore": "了解更多关于测试应用程序的信息"
     },
     "devScript": {
       "saveAndStart": "保存并启动",
@@ -127,9 +130,10 @@
     "noDevScriptHint": "在项目设置中添加开发脚本以启用预览。",
     "browser": {
       "title": "开发服务器预览",
-      "startButton": "启动开发服务器",
-      "stopButton": "停止",
-      "startingButton": "启动"
+      "devServerFallback": "开发服务器"
+    },
+    "urlInput": {
+      "placeholder": "输入 URL..."
     },
     "iframe": {
       "title": "开发服务器预览"
@@ -140,7 +144,16 @@
       "openInTab": "在新标签页中打开",
       "stopDevServer": "停止开发服务器",
       "clickToEdit": "点击编辑 URL",
-      "resetUrl": "重置为检测到的 URL"
+      "resetUrl": "重置为检测到的 URL",
+      "clearUrlOverride": "清除 URL 覆盖",
+      "desktopView": "桌面视图",
+      "mobileView": "移动视图 (390x844)",
+      "responsiveView": "响应式视图（可调整大小）",
+      "startDevServer": "启动开发服务器"
+    },
+    "loading": {
+      "startingServer": "正在启动开发服务器...",
+      "waitingForServer": "正在等待服务器..."
     }
   },
   "diff": {
@@ -424,6 +437,20 @@
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
     "newSession": "新会话"
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "解决冲突",
+      "description": "检测到冲突。选择您希望代理如何解决它们。",
+      "sessionLabel": "会话",
+      "existingSession": "在当前会话中继续",
+      "newSession": "新会话",
+      "resolve": "解决冲突",
+      "resolving": "开始中...",
+      "filesWithConflicts_one": "{{count}} 个文件有冲突",
+      "filesWithConflicts_other": "{{count}} 个文件有冲突",
+      "andMore": "...还有 {{count}} 个"
+    }
   },
   "stopShareDialog": {
     "title": "停止共享任务",

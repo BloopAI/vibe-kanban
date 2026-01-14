@@ -202,5 +202,63 @@
     "createFirstPrompt": "Create a project first to start working on tasks.",
     "createNew": "Create new project",
     "noProjectsFound": "No projects found"
+  },
+  "betaWorkspaces": {
+    "title": "Try the new UI",
+    "intro": "We've rebuilt Vibe Kanban's UI from the ground up, and you've been invited to try it.",
+    "newUiDescription": "The new UI is optimised for day-to-day work: juggling agents, previewing changes, and reviewing code. It also unlocks features that aren't available in the old UI:",
+    "newFeatures": {
+      "multiRepo": "Edit multiple repositories at the same time",
+      "multiAgent": "Run multiple agent conversations (even across different agents) in a single workspace",
+      "commandBar": "Faster navigation with the command bar"
+    },
+    "oldUiDescription": "For now, a few things still live in the current UI:",
+    "oldFeatures": {
+      "kanban": "Managing tasks on the kanban board",
+      "settings": "Changing settings",
+      "projects": "Managing projects"
+    },
+    "transition": "During the transition over the next few weeks, you'll move between both.",
+    "optOutNote": "Want to opt out? You can switch back to the current UI at any time in Settings.",
+    "joinBeta": "Join Beta",
+    "maybeLater": "Maybe Later"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Welcome",
+      "content": "Welcome to Workspaces, a redesigned UI for Vibe Kanban. We're rolling this out to select users for early feedback. Share your thoughts anytime using the feedback icon in the navbar."
+    },
+    "commandBar": {
+      "title": "Command Bar",
+      "content": "The command bar is your central hub for navigation. Open it with CMD+K to search and access every action available in a workspace."
+    },
+    "contextBar": {
+      "title": "Context Bar",
+      "content": "The context bar lets you switch between panes quickly. Drag it wherever works best for you."
+    },
+    "sidebar": {
+      "title": "Workspace Sidebar",
+      "content": "See the status of all your workspaces at a glance. Notifications highlight which ones need attention. Archive merged workspaces to keep your sidebar clean."
+    },
+    "multiRepo": {
+      "title": "Multi-Repo Support",
+      "content": "Add multiple repos to a single workspace. Reference code from one repo while working in another, or implement changes across several repos at once."
+    },
+    "sessions": {
+      "title": "Multiple Sessions",
+      "content": "Create multiple agent conversation sessions within a single workspace, including sessions with different agents. This helps you work around conversation limits or spin up review agents in separate threads."
+    },
+    "preview": {
+      "title": "Preview Changes",
+      "content": "Preview your work in a built-in browser without switching contexts. Test across desktop, mobile, and custom viewport sizes."
+    },
+    "diffs": {
+      "title": "Diffs and Comments",
+      "content": "The redesigned diffs panel includes a file tree of your changes. Comment directly on diffs to give feedback to the agent, and view GitHub comments when your workspace is linked to a PR."
+    },
+    "classicUi": {
+      "title": "Return to Classic UI",
+      "content": "Click the exit icon on the left side of the navbar to return to the classic kanban board. To disable the new UI entirely, update the \"Enable Workspaces Beta\" option under \"Beta Features\" in settings."
+    }
   }
 }

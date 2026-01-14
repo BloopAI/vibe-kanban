@@ -129,6 +129,7 @@ interface SessionChatBoxProps {
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
   error?: string | null;
+  workspaceId?: string;
   projectId?: string;
   agent?: BaseCodingAgent | null;
   executor?: ExecutorProps;
@@ -153,6 +154,7 @@ export function SessionChatBox({
   reviewComments,
   toolbarActions,
   error,
+  workspaceId,
   projectId,
   agent,
   executor,
@@ -488,6 +490,7 @@ export function SessionChatBox({
       placeholder={placeholder}
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
+      workspaceId={workspaceId}
       projectId={projectId}
       autoFocus={true}
       focusKey={focusKey}

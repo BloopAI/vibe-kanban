@@ -31,6 +31,8 @@ import { usePush } from '@/hooks/usePush';
 import { repoApi } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
+import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -290,6 +292,35 @@ export function WorkspacesLayout() {
   // Derived state: right main panel (Changes/Logs/Preview) is visible
   const isRightMainPanelVisible = useIsRightMainPanelVisible();
 
+  // === Auto-show Workspaces Guide on first visit ===
+  const WORKSPACES_GUIDE_ID = 'workspaces-guide';
+  const {
+    config,
+    updateAndSaveConfig,
+    loading: configLoading,
+  } = useUserSystem();
+
+  const seenFeatures = useMemo(
+    () => config?.showcases?.seen_features ?? [],
+    [config?.showcases?.seen_features]
+  );
+
+  const hasSeenGuide =
+    !configLoading && seenFeatures.includes(WORKSPACES_GUIDE_ID);
+
+  useEffect(() => {
+    if (configLoading || hasSeenGuide) return;
+
+    // Mark as seen immediately before showing, so page reload doesn't re-trigger
+    void updateAndSaveConfig({
+      showcases: { seen_features: [...seenFeatures, WORKSPACES_GUIDE_ID] },
+    });
+
+    WorkspacesGuideDialog.show().finally(() => {
+      WorkspacesGuideDialog.hide();
+    });
+  }, [configLoading, hasSeenGuide, seenFeatures, updateAndSaveConfig]);
+
   // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
   const { scratch: draftScratch } = useScratch(
     ScratchType.DRAFT_WORKSPACE,
@@ -342,7 +373,7 @@ export function WorkspacesLayout() {
     [renameBranch]
   );
 
-  // Compute diff stats from real diffs
+  // Compute aggregate diff stats from real diffs (for WorkspacesMainContainer)
   const diffStats = useMemo(
     () => ({
       filesChanged: realDiffs.length,
@@ -380,21 +411,33 @@ export function WorkspacesLayout() {
           }
         }
 
+        // Compute per-repo diff stats
+        const repoDiffs = realDiffs.filter((d) => d.repoId === repo.id);
+        const filesChanged = repoDiffs.length;
+        const linesAdded = repoDiffs.reduce(
+          (sum, d) => sum + (d.additions ?? 0),
+          0
+        );
+        const linesRemoved = repoDiffs.reduce(
+          (sum, d) => sum + (d.deletions ?? 0),
+          0
+        );
+
         return {
           id: repo.id,
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged: diffStats.filesChanged,
-          linesAdded: diffStats.linesAdded,
-          linesRemoved: diffStats.linesRemoved,
+          filesChanged,
+          linesAdded,
+          linesRemoved,
           prNumber,
           prUrl,
           prStatus,
         };
       }),
-    [repos, diffStats, branchStatus]
+    [repos, realDiffs, branchStatus]
   );
 
   // Content for logs panel (either process logs or tool content)

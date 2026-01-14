@@ -11,11 +11,14 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import BranchSelector from '@/components/tasks/BranchSelector';
-import type { GitBranch } from 'shared/types';
+import type { GitBranch, GitOperationError } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { GitOperationsProvider } from '@/contexts/GitOperationsContext';
 import { useGitOperations } from '@/hooks/useGitOperations';
+import { useAttempt } from '@/hooks/useAttempt';
+import { attemptsApi, type Result } from '@/lib/api';
+import { ResolveConflictsDialog } from './ResolveConflictsDialog';
 
 export interface RebaseDialogProps {
   attemptId: string;
@@ -49,6 +52,7 @@ function RebaseDialogContent({
   const [error, setError] = useState<string | null>(null);
 
   const git = useGitOperations(attemptId, repoId);
+  const { data: workspace } = useAttempt(attemptId);
 
   useEffect(() => {
     if (initialTargetBranch) {
@@ -69,6 +73,36 @@ function RebaseDialogContent({
       });
       modal.hide();
     } catch (err) {
+      // Check if this is a conflict error (Result type with success=false)
+      const resultErr = err as Result<void, GitOperationError> | undefined;
+      const errorType =
+        resultErr && !resultErr.success ? resultErr.error?.type : undefined;
+
+      if (
+        errorType === 'merge_conflicts' ||
+        errorType === 'rebase_in_progress'
+      ) {
+        // Hide this dialog and show the resolve conflicts dialog
+        modal.hide();
+
+        // Fetch fresh branch status to get conflict details
+        const branchStatus = await attemptsApi.getBranchStatus(attemptId);
+        const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+
+        if (repoStatus) {
+          await ResolveConflictsDialog.show({
+            workspaceId: attemptId,
+            conflictOp: repoStatus.conflict_op ?? 'rebase',
+            sourceBranch: workspace?.branch ?? null,
+            targetBranch: repoStatus.target_branch_name,
+            conflictedFiles: repoStatus.conflicted_files ?? [],
+            repoName: repoStatus.repo_name,
+          });
+        }
+        return;
+      }
+
+      // Handle other errors
       let message = 'Failed to rebase';
       if (err && typeof err === 'object') {
         // Handle Result<void, GitOperationError> structure

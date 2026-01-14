@@ -4,6 +4,7 @@ use git2::{DiffOptions, Patch};
 use serde::{Deserialize, Serialize};
 use similar::TextDiff;
 use ts_rs::TS;
+use uuid::Uuid;
 
 // Structs compatable with props: https://github.com/MrWangJustToDo/git-diff-view
 
@@ -28,6 +29,7 @@ pub struct Diff {
     /// Optional precomputed stats for omitted content
     pub additions: Option<usize>,
     pub deletions: Option<usize>,
+    pub repo_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

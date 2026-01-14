@@ -277,6 +277,7 @@ impl DiffStreamManager {
             if let Some(new) = diff.new_path {
                 diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
             }
+            diff.repo_id = Some(self.args.repo_id);
 
             let patch =
                 ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
@@ -307,6 +308,7 @@ impl DiffStreamManager {
         let known_paths = self.known_paths.clone();
         let stats_only = self.args.stats_only;
         let prefix = self.args.path_prefix.clone();
+        let repo_id = self.args.repo_id;
 
         let messages = tokio::task::spawn_blocking(move || {
             process_file_changes(
@@ -319,6 +321,7 @@ impl DiffStreamManager {
                 &known_paths,
                 stats_only,
                 prefix.as_deref(),
+                repo_id,
             )
         })
         .await??;
@@ -459,6 +462,7 @@ fn process_file_changes(
     known_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
     path_prefix: Option<&str>,
+    repo_id: Uuid,
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
@@ -499,6 +503,7 @@ fn process_file_changes(
         if let Some(new) = diff.new_path {
             diff.new_path = Some(prefix_path(new, path_prefix));
         }
+        diff.repo_id = Some(repo_id);
 
         let patch =
             ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);

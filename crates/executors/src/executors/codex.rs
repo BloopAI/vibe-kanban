@@ -5,9 +5,23 @@ pub mod review;
 pub mod session;
 use std::{
     collections::HashMap,
+    env,
     path::{Path, PathBuf},
     sync::Arc,
 };
+
+/// Returns the Codex home directory.
+///
+/// Checks the `CODEX_HOME` environment variable first, then falls back to `~/.codex`.
+/// This allows users to configure a custom location for Codex configuration and state.
+pub fn codex_home() -> Option<PathBuf> {
+    if let Ok(codex_home) = env::var("CODEX_HOME")
+        && !codex_home.trim().is_empty()
+    {
+        return Some(PathBuf::from(codex_home));
+    }
+    dirs::home_dir().map(|home| home.join(".codex"))
+}
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
@@ -190,12 +204,12 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
-        dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
+        codex_home().map(|home| home.join("config.toml"))
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        if let Some(timestamp) = dirs::home_dir()
-            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
+        if let Some(timestamp) = codex_home()
+            .and_then(|home| std::fs::metadata(home.join("auth.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
@@ -210,8 +224,8 @@ impl StandardCodingAgentExecutor for Codex {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        let installation_indicator_found = dirs::home_dir()
-            .map(|home| home.join(".codex").join("version.json").exists())
+        let installation_indicator_found = codex_home()
+            .map(|home| home.join("version.json").exists())
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {

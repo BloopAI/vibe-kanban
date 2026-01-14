@@ -25,10 +25,16 @@ pub struct DraftFollowUpData {
     pub variant: Option<String>,
 }
 
-/// Data for a preview URL override scratch
+/// Data for preview settings scratch (URL override and screen size)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PreviewUrlOverrideData {
+pub struct PreviewSettingsData {
     pub url: String,
+    #[serde(default)]
+    pub screen_size: Option<String>,
+    #[serde(default)]
+    pub responsive_width: Option<i32>,
+    #[serde(default)]
+    pub responsive_height: Option<i32>,
 }
 
 /// Data for a draft workspace scratch (new workspace creation)
@@ -63,7 +69,7 @@ pub enum ScratchPayload {
     DraftTask(String),
     DraftFollowUp(DraftFollowUpData),
     DraftWorkspace(DraftWorkspaceData),
-    PreviewUrlOverride(PreviewUrlOverrideData),
+    PreviewSettings(PreviewSettingsData),
 }
 
 impl ScratchPayload {

@@ -27,3 +27,18 @@ icon: https://www.vibekanban.com/images/logos/openai-logo.svg
   You can now select OpenAI Codex when creating task attempts.
 </Step>
 </Steps>
+
+## Custom Configuration Directory
+
+By default, Codex stores its configuration and session data in `~/.codex`. If you have configured a custom location using the `CODEX_HOME` environment variable, Vibe Kanban will automatically detect and use that location.
+
+```bash
+# Example: Using a project-specific Codex configuration
+export CODEX_HOME=/path/to/custom/codex
+npx vibe-kanban
+```
+
+This is useful for:
+- Project-specific Codex profiles
+- Separating work and personal configurations
+- Custom automation setups

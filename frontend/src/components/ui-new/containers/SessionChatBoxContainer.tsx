@@ -553,6 +553,7 @@ export function SessionChatBoxContainer({
   return (
     <SessionChatBox
       status={status}
+      workspaceId={workspaceId}
       projectId={projectId}
       editor={{
         value: editorValue,

@@ -57,7 +57,7 @@ echo "📦 Creating distribution package..."
 # Copy the main binary
 cp ${CARGO_TARGET_DIR}/release/server vibe-kanban
 zip -q vibe-kanban.zip vibe-kanban
-rm -f vibe-kanban
+rm -f vibe-kanban 
 mv vibe-kanban.zip npx-cli/dist/$PLATFORM/vibe-kanban.zip
 
 # Copy the MCP binary

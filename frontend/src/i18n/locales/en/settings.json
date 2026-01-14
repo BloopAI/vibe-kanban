@@ -232,6 +232,14 @@
           "description": "Reset the onboarding flow.",
           "button": "Reset"
         }
+      },
+      "beta": {
+        "title": "Beta Features",
+        "description": "Try out experimental features before they're released.",
+        "workspaces": {
+          "label": "Enable Workspaces Beta",
+          "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
+        }
       }
     },
     "agents": {
@@ -380,7 +388,8 @@
         },
         "copyFiles": {
           "label": "Copy Files",
-          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!"
+          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!",
+          "placeholder": "File paths or glob patterns (e.g., .env, config/*.json)"
         },
         "devServer": {
           "label": "Dev Server Script",

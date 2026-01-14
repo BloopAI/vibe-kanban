@@ -433,6 +433,28 @@ impl Workspace {
         })
     }
 
+    /// Find workspace by path, also trying the parent directory.
+    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
+    /// rather than the workspace root directory (multi-repo case).
+    pub async fn resolve_container_ref_by_prefix(
+        pool: &SqlitePool,
+        path: &str,
+    ) -> Result<ContainerInfo, sqlx::Error> {
+        // First try exact match
+        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
+            return Ok(info);
+        }
+
+        if let Some(parent) = std::path::Path::new(path).parent()
+            && let Some(parent_str) = parent.to_str()
+            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
+        {
+            return Ok(info);
+        }
+
+        Err(sqlx::Error::RowNotFound)
+    }
+
     pub async fn set_archived(
         pool: &SqlitePool,
         workspace_id: Uuid,
@@ -607,6 +629,14 @@ impl Workspace {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
+    }
+
+    /// Count total workspaces across all projects
+    pub async fn count_all(pool: &SqlitePool) -> Result<i64, WorkspaceError> {
+        sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM workspaces"#)
+            .fetch_one(pool)
+            .await
+            .map_err(WorkspaceError::Database)
     }
 
     pub async fn find_by_id_with_status(

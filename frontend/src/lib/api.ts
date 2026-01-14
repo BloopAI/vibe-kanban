@@ -22,6 +22,7 @@ import {
   CreateProject,
   CreateProjectRepo,
   UpdateRepo,
+  SearchMode,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -283,7 +284,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -511,6 +512,12 @@ export const attemptsApi = {
     return handleApiResponse<Workspace[]>(response);
   },
 
+  /** Get total count of workspaces */
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/task-attempts/count');
+    return handleApiResponse<number>(response);
+  },
+
   get: async (attemptId: string): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`);
     return handleApiResponse<Workspace>(response);
@@ -556,6 +563,18 @@ export const attemptsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 
   runAgentSetup: async (
@@ -894,6 +913,20 @@ export const repoApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  searchFiles: async (
+    repoId: string,
+    query: string,
+    mode?: SearchMode,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/repos/${repoId}/search?q=${encodeURIComponent(query)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 

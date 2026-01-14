@@ -89,6 +89,20 @@
     "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "競合を解決",
+      "description": "競合が検出されました。エージェントにどのように解決させるか選択してください。",
+      "sessionLabel": "セッション",
+      "existingSession": "現在のセッションで続行",
+      "newSession": "新規セッション",
+      "resolve": "競合を解決",
+      "resolving": "開始中...",
+      "filesWithConflicts_one": "{{count}}件のファイルに競合があります",
+      "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
+      "andMore": "...他{{count}}件"
+    }
+  },
   "stopShareDialog": {
     "title": "タスクの共有を停止",
     "description": "「{{title}}」の共有を組織向けに停止しますか？",
@@ -357,9 +371,10 @@
     },
     "browser": {
       "title": "開発サーバープレビュー",
-      "startButton": "開発サーバーを開始",
-      "stopButton": "停止",
-      "startingButton": "開始"
+      "devServerFallback": "開発サーバー"
+    },
+    "urlInput": {
+      "placeholder": "URLを入力..."
     },
     "noDevScript": "開発スクリプトが設定されていません",
     "noDevScriptHint": "プレビューを有効にするには、プロジェクト設定で開発スクリプトを追加してください。",
@@ -367,12 +382,15 @@
       "companionLink": "インストールガイドを表示",
       "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
       "configureButton": "設定",
+      "setupTitle": "プレビュー機能を使用するには、開発サーバースクリプトを設定する必要があります",
       "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
       "startButton": "開発サーバーを開始",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
       "stopAndEditButton": "開発サーバーを停止して問題を解決",
       "title": "開発サーバーが実行されていません",
-      "fixScript": "開発スクリプトを修正"
+      "fixScript": "開発スクリプトを修正",
+      "editDevScript": "開発サーバースクリプトを編集",
+      "learnMore": "アプリケーションのテストについてもっと詳しく"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -382,7 +400,16 @@
       "refresh": "プレビューを更新",
       "stopDevServer": "開発サーバーを停止",
       "clickToEdit": "クリックしてURLを編集",
-      "resetUrl": "検出されたURLにリセット"
+      "resetUrl": "検出されたURLにリセット",
+      "clearUrlOverride": "URL オーバーライドをクリア",
+      "desktopView": "デスクトップ表示",
+      "mobileView": "モバイル表示 (390x844)",
+      "responsiveView": "レスポンシブ表示（リサイズ可能）",
+      "startDevServer": "開発サーバーを開始"
+    },
+    "loading": {
+      "startingServer": "開発サーバーを起動中...",
+      "waitingForServer": "サーバーを待機中..."
     },
     "troubleAlert": {
       "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",

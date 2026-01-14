@@ -170,8 +170,12 @@ impl WorktreeManager {
 
             // Check 2: Worktree must be registered in git metadata using find_worktree
             let repo = Repository::open(&repo_path).map_err(WorktreeError::Git)?;
-            let worktree_name = Self::find_worktree_git_internal_name(&repo_path, &worktree_path)?
-                .ok_or_else(|| WorktreeError::InvalidPath("Invalid worktree path".to_string()))?;
+            let Some(worktree_name) =
+                Self::find_worktree_git_internal_name(&repo_path, &worktree_path)?
+            else {
+                // Directory exists but not registered in git metadata - needs recreation
+                return Ok(false);
+            };
 
             // Try to find the worktree - if it exists and is valid, we're good
             match repo.find_worktree(&worktree_name) {

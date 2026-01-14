@@ -2,7 +2,7 @@ import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, repoApi } from '@/lib/api';
 
 import type { SearchResult } from 'shared/types';
 
@@ -17,7 +17,10 @@ interface MultiFileSearchTextareaProps {
   rows?: number;
   disabled?: boolean;
   className?: string;
-  projectId: string;
+  /** Project ID for project-level file search (searches across all repos in project) */
+  projectId?: string;
+  /** Repo ID for repo-level file search (searches within a single repo) */
+  repoId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
 }
@@ -30,9 +33,13 @@ export function MultiFileSearchTextarea({
   disabled = false,
   className,
   projectId,
+  repoId,
   onKeyDown,
   maxRows = 10,
 }: MultiFileSearchTextareaProps) {
+  // Require at least one of projectId or repoId
+  const searchId = projectId || repoId;
+  const searchType = projectId ? 'project' : 'repo';
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -48,9 +55,16 @@ export function MultiFileSearchTextarea({
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const portalContainer = usePortalContainer();
 
+  useEffect(() => {
+    searchCacheRef.current.clear();
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowDropdown(false);
+  }, [searchId]);
+
   // Search for files when query changes
   useEffect(() => {
-    if (!searchQuery || !projectId || searchQuery.length < 2) {
+    if (!searchQuery || !searchId || searchQuery.length < 2) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
@@ -77,14 +91,14 @@ export function MultiFileSearchTextarea({
       abortControllerRef.current = abortController;
 
       try {
-        const result = await projectsApi.searchFiles(
-          projectId,
-          searchQuery,
-          'settings',
-          {
-            signal: abortController.signal,
-          }
-        );
+        const result =
+          searchType === 'project'
+            ? await projectsApi.searchFiles(searchId, searchQuery, 'settings', {
+                signal: abortController.signal,
+              })
+            : await repoApi.searchFiles(searchId, searchQuery, 'settings', {
+                signal: abortController.signal,
+              });
 
         // Only process if this request wasn't aborted
         if (!abortController.signal.aborted) {
@@ -118,7 +132,7 @@ export function MultiFileSearchTextarea({
         abortControllerRef.current.abort();
       }
     };
-  }, [searchQuery, projectId]);
+  }, [searchQuery, searchId, searchType]);
 
   // Find current token boundaries based on cursor position
   const findCurrentToken = (text: string, cursorPosition: number) => {

@@ -89,6 +89,20 @@
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolver Conflictos",
+      "description": "Se detectaron conflictos. Elige cómo quieres que el agente los resuelva.",
+      "sessionLabel": "Sesión",
+      "existingSession": "Continuar en la sesión actual",
+      "newSession": "Nueva sesión",
+      "resolve": "Resolver Conflictos",
+      "resolving": "Iniciando...",
+      "filesWithConflicts_one": "{{count}} archivo tiene conflictos",
+      "filesWithConflicts_other": "{{count}} archivos tienen conflictos",
+      "andMore": "...y {{count}} más"
+    }
+  },
   "stopShareDialog": {
     "title": "Detener uso compartido de la tarea",
     "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
@@ -359,20 +373,24 @@
     "noDevScriptHint": "Agrega un script de desarrollo en la configuración del proyecto para habilitar la vista previa.",
     "browser": {
       "title": "Vista previa del servidor de desarrollo",
-      "startButton": "Iniciar servidor de desarrollo",
-      "stopButton": "Detener",
-      "startingButton": "Iniciar"
+      "devServerFallback": "Servidor de desarrollo"
+    },
+    "urlInput": {
+      "placeholder": "Ingresar URL..."
     },
     "noServer": {
       "companionLink": "Ver guía de instalación",
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
       "configureButton": "Configurar",
+      "setupTitle": "Debes configurar un script de servidor de desarrollo para usar la función de vista previa",
       "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
       "startButton": "Iniciar Servidor de Desarrollo",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
       "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas",
       "title": "No hay servidor de desarrollo en ejecución",
-      "fixScript": "Corregir Script de Desarrollo"
+      "fixScript": "Corregir Script de Desarrollo",
+      "editDevScript": "Editar Script de Servidor de Desarrollo",
+      "learnMore": "Más información sobre cómo probar aplicaciones"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -382,7 +400,16 @@
       "refresh": "Actualizar vista previa",
       "stopDevServer": "Detener servidor de desarrollo",
       "clickToEdit": "Clic para editar URL",
-      "resetUrl": "Restablecer a URL detectada"
+      "resetUrl": "Restablecer a URL detectada",
+      "clearUrlOverride": "Limpiar anulación de URL",
+      "desktopView": "Vista de escritorio",
+      "mobileView": "Vista móvil (390x844)",
+      "responsiveView": "Vista adaptable (redimensionable)",
+      "startDevServer": "Iniciar servidor de desarrollo"
+    },
+    "loading": {
+      "startingServer": "Iniciando servidor de desarrollo...",
+      "waitingForServer": "Esperando servidor..."
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
