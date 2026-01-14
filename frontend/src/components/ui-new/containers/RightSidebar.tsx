@@ -9,7 +9,7 @@ import { useChangesView } from '@/contexts/ChangesViewContext';
 import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
 import { RIGHT_MAIN_PANEL_MODES, type RightMainPanelMode } from '@/stores/useUiPreferencesStore';
 
-export interface RightPanelContentProps {
+export interface RightSidebarProps {
   isCreateMode: boolean;
   rightMainPanelMode: RightMainPanelMode | null;
   selectedWorkspace: Workspace | undefined;
@@ -28,7 +28,7 @@ export interface RightPanelContentProps {
   onLogNextMatch: () => void;
 }
 
-export function RightPanelContent({
+export function RightSidebar({
   isCreateMode,
   rightMainPanelMode,
   selectedWorkspace,
@@ -45,7 +45,7 @@ export function RightPanelContent({
   onSearchQueryChange,
   onLogPrevMatch,
   onLogNextMatch,
-}: RightPanelContentProps) {
+}: RightSidebarProps) {
   const { selectFile } = useChangesView();
   if (isCreateMode) {
     return <GitPanelCreateContainer />;

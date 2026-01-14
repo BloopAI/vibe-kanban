@@ -16,18 +16,16 @@ import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
 import { LogNavigationProvider } from '@/contexts/LogNavigationContext';
+import { LogsPanelProvider, useLogsPanel } from '@/contexts/LogsPanelContext';
 import {
   ChangesViewProvider,
   useChangesView,
 } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import {
-  LogsContentContainer,
-  type LogsPanelContent,
-} from '@/components/ui-new/containers/LogsContentContainer';
+import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
-import { RightPanelContent } from '@/components/ui-new/containers/RightPanelContent';
+import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
@@ -122,28 +120,14 @@ interface WorkspacesLayoutInnerProps {
   handleToggleChangesMode: () => void;
   diffStats: { filesChanged: number; linesAdded: number; linesRemoved: number };
   diffPaths: Set<string>;
-  handleViewProcessInPanel: (processId: string) => void;
-  handleViewToolContentInPanel: (
-    toolName: string,
-    content: string,
-    command?: string
-  ) => void;
   defaultLayout: () => Layout;
   onLayoutChange: (layout: Layout) => void;
   realDiffs: Diff[];
   selectedWorkspaceTask: Task | undefined;
-  logsPanelContent: LogsPanelContent | null;
-  logSearchQuery: string;
-  logCurrentMatchIdx: number;
-  setLogMatchIndices: (indices: number[]) => void;
   repos: RepoWithTargetBranch[];
   repoInfos: RepoInfo[];
-  logMatchIndices: number[];
   handleBranchNameChange: (name: string) => void;
   setExpanded: (key: string, value: boolean) => void;
-  setLogSearchQuery: (query: string) => void;
-  handleLogPrevMatch: () => void;
-  handleLogNextMatch: () => void;
 }
 
 function WorkspacesLayoutInner({
@@ -162,26 +146,28 @@ function WorkspacesLayoutInner({
   handleToggleChangesMode,
   diffStats,
   diffPaths,
-  handleViewProcessInPanel,
-  handleViewToolContentInPanel,
   defaultLayout,
   onLayoutChange,
   realDiffs,
   selectedWorkspaceTask,
-  logsPanelContent,
-  logSearchQuery,
-  logCurrentMatchIdx,
-  setLogMatchIndices,
   repos,
   repoInfos,
-  logMatchIndices,
   handleBranchNameChange,
   setExpanded,
-  setLogSearchQuery,
-  handleLogPrevMatch,
-  handleLogNextMatch,
 }: WorkspacesLayoutInnerProps) {
   const { viewFileInChanges } = useChangesView();
+  const {
+    logsPanelContent,
+    logSearchQuery,
+    logMatchIndices,
+    logCurrentMatchIdx,
+    setLogMatchIndices,
+    setLogSearchQuery,
+    handleLogPrevMatch,
+    handleLogNextMatch,
+    viewProcessInPanel,
+    viewToolContentInPanel,
+  } = useLogsPanel();
 
   return (
     <div className="flex h-full">
@@ -207,8 +193,8 @@ function WorkspacesLayoutInner({
                 diffPaths={diffPaths}
               >
                 <LogNavigationProvider
-                  viewProcessInPanel={handleViewProcessInPanel}
-                  viewToolContentInPanel={handleViewToolContentInPanel}
+                  viewProcessInPanel={viewProcessInPanel}
+                  viewToolContentInPanel={viewToolContentInPanel}
                 >
                   <WorkspacesMainContainer
                     selectedWorkspace={selectedWorkspace ?? null}
@@ -267,7 +253,7 @@ function WorkspacesLayoutInner({
       {/* Git panel (right sidebar) - fixed width, not resizable */}
       {isRightSidebarVisible && (
         <div className="w-[300px] shrink-0 h-full overflow-hidden">
-          <RightPanelContent
+          <RightSidebar
             isCreateMode={isCreateMode}
             rightMainPanelMode={rightMainPanelMode}
             selectedWorkspace={selectedWorkspace}
@@ -280,7 +266,7 @@ function WorkspacesLayoutInner({
             logCurrentMatchIdx={logCurrentMatchIdx}
             onBranchNameChange={handleBranchNameChange}
             onSetExpanded={setExpanded}
-            onViewProcessInPanel={handleViewProcessInPanel}
+            onViewProcessInPanel={viewProcessInPanel}
             onSearchQueryChange={setLogSearchQuery}
             onLogPrevMatch={handleLogPrevMatch}
             onLogNextMatch={handleLogNextMatch}
@@ -493,48 +479,6 @@ export function WorkspacesLayout() {
     [repos, realDiffs, branchStatus]
   );
 
-  // Content for logs panel (either process logs or tool content)
-  const [logsPanelContent, setLogsPanelContent] =
-    useState<LogsPanelContent | null>(null);
-
-  // Log search state (lifted from LogsContentContainer)
-  const [logSearchQuery, setLogSearchQuery] = useState('');
-  const [logMatchIndices, setLogMatchIndices] = useState<number[]>([]);
-  const [logCurrentMatchIdx, setLogCurrentMatchIdx] = useState(0);
-
-  // Reset search when content changes
-  const logContentId =
-    logsPanelContent?.type === 'process'
-      ? logsPanelContent.processId
-      : logsPanelContent?.type === 'tool'
-        ? logsPanelContent.toolName
-        : null;
-
-  useEffect(() => {
-    setLogSearchQuery('');
-    setLogCurrentMatchIdx(0);
-  }, [logContentId]);
-
-  // Reset current match index when search query changes
-  useEffect(() => {
-    setLogCurrentMatchIdx(0);
-  }, [logSearchQuery]);
-
-  // Navigation handlers for log search
-  const handleLogPrevMatch = useCallback(() => {
-    if (logMatchIndices.length === 0) return;
-    setLogCurrentMatchIdx((prev) =>
-      prev > 0 ? prev - 1 : logMatchIndices.length - 1
-    );
-  }, [logMatchIndices.length]);
-
-  const handleLogNextMatch = useCallback(() => {
-    if (logMatchIndices.length === 0) return;
-    setLogCurrentMatchIdx((prev) =>
-      prev < logMatchIndices.length - 1 ? prev + 1 : 0
-    );
-  }, [logMatchIndices.length]);
-
   // Reset changes and logs mode when entering create mode
   useEffect(() => {
     if (isCreateMode) {
@@ -565,28 +509,6 @@ export function WorkspacesLayout() {
 
   // Expanded state for file tree selection
   const { setExpanded } = useExpandedAll();
-
-  // Navigate to logs panel and select a specific process
-  const handleViewProcessInPanel = useCallback(
-    (processId: string) => {
-      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
-        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
-      }
-      setLogsPanelContent({ type: 'process', processId });
-    },
-    [rightMainPanelMode, setRightMainPanelMode]
-  );
-
-  // Navigate to logs panel and display static tool content
-  const handleViewToolContentInPanel = useCallback(
-    (toolName: string, content: string, command?: string) => {
-      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
-        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
-      }
-      setLogsPanelContent({ type: 'tool', toolName, content, command });
-    },
-    [rightMainPanelMode, setRightMainPanelMode]
-  );
 
   // Toggle changes mode for "View Code" button in main panel
   const handleToggleChangesMode = useCallback(() => {
@@ -684,43 +606,35 @@ export function WorkspacesLayout() {
             }}
           >
             <ReviewProvider attemptId={selectedWorkspace?.id}>
-              <ChangesViewProvider>
-                <WorkspacesLayoutInner
-                  isCreateMode={isCreateMode}
-                  isLeftMainPanelVisible={isLeftMainPanelVisible}
-                  isRightMainPanelVisible={isRightMainPanelVisible}
-                  isRightSidebarVisible={isRightSidebarVisible}
-                  rightMainPanelMode={rightMainPanelMode}
-                  selectedWorkspace={selectedWorkspace}
-                  selectedSession={selectedSession}
-                  sessions={sessions}
-                  onSelectSession={selectSession}
-                  isLoading={isLoading}
-                  isNewSessionMode={isNewSessionMode}
-                  startNewSession={startNewSession}
-                  handleToggleChangesMode={handleToggleChangesMode}
-                  diffStats={diffStats}
-                  diffPaths={diffPaths}
-                  handleViewProcessInPanel={handleViewProcessInPanel}
-                  handleViewToolContentInPanel={handleViewToolContentInPanel}
-                  defaultLayout={defaultLayout}
-                  onLayoutChange={onLayoutChange}
-                  realDiffs={realDiffs}
-                  selectedWorkspaceTask={selectedWorkspaceTask}
-                  logsPanelContent={logsPanelContent}
-                  logSearchQuery={logSearchQuery}
-                  logCurrentMatchIdx={logCurrentMatchIdx}
-                  setLogMatchIndices={setLogMatchIndices}
-                  repos={repos}
-                  repoInfos={repoInfos}
-                  logMatchIndices={logMatchIndices}
-                  handleBranchNameChange={handleBranchNameChange}
-                  setExpanded={setExpanded}
-                  setLogSearchQuery={setLogSearchQuery}
-                  handleLogPrevMatch={handleLogPrevMatch}
-                  handleLogNextMatch={handleLogNextMatch}
-                />
-              </ChangesViewProvider>
+              <LogsPanelProvider>
+                <ChangesViewProvider>
+                  <WorkspacesLayoutInner
+                    isCreateMode={isCreateMode}
+                    isLeftMainPanelVisible={isLeftMainPanelVisible}
+                    isRightMainPanelVisible={isRightMainPanelVisible}
+                    isRightSidebarVisible={isRightSidebarVisible}
+                    rightMainPanelMode={rightMainPanelMode}
+                    selectedWorkspace={selectedWorkspace}
+                    selectedSession={selectedSession}
+                    sessions={sessions}
+                    onSelectSession={selectSession}
+                    isLoading={isLoading}
+                    isNewSessionMode={isNewSessionMode}
+                    startNewSession={startNewSession}
+                    handleToggleChangesMode={handleToggleChangesMode}
+                    diffStats={diffStats}
+                    diffPaths={diffPaths}
+                    defaultLayout={defaultLayout}
+                    onLayoutChange={onLayoutChange}
+                    realDiffs={realDiffs}
+                    selectedWorkspaceTask={selectedWorkspaceTask}
+                    repos={repos}
+                    repoInfos={repoInfos}
+                    handleBranchNameChange={handleBranchNameChange}
+                    setExpanded={setExpanded}
+                  />
+                </ChangesViewProvider>
+              </LogsPanelProvider>
             </ReviewProvider>
           </ModeProvider>
         </div>
