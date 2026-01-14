@@ -61,12 +61,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       false;
 
     return {
-      isChangesMode: layout.isChangesMode,
-      isLogsMode: layout.isLogsMode,
-      isPreviewMode: layout.isPreviewMode,
-      isSidebarVisible: layout.isSidebarVisible,
-      isMainPanelVisible: layout.isMainPanelVisible,
-      isGitPanelVisible: layout.isGitPanelVisible,
+      rightMainPanelMode: layout.rightMainPanelMode,
+      isLeftSidebarVisible: layout.isLeftSidebarVisible,
+      isLeftMainPanelVisible: layout.isLeftMainPanelVisible,
+      isRightSidebarVisible: layout.isRightSidebarVisible,
       isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
@@ -83,12 +81,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
-    layout.isChangesMode,
-    layout.isLogsMode,
-    layout.isPreviewMode,
-    layout.isSidebarVisible,
-    layout.isMainPanelVisible,
-    layout.isGitPanelVisible,
+    layout.rightMainPanelMode,
+    layout.isLeftSidebarVisible,
+    layout.isLeftMainPanelVisible,
+    layout.isRightSidebarVisible,
     isCreateMode,
     workspace,
     repos,

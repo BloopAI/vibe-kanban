@@ -3,6 +3,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
+export const RIGHT_MAIN_PANEL_MODES = {
+  CHANGES: 'changes',
+  LOGS: 'logs',
+  PREVIEW: 'preview',
+} as const;
+
+export type RightMainPanelMode = typeof RIGHT_MAIN_PANEL_MODES[keyof typeof RIGHT_MAIN_PANEL_MODES];
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -68,12 +76,10 @@ type State = {
   collapsedPaths: Record<string, string[]>;
 
   // Layout state
-  isSidebarVisible: boolean;
-  isMainPanelVisible: boolean;
-  isGitPanelVisible: boolean;
-  isChangesMode: boolean;
-  isLogsMode: boolean;
-  isPreviewMode: boolean;
+  isLeftSidebarVisible: boolean;
+  isLeftMainPanelVisible: boolean;
+  isRightSidebarVisible: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
   previewRefreshKey: number;
 
   // UI preferences actions
@@ -86,17 +92,13 @@ type State = {
   setCollapsedPaths: (key: string, paths: string[]) => void;
 
   // Layout actions
-  toggleSidebar: () => void;
-  toggleMainPanel: () => void;
-  toggleGitPanel: () => void;
-  toggleChangesMode: () => void;
-  toggleLogsMode: () => void;
-  togglePreviewMode: () => void;
-  setChangesMode: (value: boolean) => void;
-  setLogsMode: (value: boolean) => void;
-  setPreviewMode: (value: boolean) => void;
-  setSidebarVisible: (value: boolean) => void;
-  setMainPanelVisible: (value: boolean) => void;
+  toggleLeftSidebar: () => void;
+  toggleLeftMainPanel: () => void;
+  toggleRightSidebar: () => void;
+  toggleRightMainPanelMode: (mode: RightMainPanelMode) => void;
+  setRightMainPanelMode: (mode: RightMainPanelMode | null) => void;
+  setLeftSidebarVisible: (value: boolean) => void;
+  setLeftMainPanelVisible: (value: boolean) => void;
   triggerPreviewRefresh: () => void;
   resetForCreateMode: () => void;
 };
@@ -112,12 +114,10 @@ export const useUiPreferencesStore = create<State>()(
       collapsedPaths: {},
 
       // Layout state
-      isSidebarVisible: true,
-      isMainPanelVisible: true,
-      isGitPanelVisible: true,
-      isChangesMode: false,
-      isLogsMode: false,
-      isPreviewMode: false,
+      isLeftSidebarVisible: true,
+      isLeftMainPanelVisible: true,
+      isRightSidebarVisible: true,
+      rightMainPanelMode: null,
       previewRefreshKey: 0,
 
       // UI preferences actions
@@ -147,126 +147,56 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
 
       // Layout actions
-      toggleSidebar: () =>
-        set((s) => ({ isSidebarVisible: !s.isSidebarVisible })),
+      toggleLeftSidebar: () =>
+        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
 
-      toggleMainPanel: () => {
-        const { isMainPanelVisible, isChangesMode } = get();
-        if (isMainPanelVisible && !isChangesMode) return;
-        set({ isMainPanelVisible: !isMainPanelVisible });
+      toggleLeftMainPanel: () => {
+        const { isLeftMainPanelVisible, rightMainPanelMode } = get();
+        if (isLeftMainPanelVisible && rightMainPanelMode === null) return;
+        set({ isLeftMainPanelVisible: !isLeftMainPanelVisible });
       },
 
-      toggleGitPanel: () =>
-        set((s) => ({ isGitPanelVisible: !s.isGitPanelVisible })),
+      toggleRightSidebar: () =>
+        set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
 
-      toggleChangesMode: () => {
-        const { isChangesMode } = get();
-        const newChangesMode = !isChangesMode;
+      toggleRightMainPanelMode: (mode) => {
+        const { rightMainPanelMode } = get();
+        const isCurrentlyActive = rightMainPanelMode === mode;
 
-        if (newChangesMode) {
+        if (isCurrentlyActive) {
           set({
-            isChangesMode: true,
-            isLogsMode: false,
-            isPreviewMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+            rightMainPanelMode: null,
+            isLeftSidebarVisible: true,
           });
         } else {
           set({
-            isChangesMode: false,
-            isSidebarVisible: true,
+            rightMainPanelMode: mode,
+            isLeftSidebarVisible: isWideScreen() ? get().isLeftSidebarVisible : false,
           });
         }
       },
 
-      toggleLogsMode: () => {
-        const { isLogsMode } = get();
-        const newLogsMode = !isLogsMode;
-
-        if (newLogsMode) {
+      setRightMainPanelMode: (mode) => {
+        if (mode !== null) {
           set({
-            isLogsMode: true,
-            isChangesMode: false,
-            isPreviewMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+            rightMainPanelMode: mode,
+            isLeftSidebarVisible: isWideScreen() ? get().isLeftSidebarVisible : false,
           });
         } else {
-          set({
-            isLogsMode: false,
-            isSidebarVisible: true,
-          });
+          set({ rightMainPanelMode: null });
         }
       },
 
-      togglePreviewMode: () => {
-        const { isPreviewMode } = get();
-        const newPreviewMode = !isPreviewMode;
+      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
 
-        if (newPreviewMode) {
-          set({
-            isPreviewMode: true,
-            isChangesMode: false,
-            isLogsMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
-          });
-        } else {
-          set({
-            isPreviewMode: false,
-            isSidebarVisible: true,
-          });
-        }
-      },
-
-      setChangesMode: (value) => {
-        if (value) {
-          set({
-            isChangesMode: true,
-            isLogsMode: false,
-            isPreviewMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
-          });
-        } else {
-          set({ isChangesMode: false });
-        }
-      },
-
-      setLogsMode: (value) => {
-        if (value) {
-          set({
-            isLogsMode: true,
-            isChangesMode: false,
-            isPreviewMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
-          });
-        } else {
-          set({ isLogsMode: false });
-        }
-      },
-
-      setPreviewMode: (value) => {
-        if (value) {
-          set({
-            isPreviewMode: true,
-            isChangesMode: false,
-            isLogsMode: false,
-            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
-          });
-        } else {
-          set({ isPreviewMode: false });
-        }
-      },
-
-      setSidebarVisible: (value) => set({ isSidebarVisible: value }),
-
-      setMainPanelVisible: (value) => set({ isMainPanelVisible: value }),
+      setLeftMainPanelVisible: (value) => set({ isLeftMainPanelVisible: value }),
 
       triggerPreviewRefresh: () =>
         set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
 
       resetForCreateMode: () =>
         set({
-          isChangesMode: false,
-          isLogsMode: false,
-          isPreviewMode: false,
+          rightMainPanelMode: null,
         }),
     }),
     {
@@ -279,9 +209,9 @@ export const useUiPreferencesStore = create<State>()(
         paneSizes: state.paneSizes,
         collapsedPaths: state.collapsedPaths,
         // Layout (only persist panel visibility, not mode states)
-        isSidebarVisible: state.isSidebarVisible,
-        isMainPanelVisible: state.isMainPanelVisible,
-        isGitPanelVisible: state.isGitPanelVisible,
+        isLeftSidebarVisible: state.isLeftSidebarVisible,
+        isLeftMainPanelVisible: state.isLeftMainPanelVisible,
+        isRightSidebarVisible: state.isRightSidebarVisible,
       }),
     }
   )
@@ -367,6 +297,4 @@ export function usePersistedCollapsedPaths(
 
 // Layout convenience hooks
 export const useIsRightMainPanelVisible = () =>
-  useUiPreferencesStore(
-    (s) => s.isChangesMode || s.isLogsMode || s.isPreviewMode
-  );
+  useUiPreferencesStore((s) => s.rightMainPanelMode !== null);

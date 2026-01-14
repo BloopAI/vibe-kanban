@@ -46,6 +46,8 @@ import {
   usePersistedExpanded,
   useUiPreferencesStore,
   useIsRightMainPanelVisible,
+  RIGHT_MAIN_PANEL_MODES,
+  type RightMainPanelMode,
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
@@ -106,12 +108,10 @@ function ModeProvider({
 
 interface WorkspacesLayoutInnerProps {
   isCreateMode: boolean;
-  isMainPanelVisible: boolean;
+  isLeftMainPanelVisible: boolean;
   isRightMainPanelVisible: boolean;
-  isGitPanelVisible: boolean;
-  isChangesMode: boolean;
-  isLogsMode: boolean;
-  isPreviewMode: boolean;
+  isRightSidebarVisible: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
   selectedWorkspace: Workspace | undefined;
   selectedSession: Session | undefined;
   sessions: Session[];
@@ -148,12 +148,10 @@ interface WorkspacesLayoutInnerProps {
 
 function WorkspacesLayoutInner({
   isCreateMode,
-  isMainPanelVisible,
+  isLeftMainPanelVisible,
   isRightMainPanelVisible,
-  isGitPanelVisible,
-  isChangesMode,
-  isLogsMode,
-  isPreviewMode,
+  isRightSidebarVisible,
+  rightMainPanelMode,
   selectedWorkspace,
   selectedSession,
   sessions,
@@ -195,7 +193,7 @@ function WorkspacesLayoutInner({
         onLayoutChange={onLayoutChange}
       >
         {/* Main panel (chat area) */}
-        {isMainPanelVisible && (
+        {isLeftMainPanelVisible && (
           <Panel
             id="left-main"
             minSize={20}
@@ -230,7 +228,7 @@ function WorkspacesLayoutInner({
         )}
 
         {/* Resize handle between main and right panels */}
-        {isMainPanelVisible && isRightMainPanelVisible && (
+        {isLeftMainPanelVisible && isRightMainPanelVisible && (
           <Separator
             id="main-separator"
             className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
@@ -244,14 +242,14 @@ function WorkspacesLayoutInner({
             minSize={20}
             className="min-w-0 h-full overflow-hidden"
           >
-            {isChangesMode && (
+            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES && (
               <ChangesPanelContainer
                 diffs={realDiffs}
                 projectId={selectedWorkspaceTask?.project_id}
                 attemptId={selectedWorkspace?.id}
               />
             )}
-            {isLogsMode && (
+            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS && (
               <LogsContentContainer
                 content={logsPanelContent}
                 searchQuery={logSearchQuery}
@@ -259,7 +257,7 @@ function WorkspacesLayoutInner({
                 onMatchIndicesChange={setLogMatchIndices}
               />
             )}
-            {isPreviewMode && (
+            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW && (
               <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
             )}
           </Panel>
@@ -267,13 +265,11 @@ function WorkspacesLayoutInner({
       </Group>
 
       {/* Git panel (right sidebar) - fixed width, not resizable */}
-      {isGitPanelVisible && (
+      {isRightSidebarVisible && (
         <div className="w-[300px] shrink-0 h-full overflow-hidden">
           <RightPanelContent
             isCreateMode={isCreateMode}
-            isChangesMode={isChangesMode}
-            isLogsMode={isLogsMode}
-            isPreviewMode={isPreviewMode}
+            rightMainPanelMode={rightMainPanelMode}
             selectedWorkspace={selectedWorkspace}
             repos={repos}
             repoInfos={repoInfos}
@@ -317,17 +313,14 @@ export function WorkspacesLayout() {
 
   // Layout state from store
   const {
-    isSidebarVisible,
-    isMainPanelVisible,
-    isGitPanelVisible,
-    isChangesMode,
-    isLogsMode,
-    isPreviewMode,
-    setChangesMode,
-    setLogsMode,
+    isLeftSidebarVisible,
+    isLeftMainPanelVisible,
+    isRightSidebarVisible,
+    rightMainPanelMode,
+    setRightMainPanelMode,
     resetForCreateMode,
-    setSidebarVisible,
-    setMainPanelVisible,
+    setLeftSidebarVisible,
+    setLeftMainPanelVisible,
   } = useUiPreferencesStore();
 
   const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
@@ -549,20 +542,20 @@ export function WorkspacesLayout() {
     }
   }, [isCreateMode, resetForCreateMode]);
 
-  // Show sidebar when right main panel is hidden
+  // Show left sidebar when right main panel is hidden
   useEffect(() => {
     if (!isRightMainPanelVisible) {
-      setSidebarVisible(true);
+      setLeftSidebarVisible(true);
     }
-  }, [isRightMainPanelVisible, setSidebarVisible]);
+  }, [isRightMainPanelVisible, setLeftSidebarVisible]);
 
   // Ensure left main panel (chat) is visible when right main panel is hidden
   // This prevents invalid state where only sidebars are visible after page reload
   useEffect(() => {
-    if (!isMainPanelVisible && !isRightMainPanelVisible) {
-      setMainPanelVisible(true);
+    if (!isLeftMainPanelVisible && !isRightMainPanelVisible) {
+      setLeftMainPanelVisible(true);
     }
-  }, [isMainPanelVisible, isRightMainPanelVisible, setMainPanelVisible]);
+  }, [isLeftMainPanelVisible, isRightMainPanelVisible, setLeftMainPanelVisible]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
@@ -576,29 +569,33 @@ export function WorkspacesLayout() {
   // Navigate to logs panel and select a specific process
   const handleViewProcessInPanel = useCallback(
     (processId: string) => {
-      if (!isLogsMode) {
-        setLogsMode(true);
+      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
       setLogsPanelContent({ type: 'process', processId });
     },
-    [isLogsMode, setLogsMode]
+    [rightMainPanelMode, setRightMainPanelMode]
   );
 
   // Navigate to logs panel and display static tool content
   const handleViewToolContentInPanel = useCallback(
     (toolName: string, content: string, command?: string) => {
-      if (!isLogsMode) {
-        setLogsMode(true);
+      if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
       setLogsPanelContent({ type: 'tool', toolName, content, command });
     },
-    [isLogsMode, setLogsMode]
+    [rightMainPanelMode, setRightMainPanelMode]
   );
 
   // Toggle changes mode for "View Code" button in main panel
   const handleToggleChangesMode = useCallback(() => {
-    setChangesMode(!isChangesMode);
-  }, [isChangesMode, setChangesMode]);
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
+      setRightMainPanelMode(null);
+    } else {
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES);
+    }
+  }, [rightMainPanelMode, setRightMainPanelMode]);
 
   // Compute diffPaths for FileNavigationContext
   const diffPaths = useMemo(() => {
@@ -650,8 +647,8 @@ export function WorkspacesLayout() {
     <div className="flex flex-col h-screen">
       <NavbarContainer />
       <div className="flex flex-1 min-h-0">
-        {/* Sidebar - OUTSIDE providers, won't remount on workspace switch */}
-        {isSidebarVisible && (
+        {/* Left sidebar - OUTSIDE providers, won't remount on workspace switch */}
+        {isLeftSidebarVisible && (
           <div className="w-[300px] shrink-0 h-full overflow-hidden">
             <WorkspacesSidebar
               workspaces={activeWorkspaces}
@@ -690,12 +687,10 @@ export function WorkspacesLayout() {
               <ChangesViewProvider>
                 <WorkspacesLayoutInner
                   isCreateMode={isCreateMode}
-                  isMainPanelVisible={isMainPanelVisible}
+                  isLeftMainPanelVisible={isLeftMainPanelVisible}
                   isRightMainPanelVisible={isRightMainPanelVisible}
-                  isGitPanelVisible={isGitPanelVisible}
-                  isChangesMode={isChangesMode}
-                  isLogsMode={isLogsMode}
-                  isPreviewMode={isPreviewMode}
+                  isRightSidebarVisible={isRightSidebarVisible}
+                  rightMainPanelMode={rightMainPanelMode}
                   selectedWorkspace={selectedWorkspace}
                   selectedSession={selectedSession}
                   sessions={sessions}

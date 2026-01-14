@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useUiPreferencesStore, RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface PreviewControlsContainerProps {
@@ -17,7 +17,7 @@ export function PreviewControlsContainer({
   className,
 }: PreviewControlsContainerProps) {
   const { repos } = useWorkspaceContext();
-  const setLogsMode = useUiPreferencesStore((s) => s.setLogsMode);
+  const setRightMainPanelMode = useUiPreferencesStore((s) => s.setRightMainPanelMode);
 
   const { isStarting, runningDevServers, devServerProcesses } =
     usePreviewDevServer(attemptId);
@@ -42,10 +42,10 @@ export function PreviewControlsContainer({
       if (targetId && onViewProcessInPanel) {
         onViewProcessInPanel(targetId);
       } else {
-        setLogsMode(true);
+        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
       }
     },
-    [activeProcess?.id, onViewProcessInPanel, setLogsMode]
+    [activeProcess?.id, onViewProcessInPanel, setRightMainPanelMode]
   );
 
   const handleTabChange = useCallback((processId: string) => {

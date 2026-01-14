@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useUiPreferencesStore, RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
 
 interface ChangesViewContextValue {
   /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
@@ -37,7 +37,7 @@ interface ChangesViewProviderProps {
 export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileInView, setFileInView] = useState<string | null>(null);
-  const { setChangesMode } = useUiPreferencesStore();
+  const { setRightMainPanelMode } = useUiPreferencesStore();
 
   const selectFile = useCallback((path: string) => {
     setSelectedFilePath(path);
@@ -46,10 +46,10 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
 
   const viewFileInChanges = useCallback(
     (filePath: string) => {
-      setChangesMode(true);
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES);
       setSelectedFilePath(filePath);
     },
-    [setChangesMode]
+    [setRightMainPanelMode]
   );
 
   const value = useMemo(

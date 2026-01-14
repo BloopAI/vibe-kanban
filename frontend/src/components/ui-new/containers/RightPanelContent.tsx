@@ -7,12 +7,11 @@ import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { type LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
+import { RIGHT_MAIN_PANEL_MODES, type RightMainPanelMode } from '@/stores/useUiPreferencesStore';
 
 export interface RightPanelContentProps {
   isCreateMode: boolean;
-  isChangesMode: boolean;
-  isLogsMode: boolean;
-  isPreviewMode: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
   repoInfos: RepoInfo[];
@@ -31,9 +30,7 @@ export interface RightPanelContentProps {
 
 export function RightPanelContent({
   isCreateMode,
-  isChangesMode,
-  isLogsMode,
-  isPreviewMode,
+  rightMainPanelMode,
   selectedWorkspace,
   repos,
   repoInfos,
@@ -54,7 +51,7 @@ export function RightPanelContent({
     return <GitPanelCreateContainer />;
   }
 
-  if (isChangesMode) {
+  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-[7] min-h-0 overflow-hidden">
@@ -80,7 +77,7 @@ export function RightPanelContent({
     );
   }
 
-  if (isLogsMode) {
+  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
     const selectedProcessId =
       logsPanelContent?.type === 'process' ? logsPanelContent.processId : null;
     return (
@@ -110,7 +107,7 @@ export function RightPanelContent({
     );
   }
 
-  if (isPreviewMode) {
+  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-[7] min-h-0 overflow-hidden">
