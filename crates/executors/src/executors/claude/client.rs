@@ -203,7 +203,7 @@ impl ClaudeAgentClient {
 }
 
 /// Check for uncommitted git changes in the working directory.
-/// Returns a Stop hook response using top-level `continue` and `stopReason` fields.
+/// Returns a Stop hook response using `decision` (approve/block) and `reason` fields.
 async fn check_git_status(working_dir: &Path) -> serde_json::Value {
     // Find git repo - check current dir first, then subdirs
     let git_dir = if working_dir.join(".git").exists() {
@@ -214,8 +214,8 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
     };
 
     let Some(repo_dir) = git_dir else {
-        // No git repo found, allow stop (return empty object)
-        return serde_json::json!({});
+        // No git repo found, allow stop
+        return serde_json::json!({"decision": "approve"});
     };
 
     // Check for uncommitted changes using git status --porcelain
@@ -228,15 +228,15 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
 
     match output {
         Ok(out) if out.stdout.is_empty() => {
-            // No uncommitted changes, allow stop (return empty object)
-            serde_json::json!({})
+            // No uncommitted changes, allow stop
+            serde_json::json!({"decision": "approve"})
         }
         Ok(out) => {
-            // Has uncommitted changes, block stop using continue: false
+            // Has uncommitted changes, block stop
             let status = String::from_utf8_lossy(&out.stdout);
             serde_json::json!({
-                "continue": false,
-                "stopReason": format!(
+                "decision": "block",
+                "reason": format!(
                     "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.\n\ngit status:\n{}",
                     status.trim()
                 )
@@ -245,7 +245,7 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
         Err(e) => {
             // Git command failed, log warning but allow stop
             tracing::warn!("Failed to check git status: {e}");
-            serde_json::json!({})
+            serde_json::json!({"decision": "approve"})
         }
     }
 }
