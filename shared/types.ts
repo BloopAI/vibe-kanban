@@ -348,6 +348,12 @@ export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
+export type CategorizeTaskResponse = { labels: Array<TaskLabel>, applied: boolean, };
+
+export type CategoryInfo = { name: string, color: string, };
+
+export type CategoriesResponse = { categories: Array<CategoryInfo>, available: boolean, };
+
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };

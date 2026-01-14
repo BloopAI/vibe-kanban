@@ -3,6 +3,8 @@
 import {
   ApprovalStatus,
   ApiResponse,
+  CategoriesResponse,
+  CategorizeTaskResponse,
   Config,
   CreateFollowUpAttempt,
   EditorType,
@@ -517,6 +519,18 @@ export const tasksApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<BulkMergeResponse>(response);
+  },
+
+  categorize: async (taskId: string): Promise<CategorizeTaskResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/categorize`, {
+      method: 'POST',
+    });
+    return handleApiResponse<CategorizeTaskResponse>(response);
+  },
+
+  getCategories: async (): Promise<CategoriesResponse> => {
+    const response = await makeRequest('/api/tasks/categories');
+    return handleApiResponse<CategoriesResponse>(response);
   },
 };
 

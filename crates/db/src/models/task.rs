@@ -694,6 +694,23 @@ ORDER BY t.created_at DESC"#,
         Ok(())
     }
 
+    /// Update the labels for a task
+    pub async fn update_labels(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        labels: &[TaskLabel],
+    ) -> Result<(), sqlx::Error> {
+        let labels_json = serde_json::to_string(labels).unwrap_or_else(|_| "[]".to_string());
+        sqlx::query!(
+            "UPDATE tasks SET labels = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            labels_json
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn batch_unlink_shared_tasks<'e, E>(
         executor: E,
         shared_task_ids: &[Uuid],
