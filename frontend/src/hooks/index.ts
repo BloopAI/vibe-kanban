@@ -33,3 +33,6 @@ export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useVariant } from './useVariant';
 export { useRetryProcess } from './useRetryProcess';
+export { usePrioritySuggestions } from './usePrioritySuggestions';
+export { useBulkTaskUpdate } from './useBulkTaskUpdate';
+export type { PriorityUpdate } from './useBulkTaskUpdate';

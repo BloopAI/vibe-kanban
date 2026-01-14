@@ -93,6 +93,7 @@ export {
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
+export { PrioritizeTasksDialog } from './tasks/PrioritizeTasksDialog';
 
 // Auth dialogs
 export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
