@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus, MergeStatus, CiStatus } from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
 import { useProject } from '@/contexts/ProjectContext';
+import { inferTaskCategory, getCategoryConfig, type TaskCategory } from '@/utils/categoryLabels';
 
 /**
  * Returns the appropriate icon and color for a PR status
@@ -46,6 +47,19 @@ function getPrStatusIndicator(prStatus: MergeStatus | null) {
         title: 'PR status unknown',
       };
   }
+}
+
+/**
+ * Returns the category indicator with icon and styling
+ */
+function getCategoryIndicator(category: TaskCategory | null) {
+  if (!category) return null;
+  const config = getCategoryConfig(category);
+  return {
+    icon: config.icon,
+    label: config.label,
+    color: config.color,
+  };
 }
 
 /**
@@ -111,10 +125,18 @@ export function SwimlaneTaskCard({
       ? `${project.task_prefix}-${task.task_number}`
       : undefined;
 
+  // Infer category from task title and description
+  const category = inferTaskCategory(task.title, task.description);
+  const categoryIndicator = getCategoryIndicator(category);
+
   const style = {
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
+    // Apply category border color if category is detected
+    ...(categoryIndicator && {
+      borderLeftColor: categoryIndicator.color,
+    }),
   };
 
   return (
@@ -130,15 +152,21 @@ export function SwimlaneTaskCard({
         'transition-all duration-150 ease-out',
         'cursor-grab active:cursor-grabbing',
         'border border-transparent',
+        // Category left border
+        categoryIndicator && 'border-l-2',
         // Default state
         !isSelected && !isDragging && [
           'bg-secondary/80',
           'hover:bg-secondary hover:border-panel/50',
+          // Preserve left border color on hover
+          categoryIndicator && 'hover:border-l-2',
         ],
         // Selected state
         isSelected && !isDragging && [
           'bg-panel border-brand/50',
           'ring-1 ring-brand/30',
+          // Preserve left border color when selected
+          categoryIndicator && 'border-l-2',
         ],
         // Dragging state
         isDragging && [
@@ -147,11 +175,22 @@ export function SwimlaneTaskCard({
           'scale-[1.02] rotate-[0.5deg]',
           'opacity-95',
           'z-50',
+          // Preserve left border color when dragging
+          categoryIndicator && 'border-l-2',
         ]
       )}
     >
       <div className="flex flex-col gap-0.5">
         <div className="flex items-start gap-1">
+          {/* Category icon badge */}
+          {categoryIndicator && (
+            <span
+              className="shrink-0 text-[10px] leading-none mt-0.5"
+              title={categoryIndicator.label}
+            >
+              {categoryIndicator.icon}
+            </span>
+          )}
           <span className={cn(
             'flex-1 text-xs leading-snug font-medium',
             'text-normal/90',
