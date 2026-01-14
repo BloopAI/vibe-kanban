@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { PlusIcon, ArrowLeftIcon, ArchiveIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
@@ -22,6 +21,10 @@ interface WorkspacesSidebarProps {
   draftTitle?: string;
   /** Handler to navigate back to create mode */
   onSelectCreate?: () => void;
+  /** Whether to show archived workspaces */
+  showArchive?: boolean;
+  /** Handler for toggling archive view */
+  onShowArchiveChange?: (show: boolean) => void;
 }
 
 export function WorkspacesSidebar({
@@ -37,9 +40,10 @@ export function WorkspacesSidebar({
   isCreateMode = false,
   draftTitle,
   onSelectCreate,
+  showArchive = false,
+  onShowArchiveChange,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const [showArchive, setShowArchive] = useState(false);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
   const DISPLAY_LIMIT = 10;
@@ -155,7 +159,7 @@ export function WorkspacesSidebar({
       {hasArchivedWorkspaces && (
         <div className="border-t border-primary p-base">
           <button
-            onClick={() => setShowArchive(!showArchive)}
+            onClick={() => onShowArchiveChange?.(!showArchive)}
             className="w-full flex items-center gap-base text-sm text-low hover:text-normal transition-colors duration-100"
           >
             {showArchive ? (
