@@ -33,6 +33,8 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
       return 'Xcode';
     case EditorType.CUSTOM:
       return 'IDE';
+    case EditorType.GOOGLE_ANTIGRAVITY:
+      return 'Google Antigravity';
   }
 }
 
@@ -44,7 +46,11 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   const ideName = getIdeName(editorType);
   let ideIconPath = '';
 
-  if (!editorType || editorType === EditorType.CUSTOM) {
+  if (
+    !editorType ||
+    editorType === EditorType.CUSTOM ||
+    editorType === EditorType.GOOGLE_ANTIGRAVITY
+  ) {
     // Generic fallback for other IDEs or no IDE configured
     return <Code2 className={className} />;
   }
