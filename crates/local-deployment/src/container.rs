@@ -1159,11 +1159,8 @@ impl ContainerService for LocalContainerService {
 
         // Only create Claude hooks for Claude Code executor
         if let Some(BaseCodingAgent::ClaudeCode) = executor_action.base_executor() {
-            Self::create_claude_hooks_config(
-                &current_dir,
-                workspace.agent_working_dir.as_deref(),
-            )
-            .await?;
+            Self::create_claude_hooks_config(&current_dir, workspace.agent_working_dir.as_deref())
+                .await?;
         }
 
         let approvals_service: Arc<dyn ExecutorApprovalService> =
