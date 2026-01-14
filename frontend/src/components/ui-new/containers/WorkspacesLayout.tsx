@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Allotment, LayoutPriority, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -70,6 +71,7 @@ function GitPanelContainer({
   onBranchNameChange,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
+  const navigate = useNavigate();
 
   // Track push state per repo: idle, pending, success, or error
   const [pushStates, setPushStates] = useState<Record<string, PushState>>({});
@@ -237,6 +239,14 @@ function GitPanelContainer({
     [pushMutation]
   );
 
+  // Handle opening repository settings
+  const handleOpenSettings = useCallback(
+    (repoId: string) => {
+      navigate(`/settings/repos?repoId=${repoId}`);
+    },
+    [navigate]
+  );
+
   return (
     <GitPanel
       repos={repoInfosWithPushButton}
@@ -246,6 +256,7 @@ function GitPanelContainer({
       onPushClick={handlePushClick}
       onOpenInEditor={handleOpenInEditor}
       onCopyPath={handleCopyPath}
+      onOpenSettings={handleOpenSettings}
       onAddRepo={() => console.log('Add repo clicked')}
     />
   );

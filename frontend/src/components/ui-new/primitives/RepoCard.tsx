@@ -13,6 +13,8 @@ import {
   CheckCircleIcon,
   SpinnerGapIcon,
   WarningCircleIcon,
+  DotsThreeIcon,
+  GearIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -64,6 +66,7 @@ interface RepoCardProps {
   onPushClick?: () => void;
   onOpenInEditor?: () => void;
   onCopyPath?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export function RepoCard({
@@ -88,6 +91,7 @@ export function RepoCard({
   onPushClick,
   onOpenInEditor,
   onCopyPath,
+  onOpenSettings,
 }: RepoCardProps) {
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
@@ -142,7 +146,7 @@ export function RepoCard({
                 className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
                 title="Repo actions"
               >
-                <ArrowSquareOutIcon className="size-icon-base" weight="bold" />
+                <DotsThreeIcon className="size-icon-base" weight="bold" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -151,6 +155,9 @@ export function RepoCard({
               </DropdownMenuItem>
               <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
                 {tCommon('actions.openInIde')}
+              </DropdownMenuItem>
+              <DropdownMenuItem icon={GearIcon} onClick={onOpenSettings}>
+                {tCommon('actions.repoSettings')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

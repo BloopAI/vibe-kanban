@@ -37,6 +37,7 @@ interface GitPanelProps {
   onPushClick?: (repoId: string) => void;
   onOpenInEditor?: (repoId: string) => void;
   onCopyPath?: (repoId: string) => void;
+  onOpenSettings?: (repoId: string) => void;
   onAddRepo?: () => void;
   className?: string;
   error?: string | null;
@@ -50,6 +51,7 @@ export function GitPanel({
   onPushClick,
   onOpenInEditor,
   onCopyPath,
+  onOpenSettings,
   className,
   error,
 }: GitPanelProps) {
@@ -92,6 +94,7 @@ export function GitPanel({
               onPushClick={() => onPushClick?.(repo.id)}
               onOpenInEditor={() => onOpenInEditor?.(repo.id)}
               onCopyPath={() => onCopyPath?.(repo.id)}
+              onOpenSettings={() => onOpenSettings?.(repo.id)}
             />
           ))}
         </div>
