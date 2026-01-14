@@ -46,20 +46,26 @@ function StatusCell({ status, children }: StatusCellProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        'group/cell relative px-2 py-1.5 border-l border-panel/40 min-h-[60px]',
-        'transition-all duration-150',
+        'group/cell relative px-2 py-2 border-l border-panel/30 min-h-[64px]',
+        'transition-all duration-200 ease-out',
         // Drop target indicator
-        isOver && 'bg-brand/8 border-l-brand/30',
+        isOver && 'bg-brand/10 border-l-brand/40',
         // Empty state subtle indicator on hover
-        !hasChildren && !isOver && 'hover:bg-panel/5'
+        !hasChildren && !isOver && 'hover:bg-panel/8'
       )}
       style={!isOver ? { backgroundColor: statusColumnBgColors[status] } : undefined}
     >
       {/* Drop zone visual indicator */}
       {isOver && (
-        <div className="absolute inset-1 rounded-sm border border-dashed border-brand/30 pointer-events-none" />
+        <div className={cn(
+          'absolute inset-1.5 rounded-md',
+          'border-2 border-dashed border-brand/40',
+          'bg-brand/5',
+          'pointer-events-none',
+          'animate-scale-in'
+        )} />
       )}
-      <div className="relative flex flex-col gap-1">
+      <div className="relative flex flex-col gap-1.5">
         {children}
       </div>
     </div>
@@ -189,37 +195,42 @@ export function ProjectSwimlane({
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className={cn(
         'group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
-        'border-b border-panel/20',
-        'transition-colors duration-100',
-        'hover:bg-panel/5'
+        'border-b border-panel/15',
+        'transition-all duration-150 ease-out',
+        'hover:bg-panel/8'
       )}>
         {/* Project name cell */}
-        <div className="px-2 py-1.5 flex items-center">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <KanbanIcon weight="fill" className="size-3.5 text-brand shrink-0" />
+        <div className="px-3 py-2 flex items-center">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <KanbanIcon weight="fill" className="size-icon-sm text-brand shrink-0" />
             <span className="text-xs text-normal font-medium truncate">{project.name}</span>
-            <span className="text-[10px] text-low/50 tabular-nums shrink-0">
+            <span className={cn(
+              'text-[10px] tabular-nums shrink-0',
+              'px-1.5 py-0.5 rounded-sm',
+              'bg-panel/20 text-low/60'
+            )}>
               {isLoading ? '—' : filteredTotalCount}
             </span>
 
             {/* Actions - visible on row hover */}
             <div className={cn(
-              'flex items-center gap-0.5 ml-auto shrink-0',
+              'flex items-center gap-1 ml-auto shrink-0',
               'opacity-0 group-hover/row:opacity-100',
-              'transition-opacity duration-100'
+              'transition-opacity duration-150'
             )}>
               <button
                 type="button"
                 onClick={() => onCreateTask(project.id)}
                 className={cn(
-                  'p-0.5 rounded-sm',
+                  'icon-btn p-1 rounded-md',
                   'text-low hover:text-normal',
                   'hover:bg-panel/50',
-                  'transition-colors duration-100'
+                  'transition-all duration-150',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
                 )}
                 title="New task"
               >
-                <PlusIcon className="size-3" />
+                <PlusIcon className="size-icon-xs" />
               </button>
 
               {/* Actions dropdown */}
@@ -229,13 +240,14 @@ export function ProjectSwimlane({
                     <button
                       type="button"
                       className={cn(
-                        'p-0.5 rounded-sm',
+                        'icon-btn p-1 rounded-md',
                         'text-low hover:text-normal',
                         'hover:bg-panel/50',
-                        'transition-colors duration-100'
+                        'transition-all duration-150',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30'
                       )}
                     >
-                      <DotsThreeIcon weight="bold" className="size-3" />
+                      <DotsThreeIcon weight="bold" className="size-icon-xs" />
                     </button>
                   </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -293,8 +305,8 @@ export function ProjectSwimlane({
               status={status}
             >
               {isLoading ? (
-                <div className="flex flex-col gap-1">
-                  <div className="h-8 bg-panel/20 rounded-sm animate-pulse" />
+                <div className="flex flex-col gap-1.5">
+                  <div className="skeleton h-12 w-full rounded-md" />
                 </div>
               ) : tasks.length === 0 ? null : (
                 tasks.map((task) => (
