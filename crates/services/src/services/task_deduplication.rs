@@ -77,11 +77,11 @@ impl TaskDeduplicationService {
         let mut scores = Vec::new();
 
         // Check external reference match first (highest priority)
-        if let (Some(ref_a), Some(ref_b)) = (&task_a.external_ref, &task_b.external_ref) {
-            if ref_a == ref_b {
-                match_types.push(DuplicateMatchType::SameExternalRef);
-                scores.push(1.0);
-            }
+        if let (Some(ref_a), Some(ref_b)) = (&task_a.external_ref, &task_b.external_ref)
+            && ref_a == ref_b
+        {
+            match_types.push(DuplicateMatchType::SameExternalRef);
+            scores.push(1.0);
         }
 
         // Check exact title match (case-insensitive)

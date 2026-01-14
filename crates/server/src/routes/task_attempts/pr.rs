@@ -644,23 +644,20 @@ pub async fn create_pr(
                 ref conflicted_files,
                 ..
             } = conflict_resolution
+                && !conflicted_files.is_empty()
+                && let Err(e) = trigger_conflict_resolution_follow_up(
+                    &deployment,
+                    &workspace,
+                    &norm_target_branch_name,
+                    conflicted_files,
+                )
+                .await
             {
-                if !conflicted_files.is_empty() {
-                    if let Err(e) = trigger_conflict_resolution_follow_up(
-                        &deployment,
-                        &workspace,
-                        &norm_target_branch_name,
-                        conflicted_files,
-                    )
-                    .await
-                    {
-                        tracing::warn!(
-                            "Failed to trigger AI conflict resolution for attempt {}: {}",
-                            workspace.id,
-                            e
-                        );
-                    }
-                }
+                tracing::warn!(
+                    "Failed to trigger AI conflict resolution for attempt {}: {}",
+                    workspace.id,
+                    e
+                );
             }
 
             // Convert NoConflicts to None for cleaner API response
