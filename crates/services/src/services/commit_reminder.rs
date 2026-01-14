@@ -11,23 +11,28 @@ pub struct CommitReminderService {
 }
 
 impl CommitReminderService {
-    /// Base prompt for commit reminder (without cleanup script)
-    const BASE_PROMPT: &'static str = "You left uncommitted changes. You are expected to commit your work before finishing - \
-        please do so now. Review what you've done and create an appropriate git commit with a descriptive message summarizing the changes.";
-
-    /// Build the commit reminder prompt, optionally including cleanup scripts to run first
+    /// Build the commit reminder prompt, optionally including cleanup scripts to run first.
+    /// The prompt always implies commits are expected.
     pub fn build_prompt(cleanup_scripts: &[String]) -> String {
         let mut prompt = String::new();
 
+        // Always start with the core expectation that commits are needed
+        prompt.push_str("You have uncommitted changes that need to be committed. ");
+
+        // Add cleanup scripts as a prerequisite step if they exist
         if !cleanup_scripts.is_empty() {
-            prompt.push_str("Before committing, run the following cleanup script(s):\n");
+            prompt.push_str("First, run the following cleanup script(s):\n");
             for script in cleanup_scripts {
                 prompt.push_str(&format!("```bash\n{}\n```\n", script));
             }
-            prompt.push('\n');
+            prompt.push_str("\nAfter running the cleanup scripts, review ");
+        } else {
+            prompt.push_str("Review ");
         }
 
-        prompt.push_str(Self::BASE_PROMPT);
+        prompt.push_str(
+            "what you've done and create an appropriate git commit with a descriptive message summarizing the changes.",
+        );
         prompt
     }
 
