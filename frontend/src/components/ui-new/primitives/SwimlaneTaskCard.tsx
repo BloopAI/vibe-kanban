@@ -14,6 +14,11 @@ import type { TaskWithAttemptStatus, MergeStatus, CiStatus } from 'shared/types'
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
 import { useProject } from '@/contexts/ProjectContext';
 import { inferTaskCategory, getCategoryConfig, type TaskCategory } from '@/utils/categoryLabels';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 /**
  * Returns the appropriate icon and color for a PR status
@@ -184,12 +189,18 @@ export function SwimlaneTaskCard({
         <div className="flex items-start gap-1">
           {/* Category icon badge */}
           {categoryIndicator && (
-            <span
-              className="shrink-0 text-[10px] leading-none mt-0.5"
-              title={categoryIndicator.label}
-            >
-              {categoryIndicator.icon}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="shrink-0 text-[10px] leading-none mt-0.5 cursor-default"
+                >
+                  {categoryIndicator.icon}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <span>Category: {categoryIndicator.label}</span>
+              </TooltipContent>
+            </Tooltip>
           )}
           <span className={cn(
             'flex-1 text-xs leading-snug font-medium',
@@ -205,16 +216,23 @@ export function SwimlaneTaskCard({
               if (!ciIndicator) return null;
               const CiIcon = ciIndicator.icon;
               return (
-                <span title={ciIndicator.title}>
-                  <CiIcon
-                    weight="fill"
-                    className={cn(
-                      'size-3',
-                      ciIndicator.color,
-                      ciIndicator.animate && 'animate-spin'
-                    )}
-                  />
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-default">
+                      <CiIcon
+                        weight="fill"
+                        className={cn(
+                          'size-3',
+                          ciIndicator.color,
+                          ciIndicator.animate && 'animate-spin'
+                        )}
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <span>{ciIndicator.title}</span>
+                  </TooltipContent>
+                </Tooltip>
               );
             })()}
             {/* PR status indicator */}
@@ -223,19 +241,44 @@ export function SwimlaneTaskCard({
               if (!prIndicator) return null;
               const PrIcon = prIndicator.icon;
               return (
-                <span title={prIndicator.title}>
-                  <PrIcon
-                    weight="fill"
-                    className={cn('size-3', prIndicator.color)}
-                  />
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-default">
+                      <PrIcon
+                        weight="fill"
+                        className={cn('size-3', prIndicator.color)}
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <span>{prIndicator.title}</span>
+                  </TooltipContent>
+                </Tooltip>
               );
             })()}
             {task.has_in_progress_attempt && (
-              <SpinnerIcon className="size-3 animate-spin text-info" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-default">
+                    <SpinnerIcon className="size-3 animate-spin text-info" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <span>Task in progress</span>
+                </TooltipContent>
+              </Tooltip>
             )}
             {task.last_attempt_failed && (
-              <XCircleIcon weight="fill" className="size-3 text-error" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-default">
+                    <XCircleIcon weight="fill" className="size-3 text-error" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  <span>Last attempt failed</span>
+                </TooltipContent>
+              </Tooltip>
             )}
             <DotsThreeIcon
               weight="bold"
