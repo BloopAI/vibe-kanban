@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::{path::{Path, PathBuf}, sync::Arc};
 
+use tokio::process::Command;
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::types::PermissionMode;
@@ -20,12 +21,14 @@ use crate::{
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
+pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
+    working_dir: PathBuf,
 }
 
 impl ClaudeAgentClient {
@@ -33,12 +36,14 @@ impl ClaudeAgentClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        working_dir: PathBuf,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
             log_writer,
             approvals,
             auto_approve,
+            working_dir,
         })
     }
 
@@ -149,6 +154,14 @@ impl ClaudeAgentClient {
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
+        // Stop hook git check - always handle regardless of auto_approve
+        if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
+            let result = check_git_status(&self.working_dir).await;
+            return Ok(serde_json::json!({
+                "hookSpecificOutput": result
+            }));
+        }
+
         if self.auto_approve {
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
@@ -186,4 +199,74 @@ impl ClaudeAgentClient {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await
     }
+}
+
+/// Check for uncommitted git changes in the working directory
+async fn check_git_status(working_dir: &Path) -> serde_json::Value {
+    // Find git repo - check current dir first, then subdirs
+    let git_dir = if working_dir.join(".git").exists() {
+        Some(working_dir.to_path_buf())
+    } else {
+        // Check immediate subdirectories (fallback for multi-repo or edge cases)
+        find_git_repo_in_subdirs(working_dir).await
+    };
+
+    let Some(repo_dir) = git_dir else {
+        // No git repo found, allow stop
+        return serde_json::json!({"decision": "allow"});
+    };
+
+    // Check for uncommitted changes using git status --porcelain
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(&repo_dir)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .await;
+
+    match output {
+        Ok(out) if out.stdout.is_empty() => {
+            // No uncommitted changes, allow stop
+            serde_json::json!({"decision": "allow"})
+        }
+        Ok(out) => {
+            // Has uncommitted changes, block and ask to commit
+            let status = String::from_utf8_lossy(&out.stdout);
+            serde_json::json!({
+                "decision": "block",
+                "reason": format!(
+                    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.\n\ngit status:\n{}",
+                    status.trim()
+                )
+            })
+        }
+        Err(e) => {
+            // Git command failed, log warning but allow stop
+            tracing::warn!("Failed to check git status: {e}");
+            serde_json::json!({"decision": "allow"})
+        }
+    }
+}
+
+/// Search for a git repository in immediate subdirectories
+async fn find_git_repo_in_subdirs(dir: &Path) -> Option<PathBuf> {
+    let mut entries = match tokio::fs::read_dir(dir).await {
+        Ok(entries) => entries,
+        Err(_) => return None,
+    };
+
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let file_type = match entry.file_type().await {
+            Ok(ft) => ft,
+            Err(_) => continue,
+        };
+
+        if file_type.is_dir() {
+            let subdir = entry.path();
+            if subdir.join(".git").exists() {
+                return Some(subdir);
+            }
+        }
+    }
+    None
 }

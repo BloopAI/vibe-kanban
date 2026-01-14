@@ -18,7 +18,7 @@ use workspace_utils::{
 };
 
 use self::{
-    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
+    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient, STOP_GIT_CHECK_CALLBACK_ID},
     protocol::ProtocolPeer,
     types::{ControlRequestType, ControlResponseType, PermissionMode},
 };
@@ -129,9 +129,21 @@ impl ClaudeCode {
     }
 
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
+        let mut hooks = serde_json::Map::new();
+
+        // Always add Stop hook for git status check
+        hooks.insert(
+            "Stop".to_string(),
+            serde_json::json!([{
+                "hookCallbackIds": [STOP_GIT_CHECK_CALLBACK_ID]
+            }]),
+        );
+
+        // Add PreToolUse hooks based on plan/approvals settings
         if self.plan.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
+            hooks.insert(
+                "PreToolUse".to_string(),
+                serde_json::json!([
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
@@ -140,20 +152,21 @@ impl ClaudeCode {
                         "matcher": "^(?!ExitPlanMode$).*",
                         "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
                     }
-                ]
-            }))
+                ]),
+            );
         } else if self.approvals.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
+            hooks.insert(
+                "PreToolUse".to_string(),
+                serde_json::json!([
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
                         "hookCallbackIds": ["tool_approval"],
                     }
-                ]
-            }))
-        } else {
-            None
+                ]),
+            );
         }
+
+        Some(serde_json::Value::Object(hooks))
     }
 }
 
@@ -279,9 +292,10 @@ impl ClaudeCode {
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
+        let working_dir = current_dir.to_path_buf();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, working_dir);
             let protocol_peer =
                 ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
 

@@ -64,9 +64,6 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
-/// Script to check for uncommitted git changes, embedded at compile time
-const CHECK_GIT_STATUS_SCRIPT: &str = include_str!("scripts/check-git-status.sh");
-
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -828,42 +825,6 @@ impl LocalContainerService {
         Ok(())
     }
 
-    /// Create .claude/settings.local.json with Stop hook to check for uncommitted changes.
-    async fn create_claude_hooks_config(repo_dir: &Path) -> Result<(), ContainerError> {
-        let claude_dir = repo_dir.join(".claude");
-        tokio::fs::create_dir_all(&claude_dir)
-            .await
-            .map_err(|e| ContainerError::Other(anyhow!("Failed to create .claude dir: {}", e)))?;
-
-        // Use shlex to properly escape script for bash -c
-        let quoted_script = shlex::try_quote(CHECK_GIT_STATUS_SCRIPT)
-            .map_err(|e| ContainerError::Other(anyhow!("Failed to quote script: {}", e)))?;
-        let command = format!("bash -c {}", quoted_script);
-
-        let settings = serde_json::json!({
-            "hooks": {
-                "Stop": [{
-                    "hooks": [{
-                        "type": "command",
-                        "command": command
-                    }]
-                }]
-            }
-        });
-
-        let settings_path = claude_dir.join("settings.local.json");
-        let content = serde_json::to_string_pretty(&settings)
-            .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize settings: {}", e)))?;
-        tokio::fs::write(&settings_path, content)
-            .await
-            .map_err(|e| {
-                ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
-            })?;
-
-        tracing::info!("Created Claude Code hooks in {:?}", claude_dir);
-        Ok(())
-    }
-
     /// Start a follow-up execution from a queued message
     async fn start_queued_follow_up(
         &self,
@@ -1146,17 +1107,6 @@ impl ContainerService for LocalContainerService {
                 "Container ref not found for workspace"
             )))?;
         let current_dir = PathBuf::from(container_ref);
-
-        // Only create Claude hooks for Claude Code executor with single-repo workspace
-        if let Some(BaseCodingAgent::ClaudeCode) = executor_action.base_executor() {
-            let repos =
-                WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
-            if repos.len() == 1 {
-                if let Some(agent_dir) = &workspace.agent_working_dir {
-                    Self::create_claude_hooks_config(&current_dir.join(agent_dir)).await?;
-                }
-            }
-        }
 
         let approvals_service: Arc<dyn ExecutorApprovalService> =
             match executor_action.base_executor() {
