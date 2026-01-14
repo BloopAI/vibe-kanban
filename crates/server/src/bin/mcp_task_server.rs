@@ -7,6 +7,11 @@ use utils::{
 };
 
 fn main() -> anyhow::Result<()> {
+    // Install rustls crypto provider before any TLS operations
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     sentry_utils::init_once(SentrySource::Mcp);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

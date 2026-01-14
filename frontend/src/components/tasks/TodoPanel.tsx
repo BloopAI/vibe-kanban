@@ -1,6 +1,6 @@
 import { Circle, Check, CircleDot, ChevronUp } from 'lucide-react';
 import { useEntries } from '@/contexts/EntriesContext';
-import { usePinnedTodos } from '@/hooks/usePinnedTodos';
+import { useTodos } from '@/hooks/useTodos';
 import { Card } from '../ui/card';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,7 @@ function getStatusIcon(status?: string) {
 function TodoPanel() {
   const { t } = useTranslation('tasks');
   const { entries } = useEntries();
-  const { todos } = usePinnedTodos(entries);
+  const { todos } = useTodos(entries);
   const [isOpen, setIsOpen] = useState(() => {
     const stored = localStorage.getItem(TODO_PANEL_OPEN_KEY);
     return stored === null ? true : stored === 'true';

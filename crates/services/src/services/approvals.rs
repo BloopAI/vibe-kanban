@@ -1,6 +1,10 @@
 pub mod executor_approvals;
 
-use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Duration as StdDuration,
+};
 
 use dashmap::DashMap;
 use db::models::{
@@ -255,6 +259,26 @@ impl Approvals {
     async fn msg_store_by_id(&self, execution_process_id: &Uuid) -> Option<Arc<MsgStore>> {
         let map = self.msg_stores.read().await;
         map.get(execution_process_id).cloned()
+    }
+
+    /// Check which execution processes have pending approvals.
+    /// Returns a set of execution_process_ids that have at least one pending approval.
+    pub fn get_pending_execution_process_ids(
+        &self,
+        execution_process_ids: &[Uuid],
+    ) -> HashSet<Uuid> {
+        let id_set: HashSet<_> = execution_process_ids.iter().collect();
+        self.pending
+            .iter()
+            .filter_map(|entry| {
+                let ep_id = entry.value().execution_process_id;
+                if id_set.contains(&ep_id) {
+                    Some(ep_id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

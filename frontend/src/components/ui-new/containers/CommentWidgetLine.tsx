@@ -1,0 +1,75 @@
+import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { PrimaryButton } from '../primitives/PrimaryButton';
+import { CommentCard } from '../primitives/CommentCard';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+
+interface CommentWidgetLineProps {
+  draft: ReviewDraft;
+  widgetKey: string;
+  onSave: () => void;
+  onCancel: () => void;
+  projectId?: string;
+}
+
+export function CommentWidgetLine({
+  draft,
+  widgetKey,
+  onSave,
+  onCancel,
+  projectId,
+}: CommentWidgetLineProps) {
+  const { t } = useTranslation('common');
+  const { setDraft, addComment } = useReview();
+  const [value, setValue] = useState(draft.text);
+
+  const handleCancel = useCallback(() => {
+    setDraft(widgetKey, null);
+    onCancel();
+  }, [setDraft, widgetKey, onCancel]);
+
+  const handleSave = useCallback(() => {
+    if (value.trim()) {
+      addComment({
+        filePath: draft.filePath,
+        side: draft.side,
+        lineNumber: draft.lineNumber,
+        text: value.trim(),
+        codeLine: draft.codeLine,
+      });
+    }
+    setDraft(widgetKey, null);
+    onSave();
+  }, [value, draft, setDraft, widgetKey, onSave, addComment]);
+
+  return (
+    <CommentCard
+      variant="input"
+      actions={
+        <>
+          <PrimaryButton
+            variant="default"
+            onClick={handleSave}
+            disabled={!value.trim()}
+          >
+            {t('comments.addReviewComment')}
+          </PrimaryButton>
+          <PrimaryButton variant="secondary" onClick={handleCancel}>
+            {t('actions.cancel')}
+          </PrimaryButton>
+        </>
+      }
+    >
+      <WYSIWYGEditor
+        value={value}
+        onChange={setValue}
+        placeholder={t('comments.addPlaceholder')}
+        className="w-full text-normal min-h-[60px]"
+        projectId={projectId}
+        onCmdEnter={handleSave}
+        autoFocus
+      />
+    </CommentCard>
+  );
+}

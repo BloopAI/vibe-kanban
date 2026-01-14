@@ -6,6 +6,7 @@ import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
+import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -16,6 +17,7 @@ import {
   McpSettings,
   OrganizationSettings,
   ProjectSettings,
+  ReposSettings,
   SettingsLayout,
 } from '@/pages/settings/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
@@ -27,19 +29,24 @@ import { HotkeysProvider } from 'react-hotkeys-hook';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
-import { Loader } from '@/components/ui/loader';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
-import NiceModal from '@ebay/nice-modal-react';
+
+// Design scope components
+import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
+import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+
+// New design pages
+import { Workspaces } from '@/pages/ui-new/Workspaces';
+import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, analyticsUserId, updateAndSaveConfig, loading } =
-    useUserSystem();
+  const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
 
@@ -107,60 +114,85 @@ function AppContent() {
     };
   }, [config, isSignedIn, updateAndSaveConfig]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader message="Loading..." size={32} />
-      </div>
-    );
-  }
+  // TODO: Disabled while developing FE only
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-background flex items-center justify-center">
+  //       <Loader message="Loading..." size={32} />
+  //     </div>
+  //   );
+  // }
 
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
-          <div className="h-screen flex flex-col bg-background">
-            <SentryRoutes>
-              {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={<FullAttemptLogsPage />}
-              />
+          <SentryRoutes>
+            {/* ========== LEGACY DESIGN ROUTES ========== */}
+            {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
+            <Route
+              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+              element={
+                <LegacyDesignScope>
+                  <FullAttemptLogsPage />
+                </LegacyDesignScope>
+              }
+            />
 
-              <Route element={<NormalLayout />}>
-                <Route path="/" element={<Projects />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/projects/:projectId" element={<Projects />} />
+            <Route
+              element={
+                <LegacyDesignScope>
+                  <NormalLayout />
+                </LegacyDesignScope>
+              }
+            >
+              <Route path="/" element={<Projects />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<Projects />} />
+              <Route
+                path="/projects/:projectId/tasks"
+                element={<ProjectTasks />}
+              />
+              <Route path="/settings/*" element={<SettingsLayout />}>
+                <Route index element={<Navigate to="general" replace />} />
+                <Route path="general" element={<GeneralSettings />} />
+                <Route path="projects" element={<ProjectSettings />} />
+                <Route path="repos" element={<ReposSettings />} />
                 <Route
-                  path="/projects/:projectId/tasks"
-                  element={<ProjectTasks />}
+                  path="organizations"
+                  element={<OrganizationSettings />}
                 />
-                <Route path="/settings/*" element={<SettingsLayout />}>
-                  <Route index element={<Navigate to="general" replace />} />
-                  <Route path="general" element={<GeneralSettings />} />
-                  <Route path="projects" element={<ProjectSettings />} />
-                  <Route
-                    path="organizations"
-                    element={<OrganizationSettings />}
-                  />
-                  <Route path="agents" element={<AgentSettings />} />
-                  <Route path="mcp" element={<McpSettings />} />
-                </Route>
-                <Route
-                  path="/mcp-servers"
-                  element={<Navigate to="/settings/mcp" replace />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                  element={<ProjectTasks />}
-                />
+                <Route path="agents" element={<AgentSettings />} />
+                <Route path="mcp" element={<McpSettings />} />
               </Route>
-            </SentryRoutes>
-          </div>
+              <Route
+                path="/mcp-servers"
+                element={<Navigate to="/settings/mcp" replace />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId"
+                element={<ProjectTasks />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                element={<ProjectTasks />}
+              />
+            </Route>
+
+            {/* ========== NEW DESIGN ROUTES ========== */}
+            <Route
+              path="/workspaces"
+              element={
+                <NewDesignScope>
+                  <NewDesignLayout />
+                </NewDesignScope>
+              }
+            >
+              <Route index element={<WorkspacesLanding />} />
+              <Route path="create" element={<Workspaces />} />
+              <Route path=":workspaceId" element={<Workspaces />} />
+            </Route>
+          </SentryRoutes>
         </SearchProvider>
       </ThemeProvider>
     </I18nextProvider>
@@ -174,9 +206,7 @@ function App() {
         <ClickedElementsProvider>
           <ProjectProvider>
             <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <NiceModal.Provider>
-                <AppContent />
-              </NiceModal.Provider>
+              <AppContent />
             </HotkeysProvider>
           </ProjectProvider>
         </ClickedElementsProvider>

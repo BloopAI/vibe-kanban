@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use chrono::{DateTime, Utc};
 use executors::{
     actions::{ExecutorAction, ExecutorActionType},
@@ -99,6 +101,16 @@ pub struct ExecutionContext {
     pub task: Task,
     pub project: Project,
     pub repos: Vec<Repo>,
+}
+
+/// Summary info about the latest execution process for a workspace
+#[derive(Debug, Clone, FromRow)]
+pub struct LatestProcessInfo {
+    pub workspace_id: Uuid,
+    pub execution_process_id: Uuid,
+    pub session_id: Uuid,
+    pub status: ExecutionProcessStatus,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -629,11 +641,12 @@ impl ExecutionProcess {
         })
     }
 
-    /// Fetch the latest CodingAgent executor profile for a session
+    /// Fetch the latest CodingAgent executor profile for a session.
+    /// Returns None if no CodingAgent execution process exists for this session.
     pub async fn latest_executor_profile_for_session(
         pool: &SqlitePool,
         session_id: Uuid,
-    ) -> Result<ExecutorProfileId, ExecutionProcessError> {
+    ) -> Result<Option<ExecutorProfileId>, ExecutionProcessError> {
         // Find the latest CodingAgent execution process for this session
         let latest_execution_process = sqlx::query_as!(
             ExecutionProcess,
@@ -656,12 +669,11 @@ impl ExecutionProcess {
             ExecutionProcessRunReason::CodingAgent
         )
         .fetch_optional(pool)
-        .await?
-        .ok_or_else(|| {
-            ExecutionProcessError::ValidationError(
-                "Couldn't find initial coding agent process, has it run yet?".to_string(),
-            )
-        })?;
+        .await?;
+
+        let Some(latest_execution_process) = latest_execution_process else {
+            return Ok(None);
+        };
 
         let action = latest_execution_process
             .executor_action()
@@ -669,14 +681,85 @@ impl ExecutionProcess {
 
         match &action.typ {
             ExecutorActionType::CodingAgentInitialRequest(request) => {
-                Ok(request.executor_profile_id.clone())
+                Ok(Some(request.executor_profile_id.clone()))
             }
             ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                Ok(request.executor_profile_id.clone())
+                Ok(Some(request.executor_profile_id.clone()))
+            }
+            ExecutorActionType::ReviewRequest(request) => {
+                Ok(Some(request.executor_profile_id.clone()))
             }
             _ => Err(ExecutionProcessError::ValidationError(
                 "Couldn't find profile from initial request".to_string(),
             )),
         }
+    }
+
+    /// Fetch latest execution process info for all workspaces with the given archived status.
+    /// Returns a map of workspace_id -> LatestProcessInfo for the most recent
+    /// non-dropped execution process (excluding dev servers).
+    pub async fn find_latest_for_workspaces(
+        pool: &SqlitePool,
+        archived: bool,
+    ) -> Result<HashMap<Uuid, LatestProcessInfo>, sqlx::Error> {
+        let rows: Vec<LatestProcessInfo> = sqlx::query_as!(
+            LatestProcessInfo,
+            r#"
+            SELECT
+                s.workspace_id as "workspace_id!: Uuid",
+                ep.id as "execution_process_id!: Uuid",
+                ep.session_id as "session_id!: Uuid",
+                ep.status as "status!: ExecutionProcessStatus",
+                ep.completed_at as "completed_at?: DateTime<Utc>"
+            FROM execution_processes ep
+            JOIN sessions s ON ep.session_id = s.id
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE w.archived = $1
+              AND ep.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+              AND ep.dropped = FALSE
+              AND ep.created_at = (
+                  SELECT MAX(ep2.created_at)
+                  FROM execution_processes ep2
+                  JOIN sessions s2 ON ep2.session_id = s2.id
+                  WHERE s2.workspace_id = s.workspace_id
+                    AND ep2.run_reason IN ('codingagent', 'setupscript', 'cleanupscript')
+                    AND ep2.dropped = FALSE
+              )
+            "#,
+            archived
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let result = rows
+            .into_iter()
+            .map(|info| (info.workspace_id, info))
+            .collect();
+
+        Ok(result)
+    }
+
+    /// Find all workspaces with running dev servers, filtered by archived status.
+    /// Returns a set of workspace IDs that have at least one running dev server.
+    pub async fn find_workspaces_with_running_dev_servers(
+        pool: &SqlitePool,
+        archived: bool,
+    ) -> Result<HashSet<Uuid>, sqlx::Error> {
+        let rows: Vec<Uuid> = sqlx::query_scalar!(
+            r#"
+            SELECT DISTINCT s.workspace_id as "workspace_id!: Uuid"
+            FROM execution_processes ep
+            JOIN sessions s ON ep.session_id = s.id
+            JOIN workspaces w ON s.workspace_id = w.id
+            WHERE w.archived = $1
+              AND ep.status = 'running'
+              AND ep.run_reason = 'devserver'
+            "#,
+            archived
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows.into_iter().collect())
     }
 }

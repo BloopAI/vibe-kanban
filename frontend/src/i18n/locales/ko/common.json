@@ -49,7 +49,19 @@
     "toolDetailsToggle": {
       "hide": "세부 정보 숨기기",
       "show": "세부 정보 보기"
-    }
+    },
+    "taskCompleted": "작업 완료",
+    "ran": "실행함",
+    "tool": "도구",
+    "toolSummary": {
+      "read": "{{path}} 읽기",
+      "searched": "\"{{query}}\" 검색",
+      "fetched": "{{url}} 가져오기",
+      "ranCommand": "명령 실행",
+      "createdTask": "작업 생성: {{description}}",
+      "todoOperation": "{{operation}} 할 일"
+    },
+    "fixScript": "스크립트 수정"
   },
   "language": {
     "browserDefault": "브라우저 기본값"
@@ -57,6 +69,7 @@
   "states": {
     "error": "오류",
     "loading": "로딩 중...",
+    "loadingHistory": "기록 로딩 중",
     "reconnecting": "재연결 중",
     "saving": "저장 중...",
     "success": "성공"
@@ -73,6 +86,9 @@
     "loadingPlaceholder": "조직 로딩 중...",
     "selectPlaceholder": "조직 선택",
     "currentBadge": " (현재)"
+  },
+  "navbar": {
+    "tryNewUI": "새로운 UI 사용해보기"
   },
   "signOut": "로그아웃",
   "devMode": {
@@ -93,5 +109,157 @@
     "errorTitle": "인증 실패",
     "errorDescription": "계정 인증 중 문제가 발생했습니다",
     "tryAgain": "다시 시도"
+  },
+  "toolbar": {
+    "sortBy": "정렬 기준",
+    "groupBy": "그룹화 기준"
+  },
+  "sorting": {
+    "ascending": "오름차순",
+    "descending": "내림차순"
+  },
+  "grouping": {
+    "date": "날짜",
+    "assignee": "담당자",
+    "label": "라벨"
+  },
+  "workspaces": {
+    "title": "워크스페이스",
+    "searchPlaceholder": "검색...",
+    "active": "활성",
+    "archived": "보관됨",
+    "loading": "로딩 중...",
+    "selectToStart": "워크스페이스를 선택하여 시작",
+    "draft": "초안",
+    "rename": {
+      "title": "워크스페이스 이름 변경",
+      "description": "이 워크스페이스의 새 이름을 입력하세요.",
+      "nameLabel": "이름",
+      "placeholder": "워크스페이스 이름 입력",
+      "action": "이름 변경",
+      "renaming": "이름 변경 중..."
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "파일 검색...",
+    "noResults": "일치하는 파일 없음",
+    "title": "파일",
+    "showGitHubComments": "GitHub 댓글 표시",
+    "hideGitHubComments": "GitHub 댓글 숨기기"
+  },
+  "sections": {
+    "changes": "변경사항",
+    "repositories": "저장소",
+    "addRepositories": "저장소 추가",
+    "project": "프로젝트",
+    "processes": "프로세스",
+    "devServer": "개발 서버",
+    "advanced": "고급",
+    "workingBranch": "작업 브랜치",
+    "recent": "최근",
+    "other": "기타",
+    "devServerPreview": "개발 서버 미리보기"
+  },
+  "repos": {
+    "loading": "저장소 로딩 중...",
+    "noRecentRepos": "최근 저장소를 찾을 수 없습니다",
+    "noReposAdded": "저장소가 추가되지 않았습니다",
+    "noReposAddedHint": "아래 옵션에서 이 워크스페이스에 저장소를 추가하세요"
+  },
+  "actions": {
+    "browseRepos": "디스크에서 저장소 찾아보기",
+    "createNewRepo": "디스크에 새 저장소 만들기",
+    "viewInChangesPanel": "변경사항 패널에서 보기",
+    "copyPath": "워크트리 경로 복사",
+    "copyWorktreePath": "워크트리 경로 복사",
+    "openInIde": "IDE에서 열기",
+    "repoSettings": "저장소 설정",
+    "cancel": "취소",
+    "saveChanges": "변경사항 저장",
+    "copied": "복사됨"
+  },
+  "comments": {
+    "addReviewComment": "리뷰 코멘트 추가",
+    "addPlaceholder": "코멘트 추가...",
+    "editPlaceholder": "코멘트 편집..."
+  },
+  "confirm": {
+    "defaultConfirm": "확인",
+    "defaultCancel": "취소"
+  },
+  "empty": {
+    "noChanges": "표시할 변경사항이 없습니다"
+  },
+  "commandBar": {
+    "noResults": "결과를 찾을 수 없습니다.",
+    "back": "뒤로",
+    "defaultPlaceholder": "명령어를 입력하거나 검색..."
+  },
+  "chatBox": {
+    "variants": "변형"
+  },
+  "projects": {
+    "noProjectFound": "프로젝트를 찾을 수 없습니다",
+    "createFirstPrompt": "작업을 시작하려면 먼저 프로젝트를 만드세요.",
+    "createNew": "새 프로젝트 만들기",
+    "noProjectsFound": "프로젝트를 찾을 수 없습니다"
+  },
+  "betaWorkspaces": {
+    "title": "새로운 UI 사용해보기",
+    "intro": "Vibe Kanban의 UI를 처음부터 다시 구축했으며, 체험에 초대되었습니다.",
+    "newUiDescription": "새로운 UI는 일상 업무에 최적화되어 있습니다: 에이전트 관리, 변경 사항 미리보기, 코드 검토. 또한 기존 UI에서는 사용할 수 없는 기능도 제공합니다:",
+    "newFeatures": {
+      "multiRepo": "여러 저장소를 동시에 편집",
+      "multiAgent": "단일 워크스페이스에서 여러 에이전트 대화(다른 에이전트 간에도) 실행",
+      "commandBar": "명령 바로 더 빠른 탐색"
+    },
+    "oldUiDescription": "현재로서는 일부 기능이 기존 UI에 남아 있습니다:",
+    "oldFeatures": {
+      "kanban": "칸반 보드에서 작업 관리",
+      "settings": "설정 변경",
+      "projects": "프로젝트 관리"
+    },
+    "transition": "앞으로 몇 주 동안의 전환 기간 동안 두 UI를 오가게 됩니다.",
+    "optOutNote": "옵트아웃하시겠습니까? 설정에서 언제든지 기존 UI로 돌아갈 수 있습니다.",
+    "joinBeta": "베타 참여",
+    "maybeLater": "나중에"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "환영합니다",
+      "content": "Vibe Kanban의 새롭게 디자인된 UI인 Workspaces에 오신 것을 환영합니다. 초기 피드백을 위해 일부 사용자에게 먼저 공개하고 있습니다. 네비게이션 바의 피드백 아이콘을 통해 언제든지 의견을 공유해 주세요."
+    },
+    "commandBar": {
+      "title": "명령 바",
+      "content": "명령 바는 탐색의 중심 허브입니다. CMD+K로 열어 워크스페이스에서 사용 가능한 모든 작업을 검색하고 접근할 수 있습니다."
+    },
+    "contextBar": {
+      "title": "컨텍스트 바",
+      "content": "컨텍스트 바를 사용하면 패널 간에 빠르게 전환할 수 있습니다. 가장 편한 위치로 드래그하세요."
+    },
+    "sidebar": {
+      "title": "워크스페이스 사이드바",
+      "content": "모든 워크스페이스의 상태를 한눈에 확인할 수 있습니다. 알림은 주의가 필요한 워크스페이스를 강조 표시합니다. 병합된 워크스페이스를 보관하여 사이드바를 깔끔하게 유지하세요."
+    },
+    "multiRepo": {
+      "title": "멀티 저장소 지원",
+      "content": "단일 워크스페이스에 여러 저장소를 추가할 수 있습니다. 다른 저장소에서 작업하면서 한 저장소의 코드를 참조하거나 여러 저장소에 걸쳐 변경 사항을 동시에 구현할 수 있습니다."
+    },
+    "sessions": {
+      "title": "다중 세션",
+      "content": "단일 워크스페이스 내에서 다른 에이전트와의 세션을 포함하여 여러 에이전트 대화 세션을 만들 수 있습니다. 이를 통해 대화 제한을 우회하거나 별도의 스레드에서 검토 에이전트를 시작할 수 있습니다."
+    },
+    "preview": {
+      "title": "변경 사항 미리보기",
+      "content": "컨텍스트 전환 없이 내장 브라우저에서 작업을 미리 볼 수 있습니다. 데스크톱, 모바일 및 사용자 지정 뷰포트 크기에서 테스트할 수 있습니다."
+    },
+    "diffs": {
+      "title": "변경 사항 및 코멘트",
+      "content": "새롭게 디자인된 변경 사항 패널에는 변경된 파일 트리가 포함되어 있습니다. 변경 사항에 직접 코멘트하여 에이전트에게 피드백을 제공하고, 워크스페이스가 PR에 연결된 경우 GitHub 코멘트를 볼 수 있습니다."
+    },
+    "classicUi": {
+      "title": "클래식 UI로 돌아가기",
+      "content": "네비게이션 바 왼쪽의 나가기 아이콘을 클릭하면 클래식 칸반 보드로 돌아갑니다. 새 UI를 완전히 비활성화하려면 설정의 \"베타 기능\"에서 \"Workspaces 베타 활성화\" 옵션을 업데이트하세요."
+    }
   }
 }

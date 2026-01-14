@@ -48,6 +48,11 @@ export function useRebase(
           queryKey: ['taskAttempt', attemptId],
         });
 
+        // Refresh repos to update target_branch in RepoCard
+        queryClient.invalidateQueries({
+          queryKey: ['attemptRepo', attemptId],
+        });
+
         // Refresh branch list
         if (repoId) {
           queryClient.invalidateQueries({

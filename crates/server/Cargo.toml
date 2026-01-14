@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.0.143"
+version = "0.0.151"
 edition = "2024"
 default-run = "server"
 
@@ -24,23 +24,23 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 nix = { version = "0.29", features = ["signal", "process"] }
-openssl-sys = { workspace = true }
 rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
 secrecy = "0.10.3"
-sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
-reqwest = { version = "0.12", features = ["json"] }
+sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
+reqwest = { workspace = true }
+rustls = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
 ignore = "0.4"
-git2 = "0.18"
+git2 = { workspace = true }
 mime_guess = "2.0"
 rust-embed = "8.2"
 url = "2.5"
@@ -51,3 +51,7 @@ regex = "1"
 
 [build-dependencies]
 dotenv = "0.15"
+
+[features]
+default = []
+qa-mode = ["services/qa-mode", "executors/qa-mode"]

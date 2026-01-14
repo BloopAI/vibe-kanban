@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - louis/fe-revision
-      - gabriel/share
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +18,7 @@ env:
 
 jobs:
   test:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +60,11 @@ jobs:
           cache-all-crates: true
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite,postgres
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: sqlite,postgres
 
       - name: Build frontend
         run: cd frontend && npm run build

@@ -12,8 +12,10 @@ use thiserror::Error;
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
+#[cfg(feature = "qa-mode")]
+use crate::executors::qa_mock::QaMockExecutor;
 use crate::{
-    actions::ExecutorAction,
+    actions::{ExecutorAction, review::RepoReviewContext},
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
     env::ExecutionEnv,
@@ -33,6 +35,8 @@ pub mod cursor;
 pub mod droid;
 pub mod gemini;
 pub mod opencode;
+#[cfg(feature = "qa-mode")]
+pub mod qa_mock;
 pub mod qwen;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
@@ -100,6 +104,8 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    #[cfg(feature = "qa-mode")]
+    QaMock(QaMockExecutor),
 }
 
 impl CodingAgent {
@@ -167,6 +173,8 @@ impl CodingAgent {
             ],
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Copilot(_) => vec![],
+            #[cfg(feature = "qa-mode")]
+            Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
         }
     }
 }
@@ -207,6 +215,20 @@ pub trait StandardCodingAgentExecutor {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
+
+    async fn spawn_review(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        session_id: Option<&str>,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        match session_id {
+            Some(id) => self.spawn_follow_up(current_dir, prompt, id, env).await,
+            None => self.spawn(current_dir, prompt, env).await,
+        }
+    }
+
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);
 
     // MCP configuration methods
@@ -288,6 +310,34 @@ impl AppendPrompt {
             AppendPrompt(None) => prompt.to_string(),
         }
     }
+}
+
+pub fn build_review_prompt(
+    context: Option<&[RepoReviewContext]>,
+    additional_prompt: Option<&str>,
+) -> String {
+    let mut prompt = String::from("Please review the code changes.\n\n");
+
+    if let Some(repos) = context {
+        for repo in repos {
+            prompt.push_str(&format!("Repository: {}\n", repo.repo_name));
+            prompt.push_str(&format!(
+                "Review all changes from base commit {} to HEAD.\n",
+                repo.base_commit
+            ));
+            prompt.push_str(&format!(
+                "Use `git diff {}..HEAD` to see the changes.\n",
+                repo.base_commit
+            ));
+            prompt.push('\n');
+        }
+    }
+
+    if let Some(additional) = additional_prompt {
+        prompt.push_str(additional);
+    }
+
+    prompt
 }
 
 #[cfg(test)]

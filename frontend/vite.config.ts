@@ -51,7 +51,22 @@ export default schemas;
 
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      babel: {
+        plugins: [
+          [
+            "babel-plugin-react-compiler",
+            {
+              target: "18",
+              sources: [path.resolve(__dirname, "src")],
+              environment: {
+                enableResetCacheOnSourceFileChanges: true,
+              },
+            },
+          ],
+        ],
+      },
+    }),
     sentryVitePlugin({ org: "bloop-ai", project: "vibe-kanban" }),
     executorSchemasPlugin(),
   ],
@@ -74,6 +89,9 @@ export default defineConfig({
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
     open: process.env.VITE_OPEN === "true",
+    allowedHosts: [
+      ".trycloudflare.com", // allow all cloudflared tunnels
+    ],
   },
   optimizeDeps: {
     exclude: ["wa-sqlite"],

@@ -16,21 +16,21 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    github::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    git_host::{self, GitHostError, GitHostProvider},
     share::SharePublisher,
 };
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
     #[error(transparent)]
-    GitHubServiceError(#[from] GitHubServiceError),
+    GitHostError(#[from] GitHostError),
     #[error(transparent)]
     WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
 }
 
-/// Service to monitor GitHub PRs and update task status when they are merged
+/// Service to monitor PRs and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
     poll_interval: Duration,
@@ -95,13 +95,8 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        // GitHubService now uses gh CLI, no token needed
-        let github_service = GitHubService::new()?;
-        let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
-
-        let pr_status = github_service
-            .update_pr_status(&repo_info, pr_merge.pr_info.number)
-            .await?;
+        let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
+        let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 
         debug!(
             "PR #{} status: {:?} (was open)",
@@ -110,7 +105,7 @@ impl PrMonitorService {
 
         // Update the PR status in the database
         if !matches!(&pr_status.status, MergeStatus::Open) {
-            // Update merge status with the latest information from GitHub
+            // Update merge status with the latest information from git host
             Merge::update_status(
                 &self.db.pool,
                 pr_merge.id,
@@ -125,10 +120,15 @@ impl PrMonitorService {
                     Workspace::find_by_id(&self.db.pool, pr_merge.workspace_id).await?
             {
                 info!(
-                    "PR #{} was merged, updating task {} to done",
+                    "PR #{} was merged, updating task {} to done and archiving workspace",
                     pr_merge.pr_info.number, workspace.task_id
                 );
                 Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
+
+                // Archive workspace unless pinned
+                if !workspace.pinned {
+                    Workspace::set_archived(&self.db.pool, workspace.id, true).await?;
+                }
 
                 // Track analytics event
                 if let Some(analytics) = &self.analytics

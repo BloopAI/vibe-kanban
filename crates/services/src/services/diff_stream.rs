@@ -6,18 +6,24 @@ use std::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
+    time::Duration,
 };
 
+use db::{DBService, models::workspace_repo::WorkspaceRepo};
 use executors::logs::utils::{ConversationPatch, patch::escape_json_pointer_segment};
 use futures::StreamExt;
-use notify_debouncer_full::DebouncedEvent;
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{
+    DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
+};
 use thiserror::Error;
 use tokio::{sync::mpsc, task::JoinHandle};
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::wrappers::{IntervalStream, ReceiverStream};
 use utils::{
     diff::{self, Diff},
     log_msg::LogMsg,
 };
+use uuid::Uuid;
 
 use crate::services::{
     filesystem_watcher::{self, FilesystemWatcherError},
@@ -38,6 +44,10 @@ pub enum DiffStreamError {
     FilesystemWatcher(#[from] FilesystemWatcherError),
     #[error("Task join error: {0}")]
     TaskJoin(#[from] tokio::task::JoinError),
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    #[error("Notify error: {0}")]
+    Notify(#[from] notify::Error),
 }
 
 /// Diff stream that owns the filesystem watcher task
@@ -80,198 +90,48 @@ impl DiffStreamHandle {
     }
 }
 
-struct DiffWatcherContext {
-    git_service: GitService,
-    worktree_path: PathBuf,
-    base_commit: Commit,
-    cumulative: Arc<AtomicUsize>,
-    full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
-    stats_only: bool,
-    path_prefix: Option<String>,
+#[derive(Clone)]
+pub struct DiffStreamArgs {
+    pub git_service: GitService,
+    pub db: DBService,
+    pub workspace_id: Uuid,
+    pub repo_id: Uuid,
+    pub repo_path: PathBuf,
+    pub worktree_path: PathBuf,
+    pub branch: String,
+    pub target_branch: String,
+    pub base_commit: Commit,
+    pub stats_only: bool,
+    pub path_prefix: Option<String>,
+}
+
+struct DiffStreamManager {
+    args: DiffStreamArgs,
     tx: mpsc::Sender<Result<LogMsg, io::Error>>,
+    cumulative: Arc<AtomicUsize>,
+    known_paths: Arc<std::sync::RwLock<HashSet<String>>>,
+    full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
+    current_base_commit: Commit,
+    current_target_branch: String,
 }
 
-impl DiffWatcherContext {
-    async fn handle_events(
-        &self,
-        events: Vec<DebouncedEvent>,
-        canonical_worktree_path: &Path,
-    ) -> bool {
-        let changed_paths =
-            extract_changed_paths(&events, canonical_worktree_path, &self.worktree_path);
-
-        if changed_paths.is_empty() {
-            return true;
-        }
-
-        let git_service = self.git_service.clone();
-        let worktree_path = self.worktree_path.clone();
-        let base_commit = self.base_commit.clone();
-        let cumulative = self.cumulative.clone();
-        let full_sent = self.full_sent.clone();
-        let stats_only = self.stats_only;
-        let path_prefix = self.path_prefix.clone();
-
-        match tokio::task::spawn_blocking(move || {
-            process_file_changes(
-                &git_service,
-                &worktree_path,
-                &base_commit,
-                &changed_paths,
-                &cumulative,
-                &full_sent,
-                stats_only,
-                path_prefix.as_deref(),
-            )
-        })
-        .await
-        {
-            Ok(Ok(messages)) => send_messages(&self.tx, messages).await,
-            Ok(Err(err)) => {
-                tracing::error!("Error processing file changes: {err}");
-                send_error(&self.tx, err.to_string()).await;
-                false
-            }
-            Err(join_err) => {
-                tracing::error!("Diff processing task join error: {join_err}");
-                send_error(
-                    &self.tx,
-                    format!("Diff processing task join error: {join_err}"),
-                )
-                .await;
-                false
-            }
-        }
-    }
+enum DiffEvent {
+    Filesystem(DebounceEventResult),
+    GitStateChange,
+    CheckTarget,
 }
 
-pub async fn create(
-    git_service: GitService,
-    worktree_path: PathBuf,
-    base_commit: Commit,
-    stats_only: bool,
-    path_prefix: Option<String>,
-) -> Result<DiffStreamHandle, DiffStreamError> {
+pub async fn create(args: DiffStreamArgs) -> Result<DiffStreamHandle, DiffStreamError> {
     let (tx, rx) = mpsc::channel::<Result<LogMsg, io::Error>>(DIFF_STREAM_CHANNEL_CAPACITY);
+    let manager_args = args.clone();
 
-    let cumulative = Arc::new(AtomicUsize::new(0));
-    let full_sent = Arc::new(std::sync::RwLock::new(HashSet::<String>::new()));
-
-    // Spawn a task to fetch initial diffs and set up the file watcher.
-    // This allows the stream to be returned immediately while diff fetching
-    // happens in the background, preventing WebSocket timeouts for large diffs.
-    let tx_clone = tx.clone();
     let watcher_task = tokio::spawn(async move {
-        // Fetch initial diffs in a blocking task to avoid blocking the async runtime
-        let git_for_diff = git_service.clone();
-        let worktree_for_diff = worktree_path.clone();
-        let base_for_diff = base_commit.clone();
-        let path_prefix_clone = path_prefix.clone();
-
-        let initial_diffs_result = tokio::task::spawn_blocking(move || {
-            git_for_diff.get_diffs(
-                DiffTarget::Worktree {
-                    worktree_path: &worktree_for_diff,
-                    base_commit: &base_for_diff,
-                },
-                None,
-            )
-        })
-        .await;
-
-        let initial_diffs_raw = match initial_diffs_result {
-            Ok(Ok(diffs)) => diffs,
-            Ok(Err(e)) => {
-                tracing::error!("Failed to get initial diffs: {e}");
-                send_error(&tx_clone, e.to_string()).await;
-                return;
-            }
-            Err(join_err) => {
-                tracing::error!("Diff fetch task join error: {join_err}");
-                send_error(&tx_clone, format!("Diff fetch failed: {join_err}")).await;
-                return;
-            }
-        };
-
-        let mut initial_diffs = Vec::with_capacity(initial_diffs_raw.len());
-        for mut diff in initial_diffs_raw {
-            apply_stream_omit_policy(&mut diff, &cumulative, stats_only);
-            initial_diffs.push(diff);
-        }
-
-        {
-            let mut guard = full_sent.write().unwrap();
-            for diff in &initial_diffs {
-                if !diff.content_omitted {
-                    guard.insert(GitService::diff_path(diff));
-                }
-            }
-        }
-
-        if !send_initial_diffs(&tx_clone, initial_diffs, path_prefix_clone.as_deref()).await {
-            return;
-        }
-
-        // Set up filesystem watcher for live updates
-        let worktree_for_watcher = worktree_path.clone();
-        let watcher_result = tokio::task::spawn_blocking(move || {
-            filesystem_watcher::async_watcher(worktree_for_watcher)
-        })
-        .await;
-
-        let (debouncer, mut watcher_rx, canonical_worktree_path) = match watcher_result {
-            Ok(Ok(parts)) => parts,
-            Ok(Err(e)) => {
-                tracing::error!("Failed to set up filesystem watcher: {e}");
-                send_error(&tx_clone, e.to_string()).await;
-                return;
-            }
-            Err(join_err) => {
-                tracing::error!("Failed to spawn watcher setup: {join_err}");
-                send_error(
-                    &tx_clone,
-                    format!("Failed to spawn watcher setup: {join_err}"),
-                )
-                .await;
-                return;
-            }
-        };
-
-        let ctx = DiffWatcherContext {
-            git_service,
-            worktree_path,
-            base_commit,
-            cumulative,
-            full_sent,
-            stats_only,
-            path_prefix,
-            tx: tx_clone,
-        };
-
-        let _debouncer_guard = debouncer;
-
-        while let Some(result) = watcher_rx.next().await {
-            match result {
-                Ok(events) => {
-                    if !ctx.handle_events(events, &canonical_worktree_path).await {
-                        return;
-                    }
-                }
-                Err(errors) => {
-                    let message = errors
-                        .iter()
-                        .map(|e| e.to_string())
-                        .collect::<Vec<_>>()
-                        .join("; ");
-                    tracing::error!("Filesystem watcher error: {message}");
-                    send_error(&ctx.tx, message).await;
-                    return;
-                }
-            }
+        let mut manager = DiffStreamManager::new(manager_args, tx);
+        if let Err(e) = manager.run().await {
+            tracing::error!("Diff stream manager failed: {e}");
+            let _ = manager.tx.send(Err(io::Error::other(e.to_string()))).await;
         }
     });
-
-    drop(tx);
 
     Ok(DiffStreamHandle::new(
         ReceiverStream::new(rx).boxed(),
@@ -279,51 +139,255 @@ pub async fn create(
     ))
 }
 
+impl DiffStreamManager {
+    fn new(args: DiffStreamArgs, tx: mpsc::Sender<Result<LogMsg, io::Error>>) -> Self {
+        Self {
+            current_base_commit: args.base_commit.clone(),
+            current_target_branch: args.target_branch.clone(),
+            args,
+            tx,
+            cumulative: Arc::new(AtomicUsize::new(0)),
+            known_paths: Arc::new(std::sync::RwLock::new(HashSet::new())),
+            full_sent: Arc::new(std::sync::RwLock::new(HashSet::new())),
+        }
+    }
+
+    async fn run(&mut self) -> Result<(), DiffStreamError> {
+        self.reset_stream().await?;
+
+        // Send Ready message to indicate initial data has been sent
+        let _ready_error = self.tx.send(Ok(LogMsg::Ready)).await;
+
+        let (fs_debouncer, mut fs_rx, canonical_worktree) =
+            filesystem_watcher::async_watcher(self.args.worktree_path.clone())
+                .map_err(|e| io::Error::other(e.to_string()))?;
+        let _fs_guard = fs_debouncer;
+
+        let (git_debouncer, mut git_rx) =
+            match setup_git_watcher(&self.args.git_service, &self.args.worktree_path) {
+                Some((d, rx)) => (Some(d), Some(rx)),
+                None => (None, None),
+            };
+        let _git_guard = git_debouncer;
+
+        let mut target_interval =
+            IntervalStream::new(tokio::time::interval(Duration::from_secs(1)));
+
+        loop {
+            let event = tokio::select! {
+                Some(res) = fs_rx.next() => DiffEvent::Filesystem(res),
+                Ok(()) = async {
+                    match git_rx.as_mut() {
+                        Some(rx) => rx.changed().await,
+                        None => std::future::pending().await,
+                    }
+                } => DiffEvent::GitStateChange,
+                _ = target_interval.next() => DiffEvent::CheckTarget,
+                else => break,
+            };
+
+            match event {
+                DiffEvent::Filesystem(res) => match res {
+                    Ok(events) => {
+                        self.handle_fs_events(events, &canonical_worktree).await?;
+                    }
+                    Err(e) => {
+                        tracing::error!("Filesystem watcher error: {e:?}");
+                        return Err(io::Error::other(format!("{e:?}")).into());
+                    }
+                },
+                DiffEvent::GitStateChange => {
+                    self.handle_git_state_change().await?;
+                }
+                DiffEvent::CheckTarget => {
+                    self.handle_target_check().await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    async fn reset_stream(&mut self) -> Result<(), DiffStreamError> {
+        let paths_to_clear: Vec<String> = {
+            let mut guard = self.known_paths.write().unwrap();
+            guard.drain().collect()
+        };
+
+        for raw_path in paths_to_clear {
+            let prefixed = prefix_path(raw_path, self.args.path_prefix.as_deref());
+            let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(&prefixed));
+            if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
+                return Ok(());
+            }
+        }
+
+        self.cumulative.store(0, Ordering::Relaxed);
+        self.full_sent.write().unwrap().clear();
+
+        let diffs = self.fetch_diffs().await?;
+        self.send_diffs(diffs).await?;
+
+        Ok(())
+    }
+
+    async fn fetch_diffs(&self) -> Result<Vec<Diff>, DiffStreamError> {
+        let git = self.args.git_service.clone();
+        let worktree = self.args.worktree_path.clone();
+        let base = self.current_base_commit.clone();
+        let stats_only = self.args.stats_only;
+        let cumulative = self.cumulative.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let diffs = git.get_diffs(
+                DiffTarget::Worktree {
+                    worktree_path: &worktree,
+                    base_commit: &base,
+                },
+                None,
+            )?;
+
+            let mut processed_diffs = Vec::with_capacity(diffs.len());
+            for mut diff in diffs {
+                apply_stream_omit_policy(&mut diff, &cumulative, stats_only);
+                processed_diffs.push(diff);
+            }
+            Ok(processed_diffs)
+        })
+        .await?
+    }
+
+    async fn send_diffs(&self, diffs: Vec<Diff>) -> Result<(), DiffStreamError> {
+        for mut diff in diffs {
+            let raw_path = GitService::diff_path(&diff);
+
+            {
+                let mut guard = self.known_paths.write().unwrap();
+                guard.insert(raw_path.clone());
+            }
+
+            if !diff.content_omitted {
+                let mut guard = self.full_sent.write().unwrap();
+                guard.insert(raw_path.clone());
+            }
+
+            let prefixed_entry = prefix_path(raw_path, self.args.path_prefix.as_deref());
+            if let Some(old) = diff.old_path {
+                diff.old_path = Some(prefix_path(old, self.args.path_prefix.as_deref()));
+            }
+            if let Some(new) = diff.new_path {
+                diff.new_path = Some(prefix_path(new, self.args.path_prefix.as_deref()));
+            }
+            diff.repo_id = Some(self.args.repo_id);
+
+            let patch =
+                ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry), diff);
+            if self.tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_fs_events(
+        &self,
+        events: Vec<DebouncedEvent>,
+        canonical_worktree: &Path,
+    ) -> Result<(), DiffStreamError> {
+        let changed_paths =
+            extract_changed_paths(&events, canonical_worktree, &self.args.worktree_path);
+
+        if changed_paths.is_empty() {
+            return Ok(());
+        }
+
+        let git = self.args.git_service.clone();
+        let worktree = self.args.worktree_path.clone();
+        let base = self.current_base_commit.clone();
+        let cumulative = self.cumulative.clone();
+        let full_sent = self.full_sent.clone();
+        let known_paths = self.known_paths.clone();
+        let stats_only = self.args.stats_only;
+        let prefix = self.args.path_prefix.clone();
+        let repo_id = self.args.repo_id;
+
+        let messages = tokio::task::spawn_blocking(move || {
+            process_file_changes(
+                &git,
+                &worktree,
+                &base,
+                &changed_paths,
+                &cumulative,
+                &full_sent,
+                &known_paths,
+                stats_only,
+                prefix.as_deref(),
+                repo_id,
+            )
+        })
+        .await??;
+
+        for msg in messages {
+            if self.tx.send(Ok(msg)).await.is_err() {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_git_state_change(&mut self) -> Result<(), DiffStreamError> {
+        let Some(new_base) = self
+            .recompute_base_commit(&self.current_target_branch)
+            .await
+        else {
+            return Ok(());
+        };
+
+        if new_base.as_oid() != self.current_base_commit.as_oid() {
+            self.current_base_commit = new_base;
+            self.reset_stream().await?;
+        }
+        Ok(())
+    }
+
+    async fn handle_target_check(&mut self) -> Result<(), DiffStreamError> {
+        let Ok(Some(repo)) = WorkspaceRepo::find_by_workspace_and_repo_id(
+            &self.args.db.pool,
+            self.args.workspace_id,
+            self.args.repo_id,
+        )
+        .await
+        else {
+            return Ok(());
+        };
+
+        if repo.target_branch != self.current_target_branch
+            && let Some(new_base) = self.recompute_base_commit(&repo.target_branch).await
+        {
+            self.current_target_branch = repo.target_branch;
+            self.current_base_commit = new_base;
+            self.reset_stream().await?;
+        }
+        Ok(())
+    }
+
+    async fn recompute_base_commit(&self, target_branch: &str) -> Option<Commit> {
+        let git = self.args.git_service.clone();
+        let repo_path = self.args.repo_path.clone();
+        let branch = self.args.branch.clone();
+        let target = target_branch.to_string();
+
+        tokio::task::spawn_blocking(move || git.get_base_commit(&repo_path, &branch, &target).ok())
+            .await
+            .ok()
+            .flatten()
+    }
+}
+
 fn prefix_path(path: String, prefix: Option<&str>) -> String {
     match prefix {
         Some(p) => format!("{p}/{path}"),
         None => path,
     }
-}
-
-async fn send_initial_diffs(
-    tx: &mpsc::Sender<Result<LogMsg, io::Error>>,
-    diffs: Vec<Diff>,
-    path_prefix: Option<&str>,
-) -> bool {
-    for mut diff in diffs {
-        let entry_index = prefix_path(GitService::diff_path(&diff), path_prefix);
-
-        // Update internal paths to match the prefix
-        if let Some(old) = diff.old_path {
-            diff.old_path = Some(prefix_path(old, path_prefix));
-        }
-        if let Some(new) = diff.new_path {
-            diff.new_path = Some(prefix_path(new, path_prefix));
-        }
-
-        let patch = ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
-        if tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
-            return false;
-        }
-    }
-    true
-}
-
-async fn send_messages(
-    tx: &mpsc::Sender<Result<LogMsg, io::Error>>,
-    messages: Vec<LogMsg>,
-) -> bool {
-    for msg in messages {
-        if tx.send(Ok(msg)).await.is_err() {
-            return false;
-        }
-    }
-    true
-}
-
-async fn send_error(tx: &mpsc::Sender<Result<LogMsg, io::Error>>, message: String) {
-    let _ = tx.send(Err(io::Error::other(message))).await;
 }
 
 pub fn apply_stream_omit_policy(diff: &mut Diff, sent_bytes: &Arc<AtomicUsize>, stats_only: bool) {
@@ -395,8 +459,10 @@ fn process_file_changes(
     changed_paths: &[String],
     cumulative_bytes: &Arc<AtomicUsize>,
     full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
+    known_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
     path_prefix: Option<&str>,
+    repo_id: Uuid,
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
@@ -414,6 +480,10 @@ fn process_file_changes(
     for mut diff in current_diffs {
         let raw_file_path = GitService::diff_path(&diff);
         files_with_diffs.insert(raw_file_path.clone());
+        {
+            let mut guard = known_paths.write().unwrap();
+            guard.insert(raw_file_path.clone());
+        }
 
         apply_stream_omit_policy(&mut diff, cumulative_bytes, stats_only);
 
@@ -426,7 +496,6 @@ fn process_file_changes(
             guard.insert(raw_file_path.clone());
         }
 
-        // Apply prefix for the stream message
         let prefixed_entry_index = prefix_path(raw_file_path, path_prefix);
         if let Some(old) = diff.old_path {
             diff.old_path = Some(prefix_path(old, path_prefix));
@@ -434,6 +503,7 @@ fn process_file_changes(
         if let Some(new) = diff.new_path {
             diff.new_path = Some(prefix_path(new, path_prefix));
         }
+        diff.repo_id = Some(repo_id);
 
         let patch =
             ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);
@@ -442,12 +512,68 @@ fn process_file_changes(
 
     for changed_path in changed_paths {
         if !files_with_diffs.contains(changed_path) {
-            // Also prefix the removal path
             let prefixed_path = prefix_path(changed_path.clone(), path_prefix);
             let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(&prefixed_path));
             msgs.push(LogMsg::JsonPatch(patch));
+            {
+                let mut guard = known_paths.write().unwrap();
+                guard.remove(changed_path);
+            }
         }
     }
 
     Ok(msgs)
+}
+
+/// Watches `.git/HEAD` and `.git/logs/HEAD` for changes.
+/// Correctly resolves gitdir even for worktrees.
+fn setup_git_watcher(
+    git: &GitService,
+    worktree_path: &Path,
+) -> Option<(
+    Debouncer<RecommendedWatcher, RecommendedCache>,
+    tokio::sync::watch::Receiver<()>,
+)> {
+    let Ok(repo) = git.open_repo(worktree_path) else {
+        tracing::warn!(
+            "Failed to open git repo at {:?}, git events will be ignored",
+            worktree_path
+        );
+        return None;
+    };
+
+    // For worktrees, repo.path() points to the actual gitdir (e.g. .git/worktrees/name or .git/)
+    let gitdir = repo.path();
+    let paths_to_watch = vec![gitdir.join("HEAD"), gitdir.join("logs").join("HEAD")];
+
+    let (tx, rx) = tokio::sync::watch::channel(());
+
+    // Create debouncer with short timeout since git operations might touch multiple files
+    let mut debouncer = new_debouncer(
+        Duration::from_millis(200),
+        None,
+        move |res: DebounceEventResult| {
+            if res.is_ok() {
+                let _ = tx.send(());
+            }
+        },
+    )
+    .ok()?;
+
+    let mut watched_any = false;
+    for path in paths_to_watch {
+        if path.exists() {
+            if let Err(e) = debouncer.watch(&path, RecursiveMode::NonRecursive) {
+                tracing::debug!("Failed to watch git path {:?}: {}", path, e);
+            } else {
+                watched_any = true;
+            }
+        }
+    }
+
+    if !watched_any {
+        return None;
+    }
+
+    Some((debouncer, rx))
 }

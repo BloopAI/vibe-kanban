@@ -18,7 +18,7 @@ export type PatchTypeWithKey = PatchType & {
   executionProcessId: string;
 };
 
-export type AddEntryType = 'initial' | 'running' | 'historic';
+export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
 
 export type OnEntriesUpdated = (
   newEntries: PatchTypeWithKey[],
@@ -179,7 +179,8 @@ export const useConversationHistory = ({
           p.executionProcess.executor_action.typ.type ===
             'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest'
+            'CodingAgentInitialRequest' ||
+          p.executionProcess.executor_action.typ.type === 'ReviewRequest'
       )
       .sort(
         (a, b) =>
@@ -227,14 +228,16 @@ export const useConversationHistory = ({
             p.executionProcess.executor_action.typ.type ===
               'CodingAgentInitialRequest' ||
             p.executionProcess.executor_action.typ.type ===
-              'CodingAgentFollowUpRequest'
+              'CodingAgentFollowUpRequest' ||
+            p.executionProcess.executor_action.typ.type === 'ReviewRequest'
           ) {
             // New user message
+            const actionType = p.executionProcess.executor_action.typ;
             const userNormalizedEntry: NormalizedEntry = {
               entry_type: {
                 type: 'user_message',
               },
-              content: p.executionProcess.executor_action.typ.prompt,
+              content: actionType.prompt,
               timestamp: null,
             };
             const userPatch: PatchType = {
@@ -422,7 +425,21 @@ export const useConversationHistory = ({
       loading: boolean
     ) => {
       const entries = flattenEntriesForEmit(executionProcessState);
-      onEntriesUpdatedRef.current?.(entries, addEntryType, loading);
+      let modifiedAddEntryType = addEntryType;
+
+      // Modify so that if add entry type is 'running' and last entry is a plan, emit special plan type
+      if (entries.length > 0) {
+        const lastEntry = entries[entries.length - 1];
+        if (
+          lastEntry.type === 'NORMALIZED_ENTRY' &&
+          lastEntry.content.entry_type.type === 'tool_use' &&
+          lastEntry.content.entry_type.tool_name === 'ExitPlanMode'
+        ) {
+          modifiedAddEntryType = 'plan';
+        }
+      }
+
+      onEntriesUpdatedRef.current?.(entries, modifiedAddEntryType, loading);
     },
     [flattenEntriesForEmit]
   );

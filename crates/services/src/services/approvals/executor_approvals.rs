@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use db::{self, DBService};
+use db::{self, DBService, models::execution_process::ExecutionProcess};
 use executors::approvals::{ExecutorApprovalError, ExecutorApprovalService};
 use serde_json::Value;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
@@ -57,10 +57,14 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             .await
             .map_err(ExecutorApprovalError::request_failed)?;
 
-        // Play notification sound when approval is needed
+        let task_name = ExecutionProcess::load_context(&self.db.pool, self.execution_process_id)
+            .await
+            .map(|ctx| ctx.task.title)
+            .unwrap_or_else(|_| "Unknown task".to_string());
+
         self.notification_service
             .notify(
-                "Approval Needed",
+                &format!("Approval Needed: {}", task_name),
                 &format!("Tool '{}' requires approval", tool_name),
             )
             .await;

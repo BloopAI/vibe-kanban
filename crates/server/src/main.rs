@@ -27,6 +27,11 @@ pub enum VibeKanbanError {
 
 #[tokio::main]
 async fn main() -> Result<(), VibeKanbanError> {
+    // Install rustls crypto provider before any TLS operations
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     sentry_utils::init_once(SentrySource::Backend);
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());

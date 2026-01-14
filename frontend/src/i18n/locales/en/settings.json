@@ -6,7 +6,9 @@
         "general": "General",
         "generalDesc": "Theme, notifications, and preferences",
         "projects": "Projects",
-        "projectsDesc": "Project scripts and configuration",
+        "projectsDesc": "Project repositories and configuration",
+        "repos": "Repositories",
+        "reposDesc": "Repository scripts and configuration",
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
@@ -230,6 +232,14 @@
           "description": "Reset the onboarding flow.",
           "button": "Reset"
         }
+      },
+      "beta": {
+        "title": "Beta Features",
+        "description": "Try out experimental features before they're released.",
+        "workspaces": {
+          "label": "Enable Workspaces Beta",
+          "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
+        }
       }
     },
     "agents": {
@@ -246,8 +256,8 @@
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
         "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
-        "notFound": "Not Found",
-        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
+        "notFound": "Unknown",
+        "notFoundTooltip": "We couldn't verify this agent is set up, but go ahead and try it."
       },
       "editor": {
         "formLabel": "Edit JSON",
@@ -331,38 +341,6 @@
           "helper": "The absolute path to your git repository on disk."
         }
       },
-      "scripts": {
-        "title": "Scripts & Configuration",
-        "description": "Configure setup, cleanup, and copy files for this project.",
-        "setup": {
-          "label": "Setup Script",
-          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
-          "parallelLabel": "Run setup script in parallel with coding agent",
-          "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
-        },
-        "dev": {
-          "label": "Dev Server Script",
-          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree) unless a working directory is specified below."
-        },
-        "devWorkingDir": {
-          "label": "Dev Server Working Directory",
-          "placeholder": "e.g., my-repo",
-          "helper": "The directory to run the dev server script from, relative to the workspace root. Leave empty to run from the workspace root."
-        },
-        "agentWorkingDir": {
-          "label": "Agent Working Directory",
-          "placeholder": "e.g., my-repo",
-          "helper": "Default directory for new workspaces to run the coding agent from, relative to the workspace root. This value is captured when a workspace is created and won't affect existing workspaces. For single-repo projects, this defaults to the repo name. Leave empty to run from the workspace root."
-        },
-        "cleanup": {
-          "label": "Cleanup Script",
-          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
-        },
-        "copyFiles": {
-          "label": "Copy Files",
-          "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
-        }
-      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",
@@ -370,6 +348,61 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      }
+    },
+    "repos": {
+      "title": "Repository Configuration",
+      "description": "Configure scripts that run when this repository is used in workspaces.",
+      "loading": "Loading repositories...",
+      "loadError": "Failed to load repositories.",
+      "selector": {
+        "label": "Select Repository",
+        "placeholder": "Choose a repository to configure",
+        "helper": "Select a repository to view and edit its configuration.",
+        "noRepos": "No repositories available"
+      },
+      "general": {
+        "title": "General Settings",
+        "description": "Configure basic repository information.",
+        "displayName": {
+          "label": "Display Name",
+          "placeholder": "Enter display name",
+          "helper": "A friendly name for this repository."
+        },
+        "path": {
+          "label": "Repository Path"
+        }
+      },
+      "scripts": {
+        "title": "Scripts & Configuration",
+        "description": "Configure dev server, setup, cleanup, and copy files for this repository. These scripts run whenever the repository is used in any workspace.",
+        "setup": {
+          "label": "Setup Script",
+          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
+          "parallelLabel": "Run setup script in parallel with coding agent",
+          "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
+        },
+        "cleanup": {
+          "label": "Cleanup Script",
+          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps."
+        },
+        "copyFiles": {
+          "label": "Copy Files",
+          "helper": "Comma-separated list of files to copy from the original repository directory to the worktree. Useful for environment files like .env. Make sure these are gitignored!",
+          "placeholder": "File paths or glob patterns (e.g., .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Dev Server Script",
+          "helper": "Starts a development server for this repository. Scripts execute from within the repository's worktree directory."
+        }
+      },
+      "save": {
+        "button": "Save Repository Settings",
+        "success": "Repository settings saved successfully!",
+        "error": "Failed to save repository settings",
+        "unsavedChanges": "You have unsaved changes",
+        "discard": "Discard",
+        "confirmSwitch": "You have unsaved changes. Are you sure you want to switch repositories? Your changes will be lost."
       }
     }
   },

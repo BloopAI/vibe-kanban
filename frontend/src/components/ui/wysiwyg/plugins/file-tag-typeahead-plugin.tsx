@@ -5,8 +5,14 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import { $createTextNode } from 'lexical';
+import {
+  $createTextNode,
+  $getRoot,
+  $createParagraphNode,
+  $isParagraphNode,
+} from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -23,7 +29,6 @@ class FileTagOption extends MenuOption {
   }
 }
 
-const MAX_DIALOG_HEIGHT = 320;
 const VIEWPORT_MARGIN = 8;
 const VERTICAL_GAP = 4;
 const VERTICAL_GAP_ABOVE = 24;
@@ -38,13 +43,6 @@ function getMenuPosition(anchorEl: HTMLElement) {
   const spaceBelow = viewportHeight - rect.bottom;
 
   const showBelow = spaceBelow >= spaceAbove;
-
-  const availableVerticalSpace = showBelow ? spaceBelow : spaceAbove;
-
-  const maxHeight = Math.max(
-    0,
-    Math.min(MAX_DIALOG_HEIGHT, availableVerticalSpace - 2 * VIEWPORT_MARGIN)
-  );
 
   let top: number | undefined;
   let bottom: number | undefined;
@@ -61,14 +59,20 @@ function getMenuPosition(anchorEl: HTMLElement) {
     left = Math.max(VIEWPORT_MARGIN, maxLeft);
   }
 
-  return { top, bottom, left, maxHeight };
+  return { top, bottom, left };
 }
 
-export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
+export function FileTagTypeaheadPlugin({
+  workspaceId,
+  projectId,
+}: {
+  workspaceId?: string;
+  projectId?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
-  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-  const lastSelectedIndexRef = useRef<number>(-1);
+  const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
+  const portalContainer = usePortalContainer();
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -79,7 +83,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       }
 
       // Here query is a string, including possible empty string ''
-      searchTagsAndFiles(query, projectId)
+      searchTagsAndFiles(query, { workspaceId, projectId })
         .then((results) => {
           setOptions(results.map((r) => new FileTagOption(r)));
         })
@@ -87,7 +91,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
           console.error('Failed to search tags/files', err);
         });
     },
-    [projectId]
+    [workspaceId, projectId]
   );
 
   return (
@@ -107,21 +111,61 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       onQueryChange={onQueryChange}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
-          const textToInsert =
-            option.item.type === 'tag'
-              ? (option.item.tag?.content ?? '')
-              : (option.item.file?.path ?? '');
-
           if (!nodeToReplace) return;
 
-          // Create the node we want to insert
-          const textNode = $createTextNode(textToInsert);
+          if (option.item.type === 'tag') {
+            // For tags, keep the existing behavior (insert tag content as plain text)
+            const textToInsert = option.item.tag?.content ?? '';
+            const textNode = $createTextNode(textToInsert);
+            nodeToReplace.replace(textNode);
+            textNode.select(textToInsert.length, textToInsert.length);
+          } else {
+            // For files, insert filename as inline code at cursor,
+            // and append full path as inline code at the bottom
+            const fileName = option.item.file?.name ?? '';
+            const fullPath = option.item.file?.path ?? '';
 
-          // Replace the trigger text (e.g., "@test") with selected content
-          nodeToReplace.replace(textNode);
+            // Step 1: Insert filename as inline code at cursor position
+            const fileNameNode = $createTextNode(fileName);
+            fileNameNode.toggleFormat('code');
+            nodeToReplace.replace(fileNameNode);
 
-          // Move the cursor to the end of the inserted text
-          textNode.select(textToInsert.length, textToInsert.length);
+            // Add a space after the inline code for better UX
+            const spaceNode = $createTextNode(' ');
+            fileNameNode.insertAfter(spaceNode);
+            spaceNode.select(1, 1); // Position cursor after the space
+
+            // Step 2: Check if full path already exists at the bottom
+            const root = $getRoot();
+            const children = root.getChildren();
+            let pathAlreadyExists = false;
+
+            // Scan all paragraphs to find if this path already exists as inline code
+            for (const child of children) {
+              if (!$isParagraphNode(child)) continue;
+
+              const textNodes = child.getAllTextNodes();
+              for (const textNode of textNodes) {
+                if (
+                  textNode.hasFormat('code') &&
+                  textNode.getTextContent() === fullPath
+                ) {
+                  pathAlreadyExists = true;
+                  break;
+                }
+              }
+              if (pathAlreadyExists) break;
+            }
+
+            // Step 3: If path doesn't exist, append it at the bottom
+            if (!pathAlreadyExists && fullPath) {
+              const pathParagraph = $createParagraphNode();
+              const pathNode = $createTextNode(fullPath);
+              pathNode.toggleFormat('code');
+              pathParagraph.append(pathNode);
+              root.append(pathParagraph);
+            }
+          }
         });
 
         closeMenu();
@@ -132,35 +176,18 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       ) => {
         if (!anchorRef.current) return null;
 
-        const { top, bottom, left, maxHeight } = getMenuPosition(
-          anchorRef.current
-        );
-
-        // Scroll selected item into view when navigating with arrow keys
-        if (
-          selectedIndex !== null &&
-          selectedIndex !== lastSelectedIndexRef.current
-        ) {
-          lastSelectedIndexRef.current = selectedIndex;
-          setTimeout(() => {
-            const itemEl = itemRefs.current.get(selectedIndex);
-            if (itemEl) {
-              itemEl.scrollIntoView({ block: 'nearest' });
-            }
-          }, 0);
-        }
+        const { top, bottom, left } = getMenuPosition(anchorRef.current);
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
 
         return createPortal(
           <div
-            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
+            className="fixed bg-background border border-border rounded-md shadow-lg"
             style={{
               top,
               bottom,
               left,
-              maxHeight,
               minWidth: MIN_WIDTH,
               zIndex: 10000,
             }}
@@ -183,16 +210,19 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
+                              ? 'bg-muted text-foreground text-high'
+                              : 'hover:bg-muted text-muted-foreground'
                           }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={(e) => {
+                            const pos = { x: e.clientX, y: e.clientY };
+                            const last = lastMousePositionRef.current;
+                            if (!last || last.x !== pos.x || last.y !== pos.y) {
+                              lastMousePositionRef.current = pos;
+                              setHighlightedIndex(index);
+                            }
+                          }}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
                           <div className="flex items-center gap-2 font-medium">
@@ -200,7 +230,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                             <span>@{tag.tag_name}</span>
                           </div>
                           {tag.content && (
-                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            <div className="text-xs mt-0.5 truncate">
                               {tag.content.slice(0, 60)}
                               {tag.content.length > 60 ? '...' : ''}
                             </div>
@@ -224,25 +254,26 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
+                              ? 'bg-muted text-foreground text-high'
+                              : 'hover:bg-muted text-muted-foreground'
                           }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
+                          onMouseMove={(e) => {
+                            const pos = { x: e.clientX, y: e.clientY };
+                            const last = lastMousePositionRef.current;
+                            if (!last || last.x !== pos.x || last.y !== pos.y) {
+                              lastMousePositionRef.current = pos;
+                              setHighlightedIndex(index);
+                            }
+                          }}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
                           <div className="flex items-center gap-2 font-medium truncate">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <FileText className="h-3.5 w-3.5 flex-shrink-0" />
                             <span>{file.name}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {file.path}
-                          </div>
+                          <div className="text-xs truncate">{file.path}</div>
                         </div>
                       );
                     })}
@@ -251,7 +282,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
               </div>
             )}
           </div>,
-          document.body
+          portalContainer ?? document.body
         );
       }}
     />

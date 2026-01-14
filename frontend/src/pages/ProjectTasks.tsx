@@ -9,8 +9,10 @@ import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
+import { BetaWorkspacesDialog } from '@/components/dialogs/global/BetaWorkspacesDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/SearchContext';
@@ -102,10 +104,12 @@ function DiffsPanelContainer({
   attempt,
   selectedTask,
   branchStatus,
+  branchStatusError,
 }: {
   attempt: Workspace | null;
   selectedTask: TaskWithAttemptStatus | null;
   branchStatus: RepoBranchStatus[] | null;
+  branchStatusError?: Error | null;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
@@ -118,6 +122,7 @@ function DiffsPanelContainer({
           ? {
               task: selectedTask,
               branchStatus: branchStatus ?? null,
+              branchStatusError,
               isAttemptRunning,
               selectedBranch: branchStatus?.[0]?.target_branch_name ?? null,
             }
@@ -224,6 +229,45 @@ export function ProjectTasks() {
     seenFeatures,
   ]);
 
+  // Beta workspaces invitation - only fetch count if invitation not yet sent
+  const shouldCheckBetaInvitation =
+    isLoaded && !config?.beta_workspaces_invitation_sent;
+  const { data: workspaceCount } = useWorkspaceCount({
+    enabled: shouldCheckBetaInvitation,
+  });
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (config?.beta_workspaces_invitation_sent) return;
+    if (workspaceCount === undefined || workspaceCount <= 50) return;
+
+    BetaWorkspacesDialog.show().then((joinBeta) => {
+      BetaWorkspacesDialog.hide();
+      void updateAndSaveConfig({
+        beta_workspaces_invitation_sent: true,
+        beta_workspaces: joinBeta === true,
+      });
+      if (joinBeta === true) {
+        navigate('/workspaces');
+      }
+    });
+  }, [
+    isLoaded,
+    config?.beta_workspaces_invitation_sent,
+    workspaceCount,
+    updateAndSaveConfig,
+    navigate,
+  ]);
+
+  // Redirect beta users from old attempt URLs to the new workspaces UI
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!config?.beta_workspaces) return;
+    if (!attemptId || attemptId === 'latest') return;
+
+    navigate(`/workspaces/${attemptId}`, { replace: true });
+  }, [isLoaded, config?.beta_workspaces, attemptId, navigate]);
+
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
     taskId,
@@ -284,7 +328,9 @@ export function ProjectTasks() {
   const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttemptWithSession(effectiveAttemptId);
 
-  const { data: branchStatus } = useBranchStatus(attempt?.id);
+  const { data: branchStatus, error: branchStatusError } = useBranchStatus(
+    attempt?.id
+  );
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
@@ -636,13 +682,19 @@ export function ProjectTasks() {
       if (!projectId) return;
       setSelectedSharedTaskId(null);
 
+      // If beta_workspaces is enabled, always navigate to task view (not attempt)
+      if (config?.beta_workspaces) {
+        navigateWithSearch(paths.task(projectId, task.id));
+        return;
+      }
+
       if (attemptIdToShow) {
         navigateWithSearch(paths.attempt(projectId, task.id, attemptIdToShow));
       } else {
         navigateWithSearch(`${paths.task(projectId, task.id)}/attempts/latest`);
       }
     },
-    [projectId, navigateWithSearch]
+    [projectId, navigateWithSearch, config?.beta_workspaces]
   );
 
   const handleViewSharedTask = useCallback(
@@ -957,7 +1009,7 @@ export function ProjectTasks() {
   ) : null;
 
   const attemptContent = selectedTask ? (
-    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
+    <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       {isTaskView ? (
         <TaskPanel task={selectedTask} />
       ) : (
@@ -986,7 +1038,7 @@ export function ProjectTasks() {
       )}
     </NewCard>
   ) : selectedSharedTask ? (
-    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
+    <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       <SharedTaskPanel task={selectedSharedTask} />
     </NewCard>
   ) : null;
@@ -1000,6 +1052,7 @@ export function ProjectTasks() {
             attempt={attempt}
             selectedTask={selectedTask}
             branchStatus={branchStatus ?? null}
+            branchStatusError={branchStatusError}
           />
         )}
       </div>
@@ -1013,7 +1066,10 @@ export function ProjectTasks() {
     <GitOperationsProvider attemptId={attempt?.id}>
       <ClickedElementsProvider attempt={attempt}>
         <ReviewProvider attemptId={attempt?.id}>
-          <ExecutionProcessesProvider attemptId={attempt?.id}>
+          <ExecutionProcessesProvider
+            attemptId={attempt?.id}
+            sessionId={attempt?.session?.id}
+          >
             <TasksLayout
               kanban={kanbanContent}
               attempt={attemptContent}
@@ -1030,7 +1086,7 @@ export function ProjectTasks() {
   );
 
   return (
-    <div className="min-h-full h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {streamError && (
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">

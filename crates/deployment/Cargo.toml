@@ -1,6 +1,6 @@
 [package]
 name = "deployment"
-version = "0.0.143"
+version = "0.0.151"
 edition = "2024"
 
 [dependencies]
@@ -15,7 +15,7 @@ tokio = { workspace = true }
 sqlx = "0.8.6"
 serde_json = { workspace = true }
 tracing = { workspace = true }
-git2 = "^0.18.1"
+git2 = { workspace = true }
 futures = "0.3.31"
 axum = { workspace = true }
 

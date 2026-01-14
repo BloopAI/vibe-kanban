@@ -120,38 +120,80 @@
     "CURSOR_AGENT": {
       "DEFAULT": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "auto"
+              "force": true,
+              "model": "auto"
+        }
+      },
+      "COMPOSER_1": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "composer-1"
+        }
+      },
+      "GPT_5_1_CODEX_MAX": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.1-codex-max"
+        }
+      },
+      "GPT_5_1_CODEX_MAX_HIGH": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.1-codex-max-high"
+        }
+      },
+      "GPT_5_2": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.2"
+        }
+      },
+      "OPUS_4_5_THINKING": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "opus-4.5-thinking"
+        }
+      },
+      "GPT_5_2_HIGH": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gpt-5.2-high"
+        }
+      },
+      "GEMINI_3_PRO": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "gemini-3-pro"
+        }
+      },
+      "OPUS_4_5": {
+        "CURSOR_AGENT": {
+              "force": true,
+              "model": "opus-4.5"
         }
       },
       "SONNET_4_5": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "sonnet-4.5"
+              "force": true,
+              "model": "sonnet-4.5"
         }
       },
       "SONNET_4_5_THINKING": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "sonnet-4.5-thinking"
+              "force": true,
+              "model": "sonnet-4.5-thinking"
         }
       },
-      "OPUS_4_1": {
+      "GEMINI_3_FLASH": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "opus-4.1"
-        }
-      },
-      "GPT_5": {
-        "CURSOR_AGENT": {
-          "force": true,
-          "model": "gpt-5"
+              "force": true,
+              "model": "gemini-3-flash"
         }
       },
       "GROK": {
         "CURSOR_AGENT": {
-          "force": true,
-          "model": "grok"
+              "force": true,
+              "model": "grok"
         }
       }
     },
@@ -161,16 +203,76 @@
           "allow_all_tools": true
         }
       },
-      "GPT_5": {
+      "GPT_5_2": {
         "COPILOT": {
           "allow_all_tools": true,
-          "model": "gpt-5"
+          "model": "gpt-5.2"
+        }
+      },
+      "GEMINI_3_PRO_PREVIEW": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gemini-3-pro-preview"
+        }
+      },
+      "CLAUDE_OPUS_4_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-opus-4.5"
         }
       },
       "CLAUDE_SONNET_4_5": {
         "COPILOT": {
           "allow_all_tools": true,
           "model": "claude-sonnet-4.5"
+        }
+      },
+      "CLAUDE_HAIKU_4_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "claude-haiku-4.5"
+        }
+      },
+      "GPT_5_1_CODEX_MAX": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex-max"
+        }
+      },
+      "GPT_5_1_CODEX": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex"
+        }
+      },
+      "GPT_5": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5"
+        }
+      },
+      "GPT_5_1": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1"
+        }
+      },
+      "GPT_5_1_CODEX_MINI": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5.1-codex-mini"
+        }
+      },
+      "GPT_5_MINI": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-5-mini"
+        }
+      },
+      "GPT_4_1": {
+        "COPILOT": {
+          "allow_all_tools": true,
+          "model": "gpt-4.1"
         }
       },
       "CLAUDE_SONNET_4": {

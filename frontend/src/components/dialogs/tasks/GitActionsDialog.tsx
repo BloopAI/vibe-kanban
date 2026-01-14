@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader } from '@/components/ui/loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
-import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -16,7 +16,8 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import type { Merge, TaskWithAttemptStatus, Workspace } from 'shared/types';
+import type { Merge, TaskWithAttemptStatus } from 'shared/types';
+import type { WorkspaceWithSession } from '@/types/attempt';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 
@@ -26,7 +27,7 @@ export interface GitActionsDialogProps {
 }
 
 interface GitActionsDialogContentProps {
-  attempt: Workspace;
+  attempt: WorkspaceWithSession;
   task: TaskWithAttemptStatus;
 }
 
@@ -35,7 +36,9 @@ function GitActionsDialogContent({
   task,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
-  const { data: branchStatus } = useBranchStatus(attempt.id);
+  const { data: branchStatus, error: branchStatusError } = useBranchStatus(
+    attempt.id
+  );
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
   const { repos, selectedRepoId } = useAttemptRepo(attempt.id);
@@ -83,6 +86,7 @@ function GitActionsDialogContent({
         selectedAttempt={attempt}
         task={task}
         branchStatus={branchStatus ?? null}
+        branchStatusError={branchStatusError}
         isAttemptRunning={isAttemptRunning}
         selectedBranch={getSelectedRepoStatus()?.target_branch_name ?? null}
         layout="vertical"
@@ -96,7 +100,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('tasks');
 
-    const { data: attempt } = useTaskAttempt(attemptId);
+    const { data: attempt } = useTaskAttemptWithSession(attemptId);
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {
@@ -122,6 +126,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
               <ExecutionProcessesProvider
                 key={attempt.id}
                 attemptId={attempt.id}
+                sessionId={attempt.session?.id}
               >
                 <GitActionsDialogContent attempt={attempt} task={task} />
               </ExecutionProcessesProvider>

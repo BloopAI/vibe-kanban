@@ -4,6 +4,13 @@
   "createProject": "创建项目",
   "linkToOrganization": "链接到远程项目",
   "loading": "加载项目中...",
+  "repoSearch": {
+    "searching": "正在搜索仓库...",
+    "stillSearching": "仍在搜索... ({{seconds}}秒)",
+    "takingLonger": "搜索时间比平时长。您可以在下方手动浏览。",
+    "noReposFound": "在常见位置未找到仓库。",
+    "browseHint": "使用下方选项浏览仓库。"
+  },
   "errors": {
     "fetchFailed": "获取项目失败",
     "deleteFailed": "删除项目失败"
@@ -48,6 +55,5 @@
   "projectNotFound": "您查找的项目不存在或已被删除。",
   "viewProject": "查看项目",
   "openInIDE": "在 IDE 中打开",
-  "createdDate": "创建于 {{date}}",
-  "copyFilesPlaceholderWithSearch": "文件路径或 glob 模式（例如：.env、config/*.json）"
+  "createdDate": "创建于 {{date}}"
 }

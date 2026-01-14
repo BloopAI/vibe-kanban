@@ -49,7 +49,19 @@
     "toolDetailsToggle": {
       "hide": "詳細を非表示",
       "show": "詳細を表示"
-    }
+    },
+    "taskCompleted": "タスク完了",
+    "ran": "実行",
+    "tool": "ツール",
+    "toolSummary": {
+      "read": "{{path}} を読み込み",
+      "searched": "「{{query}}」を検索",
+      "fetched": "{{url}} を取得",
+      "ranCommand": "コマンドを実行",
+      "createdTask": "タスクを作成: {{description}}",
+      "todoOperation": "{{operation}} Todo"
+    },
+    "fixScript": "スクリプトを修正"
   },
   "language": {
     "browserDefault": "ブラウザ設定"
@@ -57,6 +69,7 @@
   "states": {
     "error": "エラー",
     "loading": "読み込み中...",
+    "loadingHistory": "履歴を読み込み中",
     "reconnecting": "再接続中",
     "saving": "保存中...",
     "success": "成功"
@@ -73,6 +86,9 @@
     "loadingPlaceholder": "組織を読み込み中...",
     "selectPlaceholder": "組織を選択",
     "currentBadge": " (現在)"
+  },
+  "navbar": {
+    "tryNewUI": "新しいUIを試す"
   },
   "signOut": "サインアウト",
   "devMode": {
@@ -93,5 +109,157 @@
     "errorTitle": "認証失敗",
     "errorDescription": "アカウントの認証中に問題が発生しました",
     "tryAgain": "再試行"
+  },
+  "toolbar": {
+    "sortBy": "並べ替え",
+    "groupBy": "グループ化"
+  },
+  "sorting": {
+    "ascending": "昇順",
+    "descending": "降順"
+  },
+  "grouping": {
+    "date": "日付",
+    "assignee": "担当者",
+    "label": "ラベル"
+  },
+  "workspaces": {
+    "title": "ワークスペース",
+    "searchPlaceholder": "検索...",
+    "active": "アクティブ",
+    "archived": "アーカイブ済み",
+    "loading": "読み込み中...",
+    "selectToStart": "ワークスペースを選択して開始",
+    "draft": "下書き",
+    "rename": {
+      "title": "ワークスペースの名前を変更",
+      "description": "このワークスペースの新しい名前を入力してください。",
+      "nameLabel": "名前",
+      "placeholder": "ワークスペース名を入力",
+      "action": "名前を変更",
+      "renaming": "名前を変更中..."
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "ファイルを検索...",
+    "noResults": "一致するファイルがありません",
+    "title": "ファイル",
+    "showGitHubComments": "GitHubコメントを表示",
+    "hideGitHubComments": "GitHubコメントを非表示"
+  },
+  "sections": {
+    "changes": "変更",
+    "repositories": "リポジトリ",
+    "addRepositories": "リポジトリを追加",
+    "project": "プロジェクト",
+    "processes": "プロセス",
+    "devServer": "開発サーバー",
+    "advanced": "詳細設定",
+    "workingBranch": "作業ブランチ",
+    "recent": "最近",
+    "other": "その他",
+    "devServerPreview": "開発サーバープレビュー"
+  },
+  "repos": {
+    "loading": "リポジトリを読み込み中...",
+    "noRecentRepos": "最近のリポジトリが見つかりません",
+    "noReposAdded": "リポジトリが追加されていません",
+    "noReposAddedHint": "下のオプションからこのワークスペースにリポジトリを追加してください"
+  },
+  "actions": {
+    "browseRepos": "ディスク上のリポジトリを参照",
+    "createNewRepo": "ディスク上に新しいリポジトリを作成",
+    "viewInChangesPanel": "変更パネルで表示",
+    "copyPath": "パスをコピー",
+    "copyWorktreePath": "ワークツリーパスをコピー",
+    "openInIde": "IDEで開く",
+    "repoSettings": "リポジトリ設定",
+    "cancel": "キャンセル",
+    "saveChanges": "変更を保存",
+    "copied": "コピーしました"
+  },
+  "comments": {
+    "addReviewComment": "レビューコメントを追加",
+    "addPlaceholder": "コメントを追加...",
+    "editPlaceholder": "コメントを編集..."
+  },
+  "confirm": {
+    "defaultConfirm": "確認",
+    "defaultCancel": "キャンセル"
+  },
+  "empty": {
+    "noChanges": "表示する変更がありません"
+  },
+  "commandBar": {
+    "noResults": "結果が見つかりません。",
+    "back": "戻る",
+    "defaultPlaceholder": "コマンドを入力または検索..."
+  },
+  "chatBox": {
+    "variants": "バリアント"
+  },
+  "projects": {
+    "noProjectFound": "プロジェクトが見つかりません",
+    "createFirstPrompt": "タスクを開始するには、まずプロジェクトを作成してください。",
+    "createNew": "新しいプロジェクトを作成",
+    "noProjectsFound": "プロジェクトが見つかりません"
+  },
+  "betaWorkspaces": {
+    "title": "新しいUIを試す",
+    "intro": "Vibe KanbanのUIをゼロから再構築しました。あなたは試用に招待されています。",
+    "newUiDescription": "新しいUIは日常業務に最適化されています：エージェントの管理、変更のプレビュー、コードのレビュー。また、旧UIでは利用できない機能も利用可能になります：",
+    "newFeatures": {
+      "multiRepo": "複数のリポジトリを同時に編集",
+      "multiAgent": "単一のワークスペースで複数のエージェント会話（異なるエージェント間でも）を実行",
+      "commandBar": "コマンドバーでより高速なナビゲーション"
+    },
+    "oldUiDescription": "現時点では、いくつかの機能は現在のUIに残っています：",
+    "oldFeatures": {
+      "kanban": "カンバンボードでのタスク管理",
+      "settings": "設定の変更",
+      "projects": "プロジェクトの管理"
+    },
+    "transition": "今後数週間の移行期間中は、両方のUIを行き来します。",
+    "optOutNote": "オプトアウトしたい場合は、設定からいつでも現在のUIに戻すことができます。",
+    "joinBeta": "ベータに参加",
+    "maybeLater": "後で"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "ようこそ",
+      "content": "Vibe Kanbanの新しいUIであるWorkspacesへようこそ。早期フィードバックのために一部のユーザーに先行公開しています。ナビバーのフィードバックアイコンからいつでもご意見をお聞かせください。"
+    },
+    "commandBar": {
+      "title": "コマンドバー",
+      "content": "コマンドバーはナビゲーションの中心となるハブです。CMD+Kで開いて、ワークスペースで利用可能なすべてのアクションを検索・アクセスできます。"
+    },
+    "contextBar": {
+      "title": "コンテキストバー",
+      "content": "コンテキストバーでペイン間をすばやく切り替えられます。使いやすい場所にドラッグして配置できます。"
+    },
+    "sidebar": {
+      "title": "ワークスペースサイドバー",
+      "content": "すべてのワークスペースの状態を一目で確認できます。通知により注意が必要なワークスペースがハイライトされます。マージ済みのワークスペースをアーカイブしてサイドバーを整理しましょう。"
+    },
+    "multiRepo": {
+      "title": "マルチリポジトリ対応",
+      "content": "1つのワークスペースに複数のリポジトリを追加できます。別のリポジトリで作業しながら他のリポジトリのコードを参照したり、複数のリポジトリにまたがる変更を同時に実装できます。"
+    },
+    "sessions": {
+      "title": "複数セッション",
+      "content": "1つのワークスペース内で複数のエージェント会話セッションを作成できます（異なるエージェントとのセッションも含む）。これにより会話の制限を回避したり、別スレッドでレビューエージェントを起動できます。"
+    },
+    "preview": {
+      "title": "変更のプレビュー",
+      "content": "コンテキストを切り替えることなく、内蔵ブラウザで作業をプレビューできます。デスクトップ、モバイル、カスタムビューポートサイズでテストできます。"
+    },
+    "diffs": {
+      "title": "差分とコメント",
+      "content": "再設計された差分パネルには変更のファイルツリーが含まれています。差分に直接コメントしてエージェントにフィードバックを送ったり、ワークスペースがPRにリンクされている場合はGitHubコメントを表示できます。"
+    },
+    "classicUi": {
+      "title": "クラシックUIに戻る",
+      "content": "ナビバー左側の終了アイコンをクリックすると、クラシックカンバンボードに戻ります。新しいUIを完全に無効にするには、設定の「ベータ機能」にある「Workspacesベータを有効にする」オプションを更新してください。"
+    }
   }
 }

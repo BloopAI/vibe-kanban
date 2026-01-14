@@ -18,8 +18,6 @@ use db::{
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
-        project::{Project, UpdateProject},
-        project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
         session::{CreateSession, Session, SessionError},
         task::{Task, TaskStatus},
@@ -27,6 +25,10 @@ use db::{
         workspace_repo::WorkspaceRepo,
     },
 };
+#[cfg(feature = "qa-mode")]
+use executors::executors::qa_mock::QaMockExecutor;
+#[cfg(not(feature = "qa-mode"))]
+use executors::profile::ExecutorConfigs;
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
@@ -35,7 +37,7 @@ use executors::{
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::ExecutorProfileId,
 };
 use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
@@ -371,60 +373,12 @@ pub trait ContainerService {
                 .to_string();
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
-
-            // Also update dev_script_working_dir and agent_working_dir for single-repo projects
-            let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
-            for pr in project_repos {
-                let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
-                if all_repos.len() == 1
-                    && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
-                {
-                    let needs_dev_script_working_dir = project
-                        .dev_script
-                        .as_ref()
-                        .map(|s| !s.is_empty())
-                        .unwrap_or(false)
-                        && project
-                            .dev_script_working_dir
-                            .as_ref()
-                            .map(|s| s.is_empty())
-                            .unwrap_or(true);
-
-                    let needs_default_agent_working_dir = project
-                        .default_agent_working_dir
-                        .as_ref()
-                        .map(|s| s.is_empty())
-                        .unwrap_or(true);
-
-                    if needs_dev_script_working_dir || needs_default_agent_working_dir {
-                        Project::update(
-                            pool,
-                            pr.project_id,
-                            &UpdateProject {
-                                name: Some(project.name.clone()),
-                                dev_script: project.dev_script.clone(),
-                                dev_script_working_dir: if needs_dev_script_working_dir {
-                                    Some(name.clone())
-                                } else {
-                                    project.dev_script_working_dir.clone()
-                                },
-                                default_agent_working_dir: if needs_default_agent_working_dir {
-                                    Some(name.clone())
-                                } else {
-                                    project.default_agent_working_dir.clone()
-                                },
-                            },
-                        )
-                        .await?;
-                    }
-                }
-            }
         }
 
         Ok(())
     }
 
-    fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
+    fn cleanup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
             .filter(|r| r.cleanup_script.is_some())
@@ -441,7 +395,7 @@ pub trait ContainerService {
                 script: first.cleanup_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::CleanupScript,
-                working_dir: Some(first.repo_name.clone()),
+                working_dir: Some(first.name.clone()),
             }),
             None,
         );
@@ -452,7 +406,7 @@ pub trait ContainerService {
                     script: repo.cleanup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::CleanupScript,
-                    working_dir: Some(repo.repo_name.clone()),
+                    working_dir: Some(repo.name.clone()),
                 }),
                 None,
             ));
@@ -461,7 +415,7 @@ pub trait ContainerService {
         Some(root_action)
     }
 
-    fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
+    fn setup_actions_for_repos(&self, repos: &[Repo]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
         if repos_with_setup.is_empty() {
@@ -475,7 +429,7 @@ pub trait ContainerService {
                 script: first.setup_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::SetupScript,
-                working_dir: Some(first.repo_name.clone()),
+                working_dir: Some(first.name.clone()),
             }),
             None,
         );
@@ -486,7 +440,7 @@ pub trait ContainerService {
                     script: repo.setup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::SetupScript,
-                    working_dir: Some(repo.repo_name.clone()),
+                    working_dir: Some(repo.name.clone()),
                 }),
                 None,
             ));
@@ -495,14 +449,14 @@ pub trait ContainerService {
         Some(root_action)
     }
 
-    fn setup_action_for_repo(repo: &ProjectRepoWithName) -> Option<ExecutorAction> {
+    fn setup_action_for_repo(repo: &Repo) -> Option<ExecutorAction> {
         repo.setup_script.as_ref().map(|script| {
             ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
                     script: script.clone(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::SetupScript,
-                    working_dir: Some(repo.repo_name.clone()),
+                    working_dir: Some(repo.name.clone()),
                 }),
                 None,
             )
@@ -510,7 +464,7 @@ pub trait ContainerService {
     }
 
     fn build_sequential_setup_chain(
-        repos: &[&ProjectRepoWithName],
+        repos: &[&Repo],
         next_action: ExecutorAction,
     ) -> ExecutorAction {
         let mut chained = next_action;
@@ -521,7 +475,7 @@ pub trait ContainerService {
                         script: script.clone(),
                         language: ScriptRequestLanguage::Bash,
                         context: ScriptContext::SetupScript,
-                        working_dir: Some(repo.repo_name.clone()),
+                        working_dir: Some(repo.name.clone()),
                     }),
                     Some(Box::new(chained)),
                 );
@@ -775,11 +729,50 @@ pub trait ContainerService {
             // Spawn normalizer on populated store
             match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    #[cfg(feature = "qa-mode")]
+                    {
+                        let executor = QaMockExecutor;
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
+                    #[cfg(not(feature = "qa-mode"))]
+                    {
+                        let executor = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_profile_id);
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                    #[cfg(feature = "qa-mode")]
+                    {
+                        let executor = QaMockExecutor;
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
+                    #[cfg(not(feature = "qa-mode"))]
+                    {
+                        let executor = ExecutorConfigs::get_cached()
+                            .get_coding_agent_or_default(&request.executor_profile_id);
+                        executor.normalize_logs(
+                            temp_store.clone(),
+                            &request.effective_dir(&current_dir),
+                        );
+                    }
+                }
+                #[cfg(feature = "qa-mode")]
+                ExecutorActionType::ReviewRequest(_request) => {
+                    let executor = QaMockExecutor;
+                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                }
+                #[cfg(not(feature = "qa-mode"))]
+                ExecutorActionType::ReviewRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
                     executor.normalize_logs(temp_store.clone(), &current_dir);
@@ -871,7 +864,7 @@ pub trait ContainerService {
                         LogMsg::Finished => {
                             break;
                         }
-                        LogMsg::JsonPatch(_) => continue,
+                        LogMsg::JsonPatch(_) | LogMsg::Ready => continue,
                     }
                 }
             }
@@ -892,14 +885,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Get parent project
-        let project = task
-            .parent_project(&self.db().pool)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
-
-        let project_repos =
-            ProjectRepo::find_by_project_id_with_names(&self.db().pool, project.id).await?;
+        let repos = WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace.id).await?;
 
         let workspace = Workspace::find_by_id(&self.db().pool, workspace.id)
             .await?
@@ -918,14 +904,11 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        let repos_with_setup: Vec<_> = project_repos
-            .iter()
-            .filter(|pr| pr.setup_script.is_some())
-            .collect();
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
-        let all_parallel = repos_with_setup.iter().all(|pr| pr.parallel_setup_script);
+        let all_parallel = repos_with_setup.iter().all(|r| r.parallel_setup_script);
 
-        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = workspace
             .agent_working_dir
@@ -1048,6 +1031,8 @@ pub trait ContainerService {
         )
         .await?;
 
+        Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {
                 Some(coding_agent_request.prompt.clone())
@@ -1055,7 +1040,10 @@ pub trait ContainerService {
             ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request) => {
                 Some(follow_up_request.prompt.clone())
             }
-            _ => None,
+            ExecutorActionType::ReviewRequest(review_request) => {
+                Some(review_request.prompt.clone())
+            }
+            ExecutorActionType::ScriptRequest(_) => None,
         } {
             let create_coding_agent_turn = CreateCodingAgentTurn {
                 execution_process_id: execution_process.id,
@@ -1131,26 +1119,42 @@ pub trait ContainerService {
         }
 
         // Start processing normalised logs for executor requests and follow ups
+        let workspace_root = self.workspace_to_current_dir(workspace);
+        #[cfg_attr(feature = "qa-mode", allow(unused_variables))]
         if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await
-            && let Some(executor_profile_id) = match executor_action.typ() {
-                ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    Some(&request.executor_profile_id)
-                }
-                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    Some(&request.executor_profile_id)
-                }
+            && let Some((executor_profile_id, working_dir)) = match executor_action.typ() {
+                ExecutorActionType::CodingAgentInitialRequest(request) => Some((
+                    &request.executor_profile_id,
+                    request.effective_dir(&workspace_root),
+                )),
+                ExecutorActionType::CodingAgentFollowUpRequest(request) => Some((
+                    &request.executor_profile_id,
+                    request.effective_dir(&workspace_root),
+                )),
+                ExecutorActionType::ReviewRequest(request) => Some((
+                    &request.executor_profile_id,
+                    request.effective_dir(&workspace_root),
+                )),
                 _ => None,
             }
         {
-            if let Some(executor) =
-                ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
+            #[cfg(feature = "qa-mode")]
             {
-                executor.normalize_logs(msg_store, &self.workspace_to_current_dir(workspace));
-            } else {
-                tracing::error!(
-                    "Failed to resolve profile '{:?}' for normalization",
-                    executor_profile_id
-                );
+                let executor = QaMockExecutor;
+                executor.normalize_logs(msg_store, &working_dir);
+            }
+            #[cfg(not(feature = "qa-mode"))]
+            {
+                if let Some(executor) =
+                    ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
+                {
+                    executor.normalize_logs(msg_store, &working_dir);
+                } else {
+                    tracing::error!(
+                        "Failed to resolve profile '{:?}' for normalization",
+                        executor_profile_id
+                    );
+                }
             }
         }
 
@@ -1174,13 +1178,15 @@ pub trait ContainerService {
             }
             (
                 ExecutorActionType::CodingAgentInitialRequest(_)
-                | ExecutorActionType::CodingAgentFollowUpRequest(_),
+                | ExecutorActionType::CodingAgentFollowUpRequest(_)
+                | ExecutorActionType::ReviewRequest(_),
                 ExecutorActionType::ScriptRequest(_),
             ) => ExecutionProcessRunReason::CleanupScript,
             (
                 _,
                 ExecutorActionType::CodingAgentFollowUpRequest(_)
-                | ExecutorActionType::CodingAgentInitialRequest(_),
+                | ExecutorActionType::CodingAgentInitialRequest(_)
+                | ExecutorActionType::ReviewRequest(_),
             ) => ExecutionProcessRunReason::CodingAgent,
         };
 

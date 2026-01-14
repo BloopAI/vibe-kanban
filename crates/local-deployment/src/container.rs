@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
     time::Duration,
 };
@@ -17,7 +18,6 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
-        project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
@@ -46,7 +46,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, GitCli, GitService},
+    git::{GitCli, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
@@ -112,7 +112,7 @@ impl LocalContainerService {
             notification_service,
         };
 
-        container.spawn_workspace_cleanup().await;
+        container.spawn_workspace_cleanup();
 
         container
     }
@@ -194,19 +194,20 @@ impl LocalContainerService {
         Ok(())
     }
 
-    pub async fn spawn_workspace_cleanup(&self) {
+    pub fn spawn_workspace_cleanup(&self) {
         let db = self.db.clone();
-        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
-        WorkspaceManager::cleanup_orphan_workspaces(&self.db.pool).await;
+        let cleanup_expired = Self::cleanup_expired_workspaces;
         tokio::spawn(async move {
+            WorkspaceManager::cleanup_orphan_workspaces(&db.pool).await;
+
+            let mut cleanup_interval =
+                tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic workspace cleanup...");
-                Self::cleanup_expired_workspaces(&db)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::error!("Failed to clean up expired workspaces: {}", e)
-                    });
+                cleanup_expired(&db).await.unwrap_or_else(|e| {
+                    tracing::error!("Failed to clean up expired workspaces: {}", e)
+                });
             }
         });
     }
@@ -631,20 +632,11 @@ impl LocalContainerService {
     /// Returns a stream that owns the filesystem watcher - when dropped, watcher is cleaned up
     async fn create_live_diff_stream(
         &self,
-        worktree_path: &Path,
-        base_commit: &Commit,
-        stats_only: bool,
-        path_prefix: Option<String>,
+        args: diff_stream::DiffStreamArgs,
     ) -> Result<DiffStreamHandle, ContainerError> {
-        diff_stream::create(
-            self.git().clone(),
-            worktree_path.to_path_buf(),
-            base_commit.clone(),
-            stats_only,
-            path_prefix,
-        )
-        .await
-        .map_err(|e| ContainerError::Other(anyhow!("{e}")))
+        diff_stream::create(args)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
 
     /// Extract the last assistant message from the MsgStore history
@@ -725,7 +717,11 @@ impl LocalContainerService {
 
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(workspace_dir, workspace.task_id)
+            .copy_images_by_task_to_worktree(
+                workspace_dir,
+                workspace.task_id,
+                workspace.agent_working_dir.as_deref(),
+            )
             .await
         {
             tracing::warn!("Failed to copy task images to workspace: {}", e);
@@ -796,16 +792,31 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Get executor profile from the latest CodingAgent process in this session
-        let initial_executor_profile_id =
-            ExecutionProcess::latest_executor_profile_for_session(&self.db.pool, ctx.session.id)
-                .await
-                .map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to get executor profile: {e}"))
+        // Get executor from the latest CodingAgent process, or fall back to session's executor
+        let base_executor = match ExecutionProcess::latest_executor_profile_for_session(
+            &self.db.pool,
+            ctx.session.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?
+        {
+            Some(profile) => profile.executor,
+            None => {
+                // No prior execution - use session's executor field
+                let executor_str = ctx.session.executor.as_ref().ok_or_else(|| {
+                    ContainerError::Other(anyhow!(
+                        "No prior execution and no executor configured on session"
+                    ))
                 })?;
+                BaseCodingAgent::from_str(&executor_str.replace('-', "_").to_ascii_uppercase())
+                    .map_err(|_| {
+                        ContainerError::Other(anyhow!("Invalid executor: {}", executor_str))
+                    })?
+            }
+        };
 
         let executor_profile_id = ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
+            executor: base_executor,
             variant: queued_data.variant.clone(),
         };
 
@@ -816,9 +827,9 @@ impl LocalContainerService {
         )
         .await?;
 
-        let project_repos =
-            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
-        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+        let repos =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, ctx.workspace.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = ctx
             .workspace
@@ -968,6 +979,7 @@ impl ContainerService for LocalContainerService {
         &self,
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
+        Workspace::touch(&self.db.pool, workspace.id).await?;
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
 
@@ -1270,12 +1282,19 @@ impl ContainerService for LocalContainerService {
             };
 
             let stream = self
-                .create_live_diff_stream(
-                    &worktree_path,
-                    &base_commit,
+                .create_live_diff_stream(diff_stream::DiffStreamArgs {
+                    git_service: self.git().clone(),
+                    db: self.db().clone(),
+                    workspace_id: workspace.id,
+                    repo_id: repo.id,
+                    repo_path: repo.path.clone(),
+                    worktree_path: worktree_path.clone(),
+                    branch: branch.to_string(),
+                    target_branch: target_branch.clone(),
+                    base_commit: base_commit.clone(),
                     stats_only,
-                    Some(repo.name.clone()),
-                )
+                    path_prefix: Some(repo.name.clone()),
+                })
                 .await?;
 
             streams.push(Box::pin(stream));

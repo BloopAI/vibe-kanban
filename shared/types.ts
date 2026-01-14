@@ -12,29 +12,33 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, dev_script: string | null, dev_script_working_dir: string | null, default_agent_working_dir: string | null, };
+export type UpdateProject = { name: string | null, };
 
-export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
+export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, 
+/**
+ * Ranking score based on git history (higher = more recently/frequently edited)
+ */
+score: bigint, };
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Repo = { id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
 
-export type ProjectRepo = { id: string, project_id: string, repo_id: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, };
+export type UpdateRepo = { display_name: string | null, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, dev_server_script: string | null, };
+
+export type ProjectRepo = { id: string, project_id: string, repo_id: string, };
 
 export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
-
-export type UpdateProjectRepo = { setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
 
 export type WorkspaceRepo = { id: string, workspace_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 
 export type CreateWorkspaceRepo = { repo_id: string, target_branch: string, };
 
-export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
+export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, setup_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, dev_server_script: string | null, created_at: Date, updated_at: Date, };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -56,9 +60,15 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
-export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };
+export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, };
 
-export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP" }
+export type DraftWorkspaceRepo = { repo_id: string, target_branch: string, };
+
+export type PreviewSettingsData = { url: string, screen_size: string | null, responsive_width: number | null, responsive_height: number | null, };
+
+export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "PREVIEW_SETTINGS", "data": PreviewSettingsData };
+
+export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP", DRAFT_WORKSPACE = "DRAFT_WORKSPACE", PREVIEW_SETTINGS = "PREVIEW_SETTINGS" }
 
 export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
 
@@ -70,7 +80,9 @@ export type Image = { id: string, file_path: string, original_name: string, mime
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
 
-export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
+
+export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
 
 export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, };
 
@@ -112,7 +124,7 @@ contentOmitted: boolean,
 /**
  * Optional precomputed stats for omitted content
  */
-additions: number | null, deletions: number | null, };
+additions: number | null, deletions: number | null, repoId: string | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
@@ -222,6 +234,10 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type StartReviewRequest = { executor_profile_id: ExecutorProfileId, additional_prompt: string | null, use_all_workspace_commits: boolean, };
+
+export type ReviewError = { "type": "process_already_running" };
+
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
 export type OpenEditorResponse = { url: string | null, };
@@ -232,7 +248,7 @@ export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
-export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
+export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -256,7 +272,7 @@ export type GitOperationError = { "type": "merge_conflicts", message: string, op
 
 export type PushError = { "type": "force_push_required" };
 
-export type CreatePrError = { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, };
+export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
 
 export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
@@ -280,11 +296,13 @@ export type AttachExistingPrRequest = { repo_id: string, };
 
 export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 
-export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" };
+export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_not_logged_in", provider: ProviderKind, };
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
-export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string, body: string, created_at: string, url: string, } | { "comment_type": "review", id: bigint, author: string, author_association: string, body: string, created_at: string, url: string, path: string, line: bigint | null, diff_hunk: string, };
+export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string | null, body: string, created_at: string, url: string | null, } | { "comment_type": "review", id: bigint, author: string, author_association: string | null, body: string, created_at: string, url: string | null, path: string, line: bigint | null, side: string | null, diff_hunk: string | null, };
+
+export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
@@ -300,11 +318,61 @@ conflict_op: ConflictOp | null,
  */
 conflicted_files: Array<string>, };
 
+export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
+
+export type WorkspaceSummaryRequest = { archived: boolean, };
+
+export type WorkspaceSummary = { workspace_id: string, 
+/**
+ * Session ID of the latest execution process
+ */
+latest_session_id: string | null, 
+/**
+ * Is a tool approval currently pending?
+ */
+has_pending_approval: boolean, 
+/**
+ * Number of files with changes
+ */
+files_changed: number | null, 
+/**
+ * Total lines added across all files
+ */
+lines_added: number | null, 
+/**
+ * Total lines removed across all files
+ */
+lines_removed: number | null, 
+/**
+ * When the latest execution process completed
+ */
+latest_process_completed_at?: string, 
+/**
+ * Status of the latest execution process
+ */
+latest_process_status: ExecutionProcessStatus | null, 
+/**
+ * Is a dev server currently running?
+ */
+has_running_dev_server: boolean, 
+/**
+ * Does this workspace have unseen coding agent turns?
+ */
+has_unseen_turns: boolean, 
+/**
+ * PR status for this workspace (if any PR exists)
+ */
+pr_status: MergeStatus | null, };
+
+export type WorkspaceSummaryResponse = { summaries: Array<WorkspaceSummary>, };
+
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, };
+export type SearchMode = "taskform" | "settings";
+
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, beta_workspaces: boolean, beta_workspaces_invitation_sent: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -320,7 +388,7 @@ export type GitHubConfig = { pat: string | null, oauth_token: string | null, use
 
 export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "ABSTRACT_SOUND2", ABSTRACT_SOUND3 = "ABSTRACT_SOUND3", ABSTRACT_SOUND4 = "ABSTRACT_SOUND4", COW_MOOING = "COW_MOOING", PHONE_VIBRATION = "PHONE_VIBRATION", ROOSTER = "ROOSTER" }
 
-export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS";
+export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS" | "ZH_HANT";
 
 export type ShowcaseState = { seen_features: Array<string>, };
 
@@ -350,7 +418,7 @@ export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAct
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
-export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
+export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest | { "type": "ReviewRequest" } & ReviewRequest;
 
 export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
 
@@ -455,6 +523,18 @@ executor_profile_id: ExecutorProfileId,
  */
 working_dir: string | null, };
 
+export type ReviewRequest = { executor_profile_id: ExecutorProfileId, context: Array<RepoReviewContext> | null, prompt: string, 
+/**
+ * Optional session ID to resume an existing session
+ */
+session_id: string | null, 
+/**
+ * Optional relative path to execute the agent in (relative to container_ref).
+ */
+working_dir: string | null, };
+
+export type RepoReviewContext = { repo_id: string, repo_name: string, base_commit: string, };
+
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 
 export type CommandRunResult = { exit_status: CommandExitStatus | null, output: string | null, };
@@ -493,7 +573,7 @@ export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
-export const DEFAULT_PR_DESCRIPTION_PROMPT = `Update the GitHub PR that was just created with a better title and description.
+export const DEFAULT_PR_DESCRIPTION_PROMPT = `Update the PR that was just created with a better title and description.
 The PR number is #{pr_number} and the URL is {pr_url}.
 
 Analyze the changes in this branch and write:
@@ -504,4 +584,4 @@ Analyze the changes in this branch and write:
    - Any important implementation details
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
-Use \`gh pr edit\` to update the PR.`;
+Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).`;

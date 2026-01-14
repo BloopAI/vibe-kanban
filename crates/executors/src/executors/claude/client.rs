@@ -74,7 +74,10 @@ impl ClaudeAgentClient {
                                 updated_permissions: Some(vec![PermissionUpdate {
                                     update_type: PermissionUpdateType::SetMode,
                                     mode: Some(PermissionMode::BypassPermissions),
-                                    destination: PermissionUpdateDestination::Session,
+                                    destination: Some(PermissionUpdateDestination::Session),
+                                    rules: None,
+                                    behavior: None,
+                                    directories: None,
                                 }]),
                             })
                         } else {

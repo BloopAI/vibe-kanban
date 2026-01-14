@@ -1,0 +1,648 @@
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  type Session,
+  type ToolStatus,
+  type BaseCodingAgent,
+} from 'shared/types';
+import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useUserSystem } from '@/components/ConfigProvider';
+import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
+import { useMessageEditContext } from '@/contexts/MessageEditContext';
+import { useEntries } from '@/contexts/EntriesContext';
+import { useReviewOptional } from '@/contexts/ReviewProvider';
+import { useActions } from '@/contexts/ActionsContext';
+import { useTodos } from '@/hooks/useTodos';
+import { getLatestProfileFromProcesses } from '@/utils/executor';
+import { useExecutorSelection } from '@/hooks/useExecutorSelection';
+import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
+import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
+import { useSessionSend } from '@/hooks/useSessionSend';
+import { useSessionAttachments } from '@/hooks/useSessionAttachments';
+import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useApprovalMutation } from '@/hooks/useApprovalMutation';
+import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import {
+  SessionChatBox,
+  type ExecutionStatus,
+} from '../primitives/SessionChatBox';
+import { Actions, type ActionDefinition } from '../actions';
+import {
+  isActionVisible,
+  useActionVisibilityContext,
+} from '../actions/useActionVisibility';
+
+/** Compute execution status from boolean flags */
+function computeExecutionStatus(params: {
+  isInFeedbackMode: boolean;
+  isInEditMode: boolean;
+  isStopping: boolean;
+  isQueueLoading: boolean;
+  isSendingFollowUp: boolean;
+  isQueued: boolean;
+  isAttemptRunning: boolean;
+}): ExecutionStatus {
+  if (params.isInFeedbackMode) return 'feedback';
+  if (params.isInEditMode) return 'edit';
+  if (params.isStopping) return 'stopping';
+  if (params.isQueueLoading) return 'queue-loading';
+  if (params.isSendingFollowUp) return 'sending';
+  if (params.isQueued) return 'queued';
+  if (params.isAttemptRunning) return 'running';
+  return 'idle';
+}
+
+interface SessionChatBoxContainerProps {
+  /** The current session */
+  session?: Session;
+  /** Task ID for execution tracking */
+  taskId?: string;
+  /** Number of files changed in current session */
+  filesChanged?: number;
+  /** Number of lines added */
+  linesAdded?: number;
+  /** Number of lines removed */
+  linesRemoved?: number;
+  /** Callback to view code changes (toggle ChangesPanel) */
+  onViewCode?: () => void;
+  /** Available sessions for this workspace */
+  sessions?: Session[];
+  /** Called when a session is selected */
+  onSelectSession?: (sessionId: string) => void;
+  /** Project ID for file search in typeahead */
+  projectId?: string;
+  /** Whether user is creating a new session */
+  isNewSessionMode?: boolean;
+  /** Callback to start new session mode */
+  onStartNewSession?: () => void;
+  /** Workspace ID for creating new sessions */
+  workspaceId?: string;
+}
+
+export function SessionChatBoxContainer({
+  session,
+  taskId,
+  filesChanged,
+  linesAdded,
+  linesRemoved,
+  onViewCode,
+  sessions = [],
+  onSelectSession,
+  projectId,
+  isNewSessionMode = false,
+  onStartNewSession,
+  workspaceId: propWorkspaceId,
+}: SessionChatBoxContainerProps) {
+  const workspaceId = propWorkspaceId ?? session?.workspace_id;
+  const sessionId = session?.id;
+  const queryClient = useQueryClient();
+
+  const { executeAction } = useActions();
+  const actionCtx = useActionVisibilityContext();
+
+  // Get entries early to extract pending approval for scratch key
+  const { entries } = useEntries();
+
+  // Extract pending approval metadata from entries (needed for scratchId)
+  const pendingApproval = useMemo(() => {
+    for (const entry of entries) {
+      if (entry.type !== 'NORMALIZED_ENTRY') continue;
+      const entryType = entry.content.entry_type;
+      if (
+        entryType.type === 'tool_use' &&
+        entryType.status.status === 'pending_approval'
+      ) {
+        const status = entryType.status as Extract<
+          ToolStatus,
+          { status: 'pending_approval' }
+        >;
+        return {
+          approvalId: status.approval_id,
+          timeoutAt: status.timeout_at,
+          executionProcessId: entry.executionProcessId,
+        };
+      }
+    }
+    return null;
+  }, [entries]);
+
+  // Use approval_id as scratch key when pending approval exists to avoid
+  // prefilling approval response with queued follow-up message
+  const scratchId = useMemo(() => {
+    if (pendingApproval?.approvalId) {
+      return pendingApproval.approvalId;
+    }
+    return isNewSessionMode ? workspaceId : sessionId;
+  }, [pendingApproval?.approvalId, isNewSessionMode, workspaceId, sessionId]);
+
+  // Execution state
+  const { isAttemptRunning, stopExecution, isStopping, processes } =
+    useAttemptExecution(workspaceId, taskId);
+
+  // Approval feedback context
+  const feedbackContext = useApprovalFeedbackOptional();
+  const isInFeedbackMode = !!feedbackContext?.activeApproval;
+
+  // Message edit context
+  const editContext = useMessageEditContext();
+  const isInEditMode = editContext.isInEditMode;
+
+  // Get todos from entries
+  const { inProgressTodo } = useTodos(entries);
+
+  // Review comments context (optional - only available when ReviewProvider wraps this)
+  const reviewContext = useReviewOptional();
+  const reviewMarkdown = useMemo(
+    () => reviewContext?.generateReviewMarkdown() ?? '',
+    [reviewContext]
+  );
+  const hasReviewComments = (reviewContext?.comments.length ?? 0) > 0;
+
+  // Approval mutation for approve/deny actions
+  const { approveAsync, denyAsync, isApproving, isDenying, denyError } =
+    useApprovalMutation();
+
+  // Branch status for edit retry and conflict detection
+  const { data: branchStatus } = useBranchStatus(workspaceId);
+
+  // Derive conflict state from branch status
+  const hasConflicts = useMemo(() => {
+    return (
+      branchStatus?.some((r) => (r.conflicted_files?.length ?? 0) > 0) ?? false
+    );
+  }, [branchStatus]);
+
+  const conflictedFilesCount = useMemo(() => {
+    return (
+      branchStatus?.reduce(
+        (sum, r) => sum + (r.conflicted_files?.length ?? 0),
+        0
+      ) ?? 0
+    );
+  }, [branchStatus]);
+
+  // User profiles, config preference, and latest executor from processes
+  const { profiles, config } = useUserSystem();
+
+  // Fetch processes from last session to get full profile (only in new session mode)
+  const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
+  const { executionProcesses: lastSessionProcesses } =
+    useExecutionProcesses(lastSessionId);
+
+  // Compute latestProfileId: current processes > last session processes > session metadata
+  const latestProfileId = useMemo(() => {
+    // Current session's processes take priority
+    const fromProcesses = getLatestProfileFromProcesses(processes);
+    if (fromProcesses) return fromProcesses;
+
+    // Try full profile from last session's processes (includes variant)
+    const fromLastSession = getLatestProfileFromProcesses(lastSessionProcesses);
+    if (fromLastSession) return fromLastSession;
+
+    // Fallback: just executor from session metadata, no variant
+    const lastSessionExecutor = sessions?.[0]?.executor;
+    if (lastSessionExecutor) {
+      return {
+        executor: lastSessionExecutor as BaseCodingAgent,
+        variant: null,
+      };
+    }
+
+    return null;
+  }, [processes, lastSessionProcesses, sessions]);
+
+  // Message editor state
+  const {
+    localMessage,
+    setLocalMessage,
+    scratchData,
+    isScratchLoading,
+    hasInitialValue,
+    saveToScratch,
+    clearDraft,
+    cancelDebouncedSave,
+    handleMessageChange,
+  } = useSessionMessageEditor({ scratchId });
+
+  // Ref to access current message value for attachment handler
+  const localMessageRef = useRef(localMessage);
+  useEffect(() => {
+    localMessageRef.current = localMessage;
+  }, [localMessage]);
+
+  // Attachment handling - insert markdown when images are uploaded
+  const handleInsertMarkdown = useCallback(
+    (markdown: string) => {
+      const currentMessage = localMessageRef.current;
+      const newMessage = currentMessage.trim()
+        ? `${currentMessage}\n\n${markdown}`
+        : markdown;
+      setLocalMessage(newMessage);
+    },
+    [setLocalMessage]
+  );
+
+  const { uploadFiles, localImages, clearUploadedImages } =
+    useSessionAttachments(workspaceId, handleInsertMarkdown);
+
+  // Executor/variant selection
+  const {
+    effectiveExecutor,
+    executorOptions,
+    handleExecutorChange,
+    selectedVariant,
+    variantOptions,
+    setSelectedVariant: setVariantFromHook,
+  } = useExecutorSelection({
+    profiles,
+    latestProfileId,
+    isNewSessionMode,
+    scratchVariant: scratchData?.variant,
+    configExecutorProfile: config?.executor_profile,
+  });
+
+  // Wrap variant change to also save to scratch
+  const setSelectedVariant = useCallback(
+    (variant: string | null) => {
+      setVariantFromHook(variant);
+      saveToScratch(localMessage, variant);
+    },
+    [setVariantFromHook, saveToScratch, localMessage]
+  );
+
+  // Queue interaction
+  const {
+    isQueued,
+    queuedMessage,
+    isQueueLoading,
+    queueMessage,
+    cancelQueue,
+    refreshQueueStatus,
+  } = useSessionQueueInteraction({ sessionId });
+
+  // Send actions
+  const {
+    send,
+    isSending,
+    error: sendError,
+    clearError,
+  } = useSessionSend({
+    sessionId,
+    workspaceId,
+    isNewSessionMode,
+    effectiveExecutor,
+    onSelectSession,
+  });
+
+  const handleSend = useCallback(async () => {
+    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
+    const combinedMessage = messageParts.join('\n\n');
+
+    const success = await send(combinedMessage, selectedVariant);
+    if (success) {
+      cancelDebouncedSave();
+      setLocalMessage('');
+      clearUploadedImages();
+      if (isNewSessionMode) await clearDraft();
+      reviewContext?.clearComments();
+    }
+  }, [
+    send,
+    localMessage,
+    reviewMarkdown,
+    selectedVariant,
+    cancelDebouncedSave,
+    setLocalMessage,
+    clearUploadedImages,
+    isNewSessionMode,
+    clearDraft,
+    reviewContext,
+  ]);
+
+  // Track previous process count for queue refresh
+  const prevProcessCountRef = useRef(processes.length);
+
+  // Refresh queue status when execution stops or new process starts
+  useEffect(() => {
+    const prevCount = prevProcessCountRef.current;
+    prevProcessCountRef.current = processes.length;
+
+    if (!workspaceId) return;
+
+    if (!isAttemptRunning) {
+      refreshQueueStatus();
+      return;
+    }
+
+    if (processes.length > prevCount) {
+      refreshQueueStatus();
+    }
+  }, [isAttemptRunning, workspaceId, processes.length, refreshQueueStatus]);
+
+  // Queue message handler
+  const handleQueueMessage = useCallback(async () => {
+    // Allow queueing if there's a message OR review comments
+    if (!localMessage.trim() && !reviewMarkdown) return;
+
+    // Combine review comments with user message
+    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
+    const combinedMessage = messageParts.join('\n\n');
+
+    cancelDebouncedSave();
+    await saveToScratch(localMessage, selectedVariant);
+    await queueMessage(combinedMessage, selectedVariant);
+  }, [
+    localMessage,
+    reviewMarkdown,
+    selectedVariant,
+    queueMessage,
+    cancelDebouncedSave,
+    saveToScratch,
+  ]);
+
+  // Editor change handler
+  const handleEditorChange = useCallback(
+    (value: string) => {
+      if (isQueued) cancelQueue();
+      handleMessageChange(value, selectedVariant);
+      if (sendError) clearError();
+    },
+    [
+      isQueued,
+      cancelQueue,
+      handleMessageChange,
+      selectedVariant,
+      sendError,
+      clearError,
+    ]
+  );
+
+  // Handle feedback submission
+  const handleSubmitFeedback = useCallback(async () => {
+    if (!feedbackContext || !localMessage.trim()) return;
+    try {
+      await feedbackContext.submitFeedback(localMessage);
+      cancelDebouncedSave();
+      setLocalMessage('');
+      await clearDraft();
+    } catch {
+      // Error is handled in context
+    }
+  }, [
+    feedbackContext,
+    localMessage,
+    cancelDebouncedSave,
+    setLocalMessage,
+    clearDraft,
+  ]);
+
+  // Handle cancel feedback mode
+  const handleCancelFeedback = useCallback(() => {
+    feedbackContext?.exitFeedbackMode();
+  }, [feedbackContext]);
+
+  // Message edit retry mutation
+  const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
+    // On success, clear edit mode and reset editor
+    editContext.cancelEdit();
+    cancelDebouncedSave();
+    setLocalMessage('');
+  });
+
+  // Handle edit submission
+  const handleSubmitEdit = useCallback(async () => {
+    if (!editContext.activeEdit || !localMessage.trim()) return;
+    editRetryMutation.mutate({
+      message: localMessage,
+      variant: selectedVariant,
+      executionProcessId: editContext.activeEdit.processId,
+      branchStatus,
+      processes,
+    });
+  }, [
+    editContext.activeEdit,
+    localMessage,
+    selectedVariant,
+    branchStatus,
+    processes,
+    editRetryMutation,
+  ]);
+
+  // Handle cancel edit mode
+  const handleCancelEdit = useCallback(() => {
+    editContext.cancelEdit();
+    setLocalMessage('');
+  }, [editContext, setLocalMessage]);
+
+  // Populate editor with original message when entering edit mode
+  const prevEditRef = useRef(editContext.activeEdit);
+  useEffect(() => {
+    if (editContext.activeEdit && !prevEditRef.current) {
+      // Just entered edit mode - populate with original message
+      setLocalMessage(editContext.activeEdit.originalMessage);
+    }
+    prevEditRef.current = editContext.activeEdit;
+  }, [editContext.activeEdit, setLocalMessage]);
+
+  // Toolbar actions handler - intercepts action execution to provide extra context
+  const handleToolbarAction = useCallback(
+    (action: ActionDefinition) => {
+      if (action.requiresTarget && workspaceId) {
+        executeAction(action, workspaceId);
+      } else {
+        executeAction(action);
+      }
+    },
+    [executeAction, workspaceId]
+  );
+
+  // Define which actions appear in the toolbar
+  const toolbarActionsList = useMemo(
+    () =>
+      [Actions.StartReview].filter((action) =>
+        isActionVisible(action, actionCtx)
+      ),
+    [actionCtx]
+  );
+
+  // Handle approve action
+  const handleApprove = useCallback(async () => {
+    if (!pendingApproval) return;
+
+    // Exit feedback mode if active
+    feedbackContext?.exitFeedbackMode();
+
+    try {
+      await approveAsync({
+        approvalId: pendingApproval.approvalId,
+        executionProcessId: pendingApproval.executionProcessId,
+      });
+
+      // Invalidate workspace summary cache to update sidebar
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+    } catch {
+      // Error is handled by mutation
+    }
+  }, [pendingApproval, feedbackContext, approveAsync, queryClient]);
+
+  // Handle request changes (deny with feedback)
+  const handleRequestChanges = useCallback(async () => {
+    if (!pendingApproval || !localMessage.trim()) return;
+
+    try {
+      await denyAsync({
+        approvalId: pendingApproval.approvalId,
+        executionProcessId: pendingApproval.executionProcessId,
+        reason: localMessage.trim(),
+      });
+      cancelDebouncedSave();
+      setLocalMessage('');
+      await clearDraft();
+
+      // Invalidate workspace summary cache to update sidebar
+      queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+    } catch {
+      // Error is handled by mutation
+    }
+  }, [
+    pendingApproval,
+    localMessage,
+    denyAsync,
+    cancelDebouncedSave,
+    setLocalMessage,
+    clearDraft,
+    queryClient,
+  ]);
+
+  // Check if approval is timed out
+  const isApprovalTimedOut = pendingApproval
+    ? new Date() > new Date(pendingApproval.timeoutAt)
+    : false;
+
+  const status = computeExecutionStatus({
+    isInFeedbackMode,
+    isInEditMode,
+    isStopping,
+    isQueueLoading,
+    isSendingFollowUp: isSending,
+    isQueued,
+    isAttemptRunning,
+  });
+
+  // During loading, render with empty editor to preserve container UI
+  // In approval mode, don't show queued message - it's for follow-up, not approval response
+  const editorValue = useMemo(() => {
+    if (isScratchLoading || !hasInitialValue) return '';
+    if (pendingApproval) return localMessage;
+    return queuedMessage ?? localMessage;
+  }, [
+    isScratchLoading,
+    hasInitialValue,
+    pendingApproval,
+    queuedMessage,
+    localMessage,
+  ]);
+
+  // Don't render if no session and not in new session mode
+  if (!session && !isNewSessionMode) {
+    return null;
+  }
+
+  return (
+    <SessionChatBox
+      status={status}
+      workspaceId={workspaceId}
+      projectId={projectId}
+      editor={{
+        value: editorValue,
+        onChange: handleEditorChange,
+      }}
+      actions={{
+        onSend: handleSend,
+        onQueue: handleQueueMessage,
+        onCancelQueue: cancelQueue,
+        onStop: stopExecution,
+        onPasteFiles: uploadFiles,
+      }}
+      variant={{
+        selected: selectedVariant,
+        options: variantOptions,
+        onChange: setSelectedVariant,
+      }}
+      session={{
+        sessions,
+        selectedSessionId: sessionId,
+        onSelectSession: onSelectSession ?? (() => {}),
+        isNewSessionMode,
+        onNewSession: onStartNewSession,
+      }}
+      toolbarActions={{
+        actions: toolbarActionsList,
+        context: actionCtx,
+        onExecuteAction: handleToolbarAction,
+      }}
+      stats={{
+        filesChanged,
+        linesAdded,
+        linesRemoved,
+        onViewCode,
+        hasConflicts,
+        conflictedFilesCount,
+      }}
+      error={sendError}
+      agent={latestProfileId?.executor}
+      inProgressTodo={inProgressTodo}
+      executor={
+        isNewSessionMode
+          ? {
+              selected: effectiveExecutor,
+              options: executorOptions,
+              onChange: handleExecutorChange,
+            }
+          : undefined
+      }
+      feedbackMode={
+        feedbackContext
+          ? {
+              isActive: isInFeedbackMode,
+              onSubmitFeedback: handleSubmitFeedback,
+              onCancel: handleCancelFeedback,
+              isSubmitting: feedbackContext.isSubmitting,
+              error: feedbackContext.error,
+              isTimedOut: feedbackContext.isTimedOut,
+            }
+          : undefined
+      }
+      approvalMode={
+        pendingApproval
+          ? {
+              isActive: true,
+              onApprove: handleApprove,
+              onRequestChanges: handleRequestChanges,
+              isSubmitting: isApproving || isDenying,
+              isTimedOut: isApprovalTimedOut,
+              error: denyError?.message ?? null,
+            }
+          : undefined
+      }
+      editMode={{
+        isActive: isInEditMode,
+        onSubmitEdit: handleSubmitEdit,
+        onCancel: handleCancelEdit,
+        isSubmitting: editRetryMutation.isPending,
+      }}
+      reviewComments={
+        hasReviewComments && reviewContext
+          ? {
+              count: reviewContext.comments.length,
+              previewMarkdown: reviewMarkdown,
+              onClear: reviewContext.clearComments,
+            }
+          : undefined
+      }
+      localImages={localImages}
+    />
+  );
+}

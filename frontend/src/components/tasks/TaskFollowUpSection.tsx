@@ -47,19 +47,18 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
-import type {
-  DraftFollowUpData,
-  ExecutorAction,
-  ExecutorProfileId,
-} from 'shared/types';
+import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
+import { extractProfileFromAction } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-import { useQueueStatus } from '@/hooks/useQueueStatus';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queueApi } from '@/lib/api';
+import type { QueueStatus } from 'shared/types';
 import { imagesApi, attemptsApi } from '@/lib/api';
-import { GitHubCommentsDialog } from '@/components/dialogs/tasks/GitHubCommentsDialog';
-import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/github-comment-node';
+import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
+import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
 
 interface TaskFollowUpSectionProps {
@@ -150,29 +149,11 @@ export function TaskFollowUpSection({
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
     if (!processes?.length) return null;
-
-    const extractProfile = (
-      action: ExecutorAction | null
-    ): ExecutorProfileId | null => {
-      let curr: ExecutorAction | null = action;
-      while (curr) {
-        const typ = curr.typ;
-        switch (typ.type) {
-          case 'CodingAgentInitialRequest':
-          case 'CodingAgentFollowUpRequest':
-            return typ.executor_profile_id;
-          case 'ScriptRequest':
-            curr = curr.next_action;
-            continue;
-        }
-      }
-      return null;
-    };
     return (
       processes
         .slice()
         .reverse()
-        .map((p) => extractProfile(p.executor_action ?? null))
+        .map((p) => extractProfileFromAction(p.executor_action ?? null))
         .find((pid) => pid !== null) ?? null
     );
   }, [processes]);
@@ -258,14 +239,57 @@ export function TaskFollowUpSection({
   const isRetryActive = !!activeRetryProcessId;
 
   // Queue status for queuing follow-up messages while agent is running
+  const queryClient = useQueryClient();
+  const QUEUE_STATUS_KEY = 'queue-status';
+
   const {
-    isQueued,
-    queuedMessage,
-    isLoading: isQueueLoading,
-    queueMessage,
-    cancelQueue,
-    refresh: refreshQueueStatus,
-  } = useQueueStatus(sessionId);
+    data: queueStatus = { status: 'empty' as const },
+    refetch: refreshQueueStatus,
+  } = useQuery<QueueStatus>({
+    queryKey: [QUEUE_STATUS_KEY, sessionId],
+    queryFn: () => queueApi.getStatus(sessionId!),
+    enabled: !!sessionId,
+  });
+
+  const isQueued = queueStatus.status === 'queued';
+  const queuedMessage = isQueued
+    ? (queueStatus as Extract<QueueStatus, { status: 'queued' }>).message
+    : null;
+
+  const queueMutation = useMutation({
+    mutationFn: ({
+      message,
+      variant,
+    }: {
+      message: string;
+      variant: string | null;
+    }) => queueApi.queue(sessionId!, { message, variant }),
+    onSuccess: (status) => {
+      queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => queueApi.cancel(sessionId!),
+    onSuccess: (status) => {
+      queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
+    },
+  });
+
+  const queueMessage = useCallback(
+    async (message: string, variant: string | null) => {
+      if (!sessionId) return;
+      await queueMutation.mutateAsync({ message, variant });
+    },
+    [sessionId, queueMutation]
+  );
+
+  const cancelQueue = useCallback(async () => {
+    if (!sessionId) return;
+    await cancelMutation.mutateAsync();
+  }, [sessionId, cancelMutation]);
+
+  const isQueueLoading = queueMutation.isPending || cancelMutation.isPending;
 
   // Track previous process count to detect new processes
   const prevProcessCountRef = useRef(processes.length);
@@ -456,21 +480,18 @@ export function TaskFollowUpSection({
     followUpErrorRef.current = followUpError;
   }, [followUpError]);
 
-  // Refs for queue state to use in stable onChange handler
-  const isQueuedRef = useRef(isQueued);
-  useEffect(() => {
-    isQueuedRef.current = isQueued;
-  }, [isQueued]);
-
-  const cancelQueueRef = useRef(cancelQueue);
-  useEffect(() => {
-    cancelQueueRef.current = cancelQueue;
-  }, [cancelQueue]);
-
-  const queuedMessageRef = useRef(queuedMessage);
-  useEffect(() => {
-    queuedMessageRef.current = queuedMessage;
-  }, [queuedMessage]);
+  // Helper to get current queue state from cache (avoids ref-sync pattern)
+  const getQueueState = useCallback(() => {
+    const status = queryClient.getQueryData<QueueStatus>([
+      QUEUE_STATUS_KEY,
+      sessionId,
+    ]);
+    const queued = status?.status === 'queued';
+    const message = queued
+      ? (status as Extract<QueueStatus, { status: 'queued' }>).message
+      : null;
+    return { isQueued: queued, queuedMessage: message };
+  }, [queryClient, sessionId]);
 
   // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
@@ -484,9 +505,13 @@ export function TaskFollowUpSection({
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
 
           // If queued, cancel queue and use queued message as base (same as editor change behavior)
-          if (isQueuedRef.current && queuedMessageRef.current) {
-            cancelQueueRef.current();
-            const base = queuedMessageRef.current.data.message;
+          const {
+            isQueued: currentlyQueued,
+            queuedMessage: currentQueuedMessage,
+          } = getQueueState();
+          if (currentlyQueued && currentQueuedMessage) {
+            cancelMutation.mutate();
+            const base = currentQueuedMessage.data.message;
             const newMessage = base
               ? `${base}\n\n${imageMarkdown}`
               : imageMarkdown;
@@ -506,7 +531,7 @@ export function TaskFollowUpSection({
         }
       }
     },
-    [workspaceId]
+    [workspaceId, getQueueState, cancelMutation]
   );
 
   // Attachment button - file input ref and handlers
@@ -528,13 +553,13 @@ export function TaskFollowUpSection({
     [handlePasteFiles]
   );
 
-  // Handler for GitHub comments insertion
-  const handleGitHubCommentClick = useCallback(async () => {
+  // Handler for PR comments insertion
+  const handlePrCommentClick = useCallback(async () => {
     if (!workspaceId) return;
     const repoId = getSelectedRepoId();
     if (!repoId) return;
 
-    const result = await GitHubCommentsDialog.show({
+    const result = await PrCommentsDialog.show({
       attemptId: workspaceId,
       repoId,
     });
@@ -564,9 +589,11 @@ export function TaskFollowUpSection({
       const markdown = markdownBlocks.join('\n\n');
 
       // Same pattern as image paste
-      if (isQueuedRef.current && queuedMessageRef.current) {
-        cancelQueueRef.current();
-        const base = queuedMessageRef.current.data.message;
+      const { isQueued: currentlyQueued, queuedMessage: currentQueuedMessage } =
+        getQueueState();
+      if (currentlyQueued && currentQueuedMessage) {
+        cancelMutation.mutate();
+        const base = currentQueuedMessage.data.message;
         const newMessage = base ? `${base}\n\n${markdown}` : markdown;
         setLocalMessage(newMessage);
         setFollowUpMessageRef.current(newMessage);
@@ -578,20 +605,21 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [workspaceId, getSelectedRepoId]);
+  }, [workspaceId, getSelectedRepoId, getQueueState, cancelMutation]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
     (value: string) => {
       // Auto-cancel queue when user starts editing
-      if (isQueuedRef.current) {
-        cancelQueueRef.current();
+      const { isQueued: currentlyQueued } = getQueueState();
+      if (currentlyQueued) {
+        cancelMutation.mutate();
       }
       setLocalMessage(value); // Immediate update for UI responsiveness
       setFollowUpMessageRef.current(value); // Debounced save to scratch
       if (followUpErrorRef.current) setFollowUpError(null);
     },
-    [setFollowUpError]
+    [setFollowUpError, getQueueState, cancelMutation]
   );
 
   // Memoize placeholder to avoid re-renders
@@ -780,14 +808,14 @@ export function TaskFollowUpSection({
             <Paperclip className="h-4 w-4" />
           </Button>
 
-          {/* GitHub Comments button */}
+          {/* PR Comments button */}
           <Button
-            onClick={handleGitHubCommentClick}
+            onClick={handlePrCommentClick}
             disabled={!isEditable}
             size="sm"
             variant="outline"
-            title="Insert GitHub comment"
-            aria-label="Insert GitHub comment"
+            title="Insert PR comment"
+            aria-label="Insert PR comment"
           >
             <MessageSquare className="h-4 w-4" />
           </Button>

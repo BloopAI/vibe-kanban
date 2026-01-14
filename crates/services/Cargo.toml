@@ -1,11 +1,12 @@
 [package]
 name = "services"
-version = "0.0.143"
+version = "0.0.151"
 edition = "2024"
 
 [features]
 default = []
 cloud = []
+qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 utils = { path = "../utils" }
@@ -20,21 +21,21 @@ serde_json = { workspace = true }
 url = "2.5"
 anyhow = { workspace = true }
 tracing = { workspace = true }
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 dirs = "5.0"
-git2 = "0.18"
+git2 = { workspace = true }
 tempfile = "3.21"
-async-trait = { workspace = true } 
+async-trait = { workspace = true }
+enum_dispatch = "0.3.13"
 rust-embed = "8.2"
 ignore = "0.4"
-openssl-sys = { workspace = true }
 regex = "1.11.1"
 notify-rust = "4.11"
 os_info = "3.12.0"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { workspace = true }
 futures-util = "0.3"
 json-patch = "2.0"
 backon = "1.5.1"

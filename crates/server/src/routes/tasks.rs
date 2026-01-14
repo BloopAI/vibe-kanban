@@ -14,8 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
-    project::{Project, ProjectError},
-    repo::Repo,
+    repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
@@ -178,21 +177,23 @@ pub async fn create_task_and_start(
         )
         .await;
 
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
         .git_branch_from_workspace(&attempt_id, &task.title)
         .await;
 
-    let agent_working_dir = project
-        .default_agent_working_dir
-        .as_ref()
-        .filter(|dir: &&String| !dir.is_empty())
-        .cloned();
+    // Compute agent_working_dir based on repo count:
+    // - Single repo: use repo name as working dir (agent runs in repo directory)
+    // - Multiple repos: use None (agent runs in workspace root)
+    let agent_working_dir = if payload.repos.len() == 1 {
+        let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+        Some(repo.name)
+    } else {
+        None
+    };
 
     let workspace = Workspace::create(
         pool,
@@ -314,15 +315,6 @@ pub async fn delete_task(
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     ensure_shared_task_auth(&task, &deployment).await?;
 
-    // Validate no running execution processes
-    if deployment
-        .container()
-        .has_running_processes(task.id)
-        .await?
-    {
-        return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
-    }
-
     let pool = &deployment.db().pool;
 
     // Gather task attempts data needed for background cleanup
@@ -332,6 +324,11 @@ pub async fn delete_task(
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             ApiError::Workspace(e)
         })?;
+
+    // Stop any running execution processes before deletion
+    for workspace in &attempts {
+        deployment.container().try_stop(workspace, true).await;
+    }
 
     let repositories = WorkspaceRepo::find_unique_repos_for_task(pool, task.id).await?;
 

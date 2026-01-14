@@ -2,11 +2,70 @@ use std::{str::FromStr, sync::Arc};
 
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
-    sqlite::{SqliteConnectOptions, SqliteConnection, SqlitePoolOptions},
+    migrate::MigrateError,
+    sqlite::{SqliteConnectOptions, SqliteConnection, SqliteJournalMode, SqlitePoolOptions},
 };
 use utils::assets::asset_dir;
 
 pub mod models;
+
+async fn run_migrations(pool: &Pool<Sqlite>) -> Result<(), Error> {
+    use std::collections::HashSet;
+
+    let migrator = sqlx::migrate!("./migrations");
+    let mut processed_versions: HashSet<i64> = HashSet::new();
+
+    loop {
+        match migrator.run(pool).await {
+            Ok(()) => return Ok(()),
+            Err(MigrateError::VersionMismatch(version)) => {
+                if cfg!(debug_assertions) {
+                    // return the error in debug mode to catch migration issues early
+                    return Err(sqlx::Error::Migrate(Box::new(
+                        MigrateError::VersionMismatch(version),
+                    )));
+                }
+
+                if !cfg!(windows) {
+                    // On non-Windows platforms, we do not attempt to auto-fix checksum mismatches
+                    return Err(sqlx::Error::Migrate(Box::new(
+                        MigrateError::VersionMismatch(version),
+                    )));
+                }
+
+                // Guard against infinite loop
+                if !processed_versions.insert(version) {
+                    return Err(sqlx::Error::Migrate(Box::new(
+                        MigrateError::VersionMismatch(version),
+                    )));
+                }
+
+                // On Windows, there can be checksum mismatches due to line ending differences
+                // or other platform-specific issues. Update the stored checksum and retry.
+                tracing::warn!(
+                    "Migration version {} has checksum mismatch, updating stored checksum (likely platform-specific difference)",
+                    version
+                );
+
+                // Find the migration with the mismatched version and get its current checksum
+                if let Some(migration) = migrator.iter().find(|m| m.version == version) {
+                    // Update the checksum in _sqlx_migrations to match the current file
+                    sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = ?")
+                        .bind(&*migration.checksum)
+                        .bind(version)
+                        .execute(pool)
+                        .await?;
+                } else {
+                    // Migration not found in current set, can't fix
+                    return Err(sqlx::Error::Migrate(Box::new(
+                        MigrateError::VersionMismatch(version),
+                    )));
+                }
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct DBService {
@@ -19,9 +78,11 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Delete);
         let pool = SqlitePool::connect_with(options).await?;
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        run_migrations(&pool).await?;
         Ok(DBService { pool })
     }
 
@@ -53,7 +114,9 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
-        let options = SqliteConnectOptions::from_str(&database_url)?.create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(&database_url)?
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Delete);
 
         let pool = if let Some(hook) = after_connect {
             SqlitePoolOptions::new()
@@ -70,7 +133,7 @@ impl DBService {
             SqlitePool::connect_with(options).await?
         };
 
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        run_migrations(&pool).await?;
         Ok(pool)
     }
 }

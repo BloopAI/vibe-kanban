@@ -23,8 +23,8 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError, middleware::load_execution_process_middleware};
 
 #[derive(Debug, Deserialize)]
-pub struct ExecutionProcessQuery {
-    pub workspace_id: Uuid,
+pub struct SessionExecutionProcessQuery {
+    pub session_id: Uuid,
     /// If true, include soft-deleted (dropped) processes in results/stream
     #[serde(default)]
     pub show_soft_deleted: Option<bool>,
@@ -178,35 +178,35 @@ pub async fn stop_execution_process(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-pub async fn stream_execution_processes_ws(
+pub async fn stream_execution_processes_by_session_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<ExecutionProcessQuery>,
+    Query(query): Query<SessionExecutionProcessQuery>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_execution_processes_ws(
+        if let Err(e) = handle_execution_processes_by_session_ws(
             socket,
             deployment,
-            query.workspace_id,
+            query.session_id,
             query.show_soft_deleted.unwrap_or(false),
         )
         .await
         {
-            tracing::warn!("execution processes WS closed: {}", e);
+            tracing::warn!("execution processes by session WS closed: {}", e);
         }
     })
 }
 
-async fn handle_execution_processes_ws(
+async fn handle_execution_processes_by_session_ws(
     socket: WebSocket,
     deployment: DeploymentImpl,
-    workspace_id: uuid::Uuid,
+    session_id: uuid::Uuid,
     show_soft_deleted: bool,
 ) -> anyhow::Result<()> {
     // Get the raw stream and convert LogMsg to WebSocket messages
     let mut stream = deployment
         .events()
-        .stream_execution_processes_for_workspace_raw(workspace_id, show_soft_deleted)
+        .stream_execution_processes_for_session_raw(session_id, show_soft_deleted)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
@@ -256,7 +256,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         ));
 
     let workspaces_router = Router::new()
-        .route("/stream/ws", get(stream_execution_processes_ws))
+        .route(
+            "/stream/session/ws",
+            get(stream_execution_processes_by_session_ws),
+        )
         .nest("/{id}", workspace_id_router);
 
     Router::new().nest("/execution-processes", workspaces_router)

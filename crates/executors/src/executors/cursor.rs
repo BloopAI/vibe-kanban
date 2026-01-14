@@ -40,7 +40,9 @@ pub struct CursorAgent {
     #[schemars(description = "Force allow commands unless explicitly denied")]
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok")]
+    #[schemars(
+        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1"
+    )]
     pub model: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,

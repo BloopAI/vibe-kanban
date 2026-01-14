@@ -16,23 +16,23 @@ interface UseExecutionProcessesResult {
 }
 
 /**
- * Stream execution processes for a task attempt via WebSocket (JSON Patch) and expose as array + map.
+ * Stream execution processes for a session via WebSocket (JSON Patch) and expose as array + map.
  * Server sends initial snapshot: replace /execution_processes with an object keyed by id.
  * Live updates arrive at /execution_processes/<id> via add/replace/remove operations.
  */
 export const useExecutionProcesses = (
-  taskAttemptId: string | undefined,
+  sessionId: string | undefined,
   opts?: { showSoftDeleted?: boolean }
 ): UseExecutionProcessesResult => {
   const showSoftDeleted = opts?.showSoftDeleted;
   let endpoint: string | undefined;
 
-  if (taskAttemptId) {
-    const params = new URLSearchParams({ workspace_id: taskAttemptId });
+  if (sessionId) {
+    const params = new URLSearchParams({ session_id: sessionId });
     if (typeof showSoftDeleted === 'boolean') {
       params.set('show_soft_deleted', String(showSoftDeleted));
     }
-    endpoint = `/api/execution-processes/stream/ws?${params.toString()}`;
+    endpoint = `/api/execution-processes/stream/session/ws?${params.toString()}`;
   }
 
   const initialData = useCallback(
@@ -40,10 +40,10 @@ export const useExecutionProcesses = (
     []
   );
 
-  const { data, isConnected, error } =
+  const { data, isConnected, isInitialized, error } =
     useJsonPatchWsStream<ExecutionProcessState>(
       endpoint,
-      !!taskAttemptId,
+      !!sessionId,
       initialData
     );
 
@@ -60,7 +60,7 @@ export const useExecutionProcesses = (
         process.run_reason === 'cleanupscript') &&
       process.status === 'running'
   );
-  const isLoading = !!taskAttemptId && !data && !error; // until first snapshot
+  const isLoading = !!sessionId && !isInitialized && !error; // until first snapshot
 
   return {
     executionProcesses,
