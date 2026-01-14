@@ -10,14 +10,14 @@ import {
   CircleNotchIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus, MergeStatus, CiStatus } from 'shared/types';
+import type { TaskWithAttemptStatus, MergeStatus, CiStatus, Project } from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
-import { useProject } from '@/contexts/ProjectContext';
 import { inferTaskCategory, getCategoryConfig, type TaskCategory } from '@/utils/categoryLabels';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from '@/components/ui/tooltip';
 
 /**
@@ -103,6 +103,7 @@ function getCiStatusIndicator(ciStatus: CiStatus | null, prStatus: MergeStatus |
 interface SwimlaneTaskCardProps {
   task: TaskWithAttemptStatus;
   projectId: string;
+  project?: Project;
   onClick: () => void;
   isSelected?: boolean;
 }
@@ -110,10 +111,10 @@ interface SwimlaneTaskCardProps {
 export function SwimlaneTaskCard({
   task,
   projectId,
+  project,
   onClick,
   isSelected,
 }: SwimlaneTaskCardProps) {
-  const { project } = useProject();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -185,11 +186,12 @@ export function SwimlaneTaskCard({
         ]
       )}
     >
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-start gap-1">
-          {/* Category icon badge */}
-          {categoryIndicator && (
-            <Tooltip>
+      <TooltipProvider>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-start gap-1">
+            {/* Category icon badge */}
+            {categoryIndicator && (
+              <Tooltip>
               <TooltipTrigger asChild>
                 <span
                   className="shrink-0 text-[10px] leading-none mt-0.5 cursor-default"
@@ -309,6 +311,7 @@ export function SwimlaneTaskCard({
           className="mt-1"
         />
       </div>
+    </TooltipProvider>
     </button>
   );
 }

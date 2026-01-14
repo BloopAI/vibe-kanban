@@ -302,6 +302,7 @@ export function ProjectSwimlane({
                     key={task.id}
                     task={task}
                     projectId={project.id}
+                    project={project}
                     isSelected={selectedTaskId === task.id}
                     onClick={() => onTaskClick(project.id, task.id)}
                   />
