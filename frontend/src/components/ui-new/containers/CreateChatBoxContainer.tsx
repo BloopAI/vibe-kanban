@@ -215,7 +215,8 @@ export function CreateChatBoxContainer() {
 
   return (
     <div className="relative flex flex-1 flex-col bg-primary h-full">
-      <div className="flex-1" />
+      {/* Spacer to push chat to bottom - hidden on mobile (sm breakpoint) */}
+      <div className="hidden sm:flex flex-1" />
       <div className="flex justify-center @container">
         <CreateChatBox
           editor={{
