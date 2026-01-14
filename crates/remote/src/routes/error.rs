@@ -28,33 +28,6 @@ impl IntoResponse for ErrorResponse {
     }
 }
 
-pub(crate) fn identity_error_response(error: IdentityError, message: &str) -> Response {
-    match error {
-        IdentityError::NotFound => (StatusCode::BAD_REQUEST, Json(json!({ "error": message }))),
-        IdentityError::PermissionDenied => (
-            StatusCode::FORBIDDEN,
-            Json(json!({ "error": "permission denied" })),
-        ),
-        IdentityError::InvitationError(msg) => {
-            (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })))
-        }
-        IdentityError::CannotDeleteOrganization(msg) => {
-            (StatusCode::CONFLICT, Json(json!({ "error": msg })))
-        }
-        IdentityError::OrganizationConflict(msg) => {
-            (StatusCode::CONFLICT, Json(json!({ "error": msg })))
-        }
-        IdentityError::Database(err) => {
-            tracing::error!(?err, "identity sync failed");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal server error" })),
-            )
-        }
-    }
-    .into_response()
-}
-
 pub(crate) fn membership_error(error: IdentityError, forbidden_message: &str) -> ErrorResponse {
     match error {
         IdentityError::NotFound | IdentityError::PermissionDenied => {

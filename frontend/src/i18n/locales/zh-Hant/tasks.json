@@ -412,9 +412,6 @@
     "gitActions": "Git 操作",
     "editBranchName": "編輯分支名稱",
     "task": "任務",
-    "share": "分享",
-    "reassign": "重新指派",
-    "stopShare": "停止分享",
     "duplicate": "複製",
     "startReview": "開始審查",
     "startingReview": "正在開始審查..."
@@ -451,41 +448,6 @@
       "filesWithConflicts_other": "{{count}} 個檔案有衝突",
       "andMore": "...還有 {{count}} 個"
     }
-  },
-  "stopShareDialog": {
-    "title": "停止分享任務",
-    "description": "停止與您的組織分享 {{title}}？",
-    "warning": "停止與組織分享任務，但保留本地任務。",
-    "confirm": "停止分享任務",
-    "inProgress": "停止分享中...",
-    "genericError": "停止分享任務失敗。請重試。"
-  },
-  "shareDialog": {
-    "title": "分享任務",
-    "description": "與您的組織分享 {{title}}？",
-    "success": "任務分享成功。",
-    "genericError": "分享任務失敗。請重試。",
-    "loadingSystem": "載入帳戶狀態中...",
-    "loginRequired": {
-      "title": "需要登入",
-      "description": "您需要登入才能分享任務。我們會將您導向登入頁面。",
-      "action": "前往登入"
-    },
-    "gitProviderRequired": {
-      "title": "連結 Git 提供者",
-      "description": "連結您的 Git 提供者帳號以分享任務。此專案必須有遠端儲存庫。",
-      "action": "連結"
-    },
-    "linkProjectRequired": {
-      "description": "分享任務前，請先將此專案連結到組織。",
-      "action": "連結專案"
-    },
-    "confirmationTitle": "確認分享",
-    "confirmationBody": "分享會將此任務發佈到您的共享工作區。",
-    "cancel": "取消",
-    "confirm": "分享任務",
-    "inProgress": "分享中...",
-    "closeButton": "關閉"
   },
   "createPrDialog": {
     "title": "建立 PR",

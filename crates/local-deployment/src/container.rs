@@ -1194,12 +1194,10 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
-        {
-            if let Err(e) =
+            && let Err(e) =
                 Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
-            {
-                tracing::error!("Failed to update task status to InReview: {e}");
-            }
+        {
+            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         tracing::debug!(

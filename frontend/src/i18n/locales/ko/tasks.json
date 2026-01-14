@@ -21,9 +21,6 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
-    "share": "작업 공유",
-    "reassign": "재할당",
-    "stopShare": "공유 중지",
     "duplicate": "Duplicate",
     "editBranchName": "브랜치 이름 편집",
     "gitActions": "Git 작업",
@@ -102,41 +99,6 @@
       "filesWithConflicts_other": "{{count}}개 파일에 충돌이 있습니다",
       "andMore": "...외 {{count}}개"
     }
-  },
-  "stopShareDialog": {
-    "title": "작업 공유 중지",
-    "description": "\"{{title}}\" 작업의 공유를 조직에서 중지하시겠습니까?",
-    "warning": "작업 공유는 중지되지만 로컬 작업은 유지됩니다.",
-    "confirm": "작업 공유 중지",
-    "inProgress": "공유 중지 중…",
-    "genericError": "작업 공유를 중지하지 못했습니다. 다시 시도해 주세요."
-  },
-  "shareDialog": {
-    "title": "작업 공유",
-    "description": "\"{{title}}\" 작업을 조직과 공유하시겠습니까?",
-    "success": "작업이 성공적으로 공유되었습니다.",
-    "genericError": "작업을 공유하지 못했습니다. 다시 시도해 주세요.",
-    "loadingSystem": "계정 상태를 불러오는 중…",
-    "loginRequired": {
-      "title": "계속하려면 로그인하세요",
-      "description": "작업을 공유하려면 로그인해야 합니다. 로그인 페이지로 이동합니다.",
-      "action": "로그인으로 이동"
-    },
-    "gitProviderRequired": {
-      "title": "Git 제공자 연결",
-      "description": "작업을 공유하려면 Git 제공자 계정을 연결하세요. 이 프로젝트에는 원격 저장소가 있어야 합니다.",
-      "action": "연결"
-    },
-    "linkProjectRequired": {
-      "description": "작업을 공유하기 전에 이 프로젝트를 조직에 연결하세요.",
-      "action": "프로젝트 연결"
-    },
-    "confirmationTitle": "공유 확인",
-    "confirmationBody": "작업을 공유하면 공유 작업 공간에 게시됩니다.",
-    "cancel": "취소",
-    "confirm": "작업 공유",
-    "inProgress": "공유 중…",
-    "closeButton": "닫기"
   },
   "createPrDialog": {
     "title": "Pull Request 생성",
