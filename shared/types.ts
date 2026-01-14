@@ -60,7 +60,11 @@ export type TaskLabel = { name: string, color: string, };
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, task_number: bigint | null, priority: TaskPriority, due_date: string | null, labels: Array<TaskLabel>, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, task_number: bigint | null, priority: TaskPriority, due_date: string | null, labels: Array<TaskLabel>, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, 
+/**
+ * PR status for this task (from the latest workspace PR, if any)
+ */
+pr_status: MergeStatus | null, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, task_number: bigint | null, priority: TaskPriority, due_date: string | null, labels: Array<TaskLabel>, source: string | null, external_ref: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 

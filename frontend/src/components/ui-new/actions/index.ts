@@ -623,6 +623,7 @@ export const Actions = {
           has_in_progress_attempt: false,
           last_attempt_failed: false,
           executor: '',
+          pr_status: null,
         },
         repoId,
         targetBranch: repo?.target_branch,

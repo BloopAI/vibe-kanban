@@ -329,6 +329,47 @@ impl Merge {
             .filter_map(|row| row.pr_status.map(|status| (row.workspace_id, status)))
             .collect())
     }
+
+    /// Get the latest PR status for each task (via workspaces)
+    /// Returns a map of task_id -> MergeStatus for tasks that have PRs through their workspaces
+    pub async fn get_latest_pr_status_for_tasks(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<HashMap<Uuid, MergeStatus>, sqlx::Error> {
+        #[derive(FromRow)]
+        struct TaskPrStatusRow {
+            task_id: Uuid,
+            pr_status: Option<MergeStatus>,
+        }
+
+        // Get the latest PR status for each task by joining:
+        // tasks -> workspaces -> merges
+        // We want the most recent PR status across all workspaces for a task
+        let rows = sqlx::query_as::<_, TaskPrStatusRow>(
+            r#"SELECT
+                w.task_id,
+                m.pr_status
+            FROM merges m
+            INNER JOIN (
+                SELECT w2.task_id, MAX(m2.created_at) as max_created_at
+                FROM merges m2
+                INNER JOIN workspaces w2 ON m2.workspace_id = w2.id
+                INNER JOIN tasks t ON w2.task_id = t.id
+                WHERE m2.merge_type = 'pr' AND t.project_id = $1
+                GROUP BY w2.task_id
+            ) latest ON m.created_at = latest.max_created_at
+            INNER JOIN workspaces w ON m.workspace_id = w.id AND w.task_id = latest.task_id
+            WHERE m.merge_type = 'pr'"#,
+        )
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .filter_map(|row| row.pr_status.map(|status| (row.task_id, status)))
+            .collect())
+    }
 }
 
 // Conversion implementations

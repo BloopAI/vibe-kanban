@@ -5,7 +5,7 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, workspace::Workspace};
+use super::{merge::{Merge, MergeStatus}, project::Project, workspace::Workspace};
 
 #[derive(
     Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
@@ -80,6 +80,8 @@ pub struct TaskWithAttemptStatus {
     pub has_in_progress_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
+    /// PR status for this task (from the latest workspace PR, if any)
+    pub pr_status: Option<MergeStatus>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -242,29 +244,36 @@ ORDER BY t.created_at DESC"#,
         .fetch_all(pool)
         .await?;
 
+        // Fetch PR statuses for all tasks in this project
+        let pr_statuses = Merge::get_latest_pr_status_for_tasks(pool, project_id).await?;
+
         let tasks = records
             .into_iter()
-            .map(|rec| TaskWithAttemptStatus {
-                task: Task {
-                    id: rec.id,
-                    project_id: rec.project_id,
-                    title: rec.title,
-                    description: rec.description,
-                    status: rec.status,
-                    parent_workspace_id: rec.parent_workspace_id,
-                    shared_task_id: rec.shared_task_id,
-                    task_number: rec.task_number,
-                    priority: rec.priority,
-                    due_date: rec.due_date,
-                    labels: parse_labels(rec.labels),
-                    source: rec.source,
-                    external_ref: rec.external_ref,
-                    created_at: rec.created_at,
-                    updated_at: rec.updated_at,
-                },
-                has_in_progress_attempt: rec.has_in_progress_attempt != 0,
-                last_attempt_failed: rec.last_attempt_failed != 0,
-                executor: rec.executor,
+            .map(|rec| {
+                let pr_status = pr_statuses.get(&rec.id).cloned();
+                TaskWithAttemptStatus {
+                    task: Task {
+                        id: rec.id,
+                        project_id: rec.project_id,
+                        title: rec.title,
+                        description: rec.description,
+                        status: rec.status,
+                        parent_workspace_id: rec.parent_workspace_id,
+                        shared_task_id: rec.shared_task_id,
+                        task_number: rec.task_number,
+                        priority: rec.priority,
+                        due_date: rec.due_date,
+                        labels: parse_labels(rec.labels),
+                        source: rec.source,
+                        external_ref: rec.external_ref,
+                        created_at: rec.created_at,
+                        updated_at: rec.updated_at,
+                    },
+                    has_in_progress_attempt: rec.has_in_progress_attempt != 0,
+                    last_attempt_failed: rec.last_attempt_failed != 0,
+                    executor: rec.executor,
+                    pr_status,
+                }
             })
             .collect();
 
