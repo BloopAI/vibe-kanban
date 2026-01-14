@@ -36,7 +36,10 @@ import {
   useTaskMutations,
   useProjectRepos,
   useRepoBranchSelection,
+  useUsers,
+  useAuth,
 } from '@/hooks';
+import { AssigneeSelector } from '@/components/tasks/AssigneeSelector';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -57,6 +60,7 @@ interface Task {
   title: string;
   description: string | null;
   status: TaskStatus;
+  assignee_user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +82,7 @@ type TaskFormValues = {
   title: string;
   description: string;
   status: TaskStatus;
+  assigneeUserId: string | null;
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
@@ -93,6 +98,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
+
+  // Fetch users for assignee picker (only enabled when authenticated)
+  const { isSignedIn } = useAuth();
+  const { data: users = [] } = useUsers({ enabled: isSignedIn && modal.visible });
 
   // Local UI state
   const [images, setImages] = useState<ImageResponse[]>([]);
@@ -133,6 +142,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.task.title,
           description: props.task.description || '',
           status: props.task.status,
+          assigneeUserId: props.task.assignee_user_id,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
@@ -143,6 +153,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: props.initialTask.title,
           description: props.initialTask.description || '',
           status: 'todo',
+          assigneeUserId: null,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
@@ -155,6 +166,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           title: '',
           description: '',
           status: 'todo',
+          assigneeUserId: null,
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
@@ -174,6 +186,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             status: value.status,
             parent_workspace_id: null,
             image_ids: images.length > 0 ? images.map((img) => img.id) : null,
+            assignee_user_id: value.assigneeUserId,
           },
         },
         { onSuccess: () => modal.remove() }
@@ -492,6 +505,23 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+            </form.Field>
+          )}
+
+          {/* Assignee selector - shown in edit mode when users are available */}
+          {editMode && isSignedIn && users.length > 0 && (
+            <form.Field name="assigneeUserId">
+              {(field) => (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Assignee</Label>
+                  <AssigneeSelector
+                    users={users}
+                    selectedUserId={field.state.value}
+                    onChange={(userId) => field.handleChange(userId)}
+                    disabled={isSubmitting}
+                  />
                 </div>
               )}
             </form.Field>

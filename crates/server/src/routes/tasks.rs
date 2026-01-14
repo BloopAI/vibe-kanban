@@ -7,7 +7,7 @@ use axum::{
         Query, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
     routing::{delete, get, post, put},
@@ -15,7 +15,7 @@ use axum::{
 use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, Task, TaskUser, TaskWithAttemptStatus, TaskWithUsers, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -32,7 +32,8 @@ use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_task_middleware,
+    DeploymentImpl, error::ApiError,
+    middleware::{get_user_id, load_task_middleware, try_get_authenticated_user},
     routes::task_attempts::WorkspaceRepoInput,
 };
 
@@ -101,13 +102,15 @@ async fn handle_tasks_ws(
 
 pub async fn get_task(
     Extension(task): Extension<Task>,
-    State(_deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
-    Ok(ResponseJson(ApiResponse::success(task)))
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<TaskWithUsers>>, ApiError> {
+    let task_with_users = task.with_users(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(task_with_users)))
 }
 
 pub async fn create_task(
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     let id = Uuid::new_v4();
@@ -118,7 +121,10 @@ pub async fn create_task(
         payload.project_id
     );
 
-    let task = Task::create(&deployment.db().pool, &payload, id).await?;
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    let creator_user_id = get_user_id(&authenticated_user);
+
+    let task = Task::create(&deployment.db().pool, &payload, id, creator_user_id).await?;
 
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
@@ -132,6 +138,7 @@ pub async fn create_task(
             "project_id": payload.project_id,
             "has_description": task.description.is_some(),
             "has_images": payload.image_ids.is_some(),
+            "creator_user_id": creator_user_id.map(|id| id.to_string()),
             }),
         )
         .await;
@@ -148,6 +155,7 @@ pub struct CreateAndStartTaskRequest {
 
 pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
     if payload.repos.is_empty() {
@@ -158,8 +166,11 @@ pub async fn create_task_and_start(
 
     let pool = &deployment.db().pool;
 
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    let creator_user_id = get_user_id(&authenticated_user);
+
     let task_id = Uuid::new_v4();
-    let task = Task::create(pool, &payload.task, task_id).await?;
+    let task = Task::create(pool, &payload.task, task_id, creator_user_id).await?;
 
     if let Some(image_ids) = &payload.task.image_ids {
         TaskImage::associate_many_dedup(pool, task.id, image_ids).await?;
@@ -238,21 +249,25 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
 
+    // Build creator info from the authenticated user
+    let creator = authenticated_user.map(TaskUser::from);
+
     tracing::info!("Started attempt for task {}", task.id);
     Ok(ResponseJson(ApiResponse::success(TaskWithAttemptStatus {
         task,
         has_in_progress_attempt: is_attempt_running,
         last_attempt_failed: false,
         executor: payload.executor_profile_id.executor.to_string(),
+        creator,
+        assignee: None, // Newly created task has no assignee yet
     })))
 }
 
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-
     Json(payload): Json<UpdateTask>,
-) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<TaskWithUsers>>, ApiError> {
     ensure_shared_task_auth(&existing_task, &deployment).await?;
 
     // Use existing values if not provided in update
@@ -267,6 +282,12 @@ pub async fn update_task(
         .parent_workspace_id
         .or(existing_task.parent_workspace_id);
 
+    // Handle assignee_user_id: None = keep existing, Some(None) = unassign, Some(Some(id)) = assign
+    let assignee_user_id = match payload.assignee_user_id {
+        Some(new_assignee) => new_assignee,
+        None => existing_task.assignee_user_id,
+    };
+
     let task = Task::update(
         &deployment.db().pool,
         existing_task.id,
@@ -275,6 +296,7 @@ pub async fn update_task(
         description,
         status,
         parent_workspace_id,
+        assignee_user_id,
     )
     .await?;
 
@@ -291,7 +313,9 @@ pub async fn update_task(
         publisher.update_shared_task(&task).await?;
     }
 
-    Ok(ResponseJson(ApiResponse::success(task)))
+    // Return task with user info
+    let task_with_users = task.with_users(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(task_with_users)))
 }
 
 async fn ensure_shared_task_auth(
