@@ -777,7 +777,7 @@ impl LocalContainerService {
     async fn create_workspace_config_files(
         workspace_dir: &Path,
         repos: &[Repo],
-        agent_working_dir: Option<&str>,
+        _agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
 
@@ -824,9 +824,6 @@ impl LocalContainerService {
                 import_lines.len()
             );
         }
-
-        // Create Claude Code hooks config (settings.local.json with inline Stop hook)
-        Self::create_claude_hooks_config(workspace_dir, agent_working_dir).await?;
 
         Ok(())
     }
@@ -1159,6 +1156,15 @@ impl ContainerService for LocalContainerService {
                 "Container ref not found for workspace"
             )))?;
         let current_dir = PathBuf::from(container_ref);
+
+        // Only create Claude hooks for Claude Code executor
+        if let Some(BaseCodingAgent::ClaudeCode) = executor_action.base_executor() {
+            Self::create_claude_hooks_config(
+                &current_dir,
+                workspace.agent_working_dir.as_deref(),
+            )
+            .await?;
+        }
 
         let approvals_service: Arc<dyn ExecutorApprovalService> =
             match executor_action.base_executor() {
