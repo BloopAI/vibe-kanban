@@ -31,7 +31,12 @@ export function InlineGroupCreator({
   if (!isCreating) return null;
 
   return (
-    <div className={cn('border border-brand rounded p-base bg-secondary', className)}>
+    <div
+      className={cn(
+        'border border-brand rounded p-base bg-secondary',
+        className
+      )}
+    >
       <input
         autoFocus
         type="text"

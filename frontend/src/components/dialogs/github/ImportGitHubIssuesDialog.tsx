@@ -30,17 +30,17 @@ export interface ImportGitHubIssuesDialogProps {
 
 type IssueState = 'open' | 'closed' | 'all';
 
-const ImportGitHubIssuesDialogImpl = NiceModal.create<ImportGitHubIssuesDialogProps>(
-  ({ projectId }) => {
+const ImportGitHubIssuesDialogImpl =
+  NiceModal.create<ImportGitHubIssuesDialogProps>(({ projectId }) => {
     const modal = useModal();
     const queryClient = useQueryClient();
 
     // State - use string set to avoid bigint/number issues
     const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
     const [issueState, setIssueState] = useState<IssueState>('open');
-    const [selectedIssueNumbers, setSelectedIssueNumbers] = useState<Set<string>>(
-      new Set()
-    );
+    const [selectedIssueNumbers, setSelectedIssueNumbers] = useState<
+      Set<string>
+    >(new Set());
 
     // Fetch project repos
     const { data: repos = [], isLoading: reposLoading } = useProjectRepos(
@@ -295,8 +295,7 @@ const ImportGitHubIssuesDialogImpl = NiceModal.create<ImportGitHubIssuesDialogPr
         </DialogContent>
       </Dialog>
     );
-  }
-);
+  });
 
 interface IssueRowProps {
   issue: GitHubIssueResponse;
@@ -310,7 +309,11 @@ function IssueRow({ issue, selected, onToggle }: IssueRowProps) {
       className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer"
       onClick={onToggle}
     >
-      <Checkbox checked={selected} onCheckedChange={onToggle} className="mt-1" />
+      <Checkbox
+        checked={selected}
+        onCheckedChange={onToggle}
+        className="mt-1"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">

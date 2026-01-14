@@ -27,9 +27,7 @@ interface ActionPanelProps {
  */
 export function ActionPanel({ children, className }: ActionPanelProps) {
   return (
-    <div className={cn('flex items-center gap-1', className)}>
-      {children}
-    </div>
+    <div className={cn('flex items-center gap-1', className)}>{children}</div>
   );
 }
 
@@ -61,7 +59,8 @@ export function ActionPanelButton({
         'text-xs text-low',
         'hover:text-normal hover:bg-secondary/60',
         'transition-colors duration-100',
-        disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-low',
+        disabled &&
+          'opacity-50 cursor-not-allowed hover:bg-transparent hover:text-low',
         className
       )}
     >

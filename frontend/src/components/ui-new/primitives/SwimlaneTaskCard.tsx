@@ -10,10 +10,18 @@ import {
   CircleNotchIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus, MergeStatus, CiStatus } from 'shared/types';
+import type {
+  TaskWithAttemptStatus,
+  MergeStatus,
+  CiStatus,
+} from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
 import { useProject } from '@/contexts/ProjectContext';
-import { inferTaskCategory, getCategoryConfig, type TaskCategory } from '@/utils/categoryLabels';
+import {
+  inferTaskCategory,
+  getCategoryConfig,
+  type TaskCategory,
+} from '@/utils/categoryLabels';
 import {
   Tooltip,
   TooltipContent,
@@ -70,7 +78,10 @@ function getCategoryIndicator(category: TaskCategory | null) {
 /**
  * Returns the appropriate icon and color for a CI status
  */
-function getCiStatusIndicator(ciStatus: CiStatus | null, prStatus: MergeStatus | null) {
+function getCiStatusIndicator(
+  ciStatus: CiStatus | null,
+  prStatus: MergeStatus | null
+) {
   // Only show CI status for open PRs
   if (!ciStatus || prStatus !== 'open') return null;
 
@@ -160,19 +171,21 @@ export function SwimlaneTaskCard({
         // Category left border
         categoryIndicator && 'border-l-2',
         // Default state
-        !isSelected && !isDragging && [
-          'bg-secondary/80',
-          'hover:bg-secondary hover:border-panel/50',
-          // Preserve left border color on hover
-          categoryIndicator && 'hover:border-l-2',
-        ],
+        !isSelected &&
+          !isDragging && [
+            'bg-secondary/80',
+            'hover:bg-secondary hover:border-panel/50',
+            // Preserve left border color on hover
+            categoryIndicator && 'hover:border-l-2',
+          ],
         // Selected state
-        isSelected && !isDragging && [
-          'bg-panel border-brand/50',
-          'ring-1 ring-brand/30',
-          // Preserve left border color when selected
-          categoryIndicator && 'border-l-2',
-        ],
+        isSelected &&
+          !isDragging && [
+            'bg-panel border-brand/50',
+            'ring-1 ring-brand/30',
+            // Preserve left border color when selected
+            categoryIndicator && 'border-l-2',
+          ],
         // Dragging state
         isDragging && [
           'bg-panel border-brand/30',
@@ -191,9 +204,7 @@ export function SwimlaneTaskCard({
           {categoryIndicator && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span
-                  className="shrink-0 text-[10px] leading-none mt-0.5 cursor-default"
-                >
+                <span className="shrink-0 text-[10px] leading-none mt-0.5 cursor-default">
                   {categoryIndicator.icon}
                 </span>
               </TooltipTrigger>
@@ -202,17 +213,22 @@ export function SwimlaneTaskCard({
               </TooltipContent>
             </Tooltip>
           )}
-          <span className={cn(
-            'flex-1 text-xs leading-snug font-medium',
-            'text-normal/90',
-            isSelected && 'text-high'
-          )}>
+          <span
+            className={cn(
+              'flex-1 text-xs leading-snug font-medium',
+              'text-normal/90',
+              isSelected && 'text-high'
+            )}
+          >
             {task.title}
           </span>
           <div className="flex items-center gap-0.5 shrink-0 mt-px">
             {/* CI status indicator (only for open PRs) */}
             {(() => {
-              const ciIndicator = getCiStatusIndicator(task.ci_status, task.pr_status);
+              const ciIndicator = getCiStatusIndicator(
+                task.ci_status,
+                task.pr_status
+              );
               if (!ciIndicator) return null;
               const CiIcon = ciIndicator.icon;
               return (
@@ -291,12 +307,14 @@ export function SwimlaneTaskCard({
           </div>
         </div>
         {task.description && (
-          <p className={cn(
-            'text-[10px] leading-snug',
-            'text-low/60 line-clamp-2',
-            'group-hover/card:text-low/80',
-            'transition-colors duration-100'
-          )}>
+          <p
+            className={cn(
+              'text-[10px] leading-snug',
+              'text-low/60 line-clamp-2',
+              'group-hover/card:text-low/80',
+              'transition-colors duration-100'
+            )}
+          >
             {task.description}
           </p>
         )}

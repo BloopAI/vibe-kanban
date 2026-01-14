@@ -498,7 +498,9 @@ export const tasksApi = {
     return handleApiResponse<Task | null>(response);
   },
 
-  findDuplicates: async (projectId: string): Promise<FindDuplicatesResponse> => {
+  findDuplicates: async (
+    projectId: string
+  ): Promise<FindDuplicatesResponse> => {
     const response = await makeRequest(
       `/api/tasks/find-duplicates?project_id=${encodeURIComponent(projectId)}`
     );
@@ -513,7 +515,9 @@ export const tasksApi = {
     return handleApiResponse<MergeTasksResponse>(response);
   },
 
-  bulkMergeTasks: async (data: BulkMergeRequest): Promise<BulkMergeResponse> => {
+  bulkMergeTasks: async (
+    data: BulkMergeRequest
+  ): Promise<BulkMergeResponse> => {
     const response = await makeRequest(`/api/tasks/bulk-merge`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -1450,7 +1454,9 @@ export const githubApi = {
     const params = new URLSearchParams({ repo_id: repoId });
     if (state) params.set('state', state);
     if (limit) params.set('limit', limit.toString());
-    const response = await makeRequest(`/api/github/issues?${params.toString()}`);
+    const response = await makeRequest(
+      `/api/github/issues?${params.toString()}`
+    );
     return handleApiResponse<GitHubIssueResponse[]>(response);
   },
 
@@ -1459,7 +1465,9 @@ export const githubApi = {
    */
   getRepoInfo: async (repoId: string): Promise<GitHubRepoInfoResponse> => {
     const params = new URLSearchParams({ repo_id: repoId });
-    const response = await makeRequest(`/api/github/repo-info?${params.toString()}`);
+    const response = await makeRequest(
+      `/api/github/repo-info?${params.toString()}`
+    );
     return handleApiResponse<GitHubRepoInfoResponse>(response);
   },
 };

@@ -59,7 +59,12 @@ interface WorkspaceItemProps {
   showPRBadge?: boolean;
 }
 
-function WorkspaceItem({ workspace, onStop, onClick, showPRBadge }: WorkspaceItemProps) {
+function WorkspaceItem({
+  workspace,
+  onStop,
+  onClick,
+  showPRBadge,
+}: WorkspaceItemProps) {
   return (
     <div
       className={cn(
@@ -82,7 +87,9 @@ function WorkspaceItem({ workspace, onStop, onClick, showPRBadge }: WorkspaceIte
         {workspace.name || `Workspace ${workspace.id.slice(0, 8)}`}
       </span>
       {showPRBadge && workspace.prStatus === 'open' && (
-        <span className="text-[9px] px-1 py-0.5 rounded bg-brand/20 text-brand">PR</span>
+        <span className="text-[9px] px-1 py-0.5 rounded bg-brand/20 text-brand">
+          PR
+        </span>
       )}
       {onStop && workspace.isRunning && (
         <button
@@ -119,7 +126,9 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   // Separate workspaces into active (running) and in-review (has open PR)
   const activeWorkspaces = workspaces.filter((ws) => ws.isRunning);
-  const reviewWorkspaces = workspaces.filter((ws) => ws.prStatus === 'open' && !ws.isRunning);
+  const reviewWorkspaces = workspaces.filter(
+    (ws) => ws.prStatus === 'open' && !ws.isRunning
+  );
 
   return (
     <div className={cn('w-full h-full bg-secondary flex flex-col', className)}>
@@ -150,11 +159,7 @@ export function LeftSidebar({
         <div className="text-[10px] font-medium text-low uppercase tracking-wider mb-1">
           Quick Actions
         </div>
-        <ActionButton
-          icon={PlusIcon}
-          label="New Task"
-          onClick={onCreateTask}
-        />
+        <ActionButton icon={PlusIcon} label="New Task" onClick={onCreateTask} />
         <ActionButton
           icon={PlusIcon}
           label="New Project"
@@ -181,8 +186,12 @@ export function LeftSidebar({
               <WorkspaceItem
                 key={ws.id}
                 workspace={ws}
-                onStop={onStopWorkspace ? () => onStopWorkspace(ws.id) : undefined}
-                onClick={onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined}
+                onStop={
+                  onStopWorkspace ? () => onStopWorkspace(ws.id) : undefined
+                }
+                onClick={
+                  onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined
+                }
               />
             ))}
           </div>
@@ -209,7 +218,9 @@ export function LeftSidebar({
                 key={ws.id}
                 workspace={ws}
                 showPRBadge
-                onClick={onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined}
+                onClick={
+                  onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined
+                }
               />
             ))}
           </div>

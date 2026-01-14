@@ -4,11 +4,11 @@ import type { PriorityFactor } from './types';
  * Weights for each priority factor (should sum to ~1.0)
  */
 export const PRIORITY_WEIGHTS: Record<PriorityFactor, number> = {
-  dueDate: 0.30, // Due dates strongly influence priority
+  dueDate: 0.3, // Due dates strongly influence priority
   keywords: 0.25, // Keywords like "urgent", "critical", "ASAP"
   age: 0.15, // Older tasks get slight boost
   labels: 0.15, // Labels like "bug", "security"
-  stale: 0.10, // Tasks stuck in a status too long
+  stale: 0.1, // Tasks stuck in a status too long
   blocked: 0.05, // Tasks marked as blockers
 };
 

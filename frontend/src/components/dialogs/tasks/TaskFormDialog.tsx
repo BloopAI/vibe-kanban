@@ -88,7 +88,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { mode } = props;
   // projectId is optional in create mode
   const providedProjectId = 'projectId' in props ? props.projectId : undefined;
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(providedProjectId);
+  const [selectedProjectId, setSelectedProjectId] = useState<
+    string | undefined
+  >(providedProjectId);
   const projectId = selectedProjectId;
 
   const editMode = mode === 'edit';
@@ -240,7 +242,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const validator = (value: TaskFormValues): string | undefined => {
     // In create mode without provided projectId, require a project to be selected
-    if (mode === 'create' && !providedProjectId && !projectId) return 'need project';
+    if (mode === 'create' && !providedProjectId && !projectId)
+      return 'need project';
     if (!value.title.trim().length) return 'need title';
     if (value.autoStart && !forceCreateOnlyRef.current) {
       if (!value.executorProfileId) return 'need executor profile';
@@ -466,19 +469,32 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                 </div>
               ) : allProjects.length === 0 ? (
                 <div className="text-sm text-muted-foreground py-2">
-                  {t('taskFormDialog.noProjects', 'No projects available. Create a project first.')}
+                  {t(
+                    'taskFormDialog.noProjects',
+                    'No projects available. Create a project first.'
+                  )}
                 </div>
               ) : (
-                <Select value={projectId ?? ''} onValueChange={(value) => setSelectedProjectId(value)}>
+                <Select
+                  value={projectId ?? ''}
+                  onValueChange={(value) => setSelectedProjectId(value)}
+                >
                   <SelectTrigger id="project-select">
-                    <SelectValue placeholder={t('taskFormDialog.selectProjectPlaceholder', 'Select a project')} />
+                    <SelectValue
+                      placeholder={t(
+                        'taskFormDialog.selectProjectPlaceholder',
+                        'Select a project'
+                      )}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {allProjects.map((project: { id: string; name: string }) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
+                    {allProjects.map(
+                      (project: { id: string; name: string }) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               )}
@@ -734,7 +750,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   // Also require projectId to be selected when in create mode without provided projectId
                   const needsProject = showProjectSelector && !projectId;
                   return (
-                    <Button onClick={form.handleSubmit} disabled={!canSubmit || needsProject}>
+                    <Button
+                      onClick={form.handleSubmit}
+                      disabled={!canSubmit || needsProject}
+                    >
                       {buttonText}
                     </Button>
                   );
