@@ -1149,7 +1149,8 @@ impl ContainerService for LocalContainerService {
 
         // Only create Claude hooks for Claude Code executor with single-repo workspace
         if let Some(BaseCodingAgent::ClaudeCode) = executor_action.base_executor() {
-            let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+            let repos =
+                WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
             if repos.len() == 1 {
                 if let Some(agent_dir) = &workspace.agent_working_dir {
                     Self::create_claude_hooks_config(&current_dir.join(agent_dir)).await?;
