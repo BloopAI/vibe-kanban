@@ -1,23 +1,14 @@
-import {
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  type ReactNode,
-} from 'react';
+import { useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { splitMessageToTitleDescription } from '@/utils/string';
-import { useScratch } from '@/hooks/useScratch';
-import { ScratchType, type DraftWorkspaceData } from 'shared/types';
+import type { Merge, RepoWithTargetBranch } from 'shared/types';
 
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
-import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
 import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
@@ -37,7 +28,6 @@ import {
   PERSIST_KEYS,
   useExpandedAll,
   usePaneSize,
-  usePersistedExpanded,
   useUiPreferencesStore,
   useIsRightMainPanelVisible,
   RIGHT_MAIN_PANEL_MODES,
@@ -45,11 +35,6 @@ import {
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { Actions } from '@/components/ui-new/actions';
-import type { Merge, RepoWithTargetBranch } from 'shared/types';
-
-// Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
-const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
 interface ModeProviderProps {
   isCreateMode: boolean;
@@ -95,13 +80,10 @@ function ModeProvider({
 export function WorkspacesLayout() {
   const {
     workspace: selectedWorkspace,
-    workspaceId: selectedWorkspaceId,
     activeWorkspaces,
     archivedWorkspaces,
     isLoading,
     isCreateMode,
-    selectWorkspace,
-    navigateToCreate,
     selectedSession,
     selectedSessionId,
     sessions,
@@ -110,7 +92,6 @@ export function WorkspacesLayout() {
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Layout state from store
   const {
@@ -129,10 +110,6 @@ export function WorkspacesLayout() {
     50
   );
   const isRightMainPanelVisible = useIsRightMainPanelVisible();
-  const [showArchive, setShowArchive] = usePersistedExpanded(
-    PERSIST_KEYS.workspacesSidebarArchived,
-    false
-  );
 
   const defaultLayout = (): Layout => {
     let layout = { 'left-main': 50, 'right-main': 50 };
@@ -179,26 +156,6 @@ export function WorkspacesLayout() {
       WorkspacesGuideDialog.hide();
     });
   }, [configLoading, hasSeenGuide, seenFeatures, updateAndSaveConfig]);
-
-  // Read persisted draft for sidebar placeholder (works outside of CreateModeProvider)
-  const { scratch: draftScratch } = useScratch(
-    ScratchType.DRAFT_WORKSPACE,
-    DRAFT_WORKSPACE_ID
-  );
-
-  // Extract draft title from persisted scratch
-  const persistedDraftTitle = useMemo(() => {
-    const scratchData: DraftWorkspaceData | undefined =
-      draftScratch?.payload?.type === 'DRAFT_WORKSPACE'
-        ? draftScratch.payload.data
-        : undefined;
-
-    if (!scratchData?.message?.trim()) return undefined;
-    const { title } = splitMessageToTitleDescription(
-      scratchData.message.trim()
-    );
-    return title || 'New Workspace';
-  }, [draftScratch]);
 
   // Command bar keyboard shortcut (CMD+K) - defined later after isChangesMode
   // See useCommandBarShortcut call below
@@ -367,46 +324,14 @@ export function WorkspacesLayout() {
     }
   );
 
-  // Action handlers for sidebar workspace actions
-  const { executeAction } = useActions();
-
-  const handleArchiveWorkspace = useCallback(
-    (workspaceId: string) => {
-      executeAction(Actions.ArchiveWorkspace, workspaceId);
-    },
-    [executeAction]
-  );
-
-  const handlePinWorkspace = useCallback(
-    (workspaceId: string) => {
-      executeAction(Actions.PinWorkspace, workspaceId);
-    },
-    [executeAction]
-  );
-
   return (
     <div className="flex flex-col h-screen">
       <NavbarContainer />
       <div className="flex flex-1 min-h-0">
-        {/* Left sidebar - OUTSIDE providers, won't remount on workspace switch */}
+        {/* Left sidebar */}
         {isLeftSidebarVisible && (
           <div className="w-[300px] shrink-0 h-full overflow-hidden">
-            <WorkspacesSidebar
-              workspaces={activeWorkspaces}
-              archivedWorkspaces={archivedWorkspaces}
-              selectedWorkspaceId={selectedWorkspaceId ?? null}
-              onSelectWorkspace={selectWorkspace}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onAddWorkspace={navigateToCreate}
-              onArchiveWorkspace={handleArchiveWorkspace}
-              onPinWorkspace={handlePinWorkspace}
-              isCreateMode={isCreateMode}
-              draftTitle={persistedDraftTitle}
-              onSelectCreate={navigateToCreate}
-              showArchive={showArchive}
-              onShowArchiveChange={setShowArchive}
-            />
+            <WorkspacesSidebarContainer />
           </div>
         )}
 
