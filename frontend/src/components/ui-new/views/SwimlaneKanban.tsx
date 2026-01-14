@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
 import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
+import { statusLabels, statusBoardColors, statusColumnBgColors } from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
 import {
@@ -42,6 +42,7 @@ function StatusHeader({ status }: { status: TaskStatus }) {
         'py-1.5 px-2',
         'border-l border-panel/40'
       )}
+      style={{ backgroundColor: statusColumnBgColors[status] }}
     >
       <span
         className="h-1.5 w-1.5 rounded-full shrink-0"

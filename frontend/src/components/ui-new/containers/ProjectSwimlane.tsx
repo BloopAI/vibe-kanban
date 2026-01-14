@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import type { FilterState } from '@/components/ui-new/primitives/FilterDisplayControls';
+import { statusColumnBgColors } from '@/utils/statusLabels';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -52,6 +53,7 @@ function StatusCell({ status, children }: StatusCellProps) {
         // Empty state subtle indicator on hover
         !hasChildren && !isOver && 'hover:bg-panel/5'
       )}
+      style={!isOver ? { backgroundColor: statusColumnBgColors[status] } : undefined}
     >
       {/* Drop zone visual indicator */}
       {isOver && (
