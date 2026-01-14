@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -36,7 +36,11 @@ import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { useExpandedAll } from '@/stores/useUiPreferencesStore';
+import {
+  PERSIST_KEYS,
+  useExpandedAll,
+  usePaneSize,
+} from '@/stores/useUiPreferencesStore';
 import {
   useLayoutStore,
   useIsRightMainPanelVisible,
@@ -294,8 +298,28 @@ export function WorkspacesLayout() {
     setMainPanelVisible,
   } = useLayoutStore();
 
-  // Derived state: right main panel (Changes/Logs/Preview) is visible
+  const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
+    PERSIST_KEYS.rightMainPanel,
+    50
+  );
   const isRightMainPanelVisible = useIsRightMainPanelVisible();
+
+  const defaultLayout = (): Layout => {
+    let layout = { 'left-main': 50, 'right-main': 50 };
+    if (typeof rightMainPanelSize === 'number') {
+      layout = {
+        'left-main': 100 - rightMainPanelSize,
+        'right-main': rightMainPanelSize,
+      };
+    }
+    return layout;
+  };
+
+  const onLayoutChange = (layout: Layout) => {
+    if (isRightMainPanelVisible) {
+      setRightMainPanelSize(layout['right-main']);
+    }
+  };
 
   // === Auto-show Workspaces Guide on first visit ===
   const WORKSPACES_GUIDE_ID = 'workspaces-guide';
@@ -760,12 +784,16 @@ export function WorkspacesLayout() {
     const innerLayout = (
       <div className="flex h-full">
         {/* Resizable area for main + right panels */}
-        <Group orientation="horizontal" className="flex-1 min-w-0 h-full">
+        <Group
+          orientation="horizontal"
+          className="flex-1 min-w-0 h-full"
+          defaultLayout={defaultLayout()}
+          onLayoutChange={onLayoutChange}
+        >
           {/* Main panel (chat area) */}
           {isMainPanelVisible && (
             <Panel
-              id="main"
-              defaultSize={isRightMainPanelVisible ? 50 : 100}
+              id="left-main"
               minSize={20}
               className="min-w-0 h-full overflow-hidden"
             >
@@ -785,7 +813,6 @@ export function WorkspacesLayout() {
           {isRightMainPanelVisible && (
             <Panel
               id="right-main"
-              defaultSize={isMainPanelVisible ? 50 : 100}
               minSize={20}
               className="min-w-0 h-full overflow-hidden"
             >
