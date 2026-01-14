@@ -774,7 +774,6 @@ impl LocalContainerService {
     async fn create_workspace_config_files(
         workspace_dir: &Path,
         repos: &[Repo],
-        _agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
 
@@ -992,12 +991,8 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
             .await?;
 
-        Self::create_workspace_config_files(
-            &created_workspace.workspace_dir,
-            &repositories,
-            workspace.agent_working_dir.as_deref(),
-        )
-        .await?;
+        Self::create_workspace_config_files(&created_workspace.workspace_dir, &repositories)
+            .await?;
 
         Workspace::update_container_ref(
             &self.db.pool,
@@ -1060,12 +1055,7 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&workspace_dir, workspace)
             .await?;
 
-        Self::create_workspace_config_files(
-            &workspace_dir,
-            &repositories,
-            workspace.agent_working_dir.as_deref(),
-        )
-        .await?;
+        Self::create_workspace_config_files(&workspace_dir, &repositories).await?;
 
         Ok(workspace_dir.to_string_lossy().to_string())
     }
