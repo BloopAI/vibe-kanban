@@ -53,10 +53,6 @@ export type PersistKey =
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
   | typeof PERSIST_KEYS.showGitHubComments
-  | typeof PERSIST_KEYS.sidebarWidth
-  | typeof PERSIST_KEYS.gitPanelWidth
-  | typeof PERSIST_KEYS.changesPanelWidth
-  | typeof PERSIST_KEYS.fileTreeHeight
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`
