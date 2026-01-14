@@ -173,6 +173,7 @@
     "copyPath": "Copiar ruta",
     "copyWorktreePath": "Copiar ruta del worktree",
     "openInIde": "Abrir en IDE",
+    "repoSettings": "Configuración del repositorio",
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
     "copied": "Copiado"

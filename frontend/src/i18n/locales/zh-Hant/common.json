@@ -173,6 +173,7 @@
     "copyPath": "複製路徑",
     "copyWorktreePath": "複製工作樹路徑",
     "openInIde": "在IDE中開啟",
+    "repoSettings": "儲存庫設定",
     "cancel": "取消",
     "saveChanges": "儲存變更",
     "copied": "已複製"

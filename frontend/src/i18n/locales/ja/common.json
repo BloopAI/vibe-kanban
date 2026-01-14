@@ -173,6 +173,7 @@
     "copyPath": "パスをコピー",
     "copyWorktreePath": "ワークツリーパスをコピー",
     "openInIde": "IDEで開く",
+    "repoSettings": "リポジトリ設定",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
     "copied": "コピーしました"

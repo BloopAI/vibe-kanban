@@ -173,6 +173,7 @@
     "copyPath": "워크트리 경로 복사",
     "copyWorktreePath": "워크트리 경로 복사",
     "openInIde": "IDE에서 열기",
+    "repoSettings": "저장소 설정",
     "cancel": "취소",
     "saveChanges": "변경사항 저장",
     "copied": "복사됨"
