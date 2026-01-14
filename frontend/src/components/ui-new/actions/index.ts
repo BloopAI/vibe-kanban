@@ -106,6 +106,7 @@ export interface ActionVisibilityContext {
   isGitPanelVisible: boolean;
   isCreateMode: boolean;
   rightMainPanelMode: RightMainPanelMode | null;
+  isMobile: boolean;
 
   // Workspace state
   hasWorkspace: boolean;
@@ -480,11 +481,10 @@ export const Actions = {
     icon: ChatsTeardropIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
-    isEnabled: (ctx) => {
-      const isMobile =
-        typeof window !== 'undefined' && window.innerWidth < 640;
-      return isMobile || !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null);
-    },
+    // On mobile, always enabled (radio button behavior)
+    // On desktop, disabled when chat is the only visible main content
+    isEnabled: (ctx) =>
+      ctx.isMobile || !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
     getLabel: (ctx) =>
       ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
     execute: (ctx) => {
