@@ -7,9 +7,8 @@ import {
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { SpinnerGapIcon } from '@phosphor-icons/react';
 
+import { cn } from '@/lib/utils';
 import NewDisplayConversationEntry from './NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { useEntries } from '@/contexts/EntriesContext';
@@ -86,7 +85,6 @@ const computeItemKey: VirtuosoMessageListProps<
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
 export function ConversationList({ attempt, task }: ConversationListProps) {
-  const { t } = useTranslation('common');
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,29 +154,33 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
     [attempt, task]
   );
 
+  // Determine if content is ready to show (has data or finished loading)
+  const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
+
   return (
     <ApprovalFormProvider>
-      <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+      <div
+        className={cn(
+          'h-full transition-opacity duration-300',
+          hasContent ? 'opacity-100' : 'opacity-0'
+        )}
       >
-        <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-          ref={messageListRef}
-          className="h-full scrollbar-none"
-          data={channelData}
-          initialLocation={INITIAL_TOP_ITEM}
-          context={messageListContext}
-          computeItemKey={computeItemKey}
-          ItemContent={ItemContent}
-          Header={() => <div className="h-2" />}
-          Footer={() => <div className="h-2" />}
-        />
-      </VirtuosoMessageListLicense>
-      {loading && !channelData?.data?.length && (
-        <div className="absolute inset-0 bg-primary flex flex-col gap-2 justify-center items-center">
-          <SpinnerGapIcon className="h-8 w-8 animate-spin" />
-          <p>{t('states.loadingHistory')}</p>
-        </div>
-      )}
+        <VirtuosoMessageListLicense
+          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+        >
+          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+            ref={messageListRef}
+            className="h-full scrollbar-none"
+            data={channelData}
+            initialLocation={INITIAL_TOP_ITEM}
+            context={messageListContext}
+            computeItemKey={computeItemKey}
+            ItemContent={ItemContent}
+            Header={() => <div className="h-2" />}
+            Footer={() => <div className="h-2" />}
+          />
+        </VirtuosoMessageListLicense>
+      </div>
     </ApprovalFormProvider>
   );
 }

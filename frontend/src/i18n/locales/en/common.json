@@ -131,6 +131,13 @@
     "loading": "Loading...",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
+    "viewArchive": "View Archive",
+    "backToActive": "Back to Active",
+    "noArchived": "No archived workspaces",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "more": "More actions",
     "rename": {
       "title": "Rename Workspace",
       "description": "Enter a new name for this workspace.",

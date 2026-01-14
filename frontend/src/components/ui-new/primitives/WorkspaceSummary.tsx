@@ -1,12 +1,13 @@
 import {
   PushPinIcon,
-  DotsThreeIcon,
   HandIcon,
   TriangleIcon,
   PlayIcon,
   FileIcon,
   CircleIcon,
   GitPullRequestIcon,
+  ArchiveIcon,
+  ListIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,8 @@ interface WorkspaceSummaryProps {
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   onClick?: () => void;
+  onArchive?: () => void;
+  onPin?: () => void;
   className?: string;
   summary?: boolean;
   /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
@@ -52,6 +55,8 @@ export function WorkspaceSummary({
   latestProcessStatus,
   prStatus,
   onClick,
+  onArchive,
+  onPin,
   className,
   summary = false,
   isDraft = false,
@@ -69,21 +74,41 @@ export function WorkspaceSummary({
     });
   };
 
+  const handleArchive = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onArchive?.();
+  };
+
+  const handlePin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPin?.();
+  };
+
   return (
-    <div className={cn('group relative', className)}>
+    <div
+      className={cn(
+        'group relative rounded-sm transition-all duration-100 overflow-hidden',
+        isActive ? 'bg-tertiary' : '',
+        className
+      )}
+    >
+      {/* Selection indicator - thin colored tab on the left */}
+      <div
+        className={cn(
+          'absolute left-0 top-1 bottom-1 w-0.5 rounded-full transition-colors duration-100',
+          isActive ? 'bg-brand' : 'bg-transparent'
+        )}
+      />
       <button
         onClick={onClick}
         className={cn(
-          'flex w-full cursor-pointer flex-col border-l-4 text-left text-low',
-          isActive ? 'border-normal pl-base' : 'border-none'
+          'flex w-full cursor-pointer flex-col text-left px-base py-half transition-all duration-150',
+          isActive
+            ? 'text-normal'
+            : 'text-low opacity-60 hover:opacity-100 hover:text-normal'
         )}
       >
-        <div
-          className={cn(
-            'truncate group-hover:text-high pr-double',
-            !summary && 'text-normal'
-          )}
-        >
+        <div className={cn('truncate pr-double', !summary && 'text-normal')}>
           {name}
         </div>
         {(!summary || isActive) && (
@@ -179,15 +204,54 @@ export function WorkspaceSummary({
         )}
       </button>
 
+      {/* Right-side hover zone for action overlay */}
       {workspaceId && (
-        <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={handleOpenCommandBar}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="p-half rounded-sm hover:bg-tertiary text-low hover:text-high focus:outline-none"
+        <div className="absolute right-0 top-0 bottom-0 w-16 group/actions">
+          {/* Sliding action overlay - only appears when hovering this zone */}
+          <div
+            className={cn(
+              'absolute right-0 top-0 bottom-0 flex items-center',
+              'translate-x-full group-hover/actions:translate-x-0',
+              'transition-transform duration-150 ease-out'
+            )}
           >
-            <DotsThreeIcon className="size-icon-sm" weight="bold" />
-          </button>
+            {/* Gradient fade from transparent to pill background */}
+            <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />
+            {/* Action pill */}
+            <div className="flex items-center gap-0.5 pr-base h-full bg-secondary">
+              <button
+                onClick={handlePin}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={cn(
+                  'p-1.5 rounded-sm transition-colors duration-100',
+                  'hover:bg-tertiary',
+                  isPinned ? 'text-brand' : 'text-low hover:text-normal'
+                )}
+                title={isPinned ? t('workspaces.unpin') : t('workspaces.pin')}
+              >
+                <PushPinIcon
+                  className="size-icon-xs"
+                  weight={isPinned ? 'fill' : 'regular'}
+                />
+              </button>
+              <button
+                onClick={handleArchive}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary transition-colors duration-100"
+                title={t('workspaces.archive')}
+              >
+                <ArchiveIcon className="size-icon-xs" />
+              </button>
+              <button
+                onClick={handleOpenCommandBar}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary transition-colors duration-100"
+                title={t('workspaces.more')}
+              >
+                <ListIcon className="size-icon-xs" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

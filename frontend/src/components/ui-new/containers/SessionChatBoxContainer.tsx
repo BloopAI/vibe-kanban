@@ -545,9 +545,43 @@ export function SessionChatBoxContainer({
     localMessage,
   ]);
 
-  // Don't render if no session and not in new session mode
-  if (!session && !isNewSessionMode) {
-    return null;
+  // Render placeholder state if no session and not in new session mode
+  // This maintains the visual structure during workspace transitions
+  const isPlaceholderMode = !session && !isNewSessionMode;
+
+  // In placeholder mode, render a disabled version to maintain visual structure
+  if (isPlaceholderMode) {
+    return (
+      <SessionChatBox
+        status="idle"
+        workspaceId={workspaceId}
+        projectId={projectId}
+        editor={{
+          value: '',
+          onChange: () => {},
+        }}
+        actions={{
+          onSend: () => {},
+          onQueue: () => {},
+          onCancelQueue: () => {},
+          onStop: () => {},
+          onPasteFiles: () => {},
+        }}
+        session={{
+          sessions: [],
+          selectedSessionId: undefined,
+          onSelectSession: () => {},
+          isNewSessionMode: false,
+          onNewSession: undefined,
+        }}
+        stats={{
+          filesChanged: 0,
+          linesAdded: 0,
+          linesRemoved: 0,
+          onViewCode: undefined,
+        }}
+      />
+    );
   }
 
   return (

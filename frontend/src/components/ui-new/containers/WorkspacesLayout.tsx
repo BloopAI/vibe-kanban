@@ -710,6 +710,23 @@ export function WorkspacesLayout() {
     );
   };
 
+  // Action handlers for sidebar workspace actions
+  const { executeAction } = useActions();
+
+  const handleArchiveWorkspace = useCallback(
+    (workspaceId: string) => {
+      executeAction(Actions.ArchiveWorkspace, workspaceId);
+    },
+    [executeAction]
+  );
+
+  const handlePinWorkspace = useCallback(
+    (workspaceId: string) => {
+      executeAction(Actions.PinWorkspace, workspaceId);
+    },
+    [executeAction]
+  );
+
   // Render sidebar with persisted draft title
   const renderSidebar = () => (
     <WorkspacesSidebar
@@ -720,6 +737,8 @@ export function WorkspacesLayout() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAddWorkspace={navigateToCreate}
+      onArchiveWorkspace={handleArchiveWorkspace}
+      onPinWorkspace={handlePinWorkspace}
       isCreateMode={isCreateMode}
       draftTitle={persistedDraftTitle}
       onSelectCreate={navigateToCreate}
