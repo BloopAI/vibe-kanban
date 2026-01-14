@@ -47,6 +47,9 @@ fn base_command(claude_code_router: bool) -> &'static str {
     }
 }
 
+/// Script to check for uncommitted git changes, embedded at compile time
+const CHECK_GIT_STATUS_SCRIPT: &str = include_str!("../scripts/check-git-status.sh");
+
 use derivative::Derivative;
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
@@ -129,31 +132,32 @@ impl ClaudeCode {
     }
 
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
+        // Use shlex to properly escape script for bash -c
+        let quoted_script = shlex::try_quote(CHECK_GIT_STATUS_SCRIPT).ok()?;
+        let stop_command = format!("bash -c {}", quoted_script);
+
+        let mut hooks = serde_json::json!({
+            "Stop": [{
+                "hooks": [{
+                    "type": "command",
+                    "command": stop_command
+                }]
+            }]
+        });
+
+        // Add PreToolUse hooks for plan/approvals mode
         if self.plan.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
-                    {
-                        "matcher": "^ExitPlanMode$",
-                        "hookCallbackIds": ["tool_approval"],
-                    },
-                    {
-                        "matcher": "^(?!ExitPlanMode$).*",
-                        "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
-                    }
-                ]
-            }))
+            hooks["PreToolUse"] = serde_json::json!([
+                { "matcher": "^ExitPlanMode$", "hookCallbackIds": ["tool_approval"] },
+                { "matcher": "^(?!ExitPlanMode$).*", "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID] }
+            ]);
         } else if self.approvals.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
-                    {
-                        "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
-                        "hookCallbackIds": ["tool_approval"],
-                    }
-                ]
-            }))
-        } else {
-            None
+            hooks["PreToolUse"] = serde_json::json!([
+                { "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*", "hookCallbackIds": ["tool_approval"] }
+            ]);
         }
+
+        Some(hooks)
     }
 }
 

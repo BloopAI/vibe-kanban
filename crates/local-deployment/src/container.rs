@@ -64,9 +64,6 @@ use uuid::Uuid;
 
 use crate::{command, copy};
 
-/// Script embedded at compile time for Claude Code Stop hook
-const CHECK_GIT_STATUS_SCRIPT: &str = include_str!("scripts/check-git-status.sh");
-
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -777,7 +774,7 @@ impl LocalContainerService {
     async fn create_workspace_config_files(
         workspace_dir: &Path,
         repos: &[Repo],
-        agent_working_dir: Option<&str>,
+        _agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
 
@@ -824,75 +821,6 @@ impl LocalContainerService {
                 import_lines.len()
             );
         }
-
-        // Create Claude Code hooks for cleanup scripts
-        Self::create_claude_hooks_config(workspace_dir, repos, agent_working_dir).await?;
-
-        Ok(())
-    }
-
-    /// Create .claude/settings.local.json with Stop hook to check for uncommitted changes.
-    /// Creates in agent_working_dir if set (single repo), otherwise workspace root (multi repo).
-    async fn create_claude_hooks_config(
-        workspace_dir: &Path,
-        _repos: &[Repo],
-        agent_working_dir: Option<&str>,
-    ) -> Result<(), ContainerError> {
-        // Determine where to create .claude/ - where the agent runs
-        let claude_root = match agent_working_dir {
-            Some(dir) => workspace_dir.join(dir), // Single repo: inside repo dir
-            None => workspace_dir.to_path_buf(),  // Multi repo: workspace root
-        };
-
-        // Create .claude/hooks directory
-        let hooks_dir = claude_root.join(".claude").join("hooks");
-        tokio::fs::create_dir_all(&hooks_dir).await.map_err(|e| {
-            ContainerError::Other(anyhow!("Failed to create .claude/hooks dir: {}", e))
-        })?;
-
-        // Write check-git-status.sh script (embedded at compile time)
-        let script_path = hooks_dir.join("check-git-status.sh");
-        tokio::fs::write(&script_path, CHECK_GIT_STATUS_SCRIPT)
-            .await
-            .map_err(|e| {
-                ContainerError::Other(anyhow!("Failed to write check-git-status.sh: {}", e))
-            })?;
-
-        // Make executable (Unix only)
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = tokio::fs::metadata(&script_path).await?.permissions();
-            perms.set_mode(0o755);
-            tokio::fs::set_permissions(&script_path, perms).await?;
-        }
-
-        // Create settings.local.json with Stop hook
-        let settings = serde_json::json!({
-            "hooks": {
-                "Stop": [
-                    {
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": ".claude/hooks/check-git-status.sh"
-                            }
-                        ]
-                    }
-                ]
-            }
-        });
-
-        let settings_path = claude_root.join(".claude").join("settings.local.json");
-        let content = serde_json::to_string_pretty(&settings)
-            .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize settings: {}", e)))?;
-        tokio::fs::write(&settings_path, content)
-            .await
-            .map_err(|e| {
-                ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
-            })?;
-
-        tracing::info!("Created Claude Code hooks at {:?}", claude_root);
 
         Ok(())
     }
