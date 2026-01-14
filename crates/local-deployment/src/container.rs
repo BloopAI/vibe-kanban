@@ -835,15 +835,6 @@ impl LocalContainerService {
         repos: &[Repo],
         agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
-        let repos_with_cleanup: Vec<_> = repos
-            .iter()
-            .filter(|r| r.cleanup_script.is_some())
-            .collect();
-
-        if repos_with_cleanup.is_empty() {
-            return Ok(());
-        }
-
         // Determine where to create .claude/ - where the agent runs
         let claude_root = match agent_working_dir {
             Some(dir) => workspace_dir.join(dir), // Single repo: inside repo dir
@@ -864,20 +855,21 @@ impl LocalContainerService {
         // For multi repo, we need to cd into each repo subdir
         let is_single_repo = agent_working_dir.is_some();
 
-        for repo in &repos_with_cleanup {
-            let cleanup_cmd = repo.cleanup_script.as_ref().unwrap();
-            if is_single_repo {
-                // Single repo: already in repo dir, run directly
-                script_content.push_str(&format!(
-                    "# Cleanup for {}\necho \"Running cleanup...\"\n{} || echo \"Cleanup failed (non-blocking)\"\n\n",
-                    repo.name, cleanup_cmd
-                ));
-            } else {
-                // Multi repo: cd into each repo subdir
-                script_content.push_str(&format!(
-                    "# Cleanup for {}\necho \"Running cleanup for {}...\"\n(cd \"{}\" && {}) || echo \"Cleanup for {} failed (non-blocking)\"\n\n",
-                    repo.name, repo.name, repo.name, cleanup_cmd, repo.name
-                ));
+        for repo in repos {
+            if let Some(cleanup_cmd) = &repo.cleanup_script {
+                if is_single_repo {
+                    // Single repo: already in repo dir, run directly
+                    script_content.push_str(&format!(
+                        "# Cleanup for {}\necho \"Running cleanup...\"\n{} || echo \"Cleanup failed (non-blocking)\"\n\n",
+                        repo.name, cleanup_cmd
+                    ));
+                } else {
+                    // Multi repo: cd into each repo subdir
+                    script_content.push_str(&format!(
+                        "# Cleanup for {}\necho \"Running cleanup for {}...\"\n(cd \"{}\" && {}) || echo \"Cleanup for {} failed (non-blocking)\"\n\n",
+                        repo.name, repo.name, repo.name, cleanup_cmd, repo.name
+                    ));
+                }
             }
         }
 
@@ -921,8 +913,7 @@ impl LocalContainerService {
         })?;
 
         tracing::info!(
-            "Created Claude Code cleanup hooks for {} repo(s) at {:?}",
-            repos_with_cleanup.len(),
+            "Created Claude Code cleanup hooks at {:?}",
             claude_root
         );
 
