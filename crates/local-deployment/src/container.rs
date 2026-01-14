@@ -440,10 +440,11 @@ impl LocalContainerService {
                         ExecutionProcessRunReason::CodingAgent
                     );
 
-                    // Check if we should send a commit reminder instead of auto-committing
+                    // Check if we should send a commit reminder instead of auto-committing.
+                    // Skip if this execution IS a commit reminder (to avoid infinite loops).
                     let mut sent_commit_reminder = false;
                     if is_coding_agent
-                        && !container.commit_reminder_service.has_sent(ctx.session.id)
+                        && !container.commit_reminder_service.is_reminder_execution(exec_id)
                     {
                         // Check for uncommitted changes before try_commit_changes would auto-commit them
                         if container.has_uncommitted_changes(&ctx) {
@@ -458,9 +459,9 @@ impl LocalContainerService {
                                 variant: None,
                             };
                             match container.start_queued_follow_up(&ctx, &reminder_data).await {
-                                Ok(_) => {
+                                Ok(reminder_exec) => {
                                     sent_commit_reminder = true;
-                                    container.commit_reminder_service.mark_sent(ctx.session.id);
+                                    container.commit_reminder_service.mark_as_reminder(reminder_exec.id);
                                     tracing::info!(
                                         "Started commit reminder follow-up for workspace {}",
                                         ctx.workspace.id

@@ -3,11 +3,13 @@ use std::sync::Arc;
 use dashmap::DashSet;
 use uuid::Uuid;
 
-/// In-memory service for tracking commit reminders sent to sessions.
-/// Prevents sending multiple commit reminders to the same session.
+/// In-memory service for tracking commit reminder executions.
+/// Tracks which executions ARE commit reminders to avoid infinite loops
+/// while still allowing new user-initiated executions to receive reminders.
 #[derive(Clone)]
 pub struct CommitReminderService {
-    sent: Arc<DashSet<Uuid>>,
+    /// Execution IDs that are commit reminder follow-ups
+    reminder_executions: Arc<DashSet<Uuid>>,
 }
 
 impl CommitReminderService {
@@ -30,18 +32,18 @@ impl CommitReminderService {
 
     pub fn new() -> Self {
         Self {
-            sent: Arc::new(DashSet::new()),
+            reminder_executions: Arc::new(DashSet::new()),
         }
     }
 
-    /// Mark that a commit reminder has been sent for this session
-    pub fn mark_sent(&self, session_id: Uuid) {
-        self.sent.insert(session_id);
+    /// Mark an execution as being a commit reminder follow-up
+    pub fn mark_as_reminder(&self, exec_id: Uuid) {
+        self.reminder_executions.insert(exec_id);
     }
 
-    /// Check if a commit reminder has already been sent for this session
-    pub fn has_sent(&self, session_id: Uuid) -> bool {
-        self.sent.contains(&session_id)
+    /// Check if an execution is a commit reminder follow-up
+    pub fn is_reminder_execution(&self, exec_id: Uuid) -> bool {
+        self.reminder_executions.contains(&exec_id)
     }
 }
 
