@@ -730,17 +730,17 @@ pub async fn get_task_attempt_branch_status(
 
     // Batch fetch all merges for the workspace to avoid N+1 queries
     let all_merges = Merge::find_by_workspace_id(pool, workspace.id).await?;
-    let merges_by_repo: HashMap<Uuid, Vec<Merge>> = all_merges.into_iter().fold(
-        HashMap::new(),
-        |mut acc, merge| {
-            let repo_id = match &merge {
-                Merge::Direct(dm) => dm.repo_id,
-                Merge::Pr(pm) => pm.repo_id,
-            };
-            acc.entry(repo_id).or_insert_with(Vec::new).push(merge);
-            acc
-        },
-    );
+    let merges_by_repo: HashMap<Uuid, Vec<Merge>> =
+        all_merges
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, merge| {
+                let repo_id = match &merge {
+                    Merge::Direct(dm) => dm.repo_id,
+                    Merge::Pr(pm) => pm.repo_id,
+                };
+                acc.entry(repo_id).or_insert_with(Vec::new).push(merge);
+                acc
+            });
 
     let mut results = Vec::with_capacity(repositories.len());
 
