@@ -848,8 +848,9 @@ impl LocalContainerService {
         })?;
 
         // Build cleanup script
-        let mut script_content =
-            String::from("#!/bin/bash\n# Vibe Kanban cleanup script - runs after agent commits\n\n");
+        let mut script_content = String::from(
+            "#!/bin/bash\n# Vibe Kanban cleanup script - runs after agent commits\n\n",
+        );
 
         // For single repo, we're already in the repo dir
         // For multi repo, we need to cd into each repo subdir
@@ -908,14 +909,13 @@ impl LocalContainerService {
         let settings_path = claude_root.join(".claude").join("settings.local.json");
         let content = serde_json::to_string_pretty(&settings)
             .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize settings: {}", e)))?;
-        tokio::fs::write(&settings_path, content).await.map_err(|e| {
-            ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
-        })?;
+        tokio::fs::write(&settings_path, content)
+            .await
+            .map_err(|e| {
+                ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
+            })?;
 
-        tracing::info!(
-            "Created Claude Code cleanup hooks at {:?}",
-            claude_root
-        );
+        tracing::info!("Created Claude Code cleanup hooks at {:?}", claude_root);
 
         Ok(())
     }
