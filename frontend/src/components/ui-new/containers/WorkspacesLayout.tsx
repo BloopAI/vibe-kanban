@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import 'allotment/dist/style.css';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -704,67 +703,98 @@ export function WorkspacesLayout() {
 
   // Render layout content (create mode or workspace mode)
   const renderContent = () => {
+    // Main panel content
+    const mainPanelContent = isCreateMode ? (
+      <CreateChatBoxContainer />
+    ) : (
+      <FileNavigationProvider
+        viewFileInChanges={handleViewFileInChanges}
+        diffPaths={diffPaths}
+      >
+        <LogNavigationProvider
+          viewProcessInPanel={handleViewProcessInPanel}
+          viewToolContentInPanel={handleViewToolContentInPanel}
+        >
+          <WorkspacesMainContainer
+            selectedWorkspace={selectedWorkspace ?? null}
+            selectedSession={selectedSession}
+            sessions={sessions}
+            onSelectSession={selectSession}
+            isLoading={isLoading}
+            isNewSessionMode={isNewSessionMode}
+            onStartNewSession={startNewSession}
+            onViewCode={handleToggleChangesMode}
+            diffStats={diffStats}
+          />
+        </LogNavigationProvider>
+      </FileNavigationProvider>
+    );
+
+    // Right main panel content (Changes/Logs/Preview)
+    const rightMainPanelContent = (
+      <>
+        {isChangesMode && (
+          <ChangesPanelContainer
+            diffs={realDiffs}
+            selectedFilePath={selectedFilePath}
+            onFileInViewChange={setFileInView}
+            projectId={selectedWorkspaceTask?.project_id}
+            attemptId={selectedWorkspace?.id}
+          />
+        )}
+        {isLogsMode && (
+          <LogsContentContainer
+            content={logsPanelContent}
+            searchQuery={logSearchQuery}
+            currentMatchIndex={logCurrentMatchIdx}
+            onMatchIndicesChange={setLogMatchIndices}
+          />
+        )}
+        {isPreviewMode && (
+          <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
+        )}
+      </>
+    );
+
     // Inner layout with main, changes/logs, git panel
     const innerLayout = (
       <div className="flex h-full">
-        {/* Main panel (chat area) */}
-        {isMainPanelVisible && (
-          <div className="flex-1 min-w-0 h-full overflow-hidden">
-            {isCreateMode ? (
-              <CreateChatBoxContainer />
-            ) : (
-              <FileNavigationProvider
-                viewFileInChanges={handleViewFileInChanges}
-                diffPaths={diffPaths}
-              >
-                <LogNavigationProvider
-                  viewProcessInPanel={handleViewProcessInPanel}
-                  viewToolContentInPanel={handleViewToolContentInPanel}
-                >
-                  <WorkspacesMainContainer
-                    selectedWorkspace={selectedWorkspace ?? null}
-                    selectedSession={selectedSession}
-                    sessions={sessions}
-                    onSelectSession={selectSession}
-                    isLoading={isLoading}
-                    isNewSessionMode={isNewSessionMode}
-                    onStartNewSession={startNewSession}
-                    onViewCode={handleToggleChangesMode}
-                    diffStats={diffStats}
-                  />
-                </LogNavigationProvider>
-              </FileNavigationProvider>
-            )}
-          </div>
-        )}
+        {/* Resizable area for main + right panels */}
+        <Group orientation="horizontal" className="flex-1 min-w-0 h-full">
+          {/* Main panel (chat area) */}
+          {isMainPanelVisible && (
+            <Panel
+              id="main"
+              defaultSize={isRightMainPanelVisible ? 50 : 100}
+              minSize={20}
+              className="min-w-0 h-full overflow-hidden"
+            >
+              {mainPanelContent}
+            </Panel>
+          )}
 
-        {/* Right main panel (Changes/Logs/Preview) */}
-        {isRightMainPanelVisible && (
-          <div className="flex-[4] min-w-0 h-full overflow-hidden">
-            {isChangesMode && (
-              <ChangesPanelContainer
-                diffs={realDiffs}
-                selectedFilePath={selectedFilePath}
-                onFileInViewChange={setFileInView}
-                projectId={selectedWorkspaceTask?.project_id}
-                attemptId={selectedWorkspace?.id}
-              />
-            )}
-            {isLogsMode && (
-              <LogsContentContainer
-                content={logsPanelContent}
-                searchQuery={logSearchQuery}
-                currentMatchIndex={logCurrentMatchIdx}
-                onMatchIndicesChange={setLogMatchIndices}
-              />
-            )}
-            {isPreviewMode && (
-              <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
-            )}
-          </div>
-        )}
+          {/* Resize handle between main and right panels */}
+          {isMainPanelVisible && isRightMainPanelVisible && (
+            <Separator
+              id="main-separator"
+              className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+            />
+          )}
 
-        {/* Git panel (right sidebar) */}
+          {/* Right main panel (Changes/Logs/Preview) */}
+          {isRightMainPanelVisible && (
+            <Panel
+              id="right-main"
+              defaultSize={isMainPanelVisible ? 50 : 100}
+              minSize={20}
+              className="min-w-0 h-full overflow-hidden"
+            >
+              {rightMainPanelContent}
+            </Panel>
+          )}
+        </Group>
+
+        {/* Git panel (right sidebar) - fixed width, not resizable */}
         {isGitPanelVisible && (
           <div className="w-[300px] shrink-0 h-full overflow-hidden">
             {renderRightPanelContent()}
