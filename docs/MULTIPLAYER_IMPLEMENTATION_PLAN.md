@@ -105,9 +105,11 @@ Projects are the top-level container. Once projects have owners, we can scope ev
 
 ---
 
-## Phase 3: Task Attribution & Assignment
+## Phase 3: Task Attribution & Assignment ✅ COMPLETED
 
 **Duration**: 2-3 days
+
+**Status**: Completed
 
 ### What
 Tasks track who created them and can be assigned to users.
@@ -132,15 +134,15 @@ Tasks are the core work unit. Knowing who created and who is responsible for a t
 ### Changes Required
 
 **Backend**
-- Migration to add `creator_user_id` and `assignee_user_id` columns to tasks table
-- Update Task model with creator/assignee fields
-- Update task routes for auth and user attribution
-- Add users list route for assignment picker
+- ~~Migration to add `creator_user_id` and `assignee_user_id` columns to tasks table~~ ✅
+- ~~Update Task model with creator/assignee fields~~ ✅
+- ~~Update task routes for auth and user attribution~~ ✅
+- ~~Add users list route for assignment picker~~ ✅
 
 **Frontend**
-- Update task cards to display creator and assignee avatars
-- Create AssigneeSelector component
-- Integrate assignee selection into task create/edit dialogs
+- ~~Update task cards to display creator and assignee avatars~~ ✅
+- ~~Create AssigneeSelector component~~ ✅
+- ~~Integrate assignee selection into task create/edit dialogs~~ ✅
 
 ---
 
@@ -315,7 +317,7 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 |-------|----------|--------------|--------|
 | Phase 1: User Authentication Flow | 4-5 days | None | ✅ Completed |
 | Phase 2: Project Ownership | 2-3 days | Phase 1 | ✅ Completed |
-| Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 | Ready |
+| Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 | ✅ Completed |
 | Phase 4: Workspace & Session Ownership | 2 days | Phase 1 | Ready |
 | Phase 5: Chat Message Attribution | 3-4 days | Phase 4 | Blocked |
 | Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 | Ready |
