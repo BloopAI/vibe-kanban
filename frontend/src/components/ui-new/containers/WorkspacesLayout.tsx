@@ -51,6 +51,7 @@ import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
+import { useNavigate } from 'react-router-dom';
 
 // Container component for GitPanel that uses hooks requiring GitOperationsProvider
 interface GitPanelContainerProps {
