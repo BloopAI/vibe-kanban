@@ -4,12 +4,6 @@
 
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.
 
-export type SharedTaskResponse = { task: SharedTask, user: UserData | null, };
-
-export type AssigneesQuery = { project_id: string, };
-
-export type SharedTask = { id: string, organization_id: string, project_id: string, creator_user_id: string | null, assignee_user_id: string | null, deleted_by_user_id: string | null, title: string, description: string | null, status: TaskStatus, deleted_at: string | null, shared_at: string | null, created_at: string, updated_at: string, };
-
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
@@ -48,13 +42,13 @@ export type UpdateTag = { tag_name: string | null, content: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
@@ -180,7 +174,7 @@ export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
 
-export type RemoteProject = { id: string, organization_id: string, name: string, metadata: Record<string, unknown>, created_at: string, };
+export type RemoteProject = { id: string, organization_id: string, name: string, color: string, created_at: string, updated_at: string, };
 
 export type ListProjectsResponse = { projects: Array<RemoteProject>, };
 
@@ -241,10 +235,6 @@ export type ReviewError = { "type": "process_already_running" };
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
 export type OpenEditorResponse = { url: string | null, };
-
-export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
-
-export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
@@ -395,8 +385,6 @@ export type UiLanguage = "BROWSER" | "EN" | "FR" | "JA" | "ES" | "KO" | "ZH_HANS
 export type ShowcaseState = { seen_features: Array<string>, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
-
-export type SharedTaskDetails = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, };
 
 export type QueuedMessage = { 
 /**
