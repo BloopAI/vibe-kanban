@@ -5,6 +5,11 @@ import {
   Flag,
   Circle,
 } from '@phosphor-icons/react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface TaskMetadataProps {
   taskId?: string;
@@ -105,70 +110,107 @@ export function TaskMetadata({
 
       {/* Priority indicator */}
       {priorityInfo && (
-        <div
-          className={cn(
-            'flex items-center gap-0.5',
-            priorityInfo.className
-          )}
-          title={`Priority: ${priorityInfo.label}`}
-        >
-          <priorityInfo.icon
-            weight="fill"
-            className={compact ? 'size-3' : 'size-3.5'}
-          />
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={cn(
+                'flex items-center gap-0.5 cursor-default',
+                priorityInfo.className
+              )}
+            >
+              <priorityInfo.icon
+                weight="fill"
+                className={compact ? 'size-3' : 'size-3.5'}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <span>Priority: {priorityInfo.label}</span>
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Due date */}
       {dueDateInfo && (
-        <div
-          className={cn(
-            'flex items-center gap-0.5',
-            compact ? 'text-[10px]' : 'text-xs',
-            dueDateInfo.isOverdue && 'text-red-500',
-            dueDateInfo.isToday && 'text-orange-500',
-            !dueDateInfo.isOverdue && !dueDateInfo.isToday && 'text-muted-foreground'
-          )}
-          title={`Due: ${dueDate}`}
-        >
-          <CalendarBlank className={compact ? 'size-3' : 'size-3.5'} />
-          <span>{dueDateInfo.text}</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={cn(
+                'flex items-center gap-0.5 cursor-default',
+                compact ? 'text-[10px]' : 'text-xs',
+                dueDateInfo.isOverdue && 'text-red-500',
+                dueDateInfo.isToday && 'text-orange-500',
+                !dueDateInfo.isOverdue && !dueDateInfo.isToday && 'text-muted-foreground'
+              )}
+            >
+              <CalendarBlank className={compact ? 'size-3' : 'size-3.5'} />
+              <span>{dueDateInfo.text}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <span>Due: {new Date(dueDate!).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Labels */}
       {labels && labels.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           {labels.slice(0, compact ? 2 : 3).map((label, index) => (
-            <span
-              key={`${label.name}-${index}`}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5',
-                compact ? 'text-[9px]' : 'text-[10px]',
-                'font-medium'
-              )}
-              style={{
-                backgroundColor: `${label.color}20`,
-                color: label.color,
-              }}
-            >
-              <Circle
-                weight="fill"
-                className="size-1.5"
-                style={{ color: label.color }}
-              />
-              {label.name}
-            </span>
+            <Tooltip key={`${label.name}-${index}`}>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5',
+                    compact ? 'text-[9px]' : 'text-[10px]',
+                    'font-medium cursor-default'
+                  )}
+                  style={{
+                    backgroundColor: `${label.color}20`,
+                    color: label.color,
+                  }}
+                >
+                  <Circle
+                    weight="fill"
+                    className="size-1.5"
+                    style={{ color: label.color }}
+                  />
+                  {label.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <span>Label: {label.name}</span>
+              </TooltipContent>
+            </Tooltip>
           ))}
           {labels.length > (compact ? 2 : 3) && (
-            <span
-              className={cn(
-                'text-muted-foreground',
-                compact ? 'text-[9px]' : 'text-[10px]'
-              )}
-            >
-              +{labels.length - (compact ? 2 : 3)}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    'text-muted-foreground cursor-default',
+                    compact ? 'text-[9px]' : 'text-[10px]'
+                  )}
+                >
+                  +{labels.length - (compact ? 2 : 3)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <div className="flex flex-col gap-1">
+                  <span className="font-medium">Additional labels:</span>
+                  {labels.slice(compact ? 2 : 3).map((label, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      <Circle
+                        weight="fill"
+                        className="size-1.5"
+                        style={{ color: label.color }}
+                      />
+                      {label.name}
+                    </span>
+                  ))}
+                </div>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}
