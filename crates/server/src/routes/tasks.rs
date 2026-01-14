@@ -32,7 +32,8 @@ use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError,
+    DeploymentImpl,
+    error::ApiError,
     middleware::{get_user_id, load_task_middleware, try_get_authenticated_user},
     routes::task_attempts::WorkspaceRepoInput,
 };

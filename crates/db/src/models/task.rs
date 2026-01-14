@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, FromRow, Sqlite, SqlitePool, Type};
-use std::collections::HashMap;
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -32,7 +33,7 @@ pub struct Task {
     pub status: TaskStatus,
     pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
     pub shared_task_id: Option<Uuid>,
-    pub creator_user_id: Option<Uuid>,  // Foreign key to User who created the task
+    pub creator_user_id: Option<Uuid>, // Foreign key to User who created the task
     pub assignee_user_id: Option<Uuid>, // Foreign key to User assigned to the task
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
