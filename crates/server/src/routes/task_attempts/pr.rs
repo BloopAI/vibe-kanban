@@ -57,6 +57,31 @@ pub enum PrError {
     UnsupportedProvider,
 }
 
+/// Status of merge conflict auto-resolution attempt
+#[derive(Debug, Serialize, Deserialize, TS, Clone)]
+#[serde(tag = "status", rename_all = "snake_case")]
+#[ts(tag = "status", rename_all = "snake_case")]
+pub enum MergeConflictResolution {
+    /// No conflicts detected
+    NoConflicts,
+    /// Conflicts were detected and successfully resolved via rebase
+    Resolved,
+    /// Conflicts were detected but could not be auto-resolved
+    Failed {
+        conflicted_files: Vec<String>,
+        message: String,
+    },
+}
+
+/// Response for PR creation including conflict resolution status
+#[derive(Debug, Serialize, TS)]
+pub struct CreatePrResponse {
+    /// The URL of the created PR
+    pub pr_url: String,
+    /// Status of merge conflict auto-resolution (if conflicts were detected)
+    pub conflict_resolution: Option<MergeConflictResolution>,
+}
+
 #[derive(Debug, Serialize, TS)]
 pub struct AttachPrResponse {
     pub pr_attached: bool,
@@ -87,6 +112,238 @@ pub enum GetPrCommentsError {
 #[derive(Debug, Deserialize, TS)]
 pub struct GetPrCommentsQuery {
     pub repo_id: Uuid,
+}
+
+/// Prompt for AI-assisted conflict resolution
+pub const DEFAULT_CONFLICT_RESOLUTION_PROMPT: &str = r#"The branch has merge conflicts with the target branch that could not be automatically resolved.
+
+Your task is to resolve these conflicts by:
+1. Running `git rebase {target_branch}` to start the rebase
+2. For each conflicted file, open it, understand both versions, and resolve the conflict by choosing the appropriate code or merging both changes
+3. After resolving each file, run `git add <file>` to mark it as resolved
+4. Run `git rebase --continue` to proceed with the rebase
+5. If you encounter additional conflicts, repeat steps 2-4
+6. Once the rebase is complete, the conflicts will be resolved
+
+Conflicted files: {conflicted_files}
+
+Important guidelines:
+- Preserve functionality from both branches when possible
+- If unsure about which change to keep, prefer the changes from the current branch (the feature branch)
+- Test that the code compiles after resolving conflicts
+- Do NOT use `git rebase --abort` unless absolutely necessary"#;
+
+/// Detect merge conflicts and attempt auto-resolution via rebase
+async fn try_auto_resolve_conflicts(
+    deployment: &DeploymentImpl,
+    workspace: &Workspace,
+    repo: &Repo,
+    worktree_path: &std::path::Path,
+    target_branch: &str,
+) -> MergeConflictResolution {
+    let git = deployment.git();
+
+    // Check if there are commits on the target branch that aren't in our branch
+    // This indicates potential conflicts
+    let (_, behind) = match git.get_branch_status(worktree_path, &workspace.branch, target_branch) {
+        Ok(status) => status,
+        Err(e) => {
+            tracing::warn!("Failed to check branch status for conflict detection: {}", e);
+            return MergeConflictResolution::NoConflicts;
+        }
+    };
+
+    // If our branch is not behind the target, there are no conflicts to resolve
+    if behind == 0 {
+        tracing::debug!(
+            "Branch '{}' is not behind '{}', no conflicts to resolve",
+            workspace.branch,
+            target_branch
+        );
+        return MergeConflictResolution::NoConflicts;
+    }
+
+    tracing::info!(
+        "Branch '{}' is {} commits behind '{}', attempting to rebase",
+        workspace.branch,
+        behind,
+        target_branch
+    );
+
+    // Attempt to rebase onto the target branch
+    // We need the base commit that was used when the branch was created
+    let base_commit = match git.get_base_commit(worktree_path, &workspace.branch, target_branch) {
+        Ok(commit) => commit.to_string(),
+        Err(e) => {
+            tracing::warn!("Failed to get base commit for rebase: {}", e);
+            // Fall back to using target branch as both old and new base
+            target_branch.to_string()
+        }
+    };
+
+    // Perform the rebase
+    match git.rebase_branch(
+        &repo.path,
+        worktree_path,
+        target_branch,    // new base
+        &base_commit,     // old base
+        &workspace.branch // branch to rebase
+    ) {
+        Ok(new_commit) => {
+            tracing::info!(
+                "Successfully rebased branch '{}' onto '{}', new HEAD: {}",
+                workspace.branch,
+                target_branch,
+                new_commit
+            );
+
+            // Push the rebased branch (force push required after rebase)
+            match git.push_to_remote(worktree_path, &workspace.branch, true) {
+                Ok(()) => {
+                    tracing::info!(
+                        "Successfully pushed rebased branch '{}' to remote",
+                        workspace.branch
+                    );
+                    MergeConflictResolution::Resolved
+                }
+                Err(e) => {
+                    tracing::error!("Failed to push rebased branch: {}", e);
+                    MergeConflictResolution::Failed {
+                        conflicted_files: vec![],
+                        message: format!(
+                            "Rebase succeeded but failed to push: {}. You may need to force push manually.",
+                            e
+                        ),
+                    }
+                }
+            }
+        }
+        Err(GitServiceError::MergeConflicts(msg)) => {
+            // Rebase failed due to conflicts - get the list of conflicted files
+            let conflicted_files = git
+                .get_conflicted_files(worktree_path)
+                .unwrap_or_default();
+
+            tracing::warn!(
+                "Rebase failed with conflicts in {} files: {:?}",
+                conflicted_files.len(),
+                conflicted_files
+            );
+
+            // Abort the failed rebase to leave the branch in a clean state
+            if let Err(e) = git.abort_conflicts(worktree_path) {
+                tracing::error!("Failed to abort rebase after conflict: {}", e);
+            }
+
+            MergeConflictResolution::Failed {
+                conflicted_files,
+                message: msg,
+            }
+        }
+        Err(e) => {
+            tracing::error!("Rebase failed with unexpected error: {}", e);
+
+            // Try to abort any in-progress operation
+            let _ = git.abort_conflicts(worktree_path);
+
+            MergeConflictResolution::Failed {
+                conflicted_files: vec![],
+                message: format!("Failed to rebase: {}", e),
+            }
+        }
+    }
+}
+
+/// Trigger AI-assisted conflict resolution via coding agent
+async fn trigger_conflict_resolution_follow_up(
+    deployment: &DeploymentImpl,
+    workspace: &Workspace,
+    target_branch: &str,
+    conflicted_files: &[String],
+) -> Result<(), ApiError> {
+    // Get the custom prompt from config, or use default
+    let config = deployment.config().read().await;
+    let prompt_template = config
+        .pr_conflict_resolution_prompt
+        .as_deref()
+        .unwrap_or(DEFAULT_CONFLICT_RESOLUTION_PROMPT);
+
+    // Replace placeholders in prompt
+    let prompt = prompt_template
+        .replace("{target_branch}", target_branch)
+        .replace("{conflicted_files}", &conflicted_files.join(", "));
+
+    drop(config); // Release the lock before async operations
+
+    // Get or create a session for this follow-up
+    let session =
+        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
+            Some(s) => s,
+            None => {
+                Session::create(
+                    &deployment.db().pool,
+                    &CreateSession { executor: None },
+                    Uuid::new_v4(),
+                    workspace.id,
+                )
+                .await?
+            }
+        };
+
+    // Get executor profile from the latest coding agent process in this session
+    let Some(executor_profile_id) =
+        ExecutionProcess::latest_executor_profile_for_session(&deployment.db().pool, session.id)
+            .await?
+    else {
+        tracing::warn!(
+            "No executor profile found for session {}, skipping conflict resolution follow-up",
+            session.id
+        );
+        return Ok(());
+    };
+
+    // Get latest agent session ID if one exists (for coding agent continuity)
+    let latest_agent_session_id = ExecutionProcess::find_latest_coding_agent_turn_session_id(
+        &deployment.db().pool,
+        session.id,
+    )
+    .await?;
+
+    let working_dir = workspace
+        .agent_working_dir
+        .as_ref()
+        .filter(|dir| !dir.is_empty())
+        .cloned();
+
+    // Build the action type (follow-up if session exists, otherwise initial)
+    let action_type = if let Some(agent_session_id) = latest_agent_session_id {
+        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+            prompt,
+            session_id: agent_session_id,
+            executor_profile_id: executor_profile_id.clone(),
+            working_dir: working_dir.clone(),
+        })
+    } else {
+        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+            prompt,
+            executor_profile_id: executor_profile_id.clone(),
+            working_dir,
+        })
+    };
+
+    let action = ExecutorAction::new(action_type, None);
+
+    deployment
+        .container()
+        .start_execution(
+            workspace,
+            &session,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?;
+
+    Ok(())
 }
 
 pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the PR that was just created with a better title and description.
@@ -197,7 +454,7 @@ pub async fn create_pr(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreatePrApiRequest>,
-) -> Result<ResponseJson<ApiResponse<String, PrError>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<CreatePrResponse, PrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let workspace_repo =
@@ -370,7 +627,51 @@ pub async fn create_pr(
                 );
             }
 
-            Ok(ResponseJson(ApiResponse::success(pr_info.url)))
+            // Auto-resolve merge conflicts after PR creation
+            let conflict_resolution = try_auto_resolve_conflicts(
+                &deployment,
+                &workspace,
+                &repo,
+                &worktree_path,
+                &norm_target_branch_name,
+            )
+            .await;
+
+            // If conflicts couldn't be auto-resolved and AI resolution is available,
+            // trigger AI-assisted conflict resolution
+            if let MergeConflictResolution::Failed {
+                ref conflicted_files,
+                ..
+            } = conflict_resolution
+            {
+                if !conflicted_files.is_empty() {
+                    if let Err(e) = trigger_conflict_resolution_follow_up(
+                        &deployment,
+                        &workspace,
+                        &norm_target_branch_name,
+                        conflicted_files,
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "Failed to trigger AI conflict resolution for attempt {}: {}",
+                            workspace.id,
+                            e
+                        );
+                    }
+                }
+            }
+
+            // Convert NoConflicts to None for cleaner API response
+            let conflict_resolution_response = match &conflict_resolution {
+                MergeConflictResolution::NoConflicts => None,
+                _ => Some(conflict_resolution),
+            };
+
+            Ok(ResponseJson(ApiResponse::success(CreatePrResponse {
+                pr_url: pr_info.url,
+                conflict_resolution: conflict_resolution_response,
+            })))
         }
         Err(e) => {
             tracing::error!(

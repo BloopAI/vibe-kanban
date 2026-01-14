@@ -74,6 +74,7 @@ import {
   OpenEditorResponse,
   OpenEditorRequest,
   PrError,
+  CreatePrResponse,
   Scratch,
   ScratchType,
   CreateScratch,
@@ -743,12 +744,12 @@ export const attemptsApi = {
   createPR: async (
     attemptId: string,
     data: CreatePrApiRequest
-  ): Promise<Result<string, PrError>> => {
+  ): Promise<Result<CreatePrResponse, PrError>> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponseAsResult<string, PrError>(response);
+    return handleApiResponseAsResult<CreatePrResponse, PrError>(response);
   },
 
   startDevServer: async (attemptId: string): Promise<void> => {

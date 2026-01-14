@@ -41,6 +41,8 @@ pub struct Config {
     pub pr_auto_description_enabled: bool,
     #[serde(default)]
     pub pr_auto_description_prompt: Option<String>,
+    #[serde(default)]
+    pub pr_conflict_resolution_prompt: Option<String>,
 }
 
 impl Config {
@@ -66,6 +68,7 @@ impl Config {
             showcases: old_config.showcases,
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            pr_conflict_resolution_prompt: None,
         }
     }
 
@@ -116,6 +119,7 @@ impl Default for Config {
             showcases: ShowcaseState::default(),
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            pr_conflict_resolution_prompt: None,
         }
     }
 }
