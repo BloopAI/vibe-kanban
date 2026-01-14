@@ -434,6 +434,7 @@ impl LocalContainerService {
                     ExecutionProcessStatus::Running
                 );
 
+                let mut sent_commit_reminder = false;
                 if success || cleanup_done {
                     let is_coding_agent = matches!(
                         ctx.execution_process.run_reason,
@@ -442,7 +443,6 @@ impl LocalContainerService {
 
                     // Check if we should send a commit reminder instead of auto-committing.
                     // Skip if this execution IS a commit reminder (to avoid infinite loops).
-                    let mut sent_commit_reminder = false;
                     if is_coding_agent
                         && !container.commit_reminder_service.is_reminder_execution(exec_id)
                     {
@@ -516,7 +516,7 @@ impl LocalContainerService {
                     }
                 }
 
-                if container.should_finalize(&ctx) {
+                if !sent_commit_reminder && container.should_finalize(&ctx) {
                     // Only execute queued messages if the execution succeeded
                     // If it failed or was killed, just clear the queue and finalize
                     let should_execute_queued = !matches!(
