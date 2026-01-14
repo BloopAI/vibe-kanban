@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Button } from '@/components/ui/button.tsx';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
 import {
   Calendar,
   Edit,
@@ -196,19 +196,12 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
             })}
           </span>
           {creator && (
-            <span
-              className="flex items-center gap-1"
-              title={`Created by ${creator.username}`}
-            >
-              <Avatar className="h-4 w-4">
-                <AvatarImage
-                  src={creator.avatar_url ?? undefined}
-                  alt={creator.username}
-                />
-                <AvatarFallback className="text-[8px]">
-                  {creator.username.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+            <span className="flex items-center gap-1">
+              <UserAvatar
+                username={creator.username}
+                imageUrl={creator.avatar_url}
+                className="h-4 w-4"
+              />
               <span className="text-xs text-muted-foreground">
                 {creator.username}
               </span>
