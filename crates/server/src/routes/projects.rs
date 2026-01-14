@@ -34,7 +34,8 @@ use utils::{
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError,
+    DeploymentImpl,
+    error::ApiError,
     middleware::{get_user_id, load_project_middleware, try_get_authenticated_user},
 };
 

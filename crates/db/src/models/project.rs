@@ -5,8 +5,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::project_repo::CreateProjectRepo;
-use super::user::User;
+use super::{project_repo::CreateProjectRepo, user::User};
 
 #[derive(Debug, Error)]
 pub enum ProjectError {
@@ -333,7 +332,9 @@ impl Project {
         let projects_with_creators = projects
             .into_iter()
             .map(|p| {
-                let creator = p.creator_user_id.and_then(|id| creators_by_id.get(&id).cloned());
+                let creator = p
+                    .creator_user_id
+                    .and_then(|id| creators_by_id.get(&id).cloned());
                 ProjectWithCreator::new(p, creator)
             })
             .collect();
