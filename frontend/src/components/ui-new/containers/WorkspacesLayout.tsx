@@ -16,6 +16,10 @@ import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
 import { LogNavigationProvider } from '@/contexts/LogNavigationContext';
+import {
+  ChangesViewProvider,
+  useChangesView,
+} from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import {
   LogsContentContainer,
@@ -47,7 +51,14 @@ import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { Actions } from '@/components/ui-new/actions';
-import type { Merge, RepoWithTargetBranch } from 'shared/types';
+import type {
+  Diff,
+  Merge,
+  RepoWithTargetBranch,
+  Session,
+  Task,
+  Workspace,
+} from 'shared/types';
 
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
@@ -90,6 +101,197 @@ function ModeProvider({
     >
       {children}
     </ExecutionProcessesProvider>
+  );
+}
+
+interface WorkspacesLayoutInnerProps {
+  isCreateMode: boolean;
+  isMainPanelVisible: boolean;
+  isRightMainPanelVisible: boolean;
+  isGitPanelVisible: boolean;
+  isChangesMode: boolean;
+  isLogsMode: boolean;
+  isPreviewMode: boolean;
+  selectedWorkspace: Workspace | undefined;
+  selectedSession: Session | undefined;
+  sessions: Session[];
+  onSelectSession: (id: string) => void;
+  isLoading: boolean;
+  isNewSessionMode: boolean;
+  startNewSession: () => void;
+  handleToggleChangesMode: () => void;
+  diffStats: { filesChanged: number; linesAdded: number; linesRemoved: number };
+  diffPaths: Set<string>;
+  handleViewProcessInPanel: (processId: string) => void;
+  handleViewToolContentInPanel: (
+    toolName: string,
+    content: string,
+    command?: string
+  ) => void;
+  defaultLayout: () => Layout;
+  onLayoutChange: (layout: Layout) => void;
+  realDiffs: Diff[];
+  selectedWorkspaceTask: Task | undefined;
+  logsPanelContent: LogsPanelContent | null;
+  logSearchQuery: string;
+  logCurrentMatchIdx: number;
+  setLogMatchIndices: (indices: number[]) => void;
+  repos: RepoWithTargetBranch[];
+  repoInfos: RepoInfo[];
+  logMatchIndices: number[];
+  handleBranchNameChange: (name: string) => void;
+  setExpanded: (key: string, value: boolean) => void;
+  setLogSearchQuery: (query: string) => void;
+  handleLogPrevMatch: () => void;
+  handleLogNextMatch: () => void;
+}
+
+function WorkspacesLayoutInner({
+  isCreateMode,
+  isMainPanelVisible,
+  isRightMainPanelVisible,
+  isGitPanelVisible,
+  isChangesMode,
+  isLogsMode,
+  isPreviewMode,
+  selectedWorkspace,
+  selectedSession,
+  sessions,
+  onSelectSession,
+  isLoading,
+  isNewSessionMode,
+  startNewSession,
+  handleToggleChangesMode,
+  diffStats,
+  diffPaths,
+  handleViewProcessInPanel,
+  handleViewToolContentInPanel,
+  defaultLayout,
+  onLayoutChange,
+  realDiffs,
+  selectedWorkspaceTask,
+  logsPanelContent,
+  logSearchQuery,
+  logCurrentMatchIdx,
+  setLogMatchIndices,
+  repos,
+  repoInfos,
+  logMatchIndices,
+  handleBranchNameChange,
+  setExpanded,
+  setLogSearchQuery,
+  handleLogPrevMatch,
+  handleLogNextMatch,
+}: WorkspacesLayoutInnerProps) {
+  const { viewFileInChanges } = useChangesView();
+
+  return (
+    <div className="flex h-full">
+      {/* Resizable area for main + right panels */}
+      <Group
+        orientation="horizontal"
+        className="flex-1 min-w-0 h-full"
+        defaultLayout={defaultLayout()}
+        onLayoutChange={onLayoutChange}
+      >
+        {/* Main panel (chat area) */}
+        {isMainPanelVisible && (
+          <Panel
+            id="left-main"
+            minSize={20}
+            className="min-w-0 h-full overflow-hidden"
+          >
+            {isCreateMode ? (
+              <CreateChatBoxContainer />
+            ) : (
+              <FileNavigationProvider
+                viewFileInChanges={viewFileInChanges}
+                diffPaths={diffPaths}
+              >
+                <LogNavigationProvider
+                  viewProcessInPanel={handleViewProcessInPanel}
+                  viewToolContentInPanel={handleViewToolContentInPanel}
+                >
+                  <WorkspacesMainContainer
+                    selectedWorkspace={selectedWorkspace ?? null}
+                    selectedSession={selectedSession}
+                    sessions={sessions}
+                    onSelectSession={onSelectSession}
+                    isLoading={isLoading}
+                    isNewSessionMode={isNewSessionMode}
+                    onStartNewSession={startNewSession}
+                    onViewCode={handleToggleChangesMode}
+                    diffStats={diffStats}
+                  />
+                </LogNavigationProvider>
+              </FileNavigationProvider>
+            )}
+          </Panel>
+        )}
+
+        {/* Resize handle between main and right panels */}
+        {isMainPanelVisible && isRightMainPanelVisible && (
+          <Separator
+            id="main-separator"
+            className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+          />
+        )}
+
+        {/* Right main panel (Changes/Logs/Preview) */}
+        {isRightMainPanelVisible && (
+          <Panel
+            id="right-main"
+            minSize={20}
+            className="min-w-0 h-full overflow-hidden"
+          >
+            {isChangesMode && (
+              <ChangesPanelContainer
+                diffs={realDiffs}
+                projectId={selectedWorkspaceTask?.project_id}
+                attemptId={selectedWorkspace?.id}
+              />
+            )}
+            {isLogsMode && (
+              <LogsContentContainer
+                content={logsPanelContent}
+                searchQuery={logSearchQuery}
+                currentMatchIndex={logCurrentMatchIdx}
+                onMatchIndicesChange={setLogMatchIndices}
+              />
+            )}
+            {isPreviewMode && (
+              <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
+            )}
+          </Panel>
+        )}
+      </Group>
+
+      {/* Git panel (right sidebar) - fixed width, not resizable */}
+      {isGitPanelVisible && (
+        <div className="w-[300px] shrink-0 h-full overflow-hidden">
+          <RightPanelContent
+            isCreateMode={isCreateMode}
+            isChangesMode={isChangesMode}
+            isLogsMode={isLogsMode}
+            isPreviewMode={isPreviewMode}
+            selectedWorkspace={selectedWorkspace}
+            repos={repos}
+            repoInfos={repoInfos}
+            realDiffs={realDiffs}
+            logsPanelContent={logsPanelContent}
+            logSearchQuery={logSearchQuery}
+            logMatchIndices={logMatchIndices}
+            logCurrentMatchIdx={logCurrentMatchIdx}
+            onBranchNameChange={handleBranchNameChange}
+            onSetExpanded={setExpanded}
+            onViewProcessInPanel={handleViewProcessInPanel}
+            onSearchQueryChange={setLogSearchQuery}
+            onLogPrevMatch={handleLogPrevMatch}
+            onLogNextMatch={handleLogNextMatch}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -206,11 +408,6 @@ export function WorkspacesLayout() {
 
   // Command bar keyboard shortcut (CMD+K) - defined later after isChangesMode
   // See useCommandBarShortcut call below
-
-  // Selected file path for scroll-to in changes mode (user clicked in FileTree)
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
-  // File currently in view from scrolling (for FileTree highlighting)
-  const [fileInView, setFileInView] = useState<string | null>(null);
 
   // Fetch task for current workspace (used for old UI navigation)
   const { data: selectedWorkspaceTask } = useTask(selectedWorkspace?.task_id, {
@@ -398,15 +595,6 @@ export function WorkspacesLayout() {
     [isLogsMode, setLogsMode]
   );
 
-  // Navigate to changes panel and scroll to a specific file
-  const handleViewFileInChanges = useCallback(
-    (filePath: string) => {
-      setChangesMode(true);
-      setSelectedFilePath(filePath);
-    },
-    [setChangesMode]
-  );
-
   // Toggle changes mode for "View Code" button in main panel
   const handleToggleChangesMode = useCallback(() => {
     setChangesMode(!isChangesMode);
@@ -439,15 +627,6 @@ export function WorkspacesLayout() {
     {
       enabled: isCreateMode && !!mostRecentWorkspace?.id,
     }
-  );
-
-  // Render right panel content based on current mode
-  const handleFileSelect = useCallback(
-    (path: string) => {
-      setSelectedFilePath(path);
-      setFileInView(path);
-    },
-    [setFileInView]
   );
 
   // Action handlers for sidebar workspace actions
@@ -508,120 +687,45 @@ export function WorkspacesLayout() {
             }}
           >
             <ReviewProvider attemptId={selectedWorkspace?.id}>
-              <div className="flex h-full">
-                {/* Resizable area for main + right panels */}
-                <Group
-                  orientation="horizontal"
-                  className="flex-1 min-w-0 h-full"
-                  defaultLayout={defaultLayout()}
+              <ChangesViewProvider>
+                <WorkspacesLayoutInner
+                  isCreateMode={isCreateMode}
+                  isMainPanelVisible={isMainPanelVisible}
+                  isRightMainPanelVisible={isRightMainPanelVisible}
+                  isGitPanelVisible={isGitPanelVisible}
+                  isChangesMode={isChangesMode}
+                  isLogsMode={isLogsMode}
+                  isPreviewMode={isPreviewMode}
+                  selectedWorkspace={selectedWorkspace}
+                  selectedSession={selectedSession}
+                  sessions={sessions}
+                  onSelectSession={selectSession}
+                  isLoading={isLoading}
+                  isNewSessionMode={isNewSessionMode}
+                  startNewSession={startNewSession}
+                  handleToggleChangesMode={handleToggleChangesMode}
+                  diffStats={diffStats}
+                  diffPaths={diffPaths}
+                  handleViewProcessInPanel={handleViewProcessInPanel}
+                  handleViewToolContentInPanel={handleViewToolContentInPanel}
+                  defaultLayout={defaultLayout}
                   onLayoutChange={onLayoutChange}
-                >
-                  {/* Main panel (chat area) */}
-                  {isMainPanelVisible && (
-                    <Panel
-                      id="left-main"
-                      minSize={20}
-                      className="min-w-0 h-full overflow-hidden"
-                    >
-                      {isCreateMode ? (
-                        <CreateChatBoxContainer />
-                      ) : (
-                        <FileNavigationProvider
-                          viewFileInChanges={handleViewFileInChanges}
-                          diffPaths={diffPaths}
-                        >
-                          <LogNavigationProvider
-                            viewProcessInPanel={handleViewProcessInPanel}
-                            viewToolContentInPanel={
-                              handleViewToolContentInPanel
-                            }
-                          >
-                            <WorkspacesMainContainer
-                              selectedWorkspace={selectedWorkspace ?? null}
-                              selectedSession={selectedSession}
-                              sessions={sessions}
-                              onSelectSession={selectSession}
-                              isLoading={isLoading}
-                              isNewSessionMode={isNewSessionMode}
-                              onStartNewSession={startNewSession}
-                              onViewCode={handleToggleChangesMode}
-                              diffStats={diffStats}
-                            />
-                          </LogNavigationProvider>
-                        </FileNavigationProvider>
-                      )}
-                    </Panel>
-                  )}
-
-                  {/* Resize handle between main and right panels */}
-                  {isMainPanelVisible && isRightMainPanelVisible && (
-                    <Separator
-                      id="main-separator"
-                      className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
-                    />
-                  )}
-
-                  {/* Right main panel (Changes/Logs/Preview) */}
-                  {isRightMainPanelVisible && (
-                    <Panel
-                      id="right-main"
-                      minSize={20}
-                      className="min-w-0 h-full overflow-hidden"
-                    >
-                      {isChangesMode && (
-                        <ChangesPanelContainer
-                          diffs={realDiffs}
-                          selectedFilePath={selectedFilePath}
-                          onFileInViewChange={setFileInView}
-                          projectId={selectedWorkspaceTask?.project_id}
-                          attemptId={selectedWorkspace?.id}
-                        />
-                      )}
-                      {isLogsMode && (
-                        <LogsContentContainer
-                          content={logsPanelContent}
-                          searchQuery={logSearchQuery}
-                          currentMatchIndex={logCurrentMatchIdx}
-                          onMatchIndicesChange={setLogMatchIndices}
-                        />
-                      )}
-                      {isPreviewMode && (
-                        <PreviewBrowserContainer
-                          attemptId={selectedWorkspace?.id}
-                        />
-                      )}
-                    </Panel>
-                  )}
-                </Group>
-
-                {/* Git panel (right sidebar) - fixed width, not resizable */}
-                {isGitPanelVisible && (
-                  <div className="w-[300px] shrink-0 h-full overflow-hidden">
-                    <RightPanelContent
-                      isCreateMode={isCreateMode}
-                      isChangesMode={isChangesMode}
-                      isLogsMode={isLogsMode}
-                      isPreviewMode={isPreviewMode}
-                      selectedWorkspace={selectedWorkspace}
-                      repos={repos}
-                      repoInfos={repoInfos}
-                      realDiffs={realDiffs}
-                      fileInView={fileInView}
-                      logsPanelContent={logsPanelContent}
-                      logSearchQuery={logSearchQuery}
-                      logMatchIndices={logMatchIndices}
-                      logCurrentMatchIdx={logCurrentMatchIdx}
-                      onBranchNameChange={handleBranchNameChange}
-                      onSelectFile={handleFileSelect}
-                      onSetExpanded={setExpanded}
-                      onViewProcessInPanel={handleViewProcessInPanel}
-                      onSearchQueryChange={setLogSearchQuery}
-                      onLogPrevMatch={handleLogPrevMatch}
-                      onLogNextMatch={handleLogNextMatch}
-                    />
-                  </div>
-                )}
-              </div>
+                  realDiffs={realDiffs}
+                  selectedWorkspaceTask={selectedWorkspaceTask}
+                  logsPanelContent={logsPanelContent}
+                  logSearchQuery={logSearchQuery}
+                  logCurrentMatchIdx={logCurrentMatchIdx}
+                  setLogMatchIndices={setLogMatchIndices}
+                  repos={repos}
+                  repoInfos={repoInfos}
+                  logMatchIndices={logMatchIndices}
+                  handleBranchNameChange={handleBranchNameChange}
+                  setExpanded={setExpanded}
+                  setLogSearchQuery={setLogSearchQuery}
+                  handleLogPrevMatch={handleLogPrevMatch}
+                  handleLogNextMatch={handleLogNextMatch}
+                />
+              </ChangesViewProvider>
             </ReviewProvider>
           </ModeProvider>
         </div>

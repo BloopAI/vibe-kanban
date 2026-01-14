@@ -5,6 +5,7 @@ import { PreviewControlsContainer } from '@/components/ui-new/containers/Preview
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { type LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
+import { useChangesView } from '@/contexts/ChangesViewContext';
 import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
 
 export interface RightPanelContentProps {
@@ -16,13 +17,11 @@ export interface RightPanelContentProps {
   repos: RepoWithTargetBranch[];
   repoInfos: RepoInfo[];
   realDiffs: Diff[];
-  fileInView: string | null;
   logsPanelContent: LogsPanelContent | null;
   logSearchQuery: string;
   logMatchIndices: number[];
   logCurrentMatchIdx: number;
   onBranchNameChange: (name: string) => void;
-  onSelectFile: (path: string) => void;
   onSetExpanded: (key: string, value: boolean) => void;
   onViewProcessInPanel: (processId: string) => void;
   onSearchQueryChange: (query: string) => void;
@@ -39,19 +38,18 @@ export function RightPanelContent({
   repos,
   repoInfos,
   realDiffs,
-  fileInView,
   logsPanelContent,
   logSearchQuery,
   logMatchIndices,
   logCurrentMatchIdx,
   onBranchNameChange,
-  onSelectFile,
   onSetExpanded,
   onViewProcessInPanel,
   onSearchQueryChange,
   onLogPrevMatch,
   onLogNextMatch,
 }: RightPanelContentProps) {
+  const { selectFile } = useChangesView();
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
   }
@@ -64,9 +62,8 @@ export function RightPanelContent({
             key={selectedWorkspace?.id}
             workspaceId={selectedWorkspace?.id}
             diffs={realDiffs}
-            selectedFilePath={fileInView}
             onSelectFile={(path) => {
-              onSelectFile(path);
+              selectFile(path);
               onSetExpanded(`diff:${path}`, true);
             }}
           />
