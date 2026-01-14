@@ -196,14 +196,22 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
             })}
           </span>
           {creator && (
-            <span className="flex items-center gap-1" title={`Created by ${creator.username}`}>
+            <span
+              className="flex items-center gap-1"
+              title={`Created by ${creator.username}`}
+            >
               <Avatar className="h-4 w-4">
-                <AvatarImage src={creator.avatar_url ?? undefined} alt={creator.username} />
+                <AvatarImage
+                  src={creator.avatar_url ?? undefined}
+                  alt={creator.username}
+                />
                 <AvatarFallback className="text-[8px]">
                   {creator.username.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-muted-foreground">{creator.username}</span>
+              <span className="text-xs text-muted-foreground">
+                {creator.username}
+              </span>
             </span>
           )}
         </CardDescription>
