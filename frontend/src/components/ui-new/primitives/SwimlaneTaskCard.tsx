@@ -1,9 +1,49 @@
 import { useDraggable } from '@dnd-kit/core';
-import { SpinnerIcon, XCircleIcon, DotsThreeIcon } from '@phosphor-icons/react';
+import {
+  SpinnerIcon,
+  XCircleIcon,
+  DotsThreeIcon,
+  GitPullRequestIcon,
+  GitMergeIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus, MergeStatus } from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
 import { useProject } from '@/contexts/ProjectContext';
+
+/**
+ * Returns the appropriate icon and color for a PR status
+ */
+function getPrStatusIndicator(prStatus: MergeStatus | null) {
+  if (!prStatus) return null;
+
+  switch (prStatus) {
+    case 'merged':
+      return {
+        icon: GitMergeIcon,
+        color: 'text-success',
+        title: 'PR merged',
+      };
+    case 'open':
+      return {
+        icon: GitPullRequestIcon,
+        color: 'text-info',
+        title: 'PR open',
+      };
+    case 'closed':
+      return {
+        icon: GitPullRequestIcon,
+        color: 'text-error',
+        title: 'PR closed',
+      };
+    default:
+      return {
+        icon: GitPullRequestIcon,
+        color: 'text-low',
+        title: 'PR status unknown',
+      };
+  }
+}
 
 interface SwimlaneTaskCardProps {
   task: TaskWithAttemptStatus;
@@ -84,6 +124,20 @@ export function SwimlaneTaskCard({
             {task.title}
           </span>
           <div className="flex items-center gap-0.5 shrink-0 mt-px">
+            {/* PR status indicator */}
+            {(() => {
+              const prIndicator = getPrStatusIndicator(task.pr_status);
+              if (!prIndicator) return null;
+              const PrIcon = prIndicator.icon;
+              return (
+                <span title={prIndicator.title}>
+                  <PrIcon
+                    weight="fill"
+                    className={cn('size-3', prIndicator.color)}
+                  />
+                </span>
+              );
+            })()}
             {task.has_in_progress_attempt && (
               <SpinnerIcon className="size-3 animate-spin text-info" />
             )}
