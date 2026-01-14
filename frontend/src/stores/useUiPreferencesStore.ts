@@ -11,6 +11,8 @@ export type ContextBarPosition =
   | 'bottom-left'
   | 'bottom-right';
 
+export type PanelMode = 'changes' | 'logs' | 'preview' | null;
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
@@ -68,6 +70,7 @@ type State = {
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+  panelModes: Record<string, PanelMode>;
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
@@ -75,6 +78,7 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+  setPanelMode: (key: string, mode: PanelMode) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -85,6 +89,7 @@ export const useUiPreferencesStore = create<State>()(
       contextBarPosition: 'middle-right',
       paneSizes: {},
       collapsedPaths: {},
+      panelModes: {},
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -109,6 +114,8 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
       setCollapsedPaths: (key, paths) =>
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+      setPanelMode: (key, mode) =>
+        set((s) => ({ panelModes: { ...s.panelModes, [key]: mode } })),
     }),
     { name: 'ui-preferences' }
   )
@@ -190,4 +197,22 @@ export function usePersistedCollapsedPaths(
   );
 
   return [pathSet, setPathSet];
+}
+
+// Hook for persisted panel mode (per workspace)
+export function usePersistedPanelMode(
+  workspaceId: string | undefined
+): [PanelMode, (mode: PanelMode) => void] {
+  const key = workspaceId ? `panel-mode:${workspaceId}` : '';
+  const mode = useUiPreferencesStore((s) => s.panelModes[key] ?? null);
+  const setMode = useUiPreferencesStore((s) => s.setPanelMode);
+
+  const setPanelMode = useCallback(
+    (newMode: PanelMode) => {
+      if (key) setMode(key, newMode);
+    },
+    [key, setMode]
+  );
+
+  return [mode, setPanelMode];
 }
