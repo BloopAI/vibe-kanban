@@ -109,7 +109,10 @@ export function PrioritizeSuggestionCard({
         <Button
           variant={isAccepted ? 'default' : 'ghost'}
           size="sm"
-          className={cn('h-7 w-7 p-0', isAccepted && 'bg-green-600 hover:bg-green-700')}
+          className={cn(
+            'h-7 w-7 p-0',
+            isAccepted && 'bg-green-600 hover:bg-green-700'
+          )}
           onClick={onAccept}
           disabled={isAccepted}
           aria-label={t('prioritize.accept', 'Accept suggestion')}
@@ -119,7 +122,10 @@ export function PrioritizeSuggestionCard({
         <Button
           variant={isRejected ? 'default' : 'ghost'}
           size="sm"
-          className={cn('h-7 w-7 p-0', isRejected && 'bg-destructive hover:bg-destructive/90')}
+          className={cn(
+            'h-7 w-7 p-0',
+            isRejected && 'bg-destructive hover:bg-destructive/90'
+          )}
           onClick={onReject}
           disabled={isRejected}
           aria-label={t('prioritize.reject', 'Reject suggestion')}

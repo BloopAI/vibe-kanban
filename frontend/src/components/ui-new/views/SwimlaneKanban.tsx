@@ -12,8 +12,17 @@ import { ActionPanelContainer } from '@/components/ui-new/containers/ActionPanel
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
-import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { statusLabels, statusBoardColors, statusColumnBgColors } from '@/utils/statusLabels';
+import type {
+  Project,
+  ProjectGroup,
+  TaskStatus,
+  TaskWithAttemptStatus,
+} from 'shared/types';
+import {
+  statusLabels,
+  statusBoardColors,
+  statusColumnBgColors,
+} from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
 import {
@@ -21,7 +30,10 @@ import {
   type FilterState,
   type DisplayState,
 } from '@/components/ui-new/primitives/FilterDisplayControls';
-import { useAggregateTaskCountsProvider, useAggregateTaskCounts } from '@/hooks/useAggregateTaskCounts';
+import {
+  useAggregateTaskCountsProvider,
+  useAggregateTaskCounts,
+} from '@/hooks/useAggregateTaskCounts';
 import type { SidebarWorkspace } from '@/components/ui-new/hooks/useWorkspaces';
 
 const STATUS_ORDER: TaskStatus[] = [
@@ -55,11 +67,13 @@ function StatusHeader({ status }: { status: TaskStatus }) {
       <span className="text-[10px] text-low/50 tabular-nums">
         {isLoading ? '—' : count}
       </span>
-      <div className={cn(
-        'flex items-center gap-0.5 ml-auto',
-        'opacity-0 group-hover/col:opacity-100',
-        'transition-opacity duration-100'
-      )}>
+      <div
+        className={cn(
+          'flex items-center gap-0.5 ml-auto',
+          'opacity-0 group-hover/col:opacity-100',
+          'transition-opacity duration-100'
+        )}
+      >
         <button
           type="button"
           className={cn(
@@ -106,7 +120,11 @@ interface SwimlaneKanbanProps {
   onMoveToGroup: (projectId: string, groupId: string | null) => void;
   onOpenBoard: (projectId: string) => void;
   onCreateGroup: () => void;
-  onStatusChange: (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => void;
+  onStatusChange: (
+    taskId: string,
+    newStatus: TaskStatus,
+    task: TaskWithAttemptStatus
+  ) => void;
   // Inline group creation props
   isCreatingGroup: boolean;
   newGroupName: string;
@@ -183,7 +201,10 @@ function SwimlaneKanbanContent({
     for (const ws of workspaces) {
       if (filterState.workspaceFilter === 'active' && ws.isRunning) {
         taskIds.add(ws.taskId);
-      } else if (filterState.workspaceFilter === 'in-review' && ws.prStatus === 'open') {
+      } else if (
+        filterState.workspaceFilter === 'in-review' &&
+        ws.prStatus === 'open'
+      ) {
         taskIds.add(ws.taskId);
       }
     }
@@ -199,7 +220,9 @@ function SwimlaneKanbanContent({
       result = result
         .map(({ group, projects }) => ({
           group,
-          projects: projects.filter((p) => p.id === filterState.selectedProjectId),
+          projects: projects.filter(
+            (p) => p.id === filterState.selectedProjectId
+          ),
         }))
         .filter(({ projects }) => projects.length > 0);
     }
@@ -235,12 +258,14 @@ function SwimlaneKanbanContent({
   return (
     <div className="h-full flex-1 overflow-y-auto bg-primary">
       {/* Header with search and controls */}
-      <div className={cn(
-        'sticky top-0 z-20',
-        'flex items-center gap-3 px-3 py-2',
-        'bg-primary/95 backdrop-blur-sm',
-        'border-b border-panel/30'
-      )}>
+      <div
+        className={cn(
+          'sticky top-0 z-20',
+          'flex items-center gap-3 px-3 py-2',
+          'bg-primary/95 backdrop-blur-sm',
+          'border-b border-panel/30'
+        )}
+      >
         {/* Sidebar toggle button - only show when sidebar is hidden */}
         {!isLeftSidebarVisible && onToggleLeftSidebar && (
           <button
@@ -258,14 +283,16 @@ function SwimlaneKanbanContent({
           </button>
         )}
         {/* Search input */}
-        <div className={cn(
-          'flex items-center gap-2 flex-1 max-w-sm',
-          'bg-secondary/60 rounded-sm',
-          'border border-panel/30',
-          'px-2 py-1',
-          'focus-within:border-brand/30 focus-within:bg-secondary/80',
-          'transition-all duration-150'
-        )}>
+        <div
+          className={cn(
+            'flex items-center gap-2 flex-1 max-w-sm',
+            'bg-secondary/60 rounded-sm',
+            'border border-panel/30',
+            'px-2 py-1',
+            'focus-within:border-brand/30 focus-within:bg-secondary/80',
+            'transition-all duration-150'
+          )}
+        >
           <MagnifyingGlassIcon className="size-3.5 text-low/60 shrink-0" />
           <input
             type="text"
@@ -342,12 +369,14 @@ function SwimlaneKanbanContent({
       </div>
 
       {/* Single sticky status header */}
-      <div className={cn(
-        'sticky top-[40px] z-10',
-        'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
-        'bg-primary/98 backdrop-blur-sm',
-        'border-b border-panel/40'
-      )}>
+      <div
+        className={cn(
+          'sticky top-[40px] z-10',
+          'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
+          'bg-primary/98 backdrop-blur-sm',
+          'border-b border-panel/40'
+        )}
+      >
         <div className="py-1.5 px-2" />
         {STATUS_ORDER.map((status) => (
           <StatusHeader key={status} status={status} />
@@ -375,14 +404,19 @@ function SwimlaneKanbanContent({
             const isGroupExpanded = expandedGroups.has(groupKey);
 
             return (
-              <div key={groupKey} className="border-b border-panel/10 last:border-b-0">
+              <div
+                key={groupKey}
+                className="border-b border-panel/10 last:border-b-0"
+              >
                 {/* Group header */}
-                <div className={cn(
-                  'flex items-center justify-between',
-                  'px-2 py-1.5',
-                  'bg-secondary/30',
-                  'border-b border-panel/20'
-                )}>
+                <div
+                  className={cn(
+                    'flex items-center justify-between',
+                    'px-2 py-1.5',
+                    'bg-secondary/30',
+                    'border-b border-panel/20'
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => onToggleGroup(group?.id ?? null)}
@@ -396,11 +430,13 @@ function SwimlaneKanbanContent({
                         !isGroupExpanded && '-rotate-90'
                       )}
                     />
-                    <span className={cn(
-                      'text-[10px] font-medium uppercase tracking-wide',
-                      'text-low/70 group-hover:text-normal',
-                      'transition-colors duration-100'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-[10px] font-medium uppercase tracking-wide',
+                        'text-low/70 group-hover:text-normal',
+                        'transition-colors duration-100'
+                      )}
+                    >
                       {group?.name ?? 'Ungrouped'}
                     </span>
                     <span className="text-[10px] text-low/40 tabular-nums">

@@ -104,7 +104,9 @@ function TaskDetailsPanelContent({
   } = useProjectOverride();
 
   // Internal state for task/attempt selection
-  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(
+    null
+  );
   const [mode, setMode] = useState<LayoutMode>(null);
 
   // Reset state when task changes - ensures panel shows the new task
@@ -295,7 +297,11 @@ function TaskDetailsPanelContent({
   const attemptContent = (
     <NewCard className="h-full min-h-0 flex flex-col bg-muted border-0">
       {isTaskView ? (
-        <TaskPanel task={selectedTask} projectId={projectId} onAttemptCreated={handleAttemptCreated} />
+        <TaskPanel
+          task={selectedTask}
+          projectId={projectId}
+          onAttemptCreated={handleAttemptCreated}
+        />
       ) : (
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
           {({ logs, followUp }) => (
@@ -357,9 +363,7 @@ function TaskDetailsPanelContent({
             <div className="w-1/3 min-w-[300px] border-r overflow-hidden">
               {attemptContent}
             </div>
-            <div className="flex-1 min-w-0 overflow-hidden">
-              {auxContent}
-            </div>
+            <div className="flex-1 min-w-0 overflow-hidden">{auxContent}</div>
           </div>
         )}
       </div>

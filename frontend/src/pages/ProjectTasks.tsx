@@ -872,7 +872,9 @@ export function ProjectTasks() {
           projectId={projectId!}
           hiddenColumns={hiddenColumns}
           onToggleHiddenColumn={toggleHiddenColumn}
-          onDeduplicateClick={() => DeduplicateDialog.show({ projectId: projectId! })}
+          onDeduplicateClick={() =>
+            DeduplicateDialog.show({ projectId: projectId! })
+          }
         />
       </div>
     );

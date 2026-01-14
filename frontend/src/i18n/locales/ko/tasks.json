@@ -551,6 +551,26 @@
       "discardChanges": "변경사항 버리기"
     }
   },
+  "prioritize": {
+    "button": "우선순위 지정",
+    "title": "작업 우선순위 지정",
+    "description": "작업 기간, 키워드, 레이블 및 마감일을 기반으로 AI가 제안한 우선순위 변경사항을 검토합니다.",
+    "noSuggestions": "모든 작업에 이미 적절한 우선순위가 지정되어 있습니다.",
+    "acceptAll": "모두 수락",
+    "reset": "초기화",
+    "showing": "{{count}}개 제안",
+    "accept": "제안 수락",
+    "reject": "제안 거부",
+    "viewReasons": "이유 보기",
+    "whySuggested": "왜 이 우선순위인가요?",
+    "applyChanges": "변경사항 적용 ({{count}})",
+    "applying": "적용 중...",
+    "successMessage": "{{count}}개 작업 우선순위가 업데이트되었습니다",
+    "errorMessage": "우선순위 업데이트 실패",
+    "undo": "실행 취소",
+    "undoSuccess": "변경사항이 되돌려졌습니다",
+    "undoFailed": "실행 취소 실패"
+  },
   "restoreLogsDialog": {
     "title": "재시도 확인",
     "historyChange": {

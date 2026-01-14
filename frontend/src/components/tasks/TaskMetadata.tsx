@@ -1,10 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { TaskLabel, TaskPriority } from 'shared/types';
-import {
-  CalendarBlank,
-  Flag,
-  Circle,
-} from '@phosphor-icons/react';
+import { CalendarBlank, Flag, Circle } from '@phosphor-icons/react';
 import {
   Tooltip,
   TooltipContent,
@@ -46,16 +42,26 @@ const priorityConfig: Record<
   },
 };
 
-function formatDueDate(dateStr: string): { text: string; isOverdue: boolean; isToday: boolean } {
+function formatDueDate(dateStr: string): {
+  text: string;
+  isOverdue: boolean;
+  isToday: boolean;
+} {
   const date = new Date(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
 
-  const diffDays = Math.floor((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(
+    (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   if (diffDays < 0) {
-    return { text: `${Math.abs(diffDays)}d overdue`, isOverdue: true, isToday: false };
+    return {
+      text: `${Math.abs(diffDays)}d overdue`,
+      isOverdue: true,
+      isToday: false,
+    };
   } else if (diffDays === 0) {
     return { text: 'Today', isOverdue: false, isToday: true };
   } else if (diffDays === 1) {
@@ -85,7 +91,8 @@ export function TaskMetadata({
 
   if (!hasMetadata) return null;
 
-  const priorityInfo = priority && priority !== 'none' ? priorityConfig[priority] : null;
+  const priorityInfo =
+    priority && priority !== 'none' ? priorityConfig[priority] : null;
   const dueDateInfo = dueDate ? formatDueDate(dueDate) : null;
 
   return (
@@ -140,7 +147,9 @@ export function TaskMetadata({
                 compact ? 'text-[10px]' : 'text-xs',
                 dueDateInfo.isOverdue && 'text-red-500',
                 dueDateInfo.isToday && 'text-orange-500',
-                !dueDateInfo.isOverdue && !dueDateInfo.isToday && 'text-muted-foreground'
+                !dueDateInfo.isOverdue &&
+                  !dueDateInfo.isToday &&
+                  'text-muted-foreground'
               )}
             >
               <CalendarBlank className={compact ? 'size-3' : 'size-3.5'} />
@@ -148,7 +157,15 @@ export function TaskMetadata({
             </div>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            <span>Due: {new Date(dueDate!).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span>
+              Due:{' '}
+              {new Date(dueDate!).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </span>
           </TooltipContent>
         </Tooltip>
       )}
@@ -230,12 +247,7 @@ export function TaskIdBadge({
   if (!prefix || !number) return null;
 
   return (
-    <span
-      className={cn(
-        'font-mono text-xs text-muted-foreground',
-        className
-      )}
-    >
+    <span className={cn('font-mono text-xs text-muted-foreground', className)}>
       {prefix}-{number.toString()}
     </span>
   );

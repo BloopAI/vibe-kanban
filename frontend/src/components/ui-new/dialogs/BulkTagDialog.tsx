@@ -45,7 +45,7 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
   };
 
   const handleRemoveTag = (tag: string) => {
-    setSelectedTags(selectedTags.filter(t => t !== tag));
+    setSelectedTags(selectedTags.filter((t) => t !== tag));
   };
 
   const handleApply = async () => {
@@ -79,10 +79,11 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
             <DialogTitle>Bulk Tag Tasks</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Apply tags to {selectedTaskIds.length > 0
+            Apply tags to{' '}
+            {selectedTaskIds.length > 0
               ? `${selectedTaskIds.length} selected tasks`
-              : 'all visible tasks'
-            }.
+              : 'all visible tasks'}
+            .
           </DialogDescription>
         </DialogHeader>
 
@@ -90,9 +91,11 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
           {/* Selected tags */}
           {selectedTags.length > 0 && (
             <div>
-              <label className="text-sm font-medium mb-2 block">Tags to apply</label>
+              <label className="text-sm font-medium mb-2 block">
+                Tags to apply
+              </label>
               <div className="flex flex-wrap gap-1.5">
-                {selectedTags.map(tag => (
+                {selectedTags.map((tag) => (
                   <span
                     key={tag}
                     className={cn(
@@ -107,7 +110,7 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                       onClick={() => handleRemoveTag(tag)}
                       className="hover:bg-brand/20 rounded-full p-0.5"
                     >
-                      <XIcon className="size-3" />
+                      <XIcon className="size-icon-xs" />
                     </button>
                   </span>
                 ))}
@@ -144,18 +147,20 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                 onClick={() => handleAddTag(newTag)}
                 disabled={!newTag.trim()}
               >
-                <PlusIcon className="size-4" />
+                <PlusIcon className="size-icon-sm" />
               </Button>
             </div>
           </div>
 
           {/* Suggested tags */}
           <div>
-            <label className="text-sm font-medium mb-2 block">Suggested tags</label>
+            <label className="text-sm font-medium mb-2 block">
+              Suggested tags
+            </label>
             <div className="flex flex-wrap gap-1.5">
               {suggestedTags
-                .filter(tag => !selectedTags.includes(tag.name))
-                .map(tag => (
+                .filter((tag) => !selectedTags.includes(tag.name))
+                .map((tag) => (
                   <button
                     key={tag.name}
                     type="button"
@@ -168,11 +173,10 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                       'transition-colors duration-150'
                     )}
                   >
-                    <span className={cn('size-2 rounded-full', tag.color)} />
+                    <span className={cn('size-dot rounded-full', tag.color)} />
                     {tag.name}
                   </button>
-                ))
-              }
+                ))}
             </div>
           </div>
         </div>
@@ -185,7 +189,9 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
             onClick={handleApply}
             disabled={selectedTags.length === 0 || isApplying}
           >
-            {isApplying ? 'Applying...' : `Apply ${selectedTags.length} Tag${selectedTags.length !== 1 ? 's' : ''}`}
+            {isApplying
+              ? 'Applying...'
+              : `Apply ${selectedTags.length} Tag${selectedTags.length !== 1 ? 's' : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>

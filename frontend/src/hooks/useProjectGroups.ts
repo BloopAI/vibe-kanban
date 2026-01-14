@@ -17,7 +17,10 @@ export interface UseProjectGroupsResult {
 export function useProjectGroups(): UseProjectGroupsResult {
   const endpoint = '/api/project-groups/stream/ws';
 
-  const initialData = useCallback((): ProjectGroupsState => ({ groups: {} }), []);
+  const initialData = useCallback(
+    (): ProjectGroupsState => ({ groups: {} }),
+    []
+  );
 
   const { data, isConnected, isInitialized, error } =
     useJsonPatchWsStream<ProjectGroupsState>(endpoint, true, initialData);

@@ -1,4 +1,11 @@
-import { createContext, useContext, useCallback, useMemo, useState, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+} from 'react';
 import type { TaskStatus } from 'shared/types';
 
 export type AggregateTaskCounts = Record<TaskStatus, number>;
@@ -7,7 +14,11 @@ interface AggregateTaskCountsContextValue {
   counts: AggregateTaskCounts;
   totalCount: number;
   isLoading: boolean;
-  registerProject: (projectId: string, counts: AggregateTaskCounts, loading: boolean) => void;
+  registerProject: (
+    projectId: string,
+    counts: AggregateTaskCounts,
+    loading: boolean
+  ) => void;
   unregisterProject: (projectId: string) => void;
 }
 
@@ -19,13 +30,14 @@ const defaultCounts: AggregateTaskCounts = {
   cancelled: 0,
 };
 
-const AggregateTaskCountsContext = createContext<AggregateTaskCountsContextValue>({
-  counts: defaultCounts,
-  totalCount: 0,
-  isLoading: false,
-  registerProject: () => {},
-  unregisterProject: () => {},
-});
+const AggregateTaskCountsContext =
+  createContext<AggregateTaskCountsContextValue>({
+    counts: defaultCounts,
+    totalCount: 0,
+    isLoading: false,
+    registerProject: () => {},
+    unregisterProject: () => {},
+  });
 
 interface ProjectCounts {
   counts: AggregateTaskCounts;
@@ -33,7 +45,9 @@ interface ProjectCounts {
 }
 
 export function useAggregateTaskCountsProvider() {
-  const [projectCounts, setProjectCounts] = useState<Map<string, ProjectCounts>>(new Map());
+  const [projectCounts, setProjectCounts] = useState<
+    Map<string, ProjectCounts>
+  >(new Map());
 
   const registerProject = useCallback(
     (projectId: string, counts: AggregateTaskCounts, loading: boolean) => {
@@ -114,15 +128,20 @@ export function useRegisterProjectCounts(
   tasksByStatus: Record<TaskStatus, unknown[]>,
   isLoading: boolean
 ) {
-  const { registerProject, unregisterProject } = useContext(AggregateTaskCountsContext);
+  const { registerProject, unregisterProject } = useContext(
+    AggregateTaskCountsContext
+  );
 
-  const counts = useMemo((): AggregateTaskCounts => ({
-    todo: tasksByStatus.todo?.length ?? 0,
-    inprogress: tasksByStatus.inprogress?.length ?? 0,
-    inreview: tasksByStatus.inreview?.length ?? 0,
-    done: tasksByStatus.done?.length ?? 0,
-    cancelled: tasksByStatus.cancelled?.length ?? 0,
-  }), [tasksByStatus]);
+  const counts = useMemo(
+    (): AggregateTaskCounts => ({
+      todo: tasksByStatus.todo?.length ?? 0,
+      inprogress: tasksByStatus.inprogress?.length ?? 0,
+      inreview: tasksByStatus.inreview?.length ?? 0,
+      done: tasksByStatus.done?.length ?? 0,
+      cancelled: tasksByStatus.cancelled?.length ?? 0,
+    }),
+    [tasksByStatus]
+  );
 
   useEffect(() => {
     registerProject(projectId, counts, isLoading);

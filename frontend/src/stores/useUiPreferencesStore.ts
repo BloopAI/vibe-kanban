@@ -123,7 +123,10 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
       setHiddenKanbanColumns: (projectId, columns) =>
         set((s) => ({
-          hiddenKanbanColumns: { ...s.hiddenKanbanColumns, [projectId]: columns },
+          hiddenKanbanColumns: {
+            ...s.hiddenKanbanColumns,
+            [projectId]: columns,
+          },
         })),
       toggleHiddenKanbanColumn: (projectId, column) =>
         set((s) => {
@@ -133,7 +136,10 @@ export const useUiPreferencesStore = create<State>()(
             ? current.filter((c) => c !== column)
             : [...current, column];
           return {
-            hiddenKanbanColumns: { ...s.hiddenKanbanColumns, [projectId]: updated },
+            hiddenKanbanColumns: {
+              ...s.hiddenKanbanColumns,
+              [projectId]: updated,
+            },
           };
         }),
     }),
@@ -227,8 +233,8 @@ export function useHiddenKanbanColumns(
   (column: TaskStatus) => void,
   (columns: TaskStatus[]) => void,
 ] {
-  const hiddenColumns = useUiPreferencesStore(
-    (s) => (projectId ? s.hiddenKanbanColumns[projectId] ?? [] : [])
+  const hiddenColumns = useUiPreferencesStore((s) =>
+    projectId ? (s.hiddenKanbanColumns[projectId] ?? []) : []
   );
   const toggleColumn = useUiPreferencesStore((s) => s.toggleHiddenKanbanColumn);
   const setColumns = useUiPreferencesStore((s) => s.setHiddenKanbanColumns);

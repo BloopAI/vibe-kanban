@@ -1,0 +1,345 @@
+name: Quality & Architecture Health
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.13.1
+
+jobs:
+  # ============================================
+  # Frontend Quality Checks
+  # ============================================
+  frontend-lint:
+    name: Frontend Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: cd frontend && npm run lint
+
+      - name: Format check
+        run: cd frontend && npm run format:check
+
+  frontend-typecheck:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Type check
+        run: cd frontend && npx tsc --noEmit
+
+  frontend-bundle-analysis:
+    name: Frontend Bundle Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build with stats
+        run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Analyze bundle size
+        run: |
+          echo "## Bundle Size Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Calculate total bundle size
+          TOTAL_SIZE=$(du -sh frontend/dist | cut -f1)
+          echo "**Total bundle size:** $TOTAL_SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # List largest files
+          echo "### Largest Files" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          find frontend/dist -type f -name "*.js" -o -name "*.css" | xargs ls -lhS 2>/dev/null | head -15 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  i18n-check:
+    name: i18n Regression Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check i18n regressions
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
+        run: ./scripts/check-i18n.sh
+
+  # ============================================
+  # Backend Quality Checks
+  # ============================================
+  backend-format:
+    name: Rust Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  backend-clippy:
+    name: Rust Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+          components: clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          cache-on-failure: true
+          shared-key: "clippy"
+
+      - name: Run Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  backend-test:
+    name: Rust Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          cache-on-failure: true
+          shared-key: "test"
+
+      - name: Run tests
+        run: cargo test --workspace
+
+  # ============================================
+  # Type & Schema Verification
+  # ============================================
+  type-generation:
+    name: Verify Type Generation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          cache-on-failure: true
+          shared-key: "types"
+
+      - name: Verify type generation
+        run: npm run generate-types:check
+
+  database-schema:
+    name: Verify Database Schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          cache-on-failure: true
+          shared-key: "db"
+
+      - name: Install sqlx-cli
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: sqlite,postgres
+
+      - name: Verify SQLx schema (local)
+        run: npm run prepare-db:check
+
+      - name: Verify SQLx schema (remote)
+        run: npm run remote:prepare-db:check
+
+  # ============================================
+  # Security & Dependency Audit
+  # ============================================
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+
+      - name: Install cargo-audit
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Rust security audit
+        run: cargo audit --ignore RUSTSEC-2023-0071
+        continue-on-error: true
+
+      - name: Node security audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "## Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Security audits completed. Review any warnings above." >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Architecture Health Checks
+  # ============================================
+  architecture-health:
+    name: Architecture Health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run architecture analysis
+        run: node scripts/analyze-architecture.js
+
+      - name: Check for complexity issues
+        run: |
+          echo "## Architecture Health Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Count lines of code by language
+          echo "### Codebase Size" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "Rust files: $(find crates -name '*.rs' | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "Rust LOC: $(find crates -name '*.rs' -exec cat {} + 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "TypeScript files: $(find frontend/src -name '*.ts' -o -name '*.tsx' 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "TypeScript LOC: $(find frontend/src \( -name '*.ts' -o -name '*.tsx' \) -exec cat {} + 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          # Count modules/crates
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Module Count" >> $GITHUB_STEP_SUMMARY
+          echo "- Rust crates: $(ls -d crates/*/ 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "- React components: $(find frontend/src/components -name '*.tsx' 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "- React pages: $(find frontend/src/pages -name '*.tsx' 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Final Gate
+  # ============================================
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs:
+      - frontend-lint
+      - frontend-typecheck
+      - frontend-bundle-analysis
+      - i18n-check
+      - backend-format
+      - backend-clippy
+      - backend-test
+      - type-generation
+      - database-schema
+      - security-audit
+      - architecture-health
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ needs.frontend-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend-typecheck.result }}" == "failure" ]] || \
+             [[ "${{ needs.i18n-check.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-format.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-clippy.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.type-generation.result }}" == "failure" ]] || \
+             [[ "${{ needs.database-schema.result }}" == "failure" ]]; then
+            echo "Quality gate failed - critical checks did not pass"
+            exit 1
+          fi
+          echo "Quality gate passed!"

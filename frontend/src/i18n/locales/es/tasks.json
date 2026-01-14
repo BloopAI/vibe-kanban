@@ -551,6 +551,26 @@
       "discardChanges": "Descartar Cambios"
     }
   },
+  "prioritize": {
+    "button": "Priorizar",
+    "title": "Priorizar Tareas",
+    "description": "Revisa las sugerencias de prioridad de la IA basadas en la antigüedad de la tarea, palabras clave, etiquetas y fechas de vencimiento.",
+    "noSuggestions": "Todas las tareas ya tienen prioridades apropiadas.",
+    "acceptAll": "Aceptar Todo",
+    "reset": "Restablecer",
+    "showing": "{{count}} sugerencias",
+    "accept": "Aceptar sugerencia",
+    "reject": "Rechazar sugerencia",
+    "viewReasons": "Ver razones",
+    "whySuggested": "¿Por qué esta prioridad?",
+    "applyChanges": "Aplicar Cambios ({{count}})",
+    "applying": "Aplicando...",
+    "successMessage": "Se actualizaron {{count}} prioridades de tareas",
+    "errorMessage": "Error al actualizar las prioridades",
+    "undo": "Deshacer",
+    "undoSuccess": "Cambios revertidos",
+    "undoFailed": "Error al deshacer"
+  },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
     "historyChange": {

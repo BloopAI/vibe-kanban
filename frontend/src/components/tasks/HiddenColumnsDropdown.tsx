@@ -85,7 +85,9 @@ export function HiddenColumnsDropdown({
               <div className="flex items-center gap-2 flex-1">
                 <div
                   className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: `hsl(var(${statusBoardColors[status]}))` }}
+                  style={{
+                    backgroundColor: `hsl(var(${statusBoardColors[status]}))`,
+                  }}
                 />
                 <span>{statusLabels[status]}</span>
                 <span className="ml-auto text-muted-foreground">{count}</span>

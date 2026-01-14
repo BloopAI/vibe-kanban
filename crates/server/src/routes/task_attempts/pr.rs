@@ -148,7 +148,10 @@ async fn try_auto_resolve_conflicts(
     let (_, behind) = match git.get_branch_status(worktree_path, &workspace.branch, target_branch) {
         Ok(status) => status,
         Err(e) => {
-            tracing::warn!("Failed to check branch status for conflict detection: {}", e);
+            tracing::warn!(
+                "Failed to check branch status for conflict detection: {}",
+                e
+            );
             return MergeConflictResolution::NoConflicts;
         }
     };
@@ -185,9 +188,9 @@ async fn try_auto_resolve_conflicts(
     match git.rebase_branch(
         &repo.path,
         worktree_path,
-        target_branch,    // new base
-        &base_commit,     // old base
-        &workspace.branch // branch to rebase
+        target_branch,     // new base
+        &base_commit,      // old base
+        &workspace.branch, // branch to rebase
     ) {
         Ok(new_commit) => {
             tracing::info!(
@@ -220,9 +223,7 @@ async fn try_auto_resolve_conflicts(
         }
         Err(GitServiceError::MergeConflicts(msg)) => {
             // Rebase failed due to conflicts - get the list of conflicted files
-            let conflicted_files = git
-                .get_conflicted_files(worktree_path)
-                .unwrap_or_default();
+            let conflicted_files = git.get_conflicted_files(worktree_path).unwrap_or_default();
 
             tracing::warn!(
                 "Rebase failed with conflicts in {} files: {:?}",
@@ -643,23 +644,20 @@ pub async fn create_pr(
                 ref conflicted_files,
                 ..
             } = conflict_resolution
+                && !conflicted_files.is_empty()
+                && let Err(e) = trigger_conflict_resolution_follow_up(
+                    &deployment,
+                    &workspace,
+                    &norm_target_branch_name,
+                    conflicted_files,
+                )
+                .await
             {
-                if !conflicted_files.is_empty() {
-                    if let Err(e) = trigger_conflict_resolution_follow_up(
-                        &deployment,
-                        &workspace,
-                        &norm_target_branch_name,
-                        conflicted_files,
-                    )
-                    .await
-                    {
-                        tracing::warn!(
-                            "Failed to trigger AI conflict resolution for attempt {}: {}",
-                            workspace.id,
-                            e
-                        );
-                    }
-                }
+                tracing::warn!(
+                    "Failed to trigger AI conflict resolution for attempt {}: {}",
+                    workspace.id,
+                    e
+                );
             }
 
             // Convert NoConflicts to None for cleaner API response

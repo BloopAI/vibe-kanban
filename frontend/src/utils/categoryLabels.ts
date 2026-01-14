@@ -3,7 +3,14 @@
  * Categories help users quickly identify the type of work involved
  */
 
-export type TaskCategory = 'feature' | 'bugfix' | 'refactor' | 'docs' | 'test' | 'chore' | 'design';
+export type TaskCategory =
+  | 'feature'
+  | 'bugfix'
+  | 'refactor'
+  | 'docs'
+  | 'test'
+  | 'chore'
+  | 'design';
 
 export interface CategoryConfig {
   label: string;
@@ -62,32 +69,102 @@ export const categoryConfig: Record<TaskCategory, CategoryConfig> = {
 /** Keywords used to detect task categories from title/description */
 const categoryKeywords: Record<TaskCategory, string[]> = {
   feature: [
-    'add', 'implement', 'create', 'new', 'feature', 'build', 'introduce',
-    'enable', 'support', 'integrate', 'display', 'show',
+    'add',
+    'implement',
+    'create',
+    'new',
+    'feature',
+    'build',
+    'introduce',
+    'enable',
+    'support',
+    'integrate',
+    'display',
+    'show',
   ],
   bugfix: [
-    'fix', 'bug', 'issue', 'error', 'broken', 'crash', 'fail', 'wrong',
-    'incorrect', 'resolve', 'patch', 'repair', 'debug',
+    'fix',
+    'bug',
+    'issue',
+    'error',
+    'broken',
+    'crash',
+    'fail',
+    'wrong',
+    'incorrect',
+    'resolve',
+    'patch',
+    'repair',
+    'debug',
   ],
   refactor: [
-    'refactor', 'restructure', 'reorganize', 'clean', 'improve', 'optimize',
-    'simplify', 'extract', 'move', 'rename', 'update', 'upgrade', 'migrate',
+    'refactor',
+    'restructure',
+    'reorganize',
+    'clean',
+    'improve',
+    'optimize',
+    'simplify',
+    'extract',
+    'move',
+    'rename',
+    'update',
+    'upgrade',
+    'migrate',
   ],
   docs: [
-    'doc', 'readme', 'documentation', 'comment', 'guide', 'tutorial',
-    'explain', 'describe', 'jsdoc', 'typedoc',
+    'doc',
+    'readme',
+    'documentation',
+    'comment',
+    'guide',
+    'tutorial',
+    'explain',
+    'describe',
+    'jsdoc',
+    'typedoc',
   ],
   test: [
-    'test', 'spec', 'coverage', 'jest', 'vitest', 'cypress', 'e2e',
-    'unit test', 'integration test', 'mock',
+    'test',
+    'spec',
+    'coverage',
+    'jest',
+    'vitest',
+    'cypress',
+    'e2e',
+    'unit test',
+    'integration test',
+    'mock',
   ],
   chore: [
-    'chore', 'config', 'setup', 'ci', 'cd', 'pipeline', 'dependency',
-    'deps', 'package', 'lint', 'format', 'eslint', 'prettier',
+    'chore',
+    'config',
+    'setup',
+    'ci',
+    'cd',
+    'pipeline',
+    'dependency',
+    'deps',
+    'package',
+    'lint',
+    'format',
+    'eslint',
+    'prettier',
   ],
   design: [
-    'design', 'ui', 'ux', 'style', 'css', 'theme', 'layout', 'visual',
-    'responsive', 'animation', 'color', 'icon', 'font',
+    'design',
+    'ui',
+    'ux',
+    'style',
+    'css',
+    'theme',
+    'layout',
+    'visual',
+    'responsive',
+    'animation',
+    'color',
+    'icon',
+    'font',
   ],
 };
 

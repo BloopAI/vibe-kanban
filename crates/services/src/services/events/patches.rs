@@ -94,10 +94,7 @@ pub mod project_group_patch {
     use super::*;
 
     fn project_group_path(group_id: Uuid) -> String {
-        format!(
-            "/groups/{}",
-            escape_pointer_segment(&group_id.to_string())
-        )
+        format!("/groups/{}", escape_pointer_segment(&group_id.to_string()))
     }
 
     /// Create patch for adding a new project group
