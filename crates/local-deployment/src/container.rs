@@ -844,9 +844,9 @@ impl LocalContainerService {
         };
 
         let claude_dir = workspace_dir.join(repo_dir).join(".claude");
-        tokio::fs::create_dir_all(&claude_dir).await.map_err(|e| {
-            ContainerError::Other(anyhow!("Failed to create .claude dir: {}", e))
-        })?;
+        tokio::fs::create_dir_all(&claude_dir)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to create .claude dir: {}", e)))?;
 
         // Use shlex to properly escape script for bash -c
         let quoted_script = shlex::try_quote(CHECK_GIT_STATUS_SCRIPT)
