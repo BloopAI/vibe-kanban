@@ -230,9 +230,8 @@ pub async fn create_project(
     tracing::debug!("Creating project '{}'", payload.name);
     let repo_count = payload.repositories.len();
 
-    // Get the authenticated user if available
-    let user = try_get_authenticated_user(&deployment, &headers).await;
-    let creator_user_id = get_user_id(&user);
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    let creator_user_id = get_user_id(&authenticated_user);
 
     match deployment
         .project()

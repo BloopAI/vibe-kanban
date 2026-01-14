@@ -38,18 +38,8 @@ type Props = {
   onEdit: (project: Project) => void;
 };
 
-function ProjectCard({ project: projectWithCreator, isFocused, setError, onEdit }: Props) {
-  // Extract the nested project for easier access
-  const project = {
-    ...projectWithCreator,
-    // Flatten the nested project properties
-    id: projectWithCreator.id,
-    name: projectWithCreator.name,
-    created_at: projectWithCreator.created_at,
-    updated_at: projectWithCreator.updated_at,
-    remote_project_id: projectWithCreator.remote_project_id,
-  };
-  const creator = projectWithCreator.creator;
+function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
+  const { creator } = project;
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);

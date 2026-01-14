@@ -322,39 +322,38 @@ impl Project {
         Ok(ProjectWithCreator::new(self, creator))
     }
 
-    /// Fetch all projects with their creator information
     pub async fn find_all_with_creators(
         pool: &SqlitePool,
     ) -> Result<Vec<ProjectWithCreator>, sqlx::Error> {
         let projects = Self::find_all(pool).await?;
+        let creator_ids: Vec<Uuid> = projects.iter().filter_map(|p| p.creator_user_id).collect();
 
-        // Collect unique creator user IDs
-        let creator_ids: Vec<Uuid> = projects
-            .iter()
-            .filter_map(|p| p.creator_user_id)
-            .collect();
+        let creators_by_id = Self::fetch_creators_by_ids(pool, &creator_ids).await?;
 
-        // Fetch all creators in one query
-        let creators: std::collections::HashMap<Uuid, User> = if !creator_ids.is_empty() {
-            User::find_all(pool)
-                .await?
-                .into_iter()
-                .filter(|u| creator_ids.contains(&u.id))
-                .map(|u| (u.id, u))
-                .collect()
-        } else {
-            std::collections::HashMap::new()
-        };
-
-        // Build ProjectWithCreator for each project
         let projects_with_creators = projects
             .into_iter()
             .map(|p| {
-                let creator = p.creator_user_id.and_then(|id| creators.get(&id).cloned());
+                let creator = p.creator_user_id.and_then(|id| creators_by_id.get(&id).cloned());
                 ProjectWithCreator::new(p, creator)
             })
             .collect();
 
         Ok(projects_with_creators)
+    }
+
+    async fn fetch_creators_by_ids(
+        pool: &SqlitePool,
+        creator_ids: &[Uuid],
+    ) -> Result<std::collections::HashMap<Uuid, User>, sqlx::Error> {
+        if creator_ids.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+
+        Ok(User::find_all(pool)
+            .await?
+            .into_iter()
+            .filter(|u| creator_ids.contains(&u.id))
+            .map(|u| (u.id, u))
+            .collect())
     }
 }

@@ -32,7 +32,6 @@ export function ProjectList() {
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
 
   const handleEditProject = (project: Project) => {
-    // Handle editing from the flat project type
     navigate(`/settings/projects?projectId=${project.id}`);
   };
 
