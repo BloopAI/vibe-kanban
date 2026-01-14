@@ -14,11 +14,9 @@ export type ContextBarPosition =
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
-  workspacesSidebarActive: 'workspaces-sidebar-active',
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
   // Git panel sections
   gitAdvancedSettings: 'git-advanced-settings',
-  gitPanelCreateAddRepo: 'git-panel-create-add-repo',
   gitPanelRepositories: 'git-panel-repositories',
   gitPanelProject: 'git-panel-project',
   gitPanelAddRepositories: 'git-panel-add-repositories',
@@ -28,8 +26,6 @@ export const PERSIST_KEYS = {
   changesSection: 'changes-section',
   // Preview panel sections
   devServerSection: 'dev-server-section',
-  // Context bar
-  contextBarPosition: 'context-bar-position',
   // GitHub comments toggle
   showGitHubComments: 'show-github-comments',
   // Panel sizes
@@ -38,11 +34,12 @@ export const PERSIST_KEYS = {
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
 
+// Check if screen is wide enough to keep sidebar visible
+const isWideScreen = () => window.innerWidth > 2048;
+
 export type PersistKey =
-  | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
   | typeof PERSIST_KEYS.gitAdvancedSettings
-  | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.gitPanelRepositories
   | typeof PERSIST_KEYS.gitPanelProject
   | typeof PERSIST_KEYS.gitPanelAddRepositories
@@ -63,11 +60,23 @@ export type PersistKey =
   | `entry:${string}`;
 
 type State = {
+  // UI preferences
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+
+  // Layout state
+  isSidebarVisible: boolean;
+  isMainPanelVisible: boolean;
+  isGitPanelVisible: boolean;
+  isChangesMode: boolean;
+  isLogsMode: boolean;
+  isPreviewMode: boolean;
+  previewRefreshKey: number;
+
+  // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
@@ -75,16 +84,43 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+
+  // Layout actions
+  toggleSidebar: () => void;
+  toggleMainPanel: () => void;
+  toggleGitPanel: () => void;
+  toggleChangesMode: () => void;
+  toggleLogsMode: () => void;
+  togglePreviewMode: () => void;
+  setChangesMode: (value: boolean) => void;
+  setLogsMode: (value: boolean) => void;
+  setPreviewMode: (value: boolean) => void;
+  setSidebarVisible: (value: boolean) => void;
+  setMainPanelVisible: (value: boolean) => void;
+  triggerPreviewRefresh: () => void;
+  resetForCreateMode: () => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      // UI preferences state
       repoActions: {},
       expanded: {},
       contextBarPosition: 'middle-right',
       paneSizes: {},
       collapsedPaths: {},
+
+      // Layout state
+      isSidebarVisible: true,
+      isMainPanelVisible: true,
+      isGitPanelVisible: true,
+      isChangesMode: false,
+      isLogsMode: false,
+      isPreviewMode: false,
+      previewRefreshKey: 0,
+
+      // UI preferences actions
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -109,8 +145,145 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
       setCollapsedPaths: (key, paths) =>
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+
+      // Layout actions
+      toggleSidebar: () =>
+        set((s) => ({ isSidebarVisible: !s.isSidebarVisible })),
+
+      toggleMainPanel: () => {
+        const { isMainPanelVisible, isChangesMode } = get();
+        if (isMainPanelVisible && !isChangesMode) return;
+        set({ isMainPanelVisible: !isMainPanelVisible });
+      },
+
+      toggleGitPanel: () =>
+        set((s) => ({ isGitPanelVisible: !s.isGitPanelVisible })),
+
+      toggleChangesMode: () => {
+        const { isChangesMode } = get();
+        const newChangesMode = !isChangesMode;
+
+        if (newChangesMode) {
+          set({
+            isChangesMode: true,
+            isLogsMode: false,
+            isPreviewMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({
+            isChangesMode: false,
+            isSidebarVisible: true,
+          });
+        }
+      },
+
+      toggleLogsMode: () => {
+        const { isLogsMode } = get();
+        const newLogsMode = !isLogsMode;
+
+        if (newLogsMode) {
+          set({
+            isLogsMode: true,
+            isChangesMode: false,
+            isPreviewMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({
+            isLogsMode: false,
+            isSidebarVisible: true,
+          });
+        }
+      },
+
+      togglePreviewMode: () => {
+        const { isPreviewMode } = get();
+        const newPreviewMode = !isPreviewMode;
+
+        if (newPreviewMode) {
+          set({
+            isPreviewMode: true,
+            isChangesMode: false,
+            isLogsMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({
+            isPreviewMode: false,
+            isSidebarVisible: true,
+          });
+        }
+      },
+
+      setChangesMode: (value) => {
+        if (value) {
+          set({
+            isChangesMode: true,
+            isLogsMode: false,
+            isPreviewMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({ isChangesMode: false });
+        }
+      },
+
+      setLogsMode: (value) => {
+        if (value) {
+          set({
+            isLogsMode: true,
+            isChangesMode: false,
+            isPreviewMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({ isLogsMode: false });
+        }
+      },
+
+      setPreviewMode: (value) => {
+        if (value) {
+          set({
+            isPreviewMode: true,
+            isChangesMode: false,
+            isLogsMode: false,
+            isSidebarVisible: isWideScreen() ? get().isSidebarVisible : false,
+          });
+        } else {
+          set({ isPreviewMode: false });
+        }
+      },
+
+      setSidebarVisible: (value) => set({ isSidebarVisible: value }),
+
+      setMainPanelVisible: (value) => set({ isMainPanelVisible: value }),
+
+      triggerPreviewRefresh: () =>
+        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
+
+      resetForCreateMode: () =>
+        set({
+          isChangesMode: false,
+          isLogsMode: false,
+          isPreviewMode: false,
+        }),
     }),
-    { name: 'ui-preferences' }
+    {
+      name: 'ui-preferences',
+      partialize: (state) => ({
+        // UI preferences (all persisted)
+        repoActions: state.repoActions,
+        expanded: state.expanded,
+        contextBarPosition: state.contextBarPosition,
+        paneSizes: state.paneSizes,
+        collapsedPaths: state.collapsedPaths,
+        // Layout (only persist panel visibility, not mode states)
+        isSidebarVisible: state.isSidebarVisible,
+        isMainPanelVisible: state.isMainPanelVisible,
+        isGitPanelVisible: state.isGitPanelVisible,
+      }),
+    }
   )
 );
 
@@ -191,3 +364,9 @@ export function usePersistedCollapsedPaths(
 
   return [pathSet, setPathSet];
 }
+
+// Layout convenience hooks
+export const useIsRightMainPanelVisible = () =>
+  useUiPreferencesStore(
+    (s) => s.isChangesMode || s.isLogsMode || s.isPreviewMode
+  );

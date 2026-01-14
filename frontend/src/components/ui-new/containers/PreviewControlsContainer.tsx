@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface PreviewControlsContainerProps {
@@ -17,7 +17,7 @@ export function PreviewControlsContainer({
   className,
 }: PreviewControlsContainerProps) {
   const { repos } = useWorkspaceContext();
-  const setLogsMode = useLayoutStore((s) => s.setLogsMode);
+  const setLogsMode = useUiPreferencesStore((s) => s.setLogsMode);
 
   const { isStarting, runningDevServers, devServerProcesses } =
     usePreviewDevServer(attemptId);

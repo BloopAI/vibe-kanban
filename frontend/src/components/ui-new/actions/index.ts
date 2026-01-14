@@ -39,7 +39,7 @@ import {
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
@@ -459,21 +459,21 @@ export const Actions = {
   ToggleSidebar: {
     id: 'toggle-sidebar',
     label: () =>
-      useLayoutStore.getState().isSidebarVisible
+      useUiPreferencesStore.getState().isSidebarVisible
         ? 'Hide Sidebar'
         : 'Show Sidebar',
     icon: SidebarSimpleIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isSidebarVisible,
     execute: () => {
-      useLayoutStore.getState().toggleSidebar();
+      useUiPreferencesStore.getState().toggleSidebar();
     },
   },
 
   ToggleMainPanel: {
     id: 'toggle-main-panel',
     label: () =>
-      useLayoutStore.getState().isMainPanelVisible
+      useUiPreferencesStore.getState().isMainPanelVisible
         ? 'Hide Chat Panel'
         : 'Show Chat Panel',
     icon: ChatsTeardropIcon,
@@ -481,28 +481,28 @@ export const Actions = {
     isActive: (ctx) => ctx.isMainPanelVisible,
     isEnabled: (ctx) => !(ctx.isMainPanelVisible && !ctx.isChangesMode),
     execute: () => {
-      useLayoutStore.getState().toggleMainPanel();
+      useUiPreferencesStore.getState().toggleMainPanel();
     },
   },
 
   ToggleGitPanel: {
     id: 'toggle-git-panel',
     label: () =>
-      useLayoutStore.getState().isGitPanelVisible
+      useUiPreferencesStore.getState().isGitPanelVisible
         ? 'Hide Git Panel'
         : 'Show Git Panel',
     icon: RightSidebarIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isGitPanelVisible,
     execute: () => {
-      useLayoutStore.getState().toggleGitPanel();
+      useUiPreferencesStore.getState().toggleGitPanel();
     },
   },
 
   ToggleChangesMode: {
     id: 'toggle-changes-mode',
     label: () =>
-      useLayoutStore.getState().isChangesMode
+      useUiPreferencesStore.getState().isChangesMode
         ? 'Hide Changes Panel'
         : 'Show Changes Panel',
     icon: GitDiffIcon,
@@ -511,14 +511,14 @@ export const Actions = {
     isActive: (ctx) => ctx.isChangesMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
-      useLayoutStore.getState().toggleChangesMode();
+      useUiPreferencesStore.getState().toggleChangesMode();
     },
   },
 
   ToggleLogsMode: {
     id: 'toggle-logs-mode',
     label: () =>
-      useLayoutStore.getState().isLogsMode
+      useUiPreferencesStore.getState().isLogsMode
         ? 'Hide Logs Panel'
         : 'Show Logs Panel',
     icon: TerminalIcon,
@@ -527,14 +527,14 @@ export const Actions = {
     isActive: (ctx) => ctx.isLogsMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
-      useLayoutStore.getState().toggleLogsMode();
+      useUiPreferencesStore.getState().toggleLogsMode();
     },
   },
 
   TogglePreviewMode: {
     id: 'toggle-preview-mode',
     label: () =>
-      useLayoutStore.getState().isPreviewMode
+      useUiPreferencesStore.getState().isPreviewMode
         ? 'Hide Preview Panel'
         : 'Show Preview Panel',
     icon: DesktopIcon,
@@ -543,7 +543,7 @@ export const Actions = {
     isActive: (ctx) => ctx.isPreviewMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     execute: () => {
-      useLayoutStore.getState().togglePreviewMode();
+      useUiPreferencesStore.getState().togglePreviewMode();
     },
   },
 
@@ -686,7 +686,7 @@ export const Actions = {
       } else {
         ctx.startDevServer();
         // Auto-open preview mode when starting dev server
-        useLayoutStore.getState().setPreviewMode(true);
+        useUiPreferencesStore.getState().setPreviewMode(true);
       }
     },
   },

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import { useLayoutStore } from '@/stores/useLayoutStore';
-import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -23,7 +22,7 @@ import type { CommandBarPage } from './pages';
  * action visibility and state conditions.
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
-  const layout = useLayoutStore();
+  const layout = useUiPreferencesStore();
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
