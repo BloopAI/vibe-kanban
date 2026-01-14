@@ -774,6 +774,7 @@ impl LocalContainerService {
     async fn create_workspace_config_files(
         workspace_dir: &Path,
         repos: &[Repo],
+        agent_working_dir: Option<&str>,
     ) -> Result<(), ContainerError> {
         const CONFIG_FILES: [&str; 2] = ["CLAUDE.md", "AGENTS.md"];
 
@@ -820,6 +821,110 @@ impl LocalContainerService {
                 import_lines.len()
             );
         }
+
+        // Create Claude Code hooks for cleanup scripts
+        Self::create_claude_hooks_config(workspace_dir, repos, agent_working_dir).await?;
+
+        Ok(())
+    }
+
+    /// Create .claude/settings.local.json with Stop hooks for cleanup scripts.
+    /// Creates in agent_working_dir if set (single repo), otherwise workspace root (multi repo).
+    async fn create_claude_hooks_config(
+        workspace_dir: &Path,
+        repos: &[Repo],
+        agent_working_dir: Option<&str>,
+    ) -> Result<(), ContainerError> {
+        let repos_with_cleanup: Vec<_> = repos
+            .iter()
+            .filter(|r| r.cleanup_script.is_some())
+            .collect();
+
+        if repos_with_cleanup.is_empty() {
+            return Ok(());
+        }
+
+        // Determine where to create .claude/ - where the agent runs
+        let claude_root = match agent_working_dir {
+            Some(dir) => workspace_dir.join(dir), // Single repo: inside repo dir
+            None => workspace_dir.to_path_buf(),  // Multi repo: workspace root
+        };
+
+        // Create .claude/hooks directory
+        let hooks_dir = claude_root.join(".claude").join("hooks");
+        tokio::fs::create_dir_all(&hooks_dir).await.map_err(|e| {
+            ContainerError::Other(anyhow!("Failed to create .claude/hooks dir: {}", e))
+        })?;
+
+        // Build cleanup script
+        let mut script_content =
+            String::from("#!/bin/bash\n# Vibe Kanban cleanup script - runs after agent commits\n\n");
+
+        // For single repo, we're already in the repo dir
+        // For multi repo, we need to cd into each repo subdir
+        let is_single_repo = agent_working_dir.is_some();
+
+        for repo in &repos_with_cleanup {
+            let cleanup_cmd = repo.cleanup_script.as_ref().unwrap();
+            if is_single_repo {
+                // Single repo: already in repo dir, run directly
+                script_content.push_str(&format!(
+                    "# Cleanup for {}\necho \"Running cleanup...\"\n{} || echo \"Cleanup failed (non-blocking)\"\n\n",
+                    repo.name, cleanup_cmd
+                ));
+            } else {
+                // Multi repo: cd into each repo subdir
+                script_content.push_str(&format!(
+                    "# Cleanup for {}\necho \"Running cleanup for {}...\"\n(cd \"{}\" && {}) || echo \"Cleanup for {} failed (non-blocking)\"\n\n",
+                    repo.name, repo.name, repo.name, cleanup_cmd, repo.name
+                ));
+            }
+        }
+
+        script_content.push_str("echo \"Cleanup complete\"\n");
+
+        let script_path = hooks_dir.join("run-cleanup.sh");
+        tokio::fs::write(&script_path, &script_content)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to write cleanup script: {}", e)))?;
+
+        // Make executable (Unix only)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = tokio::fs::metadata(&script_path).await?.permissions();
+            perms.set_mode(0o755);
+            tokio::fs::set_permissions(&script_path, perms).await?;
+        }
+
+        // Create settings.local.json with Stop hook
+        let settings = serde_json::json!({
+            "hooks": {
+                "Stop": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": ".claude/hooks/run-cleanup.sh"
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        let settings_path = claude_root.join(".claude").join("settings.local.json");
+        let content = serde_json::to_string_pretty(&settings)
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize settings: {}", e)))?;
+        tokio::fs::write(&settings_path, content).await.map_err(|e| {
+            ContainerError::Other(anyhow!("Failed to write settings.local.json: {}", e))
+        })?;
+
+        tracing::info!(
+            "Created Claude Code cleanup hooks for {} repo(s) at {:?}",
+            repos_with_cleanup.len(),
+            claude_root
+        );
 
         Ok(())
     }
@@ -991,8 +1096,12 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
             .await?;
 
-        Self::create_workspace_config_files(&created_workspace.workspace_dir, &repositories)
-            .await?;
+        Self::create_workspace_config_files(
+            &created_workspace.workspace_dir,
+            &repositories,
+            workspace.agent_working_dir.as_deref(),
+        )
+        .await?;
 
         Workspace::update_container_ref(
             &self.db.pool,
@@ -1055,7 +1164,12 @@ impl ContainerService for LocalContainerService {
         self.copy_files_and_images(&workspace_dir, workspace)
             .await?;
 
-        Self::create_workspace_config_files(&workspace_dir, &repositories).await?;
+        Self::create_workspace_config_files(
+            &workspace_dir,
+            &repositories,
+            workspace.agent_working_dir.as_deref(),
+        )
+        .await?;
 
         Ok(workspace_dir.to_string_lossy().to_string())
     }
