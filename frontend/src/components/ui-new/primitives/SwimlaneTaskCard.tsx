@@ -26,6 +26,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from '@/components/ui/tooltip';
 
 /**
@@ -202,7 +203,8 @@ export function SwimlaneTaskCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1'
       )}
     >
-      <div className="flex flex-col gap-1">
+      <TooltipProvider>
+        <div className="flex flex-col gap-1">
         <div className="flex items-start gap-1.5">
           {/* Category icon badge */}
           {categoryIndicator && (
@@ -333,7 +335,8 @@ export function SwimlaneTaskCard({
           compact
           className="mt-1"
         />
-      </div>
+        </div>
+      </TooltipProvider>
     </button>
   );
 }

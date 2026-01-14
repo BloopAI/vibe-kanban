@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useBoardTasksOverview } from '@/hooks/useBoardTasksOverview';
 import { useRegisterProjectCounts } from '@/hooks/useAggregateTaskCounts';
 import { SwimlaneTaskCard } from '@/components/ui-new/primitives/SwimlaneTaskCard';
+import { ProjectProviderOverride } from '@/contexts/ProjectProviderOverride';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -224,9 +225,10 @@ export function ProjectSwimlane({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div
-        className={cn(
+    <ProjectProviderOverride projectId={project.id}>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div
+          className={cn(
           'group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
           'border-b border-panel/15',
           'transition-all duration-150 ease-out',
@@ -370,7 +372,8 @@ export function ProjectSwimlane({
             </StatusCell>
           );
         })}
-      </div>
-    </DndContext>
+        </div>
+      </DndContext>
+    </ProjectProviderOverride>
   );
 }
