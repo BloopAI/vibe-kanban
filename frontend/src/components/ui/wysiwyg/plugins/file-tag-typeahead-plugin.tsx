@@ -212,7 +212,7 @@ export function FileTagTypeaheadPlugin({
                           key={option.key}
                           className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
                             index === selectedIndex
-                              ? 'bg-muted border-l-brand text-high'
+                              ? 'bg-muted bg-secondary border-l-brand text-high'
                               : 'hover:bg-muted border-l-transparent text-muted-foreground'
                           }`}
                           onMouseMove={(e) => {
@@ -256,7 +256,7 @@ export function FileTagTypeaheadPlugin({
                           key={option.key}
                           className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
                             index === selectedIndex
-                              ? 'bg-muted border-l-brand text-high'
+                              ? 'bg-muted bg-secondary border-l-brand text-high'
                               : 'hover:bg-muted border-l-transparent text-muted-foreground'
                           }`}
                           onMouseMove={(e) => {
