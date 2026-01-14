@@ -829,18 +829,8 @@ impl LocalContainerService {
     }
 
     /// Create .claude/settings.local.json with Stop hook to check for uncommitted changes.
-    /// Currently only supports single repo workspaces.
-    async fn create_claude_hooks_config(
-        workspace_dir: &Path,
-        agent_working_dir: Option<&str>,
-    ) -> Result<(), ContainerError> {
-        // Only support single repo for now
-        let Some(repo_dir) = agent_working_dir else {
-            tracing::debug!("Skipping Claude hooks for multi-repo workspace");
-            return Ok(());
-        };
-
-        let claude_dir = workspace_dir.join(repo_dir).join(".claude");
+    async fn create_claude_hooks_config(repo_dir: &Path) -> Result<(), ContainerError> {
+        let claude_dir = repo_dir.join(".claude");
         tokio::fs::create_dir_all(&claude_dir)
             .await
             .map_err(|e| ContainerError::Other(anyhow!("Failed to create .claude dir: {}", e)))?;
@@ -1157,10 +1147,14 @@ impl ContainerService for LocalContainerService {
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
-        // Only create Claude hooks for Claude Code executor
+        // Only create Claude hooks for Claude Code executor with single-repo workspace
         if let Some(BaseCodingAgent::ClaudeCode) = executor_action.base_executor() {
-            Self::create_claude_hooks_config(&current_dir, workspace.agent_working_dir.as_deref())
-                .await?;
+            let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+            if repos.len() == 1 {
+                if let Some(agent_dir) = &workspace.agent_working_dir {
+                    Self::create_claude_hooks_config(&current_dir.join(agent_dir)).await?;
+                }
+            }
         }
 
         let approvals_service: Arc<dyn ExecutorApprovalService> =
