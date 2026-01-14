@@ -101,7 +101,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   // Fetch users for assignee picker (only enabled when authenticated)
   const { isSignedIn } = useAuth();
-  const { data: users = [] } = useUsers({ enabled: isSignedIn && modal.visible });
+  const { data: users = [] } = useUsers({
+    enabled: isSignedIn && modal.visible,
+  });
 
   // Local UI state
   const [images, setImages] = useState<ImageResponse[]>([]);
