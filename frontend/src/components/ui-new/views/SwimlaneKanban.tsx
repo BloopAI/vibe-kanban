@@ -8,6 +8,7 @@ import {
   DotsThreeIcon,
   SidebarSimpleIcon,
 } from '@phosphor-icons/react';
+import { ActionPanelContainer } from '@/components/ui-new/containers/ActionPanelContainer';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
@@ -290,6 +291,12 @@ function SwimlaneKanbanContent({
           activeWorkspaceCount={activeWorkspaceCount}
           inReviewCount={inReviewCount}
         />
+
+        {/* Divider */}
+        <div className="h-4 w-px bg-panel/40" />
+
+        {/* Action Panel for bulk operations */}
+        <ActionPanelContainer />
 
         {/* Divider */}
         <div className="h-4 w-px bg-panel/40" />
