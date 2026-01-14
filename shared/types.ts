@@ -18,7 +18,7 @@ export type Project = { id: string, name: string, default_agent_working_dir: str
 
 export type ProjectCreator = { id: string, username: string, avatar_url: string | null, };
 
-export type ProjectWithCreator = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, creator: ProjectCreator | null, };
+export type ProjectWithCreator = { creator: ProjectCreator | null, id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, creator_user_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
