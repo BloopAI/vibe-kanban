@@ -1,153 +1,137 @@
-import { useState, useCallback } from 'react';
 import {
-  HouseIcon,
-  StackIcon,
-  CirclesFourIcon,
-  FunnelIcon,
-  CaretDownIcon,
-  CaretRightIcon,
-  FoldersIcon,
+  PlusIcon,
+  StopIcon,
+  LightningIcon,
+  EyeIcon,
+  KanbanIcon,
   SidebarSimpleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import {
-  usePersistedExpanded,
-  type PersistKey,
-} from '@/stores/useUiPreferencesStore';
-
-interface Team {
-  id: string;
-  name: string;
-  icon?: string;
-}
+import type { SidebarWorkspace } from '@/components/ui-new/hooks/useWorkspaces';
 
 interface LeftSidebarProps {
-  workspaceName: string;
-  teams: Team[];
-  selectedTeamId?: string | null;
-  /** Selected nav item in format "teamId:itemId" or "home" */
-  selectedNavItem?: string | null;
-  onSelectTeam?: (teamId: string) => void;
-  /** Handler for nav item selection, receives combined "teamId:itemId" format */
-  onSelectNavItem?: (navItemKey: string) => void;
+  /** App name shown in header */
+  appName?: string;
+  /** Workspace data for active/review sections */
+  workspaces: SidebarWorkspace[];
+  /** Handler to create a new task (opens dialog) */
+  onCreateTask?: () => void;
+  /** Handler to create a new project (opens dialog) */
+  onCreateProject?: () => void;
+  /** Handler to stop a running workspace */
+  onStopWorkspace?: (workspaceId: string) => void;
+  /** Handler to click on a workspace item (navigates to workspace) */
+  onWorkspaceClick?: (workspaceId: string) => void;
+  /** Toggle sidebar visibility */
   onToggleSidebar?: () => void;
   className?: string;
 }
 
-interface NavItemProps {
+interface ActionButtonProps {
   icon: React.ElementType;
   label: string;
-  isActive?: boolean;
   onClick?: () => void;
-  indent?: boolean;
 }
 
-function NavItem({ icon: Icon, label, isActive, onClick, indent }: NavItemProps) {
+function ActionButton({ icon: Icon, label, onClick }: ActionButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm transition-colors',
-        indent && 'pl-7',
-        isActive
-          ? 'bg-panel text-high font-medium'
-          : 'text-normal hover:bg-panel/50 hover:text-high'
+        'flex items-center gap-2 w-full px-3 py-2 rounded-sm',
+        'text-sm text-normal',
+        'bg-panel/30 hover:bg-panel/50',
+        'border border-panel/40 hover:border-panel/60',
+        'transition-colors duration-100'
       )}
     >
-      <Icon className="size-icon-xs flex-shrink-0" weight={isActive ? 'fill' : 'regular'} />
-      <span className="truncate">{label}</span>
+      <Icon className="size-4 flex-shrink-0" />
+      <span>{label}</span>
     </button>
   );
 }
 
-interface TeamSectionProps {
-  team: Team;
-  persistKey: PersistKey;
-  selectedNavItem?: string | null;
-  onSelectNavItem?: (item: string) => void;
+interface WorkspaceItemProps {
+  workspace: SidebarWorkspace;
+  onStop?: () => void;
+  onClick?: () => void;
+  showPRBadge?: boolean;
 }
 
-function TeamSection({
-  team,
-  persistKey,
-  selectedNavItem,
-  onSelectNavItem,
-}: TeamSectionProps) {
-  const [expanded, toggle] = usePersistedExpanded(persistKey, true);
-
-  const navItems = [
-    { id: 'issues', icon: CirclesFourIcon, label: 'Issues' },
-    { id: 'cycles', icon: StackIcon, label: 'Cycles' },
-    { id: 'projects', icon: FoldersIcon, label: 'Projects' },
-    { id: 'views', icon: FunnelIcon, label: 'Views' },
-  ];
-
+function WorkspaceItem({ workspace, onStop, onClick, showPRBadge }: WorkspaceItemProps) {
   return (
-    <div className="flex flex-col">
-      <button
-        type="button"
-        onClick={() => toggle()}
-        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm font-medium text-normal hover:bg-panel/50 hover:text-high transition-colors"
-      >
-        {expanded ? (
-          <CaretDownIcon className="size-icon-xs flex-shrink-0" weight="fill" />
-        ) : (
-          <CaretRightIcon className="size-icon-xs flex-shrink-0" weight="fill" />
+    <div
+      className={cn(
+        'flex items-center gap-2 px-2 py-1.5 rounded-sm',
+        'hover:bg-panel/30 transition-colors duration-100',
+        'group cursor-pointer'
+      )}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
+      tabIndex={0}
+      role="button"
+    >
+      <div className="relative">
+        <KanbanIcon className="size-3.5 text-brand" weight="fill" />
+        {workspace.isRunning && (
+          <span className="absolute -top-0.5 -right-0.5 size-1.5 bg-success rounded-full animate-pulse" />
         )}
-        <span className="truncate">{team.name}</span>
-      </button>
-      {expanded && (
-        <div className="flex flex-col mt-0.5">
-          {navItems.map((item) => (
-            <NavItem
-              key={item.id}
-              icon={item.icon}
-              label={item.label}
-              indent
-              isActive={selectedNavItem === `${team.id}:${item.id}`}
-              onClick={() => onSelectNavItem?.(`${team.id}:${item.id}`)}
-            />
-          ))}
-        </div>
+      </div>
+      <span className="flex-1 text-xs text-normal truncate">
+        {workspace.name || `Workspace ${workspace.id.slice(0, 8)}`}
+      </span>
+      {showPRBadge && workspace.prStatus === 'open' && (
+        <span className="text-[9px] px-1 py-0.5 rounded bg-brand/20 text-brand">PR</span>
+      )}
+      {onStop && workspace.isRunning && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStop();
+          }}
+          className={cn(
+            'p-1 rounded-sm',
+            'text-low hover:text-error',
+            'hover:bg-error/10',
+            'opacity-0 group-hover:opacity-100',
+            'transition-all duration-100'
+          )}
+          title="Stop workspace"
+        >
+          <StopIcon className="size-3" weight="fill" />
+        </button>
       )}
     </div>
   );
 }
 
 export function LeftSidebar({
-  workspaceName,
-  teams,
-  selectedNavItem,
-  onSelectNavItem,
+  appName = 'Vibe Kanban',
+  workspaces,
+  onCreateTask,
+  onCreateProject,
+  onStopWorkspace,
+  onWorkspaceClick,
   onToggleSidebar,
   className,
 }: LeftSidebarProps) {
-  const [localSelectedItem, setLocalSelectedItem] = useState<string | null>(null);
-
-  const effectiveSelectedItem = selectedNavItem ?? localSelectedItem;
-  const handleSelectNavItem = useCallback(
-    (item: string) => {
-      if (onSelectNavItem) {
-        onSelectNavItem(item);
-      } else {
-        setLocalSelectedItem(item);
-      }
-    },
-    [onSelectNavItem]
-  );
+  // Separate workspaces into active (running) and in-review (has open PR)
+  const activeWorkspaces = workspaces.filter((ws) => ws.isRunning);
+  const reviewWorkspaces = workspaces.filter((ws) => ws.prStatus === 'open' && !ws.isRunning);
 
   return (
     <div className={cn('w-full h-full bg-secondary flex flex-col', className)}>
-      {/* Workspace Header */}
+      {/* App Header */}
       <div className="flex items-center justify-between px-base py-2 border-b">
         <div className="flex items-center gap-2 min-w-0">
           <div className="size-6 rounded bg-brand flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-bold text-white">
-              {workspaceName.charAt(0).toUpperCase()}
+              {appName.charAt(0).toUpperCase()}
             </span>
           </div>
-          <span className="font-semibold text-high truncate">{workspaceName}</span>
+          <span className="font-semibold text-high truncate">{appName}</span>
         </div>
         {onToggleSidebar && (
           <button
@@ -161,32 +145,75 @@ export function LeftSidebar({
         )}
       </div>
 
-      {/* Quick Navigation */}
-      <div className="flex flex-col px-2 py-2 border-b gap-0.5">
-        <NavItem
-          icon={HouseIcon}
-          label="Home"
-          isActive={effectiveSelectedItem === 'home'}
-          onClick={() => handleSelectNavItem('home')}
+      {/* Quick Actions Section */}
+      <div className="flex flex-col px-3 py-3 gap-2 border-b">
+        <div className="text-[10px] font-medium text-low uppercase tracking-wider mb-1">
+          Quick Actions
+        </div>
+        <ActionButton
+          icon={PlusIcon}
+          label="New Task"
+          onClick={onCreateTask}
+        />
+        <ActionButton
+          icon={PlusIcon}
+          label="New Project"
+          onClick={onCreateProject}
         />
       </div>
 
-      {/* Teams Section */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
-        <div className="text-xs font-medium text-low uppercase tracking-wider px-2 mb-2">
-          Teams
+      {/* Active Sessions Section */}
+      <div className="flex flex-col px-3 py-3 border-b">
+        <div className="flex items-center gap-1.5 text-[10px] font-medium text-low uppercase tracking-wider mb-2">
+          <LightningIcon className="size-3" weight="fill" />
+          <span>Active Sessions</span>
+          {activeWorkspaces.length > 0 && (
+            <span className="text-success">({activeWorkspaces.length})</span>
+          )}
         </div>
-        <div className="flex flex-col gap-1">
-          {teams.map((team) => (
-            <TeamSection
-              key={team.id}
-              team={team}
-              persistKey={`left-sidebar-team-${team.id}` as PersistKey}
-              selectedNavItem={effectiveSelectedItem}
-              onSelectNavItem={handleSelectNavItem}
-            />
-          ))}
+        {activeWorkspaces.length === 0 ? (
+          <div className="text-[10px] text-low/60 px-2 py-1">
+            No active sessions
+          </div>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            {activeWorkspaces.map((ws) => (
+              <WorkspaceItem
+                key={ws.id}
+                workspace={ws}
+                onStop={onStopWorkspace ? () => onStopWorkspace(ws.id) : undefined}
+                onClick={onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Awaiting Review Section */}
+      <div className="flex flex-col px-3 py-3 flex-1 overflow-y-auto">
+        <div className="flex items-center gap-1.5 text-[10px] font-medium text-low uppercase tracking-wider mb-2">
+          <EyeIcon className="size-3" weight="fill" />
+          <span>Awaiting Review</span>
+          {reviewWorkspaces.length > 0 && (
+            <span className="text-brand">({reviewWorkspaces.length})</span>
+          )}
         </div>
+        {reviewWorkspaces.length === 0 ? (
+          <div className="text-[10px] text-low/60 px-2 py-1">
+            No PRs awaiting review
+          </div>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            {reviewWorkspaces.map((ws) => (
+              <WorkspaceItem
+                key={ws.id}
+                workspace={ws}
+                showPRBadge
+                onClick={onWorkspaceClick ? () => onWorkspaceClick(ws.id) : undefined}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

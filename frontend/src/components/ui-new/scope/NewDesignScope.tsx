@@ -1,5 +1,6 @@
 import { ReactNode, useRef, useEffect } from 'react';
 import { usePostHog } from 'posthog-js/react';
+import { Toaster } from 'sonner';
 import { PortalContainerContext } from '@/contexts/PortalContainerContext';
 import {
   WorkspaceProvider,
@@ -7,6 +8,7 @@ import {
 } from '@/contexts/WorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { usePrMergeNotifications } from '@/hooks/usePrMergeNotifications';
 import NiceModal from '@ebay/nice-modal-react';
 import '@/styles/new/index.css';
 
@@ -31,6 +33,15 @@ function ExecutionProcessesProviderWrapper({
   );
 }
 
+// Component that monitors workspaces for PR merge events and shows toast notifications
+function PrMergeNotificationWatcher() {
+  const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+  // Monitor both active and archived workspaces for PR merges
+  const allWorkspaces = [...activeWorkspaces, ...archivedWorkspaces];
+  usePrMergeNotifications(allWorkspaces);
+  return null;
+}
+
 export function NewDesignScope({ children }: NewDesignScopeProps) {
   const ref = useRef<HTMLDivElement>(null);
   const posthog = usePostHog();
@@ -49,7 +60,17 @@ export function NewDesignScope({ children }: NewDesignScopeProps) {
         <WorkspaceProvider>
           <ExecutionProcessesProviderWrapper>
             <ActionsProvider>
-              <NiceModal.Provider>{children}</NiceModal.Provider>
+              <NiceModal.Provider>
+                <PrMergeNotificationWatcher />
+                <Toaster
+                  position="top-right"
+                  toastOptions={{
+                    className: 'bg-background text-foreground border-border',
+                  }}
+                  richColors
+                />
+                {children}
+              </NiceModal.Provider>
             </ActionsProvider>
           </ExecutionProcessesProviderWrapper>
         </WorkspaceProvider>

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import type { FilterState } from '@/components/ui-new/primitives/FilterDisplayControls';
+import { statusColumnBgColors } from '@/utils/statusLabels';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -52,6 +53,7 @@ function StatusCell({ status, children }: StatusCellProps) {
         // Empty state subtle indicator on hover
         !hasChildren && !isOver && 'hover:bg-panel/5'
       )}
+      style={!isOver ? { backgroundColor: statusColumnBgColors[status] } : undefined}
     >
       {/* Drop zone visual indicator */}
       {isOver && (
@@ -75,6 +77,8 @@ interface ProjectSwimlaneProps {
   onOpenBoard?: (projectId: string) => void;
   onStatusChange: (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => void;
   filterState?: FilterState;
+  /** If set, only show tasks with IDs in this set (for workspace-based filtering) */
+  allowedTaskIds?: Set<string>;
 }
 
 export function ProjectSwimlane({
@@ -88,18 +92,15 @@ export function ProjectSwimlane({
   onOpenBoard,
   onStatusChange,
   filterState,
+  allowedTaskIds,
 }: ProjectSwimlaneProps) {
   const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(project.id);
 
   // Register task counts with the aggregate context for column header totals
   useRegisterProjectCounts(project.id, tasksByStatus, isLoading);
 
-  // Apply status filter to tasks
+  // Apply status filter and workspace filter to tasks
   const filteredTasksByStatus = useMemo(() => {
-    if (!filterState || filterState.statuses.length === 0) {
-      return tasksByStatus;
-    }
-    // Filter tasks by selected statuses
     const filtered: typeof tasksByStatus = {
       todo: [],
       inprogress: [],
@@ -107,24 +108,37 @@ export function ProjectSwimlane({
       done: [],
       cancelled: [],
     };
+
     for (const status of STATUS_ORDER) {
-      if (filterState.statuses.includes(status)) {
-        filtered[status] = tasksByStatus[status];
+      // Skip statuses not in filter (if filter is set)
+      if (filterState && filterState.statuses.length > 0 && !filterState.statuses.includes(status)) {
+        continue;
       }
+
+      let tasks = tasksByStatus[status];
+
+      // Apply workspace-based task filter
+      if (allowedTaskIds) {
+        tasks = tasks.filter(task => allowedTaskIds.has(task.id));
+      }
+
+      filtered[status] = tasks;
     }
+
     return filtered;
-  }, [tasksByStatus, filterState]);
+  }, [tasksByStatus, filterState, allowedTaskIds]);
 
   // Calculate filtered total count
   const filteredTotalCount = useMemo(() => {
-    if (!filterState || filterState.statuses.length === 0) {
-      return totalCount;
+    // If we have any filter applied, count from filtered tasks
+    if (allowedTaskIds || (filterState && filterState.statuses.length > 0)) {
+      return Object.values(filteredTasksByStatus).reduce(
+        (sum, tasks) => sum + tasks.length,
+        0
+      );
     }
-    return Object.values(filteredTasksByStatus).reduce(
-      (sum, tasks) => sum + tasks.length,
-      0
-    );
-  }, [filteredTasksByStatus, filterState, totalCount]);
+    return totalCount;
+  }, [filteredTasksByStatus, filterState, allowedTaskIds, totalCount]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
