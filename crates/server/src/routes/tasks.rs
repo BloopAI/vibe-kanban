@@ -15,7 +15,7 @@ use axum::{
 use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task::{CreateTask, GlobalTaskWithAttemptStatus, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -88,6 +88,51 @@ async fn handle_tasks_ws(
             Ok(msg) => {
                 if sender.send(msg).await.is_err() {
                     break; // client disconnected
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn get_global_tasks(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GlobalTaskWithAttemptStatus>>>, ApiError> {
+    let tasks = Task::find_all_with_attempt_status_and_project_name(&deployment.db().pool).await?;
+    Ok(ResponseJson(ApiResponse::success(tasks)))
+}
+
+pub async fn stream_global_tasks_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_global_tasks_ws(socket, deployment).await {
+            tracing::warn!("global tasks WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_global_tasks_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+    let mut stream = deployment
+        .events()
+        .stream_global_tasks_raw()
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    let (mut sender, mut receiver) = socket.split();
+
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break;
                 }
             }
             Err(e) => {
@@ -471,9 +516,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let inner = Router::new()
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
+        .route("/global", get(get_global_tasks))
+        .route("/global/stream/ws", get(stream_global_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
         .nest("/{task_id}", task_id_router);
 
-    // mount under /projects/:project_id/tasks
     Router::new().nest("/tasks", inner)
 }

@@ -2,6 +2,14 @@
   "title": "Projects",
   "subtitle": "Manage your projects and track their progress",
   "createProject": "Create Project",
+  "globalView": {
+    "label": "Global View",
+    "title": "All Tasks",
+    "subtitle": "View all tasks across all projects",
+    "loading": "Loading tasks...",
+    "error": "Failed to load tasks",
+    "noTasks": "No tasks found across any projects"
+  },
   "linkToOrganization": "Link to Remote Project",
   "loading": "Loading projects...",
   "repoSearch": {
