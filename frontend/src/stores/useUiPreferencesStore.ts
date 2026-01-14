@@ -33,7 +33,6 @@ export const PERSIST_KEYS = {
   // GitHub comments toggle
   showGitHubComments: 'show-github-comments',
   // Panel sizes
-  leftMainPanel: 'left-main-panel',
   rightMainPanel: 'right-main-panel',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
@@ -51,7 +50,6 @@ export type PersistKey =
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
   | typeof PERSIST_KEYS.showGitHubComments
-  | typeof PERSIST_KEYS.leftMainPanel
   | typeof PERSIST_KEYS.rightMainPanel
   | `repo-card-${string}`
   | `diff:${string}`
