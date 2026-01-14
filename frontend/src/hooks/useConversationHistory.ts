@@ -697,8 +697,7 @@ export const useConversationHistory = ({
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
-    emitEntries(displayedExecutionProcesses.current, 'initial', true);
-  }, [attempt.id, emitEntries]);
+  }, [attempt.id]);
 
   return {};
 };
