@@ -6,13 +6,11 @@ use std::{path::Path, time::Duration};
 
 use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
-pub use cli::{GhCli, GhCliError, GitHubIssue};
 use cli::GitHubRepoInfo;
-use db::models::merge::PullRequestInfo;
+pub use cli::{GhCli, GhCliError, GitHubIssue};
+use db::models::merge::{CiStatus, PullRequestInfo};
 use tokio::task;
 use tracing::info;
-
-use db::models::merge::CiStatus;
 
 use super::{
     GitHostProvider,

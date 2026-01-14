@@ -551,6 +551,26 @@
       "discardChanges": "変更を破棄"
     }
   },
+  "prioritize": {
+    "button": "優先順位付け",
+    "title": "タスクの優先順位付け",
+    "description": "タスクの古さ、キーワード、ラベル、期限に基づくAI提案の優先度変更を確認します。",
+    "noSuggestions": "すべてのタスクは既に適切な優先度が設定されています。",
+    "acceptAll": "すべて承認",
+    "reset": "リセット",
+    "showing": "{{count}}件の提案",
+    "accept": "提案を承認",
+    "reject": "提案を却下",
+    "viewReasons": "理由を見る",
+    "whySuggested": "なぜこの優先度？",
+    "applyChanges": "変更を適用 ({{count}})",
+    "applying": "適用中...",
+    "successMessage": "{{count}}件のタスク優先度を更新しました",
+    "errorMessage": "優先度の更新に失敗しました",
+    "undo": "元に戻す",
+    "undoSuccess": "変更を元に戻しました",
+    "undoFailed": "元に戻すことに失敗しました"
+  },
   "restoreLogsDialog": {
     "title": "リトライを確認",
     "historyChange": {

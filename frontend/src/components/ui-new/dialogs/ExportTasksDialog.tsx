@@ -104,7 +104,7 @@ const ExportTasksDialogImpl = NiceModal.create<ExportTasksDialogProps>((props) =
                     : 'border-input hover:border-brand/50 hover:bg-muted/50'
                 )}
               >
-                <Icon className="size-5" />
+                <Icon className="size-icon-base" />
                 <span className="text-xs font-medium">{label}</span>
               </button>
             ))}

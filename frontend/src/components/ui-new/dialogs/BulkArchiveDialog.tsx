@@ -131,13 +131,13 @@ const BulkArchiveDialogImpl = NiceModal.create<BulkArchiveDialogProps>((props) =
                   )}
                 >
                   <div className={cn(
-                    'size-4 rounded-full border flex items-center justify-center mt-0.5',
+                    'size-icon-sm rounded-full border flex items-center justify-center mt-0.5',
                     selectedOption === value
                       ? 'border-brand bg-brand'
                       : 'border-input'
                   )}>
                     {selectedOption === value && (
-                      <CheckCircleIcon className="size-3 text-white" weight="bold" />
+                      <CheckCircleIcon className="size-icon-xs text-white" weight="bold" />
                     )}
                   </div>
                   <div className="flex-1">
@@ -165,7 +165,7 @@ const BulkArchiveDialogImpl = NiceModal.create<BulkArchiveDialogProps>((props) =
               'bg-amber-50 dark:bg-amber-950/30',
               'border border-amber-200 dark:border-amber-900'
             )}>
-              <WarningIcon className="size-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+              <WarningIcon className="size-icon-sm text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 dark:text-amber-200">
                 This will archive {archiveCount} task{archiveCount !== 1 ? 's' : ''}.
                 Archived tasks can be restored from the archive view.

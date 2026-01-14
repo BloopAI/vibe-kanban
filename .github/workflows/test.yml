@@ -17,12 +17,8 @@ env:
   PNPM_VERSION: 10.13.1
 
 jobs:
-  # ============================================
-  # Frontend Jobs (run in parallel)
-  # ============================================
-  frontend-checks:
-    name: Frontend Checks
-    runs-on: ubuntu-latest
+  test:
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
 
@@ -35,77 +31,22 @@ jobs:
       - name: Lint frontend
         run: cd frontend && npm run lint
 
+      - name: Check i18n regressions
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
+        run: ./scripts/check-i18n.sh
+
       - name: Format check frontend
         run: cd frontend && npm run format:check
 
       - name: Type check frontend
         run: cd frontend && npx tsc --noEmit
 
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
-
-  i18n-check:
-    name: i18n Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check i18n regressions
-        env:
-          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
-        run: ./scripts/check-i18n.sh
-
-  # ============================================
-  # Backend Jobs (run in parallel)
-  # ============================================
-  backend-format:
-    name: Rust Format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly-2025-12-04
-          components: rustfmt
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-  backend-checks:
-    name: Rust Checks
-    runs-on: buildjet-8vcpu-ubuntu-2204
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly-2025-12-04
-          components: clippy
+          components: rustfmt, clippy
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -125,43 +66,16 @@ jobs:
           no-default-features: true
           features: sqlite,postgres
 
-      - name: Verify type generation
-        run: npm run generate-types:check
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
-      - name: Verify SQLx schema (local)
-        run: npm run prepare-db:check
-
-      - name: Verify SQLx schema (remote)
-        run: npm run remote:prepare-db:check
-
-      - name: Run tests
-        run: cargo test --workspace
-
-      - name: Run Clippy
-        run: cargo clippy --all --all-targets -- -D warnings
-
-  # ============================================
-  # Final Status Check
-  # ============================================
-  test-status:
-    name: Test Status
-    runs-on: ubuntu-latest
-    needs:
-      - frontend-checks
-      - frontend-build
-      - i18n-check
-      - backend-format
-      - backend-checks
-    if: always()
-    steps:
-      - name: Check all jobs passed
+      - name: Checks
         run: |
-          if [[ "${{ needs.frontend-checks.result }}" == "failure" ]] || \
-             [[ "${{ needs.frontend-build.result }}" == "failure" ]] || \
-             [[ "${{ needs.i18n-check.result }}" == "failure" ]] || \
-             [[ "${{ needs.backend-format.result }}" == "failure" ]] || \
-             [[ "${{ needs.backend-checks.result }}" == "failure" ]]; then
-            echo "One or more jobs failed"
-            exit 1
-          fi
-          echo "All tests passed!"
+          cargo fmt --all -- --check
+          npm run generate-types:check
+          npm run prepare-db:check
+          npm run remote:prepare-db:check
+          cargo test --workspace
+          cargo clippy --all --all-targets -- -D warnings  

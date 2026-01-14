@@ -1,10 +1,13 @@
-use db::models::task::Task;
-use db::models::task_deduplication::{
-    BulkMergeRequest, BulkMergeResponse, DuplicateMatchType, DuplicatePair,
-    FindDuplicatesResponse, MergeTasksRequest, MergeTasksResponse,
+use std::collections::HashSet;
+
+use db::models::{
+    task::Task,
+    task_deduplication::{
+        BulkMergeRequest, BulkMergeResponse, DuplicateMatchType, DuplicatePair,
+        FindDuplicatesResponse, MergeTasksRequest, MergeTasksResponse,
+    },
 };
 use sqlx::SqlitePool;
-use std::collections::HashSet;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -183,14 +186,12 @@ impl TaskDeduplicationService {
         // Prepare merged description
         let merged_description = if request.append_description {
             match (&primary.description, &secondary.description) {
-                (Some(primary_desc), Some(secondary_desc)) => {
-                    Some(format!(
-                        "{}\n\n---\n\n**Merged from task #{}:**\n{}",
-                        primary_desc,
-                        secondary.task_number.unwrap_or(0),
-                        secondary_desc
-                    ))
-                }
+                (Some(primary_desc), Some(secondary_desc)) => Some(format!(
+                    "{}\n\n---\n\n**Merged from task #{}:**\n{}",
+                    primary_desc,
+                    secondary.task_number.unwrap_or(0),
+                    secondary_desc
+                )),
                 (None, Some(secondary_desc)) => Some(format!(
                     "**Merged from task #{}:**\n{}",
                     secondary.task_number.unwrap_or(0),
@@ -305,8 +306,6 @@ mod tests {
         assert!(
             (TaskDeduplicationService::calculate_string_similarity("", "") - 1.0).abs() < 0.001
         );
-        assert!(
-            TaskDeduplicationService::calculate_string_similarity("hello", "").abs() < 0.001
-        );
+        assert!(TaskDeduplicationService::calculate_string_similarity("hello", "").abs() < 0.001);
     }
 }

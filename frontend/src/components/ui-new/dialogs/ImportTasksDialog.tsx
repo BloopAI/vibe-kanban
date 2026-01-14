@@ -80,7 +80,7 @@ const ImportTasksDialogImpl = NiceModal.create<ImportTasksDialogProps>(() => {
             />
           </div>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <FileTextIcon className="size-3.5" />
+            <FileTextIcon className="size-icon-xs" />
             <span>
               {importText.trim()
                 ? `${importText.trim().split('\n').filter(l => l.trim()).length} tasks to import`

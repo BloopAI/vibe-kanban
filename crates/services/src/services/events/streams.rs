@@ -236,12 +236,7 @@ impl EventService {
             // Convert groups array to object keyed by group ID
             let groups_map: serde_json::Map<String, serde_json::Value> = groups
                 .into_iter()
-                .map(|group| {
-                    (
-                        group.id.to_string(),
-                        serde_json::to_value(group).unwrap(),
-                    )
-                })
+                .map(|group| (group.id.to_string(), serde_json::to_value(group).unwrap()))
                 .collect();
 
             let patch = json!([

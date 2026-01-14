@@ -102,7 +102,7 @@ const PrioritizeTasksDialogImpl = NiceModal.create<PrioritizeTasksDialogProps>((
                 )}
               >
                 <Icon className={cn(
-                  'size-5 mt-0.5',
+                  'size-icon-base mt-0.5',
                   selectedMethod === value ? 'text-brand' : 'text-muted-foreground'
                 )} />
                 <div className="flex-1">

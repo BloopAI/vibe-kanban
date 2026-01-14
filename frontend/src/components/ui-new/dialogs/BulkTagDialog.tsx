@@ -107,7 +107,7 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                       onClick={() => handleRemoveTag(tag)}
                       className="hover:bg-brand/20 rounded-full p-0.5"
                     >
-                      <XIcon className="size-3" />
+                      <XIcon className="size-icon-xs" />
                     </button>
                   </span>
                 ))}
@@ -144,7 +144,7 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                 onClick={() => handleAddTag(newTag)}
                 disabled={!newTag.trim()}
               >
-                <PlusIcon className="size-4" />
+                <PlusIcon className="size-icon-sm" />
               </Button>
             </div>
           </div>
@@ -168,7 +168,7 @@ const BulkTagDialogImpl = NiceModal.create<BulkTagDialogProps>((props) => {
                       'transition-colors duration-150'
                     )}
                   >
-                    <span className={cn('size-2 rounded-full', tag.color)} />
+                    <span className={cn('size-dot rounded-full', tag.color)} />
                     {tag.name}
                   </button>
                 ))

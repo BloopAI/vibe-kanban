@@ -196,7 +196,7 @@ export function ProjectSwimlane({
         {/* Project name cell */}
         <div className="px-2 py-1.5 flex items-center">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <KanbanIcon weight="fill" className="size-3.5 text-brand shrink-0" />
+            <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
             <span className="text-xs text-normal font-medium truncate">{project.name}</span>
             <span className="text-[10px] text-low/50 tabular-nums shrink-0">
               {isLoading ? '—' : filteredTotalCount}
@@ -219,7 +219,7 @@ export function ProjectSwimlane({
                 )}
                 title="New task"
               >
-                <PlusIcon className="size-3" />
+                <PlusIcon className="size-icon-xs" />
               </button>
 
               {/* Actions dropdown */}
@@ -235,7 +235,7 @@ export function ProjectSwimlane({
                         'transition-colors duration-100'
                       )}
                     >
-                      <DotsThreeIcon weight="bold" className="size-3" />
+                      <DotsThreeIcon weight="bold" className="size-icon-xs" />
                     </button>
                   </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -302,7 +302,6 @@ export function ProjectSwimlane({
                     key={task.id}
                     task={task}
                     projectId={project.id}
-                    project={project}
                     isSelected={selectedTaskId === task.id}
                     onClick={() => onTaskClick(project.id, task.id)}
                   />

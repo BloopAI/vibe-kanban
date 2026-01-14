@@ -100,7 +100,7 @@ const DeduplicateTasksDialogImpl = NiceModal.create<DeduplicateTasksDialogProps>
         <div className="py-4">
           {!hasScanned ? (
             <div className="text-center py-8">
-              <MagnifyingGlassIcon className="size-12 mx-auto text-muted-foreground/40 mb-4" />
+              <MagnifyingGlassIcon className="size-icon-xl mx-auto text-muted-foreground/40 mb-4" />
               <p className="text-sm text-muted-foreground mb-4">
                 Click scan to find duplicate tasks based on title similarity.
               </p>
@@ -110,7 +110,7 @@ const DeduplicateTasksDialogImpl = NiceModal.create<DeduplicateTasksDialogProps>
             </div>
           ) : duplicates.length === 0 ? (
             <div className="text-center py-8">
-              <CheckCircleIcon className="size-12 mx-auto text-green-500 mb-4" />
+              <CheckCircleIcon className="size-icon-xl mx-auto text-green-500 mb-4" />
               <p className="text-sm text-muted-foreground">
                 No duplicate tasks found. Your board is clean!
               </p>
@@ -131,13 +131,13 @@ const DeduplicateTasksDialogImpl = NiceModal.create<DeduplicateTasksDialogProps>
                   )}
                 >
                   <div className={cn(
-                    'size-4 rounded border flex items-center justify-center',
+                    'size-icon-sm rounded border flex items-center justify-center',
                     selectedGroups.has(group.id)
                       ? 'border-brand bg-brand text-white'
                       : 'border-input'
                   )}>
                     {selectedGroups.has(group.id) && (
-                      <CheckCircleIcon className="size-3" weight="bold" />
+                      <CheckCircleIcon className="size-icon-xs" weight="bold" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

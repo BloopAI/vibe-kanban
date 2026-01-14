@@ -6,16 +6,16 @@ use tracing;
 
 /// Predefined task categories with their colors
 pub const CATEGORIES: &[(&str, &str)] = &[
-    ("🎨 UI", "#8B5CF6"),           // purple
-    ("⚙️ Logic", "#6366F1"),        // indigo
-    ("🐛 Bug", "#EF4444"),          // red
-    ("✨ Feature", "#22C55E"),      // green
-    ("🔧 Refactor", "#F97316"),     // orange
-    ("📚 Docs", "#3B82F6"),         // blue
-    ("🧪 Test", "#14B8A6"),         // teal
-    ("🔒 Security", "#DC2626"),     // dark red
-    ("🚀 Performance", "#EAB308"),  // yellow
-    ("🔌 Integration", "#EC4899"),  // pink
+    ("🎨 UI", "#8B5CF6"),          // purple
+    ("⚙️ Logic", "#6366F1"),       // indigo
+    ("🐛 Bug", "#EF4444"),         // red
+    ("✨ Feature", "#22C55E"),     // green
+    ("🔧 Refactor", "#F97316"),    // orange
+    ("📚 Docs", "#3B82F6"),        // blue
+    ("🧪 Test", "#14B8A6"),        // teal
+    ("🔒 Security", "#DC2626"),    // dark red
+    ("🚀 Performance", "#EAB308"), // yellow
+    ("🔌 Integration", "#EC4899"), // pink
 ];
 
 #[derive(Error, Debug)]
@@ -281,7 +281,8 @@ mod tests {
 
     #[test]
     fn test_parse_categories_with_surrounding_text() {
-        let result = parse_categories_test(r#"Here are the categories: ["🐛 Bug"] based on analysis"#);
+        let result =
+            parse_categories_test(r#"Here are the categories: ["🐛 Bug"] based on analysis"#);
         assert!(result.is_ok());
         let labels = result.unwrap();
         assert_eq!(labels.len(), 1);
