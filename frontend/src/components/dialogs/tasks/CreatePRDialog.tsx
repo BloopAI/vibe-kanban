@@ -518,8 +518,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
                 <Button onClick={handleCloseAfterConflicts}>
                   {t('common:buttons.close', 'Close')}
                 </Button>
-              ) : prCreatedSuccessfully ? // Show nothing - dialog auto-closes on success
-              null : (
+              ) : prCreatedSuccessfully ? null : ( // Show nothing - dialog auto-closes on success
                 // Show create PR buttons
                 <>
                   <Button variant="outline" onClick={handleCancelCreatePR}>
