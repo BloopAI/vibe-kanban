@@ -119,7 +119,7 @@ export function Navbar({
       )}
     >
       {/* Left - Archive & Old UI Link */}
-      <div className="flex-1 flex items-center gap-base">
+      <div className="flex items-center gap-base shrink-0">
         {leftItems.map((item, index) =>
           renderItem(
             item,
@@ -128,13 +128,13 @@ export function Navbar({
         )}
       </div>
 
-      {/* Center - Workspace Title */}
-      <div className="flex-1 flex items-center justify-center">
+      {/* Center - Workspace Title (hidden on mobile to save space) */}
+      <div className="hidden sm:flex flex-1 items-center justify-center min-w-0">
         <p className="text-base text-low truncate">{workspaceTitle}</p>
       </div>
 
       {/* Right - Diff Controls + Panel Toggles (dividers inline) */}
-      <div className="flex-1 flex items-center justify-end gap-base">
+      <div className="flex items-center justify-end gap-base shrink-0">
         {rightItems.map((item, index) =>
           renderItem(
             item,
