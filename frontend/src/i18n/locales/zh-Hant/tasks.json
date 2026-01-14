@@ -537,6 +537,7 @@
     "titlePlaceholder": "任務標題",
     "descriptionPlaceholder": "新增更多細節（選填）。輸入 @ 搜尋檔案。",
     "statusLabel": "狀態",
+    "assigneeLabel": "負責人",
     "statusOptions": {
       "todo": "待辦",
       "inprogress": "進行中",
@@ -668,6 +669,11 @@
       "deleted": "已刪除",
       "renamed": "已重新命名"
     }
+  },
+  "assigneeSelector": {
+    "label": "負責人",
+    "unassigned": "未指派",
+    "noUsersAvailable": "沒有可用的使用者"
   },
   "scriptFixer": {
     "title": "修復腳本",

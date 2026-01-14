@@ -537,6 +537,7 @@
     "titlePlaceholder": "작업 제목",
     "descriptionPlaceholder": "세부 정보 추가 (선택 사항). @를 입력하여 파일을 검색합니다.",
     "statusLabel": "상태",
+    "assigneeLabel": "담당자",
     "statusOptions": {
       "todo": "할 일",
       "inprogress": "진행 중",
@@ -668,6 +669,11 @@
       "deleted": "삭제됨",
       "renamed": "이름 변경됨"
     }
+  },
+  "assigneeSelector": {
+    "label": "담당자",
+    "unassigned": "미배정",
+    "noUsersAvailable": "사용자가 없습니다"
   },
   "scriptFixer": {
     "title": "스크립트 수정",

@@ -537,6 +537,7 @@
     "titlePlaceholder": "タスクのタイトル",
     "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
     "statusLabel": "ステータス",
+    "assigneeLabel": "担当者",
     "statusOptions": {
       "todo": "未着手",
       "inprogress": "進行中",
@@ -668,6 +669,11 @@
       "deleted": "削除済み",
       "renamed": "名前変更済み"
     }
+  },
+  "assigneeSelector": {
+    "label": "担当者",
+    "unassigned": "未割り当て",
+    "noUsersAvailable": "ユーザーがいません"
   },
   "scriptFixer": {
     "title": "スクリプトを修正",

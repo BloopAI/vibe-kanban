@@ -1,4 +1,5 @@
 import { User, ArrowDown, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,13 +28,14 @@ export function AssigneeSelector({
   className = '',
   showLabel = false,
 }: AssigneeSelectorProps) {
+  const { t } = useTranslation('tasks');
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
   return (
     <div className="flex-1">
       {showLabel && (
         <Label htmlFor="assignee-selector" className="text-sm font-medium">
-          Assignee
+          {t('assigneeSelector.label')}
         </Label>
       )}
       <DropdownMenu>
@@ -43,7 +45,7 @@ export function AssigneeSelector({
             size="sm"
             className={`w-full justify-between text-xs ${showLabel ? 'mt-1.5' : ''} ${className}`}
             disabled={disabled}
-            aria-label="Select assignee"
+            aria-label={t('assigneeSelector.label')}
           >
             <div className="flex items-center gap-1.5 w-full">
               {selectedUser ? (
@@ -61,7 +63,7 @@ export function AssigneeSelector({
                 <>
                   <User className="h-3 w-3" />
                   <span className="truncate text-muted-foreground">
-                    Unassigned
+                    {t('assigneeSelector.unassigned')}
                   </span>
                 </>
               )}
@@ -79,13 +81,15 @@ export function AssigneeSelector({
               <div className="h-5 w-5 flex items-center justify-center rounded-full border border-border bg-muted">
                 <X className="h-3 w-3 text-muted-foreground" />
               </div>
-              <span className="text-muted-foreground">Unassigned</span>
+              <span className="text-muted-foreground">
+                {t('assigneeSelector.unassigned')}
+              </span>
             </div>
           </DropdownMenuItem>
 
           {users.length === 0 ? (
             <div className="p-2 text-sm text-muted-foreground text-center">
-              No users available
+              {t('assigneeSelector.noUsersAvailable')}
             </div>
           ) : (
             users.map((user) => (

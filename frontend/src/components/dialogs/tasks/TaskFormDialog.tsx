@@ -515,7 +515,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             <form.Field name="assigneeUserId">
               {(field) => (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Assignee</Label>
+                  <Label className="text-sm font-medium">
+                    {t('taskFormDialog.assigneeLabel')}
+                  </Label>
                   <AssigneeSelector
                     users={users}
                     selectedUserId={field.state.value}
