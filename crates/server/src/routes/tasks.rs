@@ -16,6 +16,10 @@ use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task_deduplication::{
+        BulkMergeRequest, BulkMergeResponse, FindDuplicatesResponse, MergeTasksRequest,
+        MergeTasksResponse,
+    },
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -24,7 +28,8 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
+    container::ContainerService, share::ShareError, task_deduplication::TaskDeduplicationService,
+    workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -459,6 +464,78 @@ pub async fn share_task(
     })))
 }
 
+/// Find potential duplicate tasks in a project
+pub async fn find_duplicates(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<TaskQuery>,
+) -> Result<ResponseJson<ApiResponse<FindDuplicatesResponse>>, ApiError> {
+    let result =
+        TaskDeduplicationService::find_duplicates(&deployment.db().pool, query.project_id)
+            .await
+            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "tasks_find_duplicates",
+            serde_json::json!({
+                "project_id": query.project_id.to_string(),
+                "duplicates_found": result.duplicate_pairs.len(),
+                "total_tasks": result.total_tasks_analyzed,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
+/// Merge two tasks, keeping the primary and deleting the secondary
+pub async fn merge_tasks(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<MergeTasksRequest>,
+) -> Result<ResponseJson<ApiResponse<MergeTasksResponse>>, ApiError> {
+    let result = TaskDeduplicationService::merge_tasks(&deployment.db().pool, request.clone())
+        .await
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "tasks_merge",
+            serde_json::json!({
+                "primary_task_id": request.primary_task_id.to_string(),
+                "secondary_task_id": request.secondary_task_id.to_string(),
+                "append_description": request.append_description,
+                "combine_labels": request.combine_labels,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
+/// Bulk merge multiple duplicate pairs
+pub async fn bulk_merge_tasks(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<BulkMergeRequest>,
+) -> Result<ResponseJson<ApiResponse<BulkMergeResponse>>, ApiError> {
+    let merge_count = request.merges.len();
+    let result = TaskDeduplicationService::bulk_merge(&deployment.db().pool, request)
+        .await
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "tasks_bulk_merge",
+            serde_json::json!({
+                "requested_merges": merge_count,
+                "successful_merges": result.successful_merges,
+                "failed_merges": result.failed_merges,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
@@ -474,6 +551,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
+        .route("/find-duplicates", get(find_duplicates))
+        .route("/merge", post(merge_tasks))
+        .route("/bulk-merge", post(bulk_merge_tasks))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks

@@ -13,6 +13,8 @@ import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
 import { HiddenColumnsDropdown } from './HiddenColumnsDropdown';
+import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
 
 export type KanbanColumnItem =
   | {
@@ -38,6 +40,7 @@ interface TaskKanbanBoardProps {
   projectId: string;
   hiddenColumns?: TaskStatus[];
   onToggleHiddenColumn?: (column: TaskStatus) => void;
+  onDeduplicateClick?: () => void;
 }
 
 function TaskKanbanBoard({
@@ -51,6 +54,7 @@ function TaskKanbanBoard({
   projectId,
   hiddenColumns = [],
   onToggleHiddenColumn,
+  onDeduplicateClick,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
 
@@ -64,13 +68,26 @@ function TaskKanbanBoard({
     <KanbanProvider
       onDragEnd={onDragEnd}
       rightContent={
-        onToggleHiddenColumn && (
-          <HiddenColumnsDropdown
-            hiddenColumns={hiddenColumns}
-            onToggleColumn={onToggleHiddenColumn}
-            columns={columns}
-          />
-        )
+        <div className="flex items-center gap-2">
+          {onDeduplicateClick && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDeduplicateClick}
+              title="Find duplicate tasks"
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Deduplicate
+            </Button>
+          )}
+          {onToggleHiddenColumn && (
+            <HiddenColumnsDropdown
+              hiddenColumns={hiddenColumns}
+              onToggleColumn={onToggleHiddenColumn}
+              columns={columns}
+            />
+          )}
+        </div>
       }
     >
       {visibleColumns.map(([status, items]) => {
