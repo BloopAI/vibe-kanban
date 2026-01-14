@@ -4,6 +4,7 @@ import {
   ReactNode,
   useMemo,
   useCallback,
+  useEffect,
 } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,6 +22,7 @@ import {
 } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import type {
   Workspace as ApiWorkspace,
   Session,
@@ -87,6 +89,13 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
   const isCreateMode = location.pathname === '/workspaces/create';
+
+  // Reset UI state when entering create mode
+  useEffect(() => {
+    if (isCreateMode) {
+      useUiPreferencesStore.getState().resetForCreateMode();
+    }
+  }, [isCreateMode]);
 
   // Fetch workspaces for sidebar display
   const {

@@ -15,8 +15,6 @@ interface WorkspacesMainContainerProps {
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
   onStartNewSession?: () => void;
-  /** Callback to toggle changes panel */
-  onViewCode?: () => void;
 }
 
 export function WorkspacesMainContainer({
@@ -27,7 +25,6 @@ export function WorkspacesMainContainer({
   isLoading,
   isNewSessionMode,
   onStartNewSession,
-  onViewCode,
 }: WorkspacesMainContainerProps) {
   const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
@@ -51,7 +48,6 @@ export function WorkspacesMainContainer({
       isLoading={isLoading}
       containerRef={containerRef}
       projectId={task?.project_id}
-      onViewCode={onViewCode}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
       diffStats={{

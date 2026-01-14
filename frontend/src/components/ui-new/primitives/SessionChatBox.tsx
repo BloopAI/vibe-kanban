@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import {
   PaperclipIcon,
   CheckIcon,
@@ -36,6 +36,10 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -77,7 +81,6 @@ interface StatsProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
-  onViewCode?: () => void;
   hasConflicts?: boolean;
   conflictedFilesCount?: number;
 }
@@ -163,6 +166,15 @@ export function SessionChatBox({
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { rightMainPanelMode, setRightMainPanelMode } = useUiPreferencesStore();
+
+  const handleViewCode = useCallback(() => {
+    setRightMainPanelMode(
+      rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
+        ? null
+        : RIGHT_MAIN_PANEL_MODES.CHANGES
+    );
+  }, [rightMainPanelMode, setRightMainPanelMode]);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -554,7 +566,7 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+                  <PrimaryButton variant="tertiary" onClick={handleViewCode}>
                     <span className="text-sm space-x-half">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
