@@ -56,8 +56,6 @@ export function WorkspacesSidebar({
     .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
-  const hasArchivedWorkspaces = archivedWorkspaces.length > 0;
-
   return (
     <div className="w-full h-full bg-secondary flex flex-col">
       {/* Header + Search */}
@@ -156,29 +154,27 @@ export function WorkspacesSidebar({
       </div>
 
       {/* Fixed footer toggle - only show if there are archived workspaces */}
-      {hasArchivedWorkspaces && (
-        <div className="border-t border-primary p-base">
-          <button
-            onClick={() => onShowArchiveChange?.(!showArchive)}
-            className="w-full flex items-center gap-base text-sm text-low hover:text-normal transition-colors duration-100"
-          >
-            {showArchive ? (
-              <>
-                <ArrowLeftIcon className="size-icon-xs" />
-                <span>{t('common:workspaces.backToActive')}</span>
-              </>
-            ) : (
-              <>
-                <ArchiveIcon className="size-icon-xs" />
-                <span>{t('common:workspaces.viewArchive')}</span>
-                <span className="ml-auto text-xs bg-tertiary px-1.5 py-0.5 rounded">
-                  {archivedWorkspaces.length}
-                </span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      <div className="border-t border-primary p-base">
+        <button
+          onClick={() => onShowArchiveChange?.(!showArchive)}
+          className="w-full flex items-center gap-base text-sm text-low hover:text-normal transition-colors duration-100"
+        >
+          {showArchive ? (
+            <>
+              <ArrowLeftIcon className="size-icon-xs" />
+              <span>{t('common:workspaces.backToActive')}</span>
+            </>
+          ) : (
+            <>
+              <ArchiveIcon className="size-icon-xs" />
+              <span>{t('common:workspaces.viewArchive')}</span>
+              <span className="ml-auto text-xs bg-tertiary px-1.5 py-0.5 rounded">
+                {archivedWorkspaces.length}
+              </span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
