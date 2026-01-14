@@ -157,12 +157,10 @@ impl ClaudeAgentClient {
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
-        // Stop hook git check - always handle regardless of auto_approve
+        // Stop hook git check - uses top-level `continue` and `stopReason` fields
+        // (not wrapped in hookSpecificOutput like PreToolUse hooks)
         if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
-            let result = check_git_status(&self.working_dir).await;
-            return Ok(serde_json::json!({
-                "hookSpecificOutput": result
-            }));
+            return Ok(check_git_status(&self.working_dir).await);
         }
 
         if self.auto_approve {
@@ -204,7 +202,8 @@ impl ClaudeAgentClient {
     }
 }
 
-/// Check for uncommitted git changes in the working directory
+/// Check for uncommitted git changes in the working directory.
+/// Returns a Stop hook response using top-level `continue` and `stopReason` fields.
 async fn check_git_status(working_dir: &Path) -> serde_json::Value {
     // Find git repo - check current dir first, then subdirs
     let git_dir = if working_dir.join(".git").exists() {
@@ -215,8 +214,8 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
     };
 
     let Some(repo_dir) = git_dir else {
-        // No git repo found, allow stop
-        return serde_json::json!({"decision": "allow"});
+        // No git repo found, allow stop (return empty object)
+        return serde_json::json!({});
     };
 
     // Check for uncommitted changes using git status --porcelain
@@ -229,15 +228,15 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
 
     match output {
         Ok(out) if out.stdout.is_empty() => {
-            // No uncommitted changes, allow stop
-            serde_json::json!({"decision": "allow"})
+            // No uncommitted changes, allow stop (return empty object)
+            serde_json::json!({})
         }
         Ok(out) => {
-            // Has uncommitted changes, block and ask to commit
+            // Has uncommitted changes, block stop using continue: false
             let status = String::from_utf8_lossy(&out.stdout);
             serde_json::json!({
-                "decision": "block",
-                "reason": format!(
+                "continue": false,
+                "stopReason": format!(
                     "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.\n\ngit status:\n{}",
                     status.trim()
                 )
@@ -246,7 +245,7 @@ async fn check_git_status(working_dir: &Path) -> serde_json::Value {
         Err(e) => {
             // Git command failed, log warning but allow stop
             tracing::warn!("Failed to check git status: {e}");
-            serde_json::json!({"decision": "allow"})
+            serde_json::json!({})
         }
     }
 }
