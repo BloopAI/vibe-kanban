@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&family=Noto+Emoji:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&family=Inter:wght@400..700&family=Noto+Emoji:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -354,6 +354,31 @@
   }
 }
 
+/* ============================================
+   LINEAR-STYLE DESIGN SYSTEM ENHANCEMENTS
+   ============================================ */
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Subtle pulse for focus indicators */
+@keyframes focus-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px hsl(var(--brand) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(var(--brand) / 0.15);
+  }
+}
+
 /* Animated border for running chat box */
 @keyframes border-flash {
   0% {
@@ -390,6 +415,182 @@
       linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
+  }
+}
+
+/* Linear-style component utilities */
+@layer components {
+  /* Card with subtle shadow - Linear style */
+  .new-design .card-elevated {
+    @apply rounded-md;
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .new-design .card-elevated:hover {
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Loading skeleton with shimmer */
+  .new-design .skeleton {
+    @apply rounded-sm;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--bg-panel) / 0.4) 0%,
+      hsl(var(--bg-panel) / 0.8) 50%,
+      hsl(var(--bg-panel) / 0.4) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Keyboard focus indicator - Linear style */
+  .new-design .focus-ring {
+    @apply outline-none;
+  }
+
+  .new-design .focus-ring:focus-visible {
+    @apply ring-2 ring-brand/40 ring-offset-1 ring-offset-primary;
+  }
+
+  /* Interactive element base - consistent hover/active states */
+  .new-design .interactive {
+    @apply transition-all duration-150 ease-out;
+    @apply cursor-pointer select-none;
+  }
+
+  .new-design .interactive:active {
+    @apply scale-[0.98];
+  }
+
+  /* Empty state container */
+  .new-design .empty-state {
+    @apply flex flex-col items-center justify-center py-12 px-6;
+    @apply text-center;
+  }
+
+  .new-design .empty-state-icon {
+    @apply size-10 text-low/30 mb-3;
+  }
+
+  .new-design .empty-state-title {
+    @apply text-sm font-medium text-normal mb-1;
+  }
+
+  .new-design .empty-state-description {
+    @apply text-xs text-low/60 max-w-[200px];
+  }
+
+  /* Subtle divider - Linear style */
+  .new-design .divider {
+    @apply h-px bg-panel/30;
+  }
+
+  .new-design .divider-vertical {
+    @apply w-px h-4 bg-panel/40;
+  }
+
+  /* Text styles following Linear hierarchy */
+  .new-design .text-title {
+    @apply text-sm font-semibold text-high tracking-tight;
+  }
+
+  .new-design .text-subtitle {
+    @apply text-xs font-medium text-normal;
+  }
+
+  .new-design .text-body {
+    @apply text-xs text-normal leading-relaxed;
+  }
+
+  .new-design .text-caption {
+    @apply text-[10px] text-low;
+  }
+
+  .new-design .text-label {
+    @apply text-[10px] font-medium text-low uppercase tracking-wider;
+  }
+
+  /* Badge styles */
+  .new-design .badge {
+    @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm;
+    @apply text-[9px] font-medium;
+    @apply bg-panel/50 text-normal;
+  }
+
+  .new-design .badge-brand {
+    @apply bg-brand/15 text-brand;
+  }
+
+  .new-design .badge-success {
+    @apply bg-success/15 text-success;
+  }
+
+  .new-design .badge-error {
+    @apply bg-error/15 text-error;
+  }
+
+  /* Button base styles */
+  .new-design .btn {
+    @apply inline-flex items-center justify-center gap-1.5;
+    @apply px-2.5 py-1.5 rounded-md;
+    @apply text-xs font-medium;
+    @apply transition-all duration-150 ease-out;
+    @apply cursor-pointer select-none;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1;
+  }
+
+  .new-design .btn:active {
+    @apply scale-[0.98];
+  }
+
+  .new-design .btn-primary {
+    @apply bg-brand text-on-brand;
+    @apply hover:bg-brand-hover;
+  }
+
+  .new-design .btn-secondary {
+    @apply bg-secondary text-normal;
+    @apply border border-panel/40;
+    @apply hover:bg-panel/30 hover:border-panel/60;
+  }
+
+  .new-design .btn-ghost {
+    @apply bg-transparent text-low;
+    @apply hover:bg-panel/30 hover:text-normal;
+  }
+
+  /* Icon button */
+  .new-design .icon-btn {
+    @apply p-1 rounded-sm;
+    @apply text-low hover:text-normal;
+    @apply hover:bg-panel/40;
+    @apply transition-all duration-100;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40;
+  }
+
+  /* Input field - Linear style */
+  .new-design .input-field {
+    @apply flex items-center gap-2;
+    @apply bg-secondary/60 rounded-md;
+    @apply border border-panel/30;
+    @apply px-2.5 py-1.5;
+    @apply transition-all duration-150;
+  }
+
+  .new-design .input-field:focus-within {
+    @apply border-brand/40 bg-secondary/80;
+    @apply ring-2 ring-brand/10;
+  }
+
+  .new-design .input-field input {
+    @apply flex-1 bg-transparent;
+    @apply text-xs text-normal;
+    @apply placeholder:text-low/50;
+    @apply focus:outline-none;
   }
 }
 

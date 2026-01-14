@@ -132,6 +132,7 @@ module.exports = {
       fontFamily: {
         'ibm-plex-sans': ['"IBM Plex Sans"', '"Noto Emoji"', 'sans-serif'],
         'ibm-plex-mono': ['"IBM Plex Mono"', 'monospace'],
+        'inter': ['"Inter"', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {
@@ -156,6 +157,26 @@ module.exports = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        'shimmer': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-out': {
+          '0%': { opacity: '1', transform: 'translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateY(4px)' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'slide-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(8px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -165,6 +186,11 @@ module.exports = {
         'running-dot-2': 'running-dot 1.4s ease-in-out 0.2s infinite',
         'running-dot-3': 'running-dot 1.4s ease-in-out 0.4s infinite',
         'border-flash': 'border-flash 2s linear infinite',
+        'shimmer': 'shimmer 1.5s ease-in-out infinite',
+        'fade-in': 'fade-in 0.15s ease-out',
+        'fade-out': 'fade-out 0.1s ease-in',
+        'scale-in': 'scale-in 0.15s ease-out',
+        'slide-in-right': 'slide-in-right 0.15s ease-out',
       },
     },
   },

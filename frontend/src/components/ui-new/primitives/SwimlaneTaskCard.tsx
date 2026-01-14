@@ -164,7 +164,7 @@ export function SwimlaneTaskCard({
       {...listeners}
       {...attributes}
       className={cn(
-        'group/card w-full text-left px-2 py-1.5 rounded-sm',
+        'group/card w-full text-left px-2.5 py-2 rounded-md',
         'transition-all duration-150 ease-out',
         'cursor-grab active:cursor-grabbing',
         'border border-transparent',
@@ -173,38 +173,42 @@ export function SwimlaneTaskCard({
         // Default state
         !isSelected &&
           !isDragging && [
-            'bg-secondary/80',
-            'hover:bg-secondary hover:border-panel/50',
+            'bg-secondary/60',
+            'hover:bg-secondary/90 hover:border-panel/40',
+            'hover:shadow-sm hover:shadow-black/[0.03]',
             // Preserve left border color on hover
             categoryIndicator && 'hover:border-l-2',
           ],
         // Selected state
         isSelected &&
           !isDragging && [
-            'bg-panel border-brand/50',
-            'ring-1 ring-brand/30',
+            'bg-panel/80 border-brand/40',
+            'ring-2 ring-brand/20',
+            'shadow-sm shadow-brand/5',
             // Preserve left border color when selected
             categoryIndicator && 'border-l-2',
           ],
         // Dragging state
         isDragging && [
           'bg-panel border-brand/30',
-          'shadow-xl shadow-black/20',
+          'shadow-lg shadow-black/15',
           'scale-[1.02] rotate-[0.5deg]',
           'opacity-95',
           'z-50',
           // Preserve left border color when dragging
           categoryIndicator && 'border-l-2',
-        ]
+        ],
+        // Focus state for keyboard navigation
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1'
       )}
     >
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-start gap-1">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-1.5">
           {/* Category icon badge */}
           {categoryIndicator && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="shrink-0 text-[10px] leading-none mt-0.5 cursor-default">
+                <span className="shrink-0 text-[11px] leading-none mt-0.5 cursor-default">
                   {categoryIndicator.icon}
                 </span>
               </TooltipTrigger>
@@ -216,13 +220,15 @@ export function SwimlaneTaskCard({
           <span
             className={cn(
               'flex-1 text-xs leading-snug font-medium',
-              'text-normal/90',
-              isSelected && 'text-high'
+              'text-normal',
+              'transition-colors duration-150',
+              isSelected && 'text-high',
+              'group-hover/card:text-high'
             )}
           >
             {task.title}
           </span>
-          <div className="flex items-center gap-0.5 shrink-0 mt-px">
+          <div className="flex items-center gap-1 shrink-0 mt-px">
             {/* CI status indicator (only for open PRs) */}
             {(() => {
               const ciIndicator = getCiStatusIndicator(
@@ -299,9 +305,10 @@ export function SwimlaneTaskCard({
             <DotsThreeIcon
               weight="bold"
               className={cn(
-                'size-3 text-low',
+                'size-3.5 text-low/60',
                 'opacity-0 group-hover/card:opacity-100',
-                'transition-opacity duration-100'
+                'transition-all duration-150',
+                'hover:text-normal'
               )}
             />
           </div>
@@ -309,10 +316,10 @@ export function SwimlaneTaskCard({
         {task.description && (
           <p
             className={cn(
-              'text-[10px] leading-snug',
-              'text-low/60 line-clamp-2',
-              'group-hover/card:text-low/80',
-              'transition-colors duration-100'
+              'text-[10px] leading-relaxed',
+              'text-low/50 line-clamp-2',
+              'group-hover/card:text-low/70',
+              'transition-colors duration-150'
             )}
           >
             {task.description}
