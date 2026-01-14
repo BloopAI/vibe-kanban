@@ -4,10 +4,13 @@ import { ProcessListContainer } from '@/components/ui-new/containers/ProcessList
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { type RepoInfo } from '@/components/ui-new/views/GitPanel';
-import { type LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { Workspace, RepoWithTargetBranch, Diff } from 'shared/types';
-import { RIGHT_MAIN_PANEL_MODES, type RightMainPanelMode } from '@/stores/useUiPreferencesStore';
+import {
+  RIGHT_MAIN_PANEL_MODES,
+  type RightMainPanelMode,
+} from '@/stores/useUiPreferencesStore';
 
 export interface RightSidebarProps {
   isCreateMode: boolean;
@@ -16,16 +19,8 @@ export interface RightSidebarProps {
   repos: RepoWithTargetBranch[];
   repoInfos: RepoInfo[];
   realDiffs: Diff[];
-  logsPanelContent: LogsPanelContent | null;
-  logSearchQuery: string;
-  logMatchIndices: number[];
-  logCurrentMatchIdx: number;
   onBranchNameChange: (name: string) => void;
   onSetExpanded: (key: string, value: boolean) => void;
-  onViewProcessInPanel: (processId: string) => void;
-  onSearchQueryChange: (query: string) => void;
-  onLogPrevMatch: () => void;
-  onLogNextMatch: () => void;
 }
 
 export function RightSidebar({
@@ -35,18 +30,12 @@ export function RightSidebar({
   repos,
   repoInfos,
   realDiffs,
-  logsPanelContent,
-  logSearchQuery,
-  logMatchIndices,
-  logCurrentMatchIdx,
   onBranchNameChange,
   onSetExpanded,
-  onViewProcessInPanel,
-  onSearchQueryChange,
-  onLogPrevMatch,
-  onLogNextMatch,
 }: RightSidebarProps) {
   const { selectFile } = useChangesView();
+  const { viewProcessInPanel } = useLogsPanel();
+
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
   }
@@ -78,22 +67,10 @@ export function RightSidebar({
   }
 
   if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
-    const selectedProcessId =
-      logsPanelContent?.type === 'process' ? logsPanelContent.processId : null;
     return (
       <div className="flex flex-col h-full">
         <div className="flex-[7] min-h-0 overflow-hidden">
-          <ProcessListContainer
-            selectedProcessId={selectedProcessId}
-            onSelectProcess={onViewProcessInPanel}
-            disableAutoSelect={logsPanelContent?.type === 'tool'}
-            searchQuery={logSearchQuery}
-            onSearchQueryChange={onSearchQueryChange}
-            matchCount={logMatchIndices.length}
-            currentMatchIdx={logCurrentMatchIdx}
-            onPrevMatch={onLogPrevMatch}
-            onNextMatch={onLogNextMatch}
-          />
+          <ProcessListContainer />
         </div>
         <div className="flex-[3] min-h-0 overflow-hidden">
           <GitPanelContainer
@@ -113,7 +90,7 @@ export function RightSidebar({
         <div className="flex-[7] min-h-0 overflow-hidden">
           <PreviewControlsContainer
             attemptId={selectedWorkspace?.id}
-            onViewProcessInPanel={onViewProcessInPanel}
+            onViewProcessInPanel={viewProcessInPanel}
           />
         </div>
         <div className="flex-[3] min-h-0 overflow-hidden">

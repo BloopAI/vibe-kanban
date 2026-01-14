@@ -150,7 +150,11 @@ export function ChangesPanelContainer({
   const [processedPaths] = useState(() => new Set<string>());
 
   // Set up intersection observer to track which file is in view
-  const observeElement = useInViewObserver(diffRefs, containerRef, setFileInView);
+  const observeElement = useInViewObserver(
+    diffRefs,
+    containerRef,
+    setFileInView
+  );
 
   useEffect(() => {
     if (!selectedFilePath) return;

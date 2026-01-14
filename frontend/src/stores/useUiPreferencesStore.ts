@@ -9,7 +9,8 @@ export const RIGHT_MAIN_PANEL_MODES = {
   PREVIEW: 'preview',
 } as const;
 
-export type RightMainPanelMode = typeof RIGHT_MAIN_PANEL_MODES[keyof typeof RIGHT_MAIN_PANEL_MODES];
+export type RightMainPanelMode =
+  (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
 
 export type ContextBarPosition =
   | 'top-left'
@@ -171,7 +172,9 @@ export const useUiPreferencesStore = create<State>()(
         } else {
           set({
             rightMainPanelMode: mode,
-            isLeftSidebarVisible: isWideScreen() ? get().isLeftSidebarVisible : false,
+            isLeftSidebarVisible: isWideScreen()
+              ? get().isLeftSidebarVisible
+              : false,
           });
         }
       },
@@ -180,7 +183,9 @@ export const useUiPreferencesStore = create<State>()(
         if (mode !== null) {
           set({
             rightMainPanelMode: mode,
-            isLeftSidebarVisible: isWideScreen() ? get().isLeftSidebarVisible : false,
+            isLeftSidebarVisible: isWideScreen()
+              ? get().isLeftSidebarVisible
+              : false,
           });
         } else {
           set({ rightMainPanelMode: null });
@@ -189,7 +194,8 @@ export const useUiPreferencesStore = create<State>()(
 
       setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
 
-      setLeftMainPanelVisible: (value) => set({ isLeftMainPanelVisible: value }),
+      setLeftMainPanelVisible: (value) =>
+        set({ isLeftMainPanelVisible: value }),
 
       triggerPreviewRefresh: () =>
         set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),

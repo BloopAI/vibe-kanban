@@ -5,7 +5,10 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { useUiPreferencesStore, RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
 
 interface ChangesViewContextValue {
   /** File path selected by user (triggers scroll-to in ChangesPanelContainer) */
@@ -18,7 +21,13 @@ interface ChangesViewContextValue {
   setFileInView: (path: string | null) => void;
   /** Navigate to changes mode and scroll to a specific file */
   viewFileInChanges: (filePath: string) => void;
+  /** Set of file paths currently in the diffs (for checking if inline code should be clickable) */
+  diffPaths: Set<string>;
+  /** Find a diff path matching the given text (supports partial/right-hand match) */
+  findMatchingDiffPath: (text: string) => string | null;
 }
+
+const EMPTY_SET = new Set<string>();
 
 const defaultValue: ChangesViewContextValue = {
   selectedFilePath: null,
@@ -26,15 +35,21 @@ const defaultValue: ChangesViewContextValue = {
   selectFile: () => {},
   setFileInView: () => {},
   viewFileInChanges: () => {},
+  diffPaths: EMPTY_SET,
+  findMatchingDiffPath: () => null,
 };
 
 const ChangesViewContext = createContext<ChangesViewContextValue>(defaultValue);
 
 interface ChangesViewProviderProps {
   children: React.ReactNode;
+  diffPaths: Set<string>;
 }
 
-export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
+export function ChangesViewProvider({
+  children,
+  diffPaths,
+}: ChangesViewProviderProps) {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [fileInView, setFileInView] = useState<string | null>(null);
   const { setRightMainPanelMode } = useUiPreferencesStore();
@@ -52,6 +67,19 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     [setRightMainPanelMode]
   );
 
+  const findMatchingDiffPath = useCallback(
+    (text: string): string | null => {
+      if (diffPaths.has(text)) return text;
+      for (const fullPath of diffPaths) {
+        if (fullPath.endsWith('/' + text)) {
+          return fullPath;
+        }
+      }
+      return null;
+    },
+    [diffPaths]
+  );
+
   const value = useMemo(
     () => ({
       selectedFilePath,
@@ -59,8 +87,17 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
       selectFile,
       setFileInView,
       viewFileInChanges,
+      diffPaths,
+      findMatchingDiffPath,
     }),
-    [selectedFilePath, fileInView, selectFile, viewFileInChanges]
+    [
+      selectedFilePath,
+      fileInView,
+      selectFile,
+      viewFileInChanges,
+      diffPaths,
+      findMatchingDiffPath,
+    ]
   );
 
   return (

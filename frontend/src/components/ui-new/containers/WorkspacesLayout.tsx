@@ -14,13 +14,9 @@ import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
-import { FileNavigationProvider } from '@/contexts/FileNavigationContext';
-import { LogNavigationProvider } from '@/contexts/LogNavigationContext';
-import { LogsPanelProvider, useLogsPanel } from '@/contexts/LogsPanelContext';
-import {
-  ChangesViewProvider,
-  useChangesView,
-} from '@/contexts/ChangesViewContext';
+
+import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
+import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import { WorkspacesMainContainer } from '@/components/ui-new/containers/WorkspacesMainContainer';
@@ -45,20 +41,12 @@ import {
   useUiPreferencesStore,
   useIsRightMainPanelVisible,
   RIGHT_MAIN_PANEL_MODES,
-  type RightMainPanelMode,
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { Actions } from '@/components/ui-new/actions';
-import type {
-  Diff,
-  Merge,
-  RepoWithTargetBranch,
-  Session,
-  Task,
-  Workspace,
-} from 'shared/types';
+import type { Merge, RepoWithTargetBranch } from 'shared/types';
 
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
@@ -101,179 +89,6 @@ function ModeProvider({
     >
       {children}
     </ExecutionProcessesProvider>
-  );
-}
-
-interface WorkspacesLayoutInnerProps {
-  isCreateMode: boolean;
-  isLeftMainPanelVisible: boolean;
-  isRightMainPanelVisible: boolean;
-  isRightSidebarVisible: boolean;
-  rightMainPanelMode: RightMainPanelMode | null;
-  selectedWorkspace: Workspace | undefined;
-  selectedSession: Session | undefined;
-  sessions: Session[];
-  onSelectSession: (id: string) => void;
-  isLoading: boolean;
-  isNewSessionMode: boolean;
-  startNewSession: () => void;
-  handleToggleChangesMode: () => void;
-  diffStats: { filesChanged: number; linesAdded: number; linesRemoved: number };
-  diffPaths: Set<string>;
-  defaultLayout: () => Layout;
-  onLayoutChange: (layout: Layout) => void;
-  realDiffs: Diff[];
-  selectedWorkspaceTask: Task | undefined;
-  repos: RepoWithTargetBranch[];
-  repoInfos: RepoInfo[];
-  handleBranchNameChange: (name: string) => void;
-  setExpanded: (key: string, value: boolean) => void;
-}
-
-function WorkspacesLayoutInner({
-  isCreateMode,
-  isLeftMainPanelVisible,
-  isRightMainPanelVisible,
-  isRightSidebarVisible,
-  rightMainPanelMode,
-  selectedWorkspace,
-  selectedSession,
-  sessions,
-  onSelectSession,
-  isLoading,
-  isNewSessionMode,
-  startNewSession,
-  handleToggleChangesMode,
-  diffStats,
-  diffPaths,
-  defaultLayout,
-  onLayoutChange,
-  realDiffs,
-  selectedWorkspaceTask,
-  repos,
-  repoInfos,
-  handleBranchNameChange,
-  setExpanded,
-}: WorkspacesLayoutInnerProps) {
-  const { viewFileInChanges } = useChangesView();
-  const {
-    logsPanelContent,
-    logSearchQuery,
-    logMatchIndices,
-    logCurrentMatchIdx,
-    setLogMatchIndices,
-    setLogSearchQuery,
-    handleLogPrevMatch,
-    handleLogNextMatch,
-    viewProcessInPanel,
-    viewToolContentInPanel,
-  } = useLogsPanel();
-
-  return (
-    <div className="flex h-full">
-      {/* Resizable area for main + right panels */}
-      <Group
-        orientation="horizontal"
-        className="flex-1 min-w-0 h-full"
-        defaultLayout={defaultLayout()}
-        onLayoutChange={onLayoutChange}
-      >
-        {/* Main panel (chat area) */}
-        {isLeftMainPanelVisible && (
-          <Panel
-            id="left-main"
-            minSize={20}
-            className="min-w-0 h-full overflow-hidden"
-          >
-            {isCreateMode ? (
-              <CreateChatBoxContainer />
-            ) : (
-              <FileNavigationProvider
-                viewFileInChanges={viewFileInChanges}
-                diffPaths={diffPaths}
-              >
-                <LogNavigationProvider
-                  viewProcessInPanel={viewProcessInPanel}
-                  viewToolContentInPanel={viewToolContentInPanel}
-                >
-                  <WorkspacesMainContainer
-                    selectedWorkspace={selectedWorkspace ?? null}
-                    selectedSession={selectedSession}
-                    sessions={sessions}
-                    onSelectSession={onSelectSession}
-                    isLoading={isLoading}
-                    isNewSessionMode={isNewSessionMode}
-                    onStartNewSession={startNewSession}
-                    onViewCode={handleToggleChangesMode}
-                    diffStats={diffStats}
-                  />
-                </LogNavigationProvider>
-              </FileNavigationProvider>
-            )}
-          </Panel>
-        )}
-
-        {/* Resize handle between main and right panels */}
-        {isLeftMainPanelVisible && isRightMainPanelVisible && (
-          <Separator
-            id="main-separator"
-            className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
-          />
-        )}
-
-        {/* Right main panel (Changes/Logs/Preview) */}
-        {isRightMainPanelVisible && (
-          <Panel
-            id="right-main"
-            minSize={20}
-            className="min-w-0 h-full overflow-hidden"
-          >
-            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES && (
-              <ChangesPanelContainer
-                diffs={realDiffs}
-                projectId={selectedWorkspaceTask?.project_id}
-                attemptId={selectedWorkspace?.id}
-              />
-            )}
-            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS && (
-              <LogsContentContainer
-                content={logsPanelContent}
-                searchQuery={logSearchQuery}
-                currentMatchIndex={logCurrentMatchIdx}
-                onMatchIndicesChange={setLogMatchIndices}
-              />
-            )}
-            {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW && (
-              <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />
-            )}
-          </Panel>
-        )}
-      </Group>
-
-      {/* Git panel (right sidebar) - fixed width, not resizable */}
-      {isRightSidebarVisible && (
-        <div className="w-[300px] shrink-0 h-full overflow-hidden">
-          <RightSidebar
-            isCreateMode={isCreateMode}
-            rightMainPanelMode={rightMainPanelMode}
-            selectedWorkspace={selectedWorkspace}
-            repos={repos}
-            repoInfos={repoInfos}
-            realDiffs={realDiffs}
-            logsPanelContent={logsPanelContent}
-            logSearchQuery={logSearchQuery}
-            logMatchIndices={logMatchIndices}
-            logCurrentMatchIdx={logCurrentMatchIdx}
-            onBranchNameChange={handleBranchNameChange}
-            onSetExpanded={setExpanded}
-            onViewProcessInPanel={viewProcessInPanel}
-            onSearchQueryChange={setLogSearchQuery}
-            onLogPrevMatch={handleLogPrevMatch}
-            onLogNextMatch={handleLogNextMatch}
-          />
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -499,7 +314,11 @@ export function WorkspacesLayout() {
     if (!isLeftMainPanelVisible && !isRightMainPanelVisible) {
       setLeftMainPanelVisible(true);
     }
-  }, [isLeftMainPanelVisible, isRightMainPanelVisible, setLeftMainPanelVisible]);
+  }, [
+    isLeftMainPanelVisible,
+    isRightMainPanelVisible,
+    setLeftMainPanelVisible,
+  ]);
 
   // Command bar keyboard shortcut (CMD+K)
   const handleOpenCommandBar = useCallback(() => {
@@ -607,32 +426,93 @@ export function WorkspacesLayout() {
           >
             <ReviewProvider attemptId={selectedWorkspace?.id}>
               <LogsPanelProvider>
-                <ChangesViewProvider>
-                  <WorkspacesLayoutInner
-                    isCreateMode={isCreateMode}
-                    isLeftMainPanelVisible={isLeftMainPanelVisible}
-                    isRightMainPanelVisible={isRightMainPanelVisible}
-                    isRightSidebarVisible={isRightSidebarVisible}
-                    rightMainPanelMode={rightMainPanelMode}
-                    selectedWorkspace={selectedWorkspace}
-                    selectedSession={selectedSession}
-                    sessions={sessions}
-                    onSelectSession={selectSession}
-                    isLoading={isLoading}
-                    isNewSessionMode={isNewSessionMode}
-                    startNewSession={startNewSession}
-                    handleToggleChangesMode={handleToggleChangesMode}
-                    diffStats={diffStats}
-                    diffPaths={diffPaths}
-                    defaultLayout={defaultLayout}
-                    onLayoutChange={onLayoutChange}
-                    realDiffs={realDiffs}
-                    selectedWorkspaceTask={selectedWorkspaceTask}
-                    repos={repos}
-                    repoInfos={repoInfos}
-                    handleBranchNameChange={handleBranchNameChange}
-                    setExpanded={setExpanded}
-                  />
+                <ChangesViewProvider diffPaths={diffPaths}>
+                  <div className="flex h-full">
+                    {/* Resizable area for main + right panels */}
+                    <Group
+                      orientation="horizontal"
+                      className="flex-1 min-w-0 h-full"
+                      defaultLayout={defaultLayout()}
+                      onLayoutChange={onLayoutChange}
+                    >
+                      {/* Main panel (chat area) */}
+                      {isLeftMainPanelVisible && (
+                        <Panel
+                          id="left-main"
+                          minSize={20}
+                          className="min-w-0 h-full overflow-hidden"
+                        >
+                          {isCreateMode ? (
+                            <CreateChatBoxContainer />
+                          ) : (
+                            <WorkspacesMainContainer
+                              selectedWorkspace={selectedWorkspace ?? null}
+                              selectedSession={selectedSession}
+                              sessions={sessions}
+                              onSelectSession={selectSession}
+                              isLoading={isLoading}
+                              isNewSessionMode={isNewSessionMode}
+                              onStartNewSession={startNewSession}
+                              onViewCode={handleToggleChangesMode}
+                              diffStats={diffStats}
+                            />
+                          )}
+                        </Panel>
+                      )}
+
+                      {/* Resize handle between main and right panels */}
+                      {isLeftMainPanelVisible && isRightMainPanelVisible && (
+                        <Separator
+                          id="main-separator"
+                          className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+                        />
+                      )}
+
+                      {/* Right main panel (Changes/Logs/Preview) */}
+                      {isRightMainPanelVisible && (
+                        <Panel
+                          id="right-main"
+                          minSize={20}
+                          className="min-w-0 h-full overflow-hidden"
+                        >
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.CHANGES && (
+                            <ChangesPanelContainer
+                              diffs={realDiffs}
+                              projectId={selectedWorkspaceTask?.project_id}
+                              attemptId={selectedWorkspace?.id}
+                            />
+                          )}
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.LOGS && (
+                            <LogsContentContainer />
+                          )}
+                          {rightMainPanelMode ===
+                            RIGHT_MAIN_PANEL_MODES.PREVIEW && (
+                            <PreviewBrowserContainer
+                              attemptId={selectedWorkspace?.id}
+                            />
+                          )}
+                        </Panel>
+                      )}
+                    </Group>
+
+                    {/* Git panel (right sidebar) - fixed width, not resizable */}
+                    {isRightSidebarVisible && (
+                      <div className="w-[300px] shrink-0 h-full overflow-hidden">
+                        <RightSidebar
+                          isCreateMode={isCreateMode}
+                          rightMainPanelMode={rightMainPanelMode}
+                          selectedWorkspace={selectedWorkspace}
+                          repos={repos}
+                          repoInfos={repoInfos}
+                          realDiffs={realDiffs}
+                          onBranchNameChange={handleBranchNameChange}
+                          onSetExpanded={setExpanded}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </ChangesViewProvider>
               </LogsPanelProvider>
             </ReviewProvider>

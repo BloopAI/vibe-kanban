@@ -17,8 +17,8 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
-import { useFileNavigation } from '@/contexts/FileNavigationContext';
-import { useLogNavigation } from '@/contexts/LogNavigationContext';
+import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import {
@@ -354,7 +354,7 @@ function FileEditEntry({
     expansionKey as PersistKey,
     pendingApproval
   );
-  const { viewFileInChanges, diffPaths } = useFileNavigation();
+  const { viewFileInChanges, diffPaths } = useChangesView();
 
   // Calculate diff stats for edit changes
   const { additions, deletions } = useMemo(() => {
@@ -561,7 +561,7 @@ function ToolSummaryEntry({
     `tool:${expansionKey}`,
     false
   );
-  const { viewToolContentInPanel } = useLogNavigation();
+  const { viewToolContentInPanel } = useLogsPanel();
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 

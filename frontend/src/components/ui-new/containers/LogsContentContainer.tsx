@@ -6,26 +6,23 @@ import {
   type LogEntry,
 } from '../VirtualizedProcessLogs';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 export type LogsPanelContent =
   | { type: 'process'; processId: string }
   | { type: 'tool'; toolName: string; content: string; command?: string };
 
 interface LogsContentContainerProps {
-  content: LogsPanelContent | null;
   className?: string;
-  searchQuery?: string;
-  currentMatchIndex?: number;
-  onMatchIndicesChange?: (indices: number[]) => void;
 }
 
-export function LogsContentContainer({
-  content,
-  className,
-  searchQuery = '',
-  currentMatchIndex = 0,
-  onMatchIndicesChange,
-}: LogsContentContainerProps) {
+export function LogsContentContainer({ className }: LogsContentContainerProps) {
+  const {
+    logsPanelContent: content,
+    logSearchQuery: searchQuery,
+    logCurrentMatchIdx: currentMatchIndex,
+    setLogMatchIndices: onMatchIndicesChange,
+  } = useLogsPanel();
   const { t } = useTranslation('common');
   // Get logs for process content (only when type is 'process')
   const processId = content?.type === 'process' ? content.processId : '';
