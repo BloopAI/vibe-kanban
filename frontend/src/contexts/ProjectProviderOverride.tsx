@@ -1,4 +1,10 @@
-import { createContext, useContext, ReactNode, useMemo, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useMemo,
+  useEffect,
+} from 'react';
 import type { Project } from 'shared/types';
 import { useProjects } from '@/hooks/useProjects';
 import { ProjectContext } from './ProjectContext';

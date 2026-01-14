@@ -13,8 +13,17 @@ import { ActionPanelContainer } from '@/components/ui-new/containers/ActionPanel
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
-import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { statusLabels, statusBoardColors, statusColumnBgColors } from '@/utils/statusLabels';
+import type {
+  Project,
+  ProjectGroup,
+  TaskStatus,
+  TaskWithAttemptStatus,
+} from 'shared/types';
+import {
+  statusLabels,
+  statusBoardColors,
+  statusColumnBgColors,
+} from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
 import {
@@ -22,7 +31,10 @@ import {
   type FilterState,
   type DisplayState,
 } from '@/components/ui-new/primitives/FilterDisplayControls';
-import { useAggregateTaskCountsProvider, useAggregateTaskCounts } from '@/hooks/useAggregateTaskCounts';
+import {
+  useAggregateTaskCountsProvider,
+  useAggregateTaskCounts,
+} from '@/hooks/useAggregateTaskCounts';
 import type { SidebarWorkspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { EmptyState } from '@/components/ui-new/primitives/EmptyState';
 import { SwimlaneRowSkeleton } from '@/components/ui-new/primitives/Skeleton';
@@ -118,7 +130,11 @@ interface SwimlaneKanbanProps {
   onMoveToGroup: (projectId: string, groupId: string | null) => void;
   onOpenBoard: (projectId: string) => void;
   onCreateGroup: () => void;
-  onStatusChange: (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => void;
+  onStatusChange: (
+    taskId: string,
+    newStatus: TaskStatus,
+    task: TaskWithAttemptStatus
+  ) => void;
   // Inline group creation props
   isCreatingGroup: boolean;
   newGroupName: string;
@@ -195,7 +211,10 @@ function SwimlaneKanbanContent({
     for (const ws of workspaces) {
       if (filterState.workspaceFilter === 'active' && ws.isRunning) {
         taskIds.add(ws.taskId);
-      } else if (filterState.workspaceFilter === 'in-review' && ws.prStatus === 'open') {
+      } else if (
+        filterState.workspaceFilter === 'in-review' &&
+        ws.prStatus === 'open'
+      ) {
         taskIds.add(ws.taskId);
       }
     }
@@ -211,7 +230,9 @@ function SwimlaneKanbanContent({
       result = result
         .map(({ group, projects }) => ({
           group,
-          projects: projects.filter((p) => p.id === filterState.selectedProjectId),
+          projects: projects.filter(
+            (p) => p.id === filterState.selectedProjectId
+          ),
         }))
         .filter(({ projects }) => projects.length > 0);
     }

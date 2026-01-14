@@ -26,8 +26,8 @@ export type WorkspaceFilterOption = 'all' | 'active' | 'in-review';
 export interface FilterState {
   statuses: TaskStatus[];
   hideEmptyProjects: boolean;
-  selectedProjectId?: string | null;  // Filter to single project
-  workspaceFilter: WorkspaceFilterOption;  // Filter by workspace status
+  selectedProjectId?: string | null; // Filter to single project
+  workspaceFilter: WorkspaceFilterOption; // Filter by workspace status
 }
 
 // Display state types
@@ -57,7 +57,13 @@ export const defaultDisplayState: DisplayState = {
   compactMode: false,
 };
 
-const ALL_STATUSES: TaskStatus[] = ['todo', 'inprogress', 'inreview', 'done', 'cancelled'];
+const ALL_STATUSES: TaskStatus[] = [
+  'todo',
+  'inprogress',
+  'inreview',
+  'done',
+  'cancelled',
+];
 
 interface FilterDisplayControlsProps {
   filterState: FilterState;
@@ -82,7 +88,10 @@ export function FilterDisplayControls({
 }: FilterDisplayControlsProps) {
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
-    if (filterState.statuses.length > 0 && filterState.statuses.length < ALL_STATUSES.length) {
+    if (
+      filterState.statuses.length > 0 &&
+      filterState.statuses.length < ALL_STATUSES.length
+    ) {
       count += 1;
     }
     if (filterState.hideEmptyProjects) {
@@ -139,7 +148,10 @@ export function FilterDisplayControls({
               'transition-colors duration-100'
             )}
           >
-            <FunnelIcon className="size-3.5" weight={activeFilterCount > 0 ? 'fill' : 'regular'} />
+            <FunnelIcon
+              className="size-3.5"
+              weight={activeFilterCount > 0 ? 'fill' : 'regular'}
+            />
             <span>Filter</span>
             {activeFilterCount > 0 && (
               <span className="ml-0.5 px-1 py-0.5 text-[10px] bg-brand text-on-brand rounded-sm tabular-nums">
@@ -149,7 +161,10 @@ export function FilterDisplayControls({
             <CaretDownIcon className="size-2.5 ml-0.5" weight="bold" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64 max-h-[400px] overflow-y-auto">
+        <DropdownMenuContent
+          align="start"
+          className="w-64 max-h-[400px] overflow-y-auto"
+        >
           {/* Workspace Status Filter */}
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>Workspace</span>
@@ -165,26 +180,41 @@ export function FilterDisplayControls({
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup
             value={filterState.workspaceFilter}
-            onValueChange={(v) => handleWorkspaceFilterChange(v as WorkspaceFilterOption)}
+            onValueChange={(v) =>
+              handleWorkspaceFilterChange(v as WorkspaceFilterOption)
+            }
           >
-            <DropdownMenuRadioItem value="all" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="all"
+              onSelect={(e) => e.preventDefault()}
+            >
               All tasks
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="active" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="active"
+              onSelect={(e) => e.preventDefault()}
+            >
               <span className="flex items-center gap-1.5">
                 <LightningIcon className="size-3" weight="fill" />
                 Active sessions
                 {activeWorkspaceCount > 0 && (
-                  <span className="text-[10px] text-low tabular-nums">({activeWorkspaceCount})</span>
+                  <span className="text-[10px] text-low tabular-nums">
+                    ({activeWorkspaceCount})
+                  </span>
                 )}
               </span>
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="in-review" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="in-review"
+              onSelect={(e) => e.preventDefault()}
+            >
               <span className="flex items-center gap-1.5">
                 <EyeIcon className="size-3" weight="fill" />
                 In review
                 {inReviewCount > 0 && (
-                  <span className="text-[10px] text-low tabular-nums">({inReviewCount})</span>
+                  <span className="text-[10px] text-low tabular-nums">
+                    ({inReviewCount})
+                  </span>
                 )}
               </span>
             </DropdownMenuRadioItem>
@@ -209,9 +239,14 @@ export function FilterDisplayControls({
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={filterState.selectedProjectId ?? 'all'}
-                onValueChange={(v) => handleProjectFilterChange(v === 'all' ? null : v)}
+                onValueChange={(v) =>
+                  handleProjectFilterChange(v === 'all' ? null : v)
+                }
               >
-                <DropdownMenuRadioItem value="all" onSelect={(e) => e.preventDefault()}>
+                <DropdownMenuRadioItem
+                  value="all"
+                  onSelect={(e) => e.preventDefault()}
+                >
                   All projects
                 </DropdownMenuRadioItem>
                 {projects.map((project) => (
@@ -244,7 +279,10 @@ export function FilterDisplayControls({
           {ALL_STATUSES.map((status) => (
             <DropdownMenuCheckboxItem
               key={status}
-              checked={filterState.statuses.length === 0 || filterState.statuses.includes(status)}
+              checked={
+                filterState.statuses.length === 0 ||
+                filterState.statuses.includes(status)
+              }
               onCheckedChange={() => handleStatusToggle(status)}
               onSelect={(e) => e.preventDefault()}
             >
@@ -285,16 +323,28 @@ export function FilterDisplayControls({
           <DropdownMenuRadioGroup
             value={displayState.groupBy}
             onValueChange={(value) =>
-              onDisplayChange({ ...displayState, groupBy: value as GroupByOption })
+              onDisplayChange({
+                ...displayState,
+                groupBy: value as GroupByOption,
+              })
             }
           >
-            <DropdownMenuRadioItem value="group" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="group"
+              onSelect={(e) => e.preventDefault()}
+            >
               Project group
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="status" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="status"
+              onSelect={(e) => e.preventDefault()}
+            >
               Status
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="none" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="none"
+              onSelect={(e) => e.preventDefault()}
+            >
               No grouping
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
@@ -303,16 +353,28 @@ export function FilterDisplayControls({
           <DropdownMenuRadioGroup
             value={displayState.sortBy}
             onValueChange={(value) =>
-              onDisplayChange({ ...displayState, sortBy: value as SortByOption })
+              onDisplayChange({
+                ...displayState,
+                sortBy: value as SortByOption,
+              })
             }
           >
-            <DropdownMenuRadioItem value="name" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="name"
+              onSelect={(e) => e.preventDefault()}
+            >
               Name
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="updated" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="updated"
+              onSelect={(e) => e.preventDefault()}
+            >
               Last updated
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="created" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="created"
+              onSelect={(e) => e.preventDefault()}
+            >
               Date created
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
@@ -321,13 +383,22 @@ export function FilterDisplayControls({
           <DropdownMenuRadioGroup
             value={displayState.sortDirection}
             onValueChange={(value) =>
-              onDisplayChange({ ...displayState, sortDirection: value as SortDirection })
+              onDisplayChange({
+                ...displayState,
+                sortDirection: value as SortDirection,
+              })
             }
           >
-            <DropdownMenuRadioItem value="asc" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="asc"
+              onSelect={(e) => e.preventDefault()}
+            >
               Ascending
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="desc" onSelect={(e) => e.preventDefault()}>
+            <DropdownMenuRadioItem
+              value="desc"
+              onSelect={(e) => e.preventDefault()}
+            >
               Descending
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>

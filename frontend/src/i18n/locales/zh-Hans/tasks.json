@@ -551,6 +551,26 @@
       "discardChanges": "放弃更改"
     }
   },
+  "prioritize": {
+    "button": "设置优先级",
+    "title": "任务优先级排序",
+    "description": "根据任务时长、关键词、标签和截止日期审核AI建议的优先级变更。",
+    "noSuggestions": "所有任务已有适当的优先级。",
+    "acceptAll": "全部接受",
+    "reset": "重置",
+    "showing": "{{count}} 条建议",
+    "accept": "接受建议",
+    "reject": "拒绝建议",
+    "viewReasons": "查看原因",
+    "whySuggested": "为什么是这个优先级？",
+    "applyChanges": "应用更改 ({{count}})",
+    "applying": "应用中...",
+    "successMessage": "已更新 {{count}} 个任务优先级",
+    "errorMessage": "更新优先级失败",
+    "undo": "撤销",
+    "undoSuccess": "更改已撤销",
+    "undoFailed": "撤销失败"
+  },
   "restoreLogsDialog": {
     "title": "确认重试",
     "historyChange": {

@@ -87,7 +87,9 @@ pub async fn list_github_issues(
 
     // Get repo info (owner/name) from the local repo path
     let gh_cli = GhCli::new();
-    let repo_info = gh_cli.get_repo_info(&repo.path).map_err(gh_cli_to_api_error)?;
+    let repo_info = gh_cli
+        .get_repo_info(&repo.path)
+        .map_err(gh_cli_to_api_error)?;
 
     // Fetch issues
     let issues = gh_cli
@@ -120,7 +122,9 @@ pub async fn get_github_repo_info(
 
     // Get repo info from the local repo path
     let gh_cli = GhCli::new();
-    let repo_info = gh_cli.get_repo_info(&repo.path).map_err(gh_cli_to_api_error)?;
+    let repo_info = gh_cli
+        .get_repo_info(&repo.path)
+        .map_err(gh_cli_to_api_error)?;
 
     Ok(ResponseJson(ApiResponse::success(GitHubRepoInfoResponse {
         owner: repo_info.owner,
@@ -139,7 +143,9 @@ fn gh_cli_to_api_error(err: GhCliError) -> ApiError {
             "GitHub authentication failed. Please run 'gh auth login' to authenticate. Error: {}",
             msg
         )),
-        GhCliError::CommandFailed(msg) => ApiError::BadRequest(format!("GitHub CLI error: {}", msg)),
+        GhCliError::CommandFailed(msg) => {
+            ApiError::BadRequest(format!("GitHub CLI error: {}", msg))
+        }
         GhCliError::UnexpectedOutput(msg) => {
             ApiError::BadRequest(format!("Unexpected GitHub CLI output: {}", msg))
         }

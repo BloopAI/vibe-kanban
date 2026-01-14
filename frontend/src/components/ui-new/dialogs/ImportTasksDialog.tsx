@@ -56,15 +56,18 @@ const ImportTasksDialogImpl = NiceModal.create<ImportTasksDialogProps>(() => {
             <DialogTitle>Import Tasks</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Paste task titles, one per line. Tasks will be created in the To Do status.
+            Paste task titles, one per line. Tasks will be created in the To Do
+            status.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
-          <div className={cn(
-            'relative rounded-md border border-input',
-            'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2'
-          )}>
+          <div
+            className={cn(
+              'relative rounded-md border border-input',
+              'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2'
+            )}
+          >
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
@@ -80,12 +83,16 @@ const ImportTasksDialogImpl = NiceModal.create<ImportTasksDialogProps>(() => {
             />
           </div>
           <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <FileTextIcon className="size-3.5" />
+            <FileTextIcon className="size-icon-xs" />
             <span>
               {importText.trim()
-                ? `${importText.trim().split('\n').filter(l => l.trim()).length} tasks to import`
-                : 'Enter task titles, one per line'
-              }
+                ? `${
+                    importText
+                      .trim()
+                      .split('\n')
+                      .filter((l) => l.trim()).length
+                  } tasks to import`
+                : 'Enter task titles, one per line'}
             </span>
           </div>
         </div>
@@ -106,6 +113,7 @@ const ImportTasksDialogImpl = NiceModal.create<ImportTasksDialogProps>(() => {
   );
 });
 
-export const ImportTasksDialog = defineModal<ImportTasksDialogProps, ImportTasksResult>(
-  ImportTasksDialogImpl
-);
+export const ImportTasksDialog = defineModal<
+  ImportTasksDialogProps,
+  ImportTasksResult
+>(ImportTasksDialogImpl);

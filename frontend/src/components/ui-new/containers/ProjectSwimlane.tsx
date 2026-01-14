@@ -1,5 +1,12 @@
 import { useCallback, useMemo } from 'react';
-import { DndContext, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import {
+  DndContext,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
 import { KanbanIcon, PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { useBoardTasksOverview } from '@/hooks/useBoardTasksOverview';
@@ -15,7 +22,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
-import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type {
+  Project,
+  ProjectGroup,
+  TaskStatus,
+  TaskWithAttemptStatus,
+} from 'shared/types';
 import type { FilterState } from '@/components/ui-new/primitives/FilterDisplayControls';
 import { statusColumnBgColors } from '@/utils/statusLabels';
 
@@ -53,7 +65,9 @@ function StatusCell({ status, children }: StatusCellProps) {
         // Empty state subtle indicator on hover
         !hasChildren && !isOver && 'hover:bg-panel/8'
       )}
-      style={!isOver ? { backgroundColor: statusColumnBgColors[status] } : undefined}
+      style={
+        !isOver ? { backgroundColor: statusColumnBgColors[status] } : undefined
+      }
     >
       {/* Drop zone visual indicator */}
       {isOver && (
@@ -81,7 +95,11 @@ interface ProjectSwimlaneProps {
   onCreateTask: (projectId: string, status?: TaskStatus) => void;
   onMoveToGroup?: (projectId: string, groupId: string | null) => void;
   onOpenBoard?: (projectId: string) => void;
-  onStatusChange: (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => void;
+  onStatusChange: (
+    taskId: string,
+    newStatus: TaskStatus,
+    task: TaskWithAttemptStatus
+  ) => void;
   filterState?: FilterState;
   /** If set, only show tasks with IDs in this set (for workspace-based filtering) */
   allowedTaskIds?: Set<string>;
@@ -100,7 +118,9 @@ export function ProjectSwimlane({
   filterState,
   allowedTaskIds,
 }: ProjectSwimlaneProps) {
-  const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(project.id);
+  const { tasksByStatus, totalCount, isLoading, error } = useBoardTasksOverview(
+    project.id
+  );
 
   // Register task counts with the aggregate context for column header totals
   useRegisterProjectCounts(project.id, tasksByStatus, isLoading);
@@ -117,7 +137,11 @@ export function ProjectSwimlane({
 
     for (const status of STATUS_ORDER) {
       // Skip statuses not in filter (if filter is set)
-      if (filterState && filterState.statuses.length > 0 && !filterState.statuses.includes(status)) {
+      if (
+        filterState &&
+        filterState.statuses.length > 0 &&
+        !filterState.statuses.includes(status)
+      ) {
         continue;
       }
 
@@ -125,7 +149,7 @@ export function ProjectSwimlane({
 
       // Apply workspace-based task filter
       if (allowedTaskIds) {
-        tasks = tasks.filter(task => allowedTaskIds.has(task.id));
+        tasks = tasks.filter((task) => allowedTaskIds.has(task.id));
       }
 
       filtered[status] = tasks;
@@ -163,10 +187,13 @@ export function ProjectSwimlane({
       const newStatus = over.id as TaskStatus;
 
       // Find the task
-      const task = STATUS_ORDER.reduce((found, status) => {
-        if (found) return found;
-        return tasksByStatus[status].find((t) => t.id === taskId);
-      }, undefined as typeof tasksByStatus['todo'][0] | undefined);
+      const task = STATUS_ORDER.reduce(
+        (found, status) => {
+          if (found) return found;
+          return tasksByStatus[status].find((t) => t.id === taskId);
+        },
+        undefined as (typeof tasksByStatus)['todo'][0] | undefined
+      );
 
       if (!task || task.status === newStatus) return;
 
@@ -180,8 +207,13 @@ export function ProjectSwimlane({
       <div className="grid grid-cols-[180px_repeat(5,minmax(120px,1fr))] border-b border-panel">
         <div className="p-half">
           <div className="flex items-center gap-half">
-            <KanbanIcon weight="fill" className="size-icon-xs text-brand shrink-0" />
-            <span className="text-xs text-normal font-medium">{project.name}</span>
+            <KanbanIcon
+              weight="fill"
+              className="size-icon-xs text-brand shrink-0"
+            />
+            <span className="text-xs text-normal font-medium">
+              {project.name}
+            </span>
           </div>
         </div>
         <div className="col-span-5 p-base text-sm text-error border-l border-panel">
@@ -250,46 +282,54 @@ export function ProjectSwimlane({
                       <DotsThreeIcon weight="bold" className="size-icon-xs" />
                     </button>
                   </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {onOpenBoard && (
-                    <>
-                      <DropdownMenuItem onClick={() => onOpenBoard(project.id)}>
-                        Open board
-                      </DropdownMenuItem>
-                      {onMoveToGroup && <DropdownMenuSeparator />}
-                    </>
-                  )}
-                  {onMoveToGroup && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Move to group</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {groupId && (
-                          <>
+                  <DropdownMenuContent align="end">
+                    {onOpenBoard && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => onOpenBoard(project.id)}
+                        >
+                          Open board
+                        </DropdownMenuItem>
+                        {onMoveToGroup && <DropdownMenuSeparator />}
+                      </>
+                    )}
+                    {onMoveToGroup && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          Move to group
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {groupId && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => onMoveToGroup(project.id, null)}
+                              >
+                                Remove from group
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {groups.map((group) => (
                             <DropdownMenuItem
-                              onClick={() => onMoveToGroup(project.id, null)}
+                              key={group.id}
+                              onClick={() =>
+                                onMoveToGroup(project.id, group.id)
+                              }
+                              disabled={group.id === groupId}
                             >
-                              Remove from group
+                              {group.name}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {groups.map((group) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            onClick={() => onMoveToGroup(project.id, group.id)}
-                            disabled={group.id === groupId}
-                          >
-                            {group.name}
-                          </DropdownMenuItem>
-                        ))}
-                        {groups.length === 0 && (
-                          <div className="px-2 py-1 text-sm text-low">No groups</div>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                          ))}
+                          {groups.length === 0 && (
+                            <div className="px-2 py-1 text-sm text-low">
+                              No groups
+                            </div>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           </div>
@@ -300,10 +340,7 @@ export function ProjectSwimlane({
           const tasks = filteredTasksByStatus[status];
 
           return (
-            <StatusCell
-              key={status}
-              status={status}
-            >
+            <StatusCell key={status} status={status}>
               {isLoading ? (
                 <div className="flex flex-col gap-1.5">
                   <div className="skeleton h-12 w-full rounded-md" />
@@ -314,7 +351,6 @@ export function ProjectSwimlane({
                     key={task.id}
                     task={task}
                     projectId={project.id}
-                    project={project}
                     isSelected={selectedTaskId === task.id}
                     onClick={() => onTaskClick(project.id, task.id)}
                   />

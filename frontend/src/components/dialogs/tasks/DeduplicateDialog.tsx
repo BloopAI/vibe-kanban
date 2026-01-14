@@ -273,7 +273,11 @@ const DeduplicateDialogImpl = NiceModal.create<DeduplicateDialogProps>(
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isProcessing}>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isProcessing}
+            >
               {hasActions ? 'Cancel' : 'Close'}
             </Button>
             {hasActions && (
@@ -363,7 +367,8 @@ function DuplicatePairRow({
             {/* Secondary task (newer - will be merged/deleted) */}
             <div className="border rounded p-2 bg-orange-50 dark:bg-orange-950/20">
               <div className="text-xs text-muted-foreground mb-1">
-                Duplicate (#{pair.secondary_task.task_number?.toString() ?? '?'})
+                Duplicate (#{pair.secondary_task.task_number?.toString() ?? '?'}
+                )
               </div>
               <div className="font-medium text-sm truncate">
                 {pair.secondary_task.title}

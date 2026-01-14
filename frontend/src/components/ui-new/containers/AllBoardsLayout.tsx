@@ -24,12 +24,7 @@ import {
 
 export function AllBoardsLayout() {
   const navigate = useNavigate();
-  const {
-    groupedProjects,
-    groups,
-    isLoading,
-    error,
-  } = useAllBoards();
+  const { groupedProjects, groups, isLoading, error } = useAllBoards();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Left sidebar state
@@ -45,20 +40,20 @@ export function AllBoardsLayout() {
   const { workspaces } = useWorkspaces();
 
   // Compute active workspaces count (running AI sessions)
-  const activeWorkspaceCount = useMemo(() =>
-    workspaces.filter(ws => ws.isRunning).length,
+  const activeWorkspaceCount = useMemo(
+    () => workspaces.filter((ws) => ws.isRunning).length,
     [workspaces]
   );
 
   // Compute in-review count (workspaces with open PRs)
-  const inReviewCount = useMemo(() =>
-    workspaces.filter(ws => ws.prStatus === 'open').length,
+  const inReviewCount = useMemo(
+    () => workspaces.filter((ws) => ws.prStatus === 'open').length,
     [workspaces]
   );
 
   // Flatten all projects for filter dropdown
-  const allProjects = useMemo(() =>
-    groupedProjects.flatMap(gp => gp.projects),
+  const allProjects = useMemo(
+    () => groupedProjects.flatMap((gp) => gp.projects),
     [groupedProjects]
   );
 
@@ -72,14 +67,16 @@ export function AllBoardsLayout() {
   );
 
   // Filter and display state
-  const [filterState, setFilterState] = useState<FilterState>(defaultFilterState);
-  const [displayState, setDisplayState] = useState<DisplayState>(defaultDisplayState);
+  const [filterState, setFilterState] =
+    useState<FilterState>(defaultFilterState);
+  const [displayState, setDisplayState] =
+    useState<DisplayState>(defaultDisplayState);
 
   // Track which groups are expanded - default all expanded
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
     // Start with all groups expanded plus ungrouped
-    groups.forEach(g => initial.add(g.id));
+    groups.forEach((g) => initial.add(g.id));
     initial.add('ungrouped');
     return initial;
   });
@@ -89,7 +86,9 @@ export function AllBoardsLayout() {
   const [newGroupName, setNewGroupName] = useState('');
 
   // Track selected project and task for the details panel
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Mutations for creating/managing groups
@@ -97,7 +96,7 @@ export function AllBoardsLayout() {
 
   const handleToggleGroup = useCallback((groupId: string | null) => {
     const key = groupId ?? 'ungrouped';
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -115,7 +114,7 @@ export function AllBoardsLayout() {
 
   const handleExpandAll = useCallback(() => {
     const allKeys = new Set<string>();
-    groups.forEach(g => allKeys.add(g.id));
+    groups.forEach((g) => allKeys.add(g.id));
     allKeys.add('ungrouped');
     setExpandedGroups(allKeys);
   }, [groups]);
@@ -124,13 +123,10 @@ export function AllBoardsLayout() {
     setExpandedGroups(new Set());
   }, []);
 
-  const handleTaskClick = useCallback(
-    (projectId: string, taskId: string) => {
-      setSelectedProjectId(projectId);
-      setSelectedTaskId(taskId);
-    },
-    []
-  );
+  const handleTaskClick = useCallback((projectId: string, taskId: string) => {
+    setSelectedProjectId(projectId);
+    setSelectedTaskId(taskId);
+  }, []);
 
   const handleClosePanel = useCallback(() => {
     setSelectedProjectId(null);
@@ -172,9 +168,12 @@ export function AllBoardsLayout() {
     [navigate]
   );
 
-  const handleCreateTask = useCallback((projectId: string, status?: TaskStatus) => {
-    openTaskForm({ mode: 'create', projectId, initialStatus: status });
-  }, []);
+  const handleCreateTask = useCallback(
+    (projectId: string, status?: TaskStatus) => {
+      openTaskForm({ mode: 'create', projectId, initialStatus: status });
+    },
+    []
+  );
 
   // Inline group creation handlers
   const handleStartCreateGroup = useCallback(() => {
@@ -205,7 +204,11 @@ export function AllBoardsLayout() {
   );
 
   const handleStatusChange = useCallback(
-    async (taskId: string, newStatus: TaskStatus, task: TaskWithAttemptStatus) => {
+    async (
+      taskId: string,
+      newStatus: TaskStatus,
+      task: TaskWithAttemptStatus
+    ) => {
       try {
         await tasksApi.update(taskId, {
           title: task.title,

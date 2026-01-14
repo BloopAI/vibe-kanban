@@ -210,7 +210,6 @@ function AppContent() {
               <Route path="create" element={<Workspaces />} />
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
-
           </SentryRoutes>
         </SearchProvider>
       </ThemeProvider>

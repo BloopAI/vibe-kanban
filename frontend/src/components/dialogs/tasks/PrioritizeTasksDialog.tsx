@@ -31,15 +31,15 @@ const PrioritizeTasksDialogImpl = NiceModal.create<PrioritizeTasksDialogProps>(
     const initialSuggestions = usePrioritySuggestions(tasks);
 
     // Track user decisions for each suggestion
-    const [decisions, setDecisions] = useState<
-      Record<string, boolean | null>
-    >(() => {
-      const initial: Record<string, boolean | null> = {};
-      for (const s of initialSuggestions) {
-        initial[s.taskId] = null;
+    const [decisions, setDecisions] = useState<Record<string, boolean | null>>(
+      () => {
+        const initial: Record<string, boolean | null> = {};
+        for (const s of initialSuggestions) {
+          initial[s.taskId] = null;
+        }
+        return initial;
       }
-      return initial;
-    });
+    );
 
     // Merge decisions into suggestions
     const suggestions: PrioritySuggestion[] = useMemo(() => {
@@ -142,13 +142,7 @@ const PrioritizeTasksDialogImpl = NiceModal.create<PrioritizeTasksDialogProps>(
           t('prioritize.errorMessage', 'Failed to update priorities')
         );
       }
-    }, [
-      acceptedSuggestions,
-      suggestions.length,
-      updatePriorities,
-      modal,
-      t,
-    ]);
+    }, [acceptedSuggestions, suggestions.length, updatePriorities, modal, t]);
 
     const handleCancel = useCallback(() => {
       modal.remove();
@@ -158,7 +152,10 @@ const PrioritizeTasksDialogImpl = NiceModal.create<PrioritizeTasksDialogProps>(
     const hasAccepted = acceptedSuggestions.length > 0;
 
     return (
-      <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancel()}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(open) => !open && handleCancel()}
+      >
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -233,13 +230,14 @@ const PrioritizeTasksDialogImpl = NiceModal.create<PrioritizeTasksDialogProps>(
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={handleCancel} disabled={isUpdating}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isUpdating}
+            >
               {t('common:buttons.cancel', 'Cancel')}
             </Button>
-            <Button
-              onClick={handleApply}
-              disabled={!hasAccepted || isUpdating}
-            >
+            <Button onClick={handleApply} disabled={!hasAccepted || isUpdating}>
               {isUpdating
                 ? t('prioritize.applying', 'Applying...')
                 : t('prioritize.applyChanges', {

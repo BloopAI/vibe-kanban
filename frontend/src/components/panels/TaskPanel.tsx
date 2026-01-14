@@ -19,7 +19,11 @@ interface TaskPanelProps {
   onAttemptCreated?: (attemptId: string) => void;
 }
 
-const TaskPanel = ({ task, projectId: propProjectId, onAttemptCreated }: TaskPanelProps) => {
+const TaskPanel = ({
+  task,
+  projectId: propProjectId,
+  onAttemptCreated,
+}: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const { projectId: contextProjectId } = useProject();

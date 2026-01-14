@@ -10,14 +10,22 @@ import {
   CircleNotchIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import type { TaskWithAttemptStatus, MergeStatus, CiStatus, Project } from 'shared/types';
+import type {
+  TaskWithAttemptStatus,
+  MergeStatus,
+  CiStatus,
+} from 'shared/types';
 import { TaskMetadata } from '@/components/tasks/TaskMetadata';
-import { inferTaskCategory, getCategoryConfig, type TaskCategory } from '@/utils/categoryLabels';
+import { useProject } from '@/contexts/ProjectContext';
+import {
+  inferTaskCategory,
+  getCategoryConfig,
+  type TaskCategory,
+} from '@/utils/categoryLabels';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  TooltipProvider,
 } from '@/components/ui/tooltip';
 
 /**
@@ -70,7 +78,10 @@ function getCategoryIndicator(category: TaskCategory | null) {
 /**
  * Returns the appropriate icon and color for a CI status
  */
-function getCiStatusIndicator(ciStatus: CiStatus | null, prStatus: MergeStatus | null) {
+function getCiStatusIndicator(
+  ciStatus: CiStatus | null,
+  prStatus: MergeStatus | null
+) {
   // Only show CI status for open PRs
   if (!ciStatus || prStatus !== 'open') return null;
 
@@ -103,7 +114,6 @@ function getCiStatusIndicator(ciStatus: CiStatus | null, prStatus: MergeStatus |
 interface SwimlaneTaskCardProps {
   task: TaskWithAttemptStatus;
   projectId: string;
-  project?: Project;
   onClick: () => void;
   isSelected?: boolean;
 }
@@ -111,10 +121,10 @@ interface SwimlaneTaskCardProps {
 export function SwimlaneTaskCard({
   task,
   projectId,
-  project,
   onClick,
   isSelected,
 }: SwimlaneTaskCardProps) {
+  const { project } = useProject();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -190,16 +200,13 @@ export function SwimlaneTaskCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1'
       )}
     >
-      <TooltipProvider>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-start gap-1.5">
-            {/* Category icon badge */}
-            {categoryIndicator && (
-              <Tooltip>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-1.5">
+          {/* Category icon badge */}
+          {categoryIndicator && (
+            <Tooltip>
               <TooltipTrigger asChild>
-                <span
-                  className="shrink-0 text-[11px] leading-none mt-0.5 cursor-default"
-                >
+                <span className="shrink-0 text-[11px] leading-none mt-0.5 cursor-default">
                   {categoryIndicator.icon}
                 </span>
               </TooltipTrigger>
@@ -220,7 +227,10 @@ export function SwimlaneTaskCard({
           <div className="flex items-center gap-1 shrink-0 mt-px">
             {/* CI status indicator (only for open PRs) */}
             {(() => {
-              const ciIndicator = getCiStatusIndicator(task.ci_status, task.pr_status);
+              const ciIndicator = getCiStatusIndicator(
+                task.ci_status,
+                task.pr_status
+              );
               if (!ciIndicator) return null;
               const CiIcon = ciIndicator.icon;
               return (
@@ -318,7 +328,6 @@ export function SwimlaneTaskCard({
           className="mt-1"
         />
       </div>
-    </TooltipProvider>
     </button>
   );
 }

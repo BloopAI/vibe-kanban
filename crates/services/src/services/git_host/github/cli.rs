@@ -374,13 +374,7 @@ impl GhCli {
     /// Uses `gh pr checks` to get the status of all checks.
     pub fn get_pr_ci_status(&self, pr_url: &str) -> Result<CiStatus, GhCliError> {
         let raw = self.run(
-            [
-                "pr",
-                "checks",
-                pr_url,
-                "--json",
-                "name,state,conclusion",
-            ],
+            ["pr", "checks", pr_url, "--json", "name,state,conclusion"],
             None,
         )?;
         Self::parse_pr_checks(&raw)

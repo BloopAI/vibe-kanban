@@ -28,11 +28,8 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    categorization::CategorizationService,
-    container::ContainerService,
-    share::ShareError,
-    task_deduplication::TaskDeduplicationService,
-    workspace_manager::WorkspaceManager,
+    categorization::CategorizationService, container::ContainerService, share::ShareError,
+    task_deduplication::TaskDeduplicationService, workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -486,10 +483,9 @@ pub async fn find_duplicates(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskQuery>,
 ) -> Result<ResponseJson<ApiResponse<FindDuplicatesResponse>>, ApiError> {
-    let result =
-        TaskDeduplicationService::find_duplicates(&deployment.db().pool, query.project_id)
-            .await
-            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    let result = TaskDeduplicationService::find_duplicates(&deployment.db().pool, query.project_id)
+        .await
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
     deployment
         .track_if_analytics_allowed(

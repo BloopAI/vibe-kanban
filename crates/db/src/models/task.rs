@@ -5,7 +5,11 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{merge::{CiStatus, Merge, MergeStatus}, project::Project, workspace::Workspace};
+use super::{
+    merge::{CiStatus, Merge, MergeStatus},
+    project::Project,
+    workspace::Workspace,
+};
 
 #[derive(
     Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
@@ -66,7 +70,7 @@ pub struct Task {
     pub due_date: Option<NaiveDate>,
     #[serde(default)]
     pub labels: Vec<TaskLabel>,
-    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub source: Option<String>, // Task source: 'manual', 'github', 'linear', 'jira', etc.
     pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -115,7 +119,7 @@ pub struct CreateTask {
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
     pub shared_task_id: Option<Uuid>,
-    pub source: Option<String>,       // Task source: 'manual', 'github', 'linear', 'jira', etc.
+    pub source: Option<String>, // Task source: 'manual', 'github', 'linear', 'jira', etc.
     pub external_ref: Option<String>, // External reference: 'github:owner/repo#123'
 }
 
@@ -252,10 +256,8 @@ ORDER BY t.created_at DESC"#,
         let tasks = records
             .into_iter()
             .map(|rec| {
-                let (pr_status, ci_status) = pr_ci_statuses
-                    .get(&rec.id)
-                    .cloned()
-                    .unwrap_or((None, None));
+                let (pr_status, ci_status) =
+                    pr_ci_statuses.get(&rec.id).cloned().unwrap_or((None, None));
                 TaskWithAttemptStatus {
                     task: Task {
                         id: rec.id,

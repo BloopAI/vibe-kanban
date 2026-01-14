@@ -551,6 +551,26 @@
       "discardChanges": "放棄變更"
     }
   },
+  "prioritize": {
+    "button": "設定優先順序",
+    "title": "任務優先順序排列",
+    "description": "根據任務時長、關鍵字、標籤和截止日期審核AI建議的優先順序變更。",
+    "noSuggestions": "所有任務已有適當的優先順序。",
+    "acceptAll": "全部接受",
+    "reset": "重設",
+    "showing": "{{count}} 條建議",
+    "accept": "接受建議",
+    "reject": "拒絕建議",
+    "viewReasons": "檢視原因",
+    "whySuggested": "為什麼是這個優先順序？",
+    "applyChanges": "套用變更 ({{count}})",
+    "applying": "套用中...",
+    "successMessage": "已更新 {{count}} 個任務優先順序",
+    "errorMessage": "更新優先順序失敗",
+    "undo": "復原",
+    "undoSuccess": "變更已復原",
+    "undoFailed": "復原失敗"
+  },
   "restoreLogsDialog": {
     "title": "確認重試",
     "historyChange": {
