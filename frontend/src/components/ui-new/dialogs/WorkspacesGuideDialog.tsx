@@ -121,23 +121,36 @@ const WorkspacesGuideDialogImpl = NiceModal.create<NoProps>(() => {
             </p>
             {/* Mobile navigation - visible only on mobile */}
             <div className="flex sm:hidden items-center justify-between mt-4 pt-4 border-t border-border/30">
-              <button
-                onClick={goToPrevious}
-                className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
-              >
-                <CaretLeftIcon className="h-4 w-4" />
-                {t('workspacesGuide.previous')}
-              </button>
+              {selectedIndex > 0 ? (
+                <button
+                  onClick={goToPrevious}
+                  className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
+                >
+                  <CaretLeftIcon className="h-4 w-4" />
+                  {t('workspacesGuide.previous')}
+                </button>
+              ) : (
+                <div className="w-20" />
+              )}
               <span className="text-xs text-muted">
                 {selectedIndex + 1} / {TOPIC_IDS.length}
               </span>
-              <button
-                onClick={goToNext}
-                className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
-              >
-                {t('workspacesGuide.next')}
-                <CaretRightIcon className="h-4 w-4" />
-              </button>
+              {selectedIndex < TOPIC_IDS.length - 1 ? (
+                <button
+                  onClick={goToNext}
+                  className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-normal hover:bg-primary/10 transition-colors"
+                >
+                  {t('workspacesGuide.next')}
+                  <CaretRightIcon className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleClose}
+                  className="flex items-center gap-1 px-3 py-2 rounded-sm text-sm text-brand font-medium hover:bg-brand/10 transition-colors"
+                >
+                  {t('close')}
+                </button>
+              )}
             </div>
           </div>
         </div>
