@@ -36,6 +36,7 @@ import { useDiffStream } from '@/hooks/useDiffStream';
 import { useTask } from '@/hooks/useTask';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useWorkspacePanelMode } from '@/hooks/useWorkspacePanelMode';
 import {
   PERSIST_KEYS,
   useExpandedAll,
@@ -299,6 +300,9 @@ export function WorkspacesLayout() {
     setSidebarVisible,
     setMainPanelVisible,
   } = useLayoutStore();
+
+  // Sync panel mode with workspace-specific persistence
+  useWorkspacePanelMode(selectedWorkspaceId, isCreateMode);
 
   const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
     PERSIST_KEYS.rightMainPanel,
