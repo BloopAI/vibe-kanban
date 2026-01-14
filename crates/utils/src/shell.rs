@@ -102,44 +102,29 @@ async fn which(executable: &str) -> Option<PathBuf> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnixShell {
-    Zsh,
-    Bash,
-    Sh,
-    Other(String),
+    Zsh(PathBuf),
+    Bash(PathBuf),
+    Sh(PathBuf),
+    Other(PathBuf),
 }
 
 impl UnixShell {
-    pub fn path(&self) -> PathBuf {
+    pub fn path(&self) -> &Path {
         match self {
-            UnixShell::Zsh => PathBuf::from("/bin/zsh"),
-            UnixShell::Bash => PathBuf::from("/bin/bash"),
-            UnixShell::Sh => PathBuf::from("/bin/sh"),
-            UnixShell::Other(path) => PathBuf::from(path),
+            UnixShell::Zsh(p) | UnixShell::Bash(p) | UnixShell::Sh(p) | UnixShell::Other(p) => p,
         }
     }
     pub fn login(&self) -> bool {
-        match self {
-            UnixShell::Zsh => true,
-            UnixShell::Bash => true,
-            UnixShell::Sh => false,
-            UnixShell::Other(_) => false,
-        }
+        matches!(self, UnixShell::Zsh(_) | UnixShell::Bash(_))
     }
     pub fn config_file(&self) -> Option<PathBuf> {
         let home = dirs::home_dir()?;
         let config_file = match self {
-            UnixShell::Zsh => Some(home.join(".zshrc")),
-            UnixShell::Bash => Some(home.join(".bashrc")),
-            UnixShell::Sh => None,
-            UnixShell::Other(_) => None,
+            UnixShell::Zsh(_) => Some(home.join(".zshrc")),
+            UnixShell::Bash(_) => Some(home.join(".bashrc")),
+            UnixShell::Sh(_) | UnixShell::Other(_) => None,
         };
-        if let Some(config_file) = config_file
-            && config_file.is_file()
-        {
-            Some(config_file)
-        } else {
-            None
-        }
+        config_file.filter(|p| p.is_file())
     }
 
     pub fn source_command(&self) -> Option<String> {
@@ -158,18 +143,19 @@ impl UnixShell {
         {
             return shell;
         }
-        UnixShell::Sh
+        UnixShell::Sh(PathBuf::from("/bin/sh"))
     }
     pub fn from_path(path: &Path) -> Option<UnixShell> {
         if path.is_absolute() && path.is_file() {
+            let path_buf = path.to_path_buf();
             if path.file_name() == Some(OsStr::new("zsh")) {
-                Some(UnixShell::Zsh)
+                Some(UnixShell::Zsh(path_buf))
             } else if path.file_name() == Some(OsStr::new("bash")) {
-                Some(UnixShell::Bash)
+                Some(UnixShell::Bash(path_buf))
             } else if path.file_name() == Some(OsStr::new("sh")) {
-                Some(UnixShell::Sh)
+                Some(UnixShell::Sh(path_buf))
             } else {
-                Some(UnixShell::Other(path.to_string_lossy().into_owned()))
+                Some(UnixShell::Other(path_buf))
             }
         } else {
             None
@@ -244,7 +230,10 @@ async fn get_fresh_path() -> Option<String> {
         paths.push(path);
     }
 
-    let shells = vec![UnixShell::Zsh, UnixShell::Bash, UnixShell::Sh];
+    let shells: Vec<UnixShell> = ["/bin/zsh", "/bin/bash", "/bin/sh"]
+        .into_iter()
+        .filter_map(|p| UnixShell::from_path(Path::new(p)))
+        .collect();
     for shell in shells {
         if !(shell == current_shell)
             && let Some(path) = run(&shell).await
