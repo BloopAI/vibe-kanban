@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Allotment, type AllotmentHandle } from 'allotment';
 import 'allotment/dist/style.css';
@@ -9,7 +9,9 @@ import { useProjectGroupMutations } from '@/hooks/useProjectGroupMutations';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { TaskDetailsPanel } from '@/components/ui-new/containers/TaskDetailsPanel';
 import { LeftSidebar } from '@/components/ui-new/views/LeftSidebar';
-import { tasksApi } from '@/lib/api';
+import { CreateProjectDialog } from '@/components/ui-new/dialogs/CreateProjectDialog';
+import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { tasksApi, attemptsApi } from '@/lib/api';
 import { useLayoutStore } from '@/stores/useLayoutStore';
 import { usePaneSize, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
@@ -39,11 +41,26 @@ export function AllBoardsLayout() {
     240
   );
 
-  // Convert groups to teams for the sidebar
-  const teams = groups.map((group) => ({
-    id: group.id,
-    name: group.name,
-  }));
+  // Get workspace data for sidebar and filter counts
+  const { workspaces } = useWorkspaces();
+
+  // Compute active workspaces count (running AI sessions)
+  const activeWorkspaceCount = useMemo(() =>
+    workspaces.filter(ws => ws.isRunning).length,
+    [workspaces]
+  );
+
+  // Compute in-review count (workspaces with open PRs)
+  const inReviewCount = useMemo(() =>
+    workspaces.filter(ws => ws.prStatus === 'open').length,
+    [workspaces]
+  );
+
+  // Flatten all projects for filter dropdown
+  const allProjects = useMemo(() =>
+    groupedProjects.flatMap(gp => gp.projects),
+    [groupedProjects]
+  );
 
   const handlePaneResize = useCallback(
     (sizes: number[]) => {
@@ -127,6 +144,34 @@ export function AllBoardsLayout() {
     [navigate]
   );
 
+  // Sidebar action handlers
+  const handleSidebarCreateTask = useCallback(() => {
+    // Open task form dialog - user will select project in the dialog
+    openTaskForm({ mode: 'create' });
+  }, []);
+
+  const handleSidebarCreateProject = useCallback(() => {
+    // Open project creation dialog
+    CreateProjectDialog.show({});
+  }, []);
+
+  const handleStopWorkspace = useCallback(async (workspaceId: string) => {
+    try {
+      await attemptsApi.stop(workspaceId);
+      // WebSocket will update the UI automatically
+    } catch (err) {
+      console.error('Failed to stop workspace:', err);
+    }
+  }, []);
+
+  const handleSidebarWorkspaceClick = useCallback(
+    (workspaceId: string) => {
+      // Navigate to the workspace view
+      navigate(`/workspaces/${workspaceId}`);
+    },
+    [navigate]
+  );
+
   const handleCreateTask = useCallback((projectId: string, status?: TaskStatus) => {
     openTaskForm({ mode: 'create', projectId, initialStatus: status });
   }, []);
@@ -202,8 +247,12 @@ export function AllBoardsLayout() {
             visible={isLeftSidebarVisible}
           >
             <LeftSidebar
-              workspaceName="Vibe Kanban"
-              teams={teams}
+              appName="Vibe Kanban"
+              workspaces={workspaces}
+              onCreateTask={handleSidebarCreateTask}
+              onCreateProject={handleSidebarCreateProject}
+              onStopWorkspace={handleStopWorkspace}
+              onWorkspaceClick={handleSidebarWorkspaceClick}
               onToggleSidebar={toggleLeftSidebar}
             />
           </Allotment.Pane>
@@ -237,6 +286,10 @@ export function AllBoardsLayout() {
               onFilterChange={setFilterState}
               displayState={displayState}
               onDisplayChange={setDisplayState}
+              workspaces={workspaces}
+              projects={allProjects}
+              activeWorkspaceCount={activeWorkspaceCount}
+              inReviewCount={inReviewCount}
             />
           </Allotment.Pane>
           <Allotment.Pane

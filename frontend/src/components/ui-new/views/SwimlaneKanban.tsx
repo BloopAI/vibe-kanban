@@ -11,7 +11,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { GroupedProjects } from '@/hooks/useAllBoards';
-import type { ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
+import type { Project, ProjectGroup, TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusLabels, statusBoardColors } from '@/utils/statusLabels';
 import { ProjectSwimlane } from '@/components/ui-new/containers/ProjectSwimlane';
 import { InlineGroupCreator } from '@/components/ui-new/primitives/InlineGroupCreator';
@@ -21,6 +21,7 @@ import {
   type DisplayState,
 } from '@/components/ui-new/primitives/FilterDisplayControls';
 import { useAggregateTaskCountsProvider, useAggregateTaskCounts } from '@/hooks/useAggregateTaskCounts';
+import type { SidebarWorkspace } from '@/components/ui-new/hooks/useWorkspaces';
 
 const STATUS_ORDER: TaskStatus[] = [
   'todo',
@@ -118,6 +119,12 @@ interface SwimlaneKanbanProps {
   onFilterChange: (filter: FilterState) => void;
   displayState: DisplayState;
   onDisplayChange: (display: DisplayState) => void;
+  // Workspace data for filtering
+  workspaces?: SidebarWorkspace[];
+  // Filter dropdown data
+  projects?: Project[];
+  activeWorkspaceCount?: number;
+  inReviewCount?: number;
 }
 
 export function SwimlaneKanban(props: SwimlaneKanbanProps) {
@@ -159,21 +166,57 @@ function SwimlaneKanbanContent({
   onFilterChange,
   displayState,
   onDisplayChange,
+  workspaces = [],
+  projects = [],
+  activeWorkspaceCount = 0,
+  inReviewCount = 0,
 }: SwimlaneKanbanProps) {
-  // Filter projects by search query
-  const filteredGroupedProjects = useMemo(() => {
-    if (!searchQuery) return groupedProjects;
+  // Compute allowed task IDs based on workspace filter
+  const allowedTaskIds = useMemo(() => {
+    if (filterState.workspaceFilter === 'all') {
+      return undefined; // No workspace filter - show all tasks
+    }
 
-    const query = searchQuery.toLowerCase();
-    return groupedProjects
-      .map(({ group, projects }) => ({
-        group,
-        projects: projects.filter((p) =>
-          p.name.toLowerCase().includes(query)
-        ),
-      }))
-      .filter(({ projects }) => projects.length > 0);
-  }, [groupedProjects, searchQuery]);
+    const taskIds = new Set<string>();
+    for (const ws of workspaces) {
+      if (filterState.workspaceFilter === 'active' && ws.isRunning) {
+        taskIds.add(ws.taskId);
+      } else if (filterState.workspaceFilter === 'in-review' && ws.prStatus === 'open') {
+        taskIds.add(ws.taskId);
+      }
+    }
+    return taskIds;
+  }, [workspaces, filterState.workspaceFilter]);
+
+  // Filter projects by search query and selected project
+  const filteredGroupedProjects = useMemo(() => {
+    let result = groupedProjects;
+
+    // Filter by selected project ID
+    if (filterState.selectedProjectId) {
+      result = result
+        .map(({ group, projects }) => ({
+          group,
+          projects: projects.filter((p) => p.id === filterState.selectedProjectId),
+        }))
+        .filter(({ projects }) => projects.length > 0);
+    }
+
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result
+        .map(({ group, projects }) => ({
+          group,
+          projects: projects.filter((p) =>
+            p.name.toLowerCase().includes(query)
+          ),
+        }))
+        .filter(({ projects }) => projects.length > 0);
+    }
+
+    return result;
+  }, [groupedProjects, searchQuery, filterState.selectedProjectId]);
 
   if (isLoading) {
     return (
@@ -242,6 +285,9 @@ function SwimlaneKanbanContent({
           displayState={displayState}
           onFilterChange={onFilterChange}
           onDisplayChange={onDisplayChange}
+          projects={projects}
+          activeWorkspaceCount={activeWorkspaceCount}
+          inReviewCount={inReviewCount}
         />
 
         {/* Divider */}
@@ -397,6 +443,7 @@ function SwimlaneKanbanContent({
                             onOpenBoard={onOpenBoard}
                             onStatusChange={onStatusChange}
                             filterState={filterState}
+                            allowedTaskIds={allowedTaskIds}
                           />
                         ))
                       )}

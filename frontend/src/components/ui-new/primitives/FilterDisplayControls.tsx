@@ -3,6 +3,8 @@ import {
   FunnelIcon,
   SlidersHorizontalIcon,
   CaretDownIcon,
+  LightningIcon,
+  EyeIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -15,13 +17,17 @@ import {
   DropdownMenuRadioItem,
 } from '@/components/ui-new/primitives/Dropdown';
 import { cn } from '@/lib/utils';
-import type { TaskStatus } from 'shared/types';
+import type { TaskStatus, Project } from 'shared/types';
 import { statusLabels } from '@/utils/statusLabels';
 
 // Filter state types
+export type WorkspaceFilterOption = 'all' | 'active' | 'in-review';
+
 export interface FilterState {
   statuses: TaskStatus[];
   hideEmptyProjects: boolean;
+  selectedProjectId?: string | null;  // Filter to single project
+  workspaceFilter: WorkspaceFilterOption;  // Filter by workspace status
 }
 
 // Display state types
@@ -40,6 +46,8 @@ export interface DisplayState {
 export const defaultFilterState: FilterState = {
   statuses: [], // empty means all statuses
   hideEmptyProjects: false,
+  selectedProjectId: null,
+  workspaceFilter: 'all',
 };
 
 export const defaultDisplayState: DisplayState = {
@@ -56,6 +64,11 @@ interface FilterDisplayControlsProps {
   displayState: DisplayState;
   onFilterChange: (filter: FilterState) => void;
   onDisplayChange: (display: DisplayState) => void;
+  /** Optional list of projects for project filter */
+  projects?: Project[];
+  /** Counts for workspace filter badges */
+  activeWorkspaceCount?: number;
+  inReviewCount?: number;
 }
 
 export function FilterDisplayControls({
@@ -63,6 +76,9 @@ export function FilterDisplayControls({
   displayState,
   onFilterChange,
   onDisplayChange,
+  projects = [],
+  activeWorkspaceCount = 0,
+  inReviewCount = 0,
 }: FilterDisplayControlsProps) {
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
@@ -70,6 +86,12 @@ export function FilterDisplayControls({
       count += 1;
     }
     if (filterState.hideEmptyProjects) {
+      count += 1;
+    }
+    if (filterState.workspaceFilter !== 'all') {
+      count += 1;
+    }
+    if (filterState.selectedProjectId) {
       count += 1;
     }
     return count;
@@ -91,6 +113,14 @@ export function FilterDisplayControls({
       ...filterState,
       hideEmptyProjects: !filterState.hideEmptyProjects,
     });
+  };
+
+  const handleWorkspaceFilterChange = (value: WorkspaceFilterOption) => {
+    onFilterChange({ ...filterState, workspaceFilter: value });
+  };
+
+  const handleProjectFilterChange = (projectId: string | null) => {
+    onFilterChange({ ...filterState, selectedProjectId: projectId });
   };
 
   return (
@@ -119,7 +149,86 @@ export function FilterDisplayControls({
             <CaretDownIcon className="size-2.5 ml-0.5" weight="bold" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className="w-64 max-h-[400px] overflow-y-auto">
+          {/* Workspace Status Filter */}
+          <DropdownMenuLabel className="flex items-center justify-between">
+            <span>Workspace</span>
+            {filterState.workspaceFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => handleWorkspaceFilterChange('all')}
+                className="text-[10px] text-brand hover:text-brand-hover transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={filterState.workspaceFilter}
+            onValueChange={(v) => handleWorkspaceFilterChange(v as WorkspaceFilterOption)}
+          >
+            <DropdownMenuRadioItem value="all" onSelect={(e) => e.preventDefault()}>
+              All tasks
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="active" onSelect={(e) => e.preventDefault()}>
+              <span className="flex items-center gap-1.5">
+                <LightningIcon className="size-3" weight="fill" />
+                Active sessions
+                {activeWorkspaceCount > 0 && (
+                  <span className="text-[10px] text-low tabular-nums">({activeWorkspaceCount})</span>
+                )}
+              </span>
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="in-review" onSelect={(e) => e.preventDefault()}>
+              <span className="flex items-center gap-1.5">
+                <EyeIcon className="size-3" weight="fill" />
+                In review
+                {inReviewCount > 0 && (
+                  <span className="text-[10px] text-low tabular-nums">({inReviewCount})</span>
+                )}
+              </span>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+
+          <DropdownMenuSeparator />
+
+          {/* Project Filter */}
+          {projects.length > 0 && (
+            <>
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Project</span>
+                {filterState.selectedProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => handleProjectFilterChange(null)}
+                    className="text-[10px] text-brand hover:text-brand-hover transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={filterState.selectedProjectId ?? 'all'}
+                onValueChange={(v) => handleProjectFilterChange(v === 'all' ? null : v)}
+              >
+                <DropdownMenuRadioItem value="all" onSelect={(e) => e.preventDefault()}>
+                  All projects
+                </DropdownMenuRadioItem>
+                {projects.map((project) => (
+                  <DropdownMenuRadioItem
+                    key={project.id}
+                    value={project.id}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span className="truncate">{project.name}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+            </>
+          )}
+
+          {/* Status Filter */}
           <DropdownMenuLabel className="flex items-center justify-between">
             <span>Status</span>
             {filterState.statuses.length > 0 && (

@@ -37,6 +37,7 @@ import {
   useProjectRepos,
   useRepoBranchSelection,
 } from '@/hooks';
+import { useProjects } from '@/hooks/useProjects';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -62,7 +63,7 @@ interface Task {
 }
 
 export type TaskFormDialogProps =
-  | { mode: 'create'; projectId: string; initialStatus?: TaskStatus }
+  | { mode: 'create'; projectId?: string; initialStatus?: TaskStatus }
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
@@ -84,12 +85,23 @@ type TaskFormValues = {
 };
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
-  const { mode, projectId } = props;
+  const { mode } = props;
+  // projectId is optional in create mode
+  const providedProjectId = 'projectId' in props ? props.projectId : undefined;
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(providedProjectId);
+  const projectId = selectedProjectId;
+
   const editMode = mode === 'edit';
   const modal = useModal();
   const { t } = useTranslation(['tasks', 'common']);
+
+  // Get all projects for the selector (only used when no projectId provided)
+  const { projects: allProjects, isLoading: projectsLoading } = useProjects();
+
+  // These hooks need a projectId - pass empty string when none selected (they're disabled anyway)
+  const effectiveProjectId = projectId ?? '';
   const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId);
+    useTaskMutations(effectiveProjectId);
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
@@ -105,8 +117,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
-  const { data: projectRepos = [] } = useProjectRepos(projectId, {
-    enabled: modal.visible,
+  const { data: projectRepos = [] } = useProjectRepos(effectiveProjectId, {
+    enabled: modal.visible && !!projectId,
   });
   const initialBranch =
     mode === 'subtask' ? props.initialBaseBranch : undefined;
@@ -114,7 +126,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     useRepoBranchSelection({
       repos: projectRepos,
       initialBranch,
-      enabled: modal.visible && projectRepos.length > 0,
+      enabled: modal.visible && !!projectId && projectRepos.length > 0,
     });
 
   const defaultRepoBranches = useMemo((): RepoBranch[] => {
@@ -193,8 +205,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     } else {
       const imageIds =
         newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : null;
+      // projectId is guaranteed to be defined here - we show project selector first if not provided
       const task = {
-        project_id: projectId,
+        project_id: projectId!,
         title: value.title,
         description: value.description,
         status: null,
@@ -226,6 +239,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   };
 
   const validator = (value: TaskFormValues): string | undefined => {
+    // In create mode without provided projectId, require a project to be selected
+    if (mode === 'create' && !providedProjectId && !projectId) return 'need project';
     if (!value.title.trim().length) return 'need title';
     if (value.autoStart && !forceCreateOnlyRef.current) {
       if (!value.executorProfileId) return 'need executor profile';
@@ -408,8 +423,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     when: () => modal.visible && showDiscardWarning,
   });
 
-  const loading = branchesLoading || userSystemLoading;
+  // Show loading only when we have a project selected (waiting for branches/user system)
+  const loading = projectId && (branchesLoading || userSystemLoading);
   if (loading) return <></>;
+
+  // Whether to show inline project selector (create mode without provided projectId)
+  const showProjectSelector = mode === 'create' && !providedProjectId;
 
   return (
     <>
@@ -435,6 +454,37 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </div>
           )}
 
+          {/* Project Selector - only shown when no projectId was provided */}
+          {showProjectSelector && (
+            <div className="space-y-1">
+              <Label htmlFor="project-select" className="text-sm font-medium">
+                {t('taskFormDialog.projectLabel', 'Project')}
+              </Label>
+              {projectsLoading ? (
+                <div className="text-sm text-muted-foreground py-2">
+                  {t('common:states.loading', 'Loading...')}
+                </div>
+              ) : allProjects.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-2">
+                  {t('taskFormDialog.noProjects', 'No projects available. Create a project first.')}
+                </div>
+              ) : (
+                <Select value={projectId ?? ''} onValueChange={(value) => setSelectedProjectId(value)}>
+                  <SelectTrigger id="project-select">
+                    <SelectValue placeholder={t('taskFormDialog.selectProjectPlaceholder', 'Select a project')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allProjects.map((project: { id: string; name: string }) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
+
           {/* Title */}
           <form.Field name="title">
             {(field) => (
@@ -443,9 +493,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={t('taskFormDialog.titlePlaceholder')}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !projectId}
                 className="text-base"
-                autoFocus
+                autoFocus={!showProjectSelector}
               />
             )}
           </form.Field>
@@ -459,8 +509,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   className="w-full h-24 overflow-auto"
                   value={field.state.value}
                   onChange={(desc) => field.handleChange(desc)}
-                  disabled={isSubmitting}
-                  projectId={projectId}
+                  disabled={isSubmitting || !projectId}
+                  projectId={projectId ?? ''}
                   onPasteFiles={onDrop}
                   onCmdEnter={primaryAction}
                   onShiftCmdEnter={handleSubmitCreateOnly}
@@ -511,8 +561,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </form.Field>
           )}
 
-          {/* Create mode dropdowns */}
-          {!editMode && (
+          {/* Create mode dropdowns - only show when a project is selected */}
+          {!editMode && projectId && (
             <form.Field name="autoStart" mode="array">
               {(autoStartField) => {
                 const isSingleRepo = repoBranchConfigs.length === 1;
@@ -637,7 +687,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
             {/* Autostart switch */}
             <div className="flex items-center gap-3">
-              {!editMode && (
+              {!editMode && projectId && (
                 <form.Field name="autoStart">
                   {(field) => (
                     <div className="flex items-center gap-2">
@@ -681,8 +731,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                         : t('taskFormDialog.creating')
                       : t('taskFormDialog.create');
 
+                  // Also require projectId to be selected when in create mode without provided projectId
+                  const needsProject = showProjectSelector && !projectId;
                   return (
-                    <Button onClick={form.handleSubmit} disabled={!canSubmit}>
+                    <Button onClick={form.handleSubmit} disabled={!canSubmit || needsProject}>
                       {buttonText}
                     </Button>
                   );
