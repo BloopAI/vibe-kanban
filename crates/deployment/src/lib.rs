@@ -176,7 +176,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     match self
                         .project()
-                        .create_project(&self.db().pool, self.repo(), create_data.clone())
+                        .create_project(&self.db().pool, self.repo(), create_data.clone(), None)
                         .await
                     {
                         Ok(project) => {

@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import type { Project } from 'shared/types';
+import type { ProjectWithCreator } from 'shared/types';
 
 type ProjectsState = {
-  projects: Record<string, Project>;
+  projects: Record<string, ProjectWithCreator>;
 };
 
 export interface UseProjectsResult {
-  projects: Project[];
-  projectsById: Record<string, Project>;
+  projects: ProjectWithCreator[];
+  projectsById: Record<string, ProjectWithCreator>;
   isLoading: boolean;
   isConnected: boolean;
   error: Error | null;

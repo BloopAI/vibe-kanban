@@ -17,6 +17,8 @@ fn generate_types_content() -> String {
         remote::db::users::UserData::decl(),
         db::models::user::User::decl(),
         db::models::project::Project::decl(),
+        db::models::project::ProjectCreator::decl(),
+        db::models::project::ProjectWithCreator::decl(),
         db::models::project::CreateProject::decl(),
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),

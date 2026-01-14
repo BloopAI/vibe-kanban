@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Button } from '@/components/ui/button.tsx';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
 import {
   Calendar,
   Edit,
@@ -21,7 +22,7 @@ import {
   Trash2,
   Unlink,
 } from 'lucide-react';
-import { Project } from 'shared/types';
+import { Project, ProjectWithCreator } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
@@ -31,13 +32,14 @@ import { useTranslation } from 'react-i18next';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 type Props = {
-  project: Project;
+  project: ProjectWithCreator;
   isFocused: boolean;
   setError: (error: string) => void;
   onEdit: (project: Project) => void;
 };
 
 function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
+  const { creator } = project;
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
@@ -186,11 +188,25 @@ function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
             </DropdownMenu>
           </div>
         </div>
-        <CardDescription className="flex items-center">
-          <Calendar className="mr-1 h-3 w-3" />
-          {t('createdDate', {
-            date: new Date(project.created_at).toLocaleDateString(),
-          })}
+        <CardDescription className="flex items-center gap-2">
+          <span className="flex items-center">
+            <Calendar className="mr-1 h-3 w-3" />
+            {t('createdDate', {
+              date: new Date(project.created_at).toLocaleDateString(),
+            })}
+          </span>
+          {creator && (
+            <span className="flex items-center gap-1">
+              <UserAvatar
+                username={creator.username}
+                imageUrl={creator.avatar_url}
+                className="h-4 w-4"
+              />
+              <span className="text-xs text-muted-foreground">
+                {creator.username}
+              </span>
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
     </Card>

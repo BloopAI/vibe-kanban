@@ -78,6 +78,7 @@ impl ProjectService {
         pool: &SqlitePool,
         repo_service: &RepoService,
         payload: CreateProject,
+        creator_user_id: Option<Uuid>,
     ) -> Result<Project> {
         // Validate all repository paths and check for duplicates within the payload
         let mut seen_names = HashSet::new();
@@ -106,7 +107,7 @@ impl ProjectService {
 
         let id = Uuid::new_v4();
 
-        let project = Project::create(pool, &payload, id)
+        let project = Project::create(pool, &payload, id, creator_user_id)
             .await
             .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
 
