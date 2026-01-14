@@ -41,8 +41,8 @@ import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
+  type RightMainPanelMode,
 } from '@/stores/useUiPreferencesStore';
-
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
@@ -98,13 +98,14 @@ export interface ActionExecutorContext {
 // Context for evaluating action visibility and state conditions
 export interface ActionVisibilityContext {
   // Layout state
-  rightMainPanelMode:
-    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
-    | null;
-  isLeftSidebarVisible: boolean;
+  isChangesMode: boolean;
+  isLogsMode: boolean;
+  isPreviewMode: boolean;
+  isSidebarVisible: boolean;
   isLeftMainPanelVisible: boolean;
-  isRightSidebarVisible: boolean;
+  isGitPanelVisible: boolean;
   isCreateMode: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
 
   // Workspace state
   hasWorkspace: boolean;
@@ -418,8 +419,7 @@ export const Actions = {
         : 'Switch to Inline View',
     icon: ColumnsIcon,
     requiresTarget: false,
-    isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isVisible: (ctx) => ctx.isChangesMode,
     isActive: (ctx) => ctx.diffViewMode === 'split',
     getIcon: (ctx) => (ctx.diffViewMode === 'split' ? ColumnsIcon : RowsIcon),
     getTooltip: (ctx) =>
@@ -437,8 +437,7 @@ export const Actions = {
         : 'Ignore Whitespace Changes',
     icon: EyeSlashIcon,
     requiresTarget: false,
-    isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isVisible: (ctx) => ctx.isChangesMode,
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setIgnoreWhitespace(!store.ignoreWhitespace);
@@ -453,8 +452,7 @@ export const Actions = {
         : 'Enable Line Wrapping',
     icon: TextAlignLeftIcon,
     requiresTarget: false,
-    isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isVisible: (ctx) => ctx.isChangesMode,
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setWrapText(!store.wrapText);
@@ -464,15 +462,15 @@ export const Actions = {
   // === Layout Panel Actions ===
   ToggleLeftSidebar: {
     id: 'toggle-left-sidebar',
-    label: () =>
-      useUiPreferencesStore.getState().isLeftSidebarVisible
-        ? 'Hide Left Sidebar'
-        : 'Show Left Sidebar',
+    label: 'Toggle Sidebar',
     icon: SidebarSimpleIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isLeftSidebarVisible,
-    execute: () => {
-      useUiPreferencesStore.getState().toggleLeftSidebar();
+    isActive: (ctx) => ctx.isSidebarVisible,
+    getLabel: (ctx) => (ctx.isSidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'),
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .showPanelMobile('sidebar', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -482,28 +480,32 @@ export const Actions = {
     icon: ChatsTeardropIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
-    isEnabled: (ctx) =>
-      !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
+    isEnabled: (ctx) => {
+      const isMobile =
+        typeof window !== 'undefined' && window.innerWidth < 640;
+      return isMobile || !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null);
+    },
     getLabel: (ctx) =>
       ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
+        .showPanelMobile('chat', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
   ToggleRightSidebar: {
     id: 'toggle-right-sidebar',
-    label: () =>
-      useUiPreferencesStore.getState().isRightSidebarVisible
-        ? 'Hide Right Sidebar'
-        : 'Show Right Sidebar',
+    label: 'Toggle Git Panel',
     icon: RightSidebarIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isRightSidebarVisible,
-    execute: () => {
-      useUiPreferencesStore.getState().toggleRightSidebar();
+    isActive: (ctx) => ctx.isGitPanelVisible,
+    getLabel: (ctx) =>
+      ctx.isGitPanelVisible ? 'Hide Git Panel' : 'Show Git Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .showPanelMobile('git', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -513,8 +515,7 @@ export const Actions = {
     icon: GitDiffIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isActive: (ctx) => ctx.isChangesMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
@@ -523,10 +524,7 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.CHANGES,
-          ctx.currentWorkspaceId ?? undefined
-        );
+        .showPanelMobile('changes', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -536,7 +534,7 @@ export const Actions = {
     icon: TerminalIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
+    isActive: (ctx) => ctx.isLogsMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS
@@ -545,10 +543,7 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.LOGS,
-          ctx.currentWorkspaceId ?? undefined
-        );
+        .showPanelMobile('logs', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -558,8 +553,7 @@ export const Actions = {
     icon: DesktopIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
+    isActive: (ctx) => ctx.isPreviewMode,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW
@@ -568,10 +562,7 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.PREVIEW,
-          ctx.currentWorkspaceId ?? undefined
-        );
+        .showPanelMobile('preview', ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -620,8 +611,7 @@ export const Actions = {
     },
     icon: CaretDoubleUpIcon,
     requiresTarget: false,
-    isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+    isVisible: (ctx) => ctx.isChangesMode,
     getIcon: (ctx) =>
       ctx.isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon,
     getTooltip: (ctx) =>

@@ -12,6 +12,18 @@ export const RIGHT_MAIN_PANEL_MODES = {
 export type RightMainPanelMode =
   (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
 
+// Panel types for mobile exclusive visibility
+export type MobilePanel =
+  | 'sidebar'
+  | 'chat'
+  | 'git'
+  | 'changes'
+  | 'logs'
+  | 'preview';
+
+// Check if screen is mobile (< 640px is Tailwind's sm breakpoint)
+const isMobileScreen = () => window.innerWidth < 640;
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -118,7 +130,10 @@ type State = {
   ) => void;
   setLeftSidebarVisible: (value: boolean) => void;
   setLeftMainPanelVisible: (value: boolean, workspaceId?: string) => void;
+  setRightSidebarVisible: (value: boolean) => void;
   triggerPreviewRefresh: () => void;
+  // Mobile-specific: show only one panel at a time (radio button behavior)
+  showPanelMobile: (panel: MobilePanel, workspaceId?: string) => void;
 
   // Workspace-specific panel state actions
   getWorkspacePanelState: (workspaceId: string) => WorkspacePanelState;
@@ -264,6 +279,139 @@ export const useUiPreferencesStore = create<State>()(
             },
           },
         });
+      },
+
+      setRightSidebarVisible: (value) => set({ isRightSidebarVisible: value }),
+
+      showPanelMobile: (panel, workspaceId) => {
+        // On desktop, use normal toggle behavior
+        if (!isMobileScreen()) {
+          const state = get();
+          switch (panel) {
+            case 'sidebar':
+              set({ isLeftSidebarVisible: !state.isLeftSidebarVisible });
+              break;
+            case 'chat':
+              if (workspaceId) {
+                const wsState =
+                  state.workspacePanelStates[workspaceId] ??
+                  DEFAULT_WORKSPACE_PANEL_STATE;
+                set({
+                  workspacePanelStates: {
+                    ...state.workspacePanelStates,
+                    [workspaceId]: {
+                      ...wsState,
+                      isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
+                    },
+                  },
+                });
+              }
+              break;
+            case 'git':
+              set({ isRightSidebarVisible: !state.isRightSidebarVisible });
+              break;
+            case 'changes':
+            case 'logs':
+            case 'preview':
+              if (workspaceId) {
+                const wsState =
+                  state.workspacePanelStates[workspaceId] ??
+                  DEFAULT_WORKSPACE_PANEL_STATE;
+                const mode = panel as RightMainPanelMode;
+                set({
+                  workspacePanelStates: {
+                    ...state.workspacePanelStates,
+                    [workspaceId]: {
+                      ...wsState,
+                      rightMainPanelMode:
+                        wsState.rightMainPanelMode === mode ? null : mode,
+                    },
+                  },
+                });
+              }
+              break;
+          }
+          return;
+        }
+
+        // Mobile: show only the selected panel (radio button behavior)
+        const hideAll = {
+          isLeftSidebarVisible: false,
+          isRightSidebarVisible: false,
+        };
+        const hideAllWorkspace: Partial<WorkspacePanelState> = {
+          isLeftMainPanelVisible: false,
+          rightMainPanelMode: null,
+        };
+
+        switch (panel) {
+          case 'sidebar':
+            set({
+              ...hideAll,
+              isLeftSidebarVisible: true,
+              ...(workspaceId && {
+                workspacePanelStates: {
+                  ...get().workspacePanelStates,
+                  [workspaceId]: {
+                    ...(get().workspacePanelStates[workspaceId] ??
+                      DEFAULT_WORKSPACE_PANEL_STATE),
+                    ...hideAllWorkspace,
+                  },
+                },
+              }),
+            });
+            break;
+          case 'chat':
+            set({
+              ...hideAll,
+              ...(workspaceId && {
+                workspacePanelStates: {
+                  ...get().workspacePanelStates,
+                  [workspaceId]: {
+                    ...(get().workspacePanelStates[workspaceId] ??
+                      DEFAULT_WORKSPACE_PANEL_STATE),
+                    ...hideAllWorkspace,
+                    isLeftMainPanelVisible: true,
+                  },
+                },
+              }),
+            });
+            break;
+          case 'git':
+            set({
+              ...hideAll,
+              isRightSidebarVisible: true,
+              ...(workspaceId && {
+                workspacePanelStates: {
+                  ...get().workspacePanelStates,
+                  [workspaceId]: {
+                    ...(get().workspacePanelStates[workspaceId] ??
+                      DEFAULT_WORKSPACE_PANEL_STATE),
+                    ...hideAllWorkspace,
+                  },
+                },
+              }),
+            });
+            break;
+          case 'changes':
+          case 'logs':
+          case 'preview':
+            set({
+              ...hideAll,
+              ...(workspaceId && {
+                workspacePanelStates: {
+                  ...get().workspacePanelStates,
+                  [workspaceId]: {
+                    ...(get().workspacePanelStates[workspaceId] ??
+                      DEFAULT_WORKSPACE_PANEL_STATE),
+                    ...hideAllWorkspace,
+                    rightMainPanelMode: panel as RightMainPanelMode,
+                  },
+                },
+              }),
+            });
+            break;
+        }
       },
 
       triggerPreviewRefresh: () =>

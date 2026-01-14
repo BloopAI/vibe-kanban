@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
+  RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -66,24 +67,46 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       branchStatus?.some((repo) => (repo.remote_commits_ahead ?? 0) > 0) ??
       false;
 
+    // Compute derived panel mode states
+    const isChangesMode =
+      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES;
+    const isLogsMode =
+      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS;
+    const isPreviewMode =
+      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW;
+
     return {
-      rightMainPanelMode: panelState.rightMainPanelMode,
-      isLeftSidebarVisible: panelState.isLeftSidebarVisible,
+      // Layout state
+      isChangesMode,
+      isLogsMode,
+      isPreviewMode,
+      isSidebarVisible: panelState.isLeftSidebarVisible,
       isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
-      isRightSidebarVisible: panelState.isRightSidebarVisible,
+      isGitPanelVisible: panelState.isRightSidebarVisible,
       isCreateMode,
+      rightMainPanelMode: panelState.rightMainPanelMode,
+
+      // Workspace state
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
+
+      // Diff state
       hasDiffs: diffPaths.length > 0,
       diffViewMode,
       isAllDiffsExpanded,
+
+      // Dev server state
       editorType: config?.editor?.editor_type ?? null,
       devServerState,
       runningDevServers,
+
+      // Git panel state
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
       hasOpenPR,
       hasUnpushedCommits,
+
+      // Execution state
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
