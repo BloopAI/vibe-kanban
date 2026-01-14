@@ -5,7 +5,7 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{merge::{Merge, MergeStatus}, project::Project, workspace::Workspace};
+use super::{merge::{CiStatus, Merge, MergeStatus}, project::Project, workspace::Workspace};
 
 #[derive(
     Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
@@ -82,6 +82,8 @@ pub struct TaskWithAttemptStatus {
     pub executor: String,
     /// PR status for this task (from the latest workspace PR, if any)
     pub pr_status: Option<MergeStatus>,
+    /// CI/GitHub Actions check status for this task (from the latest workspace PR, if any)
+    pub ci_status: Option<CiStatus>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -244,13 +246,16 @@ ORDER BY t.created_at DESC"#,
         .fetch_all(pool)
         .await?;
 
-        // Fetch PR statuses for all tasks in this project
-        let pr_statuses = Merge::get_latest_pr_status_for_tasks(pool, project_id).await?;
+        // Fetch PR and CI statuses for all tasks in this project
+        let pr_ci_statuses = Merge::get_latest_pr_and_ci_status_for_tasks(pool, project_id).await?;
 
         let tasks = records
             .into_iter()
             .map(|rec| {
-                let pr_status = pr_statuses.get(&rec.id).cloned();
+                let (pr_status, ci_status) = pr_ci_statuses
+                    .get(&rec.id)
+                    .cloned()
+                    .unwrap_or((None, None));
                 TaskWithAttemptStatus {
                     task: Task {
                         id: rec.id,
@@ -273,6 +278,7 @@ ORDER BY t.created_at DESC"#,
                     last_attempt_failed: rec.last_attempt_failed != 0,
                     executor: rec.executor,
                     pr_status,
+                    ci_status,
                 }
             })
             .collect();
