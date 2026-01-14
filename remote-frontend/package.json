@@ -17,6 +17,7 @@
     "posthog-js": "^1.283.0",
     "prettier": "^3.6.1",
     "react": "^18.2.0",
+    "react-compiler-runtime": "^1.0.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.9.5",
     "tailwind-merge": "^2.6.0"
@@ -26,6 +27,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "babel-plugin-react-compiler": "^1.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.9.2",
