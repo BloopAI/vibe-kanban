@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Loader2, Sparkles } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
@@ -22,11 +23,13 @@ import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
 import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { tasksApi } from '@/lib/api';
 
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
 import { WorkspaceWithSession } from '@/types/attempt';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -49,6 +52,8 @@ export function ActionsDropdown({
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
+  const [isCategorizing, setIsCategorizing] = useState(false);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -165,6 +170,22 @@ export function ActionsDropdown({
     StopShareTaskDialog.show({ sharedTask });
   };
 
+  const handleCategorize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task?.id || isCategorizing) return;
+
+    setIsCategorizing(true);
+    try {
+      await tasksApi.categorize(task.id);
+      // Invalidate queries to refresh task data with new labels
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (error) {
+      console.error('Failed to categorize task:', error);
+    } finally {
+      setIsCategorizing(false);
+    }
+  };
+
   const canReassign =
     Boolean(task) &&
     Boolean(sharedTask) &&
@@ -264,6 +285,22 @@ export function ActionsDropdown({
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!task || isCategorizing || !canEditShared}
+                onClick={handleCategorize}
+              >
+                {isCategorizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t('actionsMenu.categorizing', 'Categorizing...')}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {t('actionsMenu.autoCategorize', 'Auto-categorize')}
+                  </>
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId || !canEditShared}

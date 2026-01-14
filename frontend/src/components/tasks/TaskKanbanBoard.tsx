@@ -17,6 +17,7 @@ import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
 import { HiddenColumnsDropdown } from './HiddenColumnsDropdown';
 import { PrioritizeTasksDialog } from '@/components/dialogs/tasks/PrioritizeTasksDialog';
+import { Copy } from 'lucide-react';
 
 export type KanbanColumnItem =
   | {
@@ -42,6 +43,7 @@ interface TaskKanbanBoardProps {
   projectId: string;
   hiddenColumns?: TaskStatus[];
   onToggleHiddenColumn?: (column: TaskStatus) => void;
+  onDeduplicateClick?: () => void;
 }
 
 function TaskKanbanBoard({
@@ -55,6 +57,7 @@ function TaskKanbanBoard({
   projectId,
   hiddenColumns = [],
   onToggleHiddenColumn,
+  onDeduplicateClick,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
   const { t } = useTranslation('tasks');
@@ -97,6 +100,17 @@ function TaskKanbanBoard({
             <Sparkles className="h-4 w-4 mr-1" />
             {t('prioritize.button', 'Prioritize')}
           </Button>
+          {onDeduplicateClick && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDeduplicateClick}
+              title="Find duplicate tasks"
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Deduplicate
+            </Button>
+          )}
           {onToggleHiddenColumn && (
             <HiddenColumnsDropdown
               hiddenColumns={hiddenColumns}

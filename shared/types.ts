@@ -76,6 +76,88 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, priority: TaskPriority | null, due_date: string | null, labels: Array<TaskLabel> | null, };
 
+export type DuplicateMatchType = "exact_title" | "similar_title" | "similar_description" | "same_external_ref";
+
+export type DuplicatePair = { 
+/**
+ * The primary/older task (will be kept in merge)
+ */
+primary_task: Task, 
+/**
+ * The secondary/newer task (will be merged into primary)
+ */
+secondary_task: Task, 
+/**
+ * Similarity score between 0.0 and 1.0
+ */
+similarity_score: number, 
+/**
+ * Types of matches found
+ */
+match_types: Array<DuplicateMatchType>, };
+
+export type FindDuplicatesResponse = { 
+/**
+ * List of duplicate pairs found
+ */
+duplicate_pairs: Array<DuplicatePair>, 
+/**
+ * Total number of tasks analyzed
+ */
+total_tasks_analyzed: number, };
+
+export type MergeTasksRequest = { 
+/**
+ * The task to keep (primary)
+ */
+primary_task_id: string, 
+/**
+ * The task to merge into primary (will be deleted)
+ */
+secondary_task_id: string, 
+/**
+ * Whether to append the secondary task's description to the primary
+ */
+append_description: boolean, 
+/**
+ * Whether to combine labels from both tasks
+ */
+combine_labels: boolean, };
+
+export type MergeTasksResponse = { 
+/**
+ * The merged task
+ */
+merged_task: Task, 
+/**
+ * ID of the task that was deleted
+ */
+deleted_task_id: string, };
+
+export type BulkMergeRequest = { 
+/**
+ * List of task pairs to merge
+ */
+merges: Array<MergeTasksRequest>, };
+
+export type BulkMergeResponse = { 
+/**
+ * Number of successful merges
+ */
+successful_merges: number, 
+/**
+ * Number of failed merges
+ */
+failed_merges: number, 
+/**
+ * List of merged tasks
+ */
+merged_tasks: Array<Task>, 
+/**
+ * Error messages for failed merges
+ */
+errors: Array<string>, };
+
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
 export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, selected_profile: ExecutorProfileId | null, };
@@ -265,6 +347,12 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
+
+export type CategorizeTaskResponse = { labels: Array<TaskLabel>, applied: boolean, };
+
+export type CategoryInfo = { name: string, color: string, };
+
+export type CategoriesResponse = { categories: Array<CategoryInfo>, available: boolean, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
