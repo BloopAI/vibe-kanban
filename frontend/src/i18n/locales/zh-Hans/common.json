@@ -131,6 +131,13 @@
     "loading": "加载中...",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
+    "viewArchive": "查看归档",
+    "backToActive": "返回活跃",
+    "noArchived": "没有已归档的工作区",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "archive": "归档",
+    "more": "更多操作",
     "rename": {
       "title": "重命名工作区",
       "description": "输入此工作区的新名称。",

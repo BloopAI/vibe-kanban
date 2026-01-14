@@ -131,6 +131,13 @@
     "loading": "Cargando...",
     "selectToStart": "Selecciona un espacio de trabajo para comenzar",
     "draft": "Borrador",
+    "viewArchive": "Ver archivo",
+    "backToActive": "Volver a activos",
+    "noArchived": "No hay espacios de trabajo archivados",
+    "pin": "Fijar",
+    "unpin": "Desfijar",
+    "archive": "Archivar",
+    "more": "Más acciones",
     "rename": {
       "title": "Renombrar espacio de trabajo",
       "description": "Ingresa un nuevo nombre para este espacio de trabajo.",

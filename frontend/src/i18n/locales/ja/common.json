@@ -131,6 +131,13 @@
     "loading": "読み込み中...",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
+    "viewArchive": "アーカイブを表示",
+    "backToActive": "アクティブに戻る",
+    "noArchived": "アーカイブされたワークスペースはありません",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "archive": "アーカイブ",
+    "more": "その他の操作",
     "rename": {
       "title": "ワークスペースの名前を変更",
       "description": "このワークスペースの新しい名前を入力してください。",

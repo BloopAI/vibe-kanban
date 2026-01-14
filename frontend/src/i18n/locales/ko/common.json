@@ -131,6 +131,13 @@
     "loading": "로딩 중...",
     "selectToStart": "워크스페이스를 선택하여 시작",
     "draft": "초안",
+    "viewArchive": "보관함 보기",
+    "backToActive": "활성으로 돌아가기",
+    "noArchived": "보관된 워크스페이스 없음",
+    "pin": "고정",
+    "unpin": "고정 해제",
+    "archive": "보관",
+    "more": "더 많은 작업",
     "rename": {
       "title": "워크스페이스 이름 변경",
       "description": "이 워크스페이스의 새 이름을 입력하세요.",
