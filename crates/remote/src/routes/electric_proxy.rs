@@ -11,12 +11,8 @@ use axum::{
 use futures::TryStreamExt;
 use secrecy::ExposeSecret;
 use tracing::error;
-use uuid::Uuid;
 
-use crate::{
-    AppState, auth::RequestContext, db::organizations::OrganizationRepository, validated_where,
-    validated_where::ValidatedWhere,
-};
+use crate::{AppState, auth::RequestContext, validated_where, validated_where::ValidatedWhere};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/shape/shared_tasks", get(proxy_shared_tasks))
@@ -27,50 +23,29 @@ pub fn router() -> Router<AppState> {
 /// Note: "where" is NOT included because it's controlled server-side for security.
 const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "columns"];
 
-/// Returns an empty shape response for users with no organization memberships.
-fn empty_shape_response() -> Response {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static("application/json"),
-    );
-    (StatusCode::OK, headers, "[]").into_response()
-}
-
 /// Proxy Shape requests for the `shared_tasks` table.
 ///
 /// Route: GET /v1/shape/shared_tasks?offset=-1
 ///
 /// The `require_session` middleware has already validated the Bearer token
 /// before this handler is called.
+///
+/// Uses Electric's subquery feature to filter tasks by project membership chain:
+/// user -> organization_member_metadata -> projects -> shared_tasks
 pub async fn proxy_shared_tasks(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ProxyError> {
-    // Get user's organization memberships
-    let org_repo = OrganizationRepository::new(state.pool());
-    let orgs = org_repo
-        .list_user_organizations(ctx.user.id)
-        .await
-        .map_err(|e| ProxyError::Authorization(format!("failed to fetch organizations: {e}")))?;
+    // Build filter using subquery - Electric filters by project membership chain
+    // This returns tasks from projects in organizations the user is a member of
+    let query = validated_where!(
+        "shared_tasks",
+        r#""project_id" IN (SELECT id FROM projects WHERE organization_id IN (SELECT organization_id FROM organization_member_metadata WHERE user_id = $1))"#,
+        ctx.user.id
+    );
+    let query_params = &[ctx.user.id.to_string()];
 
-    if orgs.is_empty() {
-        // User has no org memberships - return empty result
-        return Ok(empty_shape_response());
-    }
-
-    // Build org_id filter using compile-time validated WHERE clause
-    let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
-    let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
-    let query_params = &[format!(
-        "{{{}}}",
-        org_uuids
-            .iter()
-            .map(|u| u.to_string())
-            .collect::<Vec<_>>()
-            .join(",")
-    )];
     tracing::debug!("Proxying Electric Shape request for shared_tasks table{query:?}");
     proxy_table(&state, &query, &params, query_params).await
 }
