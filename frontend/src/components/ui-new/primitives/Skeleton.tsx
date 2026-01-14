@@ -30,11 +30,7 @@ export function Skeleton({
 
   return (
     <div
-      className={cn(
-        'skeleton',
-        roundedClasses[rounded],
-        className
-      )}
+      className={cn('skeleton', roundedClasses[rounded], className)}
       style={{
         width: width,
         height: height,
@@ -75,7 +71,10 @@ export function SwimlaneRowSkeleton() {
       </div>
       {/* Status columns */}
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="px-2 py-2 border-l border-panel/40 min-h-[60px]">
+        <div
+          key={i}
+          className="px-2 py-2 border-l border-panel/40 min-h-[60px]"
+        >
           {i < 3 && <TaskCardSkeleton />}
         </div>
       ))}

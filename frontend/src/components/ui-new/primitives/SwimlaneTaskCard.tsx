@@ -171,21 +171,23 @@ export function SwimlaneTaskCard({
         // Category left border
         categoryIndicator && 'border-l-2',
         // Default state
-        !isSelected && !isDragging && [
-          'bg-secondary/60',
-          'hover:bg-secondary/90 hover:border-panel/40',
-          'hover:shadow-sm hover:shadow-black/[0.03]',
-          // Preserve left border color on hover
-          categoryIndicator && 'hover:border-l-2',
-        ],
+        !isSelected &&
+          !isDragging && [
+            'bg-secondary/60',
+            'hover:bg-secondary/90 hover:border-panel/40',
+            'hover:shadow-sm hover:shadow-black/[0.03]',
+            // Preserve left border color on hover
+            categoryIndicator && 'hover:border-l-2',
+          ],
         // Selected state
-        isSelected && !isDragging && [
-          'bg-panel/80 border-brand/40',
-          'ring-2 ring-brand/20',
-          'shadow-sm shadow-brand/5',
-          // Preserve left border color when selected
-          categoryIndicator && 'border-l-2',
-        ],
+        isSelected &&
+          !isDragging && [
+            'bg-panel/80 border-brand/40',
+            'ring-2 ring-brand/20',
+            'shadow-sm shadow-brand/5',
+            // Preserve left border color when selected
+            categoryIndicator && 'border-l-2',
+          ],
         // Dragging state
         isDragging && [
           'bg-panel border-brand/30',
@@ -215,13 +217,15 @@ export function SwimlaneTaskCard({
               </TooltipContent>
             </Tooltip>
           )}
-          <span className={cn(
-            'flex-1 text-xs leading-snug font-medium',
-            'text-normal',
-            'transition-colors duration-150',
-            isSelected && 'text-high',
-            'group-hover/card:text-high'
-          )}>
+          <span
+            className={cn(
+              'flex-1 text-xs leading-snug font-medium',
+              'text-normal',
+              'transition-colors duration-150',
+              isSelected && 'text-high',
+              'group-hover/card:text-high'
+            )}
+          >
             {task.title}
           </span>
           <div className="flex items-center gap-1 shrink-0 mt-px">
@@ -310,12 +314,14 @@ export function SwimlaneTaskCard({
           </div>
         </div>
         {task.description && (
-          <p className={cn(
-            'text-[10px] leading-relaxed',
-            'text-low/50 line-clamp-2',
-            'group-hover/card:text-low/70',
-            'transition-colors duration-150'
-          )}>
+          <p
+            className={cn(
+              'text-[10px] leading-relaxed',
+              'text-low/50 line-clamp-2',
+              'group-hover/card:text-low/70',
+              'transition-colors duration-150'
+            )}
+          >
             {task.description}
           </p>
         )}

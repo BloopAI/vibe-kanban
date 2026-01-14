@@ -142,7 +142,9 @@ export function LeftSidebar({
               {appName.charAt(0).toUpperCase()}
             </span>
           </div>
-          <span className="font-semibold text-high truncate tracking-tight">{appName}</span>
+          <span className="font-semibold text-high truncate tracking-tight">
+            {appName}
+          </span>
         </div>
         {onToggleSidebar && (
           <button
@@ -164,9 +166,7 @@ export function LeftSidebar({
 
       {/* Quick Actions Section */}
       <div className="flex flex-col px-3 py-4 gap-2.5 border-b border-panel/20">
-        <div className="text-label mb-0.5">
-          Quick Actions
-        </div>
+        <div className="text-label mb-0.5">Quick Actions</div>
         <ActionButton icon={PlusIcon} label="New Task" onClick={onCreateTask} />
         <ActionButton
           icon={PlusIcon}
@@ -181,7 +181,9 @@ export function LeftSidebar({
           <LightningIcon className="size-3.5" weight="fill" />
           <span>Active Sessions</span>
           {activeWorkspaces.length > 0 && (
-            <span className="badge badge-success ml-auto">{activeWorkspaces.length}</span>
+            <span className="badge badge-success ml-auto">
+              {activeWorkspaces.length}
+            </span>
           )}
         </div>
         {activeWorkspaces.length === 0 ? (
@@ -212,7 +214,9 @@ export function LeftSidebar({
           <EyeIcon className="size-3.5" weight="fill" />
           <span>Awaiting Review</span>
           {reviewWorkspaces.length > 0 && (
-            <span className="badge badge-brand ml-auto">{reviewWorkspaces.length}</span>
+            <span className="badge badge-brand ml-auto">
+              {reviewWorkspaces.length}
+            </span>
           )}
         </div>
         {reviewWorkspaces.length === 0 ? (

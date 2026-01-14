@@ -68,18 +68,22 @@ function StatusHeader({ status }: { status: TaskStatus }) {
       <span className="text-[11px] text-normal/90 font-medium uppercase tracking-wide">
         {statusLabels[status]}
       </span>
-      <span className={cn(
-        'text-[10px] tabular-nums px-1.5 py-0.5 rounded-sm',
-        'bg-panel/20 text-low/70',
-        'transition-colors duration-150'
-      )}>
+      <span
+        className={cn(
+          'text-[10px] tabular-nums px-1.5 py-0.5 rounded-sm',
+          'bg-panel/20 text-low/70',
+          'transition-colors duration-150'
+        )}
+      >
         {isLoading ? '—' : count}
       </span>
-      <div className={cn(
-        'flex items-center gap-1 ml-auto',
-        'opacity-0 group-hover/col:opacity-100',
-        'transition-opacity duration-150'
-      )}>
+      <div
+        className={cn(
+          'flex items-center gap-1 ml-auto',
+          'opacity-0 group-hover/col:opacity-100',
+          'transition-opacity duration-150'
+        )}
+      >
         <button
           type="button"
           className={cn(
@@ -257,12 +261,14 @@ function SwimlaneKanbanContent({
     return (
       <div className="h-full flex-1 overflow-hidden bg-primary">
         {/* Skeleton header */}
-        <div className={cn(
-          'sticky top-0 z-20',
-          'flex items-center gap-3 px-3 py-2',
-          'bg-primary/95 backdrop-blur-sm',
-          'border-b border-panel/30'
-        )}>
+        <div
+          className={cn(
+            'sticky top-0 z-20',
+            'flex items-center gap-3 px-3 py-2',
+            'bg-primary/95 backdrop-blur-sm',
+            'border-b border-panel/30'
+          )}
+        >
           <div className="skeleton h-7 w-48 rounded-md" />
           <div className="flex items-center gap-2 ml-auto">
             <div className="skeleton h-6 w-16 rounded-sm" />
@@ -270,15 +276,20 @@ function SwimlaneKanbanContent({
           </div>
         </div>
         {/* Skeleton status header */}
-        <div className={cn(
-          'sticky top-[40px] z-10',
-          'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
-          'bg-primary/98 backdrop-blur-sm',
-          'border-b border-panel/40'
-        )}>
+        <div
+          className={cn(
+            'sticky top-[40px] z-10',
+            'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
+            'bg-primary/98 backdrop-blur-sm',
+            'border-b border-panel/40'
+          )}
+        >
           <div className="py-2 px-3" />
           {STATUS_ORDER.map((status) => (
-            <div key={status} className="py-2 px-3 border-l border-panel/30 flex items-center gap-2">
+            <div
+              key={status}
+              className="py-2 px-3 border-l border-panel/30 flex items-center gap-2"
+            >
               <div className="skeleton size-2 rounded-full" />
               <div className="skeleton h-3 w-16 rounded-sm" />
             </div>
@@ -301,13 +312,15 @@ function SwimlaneKanbanContent({
   return (
     <div className="h-full flex-1 overflow-y-auto bg-primary">
       {/* Header with search and controls */}
-      <div className={cn(
-        'sticky top-0 z-20',
-        'flex items-center gap-3 px-4 py-2.5',
-        'bg-primary/95 backdrop-blur-sm',
-        'border-b border-panel/20',
-        'shadow-sm shadow-black/[0.02]'
-      )}>
+      <div
+        className={cn(
+          'sticky top-0 z-20',
+          'flex items-center gap-3 px-4 py-2.5',
+          'bg-primary/95 backdrop-blur-sm',
+          'border-b border-panel/20',
+          'shadow-sm shadow-black/[0.02]'
+        )}
+      >
         {/* Sidebar toggle button - only show when sidebar is hidden */}
         {!isLeftSidebarVisible && onToggleLeftSidebar && (
           <button
@@ -326,16 +339,18 @@ function SwimlaneKanbanContent({
           </button>
         )}
         {/* Search input - Linear style */}
-        <div className={cn(
-          'input-field flex-1 max-w-sm',
-          'flex items-center gap-2',
-          'bg-secondary/50 rounded-md',
-          'border border-panel/20',
-          'px-2.5 py-1.5',
-          'focus-within:border-brand/30 focus-within:bg-secondary/70',
-          'focus-within:ring-2 focus-within:ring-brand/10',
-          'transition-all duration-150'
-        )}>
+        <div
+          className={cn(
+            'input-field flex-1 max-w-sm',
+            'flex items-center gap-2',
+            'bg-secondary/50 rounded-md',
+            'border border-panel/20',
+            'px-2.5 py-1.5',
+            'focus-within:border-brand/30 focus-within:bg-secondary/70',
+            'focus-within:ring-2 focus-within:ring-brand/10',
+            'transition-all duration-150'
+          )}
+        >
           <MagnifyingGlassIcon className="size-4 text-low/50 shrink-0" />
           <input
             type="text"
@@ -425,13 +440,15 @@ function SwimlaneKanbanContent({
       </div>
 
       {/* Single sticky status header */}
-      <div className={cn(
-        'sticky top-[44px] z-10',
-        'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
-        'bg-primary/98 backdrop-blur-sm',
-        'border-b border-panel/30',
-        'shadow-sm shadow-black/[0.02]'
-      )}>
+      <div
+        className={cn(
+          'sticky top-[44px] z-10',
+          'grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
+          'bg-primary/98 backdrop-blur-sm',
+          'border-b border-panel/30',
+          'shadow-sm shadow-black/[0.02]'
+        )}
+      >
         <div className="py-2 px-3" />
         {STATUS_ORDER.map((status) => (
           <StatusHeader key={status} status={status} />
@@ -452,10 +469,14 @@ function SwimlaneKanbanContent({
         {filteredGroupedProjects.length === 0 && !isCreatingGroup ? (
           <EmptyState
             variant={searchQuery ? 'no-search-results' : 'no-boards'}
-            action={!searchQuery ? {
-              label: 'Create your first board',
-              onClick: onCreateGroup,
-            } : undefined}
+            action={
+              !searchQuery
+                ? {
+                    label: 'Create your first board',
+                    onClick: onCreateGroup,
+                  }
+                : undefined
+            }
           />
         ) : (
           filteredGroupedProjects.map(({ group, projects }) => {
@@ -463,16 +484,21 @@ function SwimlaneKanbanContent({
             const isGroupExpanded = expandedGroups.has(groupKey);
 
             return (
-              <div key={groupKey} className="border-b border-panel/15 last:border-b-0">
+              <div
+                key={groupKey}
+                className="border-b border-panel/15 last:border-b-0"
+              >
                 {/* Group header */}
-                <div className={cn(
-                  'group/header flex items-center justify-between',
-                  'px-3 py-2',
-                  'bg-secondary/20',
-                  'border-b border-panel/15',
-                  'hover:bg-secondary/30',
-                  'transition-colors duration-150'
-                )}>
+                <div
+                  className={cn(
+                    'group/header flex items-center justify-between',
+                    'px-3 py-2',
+                    'bg-secondary/20',
+                    'border-b border-panel/15',
+                    'hover:bg-secondary/30',
+                    'transition-colors duration-150'
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => onToggleGroup(group?.id ?? null)}
@@ -494,17 +520,21 @@ function SwimlaneKanbanContent({
                       weight="duotone"
                       className="size-3.5 text-low/60"
                     />
-                    <span className={cn(
-                      'text-[11px] font-semibold uppercase tracking-wide',
-                      'text-low/80 group-hover:text-normal',
-                      'transition-colors duration-150'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-[11px] font-semibold uppercase tracking-wide',
+                        'text-low/80 group-hover:text-normal',
+                        'transition-colors duration-150'
+                      )}
+                    >
                       {group?.name ?? 'Ungrouped'}
                     </span>
-                    <span className={cn(
-                      'text-[10px] tabular-nums px-1.5 py-0.5 rounded-sm',
-                      'bg-panel/20 text-low/60'
-                    )}>
+                    <span
+                      className={cn(
+                        'text-[10px] tabular-nums px-1.5 py-0.5 rounded-sm',
+                        'bg-panel/20 text-low/60'
+                      )}
+                    >
                       {projects.length}
                     </span>
                   </button>
@@ -537,10 +567,7 @@ function SwimlaneKanbanContent({
                     >
                       {/* Project rows */}
                       {projects.length === 0 ? (
-                        <EmptyState
-                          variant="no-group-items"
-                          size="sm"
-                        />
+                        <EmptyState variant="no-group-items" size="sm" />
                       ) : (
                         projects.map((project) => (
                           <ProjectSwimlane

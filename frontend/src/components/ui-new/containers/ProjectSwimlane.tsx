@@ -71,17 +71,17 @@ function StatusCell({ status, children }: StatusCellProps) {
     >
       {/* Drop zone visual indicator */}
       {isOver && (
-        <div className={cn(
-          'absolute inset-1.5 rounded-md',
-          'border-2 border-dashed border-brand/40',
-          'bg-brand/5',
-          'pointer-events-none',
-          'animate-scale-in'
-        )} />
+        <div
+          className={cn(
+            'absolute inset-1.5 rounded-md',
+            'border-2 border-dashed border-brand/40',
+            'bg-brand/5',
+            'pointer-events-none',
+            'animate-scale-in'
+          )}
+        />
       )}
-      <div className="relative flex flex-col gap-1.5">
-        {children}
-      </div>
+      <div className="relative flex flex-col gap-1.5">{children}</div>
     </div>
   );
 }
@@ -225,31 +225,42 @@ export function ProjectSwimlane({
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className={cn(
-        'group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
-        'border-b border-panel/15',
-        'transition-all duration-150 ease-out',
-        'hover:bg-panel/8'
-      )}>
+      <div
+        className={cn(
+          'group/row grid grid-cols-[180px_repeat(5,minmax(120px,1fr))]',
+          'border-b border-panel/15',
+          'transition-all duration-150 ease-out',
+          'hover:bg-panel/8'
+        )}
+      >
         {/* Project name cell */}
         <div className="px-3 py-2 flex items-center">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <KanbanIcon weight="fill" className="size-icon-sm text-brand shrink-0" />
-            <span className="text-xs text-normal font-medium truncate">{project.name}</span>
-            <span className={cn(
-              'text-[10px] tabular-nums shrink-0',
-              'px-1.5 py-0.5 rounded-sm',
-              'bg-panel/20 text-low/60'
-            )}>
+            <KanbanIcon
+              weight="fill"
+              className="size-icon-sm text-brand shrink-0"
+            />
+            <span className="text-xs text-normal font-medium truncate">
+              {project.name}
+            </span>
+            <span
+              className={cn(
+                'text-[10px] tabular-nums shrink-0',
+                'px-1.5 py-0.5 rounded-sm',
+                'bg-panel/20 text-low/60'
+              )}
+            >
               {isLoading ? '—' : filteredTotalCount}
             </span>
 
             {/* Actions - visible on row hover */}
-            <div className={cn(
-              'flex items-center gap-1 ml-auto shrink-0',
-              'opacity-0 group-hover/row:opacity-100',
-              'transition-opacity duration-150'
-            )}>
+            <div
+              className={cn(
+                'flex items-center gap-1 ml-auto shrink-0',
+                'opacity-0 group-hover/row:opacity-100',
+                'transition-opacity duration-150'
+              )}
+            >
               <button
                 type="button"
                 onClick={() => onCreateTask(project.id)}

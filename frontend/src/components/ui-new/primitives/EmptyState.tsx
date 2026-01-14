@@ -38,11 +38,14 @@ interface EmptyStateProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const variantConfig: Record<EmptyStateVariant, {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}> = {
+const variantConfig: Record<
+  EmptyStateVariant,
+  {
+    icon: React.ElementType;
+    title: string;
+    description: string;
+  }
+> = {
   'no-boards': {
     icon: KanbanIcon,
     title: 'No boards yet',
@@ -133,17 +136,16 @@ export function EmptyState({
         className
       )}
     >
-      <div className={cn(
-        'flex items-center justify-center rounded-lg mb-3',
-        'bg-panel/20',
-        size === 'sm' && 'p-2',
-        size === 'md' && 'p-3',
-        size === 'lg' && 'p-4',
-      )}>
-        <Icon
-          weight="duotone"
-          className={cn(classes.icon, 'text-low/40')}
-        />
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-lg mb-3',
+          'bg-panel/20',
+          size === 'sm' && 'p-2',
+          size === 'md' && 'p-3',
+          size === 'lg' && 'p-4'
+        )}
+      >
+        <Icon weight="duotone" className={cn(classes.icon, 'text-low/40')} />
       </div>
       <h3 className={cn(classes.title, 'font-medium text-normal mb-1')}>
         {displayTitle}
@@ -184,12 +186,7 @@ export function InlineEmptyState({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        'text-[10px] text-low/50 italic py-2',
-        className
-      )}
-    >
+    <div className={cn('text-[10px] text-low/50 italic py-2', className)}>
       {message}
     </div>
   );
