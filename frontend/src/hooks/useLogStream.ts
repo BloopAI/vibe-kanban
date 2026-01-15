@@ -35,6 +35,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
       const capturedProcessId = processId;
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
+      console.log('[useLogStream] Opening WebSocket for process:', processId);
       const ws = new WebSocket(
         `${protocol}//${host}/api/execution-processes/${processId}/raw-logs/ws`
       );
@@ -42,6 +43,10 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
       isIntentionallyClosed.current = false;
 
       ws.onopen = () => {
+        console.log(
+          '[useLogStream] WebSocket opened successfully for:',
+          capturedProcessId
+        );
         // Ignore if processId has changed since WebSocket was opened
         if (currentProcessIdRef.current !== capturedProcessId) {
           ws.close();
@@ -93,6 +98,10 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
       };
 
       ws.onerror = () => {
+        console.error(
+          '[useLogStream] WebSocket error for process:',
+          capturedProcessId
+        );
         // Ignore errors from stale WebSocket connections
         if (currentProcessIdRef.current !== capturedProcessId) {
           return;
@@ -101,6 +110,14 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
       };
 
       ws.onclose = (event) => {
+        console.log(
+          '[useLogStream] WebSocket closed for process:',
+          capturedProcessId,
+          'code:',
+          event.code,
+          'reason:',
+          event.reason
+        );
         // Don't retry for stale WebSocket connections
         if (currentProcessIdRef.current !== capturedProcessId) {
           return;

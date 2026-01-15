@@ -578,7 +578,10 @@ pub trait ContainerService {
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
+        tracing::debug!("stream_raw_logs: Looking up msg_store for id={}", id);
+
         if let Some(store) = self.get_msg_store_by_id(id).await {
+            tracing::debug!("stream_raw_logs: Found in-memory store for id={}", id);
             // First try in-memory store
             return Some(
                 store
@@ -592,13 +595,27 @@ pub trait ContainerService {
                     .boxed(),
             );
         } else {
+            tracing::debug!(
+                "stream_raw_logs: No in-memory store for id={}, trying DB fallback",
+                id
+            );
             // Fallback: load from DB and create direct stream
             let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => {
+                        tracing::debug!(
+                            "stream_raw_logs: Found {} DB records for id={}",
+                            records.len(),
+                            id
+                        );
+                        records
+                    }
+                    Ok(_) => {
+                        tracing::warn!("stream_raw_logs: No logs in DB for id={}", id);
+                        return None;
+                    }
                     Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
+                        tracing::error!("stream_raw_logs: DB error for id={}: {}", id, e);
                         return None;
                     }
                 };

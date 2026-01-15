@@ -605,6 +605,7 @@ impl LocalContainerService {
     }
 
     async fn track_child_msgs_in_store(&self, id: Uuid, child: &mut AsyncGroupChild) {
+        tracing::debug!("track_child_msgs_in_store: Creating store for id={}", id);
         let store = Arc::new(MsgStore::new());
 
         let out = child.inner().stdout.take().expect("no stdout");
@@ -626,6 +627,11 @@ impl LocalContainerService {
 
         let mut map = self.msg_stores().write().await;
         map.insert(id, store);
+        tracing::info!(
+            "track_child_msgs_in_store: Inserted store for id={}, map size={}",
+            id,
+            map.len()
+        );
     }
 
     /// Create a live diff log stream for ongoing attempts for WebSocket
