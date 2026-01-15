@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { PlusIcon, ArrowLeftIcon, ArchiveIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -38,8 +38,10 @@ interface WorkspacesSidebarProps {
   showArchive?: boolean;
   /** Handler for toggling archive view */
   onShowArchiveChange?: (show: boolean) => void;
-  /** Handler for reordering a workspace */
-  onReorderWorkspace?: (workspaceId: string, newSortOrder: number) => void;
+  /** Handler for drag end on pinned workspaces */
+  onPinnedDragEnd?: (event: DragEndEvent) => void;
+  /** Handler for drag end on unpinned workspaces */
+  onUnpinnedDragEnd?: (event: DragEndEvent) => void;
 }
 
 // Props for the sortable workspace item
@@ -94,35 +96,6 @@ function SortableWorkspaceItem({
   );
 }
 
-// Calculate new sort order using fractional indexing
-function calculateNewSortOrder(
-  items: Workspace[],
-  activeId: string,
-  overId: string
-): number {
-  const oldIndex = items.findIndex((item) => item.id === activeId);
-  const newIndex = items.findIndex((item) => item.id === overId);
-
-  if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-    return items[oldIndex]?.sortOrder ?? 0;
-  }
-
-  const movingUp = newIndex < oldIndex;
-
-  if (newIndex === 0) {
-    // Moving to top: use value less than first item
-    return items[0].sortOrder - 1;
-  } else if (newIndex === items.length - 1) {
-    // Moving to bottom: use value greater than last item
-    return items[items.length - 1].sortOrder + 1;
-  } else {
-    // Moving to middle: use midpoint between neighbors
-    const prevIndex = movingUp ? newIndex - 1 : newIndex;
-    const nextIndex = movingUp ? newIndex : newIndex + 1;
-    return (items[prevIndex].sortOrder + items[nextIndex].sortOrder) / 2;
-  }
-}
-
 export function WorkspacesSidebar({
   workspaces,
   archivedWorkspaces = [],
@@ -136,73 +109,30 @@ export function WorkspacesSidebar({
   onSelectCreate,
   showArchive = false,
   onShowArchiveChange,
-  onReorderWorkspace,
+  onPinnedDragEnd,
+  onUnpinnedDragEnd,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
   const DISPLAY_LIMIT = 10;
 
-  // Track optimistic updates locally for smooth drag experience
-  const [optimisticOrder, setOptimisticOrder] = useState<{
-    id: string;
-    sortOrder: number;
-  } | null>(null);
-
-  // Apply optimistic update to workspaces
-  const workspacesWithOptimistic = useMemo(() => {
-    if (!optimisticOrder) return workspaces;
-    return workspaces
-      .map((ws) =>
-        ws.id === optimisticOrder.id
-          ? { ...ws, sortOrder: optimisticOrder.sortOrder }
-          : ws
-      )
-      .sort((a, b) => {
-        // First sort by pinned
-        if (a.isPinned !== b.isPinned) {
-          return a.isPinned ? -1 : 1;
-        }
-        // Then by sortOrder
-        return a.sortOrder - b.sortOrder;
-      });
-  }, [workspaces, optimisticOrder]);
-
-  // Apply optimistic update to archived workspaces
-  const archivedWorkspacesWithOptimistic = useMemo(() => {
-    if (!optimisticOrder) return archivedWorkspaces;
-    return archivedWorkspaces
-      .map((ws) =>
-        ws.id === optimisticOrder.id
-          ? { ...ws, sortOrder: optimisticOrder.sortOrder }
-          : ws
-      )
-      .sort((a, b) => {
-        // First sort by pinned
-        if (a.isPinned !== b.isPinned) {
-          return a.isPinned ? -1 : 1;
-        }
-        // Then by sortOrder
-        return a.sortOrder - b.sortOrder;
-      });
-  }, [archivedWorkspaces, optimisticOrder]);
-
   // Split workspaces into pinned and unpinned for drag-drop restrictions
   const pinnedWorkspaces = useMemo(
-    () => workspacesWithOptimistic.filter((ws) => ws.isPinned),
-    [workspacesWithOptimistic]
+    () => workspaces.filter((ws) => ws.isPinned),
+    [workspaces]
   );
   const unpinnedWorkspaces = useMemo(
-    () => workspacesWithOptimistic.filter((ws) => !ws.isPinned),
-    [workspacesWithOptimistic]
+    () => workspaces.filter((ws) => !ws.isPinned),
+    [workspaces]
   );
   const pinnedArchivedWorkspaces = useMemo(
-    () => archivedWorkspacesWithOptimistic.filter((ws) => ws.isPinned),
-    [archivedWorkspacesWithOptimistic]
+    () => archivedWorkspaces.filter((ws) => ws.isPinned),
+    [archivedWorkspaces]
   );
   const unpinnedArchivedWorkspaces = useMemo(
-    () => archivedWorkspacesWithOptimistic.filter((ws) => !ws.isPinned),
-    [archivedWorkspacesWithOptimistic]
+    () => archivedWorkspaces.filter((ws) => !ws.isPinned),
+    [archivedWorkspaces]
   );
 
   const filteredPinnedWorkspaces = pinnedWorkspaces.filter((workspace) =>
@@ -228,70 +158,8 @@ export function WorkspacesSidebar({
     })
   );
 
-  // Handle drag end for pinned workspaces
-  const handlePinnedDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id || !onReorderWorkspace) return;
-
-      const items = showArchive ? pinnedArchivedWorkspaces : pinnedWorkspaces;
-      const newSortOrder = calculateNewSortOrder(
-        items,
-        active.id as string,
-        over.id as string
-      );
-
-      // Apply optimistic update
-      setOptimisticOrder({ id: active.id as string, sortOrder: newSortOrder });
-
-      // Persist to server
-      onReorderWorkspace(active.id as string, newSortOrder);
-
-      // Clear optimistic update after a delay (let server sync take over)
-      setTimeout(() => setOptimisticOrder(null), 500);
-    },
-    [
-      showArchive,
-      pinnedWorkspaces,
-      pinnedArchivedWorkspaces,
-      onReorderWorkspace,
-    ]
-  );
-
-  // Handle drag end for unpinned workspaces
-  const handleUnpinnedDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id || !onReorderWorkspace) return;
-
-      const items = showArchive
-        ? unpinnedArchivedWorkspaces
-        : unpinnedWorkspaces;
-      const newSortOrder = calculateNewSortOrder(
-        items,
-        active.id as string,
-        over.id as string
-      );
-
-      // Apply optimistic update
-      setOptimisticOrder({ id: active.id as string, sortOrder: newSortOrder });
-
-      // Persist to server
-      onReorderWorkspace(active.id as string, newSortOrder);
-
-      // Clear optimistic update after a delay (let server sync take over)
-      setTimeout(() => setOptimisticOrder(null), 500);
-    },
-    [
-      showArchive,
-      unpinnedWorkspaces,
-      unpinnedArchivedWorkspaces,
-      onReorderWorkspace,
-    ]
-  );
-
-  // Disable drag-drop during search
-  const isDragDisabled = isSearching || !onReorderWorkspace;
+  // Disable drag-drop during search or when handlers not provided
+  const isDragDisabled = isSearching || !onPinnedDragEnd || !onUnpinnedDragEnd;
 
   return (
     <div className="w-full h-full bg-secondary flex flex-col">
@@ -332,7 +200,7 @@ export function WorkspacesSidebar({
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
-                    onDragEnd={handlePinnedDragEnd}
+                    onDragEnd={onPinnedDragEnd}
                   >
                     <SortableContext
                       items={filteredPinnedArchivedWorkspaces.map((w) => w.id)}
@@ -357,7 +225,7 @@ export function WorkspacesSidebar({
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
-                    onDragEnd={handleUnpinnedDragEnd}
+                    onDragEnd={onUnpinnedDragEnd}
                   >
                     <SortableContext
                       items={filteredUnpinnedArchivedWorkspaces.map(
@@ -401,7 +269,7 @@ export function WorkspacesSidebar({
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={handlePinnedDragEnd}
+                onDragEnd={onPinnedDragEnd}
               >
                 <SortableContext
                   items={filteredPinnedWorkspaces.map((w) => w.id)}
@@ -426,7 +294,7 @@ export function WorkspacesSidebar({
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={handleUnpinnedDragEnd}
+                onDragEnd={onUnpinnedDragEnd}
               >
                 <SortableContext
                   items={filteredUnpinnedWorkspaces.map((w) => w.id)}
