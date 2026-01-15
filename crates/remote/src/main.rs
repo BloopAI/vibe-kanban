@@ -2,6 +2,11 @@ use remote::{Server, config::RemoteServerConfig, init_tracing, sentry_init_once}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Install the crypto provider for rustls (required for reqwest TLS)
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install crypto provider");
+
     sentry_init_once();
     init_tracing();
 
