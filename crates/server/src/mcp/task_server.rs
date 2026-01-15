@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 use crate::routes::{
     containers::ContainerQuery,
-    task_attempts::{CreateTaskAttemptBody, WorkspaceRepoInput},
+    task_attempts::{CreateTaskAttemptBody, TranscriptResponse, WorkspaceRepoInput},
 };
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -305,6 +305,52 @@ pub struct GetTaskRequest {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct GetTaskResponse {
     pub task: TaskDetails,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkspaceTranscriptRequest {
+    #[schemars(
+        description = "The workspace/attempt ID (UUID) - found in URL like /attempts/{workspace_id}"
+    )]
+    pub workspace_id: Uuid,
+    #[schemars(description = "Optional session ID. If not provided, uses the latest session.")]
+    pub session_id: Option<Uuid>,
+    #[schemars(description = "Maximum entries to return (default: 100)")]
+    pub limit: Option<i32>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetWorkspaceTranscriptResponse {
+    #[schemars(description = "The workspace ID")]
+    pub workspace_id: String,
+    #[schemars(description = "The task ID this workspace belongs to")]
+    pub task_id: String,
+    #[schemars(description = "The title of the task")]
+    pub task_title: String,
+    #[schemars(description = "The session ID the transcript is from")]
+    pub session_id: Option<String>,
+    #[schemars(description = "Conversation entries from the transcript")]
+    pub entries: Vec<McpTranscriptEntry>,
+    #[schemars(description = "Total number of entries (before limit applied)")]
+    pub total_entries: usize,
+    #[schemars(description = "The initial prompt for this session")]
+    pub prompt: Option<String>,
+    #[schemars(description = "AI-generated summary of the session")]
+    pub summary: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpTranscriptEntry {
+    #[schemars(description = "Timestamp of the entry")]
+    pub timestamp: Option<String>,
+    #[schemars(
+        description = "Type of entry: user_message, assistant_message, tool_use, system_message, error_message, thinking, loading, next_action"
+    )]
+    pub entry_type: String,
+    #[schemars(description = "Content of the entry")]
+    pub content: String,
+    #[schemars(description = "Tool name if entry_type is tool_use")]
+    pub tool_name: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -999,12 +1045,65 @@ impl TaskServer {
 
         TaskServer::success(&response)
     }
+
+    #[tool(
+        description = "Get the conversation transcript from a workspace session. Use this to view what happened in another workspace/attempt - the conversation history, actions taken, etc. The workspace_id can be found in URLs like /projects/.../tasks/.../attempts/{workspace_id}"
+    )]
+    async fn get_workspace_transcript(
+        &self,
+        Parameters(GetWorkspaceTranscriptRequest {
+            workspace_id,
+            session_id,
+            limit,
+        }): Parameters<GetWorkspaceTranscriptRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let mut url = self.url(&format!("/api/task-attempts/{}/transcript", workspace_id));
+
+        // Build query params
+        let mut query_parts: Vec<String> = vec![];
+        if let Some(sid) = session_id {
+            query_parts.push(format!("session_id={}", sid));
+        }
+        if let Some(lim) = limit {
+            query_parts.push(format!("limit={}", lim));
+        }
+        if !query_parts.is_empty() {
+            url = format!("{}?{}", url, query_parts.join("&"));
+        }
+
+        let transcript: TranscriptResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        let response = GetWorkspaceTranscriptResponse {
+            workspace_id: transcript.workspace_id.to_string(),
+            task_id: transcript.task_id.to_string(),
+            task_title: transcript.task_title,
+            session_id: transcript.session_id.map(|id| id.to_string()),
+            entries: transcript
+                .entries
+                .into_iter()
+                .map(|e| McpTranscriptEntry {
+                    timestamp: e.timestamp,
+                    entry_type: e.entry_type,
+                    content: e.content,
+                    tool_name: e.tool_name,
+                })
+                .collect(),
+            total_entries: transcript.total_entries,
+            prompt: transcript.prompt,
+            summary: transcript.summary,
+        };
+
+        TaskServer::success(&response)
+    }
 }
 
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script', 'get_workspace_transcript'. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids. Use 'get_workspace_transcript' to view conversation history from another workspace session.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
