@@ -108,15 +108,16 @@ async fn proxy_notifications(
 
     let validated = crate::validated_where!(
         "notifications",
-        r#""organization_id" = $1"#,
-        query.organization_id
+        r#""organization_id" = $1 AND "user_id" = $2"#,
+        query.organization_id,
+        ctx.user.id
     );
 
     proxy_table(
         &state,
         &validated,
         &query.params,
-        &[query.organization_id.to_string()],
+        &[query.organization_id.to_string(), ctx.user.id.to_string()],
     )
     .await
 }
