@@ -60,43 +60,39 @@ function computeExecutionStatus(params: {
 
 interface SessionChatBoxContainerProps {
   /** The current session */
-  session?: Session;
-  /** Task ID for execution tracking */
-  taskId?: string;
+  session: Session | undefined;
   /** Number of files changed in current session */
-  filesChanged?: number;
+  filesChanged: number;
   /** Number of lines added */
-  linesAdded?: number;
+  linesAdded: number;
   /** Number of lines removed */
-  linesRemoved?: number;
+  linesRemoved: number;
   /** Available sessions for this workspace */
-  sessions?: Session[];
+  sessions: Session[];
   /** Called when a session is selected */
-  onSelectSession?: (sessionId: string) => void;
+  onSelectSession: ((sessionId: string) => void) | undefined;
   /** Project ID for file search in typeahead */
-  projectId?: string;
+  projectId: string | undefined;
   /** Whether user is creating a new session */
-  isNewSessionMode?: boolean;
+  isNewSessionMode: boolean;
   /** Callback to start new session mode */
-  onStartNewSession?: () => void;
+  onStartNewSession: (() => void) | undefined;
   /** Workspace ID for creating new sessions */
-  workspaceId?: string;
+  workspaceId: string | undefined;
 }
 
 export function SessionChatBoxContainer({
-  session,
-  taskId,
-  filesChanged,
-  linesAdded,
-  linesRemoved,
+  session = undefined,
+  filesChanged = 0,
+  linesAdded = 0,
+  linesRemoved = 0,
   sessions = [],
-  onSelectSession,
-  projectId,
+  onSelectSession = undefined,
+  projectId = undefined,
   isNewSessionMode = false,
-  onStartNewSession,
-  workspaceId: propWorkspaceId,
+  onStartNewSession = undefined,
+  workspaceId = undefined,
 }: SessionChatBoxContainerProps) {
-  const workspaceId = propWorkspaceId ?? session?.workspace_id;
   const sessionId = session?.id;
   const queryClient = useQueryClient();
 
@@ -151,7 +147,7 @@ export function SessionChatBoxContainer({
 
   // Execution state
   const { isAttemptRunning, stopExecution, isStopping, processes } =
-    useAttemptExecution(workspaceId, taskId);
+    useAttemptExecution(workspaceId);
 
   // Approval feedback context
   const feedbackContext = useApprovalFeedbackOptional();
