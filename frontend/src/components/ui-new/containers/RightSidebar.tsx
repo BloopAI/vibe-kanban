@@ -3,6 +3,7 @@ import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContai
 import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
+import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
@@ -10,6 +11,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
   type RightMainPanelMode,
   useExpandedAll,
+  useUiPreferencesStore,
 } from '@/stores/useUiPreferencesStore';
 
 export interface RightSidebarProps {
@@ -28,75 +30,81 @@ export function RightSidebar({
   const { selectFile } = useChangesView();
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
+  const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
 
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
   }
 
-  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-[7] min-h-0 overflow-hidden">
-          <FileTreeContainer
-            key={selectedWorkspace?.id}
-            workspaceId={selectedWorkspace?.id}
-            diffs={diffs}
-            onSelectFile={(path) => {
-              selectFile(path);
-              setExpanded(`diff:${path}`, true);
-            }}
-          />
-        </div>
-        <div className="flex-[3] min-h-0 overflow-hidden">
-          <GitPanelContainer
-            selectedWorkspace={selectedWorkspace}
-            repos={repos}
-            diffs={diffs}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Determine if we have upper content based on mode
+  const hasUpperContent =
+    rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES ||
+    rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS ||
+    rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW;
 
-  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-[7] min-h-0 overflow-hidden">
-          <ProcessListContainer />
-        </div>
-        <div className="flex-[3] min-h-0 overflow-hidden">
-          <GitPanelContainer
-            selectedWorkspace={selectedWorkspace}
-            repos={repos}
-            diffs={diffs}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Render upper content based on mode
+  const renderUpperContent = () => {
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
+      return (
+        <FileTreeContainer
+          key={selectedWorkspace?.id}
+          workspaceId={selectedWorkspace?.id}
+          diffs={diffs}
+          onSelectFile={(path) => {
+            selectFile(path);
+            setExpanded(`diff:${path}`, true);
+          }}
+        />
+      );
+    }
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
+      return <ProcessListContainer />;
+    }
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) {
+      return <PreviewControlsContainer attemptId={selectedWorkspace?.id} />;
+    }
+    return null;
+  };
 
-  if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-[7] min-h-0 overflow-hidden">
-          <PreviewControlsContainer attemptId={selectedWorkspace?.id} />
-        </div>
-        <div className="flex-[3] min-h-0 overflow-hidden">
-          <GitPanelContainer
-            selectedWorkspace={selectedWorkspace}
-            repos={repos}
-            diffs={diffs}
-          />
-        </div>
-      </div>
-    );
-  }
+  // Calculate flex ratios based on what's visible
+  const getGitPanelFlex = () => {
+    if (hasUpperContent && isTerminalVisible) return 'flex-[2]';
+    if (hasUpperContent || isTerminalVisible) return 'flex-[3]';
+    return 'flex-1';
+  };
+
+  const getTerminalFlex = () => {
+    if (hasUpperContent) return 'flex-[4]';
+    return 'flex-[7]';
+  };
 
   return (
-    <GitPanelContainer
-      selectedWorkspace={selectedWorkspace}
-      repos={repos}
-      diffs={diffs}
-    />
+    <div className="flex flex-col h-full">
+      {/* Upper section - mode-specific content */}
+      {hasUpperContent && (
+        <div className="flex-[4] min-h-0 overflow-hidden">
+          {renderUpperContent()}
+        </div>
+      )}
+
+      {/* Middle section - Git panel */}
+      <div className={`${getGitPanelFlex()} min-h-0 overflow-hidden`}>
+        <GitPanelContainer
+          selectedWorkspace={selectedWorkspace}
+          repos={repos}
+          diffs={diffs}
+        />
+      </div>
+
+      {/* Lower section - Terminal (collapsible) */}
+      {isTerminalVisible && (
+        <div
+          className={`${getTerminalFlex()} min-h-0 overflow-hidden`}
+          style={{ minHeight: 150 }}
+        >
+          <TerminalPanelContainer />
+        </div>
+      )}
+    </div>
   );
 }

@@ -14,7 +14,6 @@ import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPan
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
-import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 
@@ -214,10 +213,6 @@ export function WorkspacesLayout() {
                             <PreviewBrowserContainer
                               attemptId={selectedWorkspace?.id}
                             />
-                          )}
-                          {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.TERMINAL && (
-                            <TerminalPanelContainer />
                           )}
                         </Panel>
                       )}

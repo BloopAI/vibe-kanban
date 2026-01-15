@@ -91,6 +91,7 @@ type State = {
   // Global layout state (applies across all workspaces)
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
+  isTerminalVisible: boolean;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -109,6 +110,8 @@ type State = {
   toggleLeftSidebar: () => void;
   toggleLeftMainPanel: (workspaceId?: string) => void;
   toggleRightSidebar: () => void;
+  toggleTerminal: () => void;
+  setTerminalVisible: (value: boolean) => void;
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string
@@ -142,6 +145,7 @@ export const useUiPreferencesStore = create<State>()(
       // Global layout state
       isLeftSidebarVisible: true,
       isRightSidebarVisible: true,
+      isTerminalVisible: true,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -201,6 +205,11 @@ export const useUiPreferencesStore = create<State>()(
 
       toggleRightSidebar: () =>
         set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
+
+      toggleTerminal: () =>
+        set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
+
+      setTerminalVisible: (value) => set({ isTerminalVisible: value }),
 
       toggleRightMainPanelMode: (mode, workspaceId) => {
         if (!workspaceId) return;
@@ -307,6 +316,7 @@ export const useUiPreferencesStore = create<State>()(
         // Global layout (persist sidebar visibility)
         isLeftSidebarVisible: state.isLeftSidebarVisible,
         isRightSidebarVisible: state.isRightSidebarVisible,
+        isTerminalVisible: state.isTerminalVisible,
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
       }),
@@ -409,6 +419,7 @@ export function useWorkspacePanelState(workspaceId: string | undefined) {
   const isRightSidebarVisible = useUiPreferencesStore(
     (s) => s.isRightSidebarVisible
   );
+  const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
 
   // Actions from store
   const toggleRightMainPanelMode = useUiPreferencesStore(
@@ -446,9 +457,10 @@ export function useWorkspacePanelState(workspaceId: string | undefined) {
     rightMainPanelMode: wsState.rightMainPanelMode,
     isLeftMainPanelVisible: wsState.isLeftMainPanelVisible,
 
-    // Global state (sidebars)
+    // Global state (sidebars and terminal)
     isLeftSidebarVisible,
     isRightSidebarVisible,
+    isTerminalVisible,
 
     // Workspace-specific actions
     toggleRightMainPanelMode: toggleRightMainPanelModeForWorkspace,
