@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import {
+  useUiPreferencesStore,
+  useWorkspacePanelState,
+} from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -22,8 +25,9 @@ import type { CommandBarPage } from './pages';
  * action visibility and state conditions.
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
-  const layout = useUiPreferencesStore();
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
+  // Use workspace-specific panel state (pass undefined when in create mode)
+  const panelState = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
@@ -61,10 +65,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       false;
 
     return {
-      rightMainPanelMode: layout.rightMainPanelMode,
-      isLeftSidebarVisible: layout.isLeftSidebarVisible,
-      isLeftMainPanelVisible: layout.isLeftMainPanelVisible,
-      isRightSidebarVisible: layout.isRightSidebarVisible,
+      rightMainPanelMode: panelState.rightMainPanelMode,
+      isLeftSidebarVisible: panelState.isLeftSidebarVisible,
+      isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
+      isRightSidebarVisible: panelState.isRightSidebarVisible,
       isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
@@ -81,10 +85,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
-    layout.rightMainPanelMode,
-    layout.isLeftSidebarVisible,
-    layout.isLeftMainPanelVisible,
-    layout.isRightSidebarVisible,
+    panelState.rightMainPanelMode,
+    panelState.isLeftSidebarVisible,
+    panelState.isLeftMainPanelVisible,
+    panelState.isRightSidebarVisible,
     isCreateMode,
     workspace,
     repos,

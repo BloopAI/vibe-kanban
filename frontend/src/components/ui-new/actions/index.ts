@@ -478,17 +478,15 @@ export const Actions = {
 
   ToggleLeftMainPanel: {
     id: 'toggle-left-main-panel',
-    label: () =>
-      useUiPreferencesStore.getState().isLeftMainPanelVisible
-        ? 'Hide Chat Panel'
-        : 'Show Chat Panel',
+    label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
     requiresTarget: false,
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
       !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
-    execute: () => {
-      useUiPreferencesStore.getState().toggleLeftMainPanel();
+    getLabel: (ctx) => (ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel'),
+    execute: (ctx) => {
+      useUiPreferencesStore.getState().toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -508,60 +506,60 @@ export const Actions = {
 
   ToggleChangesMode: {
     id: 'toggle-changes-mode',
-    label: () =>
-      useUiPreferencesStore.getState().rightMainPanelMode ===
-      RIGHT_MAIN_PANEL_MODES.CHANGES
-        ? 'Hide Changes Panel'
-        : 'Show Changes Panel',
+    label: 'Toggle Changes Panel',
     icon: GitDiffIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
+        ? 'Hide Changes Panel'
+        : 'Show Changes Panel',
+    execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES);
+        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES, ctx.currentWorkspaceId ?? undefined);
     },
   },
 
   ToggleLogsMode: {
     id: 'toggle-logs-mode',
-    label: () =>
-      useUiPreferencesStore.getState().rightMainPanelMode ===
-      RIGHT_MAIN_PANEL_MODES.LOGS
-        ? 'Hide Logs Panel'
-        : 'Show Logs Panel',
+    label: 'Toggle Logs Panel',
     icon: TerminalIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS
+        ? 'Hide Logs Panel'
+        : 'Show Logs Panel',
+    execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
+        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS, ctx.currentWorkspaceId ?? undefined);
     },
   },
 
   TogglePreviewMode: {
     id: 'toggle-preview-mode',
-    label: () =>
-      useUiPreferencesStore.getState().rightMainPanelMode ===
-      RIGHT_MAIN_PANEL_MODES.PREVIEW
-        ? 'Hide Preview Panel'
-        : 'Show Preview Panel',
+    label: 'Toggle Preview Panel',
     icon: DesktopIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW
+        ? 'Hide Preview Panel'
+        : 'Show Preview Panel',
+    execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW);
+        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW, ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -707,7 +705,7 @@ export const Actions = {
         // Auto-open preview mode when starting dev server
         useUiPreferencesStore
           .getState()
-          .setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW);
+          .setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW, ctx.currentWorkspaceId ?? undefined);
       }
     },
   },

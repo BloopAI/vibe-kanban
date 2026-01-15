@@ -20,7 +20,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import {
   PERSIST_KEYS,
   usePaneSize,
-  useUiPreferencesStore,
+  useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
@@ -60,6 +60,7 @@ function ModeProvider({
 
 export function WorkspacesLayout() {
   const {
+    workspaceId,
     workspace: selectedWorkspace,
     isLoading,
     isCreateMode,
@@ -72,6 +73,7 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
 
+  // Use workspace-specific panel state (pass undefined when in create mode)
   const {
     isLeftSidebarVisible,
     isLeftMainPanelVisible,
@@ -79,7 +81,7 @@ export function WorkspacesLayout() {
     rightMainPanelMode,
     setLeftSidebarVisible,
     setLeftMainPanelVisible,
-  } = useUiPreferencesStore();
+  } = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
 
   const {
     config,

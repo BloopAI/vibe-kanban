@@ -20,6 +20,17 @@ export type ContextBarPosition =
   | 'bottom-left'
   | 'bottom-right';
 
+// Workspace-specific panel state
+export type WorkspacePanelState = {
+  rightMainPanelMode: RightMainPanelMode | null;
+  isLeftMainPanelVisible: boolean;
+};
+
+const DEFAULT_WORKSPACE_PANEL_STATE: WorkspacePanelState = {
+  rightMainPanelMode: null,
+  isLeftMainPanelVisible: true,
+};
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
@@ -76,12 +87,17 @@ type State = {
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
 
-  // Layout state
+  // Global layout state (applies across all workspaces)
   isLeftSidebarVisible: boolean;
-  isLeftMainPanelVisible: boolean;
   isRightSidebarVisible: boolean;
-  rightMainPanelMode: RightMainPanelMode | null;
   previewRefreshKey: number;
+
+  // Legacy global state (kept for backwards compatibility, used when no workspaceId)
+  isLeftMainPanelVisible: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
+
+  // Workspace-specific panel state
+  workspacePanelStates: Record<string, WorkspacePanelState>;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -94,14 +110,18 @@ type State = {
 
   // Layout actions
   toggleLeftSidebar: () => void;
-  toggleLeftMainPanel: () => void;
+  toggleLeftMainPanel: (workspaceId?: string) => void;
   toggleRightSidebar: () => void;
-  toggleRightMainPanelMode: (mode: RightMainPanelMode) => void;
-  setRightMainPanelMode: (mode: RightMainPanelMode | null) => void;
+  toggleRightMainPanelMode: (mode: RightMainPanelMode, workspaceId?: string) => void;
+  setRightMainPanelMode: (mode: RightMainPanelMode | null, workspaceId?: string) => void;
   setLeftSidebarVisible: (value: boolean) => void;
-  setLeftMainPanelVisible: (value: boolean) => void;
+  setLeftMainPanelVisible: (value: boolean, workspaceId?: string) => void;
   triggerPreviewRefresh: () => void;
   resetForCreateMode: () => void;
+
+  // Workspace-specific panel state actions
+  getWorkspacePanelState: (workspaceId: string) => WorkspacePanelState;
+  setWorkspacePanelState: (workspaceId: string, state: Partial<WorkspacePanelState>) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -114,12 +134,17 @@ export const useUiPreferencesStore = create<State>()(
       paneSizes: {},
       collapsedPaths: {},
 
-      // Layout state
+      // Global layout state
       isLeftSidebarVisible: true,
-      isLeftMainPanelVisible: true,
       isRightSidebarVisible: true,
-      rightMainPanelMode: null,
       previewRefreshKey: 0,
+
+      // Legacy global state (used when no workspaceId)
+      isLeftMainPanelVisible: true,
+      rightMainPanelMode: null,
+
+      // Workspace-specific panel state
+      workspacePanelStates: {},
 
       // UI preferences actions
       setRepoAction: (repoId, action) =>
@@ -151,51 +176,137 @@ export const useUiPreferencesStore = create<State>()(
       toggleLeftSidebar: () =>
         set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
 
-      toggleLeftMainPanel: () => {
-        const { isLeftMainPanelVisible, rightMainPanelMode } = get();
-        if (isLeftMainPanelVisible && rightMainPanelMode === null) return;
-        set({ isLeftMainPanelVisible: !isLeftMainPanelVisible });
+      toggleLeftMainPanel: (workspaceId) => {
+        const state = get();
+        if (workspaceId) {
+          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          if (wsState.isLeftMainPanelVisible && wsState.rightMainPanelMode === null) return;
+          set({
+            workspacePanelStates: {
+              ...state.workspacePanelStates,
+              [workspaceId]: {
+                ...wsState,
+                isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
+              },
+            },
+          });
+        } else {
+          // Legacy global behavior
+          if (state.isLeftMainPanelVisible && state.rightMainPanelMode === null) return;
+          set({ isLeftMainPanelVisible: !state.isLeftMainPanelVisible });
+        }
       },
 
       toggleRightSidebar: () =>
         set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
 
-      toggleRightMainPanelMode: (mode) => {
-        const { rightMainPanelMode } = get();
-        const isCurrentlyActive = rightMainPanelMode === mode;
+      toggleRightMainPanelMode: (mode, workspaceId) => {
+        const state = get();
 
-        if (isCurrentlyActive) {
-          set({
-            rightMainPanelMode: null,
-            isLeftSidebarVisible: true,
-          });
+        if (workspaceId) {
+          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          const isCurrentlyActive = wsState.rightMainPanelMode === mode;
+
+          if (isCurrentlyActive) {
+            set({
+              workspacePanelStates: {
+                ...state.workspacePanelStates,
+                [workspaceId]: {
+                  ...wsState,
+                  rightMainPanelMode: null,
+                },
+              },
+              isLeftSidebarVisible: true,
+            });
+          } else {
+            set({
+              workspacePanelStates: {
+                ...state.workspacePanelStates,
+                [workspaceId]: {
+                  ...wsState,
+                  rightMainPanelMode: mode,
+                },
+              },
+              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+            });
+          }
         } else {
-          set({
-            rightMainPanelMode: mode,
-            isLeftSidebarVisible: isWideScreen()
-              ? get().isLeftSidebarVisible
-              : false,
-          });
+          // Legacy global behavior
+          const isCurrentlyActive = state.rightMainPanelMode === mode;
+
+          if (isCurrentlyActive) {
+            set({
+              rightMainPanelMode: null,
+              isLeftSidebarVisible: true,
+            });
+          } else {
+            set({
+              rightMainPanelMode: mode,
+              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+            });
+          }
         }
       },
 
-      setRightMainPanelMode: (mode) => {
-        if (mode !== null) {
-          set({
-            rightMainPanelMode: mode,
-            isLeftSidebarVisible: isWideScreen()
-              ? get().isLeftSidebarVisible
-              : false,
-          });
+      setRightMainPanelMode: (mode, workspaceId) => {
+        const state = get();
+
+        if (workspaceId) {
+          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          if (mode !== null) {
+            set({
+              workspacePanelStates: {
+                ...state.workspacePanelStates,
+                [workspaceId]: {
+                  ...wsState,
+                  rightMainPanelMode: mode,
+                },
+              },
+              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+            });
+          } else {
+            set({
+              workspacePanelStates: {
+                ...state.workspacePanelStates,
+                [workspaceId]: {
+                  ...wsState,
+                  rightMainPanelMode: null,
+                },
+              },
+            });
+          }
         } else {
-          set({ rightMainPanelMode: null });
+          // Legacy global behavior
+          if (mode !== null) {
+            set({
+              rightMainPanelMode: mode,
+              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+            });
+          } else {
+            set({ rightMainPanelMode: null });
+          }
         }
       },
 
       setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
 
-      setLeftMainPanelVisible: (value) =>
-        set({ isLeftMainPanelVisible: value }),
+      setLeftMainPanelVisible: (value, workspaceId) => {
+        const state = get();
+        if (workspaceId) {
+          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          set({
+            workspacePanelStates: {
+              ...state.workspacePanelStates,
+              [workspaceId]: {
+                ...wsState,
+                isLeftMainPanelVisible: value,
+              },
+            },
+          });
+        } else {
+          set({ isLeftMainPanelVisible: value });
+        }
+      },
 
       triggerPreviewRefresh: () =>
         set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
@@ -204,6 +315,26 @@ export const useUiPreferencesStore = create<State>()(
         set({
           rightMainPanelMode: null,
         }),
+
+      // Workspace-specific panel state actions
+      getWorkspacePanelState: (workspaceId) => {
+        const state = get();
+        return state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+      },
+
+      setWorkspacePanelState: (workspaceId, panelState) => {
+        const state = get();
+        const currentWsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...currentWsState,
+              ...panelState,
+            },
+          },
+        });
+      },
     }),
     {
       name: 'ui-preferences',
@@ -214,10 +345,11 @@ export const useUiPreferencesStore = create<State>()(
         contextBarPosition: state.contextBarPosition,
         paneSizes: state.paneSizes,
         collapsedPaths: state.collapsedPaths,
-        // Layout (only persist panel visibility, not mode states)
+        // Global layout (persist sidebar visibility)
         isLeftSidebarVisible: state.isLeftSidebarVisible,
-        isLeftMainPanelVisible: state.isLeftMainPanelVisible,
         isRightSidebarVisible: state.isRightSidebarVisible,
+        // Workspace-specific panel state (persisted)
+        workspacePanelStates: state.workspacePanelStates,
       }),
     }
   )
@@ -304,3 +436,56 @@ export function usePersistedCollapsedPaths(
 // Layout convenience hooks
 export const useIsRightMainPanelVisible = () =>
   useUiPreferencesStore((s) => s.rightMainPanelMode !== null);
+
+// Hook for workspace-specific panel state
+export function useWorkspacePanelState(workspaceId: string | undefined) {
+  // Get workspace-specific state (falls back to defaults when no workspaceId)
+  const workspacePanelStates = useUiPreferencesStore((s) => s.workspacePanelStates);
+  const wsState = workspaceId
+    ? workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE
+    : DEFAULT_WORKSPACE_PANEL_STATE;
+
+  // Global state (sidebars are global)
+  const isLeftSidebarVisible = useUiPreferencesStore((s) => s.isLeftSidebarVisible);
+  const isRightSidebarVisible = useUiPreferencesStore((s) => s.isRightSidebarVisible);
+
+  // Actions from store
+  const toggleRightMainPanelMode = useUiPreferencesStore((s) => s.toggleRightMainPanelMode);
+  const setRightMainPanelMode = useUiPreferencesStore((s) => s.setRightMainPanelMode);
+  const setLeftMainPanelVisible = useUiPreferencesStore((s) => s.setLeftMainPanelVisible);
+  const setLeftSidebarVisible = useUiPreferencesStore((s) => s.setLeftSidebarVisible);
+
+  // Memoized callbacks that include workspaceId
+  const toggleRightMainPanelModeForWorkspace = useCallback(
+    (mode: RightMainPanelMode) => toggleRightMainPanelMode(mode, workspaceId),
+    [toggleRightMainPanelMode, workspaceId]
+  );
+
+  const setRightMainPanelModeForWorkspace = useCallback(
+    (mode: RightMainPanelMode | null) => setRightMainPanelMode(mode, workspaceId),
+    [setRightMainPanelMode, workspaceId]
+  );
+
+  const setLeftMainPanelVisibleForWorkspace = useCallback(
+    (value: boolean) => setLeftMainPanelVisible(value, workspaceId),
+    [setLeftMainPanelVisible, workspaceId]
+  );
+
+  return {
+    // Workspace-specific state
+    rightMainPanelMode: wsState.rightMainPanelMode,
+    isLeftMainPanelVisible: wsState.isLeftMainPanelVisible,
+
+    // Global state (sidebars)
+    isLeftSidebarVisible,
+    isRightSidebarVisible,
+
+    // Workspace-specific actions
+    toggleRightMainPanelMode: toggleRightMainPanelModeForWorkspace,
+    setRightMainPanelMode: setRightMainPanelModeForWorkspace,
+    setLeftMainPanelVisible: setLeftMainPanelVisibleForWorkspace,
+
+    // Global actions
+    setLeftSidebarVisible,
+  };
+}
