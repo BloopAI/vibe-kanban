@@ -40,35 +40,38 @@ pub fn router() -> Router<AppState> {
         .route("/shape/notifications", get(proxy_notifications))
         // Project-scoped
         .route(
-            "/shape/project/:project_id/workspaces",
+            "/shape/project/{project_id}/workspaces",
             get(proxy_workspaces),
         )
         .route(
-            "/shape/project/:project_id/statuses",
+            "/shape/project/{project_id}/statuses",
             get(proxy_project_statuses),
         )
-        .route("/shape/project/:project_id/tags", get(proxy_tags))
-        .route("/shape/project/:project_id/issues", get(proxy_issues))
+        .route("/shape/project/{project_id}/tags", get(proxy_tags))
+        .route("/shape/project/{project_id}/issues", get(proxy_issues))
         .route(
-            "/shape/project/:project_id/issue_assignees",
+            "/shape/project/{project_id}/issue_assignees",
             get(proxy_issue_assignees),
         )
         .route(
-            "/shape/project/:project_id/issue_followers",
+            "/shape/project/{project_id}/issue_followers",
             get(proxy_issue_followers),
         )
         .route(
-            "/shape/project/:project_id/issue_tags",
+            "/shape/project/{project_id}/issue_tags",
             get(proxy_issue_tags),
         )
         .route(
-            "/shape/project/:project_id/issue_dependencies",
+            "/shape/project/{project_id}/issue_dependencies",
             get(proxy_issue_dependencies),
         )
         // Issue-scoped
-        .route("/shape/issue/:issue_id/comments", get(proxy_issue_comments))
         .route(
-            "/shape/issue/:issue_id/reactions",
+            "/shape/issue/{issue_id}/comments",
+            get(proxy_issue_comments),
+        )
+        .route(
+            "/shape/issue/{issue_id}/reactions",
             get(proxy_issue_comment_reactions),
         )
 }
