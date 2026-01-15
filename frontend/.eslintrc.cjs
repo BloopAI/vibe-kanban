@@ -208,6 +208,11 @@ module.exports = {
         'no-restricted-syntax': [
           'error',
           {
+            selector: 'TSPropertySignature[optional=true]',
+            message:
+              'Optional props are not allowed in ui-new components. Make the prop required or provide a default value in the component.',
+          },
+          {
             selector: 'JSXAttribute[name.name="size"][value.type="JSXExpressionContainer"]',
             message:
               'Icons should use Tailwind size classes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl) instead of the size prop. Example: <Icon className="size-icon-base" />',
