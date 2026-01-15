@@ -37,11 +37,26 @@ export function RightSidebar({
 
   // Get expand states for each section to determine layout
   // Each section manages its own CollapsibleSectionHeader, but we read the state here for layout
-  const [changesExpanded] = usePersistedExpanded(PERSIST_KEYS.changesSection, true);
-  const [processesExpanded] = usePersistedExpanded(PERSIST_KEYS.processesSection, true);
-  const [devServerExpanded] = usePersistedExpanded(PERSIST_KEYS.devServerSection, true);
-  const [gitExpanded] = usePersistedExpanded(PERSIST_KEYS.gitPanelRepositories, true);
-  const [terminalExpanded] = usePersistedExpanded(PERSIST_KEYS.terminalSection, true);
+  const [changesExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.changesSection,
+    true
+  );
+  const [processesExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.processesSection,
+    true
+  );
+  const [devServerExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.devServerSection,
+    true
+  );
+  const [gitExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.gitPanelRepositories,
+    true
+  );
+  const [terminalExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.terminalSection,
+    true
+  );
 
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
@@ -55,9 +70,12 @@ export function RightSidebar({
 
   // Get the expand state for the current upper section
   const getUpperExpanded = () => {
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) return changesExpanded;
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) return processesExpanded;
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) return devServerExpanded;
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES)
+      return changesExpanded;
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS)
+      return processesExpanded;
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW)
+      return devServerExpanded;
     return false;
   };
 
