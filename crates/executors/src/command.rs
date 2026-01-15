@@ -92,7 +92,7 @@ impl CommandBuilder {
         self
     }
 
-    pub fn extend_shell_params<I>(mut self, more: I) -> Result<Self, CommandBuildError>
+    fn extend_shell_params<I>(mut self, more: I) -> Result<Self, CommandBuildError>
     where
         I: IntoIterator,
         I::Item: Into<String>,
