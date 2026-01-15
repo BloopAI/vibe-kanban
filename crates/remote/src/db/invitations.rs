@@ -9,7 +9,7 @@ use super::{
     organization_members::{MemberRole, add_member, assert_admin},
     organizations::{Organization, OrganizationRepository},
 };
-use crate::db::organization_members::is_member;
+use crate::{billing::BillingProvider, db::organization_members::is_member};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {
@@ -193,6 +193,7 @@ impl<'a> InvitationRepository<'a> {
         &self,
         token: &str,
         user_id: Uuid,
+        billing: Option<&dyn BillingProvider>,
     ) -> Result<(Organization, MemberRole), IdentityError> {
         let mut tx = self.pool.begin().await?;
 
@@ -257,6 +258,18 @@ impl<'a> InvitationRepository<'a> {
             ));
         }
 
+        if let Some(billing_provider) = billing {
+            billing_provider
+                .can_add_member(invitation.organization_id)
+                .await
+                .map_err(|e| {
+                    IdentityError::InvitationError(format!(
+                        "Cannot accept invitation: {}. Organization admin must subscribe first.",
+                        e
+                    ))
+                })?;
+        }
+
         add_member(
             &mut *tx,
             invitation.organization_id,
@@ -277,6 +290,13 @@ impl<'a> InvitationRepository<'a> {
         .await?;
 
         tx.commit().await?;
+
+        if let Some(billing_provider) = billing {
+            let org_id = invitation.organization_id;
+            if let Err(e) = billing_provider.on_member_count_changed(org_id).await {
+                tracing::warn!(?e, %org_id, "Failed to notify billing of member count change");
+            }
+        }
 
         let organization = OrganizationRepository::new(self.pool)
             .fetch_organization(invitation.organization_id)

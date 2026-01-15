@@ -18,12 +18,16 @@ import {
   updateRepositoryReviewEnabled,
   fetchGitHubAppRepositories,
   bulkUpdateRepositoryReviewEnabled,
+  getBillingStatus,
+  createBillingPortalSession,
+  createCheckoutSession,
   type Organization,
   type OrganizationMemberWithProfile,
   type OrganizationInvitation,
   type MemberRole,
   type GitHubAppStatus,
   type GitHubAppRepository,
+  type BillingStatusResponse,
 } from "../api";
 
 export default function OrganizationPage() {
@@ -39,7 +43,10 @@ export default function OrganizationPage() {
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // GitHub App state
+  const [billingStatus, setBillingStatus] = useState<BillingStatusResponse | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
   const [githubAppStatus, setGithubAppStatus] = useState<GitHubAppStatus | null>(null);
   const [githubAppLoading, setGithubAppLoading] = useState(false);
   const [githubAppError, setGithubAppError] = useState<string | null>(null);
@@ -52,24 +59,20 @@ export default function OrganizationPage() {
   const [repoFilter, setRepoFilter] = useState<"all" | "enabled" | "disabled">("all");
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Edit name state
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [editNameLoading, setEditNameLoading] = useState(false);
 
-  // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Invite state
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("MEMBER");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
-  // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isAdmin = userRole === "ADMIN";
@@ -83,13 +86,11 @@ export default function OrganizationPage() {
     if (!orgId) return;
     loadData();
 
-    // Check for GitHub App callback params
     const githubAppResult = searchParams.get("github_app");
     const githubAppErrorParam = searchParams.get("github_app_error");
 
     if (githubAppResult === "installed") {
       setGithubAppSuccess("GitHub App installed successfully!");
-      // Clear the query param
       searchParams.delete("github_app");
       setSearchParams(searchParams, { replace: true });
     }
@@ -117,24 +118,29 @@ export default function OrganizationPage() {
       setCurrentUserId(profile.user_id);
       setEditedName(orgData.organization.name);
 
-      // Load invitations if admin
       if (orgData.user_role === "ADMIN") {
         const invitationsData = await listInvitations(orgId);
         setInvitations(invitationsData.filter((i) => i.status === "PENDING"));
       }
 
-      // Load GitHub App status for non-personal orgs
       if (!orgData.organization.is_personal) {
         try {
           const ghStatus = await getGitHubAppStatus(orgId);
           setGithubAppStatus(ghStatus);
-          // If installed, load repos asynchronously
           if (ghStatus.installed) {
             loadRepositories(orgId);
           }
         } catch {
-          // GitHub App may not be configured on the server
           setGithubAppStatus(null);
+        }
+
+        if (orgData.user_role === "ADMIN") {
+          try {
+            const billing = await getBillingStatus(orgId);
+            setBillingStatus(billing);
+          } catch {
+            setBillingStatus(null);
+          }
         }
       }
     } catch (e) {
@@ -338,6 +344,45 @@ export default function OrganizationPage() {
       return true;
     })
     .sort((a, b) => a.repo_full_name.localeCompare(b.repo_full_name));
+
+  const handleSubscribe = async () => {
+    if (!orgId) return;
+
+    setBillingLoading(true);
+    setBillingError(null);
+
+    try {
+      const { url } = await createCheckoutSession(
+        orgId,
+        `${window.location.origin}/account/organizations/${orgId}?billing=success`,
+        `${window.location.origin}/account/organizations/${orgId}?billing=cancelled`,
+      );
+      window.location.href = url;
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : "Failed to start checkout");
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!orgId) return;
+
+    setBillingLoading(true);
+    setBillingError(null);
+
+    try {
+      const { url } = await createBillingPortalSession(
+        orgId,
+        `${window.location.origin}/account/organizations/${orgId}`,
+      );
+      window.location.href = url;
+    } catch (e) {
+      setBillingError(e instanceof Error ? e.message : "Failed to open billing portal");
+    } finally {
+      setBillingLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -694,6 +739,84 @@ export default function OrganizationPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Billing Card (admin only, non-personal orgs, when billing is enabled) */}
+        {isAdmin && !organization?.is_personal && billingStatus?.billing_enabled && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Billing
+            </h2>
+
+            {billingError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{billingError}</p>
+                <button
+                  onClick={() => setBillingError(null)}
+                  className="text-xs text-red-600 hover:text-red-800 mt-1"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {billingStatus.seat_info && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600">
+                  {billingStatus.seat_info.current_members} of {billingStatus.seat_info.free_seats} free seats used
+                </p>
+                {billingStatus.seat_info.requires_subscription && !billingStatus.seat_info.subscription && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Subscription required for additional members
+                  </p>
+                )}
+              </div>
+            )}
+
+            {billingStatus.seat_info?.subscription ? (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-gray-700">Status:</span>
+                  <span
+                    className={`px-2 py-0.5 text-xs rounded ${
+                      billingStatus.seat_info.subscription.status === "active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}
+                  >
+                    {billingStatus.seat_info.subscription.status}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  ${(billingStatus.seat_info.subscription.unit_amount / 100).toFixed(2)}/seat/month
+                  ({billingStatus.seat_info.subscription.quantity} seats)
+                </p>
+                {billingStatus.seat_info.subscription.cancel_at_period_end && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Subscription will end on{" "}
+                    {new Date(billingStatus.seat_info.subscription.current_period_end).toLocaleDateString()}
+                  </p>
+                )}
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={billingLoading}
+                  className="mt-3 px-4 py-2 text-sm bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                >
+                  {billingLoading ? "Loading..." : "Manage Subscription"}
+                </button>
+              </div>
+            ) : (
+              billingStatus.seat_info?.requires_subscription && (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={billingLoading}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {billingLoading ? "Loading..." : "Subscribe Now - $20/seat/month"}
+                </button>
+              )
+            )}
           </div>
         )}
 

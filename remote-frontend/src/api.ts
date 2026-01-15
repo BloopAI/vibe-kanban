@@ -594,3 +594,81 @@ export async function bulkUpdateRepositoryReviewEnabled(
   }
   return res.json();
 }
+
+export type BillingStatus =
+  | "free"
+  | "active"
+  | "past_due"
+  | "cancelled"
+  | "requires_subscription";
+
+export type SubscriptionInfo = {
+  status: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  quantity: number;
+  unit_amount: number;
+};
+
+export type SeatInfo = {
+  current_members: number;
+  free_seats: number;
+  requires_subscription: boolean;
+  subscription: SubscriptionInfo | null;
+};
+
+export type BillingStatusResponse = {
+  status: BillingStatus;
+  billing_enabled: boolean;
+  seat_info: SeatInfo | null;
+};
+
+export async function getBillingStatus(orgId: string): Promise<BillingStatusResponse> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing`,
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to fetch billing status (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createBillingPortalSession(
+  orgId: string,
+  returnUrl: string,
+): Promise<{ url: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing/portal`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ return_url: returnUrl }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to create portal session (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createCheckoutSession(
+  orgId: string,
+  successUrl: string,
+  cancelUrl: string,
+): Promise<{ url: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/billing/checkout`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to create checkout session (${res.status})`);
+  }
+  return res.json();
+}

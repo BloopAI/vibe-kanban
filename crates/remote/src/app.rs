@@ -10,6 +10,7 @@ use crate::{
         GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
         OAuthTokenValidator, ProviderRegistry,
     },
+    billing::BillingProvider,
     config::RemoteServerConfig,
     db,
     github_app::GitHubAppService,
@@ -23,10 +24,13 @@ pub struct Server;
 impl Server {
     #[instrument(
         name = "remote_server",
-        skip(config),
+        skip(config, billing),
         fields(listen_addr = %config.listen_addr)
     )]
-    pub async fn run(config: RemoteServerConfig) -> anyhow::Result<()> {
+    pub async fn run(
+        config: RemoteServerConfig,
+        billing: Option<Arc<dyn BillingProvider>>,
+    ) -> anyhow::Result<()> {
         let pool = db::create_pool(&config.database_url)
             .await
             .context("failed to create postgres pool")?;
@@ -124,6 +128,12 @@ impl Server {
             }
         };
 
+        if billing.is_some() {
+            tracing::info!("Billing provider configured");
+        } else {
+            tracing::info!("Billing provider not configured");
+        }
+
         let state = AppState::new(
             pool.clone(),
             config.clone(),
@@ -135,6 +145,7 @@ impl Server {
             http_client,
             r2,
             github_app,
+            billing,
         );
 
         let router = routes::router(state);

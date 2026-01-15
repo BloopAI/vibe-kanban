@@ -1,5 +1,6 @@
 mod app;
 mod auth;
+pub mod billing;
 pub mod config;
 pub mod db;
 pub mod github_app;

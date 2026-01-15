@@ -14,6 +14,7 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
+mod billing;
 mod electric_proxy;
 mod error;
 mod github_app;
@@ -53,6 +54,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_public = Router::<AppState>::new()
         .route("/health", get(health))
+        .merge(billing::public_router())
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
@@ -60,6 +62,7 @@ pub fn router(state: AppState) -> Router {
         .merge(github_app::public_router());
 
     let v1_protected = Router::<AppState>::new()
+        .merge(billing::protected_router())
         .merge(identity::router())
         .merge(projects::router())
         .merge(organizations::router())
