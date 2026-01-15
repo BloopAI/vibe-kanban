@@ -44,33 +44,46 @@ export type DiffInput =
       type: 'content';
       oldContent: string;
       newContent: string;
-      oldPath?: string;
+      oldPath: string | undefined;
       newPath: string;
-      changeKind?: DiffChangeKind;
+      changeKind: DiffChangeKind | undefined;
     }
   | {
       type: 'unified';
       path: string;
       unifiedDiff: string;
-      hasLineNumbers?: boolean;
+      hasLineNumbers: boolean;
     };
 
-interface DiffViewCardWithCommentsProps {
+/** Base props shared across all modes */
+interface BaseProps {
   /** Diff data - either raw content or unified diff string */
   input: DiffInput;
-  /** Expansion state */
-  expanded?: boolean;
-  /** Toggle expansion callback */
-  onToggle?: () => void;
   /** Optional status indicator */
-  status?: ToolStatus;
+  status: ToolStatus | undefined;
   /** Additional className */
-  className?: string;
+  className: string;
   /** Project ID for @ mentions in comments */
-  projectId?: string;
+  projectId: string | undefined;
   /** Attempt ID for opening files in IDE */
-  attemptId?: string;
+  attemptId: string | undefined;
 }
+
+/** Props for collapsible mode (with expand/collapse) */
+interface CollapsibleProps extends BaseProps {
+  mode: 'collapsible';
+  /** Expansion state */
+  expanded: boolean;
+  /** Toggle expansion callback */
+  onToggle: () => void;
+}
+
+/** Props for static mode (always expanded, no toggle) */
+interface StaticProps extends BaseProps {
+  mode: 'static';
+}
+
+type DiffViewCardWithCommentsProps = CollapsibleProps | StaticProps;
 
 interface DiffData {
   diffFile: DiffFile | null;
@@ -168,15 +181,15 @@ function useDiffData(input: DiffInput): DiffData {
   }, [input]);
 }
 
-export function DiffViewCardWithComments({
-  input,
-  expanded = false,
-  onToggle,
-  status,
-  className,
-  projectId,
-  attemptId,
-}: DiffViewCardWithCommentsProps) {
+export function DiffViewCardWithComments(
+  props: DiffViewCardWithCommentsProps
+) {
+  const { input, status, className, projectId, attemptId, mode } = props;
+
+  // Extract mode-specific values
+  const expanded = mode === 'collapsible' ? props.expanded : true;
+  const onToggle = mode === 'collapsible' ? props.onToggle : undefined;
+
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const globalMode = useDiffViewMode();

@@ -55,9 +55,12 @@ const DiffItem = memo(function DiffItem({
   return (
     <div ref={(el) => onRef?.(path, el)}>
       <DiffViewCardWithComments
+        mode="collapsible"
         input={input}
         expanded={expanded}
         onToggle={toggle}
+        status={undefined}
+        className=""
         projectId={projectId}
         attemptId={attemptId}
       />

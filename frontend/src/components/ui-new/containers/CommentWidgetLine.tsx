@@ -10,7 +10,7 @@ interface CommentWidgetLineProps {
   widgetKey: string;
   onSave: () => void;
   onCancel: () => void;
-  projectId?: string;
+  projectId: string | undefined;
 }
 
 export function CommentWidgetLine({
