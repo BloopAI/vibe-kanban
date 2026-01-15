@@ -41,17 +41,14 @@ export function PreviewControlsContainer({
 
   const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
 
-  const handleViewFullLogs = useCallback(
-    (processId?: string) => {
-      const targetId = processId ?? activeProcess?.id;
-      if (targetId) {
-        viewProcessInPanel(targetId);
-      } else {
-        setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
-      }
-    },
-    [activeProcess?.id, viewProcessInPanel, setRightMainPanelMode]
-  );
+  const handleViewFullLogs = useCallback(() => {
+    const targetId = activeProcess?.id;
+    if (targetId) {
+      viewProcessInPanel(targetId);
+    } else {
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
+    }
+  }, [activeProcess?.id, viewProcessInPanel, setRightMainPanelMode]);
 
   const handleTabChange = useCallback((processId: string) => {
     setActiveProcessId(processId);
