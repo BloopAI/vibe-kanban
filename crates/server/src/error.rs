@@ -94,7 +94,8 @@ impl From<Git2Error> for ApiError {
 
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
-        ApiError::BadRequest("Remote client not configured".to_string())
+        // When remote features are not configured, treat as unauthenticated rather than a bad request
+        ApiError::Unauthorized
     }
 }
 
