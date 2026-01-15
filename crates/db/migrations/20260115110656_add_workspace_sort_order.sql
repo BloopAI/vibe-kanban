@@ -7,5 +7,5 @@ UPDATE workspaces
 SET sort_order = -(
     SELECT COUNT(*)
     FROM workspaces AS w2
-    WHERE w2.created_at > workspaces.created_at
+    WHERE w2.created_at < workspaces.created_at
 );
