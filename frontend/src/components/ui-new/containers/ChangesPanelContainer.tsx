@@ -131,9 +131,9 @@ function useInViewObserver(
 }
 
 interface ChangesPanelContainerProps {
-  className?: string;
+  className: string;
   /** Attempt ID for opening files in IDE */
-  attemptId?: string;
+  attemptId: string;
 }
 
 export function ChangesPanelContainer({
@@ -201,13 +201,27 @@ export function ChangesPanelContainer({
     });
   }, [diffs, processedPaths]);
 
+  // Guard: Don't render diffs until we have required data
+  const projectId = task?.project_id;
+  if (!projectId) {
+    return (
+      <ChangesPanel
+        ref={containerRef}
+        className={className}
+        diffItems={[]}
+        projectId=""
+        attemptId={attemptId}
+      />
+    );
+  }
+
   return (
     <ChangesPanel
       ref={containerRef}
       className={className}
       diffItems={diffItems}
       onDiffRef={handleDiffRef}
-      projectId={task?.project_id}
+      projectId={projectId}
       attemptId={attemptId}
     />
   );

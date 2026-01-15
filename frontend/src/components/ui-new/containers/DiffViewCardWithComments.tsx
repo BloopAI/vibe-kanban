@@ -26,8 +26,7 @@ import {
 import { CommentWidgetLine } from './CommentWidgetLine';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
-import type { ToolStatus, DiffChangeKind } from 'shared/types';
-import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
+import type { DiffChangeKind } from 'shared/types';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
@@ -59,14 +58,12 @@ export type DiffInput =
 interface BaseProps {
   /** Diff data - either raw content or unified diff string */
   input: DiffInput;
-  /** Optional status indicator */
-  status: ToolStatus | undefined;
   /** Additional className */
   className: string;
   /** Project ID for @ mentions in comments */
-  projectId: string | undefined;
+  projectId: string;
   /** Attempt ID for opening files in IDE */
-  attemptId: string | undefined;
+  attemptId: string;
 }
 
 /** Props for collapsible mode (with expand/collapse) */
@@ -182,7 +179,7 @@ function useDiffData(input: DiffInput): DiffData {
 }
 
 export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
-  const { input, status, className, projectId, attemptId, mode } = props;
+  const { input, className, projectId, attemptId, mode } = props;
 
   // Extract mode-specific values
   const expanded = mode === 'collapsible' ? props.expanded : true;
@@ -360,12 +357,6 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
       >
         <span className="relative shrink-0">
           <FileIcon className="size-icon-base" />
-          {status && (
-            <ToolStatusDot
-              status={status}
-              className="absolute -bottom-0.5 -right-0.5"
-            />
-          )}
         </span>
         {changeLabel && (
           <span
@@ -417,14 +408,12 @@ export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
           </span>
         )}
         <div className="flex items-center gap-1 shrink-0">
-          {attemptId && (
-            <span onClick={(e) => e.stopPropagation()}>
-              <OpenInIdeButton
-                onClick={handleOpenInIde}
-                className="size-icon-xs p-0"
-              />
-            </span>
-          )}
+          <span onClick={(e) => e.stopPropagation()}>
+            <OpenInIdeButton
+              onClick={handleOpenInIde}
+              className="size-icon-xs p-0"
+            />
+          </span>
           {onToggle && (
             <CaretDownIcon
               className={cn(

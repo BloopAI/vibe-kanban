@@ -201,11 +201,13 @@ export function WorkspacesLayout() {
                           className="min-w-0 h-full overflow-hidden"
                         >
                           {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.CHANGES && (
-                            <ChangesPanelContainer
-                              attemptId={selectedWorkspace?.id}
-                            />
-                          )}
+                            RIGHT_MAIN_PANEL_MODES.CHANGES &&
+                            selectedWorkspace?.id && (
+                              <ChangesPanelContainer
+                                className=""
+                                attemptId={selectedWorkspace.id}
+                              />
+                            )}
                           {rightMainPanelMode ===
                             RIGHT_MAIN_PANEL_MODES.LOGS && (
                             <LogsContentContainer />
