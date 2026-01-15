@@ -13,6 +13,7 @@ import {
 } from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -33,6 +34,42 @@ const VIEWPORT_MARGIN = 8;
 const VERTICAL_GAP = 4;
 const VERTICAL_GAP_ABOVE = 24;
 const MIN_WIDTH = 320;
+
+interface DiffFileResult {
+  path: string;
+  name: string;
+  is_file: boolean;
+  match_type: 'FileName' | 'DirectoryName' | 'FullPath';
+  score: bigint;
+}
+
+function getMatchingDiffFiles(
+  query: string,
+  diffPaths: Set<string>
+): DiffFileResult[] {
+  if (!query) return [];
+  const lowerQuery = query.toLowerCase();
+  return Array.from(diffPaths)
+    .filter((path) => {
+      const name = path.split('/').pop() || path;
+      return (
+        name.toLowerCase().includes(lowerQuery) ||
+        path.toLowerCase().includes(lowerQuery)
+      );
+    })
+    .map((path) => {
+      const name = path.split('/').pop() || path;
+      const nameMatches = name.toLowerCase().includes(lowerQuery);
+      return {
+        path,
+        name,
+        is_file: true,
+        match_type: nameMatches ? ('FileName' as const) : ('FullPath' as const),
+        // High score to rank diff files above server results
+        score: BigInt(Number.MAX_SAFE_INTEGER),
+      };
+    });
+}
 
 function getMenuPosition(anchorEl: HTMLElement) {
   const rect = anchorEl.getBoundingClientRect();
@@ -73,6 +110,7 @@ export function FileTagTypeaheadPlugin({
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
   const portalContainer = usePortalContainer();
+  const { diffPaths } = useWorkspaceContext();
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -82,16 +120,33 @@ export function FileTagTypeaheadPlugin({
         return;
       }
 
+      // Get local diff files first (files from current workspace changes)
+      const localFiles = getMatchingDiffFiles(query, diffPaths);
+      const localFilePaths = new Set(localFiles.map((f) => f.path));
+
       // Here query is a string, including possible empty string ''
       searchTagsAndFiles(query, { workspaceId, projectId })
-        .then((results) => {
-          setOptions(results.map((r) => new FileTagOption(r)));
+        .then((serverResults) => {
+          // Separate tags and files from server results
+          const tagResults = serverResults.filter((r) => r.type === 'tag');
+          const serverFileResults = serverResults
+            .filter((r) => r.type === 'file')
+            .filter((r) => !localFilePaths.has(r.file!.path)); // Dedupe
+
+          // Build merged results: tags, then local files (ranked higher), then server files
+          const mergedResults: SearchResultItem[] = [
+            ...tagResults,
+            ...localFiles.map((file) => ({ type: 'file' as const, file })),
+            ...serverFileResults,
+          ];
+
+          setOptions(mergedResults.map((r) => new FileTagOption(r)));
         })
         .catch((err) => {
           console.error('Failed to search tags/files', err);
         });
     },
-    [workspaceId, projectId]
+    [workspaceId, projectId, diffPaths]
   );
 
   return (
