@@ -11,11 +11,12 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
+import type { SessionWithInitiator, BaseCodingAgent, TodoItem } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
 import {
   ChatBoxBase,
   VisualVariant,
@@ -60,7 +61,7 @@ interface ActionsProps {
 }
 
 interface SessionProps {
-  sessions: Session[];
+  sessions: SessionWithInitiator[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
   isNewSessionMode?: boolean;
@@ -608,9 +609,20 @@ export function SessionChatBox({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    {index === 0
-                      ? t('conversation.sessions.latest')
-                      : formatDateShortWithTime(s.created_at)}
+                    <div className="flex items-center gap-base">
+                      {s.initiated_by && (
+                        <UserAvatar
+                          username={s.initiated_by.username}
+                          imageUrl={s.initiated_by.avatar_url}
+                          className="size-4"
+                        />
+                      )}
+                      <span>
+                        {index === 0
+                          ? t('conversation.sessions.latest')
+                          : formatDateShortWithTime(s.created_at)}
+                      </span>
+                    </div>
                   </DropdownMenuItem>
                 ))}
               </>

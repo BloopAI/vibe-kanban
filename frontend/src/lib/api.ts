@@ -87,6 +87,7 @@ import {
   RepoBranchStatus,
   AbortConflictsRequest,
   Session,
+  SessionWithInitiator,
   Workspace,
   StartReviewRequest,
   ReviewError,
@@ -460,11 +461,13 @@ export const tasksApi = {
 
 // Sessions API
 export const sessionsApi = {
-  getByWorkspace: async (workspaceId: string): Promise<Session[]> => {
+  getByWorkspace: async (
+    workspaceId: string
+  ): Promise<SessionWithInitiator[]> => {
     const response = await makeRequest(
       `/api/sessions?workspace_id=${workspaceId}`
     );
-    return handleApiResponse<Session[]>(response);
+    return handleApiResponse<SessionWithInitiator[]>(response);
   },
 
   getById: async (sessionId: string): Promise<Session> => {

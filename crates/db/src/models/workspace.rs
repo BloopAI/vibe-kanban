@@ -11,6 +11,7 @@ const WORKSPACE_NAME_MAX_LEN: usize = 60;
 use super::{
     project::Project,
     task::Task,
+    user::User,
     workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 
@@ -48,6 +49,42 @@ pub struct Workspace {
     pub archived: bool,
     pub pinned: bool,
     pub name: Option<String>,
+    pub owner_user_id: Option<Uuid>,
+}
+
+/// Compact representation of a user for workspace API responses
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct WorkspaceUser {
+    pub id: Uuid,
+    pub username: String,
+    pub avatar_url: Option<String>,
+}
+
+impl From<User> for WorkspaceUser {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            avatar_url: user.avatar_url,
+        }
+    }
+}
+
+/// Workspace with owner information for API responses
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct WorkspaceWithOwner {
+    #[serde(flatten)]
+    pub workspace: Workspace,
+    pub owner: Option<WorkspaceUser>,
+}
+
+impl WorkspaceWithOwner {
+    pub fn new(workspace: Workspace, owner: Option<User>) -> Self {
+        Self {
+            workspace,
+            owner: owner.map(WorkspaceUser::from),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -57,6 +94,7 @@ pub struct WorkspaceWithStatus {
     pub workspace: Workspace,
     pub is_running: bool,
     pub is_errored: bool,
+    pub owner: Option<WorkspaceUser>,
 }
 
 impl std::ops::Deref for WorkspaceWithStatus {
@@ -126,7 +164,8 @@ impl Workspace {
                               updated_at AS "updated_at!: DateTime<Utc>",
                               archived AS "archived!: bool",
                               pinned AS "pinned!: bool",
-                              name
+                              name,
+                              owner_user_id AS "owner_user_id: Uuid"
                        FROM workspaces
                        WHERE task_id = $1
                        ORDER BY created_at DESC"#,
@@ -147,7 +186,8 @@ impl Workspace {
                               updated_at AS "updated_at!: DateTime<Utc>",
                               archived AS "archived!: bool",
                               pinned AS "pinned!: bool",
-                              name
+                              name,
+                              owner_user_id AS "owner_user_id: Uuid"
                        FROM workspaces
                        ORDER BY created_at DESC"#
             )
@@ -178,7 +218,8 @@ impl Workspace {
                        w.updated_at        AS "updated_at!: DateTime<Utc>",
                        w.archived          AS "archived!: bool",
                        w.pinned            AS "pinned!: bool",
-                       w.name
+                       w.name,
+                       w.owner_user_id     AS "owner_user_id: Uuid"
                FROM    workspaces w
                JOIN    tasks t ON w.task_id = t.id
                JOIN    projects p ON t.project_id = p.id
@@ -267,7 +308,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       owner_user_id     AS "owner_user_id: Uuid"
                FROM    workspaces
                WHERE   id = $1"#,
             id
@@ -289,7 +331,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       owner_user_id     AS "owner_user_id: Uuid"
                FROM    workspaces
                WHERE   rowid = $1"#,
             rowid
@@ -332,7 +375,8 @@ impl Workspace {
                 w.updated_at as "updated_at!: DateTime<Utc>",
                 w.archived as "archived!: bool",
                 w.pinned as "pinned!: bool",
-                w.name
+                w.name,
+                w.owner_user_id as "owner_user_id: Uuid"
             FROM workspaces w
             JOIN tasks t ON w.task_id = t.id
             LEFT JOIN sessions s ON w.id = s.workspace_id
@@ -376,18 +420,20 @@ impl Workspace {
         data: &CreateWorkspace,
         id: Uuid,
         task_id: Uuid,
+        owner_user_id: Option<Uuid>,
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
-            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at, owner_user_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, owner_user_id as "owner_user_id: Uuid""#,
             id,
             task_id,
             Option::<String>::None,
             data.branch,
             data.agent_working_dir,
-            Option::<DateTime<Utc>>::None
+            Option::<DateTime<Utc>>::None,
+            owner_user_id
         )
         .fetch_one(pool)
         .await?)
@@ -533,6 +579,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.owner_user_id AS "owner_user_id: Uuid",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -552,9 +599,14 @@ impl Workspace {
                       AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
                     ORDER BY ep.created_at DESC
                     LIMIT 1
-                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64"
+                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64",
+
+                -- Owner user info
+                owner.username AS owner_username,
+                owner.avatar_url AS owner_avatar_url
 
             FROM workspaces w
+            LEFT JOIN users owner ON owner.id = w.owner_user_id
             ORDER BY w.updated_at DESC"#
         )
         .fetch_all(pool)
@@ -575,9 +627,17 @@ impl Workspace {
                     archived: rec.archived,
                     pinned: rec.pinned,
                     name: rec.name,
+                    owner_user_id: rec.owner_user_id,
                 },
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
+                owner: rec.owner_user_id.and_then(|id| {
+                    rec.owner_username.clone().map(|username| WorkspaceUser {
+                        id,
+                        username,
+                        avatar_url: rec.owner_avatar_url.clone(),
+                    })
+                }),
             })
             // Apply archived filter if provided
             .filter(|ws| archived.is_none_or(|a| ws.workspace.archived == a))
@@ -626,6 +686,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.owner_user_id AS "owner_user_id: Uuid",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -645,9 +706,14 @@ impl Workspace {
                       AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
                     ORDER BY ep.created_at DESC
                     LIMIT 1
-                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64"
+                ) IN ('failed','killed') THEN 1 ELSE 0 END AS "is_errored!: i64",
+
+                -- Owner user info
+                owner.username AS owner_username,
+                owner.avatar_url AS owner_avatar_url
 
             FROM workspaces w
+            LEFT JOIN users owner ON owner.id = w.owner_user_id
             WHERE w.id = $1"#,
             id
         )
@@ -671,9 +737,15 @@ impl Workspace {
                 archived: rec.archived,
                 pinned: rec.pinned,
                 name: rec.name,
+                owner_user_id: rec.owner_user_id,
             },
             is_running: rec.is_running != 0,
             is_errored: rec.is_errored != 0,
+            owner: rec.owner_user_id.map(|id| WorkspaceUser {
+                id,
+                username: rec.owner_username.clone(),
+                avatar_url: rec.owner_avatar_url.clone(),
+            }),
         };
 
         if ws.workspace.name.is_none()
@@ -685,5 +757,19 @@ impl Workspace {
         }
 
         Ok(Some(ws))
+    }
+
+    /// Fetch the owner user for this workspace, if one exists
+    pub async fn get_owner(&self, pool: &SqlitePool) -> Result<Option<User>, sqlx::Error> {
+        match self.owner_user_id {
+            Some(user_id) => User::find_by_id(pool, user_id).await,
+            None => Ok(None),
+        }
+    }
+
+    /// Convert this workspace to a WorkspaceWithOwner, fetching owner if available
+    pub async fn with_owner(self, pool: &SqlitePool) -> Result<WorkspaceWithOwner, sqlx::Error> {
+        let owner = self.get_owner(pool).await?;
+        Ok(WorkspaceWithOwner::new(self, owner))
     }
 }

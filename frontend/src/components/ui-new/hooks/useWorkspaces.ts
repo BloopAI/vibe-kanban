@@ -6,6 +6,7 @@ import type {
   WorkspaceSummary,
   WorkspaceSummaryResponse,
   ApiResponse,
+  WorkspaceUser,
 } from 'shared/types';
 
 // UI-specific workspace type for sidebar display
@@ -26,6 +27,7 @@ export interface SidebarWorkspace {
   latestProcessCompletedAt?: string;
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  owner?: WorkspaceUser | null;
 }
 
 // Keep the old export name for backwards compatibility
@@ -69,6 +71,8 @@ function toSidebarWorkspace(
     latestProcessCompletedAt: summary?.latest_process_completed_at ?? undefined,
     latestProcessStatus: summary?.latest_process_status ?? undefined,
     prStatus: summary?.pr_status ?? undefined,
+    // Owner info
+    owner: ws.owner ?? undefined,
   };
 }
 

@@ -6,6 +6,7 @@ use std::str::FromStr;
 use axum::{
     Extension, Json, Router,
     extract::{Query, State},
+    http::HeaderMap,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::{get, post},
@@ -13,7 +14,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     scratch::{Scratch, ScratchType},
-    session::{CreateSession, Session},
+    session::{CreateSession, Session, SessionWithInitiator},
     workspace::{Workspace, WorkspaceError},
     workspace_repo::WorkspaceRepo,
 };
@@ -32,7 +33,8 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_session_middleware,
+    DeploymentImpl, error::ApiError,
+    middleware::{get_user_id, load_session_middleware, try_get_authenticated_user},
     routes::task_attempts::util::restore_worktrees_to_process,
 };
 
@@ -50,10 +52,17 @@ pub struct CreateSessionRequest {
 pub async fn get_sessions(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<Session>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<SessionWithInitiator>>>, ApiError> {
     let pool = &deployment.db().pool;
     let sessions = Session::find_by_workspace_id(pool, query.workspace_id).await?;
-    Ok(ResponseJson(ApiResponse::success(sessions)))
+
+    // Enrich sessions with initiator info
+    let mut sessions_with_initiator = Vec::with_capacity(sessions.len());
+    for session in sessions {
+        sessions_with_initiator.push(session.with_initiator(pool).await?);
+    }
+
+    Ok(ResponseJson(ApiResponse::success(sessions_with_initiator)))
 }
 
 pub async fn get_session(
@@ -64,6 +73,7 @@ pub async fn get_session(
 
 pub async fn create_session(
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateSessionRequest>,
 ) -> Result<ResponseJson<ApiResponse<Session>>, ApiError> {
     let pool = &deployment.db().pool;
@@ -75,6 +85,10 @@ pub async fn create_session(
             "Workspace not found".to_string(),
         )))?;
 
+    // Get authenticated user for session attribution
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    let initiated_by_user_id = get_user_id(&authenticated_user);
+
     let session = Session::create(
         pool,
         &CreateSession {
@@ -82,6 +96,7 @@ pub async fn create_session(
         },
         Uuid::new_v4(),
         payload.workspace_id,
+        initiated_by_user_id,
     )
     .await?;
 

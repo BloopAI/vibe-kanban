@@ -50,7 +50,7 @@ pub async fn run_codex_setup(
         match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
             Some(s) => s,
             None => {
-                // Create a new session for setup scripts
+                // Create a new session for setup scripts (system-initiated)
                 Session::create(
                     &deployment.db().pool,
                     &CreateSession {
@@ -58,6 +58,7 @@ pub async fn run_codex_setup(
                     },
                     Uuid::new_v4(),
                     workspace.id,
+                    None, // System-initiated session
                 )
                 .await?
             }

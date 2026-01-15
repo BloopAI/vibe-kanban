@@ -98,6 +98,7 @@ export function WorkspacesSidebar({
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               prStatus={workspace.prStatus}
+              owner={workspace.owner}
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}
@@ -126,6 +127,7 @@ export function WorkspacesSidebar({
               latestProcessCompletedAt={workspace.latestProcessCompletedAt}
               latestProcessStatus={workspace.latestProcessStatus}
               prStatus={workspace.prStatus}
+              owner={workspace.owner}
               onClick={() => onSelectWorkspace(workspace.id)}
             />
           ))}

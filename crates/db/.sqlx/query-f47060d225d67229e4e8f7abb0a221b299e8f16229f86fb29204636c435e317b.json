@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO sessions (id, workspace_id, executor)\n               VALUES ($1, $2, $3)\n               RETURNING id AS \"id!: Uuid\",\n                         workspace_id AS \"workspace_id!: Uuid\",\n                         executor,\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id AS \"id!: Uuid\",\n                      workspace_id AS \"workspace_id!: Uuid\",\n                      executor,\n                      created_at AS \"created_at!: DateTime<Utc>\",\n                      updated_at AS \"updated_at!: DateTime<Utc>\",\n                      initiated_by_user_id AS \"initiated_by_user_id: Uuid\"\n               FROM sessions\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -27,18 +27,24 @@
         "name": "updated_at!: DateTime<Utc>",
         "ordinal": 4,
         "type_info": "Text"
+      },
+      {
+        "name": "initiated_by_user_id: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 1
     },
     "nullable": [
       true,
       false,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "a25ebd2f707a19c565d61682bede36628e906b68ebc93bbf7f71d8bb57f72bfc"
+  "hash": "f47060d225d67229e4e8f7abb0a221b299e8f16229f86fb29204636c435e317b"
 }

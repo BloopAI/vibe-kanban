@@ -17,7 +17,7 @@ use axum::{
         Query, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post, put},
@@ -54,7 +54,8 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
+    DeploymentImpl, error::ApiError,
+    middleware::{get_user_id, load_workspace_middleware, try_get_authenticated_user},
     routes::task_attempts::gh_cli_setup::GhCliSetupError,
 };
 
@@ -161,6 +162,7 @@ pub struct RunAgentSetupResponse {}
 #[axum::debug_handler]
 pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
+    headers: HeaderMap,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     let executor_profile_id = payload.executor_profile_id.clone();
@@ -175,6 +177,10 @@ pub async fn create_task_attempt(
     let task = Task::find_by_id(&deployment.db().pool, payload.task_id)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
+
+    // Get authenticated user for workspace ownership
+    let authenticated_user = try_get_authenticated_user(&deployment, &headers).await;
+    let owner_user_id = get_user_id(&authenticated_user);
 
     // Compute agent_working_dir based on repo count:
     // - Single repo: use repo name as working dir (agent runs in repo directory)
@@ -202,6 +208,7 @@ pub async fn create_task_attempt(
         },
         attempt_id,
         payload.task_id,
+        owner_user_id,
     )
     .await?;
 
@@ -1252,6 +1259,7 @@ pub async fn start_dev_server(
                 },
                 Uuid::new_v4(),
                 workspace.id,
+                None, // System-initiated session (dev server)
             )
             .await?
         }
@@ -1390,7 +1398,7 @@ pub async fn run_setup_script(
         }
     };
 
-    // Get or create a session for setup script
+    // Get or create a session for setup script (system-initiated)
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
         Some(s) => s,
         None => {
@@ -1401,6 +1409,7 @@ pub async fn run_setup_script(
                 },
                 Uuid::new_v4(),
                 workspace.id,
+                None, // System-initiated session
             )
             .await?
         }
@@ -1471,7 +1480,7 @@ pub async fn run_cleanup_script(
         }
     };
 
-    // Get or create a session for cleanup script
+    // Get or create a session for cleanup script (system-initiated)
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
         Some(s) => s,
         None => {
@@ -1482,6 +1491,7 @@ pub async fn run_cleanup_script(
                 },
                 Uuid::new_v4(),
                 workspace.id,
+                None, // System-initiated session
             )
             .await?
         }
