@@ -273,9 +273,7 @@ export function PreviewBrowser({
           <div
             className={cn(
               'h-full',
-              screenSize === 'desktop'
-                ? ''
-                : 'flex items-center justify-center'
+              screenSize === 'desktop' ? '' : 'flex items-center justify-center'
             )}
           >
             {screenSize === 'mobile' ? (
@@ -283,7 +281,8 @@ export function PreviewBrowser({
               <div
                 className="bg-primary rounded-[2rem] p-3 shadow-xl origin-center"
                 style={{
-                  transform: mobileScale < 1 ? `scale(${mobileScale})` : undefined,
+                  transform:
+                    mobileScale < 1 ? `scale(${mobileScale})` : undefined,
                 }}
               >
                 <div

@@ -1,4 +1,10 @@
-import { useCallback, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  useCallback,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import {
   PreviewBrowser,
   MOBILE_WIDTH,
