@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT 1 AS v FROM issue_assignees WHERE \"issue_id\" IN (SELECT id FROM issues WHERE \"project_id\" IN (SELECT id FROM projects WHERE \"organization_id\" = $1))",
+  "query": "SELECT 1 AS v FROM issues WHERE \"project_id\" = $1",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       null
     ]
   },
-  "hash": "2bf9e2960c7886505c392e38458e225cc250df98eb56dfe044b3d01ddd4b7599"
+  "hash": "bc0e36b956903c2ace672e6c52516598ec5f2b0288dcb935ef4d1bc694dacf0d"
 }
