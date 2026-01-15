@@ -5,6 +5,8 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
 import { useTerminalWebSocket } from '@/hooks/useTerminalWebSocket';
+import { useTheme } from '@/components/ThemeProvider';
+import { getTerminalTheme } from '@/utils/terminalTheme';
 
 interface XTermInstanceProps {
   workspaceId: string;
@@ -21,6 +23,7 @@ export function XTermInstance({
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initialSizeRef = useRef({ cols: 80, rows: 24 });
+  const { theme } = useTheme();
 
   const onData = useCallback((data: string) => {
     terminalRef.current?.write(data);
@@ -45,28 +48,7 @@ export function XTermInstance({
       cursorBlink: true,
       fontSize: 12,
       fontFamily: '"IBM Plex Mono", monospace',
-      theme: {
-        background: '#1a1b26',
-        foreground: '#c0caf5',
-        cursor: '#c0caf5',
-        cursorAccent: '#1a1b26',
-        black: '#15161e',
-        red: '#f7768e',
-        green: '#9ece6a',
-        yellow: '#e0af68',
-        blue: '#7aa2f7',
-        magenta: '#bb9af7',
-        cyan: '#7dcfff',
-        white: '#a9b1d6',
-        brightBlack: '#414868',
-        brightRed: '#f7768e',
-        brightGreen: '#9ece6a',
-        brightYellow: '#e0af68',
-        brightBlue: '#7aa2f7',
-        brightMagenta: '#bb9af7',
-        brightCyan: '#7dcfff',
-        brightWhite: '#c0caf5',
-      },
+      theme: getTerminalTheme(),
     });
 
     const fitAddon = new FitAddon();
@@ -120,6 +102,13 @@ export function XTermInstance({
       terminalRef.current?.focus();
     }
   }, [isActive]);
+
+  // Update terminal theme when app theme changes
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.theme = getTerminalTheme();
+    }
+  }, [theme]);
 
   return (
     <div
