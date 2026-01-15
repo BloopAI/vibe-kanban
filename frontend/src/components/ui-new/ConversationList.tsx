@@ -95,10 +95,10 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAppliedDataRef = useRef<{ length: number; lastKey: string | undefined } | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    setChannelData(null);
     reset();
   }, [attempt.id, reset]);
 
@@ -129,16 +129,27 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+      // Skip update if entries haven't changed (same length and same last key)
+      const newData = pending.entries;
+      const lastNewKey = newData[newData.length - 1]?.patchKey;
+      const lastApplied = lastAppliedDataRef.current;
+      const entriesChanged =
+        lastApplied?.length !== newData.length ||
+        lastApplied?.lastKey !== lastNewKey;
 
-      if (pending.addType === 'plan' && !loading) {
-        scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running' && !loading) {
-        scrollModifier = AutoScrollToBottom;
+      if (entriesChanged) {
+        let scrollModifier: ScrollModifier = InitialDataScrollModifier;
+
+        if (pending.addType === 'plan' && !loading) {
+          scrollModifier = ScrollToTopOfLastItem;
+        } else if (pending.addType === 'running' && !loading) {
+          scrollModifier = AutoScrollToBottom;
+        }
+
+        setChannelData({ data: pending.entries, scrollModifier });
+        setEntries(pending.entries);
+        lastAppliedDataRef.current = { length: newData.length, lastKey: lastNewKey };
       }
-
-      setChannelData({ data: pending.entries, scrollModifier });
-      setEntries(pending.entries);
 
       if (loading) {
         setLoading(pending.loading);

@@ -52,13 +52,7 @@ export function WorkspacesMain({
       className="relative flex flex-1 flex-col bg-primary h-full"
     >
       <ApprovalFeedbackProvider>
-        <EntriesProvider
-          key={
-            workspaceWithSession
-              ? `${workspaceWithSession.id}-${session?.id}`
-              : 'empty'
-          }
-        >
+        <EntriesProvider>
           {/* Conversation content - conditional based on loading/workspace state */}
           <MessageEditProvider>
             {isLoading ? (
