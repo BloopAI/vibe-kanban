@@ -220,7 +220,7 @@ pub struct StartWorkspaceSessionRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
     #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
+        description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
@@ -750,7 +750,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
+        description = "Update an existing task/ticket's title, description, or status. `task_id` is required. `title`, `description`, and `status` are optional."
     )]
     async fn update_task(
         &self,
@@ -799,9 +799,7 @@ impl TaskServer {
         TaskServer::success(&repsonse)
     }
 
-    #[tool(
-        description = "Delete a task/ticket from a project. `project_id` and `task_id` are required!"
-    )]
+    #[tool(description = "Delete a task/ticket. `task_id` is required.")]
     async fn delete_task(
         &self,
         Parameters(DeleteTaskRequest { task_id }): Parameters<DeleteTaskRequest>,
@@ -819,7 +817,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `project_id` and `task_id` are required!"
+        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `task_id` is required."
     )]
     async fn get_task(
         &self,
