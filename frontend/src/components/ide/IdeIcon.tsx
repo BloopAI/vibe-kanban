@@ -34,7 +34,7 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
     case EditorType.CUSTOM:
       return 'IDE';
     case EditorType.GOOGLE_ANTIGRAVITY:
-      return 'Google Antigravity';
+      return 'Antigravity';
   }
 }
 
@@ -46,11 +46,7 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   const ideName = getIdeName(editorType);
   let ideIconPath = '';
 
-  if (
-    !editorType ||
-    editorType === EditorType.CUSTOM ||
-    editorType === EditorType.GOOGLE_ANTIGRAVITY
-  ) {
+  if (!editorType || editorType === EditorType.CUSTOM) {
     // Generic fallback for other IDEs or no IDE configured
     return <Code2 className={className} />;
   }
@@ -75,6 +71,11 @@ export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
       break;
     case EditorType.XCODE:
       ideIconPath = '/ide/xcode.svg';
+      break;
+    case EditorType.GOOGLE_ANTIGRAVITY:
+      ideIconPath = isDark
+        ? '/ide/antigravity-dark.svg'
+        : '/ide/antigravity-light.svg';
       break;
   }
 
