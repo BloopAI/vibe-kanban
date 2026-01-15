@@ -5,11 +5,11 @@ use uuid::Uuid;
 
 use super::types::WorkspacePrStatus;
 
-/// Remote workspace metadata pushed from local clients
+/// Workspace metadata pushed from local clients
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct RemoteWorkspace {
+pub struct Workspace {
     pub id: Uuid,
-    pub organization_id: Uuid,
+    pub project_id: Uuid,
     pub owner_user_id: Uuid,
     pub issue_id: Option<Uuid>,
     pub local_workspace_id: Uuid,
@@ -21,9 +21,9 @@ pub struct RemoteWorkspace {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Repo association for a remote workspace
+/// Repo association for a workspace
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct RemoteWorkspaceRepo {
+pub struct WorkspaceRepo {
     pub id: Uuid,
     pub workspace_id: Uuid,
     pub repo_name: String,
@@ -33,7 +33,7 @@ pub struct RemoteWorkspaceRepo {
 
 /// PR tracking for a workspace repo
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct RemoteWorkspacePr {
+pub struct WorkspacePr {
     pub id: Uuid,
     pub workspace_repo_id: Uuid,
     pub pr_url: String,
