@@ -28,7 +28,7 @@ pub fn get_interactive_shell() -> PathBuf {
     if cfg!(windows) {
         PathBuf::from("cmd.exe")
     } else {
-        UnixShell::current_shell().path()
+        UnixShell::current_shell().path().to_path_buf()
     }
 }
 
