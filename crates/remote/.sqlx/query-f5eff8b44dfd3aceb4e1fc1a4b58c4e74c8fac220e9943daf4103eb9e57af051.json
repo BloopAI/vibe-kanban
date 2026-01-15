@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT 1 AS v FROM issue_tags WHERE \"issue_id\" IN (SELECT id FROM issues WHERE \"project_id\" IN (SELECT id FROM projects WHERE \"organization_id\" = $1))",
+  "query": "SELECT 1 AS v FROM workspaces WHERE \"project_id\" = $1",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       null
     ]
   },
-  "hash": "b473b2236b7d85d71b2be86e24137d195f573af739ca785df2711de76381a85a"
+  "hash": "f5eff8b44dfd3aceb4e1fc1a4b58c4e74c8fac220e9943daf4103eb9e57af051"
 }
