@@ -68,11 +68,11 @@ impl PtyService {
                 .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
             let mut cmd = CommandBuilder::new(&shell);
+            cmd.arg("-f"); // Skip loading rc files to allow custom prompt
             cmd.cwd(&working_dir);
             cmd.env("TERM", "xterm-256color");
             cmd.env("COLORTERM", "truecolor");
-            cmd.env("ZDOTDIR", "/nonexistent"); // Skip ~/.zshrc to allow custom prompt
-            cmd.env("PS1", "$ "); // Bash prompt
+            cmd.env("PS1", "$ ");    // Bash prompt
             cmd.env("PROMPT", "$ "); // Zsh prompt
 
             let child = pty_pair
