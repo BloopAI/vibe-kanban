@@ -83,16 +83,28 @@ export function WorkspacesMain({
             {/* Chat box - always rendered to prevent flash during workspace switch */}
             <div className="flex justify-center @container pl-px">
               <SessionChatBoxContainer
-                session={session}
+                {...(isNewSessionMode && workspaceWithSession
+                  ? {
+                      mode: 'new-session',
+                      workspaceId: workspaceWithSession.id,
+                      onSelectSession,
+                    }
+                  : session
+                    ? {
+                        mode: 'existing-session',
+                        session,
+                        onSelectSession,
+                        onStartNewSession,
+                      }
+                    : {
+                        mode: 'placeholder',
+                        workspaceId: workspaceWithSession?.id,
+                      })}
                 sessions={sessions}
-                onSelectSession={onSelectSession}
-                filesChanged={diffStats?.filesChanged}
-                linesAdded={diffStats?.linesAdded}
-                linesRemoved={diffStats?.linesRemoved}
                 projectId={projectId}
-                isNewSessionMode={isNewSessionMode}
-                onStartNewSession={onStartNewSession}
-                workspaceId={workspaceWithSession?.id}
+                filesChanged={diffStats?.filesChanged ?? 0}
+                linesAdded={diffStats?.linesAdded ?? 0}
+                linesRemoved={diffStats?.linesRemoved ?? 0}
               />
             </div>
           </MessageEditProvider>

@@ -58,41 +58,70 @@ function computeExecutionStatus(params: {
   return 'idle';
 }
 
-interface SessionChatBoxContainerProps {
-  /** The current session */
-  session: Session | undefined;
+/** Shared props across all modes */
+interface SharedProps {
+  /** Available sessions for this workspace */
+  sessions: Session[];
+  /** Project ID for file search in typeahead */
+  projectId: string | undefined;
   /** Number of files changed in current session */
   filesChanged: number;
   /** Number of lines added */
   linesAdded: number;
   /** Number of lines removed */
   linesRemoved: number;
-  /** Available sessions for this workspace */
-  sessions: Session[];
+}
+
+/** Props for existing session mode */
+interface ExistingSessionProps extends SharedProps {
+  mode: 'existing-session';
+  /** The current session */
+  session: Session;
   /** Called when a session is selected */
-  onSelectSession: ((sessionId: string) => void) | undefined;
-  /** Project ID for file search in typeahead */
-  projectId: string | undefined;
-  /** Whether user is creating a new session */
-  isNewSessionMode: boolean;
+  onSelectSession: (sessionId: string) => void;
   /** Callback to start new session mode */
   onStartNewSession: (() => void) | undefined;
+}
+
+/** Props for new session mode */
+interface NewSessionProps extends SharedProps {
+  mode: 'new-session';
   /** Workspace ID for creating new sessions */
+  workspaceId: string;
+  /** Called when a session is selected */
+  onSelectSession: (sessionId: string) => void;
+}
+
+/** Props for placeholder mode (no workspace selected) */
+interface PlaceholderProps extends SharedProps {
+  mode: 'placeholder';
+  /** Workspace ID (may be undefined during loading) */
   workspaceId: string | undefined;
 }
 
-export function SessionChatBoxContainer({
-  session = undefined,
-  filesChanged = 0,
-  linesAdded = 0,
-  linesRemoved = 0,
-  sessions = [],
-  onSelectSession = undefined,
-  projectId = undefined,
-  isNewSessionMode = false,
-  onStartNewSession = undefined,
-  workspaceId = undefined,
-}: SessionChatBoxContainerProps) {
+type SessionChatBoxContainerProps =
+  | ExistingSessionProps
+  | NewSessionProps
+  | PlaceholderProps;
+
+export function SessionChatBoxContainer(
+  props: SessionChatBoxContainerProps
+) {
+  const { mode, sessions, projectId, filesChanged, linesAdded, linesRemoved } =
+    props;
+
+  // Extract mode-specific values
+  const session = mode === 'existing-session' ? props.session : undefined;
+  const workspaceId =
+    mode === 'existing-session'
+      ? props.session.workspace_id
+      : props.workspaceId;
+  const isNewSessionMode = mode === 'new-session';
+  const onSelectSession =
+    mode === 'placeholder' ? undefined : props.onSelectSession;
+  const onStartNewSession =
+    mode === 'existing-session' ? props.onStartNewSession : undefined;
+
   const sessionId = session?.id;
   const queryClient = useQueryClient();
 
@@ -553,12 +582,8 @@ export function SessionChatBoxContainer({
     localMessage,
   ]);
 
-  // Render placeholder state if no session and not in new session mode
-  // This maintains the visual structure during workspace transitions
-  const isPlaceholderMode = !session && !isNewSessionMode;
-
   // In placeholder mode, render a disabled version to maintain visual structure
-  if (isPlaceholderMode) {
+  if (mode === 'placeholder') {
     return (
       <SessionChatBox
         status="idle"
