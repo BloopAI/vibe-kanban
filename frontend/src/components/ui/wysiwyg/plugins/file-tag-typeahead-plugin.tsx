@@ -34,6 +34,7 @@ const VIEWPORT_MARGIN = 8;
 const VERTICAL_GAP = 4;
 const VERTICAL_GAP_ABOVE = 24;
 const MIN_WIDTH = 320;
+const MAX_FILE_RESULTS = 10;
 
 interface DiffFileResult {
   path: string;
@@ -135,11 +136,16 @@ export function FileTagTypeaheadPlugin({
             .filter((r) => r.type === 'file')
             .filter((r) => !localFilePaths.has(r.file!.path)); // Dedupe
 
+          // Limit total file results: prioritize local diff files
+          const limitedLocalFiles = localFiles.slice(0, MAX_FILE_RESULTS);
+          const remainingSlots = MAX_FILE_RESULTS - limitedLocalFiles.length;
+          const limitedServerFiles = serverFileResults.slice(0, remainingSlots);
+
           // Build merged results: tags, then local files (ranked higher), then server files
           const mergedResults: SearchResultItem[] = [
             ...tagResults,
-            ...localFiles.map((file) => ({ type: 'file' as const, file })),
-            ...serverFileResults,
+            ...limitedLocalFiles.map((file) => ({ type: 'file' as const, file })),
+            ...limitedServerFiles,
           ];
 
           setOptions(mergedResults.map((r) => new FileTagOption(r)));
