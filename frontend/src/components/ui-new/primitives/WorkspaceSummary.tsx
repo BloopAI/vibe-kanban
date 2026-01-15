@@ -6,7 +6,6 @@ import {
   FileIcon,
   CircleIcon,
   GitPullRequestIcon,
-  ArchiveIcon,
   ListIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
@@ -31,8 +30,6 @@ interface WorkspaceSummaryProps {
   latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
   onClick?: () => void;
-  onArchive?: () => void;
-  onPin?: () => void;
   className?: string;
   summary?: boolean;
   /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
@@ -55,8 +52,6 @@ export function WorkspaceSummary({
   latestProcessStatus,
   prStatus,
   onClick,
-  onArchive,
-  onPin,
   className,
   summary = false,
   isDraft = false,
@@ -72,16 +67,6 @@ export function WorkspaceSummary({
       page: 'workspaceActions',
       workspaceId,
     });
-  };
-
-  const handleArchive = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onArchive?.();
-  };
-
-  const handlePin = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onPin?.();
   };
 
   return (
@@ -108,7 +93,13 @@ export function WorkspaceSummary({
             : 'text-low opacity-60 hover:opacity-100 hover:text-normal'
         )}
       >
-        <div className={cn('truncate pr-double', !summary && 'text-normal')}>
+        <div
+          className={cn('overflow-hidden whitespace-nowrap pr-double', !summary && 'text-normal')}
+          style={{
+            maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent 100%)'
+          }}
+        >
           {name}
         </div>
         {(!summary || isActive) && (
@@ -204,53 +195,21 @@ export function WorkspaceSummary({
         )}
       </button>
 
-      {/* Right-side hover zone for action overlay */}
+      {/* Right-side hover action - more options only */}
       {workspaceId && (
-        <div className="absolute right-0 top-0 bottom-0 w-16 group/actions">
-          {/* Sliding action overlay - only appears when hovering this zone */}
-          <div
-            className={cn(
-              'absolute right-0 top-0 bottom-0 flex items-center',
-              'translate-x-full group-hover/actions:translate-x-0',
-              'transition-transform duration-150 ease-out'
-            )}
-          >
-            {/* Gradient fade from transparent to pill background */}
-            <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />
-            {/* Action pill */}
-            <div className="flex items-center gap-0.5 pr-base h-full bg-secondary">
-              <button
-                onClick={handlePin}
-                onPointerDown={(e) => e.stopPropagation()}
-                className={cn(
-                  'p-1.5 rounded-sm transition-colors duration-100',
-                  'hover:bg-tertiary',
-                  isPinned ? 'text-brand' : 'text-low hover:text-normal'
-                )}
-                title={isPinned ? t('workspaces.unpin') : t('workspaces.pin')}
-              >
-                <PushPinIcon
-                  className="size-icon-xs"
-                  weight={isPinned ? 'fill' : 'regular'}
-                />
-              </button>
-              <button
-                onClick={handleArchive}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary transition-colors duration-100"
-                title={t('workspaces.archive')}
-              >
-                <ArchiveIcon className="size-icon-xs" />
-              </button>
-              <button
-                onClick={handleOpenCommandBar}
-                onPointerDown={(e) => e.stopPropagation()}
-                className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary transition-colors duration-100"
-                title={t('workspaces.more')}
-              >
-                <ListIcon className="size-icon-xs" />
-              </button>
-            </div>
+        <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-0 group-hover:opacity-100">
+          {/* Gradient fade from transparent to background */}
+          <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />
+          {/* Single action button */}
+          <div className="flex items-center pr-base h-full bg-secondary">
+            <button
+              onClick={handleOpenCommandBar}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary"
+              title={t('workspaces.more')}
+            >
+              <ListIcon className="size-icon-xs" />
+            </button>
           </div>
         </div>
       )}

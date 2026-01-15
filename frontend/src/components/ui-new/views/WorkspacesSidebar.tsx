@@ -11,8 +11,6 @@ interface WorkspacesSidebarProps {
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onAddWorkspace?: () => void;
-  onArchiveWorkspace?: (id: string) => void;
-  onPinWorkspace?: (id: string) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   /** Whether we're in create mode */
@@ -33,8 +31,6 @@ export function WorkspacesSidebar({
   selectedWorkspaceId,
   onSelectWorkspace,
   onAddWorkspace,
-  onArchiveWorkspace,
-  onPinWorkspace,
   searchQuery,
   onSearchChange,
   isCreateMode = false,
@@ -107,8 +103,6 @@ export function WorkspacesSidebar({
                   latestProcessStatus={workspace.latestProcessStatus}
                   prStatus={workspace.prStatus}
                   onClick={() => onSelectWorkspace(workspace.id)}
-                  onArchive={() => onArchiveWorkspace?.(workspace.id)}
-                  onPin={() => onPinWorkspace?.(workspace.id)}
                 />
               ))
             )}
@@ -145,8 +139,6 @@ export function WorkspacesSidebar({
                 latestProcessStatus={workspace.latestProcessStatus}
                 prStatus={workspace.prStatus}
                 onClick={() => onSelectWorkspace(workspace.id)}
-                onArchive={() => onArchiveWorkspace?.(workspace.id)}
-                onPin={() => onPinWorkspace?.(workspace.id)}
               />
             ))}
           </div>

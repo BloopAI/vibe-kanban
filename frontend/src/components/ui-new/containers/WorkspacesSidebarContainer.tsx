@@ -1,6 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useActions } from '@/contexts/ActionsContext';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { splitMessageToTitleDescription } from '@/utils/string';
@@ -9,7 +8,6 @@ import {
   usePersistedExpanded,
 } from '@/stores/useUiPreferencesStore';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import { Actions } from '@/components/ui-new/actions';
 
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
@@ -50,23 +48,6 @@ export function WorkspacesSidebarContainer() {
     return title || 'New Workspace';
   }, [draftScratch]);
 
-  // Action handlers for sidebar workspace actions
-  const { executeAction } = useActions();
-
-  const handleArchiveWorkspace = useCallback(
-    (workspaceId: string) => {
-      executeAction(Actions.ArchiveWorkspace, workspaceId);
-    },
-    [executeAction]
-  );
-
-  const handlePinWorkspace = useCallback(
-    (workspaceId: string) => {
-      executeAction(Actions.PinWorkspace, workspaceId);
-    },
-    [executeAction]
-  );
-
   return (
     <WorkspacesSidebar
       workspaces={activeWorkspaces}
@@ -76,8 +57,6 @@ export function WorkspacesSidebarContainer() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAddWorkspace={navigateToCreate}
-      onArchiveWorkspace={handleArchiveWorkspace}
-      onPinWorkspace={handlePinWorkspace}
       isCreateMode={isCreateMode}
       draftTitle={persistedDraftTitle}
       onSelectCreate={navigateToCreate}
