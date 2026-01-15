@@ -104,9 +104,7 @@ type SessionChatBoxContainerProps =
   | NewSessionProps
   | PlaceholderProps;
 
-export function SessionChatBoxContainer(
-  props: SessionChatBoxContainerProps
-) {
+export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const { mode, sessions, projectId, filesChanged, linesAdded, linesRemoved } =
     props;
 
