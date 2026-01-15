@@ -100,6 +100,18 @@ pub async fn create_invitation(
 
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
+    if let Some(billing) = state.billing() {
+        billing.can_add_member(org_id).await.map_err(|e| {
+            ErrorResponse::new(
+                StatusCode::PAYMENT_REQUIRED,
+                format!(
+                    "Cannot invite more members: {}. Subscribe to add more members.",
+                    e
+                ),
+            )
+        })?;
+    }
+
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now() + Duration::days(7);
 
@@ -240,7 +252,7 @@ pub async fn accept_invitation(
     let invitation_repo = InvitationRepository::new(&state.pool);
 
     let (org, role) = invitation_repo
-        .accept_invitation(&token, user.id)
+        .accept_invitation(&token, user.id, state.billing())
         .await
         .map_err(|e| match e {
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
@@ -383,6 +395,12 @@ pub async fn remove_member(
     tx.commit()
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    if let Some(billing) = state.billing() {
+        if let Err(e) = billing.on_member_count_changed(org_id).await {
+            tracing::warn!(?e, %org_id, "Failed to notify billing of member removal");
+        }
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     auth::{JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
+    billing::BillingProvider,
     config::RemoteServerConfig,
     github_app::GitHubAppService,
     mail::Mailer,
@@ -22,6 +23,7 @@ pub struct AppState {
     oauth_token_validator: Arc<OAuthTokenValidator>,
     r2: Option<R2Service>,
     github_app: Option<Arc<GitHubAppService>>,
+    billing: Option<Arc<dyn BillingProvider>>,
 }
 
 impl AppState {
@@ -37,6 +39,7 @@ impl AppState {
         http_client: reqwest::Client,
         r2: Option<R2Service>,
         github_app: Option<Arc<GitHubAppService>>,
+        billing: Option<Arc<dyn BillingProvider>>,
     ) -> Self {
         Self {
             pool,
@@ -49,6 +52,7 @@ impl AppState {
             oauth_token_validator,
             r2,
             github_app,
+            billing,
         }
     }
 
@@ -82,5 +86,9 @@ impl AppState {
 
     pub fn github_app(&self) -> Option<&GitHubAppService> {
         self.github_app.as_deref()
+    }
+
+    pub fn billing(&self) -> Option<&dyn BillingProvider> {
+        self.billing.as_deref()
     }
 }

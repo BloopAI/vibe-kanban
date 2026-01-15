@@ -11,5 +11,5 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let config = RemoteServerConfig::from_env()?;
-    Server::run(config).await
+    Server::run(config, None).await
 }
