@@ -144,7 +144,10 @@ export function FileTagTypeaheadPlugin({
           // Build merged results: tags, then local files (ranked higher), then server files
           const mergedResults: SearchResultItem[] = [
             ...tagResults,
-            ...limitedLocalFiles.map((file) => ({ type: 'file' as const, file })),
+            ...limitedLocalFiles.map((file) => ({
+              type: 'file' as const,
+              file,
+            })),
             ...limitedServerFiles,
           ];
 
