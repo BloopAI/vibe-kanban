@@ -4,7 +4,6 @@ import { ProcessListContainer } from '@/components/ui-new/containers/ProcessList
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
@@ -27,7 +26,6 @@ export function RightSidebar({
   repos,
 }: RightSidebarProps) {
   const { selectFile } = useChangesView();
-  const { viewProcessInPanel } = useLogsPanel();
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
 
@@ -81,10 +79,7 @@ export function RightSidebar({
     return (
       <div className="flex flex-col h-full">
         <div className="flex-[7] min-h-0 overflow-hidden">
-          <PreviewControlsContainer
-            attemptId={selectedWorkspace?.id}
-            onViewProcessInPanel={viewProcessInPanel}
-          />
+          <PreviewControlsContainer attemptId={selectedWorkspace?.id} />
         </div>
         <div className="flex-[3] min-h-0 overflow-hidden">
           <GitPanelContainer
