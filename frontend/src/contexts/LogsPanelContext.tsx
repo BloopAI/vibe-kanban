@@ -9,9 +9,10 @@ import {
 } from 'react';
 import type { LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
 import {
-  useUiPreferencesStore,
+  useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface LogsPanelContextValue {
   logsPanelContent: LogsPanelContent | null;
@@ -50,7 +51,10 @@ interface LogsPanelProviderProps {
 }
 
 export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
-  const { rightMainPanelMode, setRightMainPanelMode } = useUiPreferencesStore();
+  const { workspaceId, isCreateMode } = useWorkspaceContext();
+  const { rightMainPanelMode, setRightMainPanelMode } = useWorkspacePanelState(
+    isCreateMode ? undefined : workspaceId
+  );
 
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);

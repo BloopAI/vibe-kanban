@@ -22,7 +22,6 @@ import {
 } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import type {
   Workspace as ApiWorkspace,
@@ -90,13 +89,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
   const isCreateMode = location.pathname === '/workspaces/create';
-
-  // Reset UI state when entering create mode
-  useEffect(() => {
-    if (isCreateMode) {
-      useUiPreferencesStore.getState().resetForCreateMode();
-    }
-  }, [isCreateMode]);
 
   // Fetch workspaces for sidebar display
   const {

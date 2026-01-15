@@ -29,7 +29,7 @@ import {
   type ExecutionStatus,
 } from '../primitives/SessionChatBox';
 import {
-  useUiPreferencesStore,
+  useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { Actions, type ActionDefinition } from '../actions';
@@ -102,7 +102,8 @@ export function SessionChatBoxContainer({
 
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
-  const { rightMainPanelMode, setRightMainPanelMode } = useUiPreferencesStore();
+  const { rightMainPanelMode, setRightMainPanelMode } =
+    useWorkspacePanelState(workspaceId);
 
   const handleViewCode = useCallback(() => {
     setRightMainPanelMode(
