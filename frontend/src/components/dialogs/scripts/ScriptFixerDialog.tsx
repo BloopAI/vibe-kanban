@@ -166,27 +166,16 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       setError(null);
 
       try {
-        // Build update data with all required fields
-        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-        const updateData: UpdateRepo = {
-          display_name: selectedRepo?.display_name ?? null,
-          setup_script:
-            scriptType === 'setup'
-              ? script.trim() || null
-              : (selectedRepo?.setup_script ?? null),
-          cleanup_script:
-            scriptType === 'cleanup'
-              ? script.trim() || null
-              : (selectedRepo?.cleanup_script ?? null),
-          copy_files: selectedRepo?.copy_files ?? null,
-          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
-          dev_server_script:
-            scriptType === 'dev_server'
-              ? script.trim() || null
-              : (selectedRepo?.dev_server_script ?? null),
-        };
+        // Only send the field being edited - other fields will be preserved by the backend
+        const scriptValue = script.trim() || null;
+        const updateData: Partial<UpdateRepo> =
+          scriptType === 'setup'
+            ? { setup_script: scriptValue }
+            : scriptType === 'cleanup'
+              ? { cleanup_script: scriptValue }
+              : { dev_server_script: scriptValue };
 
-        await repoApi.update(selectedRepoId, updateData);
+        await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
         // Invalidate repos cache
         queryClient.invalidateQueries({ queryKey: ['repos'] });
@@ -201,7 +190,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       } finally {
         setIsSaving(false);
       }
-    }, [selectedRepoId, script, scriptType, queryClient, modal, t, repos]);
+    }, [selectedRepoId, script, scriptType, queryClient, modal, t]);
 
     const handleSaveAndTest = useCallback(async () => {
       if (!selectedRepoId) return;
@@ -210,27 +199,16 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       setError(null);
 
       try {
-        // First save the script
-        const selectedRepo = repos.find((r) => r.id === selectedRepoId);
-        const updateData: UpdateRepo = {
-          display_name: selectedRepo?.display_name ?? null,
-          setup_script:
-            scriptType === 'setup'
-              ? script.trim() || null
-              : (selectedRepo?.setup_script ?? null),
-          cleanup_script:
-            scriptType === 'cleanup'
-              ? script.trim() || null
-              : (selectedRepo?.cleanup_script ?? null),
-          copy_files: selectedRepo?.copy_files ?? null,
-          parallel_setup_script: selectedRepo?.parallel_setup_script ?? null,
-          dev_server_script:
-            scriptType === 'dev_server'
-              ? script.trim() || null
-              : (selectedRepo?.dev_server_script ?? null),
-        };
+        // Only send the field being edited - other fields will be preserved by the backend
+        const scriptValue = script.trim() || null;
+        const updateData: Partial<UpdateRepo> =
+          scriptType === 'setup'
+            ? { setup_script: scriptValue }
+            : scriptType === 'cleanup'
+              ? { cleanup_script: scriptValue }
+              : { dev_server_script: scriptValue };
 
-        await repoApi.update(selectedRepoId, updateData);
+        await repoApi.update(selectedRepoId, updateData as UpdateRepo);
 
         // Invalidate repos cache
         queryClient.invalidateQueries({ queryKey: ['repos'] });
@@ -256,15 +234,7 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
       } finally {
         setIsTesting(false);
       }
-    }, [
-      selectedRepoId,
-      script,
-      scriptType,
-      workspaceId,
-      queryClient,
-      t,
-      repos,
-    ]);
+    }, [selectedRepoId, script, scriptType, workspaceId, queryClient, t]);
 
     const dialogTitle =
       scriptType === 'setup'

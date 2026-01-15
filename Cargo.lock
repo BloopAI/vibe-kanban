@@ -1372,6 +1372,7 @@ dependencies = [
  "executors",
  "serde",
  "serde_json",
+ "serde_with",
  "sqlx",
  "strum",
  "strum_macros",
