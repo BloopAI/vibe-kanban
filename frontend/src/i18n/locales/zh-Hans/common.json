@@ -131,6 +131,13 @@
     "loading": "加载中...",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
+    "viewArchive": "查看归档",
+    "backToActive": "返回活跃",
+    "noArchived": "没有已归档的工作区",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "archive": "归档",
+    "more": "更多操作",
     "rename": {
       "title": "重命名工作区",
       "description": "输入此工作区的新名称。",
@@ -173,6 +180,7 @@
     "copyPath": "复制路径",
     "copyWorktreePath": "复制工作树路径",
     "openInIde": "在IDE中打开",
+    "repoSettings": "仓库设置",
     "cancel": "取消",
     "saveChanges": "保存更改",
     "copied": "已复制"
@@ -260,5 +268,16 @@
       "title": "返回经典界面",
       "content": "点击导航栏左侧的退出图标可返回经典看板。要完全禁用新界面，请在设置中的「测试版功能」下更新「启用 Workspaces 测试版」选项。"
     }
+  },
+  "logs": {
+    "searchLogs": "搜索日志",
+    "selectProcessToView": "选择一个进程以查看日志"
+  },
+  "processes": {
+    "noProcesses": "无进程"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "无匹配项"
   }
 }

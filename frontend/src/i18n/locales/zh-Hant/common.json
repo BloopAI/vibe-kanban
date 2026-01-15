@@ -131,6 +131,13 @@
     "loading": "載入中...",
     "selectToStart": "選擇一個工作區開始",
     "draft": "草稿",
+    "viewArchive": "檢視封存",
+    "backToActive": "返回活躍",
+    "noArchived": "沒有已封存的工作區",
+    "pin": "釘選",
+    "unpin": "取消釘選",
+    "archive": "封存",
+    "more": "更多操作",
     "rename": {
       "title": "重新命名工作區",
       "description": "輸入此工作區的新名稱。",
@@ -173,6 +180,7 @@
     "copyPath": "複製路徑",
     "copyWorktreePath": "複製工作樹路徑",
     "openInIde": "在IDE中開啟",
+    "repoSettings": "儲存庫設定",
     "cancel": "取消",
     "saveChanges": "儲存變更",
     "copied": "已複製"
@@ -260,5 +268,16 @@
       "title": "返回經典介面",
       "content": "點擊導覽列左側的退出圖示可返回經典看板。要完全停用新介面，請在設定中的「測試版功能」下更新「啟用 Workspaces 測試版」選項。"
     }
+  },
+  "logs": {
+    "searchLogs": "搜尋日誌",
+    "selectProcessToView": "選擇一個程序以查看日誌"
+  },
+  "processes": {
+    "noProcesses": "無程序"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "無匹配項"
   }
 }

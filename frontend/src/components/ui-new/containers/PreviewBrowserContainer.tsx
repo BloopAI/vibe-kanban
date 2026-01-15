@@ -7,7 +7,7 @@ import {
   type ScreenSize,
 } from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
@@ -25,8 +25,10 @@ export function PreviewBrowserContainer({
   className,
 }: PreviewBrowserContainerProps) {
   const navigate = useNavigate();
-  const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
-  const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
+  const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
+  const triggerPreviewRefresh = useUiPreferencesStore(
+    (s) => s.triggerPreviewRefresh
+  );
   const { repos, workspaceId } = useWorkspaceContext();
 
   const {

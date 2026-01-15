@@ -131,6 +131,13 @@
     "loading": "로딩 중...",
     "selectToStart": "워크스페이스를 선택하여 시작",
     "draft": "초안",
+    "viewArchive": "보관함 보기",
+    "backToActive": "활성으로 돌아가기",
+    "noArchived": "보관된 워크스페이스 없음",
+    "pin": "고정",
+    "unpin": "고정 해제",
+    "archive": "보관",
+    "more": "더 많은 작업",
     "rename": {
       "title": "워크스페이스 이름 변경",
       "description": "이 워크스페이스의 새 이름을 입력하세요.",
@@ -173,6 +180,7 @@
     "copyPath": "워크트리 경로 복사",
     "copyWorktreePath": "워크트리 경로 복사",
     "openInIde": "IDE에서 열기",
+    "repoSettings": "저장소 설정",
     "cancel": "취소",
     "saveChanges": "변경사항 저장",
     "copied": "복사됨"
@@ -260,5 +268,16 @@
       "title": "클래식 UI로 돌아가기",
       "content": "네비게이션 바 왼쪽의 나가기 아이콘을 클릭하면 클래식 칸반 보드로 돌아갑니다. 새 UI를 완전히 비활성화하려면 설정의 \"베타 기능\"에서 \"Workspaces 베타 활성화\" 옵션을 업데이트하세요."
     }
+  },
+  "logs": {
+    "searchLogs": "로그 검색",
+    "selectProcessToView": "로그를 보려면 프로세스를 선택하세요"
+  },
+  "processes": {
+    "noProcesses": "프로세스 없음"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "일치 항목 없음"
   }
 }

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
-import { useLayoutStore } from '@/stores/useLayoutStore';
-import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -23,7 +22,7 @@ import type { CommandBarPage } from './pages';
  * action visibility and state conditions.
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
-  const layout = useLayoutStore();
+  const layout = useUiPreferencesStore();
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
@@ -62,12 +61,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       false;
 
     return {
-      isChangesMode: layout.isChangesMode,
-      isLogsMode: layout.isLogsMode,
-      isPreviewMode: layout.isPreviewMode,
-      isSidebarVisible: layout.isSidebarVisible,
-      isMainPanelVisible: layout.isMainPanelVisible,
-      isGitPanelVisible: layout.isGitPanelVisible,
+      rightMainPanelMode: layout.rightMainPanelMode,
+      isLeftSidebarVisible: layout.isLeftSidebarVisible,
+      isLeftMainPanelVisible: layout.isLeftMainPanelVisible,
+      isRightSidebarVisible: layout.isRightSidebarVisible,
       isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
@@ -84,12 +81,10 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
-    layout.isChangesMode,
-    layout.isLogsMode,
-    layout.isPreviewMode,
-    layout.isSidebarVisible,
-    layout.isMainPanelVisible,
-    layout.isGitPanelVisible,
+    layout.rightMainPanelMode,
+    layout.isLeftSidebarVisible,
+    layout.isLeftMainPanelVisible,
+    layout.isRightSidebarVisible,
     isCreateMode,
     workspace,
     repos,

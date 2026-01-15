@@ -97,23 +97,28 @@ impl GitHostProvider for AzureDevOpsProvider {
         remote_url: &str,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHostError> {
+        if let Some(head_url) = &request.head_repo_url
+            && head_url != remote_url
+        {
+            return Err(GitHostError::PullRequest(
+                "Cross-fork pull requests are not supported for Azure DevOps".to_string(),
+            ));
+        }
+
         // Check auth first
         self.check_auth().await?;
 
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
-        let cli = self.az_cli.clone();
-        let request_clone = request.clone();
-
         (|| async {
-            let cli = cli.clone();
-            let request = request_clone.clone();
+            let cli = self.az_cli.clone();
+            let request_clone = request.clone();
             let organization_url = repo_info.organization_url.clone();
             let project = repo_info.project.clone();
             let repo_name = repo_info.repo_name.clone();
 
             let cli_result = task::spawn_blocking(move || {
-                cli.create_pr(&request, &organization_url, &project, &repo_name)
+                cli.create_pr(&request_clone, &organization_url, &project, &repo_name)
             })
             .await
             .map_err(|err| {
@@ -125,7 +130,7 @@ impl GitHostProvider for AzureDevOpsProvider {
 
             info!(
                 "Created Azure DevOps PR #{} for branch {}",
-                cli_result.number, request_clone.head_branch
+                cli_result.number, request.head_branch
             );
 
             Ok(cli_result)
@@ -149,12 +154,9 @@ impl GitHostProvider for AzureDevOpsProvider {
     }
 
     async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestInfo, GitHostError> {
-        let cli = self.az_cli.clone();
-        let url = pr_url.to_string();
-
         (|| async {
-            let cli = cli.clone();
-            let url = url.clone();
+            let cli = self.az_cli.clone();
+            let url = pr_url.to_string();
 
             let pr = task::spawn_blocking(move || cli.view_pr(&url))
                 .await
@@ -191,15 +193,12 @@ impl GitHostProvider for AzureDevOpsProvider {
     ) -> Result<Vec<PullRequestInfo>, GitHostError> {
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
-        let cli = self.az_cli.clone();
-        let branch = branch_name.to_string();
-
         (|| async {
-            let cli = cli.clone();
+            let cli = self.az_cli.clone();
             let organization_url = repo_info.organization_url.clone();
             let project = repo_info.project.clone();
             let repo_name = repo_info.repo_name.clone();
-            let branch = branch.clone();
+            let branch = branch_name.to_string();
 
             let prs = task::spawn_blocking(move || {
                 cli.list_prs_for_branch(&organization_url, &project, &repo_name, &branch)
@@ -238,10 +237,8 @@ impl GitHostProvider for AzureDevOpsProvider {
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
-        let cli = self.az_cli.clone();
-
         (|| async {
-            let cli = cli.clone();
+            let cli = self.az_cli.clone();
             let organization_url = repo_info.organization_url.clone();
             let project_id = repo_info.project_id.clone();
             let repo_id = repo_info.repo_id.clone();

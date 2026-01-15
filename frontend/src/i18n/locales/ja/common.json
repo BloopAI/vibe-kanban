@@ -131,6 +131,13 @@
     "loading": "読み込み中...",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
+    "viewArchive": "アーカイブを表示",
+    "backToActive": "アクティブに戻る",
+    "noArchived": "アーカイブされたワークスペースはありません",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "archive": "アーカイブ",
+    "more": "その他の操作",
     "rename": {
       "title": "ワークスペースの名前を変更",
       "description": "このワークスペースの新しい名前を入力してください。",
@@ -173,6 +180,7 @@
     "copyPath": "パスをコピー",
     "copyWorktreePath": "ワークツリーパスをコピー",
     "openInIde": "IDEで開く",
+    "repoSettings": "リポジトリ設定",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
     "copied": "コピーしました"
@@ -260,5 +268,16 @@
       "title": "クラシックUIに戻る",
       "content": "ナビバー左側の終了アイコンをクリックすると、クラシックカンバンボードに戻ります。新しいUIを完全に無効にするには、設定の「ベータ機能」にある「Workspacesベータを有効にする」オプションを更新してください。"
     }
+  },
+  "logs": {
+    "searchLogs": "ログを検索",
+    "selectProcessToView": "プロセスを選択してログを表示"
+  },
+  "processes": {
+    "noProcesses": "プロセスがありません"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "一致なし"
   }
 }

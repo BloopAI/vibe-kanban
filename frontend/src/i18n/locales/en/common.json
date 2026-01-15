@@ -131,6 +131,13 @@
     "loading": "Loading...",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
+    "viewArchive": "View Archive",
+    "backToActive": "Back to Active",
+    "noArchived": "No archived workspaces",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "more": "More actions",
     "rename": {
       "title": "Rename Workspace",
       "description": "Enter a new name for this workspace.",
@@ -173,6 +180,7 @@
     "copyPath": "Copy path",
     "copyWorktreePath": "Copy worktree path",
     "openInIde": "Open in IDE",
+    "repoSettings": "Repository settings",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
     "copied": "Copied"
@@ -260,5 +268,16 @@
       "title": "Return to Classic UI",
       "content": "Click the exit icon on the left side of the navbar to return to the classic kanban board. To disable the new UI entirely, update the \"Enable Workspaces Beta\" option under \"Beta Features\" in settings."
     }
+  },
+  "logs": {
+    "searchLogs": "Search logs",
+    "selectProcessToView": "Select a process to view logs"
+  },
+  "processes": {
+    "noProcesses": "No processes"
+  },
+  "search": {
+    "matchCount": "{{current}} of {{total}}",
+    "noMatches": "No matches"
   }
 }

@@ -3,6 +3,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
+export const RIGHT_MAIN_PANEL_MODES = {
+  CHANGES: 'changes',
+  LOGS: 'logs',
+  PREVIEW: 'preview',
+} as const;
+
+export type RightMainPanelMode =
+  (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -14,11 +23,9 @@ export type ContextBarPosition =
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
-  workspacesSidebarActive: 'workspaces-sidebar-active',
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
   // Git panel sections
   gitAdvancedSettings: 'git-advanced-settings',
-  gitPanelCreateAddRepo: 'git-panel-create-add-repo',
   gitPanelRepositories: 'git-panel-repositories',
   gitPanelProject: 'git-panel-project',
   gitPanelAddRepositories: 'git-panel-add-repositories',
@@ -28,24 +35,20 @@ export const PERSIST_KEYS = {
   changesSection: 'changes-section',
   // Preview panel sections
   devServerSection: 'dev-server-section',
-  // Context bar
-  contextBarPosition: 'context-bar-position',
   // GitHub comments toggle
   showGitHubComments: 'show-github-comments',
-  // Pane sizes
-  sidebarWidth: 'workspaces-sidebar-width',
-  gitPanelWidth: 'workspaces-git-panel-width',
-  changesPanelWidth: 'workspaces-changes-panel-width',
-  fileTreeHeight: 'workspaces-file-tree-height',
+  // Panel sizes
+  rightMainPanel: 'right-main-panel',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
 
+// Check if screen is wide enough to keep sidebar visible
+const isWideScreen = () => window.innerWidth > 2048;
+
 export type PersistKey =
-  | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
   | typeof PERSIST_KEYS.gitAdvancedSettings
-  | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.gitPanelRepositories
   | typeof PERSIST_KEYS.gitPanelProject
   | typeof PERSIST_KEYS.gitPanelAddRepositories
@@ -53,10 +56,7 @@ export type PersistKey =
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
   | typeof PERSIST_KEYS.showGitHubComments
-  | typeof PERSIST_KEYS.sidebarWidth
-  | typeof PERSIST_KEYS.gitPanelWidth
-  | typeof PERSIST_KEYS.changesPanelWidth
-  | typeof PERSIST_KEYS.fileTreeHeight
+  | typeof PERSIST_KEYS.rightMainPanel
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`
@@ -69,11 +69,21 @@ export type PersistKey =
   | `entry:${string}`;
 
 type State = {
+  // UI preferences
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+
+  // Layout state
+  isLeftSidebarVisible: boolean;
+  isLeftMainPanelVisible: boolean;
+  isRightSidebarVisible: boolean;
+  rightMainPanelMode: RightMainPanelMode | null;
+  previewRefreshKey: number;
+
+  // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
@@ -81,16 +91,37 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+
+  // Layout actions
+  toggleLeftSidebar: () => void;
+  toggleLeftMainPanel: () => void;
+  toggleRightSidebar: () => void;
+  toggleRightMainPanelMode: (mode: RightMainPanelMode) => void;
+  setRightMainPanelMode: (mode: RightMainPanelMode | null) => void;
+  setLeftSidebarVisible: (value: boolean) => void;
+  setLeftMainPanelVisible: (value: boolean) => void;
+  triggerPreviewRefresh: () => void;
+  resetForCreateMode: () => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      // UI preferences state
       repoActions: {},
       expanded: {},
       contextBarPosition: 'middle-right',
       paneSizes: {},
       collapsedPaths: {},
+
+      // Layout state
+      isLeftSidebarVisible: true,
+      isLeftMainPanelVisible: true,
+      isRightSidebarVisible: true,
+      rightMainPanelMode: null,
+      previewRefreshKey: 0,
+
+      // UI preferences actions
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -115,8 +146,80 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
       setCollapsedPaths: (key, paths) =>
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+
+      // Layout actions
+      toggleLeftSidebar: () =>
+        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
+
+      toggleLeftMainPanel: () => {
+        const { isLeftMainPanelVisible, rightMainPanelMode } = get();
+        if (isLeftMainPanelVisible && rightMainPanelMode === null) return;
+        set({ isLeftMainPanelVisible: !isLeftMainPanelVisible });
+      },
+
+      toggleRightSidebar: () =>
+        set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
+
+      toggleRightMainPanelMode: (mode) => {
+        const { rightMainPanelMode } = get();
+        const isCurrentlyActive = rightMainPanelMode === mode;
+
+        if (isCurrentlyActive) {
+          set({
+            rightMainPanelMode: null,
+            isLeftSidebarVisible: true,
+          });
+        } else {
+          set({
+            rightMainPanelMode: mode,
+            isLeftSidebarVisible: isWideScreen()
+              ? get().isLeftSidebarVisible
+              : false,
+          });
+        }
+      },
+
+      setRightMainPanelMode: (mode) => {
+        if (mode !== null) {
+          set({
+            rightMainPanelMode: mode,
+            isLeftSidebarVisible: isWideScreen()
+              ? get().isLeftSidebarVisible
+              : false,
+          });
+        } else {
+          set({ rightMainPanelMode: null });
+        }
+      },
+
+      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+
+      setLeftMainPanelVisible: (value) =>
+        set({ isLeftMainPanelVisible: value }),
+
+      triggerPreviewRefresh: () =>
+        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
+
+      resetForCreateMode: () =>
+        set({
+          rightMainPanelMode: null,
+        }),
     }),
-    { name: 'ui-preferences' }
+    {
+      name: 'ui-preferences',
+      partialize: (state) => ({
+        // UI preferences (all persisted)
+        repoActions: state.repoActions,
+        expanded: state.expanded,
+        contextBarPosition: state.contextBarPosition,
+        paneSizes: state.paneSizes,
+        collapsedPaths: state.collapsedPaths,
+        // Layout (only persist panel visibility, not mode states)
+        isLeftSidebarVisible: state.isLeftSidebarVisible,
+        isLeftMainPanelVisible: state.isLeftMainPanelVisible,
+        isRightSidebarVisible: state.isRightSidebarVisible,
+      }),
+    }
   )
 );
 
@@ -197,3 +300,7 @@ export function usePersistedCollapsedPaths(
 
   return [pathSet, setPathSet];
 }
+
+// Layout convenience hooks
+export const useIsRightMainPanelVisible = () =>
+  useUiPreferencesStore((s) => s.rightMainPanelMode !== null);

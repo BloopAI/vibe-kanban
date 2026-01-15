@@ -1,36 +1,29 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
 import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 import { InputField } from '../primitives/InputField';
 import { CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
-interface ProcessListContainerProps {
-  selectedProcessId: string | null;
-  onSelectProcess: (processId: string) => void;
-  disableAutoSelect?: boolean;
-  // Search props
-  searchQuery?: string;
-  onSearchQueryChange?: (query: string) => void;
-  matchCount?: number;
-  currentMatchIdx?: number;
-  onPrevMatch?: () => void;
-  onNextMatch?: () => void;
-}
+export function ProcessListContainer() {
+  const {
+    logsPanelContent,
+    logSearchQuery: searchQuery,
+    logMatchIndices,
+    logCurrentMatchIdx: currentMatchIdx,
+    setLogSearchQuery: onSearchQueryChange,
+    handleLogPrevMatch: onPrevMatch,
+    handleLogNextMatch: onNextMatch,
+    viewProcessInPanel: onSelectProcess,
+  } = useLogsPanel();
 
-export function ProcessListContainer({
-  selectedProcessId,
-  onSelectProcess,
-  disableAutoSelect,
-  searchQuery = '',
-  onSearchQueryChange,
-  matchCount = 0,
-  currentMatchIdx = 0,
-  onPrevMatch,
-  onNextMatch,
-}: ProcessListContainerProps) {
+  const selectedProcessId =
+    logsPanelContent?.type === 'process' ? logsPanelContent.processId : null;
+  const disableAutoSelect = logsPanelContent?.type === 'tool';
+  const matchCount = logMatchIndices.length;
   const { t } = useTranslation('common');
   const { executionProcessesVisible } = useExecutionProcessesContext();
 

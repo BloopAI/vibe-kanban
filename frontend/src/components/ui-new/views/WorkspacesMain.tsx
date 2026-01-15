@@ -23,7 +23,6 @@ interface WorkspacesMainProps {
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
   projectId?: string;
-  onViewCode?: () => void;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
@@ -39,7 +38,6 @@ export function WorkspacesMain({
   isLoading,
   containerRef,
   projectId,
-  onViewCode,
   isNewSessionMode,
   onStartNewSession,
   diffStats,
@@ -91,7 +89,6 @@ export function WorkspacesMain({
                 filesChanged={diffStats?.filesChanged}
                 linesAdded={diffStats?.linesAdded}
                 linesRemoved={diffStats?.linesRemoved}
-                onViewCode={onViewCode}
                 projectId={projectId}
                 isNewSessionMode={isNewSessionMode}
                 onStartNewSession={onStartNewSession}

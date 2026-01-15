@@ -3,7 +3,7 @@ import { TerminalIcon, WrenchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
 import { ToolStatusDot } from './ToolStatusDot';
-import { useLogNavigation } from '@/contexts/LogNavigationContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface ChatScriptEntryProps {
   title: string;
@@ -23,7 +23,7 @@ export function ChatScriptEntry({
   onFix,
 }: ChatScriptEntryProps) {
   const { t } = useTranslation('tasks');
-  const { viewProcessInPanel } = useLogNavigation();
+  const { viewProcessInPanel } = useLogsPanel();
   const isRunning = status.status === 'created';
   const isSuccess = status.status === 'success';
   const isFailed = status.status === 'failed';
