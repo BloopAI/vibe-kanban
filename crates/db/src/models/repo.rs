@@ -36,27 +36,51 @@ pub struct Repo {
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]
 pub struct UpdateRepo {
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "string | null")]
     pub display_name: Option<Option<String>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "string | null")]
     pub setup_script: Option<Option<String>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "string | null")]
     pub cleanup_script: Option<Option<String>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "string | null")]
     pub copy_files: Option<Option<String>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "boolean | null")]
     pub parallel_setup_script: Option<Option<bool>>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none", with = "double_option")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
     #[ts(optional, type = "string | null")]
     pub dev_server_script: Option<Option<String>>,
 }
