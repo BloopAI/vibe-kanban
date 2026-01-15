@@ -147,27 +147,22 @@ impl EditorConfig {
             .unwrap_or_default();
         let path_str = path.to_string_lossy();
 
-        match self.editor_type {
-            EditorType::VsCode
-            | EditorType::Cursor
-            | EditorType::Windsurf
-            | EditorType::GoogleAntigravity => {
-                let scheme = match self.editor_type {
-                    EditorType::VsCode => "vscode",
-                    EditorType::Cursor => "cursor",
-                    EditorType::Windsurf => "windsurf",
-                    EditorType::GoogleAntigravity => "antigravity",
-                    _ => unreachable!(),
-                };
-                // files must contain a line and column number
-                let line_col = if path.is_file() { ":1:1" } else { "" };
-                Some(format!(
-                    "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}"
-                ))
+        let scheme = match self.editor_type {
+            EditorType::VsCode => "vscode",
+            EditorType::Cursor => "cursor",
+            EditorType::Windsurf => "windsurf",
+            EditorType::GoogleAntigravity => "antigravity",
+            EditorType::Zed => {
+                return Some(format!("zed://ssh/{user_part}{remote_host}{path_str}"));
             }
-            EditorType::Zed => Some(format!("zed://ssh/{user_part}{remote_host}{path_str}")),
-            _ => None,
-        }
+            _ => return None,
+        };
+
+        // files must contain a line and column number
+        let line_col = if path.is_file() { ":1:1" } else { "" };
+        Some(format!(
+            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path_str}{line_col}"
+        ))
     }
 
     pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
