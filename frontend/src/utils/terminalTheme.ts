@@ -68,7 +68,7 @@ function getCssVariable(name: string): string {
  * and derives ANSI colors from a combination of theme-appropriate defaults.
  */
 export function getTerminalTheme(): ITheme {
-  const background = getCssVariable('--bg-primary');
+  const background = getCssVariable('--bg-secondary');
   const foreground = getCssVariable('--text-high');
   const success = getCssVariable('--console-success');
   const error = getCssVariable('--console-error');
