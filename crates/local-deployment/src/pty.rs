@@ -72,7 +72,7 @@ impl PtyService {
             cmd.cwd(&working_dir);
             cmd.env("TERM", "xterm-256color");
             cmd.env("COLORTERM", "truecolor");
-            cmd.env("PS1", "$ ");    // Bash prompt
+            cmd.env("PS1", "$ "); // Bash prompt
             cmd.env("PROMPT", "$ "); // Zsh prompt
 
             let child = pty_pair
