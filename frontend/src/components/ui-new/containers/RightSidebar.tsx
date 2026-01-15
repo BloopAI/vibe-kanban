@@ -9,10 +9,13 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
+  PERSIST_KEYS,
   type RightMainPanelMode,
   useExpandedAll,
+  usePersistedExpanded,
   useUiPreferencesStore,
 } from '@/stores/useUiPreferencesStore';
+import { cn } from '@/lib/utils';
 
 export interface RightSidebarProps {
   isCreateMode: boolean;
@@ -32,6 +35,14 @@ export function RightSidebar({
   const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
 
+  // Get expand states for each section to determine layout
+  // Each section manages its own CollapsibleSectionHeader, but we read the state here for layout
+  const [changesExpanded] = usePersistedExpanded(PERSIST_KEYS.changesSection, true);
+  const [processesExpanded] = usePersistedExpanded(PERSIST_KEYS.processesSection, true);
+  const [devServerExpanded] = usePersistedExpanded(PERSIST_KEYS.devServerSection, true);
+  const [gitExpanded] = usePersistedExpanded(PERSIST_KEYS.gitPanelRepositories, true);
+  const [terminalExpanded] = usePersistedExpanded(PERSIST_KEYS.terminalSection, true);
+
   if (isCreateMode) {
     return <GitPanelCreateContainer />;
   }
@@ -41,6 +52,28 @@ export function RightSidebar({
     rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES ||
     rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS ||
     rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW;
+
+  // Get the expand state for the current upper section
+  const getUpperExpanded = () => {
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) return changesExpanded;
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) return processesExpanded;
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) return devServerExpanded;
+    return false;
+  };
+
+  const upperExpanded = getUpperExpanded();
+
+  // Build list of sections and their expanded states
+  type SectionId = 'upper' | 'git' | 'terminal';
+  const sections: { id: SectionId; visible: boolean; expanded: boolean }[] = [
+    { id: 'upper', visible: hasUpperContent, expanded: upperExpanded },
+    { id: 'git', visible: true, expanded: gitExpanded },
+    { id: 'terminal', visible: isTerminalVisible, expanded: terminalExpanded },
+  ];
+
+  const visibleSections = sections.filter((s) => s.visible);
+  const expandedSections = visibleSections.filter((s) => s.expanded);
+  const collapsedSections = visibleSections.filter((s) => !s.expanded);
 
   // Render upper content based on mode
   const renderUpperContent = () => {
@@ -66,43 +99,82 @@ export function RightSidebar({
     return null;
   };
 
-  // Calculate flex ratios based on what's visible
-  const getGitPanelFlex = () => {
-    if (hasUpperContent && isTerminalVisible) return 'flex-[2]';
-    if (hasUpperContent || isTerminalVisible) return 'flex-[3]';
-    return 'flex-1';
-  };
-
-  const getTerminalFlex = () => {
-    if (hasUpperContent) return 'flex-[4]';
-    return 'flex-[7]';
-  };
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Upper section - mode-specific content */}
-      {hasUpperContent && (
-        <div className="flex-[4] min-h-0 overflow-hidden">
-          {renderUpperContent()}
+    <div className="flex flex-col h-full border-l">
+      {/* Expanded sections take available space */}
+      {expandedSections.length > 0 && (
+        <div className="flex-1 flex flex-col min-h-0">
+          {expandedSections.map((section) => {
+            if (section.id === 'upper') {
+              return (
+                <div key="upper" className="flex-1 min-h-0 overflow-hidden">
+                  {renderUpperContent()}
+                </div>
+              );
+            }
+            if (section.id === 'git') {
+              return (
+                <div key="git" className="flex-1 min-h-0 overflow-hidden">
+                  <GitPanelContainer
+                    selectedWorkspace={selectedWorkspace}
+                    repos={repos}
+                    diffs={diffs}
+                  />
+                </div>
+              );
+            }
+            if (section.id === 'terminal') {
+              return (
+                <div
+                  key="terminal"
+                  className="flex-1 min-h-0 overflow-hidden"
+                  style={{ minHeight: 150 }}
+                >
+                  <TerminalPanelContainer />
+                </div>
+              );
+            }
+            return null;
+          })}
         </div>
       )}
 
-      {/* Middle section - Git panel */}
-      <div className={`${getGitPanelFlex()} min-h-0 overflow-hidden`}>
-        <GitPanelContainer
-          selectedWorkspace={selectedWorkspace}
-          repos={repos}
-          diffs={diffs}
-        />
-      </div>
-
-      {/* Lower section - Terminal (collapsible) */}
-      {isTerminalVisible && (
+      {/* Collapsed sections stack at bottom */}
+      {collapsedSections.length > 0 && (
         <div
-          className={`${getTerminalFlex()} min-h-0 overflow-hidden`}
-          style={{ minHeight: 150 }}
+          className={cn(
+            'flex flex-col flex-shrink-0',
+            expandedSections.length === 0 && 'mt-auto'
+          )}
         >
-          <TerminalPanelContainer />
+          {collapsedSections.map((section) => {
+            if (section.id === 'upper') {
+              return (
+                <div key="upper" className="flex-shrink-0">
+                  {renderUpperContent()}
+                </div>
+              );
+            }
+            if (section.id === 'git') {
+              return (
+                <div key="git" className="flex-shrink-0">
+                  <GitPanelContainer
+                    selectedWorkspace={selectedWorkspace}
+                    repos={repos}
+                    diffs={diffs}
+                  />
+                </div>
+              );
+            }
+            if (section.id === 'terminal') {
+              return (
+                <div key="terminal" className="flex-shrink-0">
+                  <TerminalPanelContainer />
+                </div>
+              );
+            }
+            return null;
+          })}
         </div>
       )}
     </div>

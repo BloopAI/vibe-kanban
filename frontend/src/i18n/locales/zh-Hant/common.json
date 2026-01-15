@@ -165,7 +165,8 @@
     "workingBranch": "工作分支",
     "recent": "最近",
     "other": "其他",
-    "devServerPreview": "開發伺服器預覽"
+    "devServerPreview": "開發伺服器預覽",
+    "terminal": "終端機"
   },
   "repos": {
     "loading": "正在載入儲存庫...",

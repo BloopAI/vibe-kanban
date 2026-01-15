@@ -165,7 +165,8 @@
     "workingBranch": "Working Branch",
     "recent": "Recent",
     "other": "Other",
-    "devServerPreview": "Dev Server Preview"
+    "devServerPreview": "Dev Server Preview",
+    "terminal": "Terminal"
   },
   "repos": {
     "loading": "Loading repositories...",

@@ -165,7 +165,8 @@
     "workingBranch": "作業ブランチ",
     "recent": "最近",
     "other": "その他",
-    "devServerPreview": "開発サーバープレビュー"
+    "devServerPreview": "開発サーバープレビュー",
+    "terminal": "ターミナル"
   },
   "repos": {
     "loading": "リポジトリを読み込み中...",

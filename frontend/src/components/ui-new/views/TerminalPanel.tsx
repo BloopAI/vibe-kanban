@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import type { TerminalTab } from '@/contexts/TerminalContext';
 import { TerminalTabBar } from '../terminal/TerminalTabBar';
 import { XTermInstance } from '../terminal/XTermInstance';
+import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
+import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 interface TerminalPanelProps {
   tabs: TerminalTab[];
@@ -26,14 +28,24 @@ export function TerminalPanel({
 
   if (!workspaceId || !containerRef) {
     return (
-      <div className="flex h-full items-center justify-center text-low">
-        {t('terminal.selectWorkspace')}
-      </div>
+      <CollapsibleSectionHeader
+        title={t('common:sections.terminal')}
+        persistKey={PERSIST_KEYS.terminalSection}
+        contentClassName="flex-1 min-h-0 flex flex-col"
+      >
+        <div className="flex h-full items-center justify-center text-low">
+          {t('terminal.selectWorkspace')}
+        </div>
+      </CollapsibleSectionHeader>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <CollapsibleSectionHeader
+      title={t('common:sections.terminal')}
+      persistKey={PERSIST_KEYS.terminalSection}
+      contentClassName="flex-1 min-h-0 flex flex-col"
+    >
       <TerminalTabBar
         tabs={tabs}
         activeTabId={activeTabId}
@@ -41,7 +53,7 @@ export function TerminalPanel({
         onTabClose={onTabClose}
         onNewTab={onNewTab}
       />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden bg-secondary p-base">
         {tabs.map((tab) => (
           <XTermInstance
             key={tab.id}
@@ -51,6 +63,6 @@ export function TerminalPanel({
           />
         ))}
       </div>
-    </div>
+    </CollapsibleSectionHeader>
   );
 }

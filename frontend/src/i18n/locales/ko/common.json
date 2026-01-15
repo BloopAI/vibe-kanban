@@ -165,7 +165,8 @@
     "workingBranch": "작업 브랜치",
     "recent": "최근",
     "other": "기타",
-    "devServerPreview": "개발 서버 미리보기"
+    "devServerPreview": "개발 서버 미리보기",
+    "terminal": "터미널"
   },
   "repos": {
     "loading": "저장소 로딩 중...",

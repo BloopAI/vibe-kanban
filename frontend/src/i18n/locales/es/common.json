@@ -165,7 +165,8 @@
     "workingBranch": "Rama de trabajo",
     "recent": "Reciente",
     "other": "Otro",
-    "devServerPreview": "Vista previa del servidor de desarrollo"
+    "devServerPreview": "Vista previa del servidor de desarrollo",
+    "terminal": "Terminal"
   },
   "repos": {
     "loading": "Cargando repositorios...",

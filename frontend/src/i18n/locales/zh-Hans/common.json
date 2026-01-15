@@ -165,7 +165,8 @@
     "workingBranch": "工作分支",
     "recent": "最近",
     "other": "其他",
-    "devServerPreview": "开发服务器预览"
+    "devServerPreview": "开发服务器预览",
+    "terminal": "终端"
   },
   "repos": {
     "loading": "正在加载仓库...",
