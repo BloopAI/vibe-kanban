@@ -95,8 +95,6 @@ interface NewSessionProps extends SharedProps {
 /** Props for placeholder mode (no workspace selected) */
 interface PlaceholderProps extends SharedProps {
   mode: 'placeholder';
-  /** Workspace ID (may be undefined during loading) */
-  workspaceId: string | undefined;
 }
 
 type SessionChatBoxContainerProps =
@@ -113,7 +111,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const workspaceId =
     mode === 'existing-session'
       ? props.session.workspace_id
-      : props.workspaceId;
+      : mode === 'new-session'
+        ? props.workspaceId
+        : undefined;
   const isNewSessionMode = mode === 'new-session';
   const onSelectSession =
     mode === 'placeholder' ? undefined : props.onSelectSession;

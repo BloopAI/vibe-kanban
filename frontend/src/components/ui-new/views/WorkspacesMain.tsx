@@ -98,7 +98,6 @@ export function WorkspacesMain({
                       }
                     : {
                         mode: 'placeholder',
-                        workspaceId: workspaceWithSession?.id,
                       })}
                 sessions={sessions}
                 projectId={projectId}
