@@ -29,6 +29,35 @@ pub enum ImageError {
     ResponseBuildError(String),
 }
 
+/// Sanitize filename for filesystem safety:
+/// - Lowercase
+/// - Spaces → underscores
+/// - Remove special characters (keep alphanumeric and underscores)
+/// - Truncate if too long
+fn sanitize_filename(name: &str) -> String {
+    let stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("image");
+
+    let clean: String = stem
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_whitespace() { '_' } else { c })
+        .filter(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+
+    // Truncate to reasonable length to avoid filesystem limits
+    let max_len = 50;
+    if clean.len() > max_len {
+        clean[..max_len].to_string()
+    } else if clean.is_empty() {
+        "image".to_string()
+    } else {
+        clean
+    }
+}
+
 #[derive(Clone)]
 pub struct ImageService {
     cache_dir: PathBuf,
@@ -87,7 +116,8 @@ impl ImageService {
             return Ok(existing);
         }
 
-        let new_filename = format!("{}.{}", Uuid::new_v4(), extension);
+        let clean_name = sanitize_filename(original_filename);
+        let new_filename = format!("{}_{}.{}", Uuid::new_v4(), clean_name, extension);
         let cached_path = self.cache_dir.join(&new_filename);
         fs::write(&cached_path, data)?;
 
