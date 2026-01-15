@@ -42,7 +42,10 @@ pub async fn stream_raw_logs_ws(
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    tracing::info!("stream_raw_logs_ws: Checking stream for exec_id={}", exec_id);
+    tracing::info!(
+        "stream_raw_logs_ws: Checking stream for exec_id={}",
+        exec_id
+    );
 
     // Check if the stream exists before upgrading the WebSocket
     let _stream = deployment
