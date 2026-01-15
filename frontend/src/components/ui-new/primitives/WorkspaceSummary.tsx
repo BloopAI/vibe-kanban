@@ -6,7 +6,7 @@ import {
   FileIcon,
   CircleIcon,
   GitPullRequestIcon,
-  ListIcon,
+  DotsThreeIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -213,7 +213,7 @@ export function WorkspaceSummary({
               className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary"
               title={t('workspaces.more')}
             >
-              <ListIcon className="size-icon-xs" />
+              <DotsThreeIcon className="size-icon-xs" weight="bold" />
             </button>
           </div>
         </div>
