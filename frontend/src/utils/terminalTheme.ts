@@ -57,7 +57,9 @@ function getCssVariable(name: string): string {
     if (value) return value;
   }
   // Fall back to document element
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
 }
 
 /**
