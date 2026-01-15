@@ -34,7 +34,10 @@ export function ContextUsageGauge({
     );
 
     const formatTokens = (n: number) => {
-      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000_000) {
+        const m = n / 1_000_000;
+        return m % 1 === 0 ? `${m}M` : `${m.toFixed(1)}M`;
+      }
       if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
       return n.toString();
     };
@@ -91,7 +94,9 @@ export function ContextUsageGauge({
         aria-label={
           status === 'empty'
             ? t('contextUsage.label')
-            : t('contextUsage.ariaLabel', { percentage: Math.round(percentage) })
+            : t('contextUsage.ariaLabel', {
+                percentage: Math.round(percentage),
+              })
         }
         role="img"
       >
@@ -119,7 +124,10 @@ export function ContextUsageGauge({
             strokeLinecap="round"
             strokeDasharray={`${circumference} ${circumference}`}
             strokeDashoffset={dashOffset}
-            className={cn(progressColor, 'transition-all duration-500 ease-out')}
+            className={cn(
+              progressColor,
+              'transition-all duration-500 ease-out'
+            )}
           />
         </svg>
       </div>
