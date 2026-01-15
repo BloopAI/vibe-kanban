@@ -144,7 +144,8 @@ impl SharePublisher {
         );
 
         let id = Uuid::new_v4();
-        let task = Task::create(&self.db.pool, &create_task, id).await?;
+        // Shared tasks don't have a creator since they come from the remote server
+        let task = Task::create(&self.db.pool, &create_task, id, None).await?;
 
         Ok(Some(task))
     }

@@ -604,6 +604,7 @@
     "titlePlaceholder": "Task title...",
     "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
     "statusLabel": "Status",
+    "assigneeLabel": "Assignee",
     "statusOptions": {
       "todo": "To Do",
       "inprogress": "In Progress",
@@ -668,6 +669,11 @@
     "buttons": {
       "retry": "Retry"
     }
+  },
+  "assigneeSelector": {
+    "label": "Assignee",
+    "unassigned": "Unassigned",
+    "noUsersAvailable": "No users available"
   },
   "scriptFixer": {
     "title": "Fix Script",

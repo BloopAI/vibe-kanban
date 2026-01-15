@@ -537,6 +537,7 @@
     "titlePlaceholder": "Título de la tarea",
     "descriptionPlaceholder": "Agrega más detalles (opcional). Escribe @ para buscar archivos.",
     "statusLabel": "Estado",
+    "assigneeLabel": "Asignado a",
     "statusOptions": {
       "todo": "Por Hacer",
       "inprogress": "En Progreso",
@@ -668,6 +669,11 @@
       "deleted": "Eliminado",
       "renamed": "Renombrado"
     }
+  },
+  "assigneeSelector": {
+    "label": "Asignado a",
+    "unassigned": "Sin asignar",
+    "noUsersAvailable": "No hay usuarios disponibles"
   },
   "scriptFixer": {
     "title": "Corregir Script",
