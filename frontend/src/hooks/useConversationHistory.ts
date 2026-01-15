@@ -334,6 +334,33 @@ export const useConversationHistory = ({
                 return [];
             }
 
+            // Check if there's a user message embedded in next_action (happens when setup script runs before coding agent)
+            // This ensures the user's message is displayed even if the setup script fails
+            const nextAction = p.executionProcess.executor_action.next_action;
+            if (
+              nextAction &&
+              (nextAction.typ.type === 'CodingAgentInitialRequest' ||
+                nextAction.typ.type === 'CodingAgentFollowUpRequest')
+            ) {
+              const userNormalizedEntry: NormalizedEntry = {
+                entry_type: {
+                  type: 'user_message',
+                },
+                content: nextAction.typ.prompt,
+                timestamp: null,
+              };
+              const userPatch: PatchType = {
+                type: 'NORMALIZED_ENTRY',
+                content: userNormalizedEntry,
+              };
+              const userPatchTypeWithKey = patchWithKey(
+                userPatch,
+                p.executionProcess.id,
+                'user'
+              );
+              entries.push(userPatchTypeWithKey);
+            }
+
             const executionProcess = getLiveExecutionProcess(
               p.executionProcess.id
             );
