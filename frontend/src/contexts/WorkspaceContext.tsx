@@ -75,7 +75,10 @@ interface WorkspaceContextValue {
   diffStats: DiffStats;
 }
 
-const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+// Exported for optional usage outside WorkspaceProvider (e.g., old UI)
+export const WorkspaceContext = createContext<WorkspaceContextValue | null>(
+  null
+);
 
 interface WorkspaceProviderProps {
   children: ReactNode;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -13,7 +13,7 @@ import {
 } from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -110,7 +110,9 @@ export function FileTagTypeaheadPlugin({
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
   const portalContainer = usePortalContainer();
-  const { diffPaths } = useWorkspaceContext();
+  // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
+  const workspaceContext = useContext(WorkspaceContext);
+  const diffPaths = workspaceContext?.diffPaths ?? new Set<string>();
 
   const onQueryChange = useCallback(
     (query: string | null) => {
