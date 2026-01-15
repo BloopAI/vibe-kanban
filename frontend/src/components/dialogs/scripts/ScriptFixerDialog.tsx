@@ -103,6 +103,12 @@ const ScriptFixerDialogImpl = NiceModal.create<ScriptFixerDialogProps>(
     const hasProcessError =
       isProcessFailed || (isProcessCompleted && !isExitCodeZero);
 
+    // Reset selectedRepoId on dialog re-open
+    useEffect(() => {
+      if (!initialRepoId) return;
+      setSelectedRepoId(initialRepoId);
+    }, [initialRepoId]);
+
     // Fetch the selected repo's script
     useEffect(() => {
       if (!selectedRepoId) return;
