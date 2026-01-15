@@ -525,7 +525,12 @@ export const attemptsApi = {
 
   update: async (
     attemptId: string,
-    data: { archived?: boolean; pinned?: boolean; name?: string; sort_order?: number }
+    data: {
+      archived?: boolean;
+      pinned?: boolean;
+      name?: string;
+      sort_order?: number;
+    }
   ): Promise<Workspace> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
       method: 'PUT',

@@ -52,9 +52,11 @@ export function WorkspacesSidebarContainer() {
   // Handle workspace reordering - fire and forget with error logging
   const handleReorderWorkspace = useCallback(
     (workspaceId: string, newSortOrder: number) => {
-      attemptsApi.update(workspaceId, { sort_order: newSortOrder }).catch((err) => {
-        console.error('Failed to update workspace sort order:', err);
-      });
+      attemptsApi
+        .update(workspaceId, { sort_order: newSortOrder })
+        .catch((err) => {
+          console.error('Failed to update workspace sort order:', err);
+        });
     },
     []
   );
