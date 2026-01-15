@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name\n               FROM    workspaces\n               WHERE   id = $1",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name,\n                       sort_order        AS \"sort_order!: f64\"\n               FROM    workspaces\n               WHERE   id = $1",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "sort_order!: f64",
+        "ordinal": 11,
+        "type_info": "Float"
       }
     ],
     "parameters": {
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "b8d1476b4eb028290e9bc76d08b3d3c75984c558c69895393129dc45b5311151"
+  "hash": "e1ba79cb2e7c38d706488a9e18f8bf3b023c2e34073bb2c43ed3a0f1321c95e2"
 }

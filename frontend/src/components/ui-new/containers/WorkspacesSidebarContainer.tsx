@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScratch } from '@/hooks/useScratch';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
@@ -8,6 +8,7 @@ import {
   usePersistedExpanded,
 } from '@/stores/useUiPreferencesStore';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { attemptsApi } from '@/lib/api';
 
 // Fixed UUID for the universal workspace draft (same as in useCreateModeState.ts)
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
@@ -48,6 +49,16 @@ export function WorkspacesSidebarContainer() {
     return title || 'New Workspace';
   }, [draftScratch]);
 
+  // Handle workspace reordering - fire and forget with error logging
+  const handleReorderWorkspace = useCallback(
+    (workspaceId: string, newSortOrder: number) => {
+      attemptsApi.update(workspaceId, { sort_order: newSortOrder }).catch((err) => {
+        console.error('Failed to update workspace sort order:', err);
+      });
+    },
+    []
+  );
+
   return (
     <WorkspacesSidebar
       workspaces={activeWorkspaces}
@@ -62,6 +73,7 @@ export function WorkspacesSidebarContainer() {
       onSelectCreate={navigateToCreate}
       showArchive={showArchive}
       onShowArchiveChange={setShowArchive}
+      onReorderWorkspace={handleReorderWorkspace}
     />
   );
 }

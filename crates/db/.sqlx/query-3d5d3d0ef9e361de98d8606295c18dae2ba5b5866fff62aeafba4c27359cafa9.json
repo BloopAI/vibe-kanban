@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name\n               FROM    workspaces\n               WHERE   rowid = $1",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name,\n                       sort_order        AS \"sort_order!: f64\"\n               FROM    workspaces\n               WHERE   rowid = $1",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "sort_order!: f64",
+        "ordinal": 11,
+        "type_info": "Float"
       }
     ],
     "parameters": {
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "265392a2e833b8f0bc7ac317b6c82e12e935a964ae34faea00b2c7f15e988b39"
+  "hash": "3d5d3d0ef9e361de98d8606295c18dae2ba5b5866fff62aeafba4c27359cafa9"
 }

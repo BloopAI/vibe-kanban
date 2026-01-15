@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              agent_working_dir,\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\",\n                              archived AS \"archived!: bool\",\n                              pinned AS \"pinned!: bool\",\n                              name\n                       FROM workspaces\n                       ORDER BY created_at DESC",
+  "query": "SELECT  w.id                AS \"id!: Uuid\",\n                       w.task_id           AS \"task_id!: Uuid\",\n                       w.container_ref,\n                       w.branch,\n                       w.agent_working_dir,\n                       w.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       w.created_at        AS \"created_at!: DateTime<Utc>\",\n                       w.updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       w.archived          AS \"archived!: bool\",\n                       w.pinned            AS \"pinned!: bool\",\n                       w.name,\n                       w.sort_order        AS \"sort_order!: f64\"\n               FROM    workspaces w\n               JOIN    tasks t ON w.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   w.id = $1 AND t.id = $2 AND p.id = $3",
   "describe": {
     "columns": [
       {
@@ -57,10 +57,15 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "sort_order!: f64",
+        "ordinal": 11,
+        "type_info": "Float"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 3
     },
     "nullable": [
       true,
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "98f17039583ca6c709108f82f633cbff865e517a4c37de6d496ce20f746e702a"
+  "hash": "17a95edaef61708a47cabf712ec10df4820432e7158cac08efc806c6ae099425"
 }
