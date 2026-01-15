@@ -694,7 +694,9 @@ impl TaskServer {
     )]
     async fn update_setup_script(
         &self,
-        Parameters(UpdateSetupScriptRequest { repo_id, script }): Parameters<UpdateSetupScriptRequest>,
+        Parameters(UpdateSetupScriptRequest { repo_id, script }): Parameters<
+            UpdateSetupScriptRequest,
+        >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
         let payload = serde_json::json!({
@@ -716,7 +718,9 @@ impl TaskServer {
     )]
     async fn update_cleanup_script(
         &self,
-        Parameters(UpdateCleanupScriptRequest { repo_id, script }): Parameters<UpdateCleanupScriptRequest>,
+        Parameters(UpdateCleanupScriptRequest { repo_id, script }): Parameters<
+            UpdateCleanupScriptRequest,
+        >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
         let payload = serde_json::json!({
@@ -738,7 +742,9 @@ impl TaskServer {
     )]
     async fn update_dev_server_script(
         &self,
-        Parameters(UpdateDevServerScriptRequest { repo_id, script }): Parameters<UpdateDevServerScriptRequest>,
+        Parameters(UpdateDevServerScriptRequest { repo_id, script }): Parameters<
+            UpdateDevServerScriptRequest,
+        >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
         let payload = serde_json::json!({
