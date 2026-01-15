@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useContext } from 'react';
+import { useState, useCallback, useRef, useContext, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -113,7 +113,10 @@ export function FileTagTypeaheadPlugin({
   const portalContainer = usePortalContainer();
   // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
   const workspaceContext = useContext(WorkspaceContext);
-  const diffPaths = workspaceContext?.diffPaths ?? new Set<string>();
+  const diffPaths = useMemo(
+    () => workspaceContext?.diffPaths ?? new Set<string>(),
+    [workspaceContext?.diffPaths]
+  );
 
   const onQueryChange = useCallback(
     (query: string | null) => {
