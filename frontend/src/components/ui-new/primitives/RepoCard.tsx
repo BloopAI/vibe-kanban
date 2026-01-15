@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   GitBranchIcon,
   GitPullRequestIcon,
@@ -96,6 +97,20 @@ export function RepoCard({
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
+
+  // Hide "Open pull request" option when PR is already open
+  const hasPrOpen = prStatus === 'open';
+  const availableActionOptions = useMemo(
+    () =>
+      hasPrOpen
+        ? repoActionOptions.filter((opt) => opt.value !== 'pull-request')
+        : repoActionOptions,
+    [hasPrOpen]
+  );
+
+  // If PR is open and 'pull-request' was selected, fall back to 'merge'
+  const effectiveSelectedAction =
+    hasPrOpen && selectedAction === 'pull-request' ? 'merge' : selectedAction;
 
   return (
     <CollapsibleSection
@@ -269,8 +284,8 @@ export function RepoCard({
       {/* Actions row */}
       <div className="my-base">
         <SplitButton
-          options={repoActionOptions}
-          selectedValue={selectedAction}
+          options={availableActionOptions}
+          selectedValue={effectiveSelectedAction}
           onSelectionChange={setSelectedAction}
           onAction={(action) => onActionsClick?.(action)}
         />
