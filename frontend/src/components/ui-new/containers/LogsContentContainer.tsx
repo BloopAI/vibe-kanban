@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import {
   VirtualizedProcessLogs,
   type LogEntry,
-} from '../VirtualizedProcessLogs';
+} from './VirtualizedProcessLogs';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 

@@ -36,8 +36,8 @@ import {
   ChatThinkingMessage,
   ChatErrorMessage,
   ChatScriptEntry,
-} from './primitives/conversation';
-import type { DiffInput } from './primitives/conversation/DiffViewCard';
+} from '../primitives/conversation';
+import type { DiffInput } from '../primitives/conversation/DiffViewCard';
 
 type Props = {
   entry: NormalizedEntry;

@@ -2,7 +2,7 @@ import { ArrowSquareOutIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
-import { VirtualizedProcessLogs } from '../VirtualizedProcessLogs';
+import { VirtualizedProcessLogs } from '../containers/VirtualizedProcessLogs';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import { getDevServerWorkingDir } from '@/lib/devServerUtils';
 import type { ExecutionProcess, PatchType } from 'shared/types';

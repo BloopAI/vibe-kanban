@@ -4,7 +4,7 @@ import type { Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
-import { ConversationList } from '../ConversationList';
+import { ConversationList } from '../containers/ConversationListContainer';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
