@@ -182,7 +182,10 @@ export const useUiPreferencesStore = create<State>()(
         const wsState =
           state.workspacePanelStates[workspaceId] ??
           DEFAULT_WORKSPACE_PANEL_STATE;
-        if (wsState.isLeftMainPanelVisible && wsState.rightMainPanelMode === null)
+        if (
+          wsState.isLeftMainPanelVisible &&
+          wsState.rightMainPanelMode === null
+        )
           return;
         set({
           workspacePanelStates: {
