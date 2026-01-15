@@ -31,7 +31,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/shape/projects", get(proxy_projects))
         .route("/shape/notifications", get(proxy_notifications))
-        .route("/shape/remote_workspaces", get(proxy_remote_workspaces))
+        .route("/shape/workspaces", get(proxy_workspaces))
         .route("/shape/project_statuses", get(proxy_project_statuses))
         .route("/shape/tags", get(proxy_tags))
         .route("/shape/issues", get(proxy_issues))
@@ -94,7 +94,7 @@ async fn proxy_notifications(
     .await
 }
 
-async fn proxy_remote_workspaces(
+async fn proxy_workspaces(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ShapeQuery>,
@@ -104,8 +104,8 @@ async fn proxy_remote_workspaces(
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
     let validated = crate::validated_where!(
-        "remote_workspaces",
-        r#""organization_id" = $1"#,
+        "workspaces",
+        r#""project_id" IN (SELECT id FROM projects WHERE "organization_id" = $1)"#,
         query.organization_id
     );
 

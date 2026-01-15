@@ -17,11 +17,11 @@ pub mod organizations;
 pub mod project_notification_preferences;
 pub mod project_statuses;
 pub mod projects;
-pub mod remote_workspaces;
 pub mod reviews;
 pub mod tags;
 pub mod types;
 pub mod users;
+pub mod workspaces;
 
 use sqlx::{PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
 

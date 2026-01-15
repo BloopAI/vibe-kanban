@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT 1 AS v FROM remote_workspaces WHERE \"organization_id\" = $1",
+  "query": "SELECT 1 AS v FROM workspaces WHERE \"project_id\" IN (SELECT id FROM projects WHERE \"organization_id\" = $1)",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       null
     ]
   },
-  "hash": "63fe0b10511f97b39fb683661b0c255c338cedb208ccf2755252797922b4a418"
+  "hash": "cfac95ee3cd8c46251b87f2340890f8ba0859c9576b38fa82da921acc572a670"
 }

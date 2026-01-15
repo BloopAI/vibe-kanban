@@ -187,13 +187,13 @@ CREATE INDEX idx_notifications_user_created
 CREATE INDEX idx_notifications_org
     ON notifications (organization_id);
 
--- 16. REMOTE WORKSPACES
+-- 16. WORKSPACES
 -- Workspace metadata pushed from local clients
 CREATE TYPE workspace_pr_status AS ENUM ('open', 'merged', 'closed');
 
-CREATE TABLE remote_workspaces (
+CREATE TABLE workspaces (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_id UUID REFERENCES issues(id) ON DELETE SET NULL,
     local_workspace_id UUID NOT NULL,
@@ -205,18 +205,18 @@ CREATE TABLE remote_workspaces (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE remote_workspace_repos (
+CREATE TABLE workspace_repos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id UUID NOT NULL REFERENCES remote_workspaces(id) ON DELETE CASCADE,
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     repo_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (workspace_id, repo_name)
 );
 
-CREATE TABLE remote_workspace_prs (
+CREATE TABLE workspace_prs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_repo_id UUID NOT NULL REFERENCES remote_workspace_repos(id) ON DELETE CASCADE,
+    workspace_repo_id UUID NOT NULL REFERENCES workspace_repos(id) ON DELETE CASCADE,
     pr_url TEXT NOT NULL,
     pr_number INTEGER NOT NULL,
     pr_status workspace_pr_status NOT NULL DEFAULT 'open',
@@ -227,9 +227,9 @@ CREATE TABLE remote_workspace_prs (
     UNIQUE (workspace_repo_id)
 );
 
-CREATE INDEX idx_remote_workspaces_organization_id ON remote_workspaces(organization_id);
-CREATE INDEX idx_remote_workspaces_owner_user_id ON remote_workspaces(owner_user_id);
-CREATE INDEX idx_remote_workspaces_issue_id ON remote_workspaces(issue_id) WHERE issue_id IS NOT NULL;
-CREATE INDEX idx_remote_workspaces_local_workspace_id ON remote_workspaces(local_workspace_id);
-CREATE INDEX idx_remote_workspace_repos_workspace_id ON remote_workspace_repos(workspace_id);
-CREATE INDEX idx_remote_workspace_prs_workspace_repo_id ON remote_workspace_prs(workspace_repo_id);
+CREATE INDEX idx_workspaces_project_id ON workspaces(project_id);
+CREATE INDEX idx_workspaces_owner_user_id ON workspaces(owner_user_id);
+CREATE INDEX idx_workspaces_issue_id ON workspaces(issue_id) WHERE issue_id IS NOT NULL;
+CREATE INDEX idx_workspaces_local_workspace_id ON workspaces(local_workspace_id);
+CREATE INDEX idx_workspace_repos_workspace_id ON workspace_repos(workspace_id);
+CREATE INDEX idx_workspace_prs_workspace_repo_id ON workspace_prs(workspace_repo_id);
