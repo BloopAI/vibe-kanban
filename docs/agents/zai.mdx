@@ -1,0 +1,51 @@
+---
+title: "Z.ai (GLM Coding Plan)"
+description: "Connect Vibe Kanban to Z.ai DevPack via the Anthropic-compatible endpoint"
+---
+
+Use the Z.ai **GLM Coding Plan** inside Vibe Kanban through the Anthropic-compatible endpoint. In Vibe, this is available as the **Claude Code → ZAI** profile.
+
+## Prerequisites
+- Z.ai GLM Coding Plan subscription + API Key
+- Node.js 18+ and the Claude Code CLI (`npx -y @anthropic-ai/claude-code`)
+- macOS or Linux shell where Vibe Kanban runs (matching the Z.ai helper script)
+
+## Quick setup (recommended)
+1. Run Z.ai helper to configure env and MCP automatically:
+
+```bash
+npx @z_ai/coding-helper
+```
+
+2. Ensure the API key is exported for Vibe Kanban:
+
+```bash
+export ANTHROPIC_AUTH_TOKEN="<your_zai_api_key>"
+```
+
+The helper also sets the Anthropic base URL and optional model mappings.
+
+## Manual setup
+If you prefer manual configuration, set these environment variables before starting Vibe Kanban:
+
+```bash
+export ANTHROPIC_AUTH_TOKEN="<your_zai_api_key>"
+export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+# Optional tuning
+export API_TIMEOUT_MS="3000000"
+# Map Anthropic model names to GLM variants if desired
+export ANTHROPIC_DEFAULT_OPUS_MODEL="GLM-4.7"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="GLM-4.7"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="GLM-4.5-Air"
+```
+
+## Using in Vibe Kanban
+- Choose the executor profile **Claude Code → ZAI** when creating a task/attempt.
+- The profile pins `ANTHROPIC_BASE_URL` to Z.ai and keeps skip-permissions enabled by default.
+- Authentication still depends on `ANTHROPIC_AUTH_TOKEN` being present in the Vibe Kanban process environment.
+- If the availability indicator shows "Unknown", ensure `ANTHROPIC_AUTH_TOKEN` is exported in the shell that launches Vibe Kanban; no `~/.claude.json` is required for Z.ai when the token is set.
+
+## Tips
+- If Claude Code reports missing auth, double-check the shell where you launch Vibe Kanban has `ANTHROPIC_AUTH_TOKEN` set.
+- To switch GLM models, adjust the `ANTHROPIC_DEFAULT_*` environment variables shown above.
+- For full DevPack details, see the official FAQ: https://docs.z.ai/devpack/faq

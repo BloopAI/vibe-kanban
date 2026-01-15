@@ -20,6 +20,15 @@
         "CLAUDE_CODE": {
           "approvals": true
         }
+      },
+      "ZAI": {
+        "CLAUDE_CODE": {
+          "dangerously_skip_permissions": true,
+          "env": {
+            "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+            "API_TIMEOUT_MS": "3000000"
+          }
+        }
       }
     },
     "AMP": {

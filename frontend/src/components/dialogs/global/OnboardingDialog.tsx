@@ -174,6 +174,9 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
               })()}
             </div>
             <AgentAvailabilityIndicator availability={agentAvailability} />
+            <p className="text-xs text-muted-foreground">
+              New: Z.ai (GLM-4.7 / 4.6 / 4.5-Air). Pick <strong>CLAUDE_CODE → ZAI</strong> to use GLB4 models via the DevPack.
+            </p>
           </div>
         </div>
 
