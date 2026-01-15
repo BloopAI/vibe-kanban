@@ -1,5 +1,10 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { PreviewBrowser } from '../views/PreviewBrowser';
+import { useCallback, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  PreviewBrowser,
+  MOBILE_WIDTH,
+  MOBILE_HEIGHT,
+  PHONE_FRAME_PADDING,
+} from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {
@@ -107,6 +112,44 @@ export function PreviewBrowserContainer({
       setLocalDimensions(responsiveDimensions);
     }
   }, [responsiveDimensions]);
+
+  // Calculate scale for mobile preview to fit container
+  const [mobileScale, setMobileScale] = useState(1);
+
+  useLayoutEffect(() => {
+    if (screenSize !== 'mobile' || !containerRef.current) {
+      setMobileScale(1);
+      return;
+    }
+
+    const updateScale = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Get available space (subtract padding from p-double which is typically 32px total)
+      const availableWidth = container.clientWidth - 32;
+      const availableHeight = container.clientHeight - 32;
+
+      // Total phone frame dimensions including padding
+      const totalFrameWidth = MOBILE_WIDTH + PHONE_FRAME_PADDING;
+      const totalFrameHeight = MOBILE_HEIGHT + PHONE_FRAME_PADDING;
+
+      // Calculate scale needed to fit
+      const scaleX = availableWidth / totalFrameWidth;
+      const scaleY = availableHeight / totalFrameHeight;
+      const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+
+      setMobileScale(scale);
+    };
+
+    updateScale();
+
+    // Observe container size changes
+    const resizeObserver = new ResizeObserver(updateScale);
+    resizeObserver.observe(containerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [screenSize]);
 
   // Handle resize events - register listeners once on mount
   useEffect(() => {
@@ -297,6 +340,7 @@ export function PreviewBrowserContainer({
         attemptId && repos.length > 0 ? handleFixDevScript : undefined
       }
       hasFailedDevServer={hasFailedDevServer}
+      mobileScale={mobileScale}
       className={className}
     />
   );
