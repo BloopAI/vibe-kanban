@@ -94,10 +94,15 @@ export function WorkspaceSummary({
         )}
       >
         <div
-          className={cn('overflow-hidden whitespace-nowrap pr-double', !summary && 'text-normal')}
+          className={cn(
+            'overflow-hidden whitespace-nowrap pr-double',
+            !summary && 'text-normal'
+          )}
           style={{
-            maskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 24px), transparent 100%)'
+            maskImage:
+              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
           }}
         >
           {name}
