@@ -17,6 +17,12 @@
         "null"
       ]
     },
+    "variant": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "mode": {
       "type": [
         "string",
