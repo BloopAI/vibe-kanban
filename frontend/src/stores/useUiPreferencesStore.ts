@@ -112,8 +112,14 @@ type State = {
   toggleLeftSidebar: () => void;
   toggleLeftMainPanel: (workspaceId?: string) => void;
   toggleRightSidebar: () => void;
-  toggleRightMainPanelMode: (mode: RightMainPanelMode, workspaceId?: string) => void;
-  setRightMainPanelMode: (mode: RightMainPanelMode | null, workspaceId?: string) => void;
+  toggleRightMainPanelMode: (
+    mode: RightMainPanelMode,
+    workspaceId?: string
+  ) => void;
+  setRightMainPanelMode: (
+    mode: RightMainPanelMode | null,
+    workspaceId?: string
+  ) => void;
   setLeftSidebarVisible: (value: boolean) => void;
   setLeftMainPanelVisible: (value: boolean, workspaceId?: string) => void;
   triggerPreviewRefresh: () => void;
@@ -121,7 +127,10 @@ type State = {
 
   // Workspace-specific panel state actions
   getWorkspacePanelState: (workspaceId: string) => WorkspacePanelState;
-  setWorkspacePanelState: (workspaceId: string, state: Partial<WorkspacePanelState>) => void;
+  setWorkspacePanelState: (
+    workspaceId: string,
+    state: Partial<WorkspacePanelState>
+  ) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
@@ -179,8 +188,14 @@ export const useUiPreferencesStore = create<State>()(
       toggleLeftMainPanel: (workspaceId) => {
         const state = get();
         if (workspaceId) {
-          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
-          if (wsState.isLeftMainPanelVisible && wsState.rightMainPanelMode === null) return;
+          const wsState =
+            state.workspacePanelStates[workspaceId] ??
+            DEFAULT_WORKSPACE_PANEL_STATE;
+          if (
+            wsState.isLeftMainPanelVisible &&
+            wsState.rightMainPanelMode === null
+          )
+            return;
           set({
             workspacePanelStates: {
               ...state.workspacePanelStates,
@@ -192,7 +207,8 @@ export const useUiPreferencesStore = create<State>()(
           });
         } else {
           // Legacy global behavior
-          if (state.isLeftMainPanelVisible && state.rightMainPanelMode === null) return;
+          if (state.isLeftMainPanelVisible && state.rightMainPanelMode === null)
+            return;
           set({ isLeftMainPanelVisible: !state.isLeftMainPanelVisible });
         }
       },
@@ -204,7 +220,9 @@ export const useUiPreferencesStore = create<State>()(
         const state = get();
 
         if (workspaceId) {
-          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          const wsState =
+            state.workspacePanelStates[workspaceId] ??
+            DEFAULT_WORKSPACE_PANEL_STATE;
           const isCurrentlyActive = wsState.rightMainPanelMode === mode;
 
           if (isCurrentlyActive) {
@@ -227,7 +245,9 @@ export const useUiPreferencesStore = create<State>()(
                   rightMainPanelMode: mode,
                 },
               },
-              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+              isLeftSidebarVisible: isWideScreen()
+                ? state.isLeftSidebarVisible
+                : false,
             });
           }
         } else {
@@ -242,7 +262,9 @@ export const useUiPreferencesStore = create<State>()(
           } else {
             set({
               rightMainPanelMode: mode,
-              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+              isLeftSidebarVisible: isWideScreen()
+                ? state.isLeftSidebarVisible
+                : false,
             });
           }
         }
@@ -252,7 +274,9 @@ export const useUiPreferencesStore = create<State>()(
         const state = get();
 
         if (workspaceId) {
-          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          const wsState =
+            state.workspacePanelStates[workspaceId] ??
+            DEFAULT_WORKSPACE_PANEL_STATE;
           if (mode !== null) {
             set({
               workspacePanelStates: {
@@ -262,7 +286,9 @@ export const useUiPreferencesStore = create<State>()(
                   rightMainPanelMode: mode,
                 },
               },
-              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+              isLeftSidebarVisible: isWideScreen()
+                ? state.isLeftSidebarVisible
+                : false,
             });
           } else {
             set({
@@ -280,7 +306,9 @@ export const useUiPreferencesStore = create<State>()(
           if (mode !== null) {
             set({
               rightMainPanelMode: mode,
-              isLeftSidebarVisible: isWideScreen() ? state.isLeftSidebarVisible : false,
+              isLeftSidebarVisible: isWideScreen()
+                ? state.isLeftSidebarVisible
+                : false,
             });
           } else {
             set({ rightMainPanelMode: null });
@@ -293,7 +321,9 @@ export const useUiPreferencesStore = create<State>()(
       setLeftMainPanelVisible: (value, workspaceId) => {
         const state = get();
         if (workspaceId) {
-          const wsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+          const wsState =
+            state.workspacePanelStates[workspaceId] ??
+            DEFAULT_WORKSPACE_PANEL_STATE;
           set({
             workspacePanelStates: {
               ...state.workspacePanelStates,
@@ -319,12 +349,17 @@ export const useUiPreferencesStore = create<State>()(
       // Workspace-specific panel state actions
       getWorkspacePanelState: (workspaceId) => {
         const state = get();
-        return state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+        return (
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE
+        );
       },
 
       setWorkspacePanelState: (workspaceId, panelState) => {
         const state = get();
-        const currentWsState = state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+        const currentWsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
         set({
           workspacePanelStates: {
             ...state.workspacePanelStates,
@@ -440,20 +475,34 @@ export const useIsRightMainPanelVisible = () =>
 // Hook for workspace-specific panel state
 export function useWorkspacePanelState(workspaceId: string | undefined) {
   // Get workspace-specific state (falls back to defaults when no workspaceId)
-  const workspacePanelStates = useUiPreferencesStore((s) => s.workspacePanelStates);
+  const workspacePanelStates = useUiPreferencesStore(
+    (s) => s.workspacePanelStates
+  );
   const wsState = workspaceId
-    ? workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE
+    ? (workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
     : DEFAULT_WORKSPACE_PANEL_STATE;
 
   // Global state (sidebars are global)
-  const isLeftSidebarVisible = useUiPreferencesStore((s) => s.isLeftSidebarVisible);
-  const isRightSidebarVisible = useUiPreferencesStore((s) => s.isRightSidebarVisible);
+  const isLeftSidebarVisible = useUiPreferencesStore(
+    (s) => s.isLeftSidebarVisible
+  );
+  const isRightSidebarVisible = useUiPreferencesStore(
+    (s) => s.isRightSidebarVisible
+  );
 
   // Actions from store
-  const toggleRightMainPanelMode = useUiPreferencesStore((s) => s.toggleRightMainPanelMode);
-  const setRightMainPanelMode = useUiPreferencesStore((s) => s.setRightMainPanelMode);
-  const setLeftMainPanelVisible = useUiPreferencesStore((s) => s.setLeftMainPanelVisible);
-  const setLeftSidebarVisible = useUiPreferencesStore((s) => s.setLeftSidebarVisible);
+  const toggleRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.toggleRightMainPanelMode
+  );
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
+  const setLeftMainPanelVisible = useUiPreferencesStore(
+    (s) => s.setLeftMainPanelVisible
+  );
+  const setLeftSidebarVisible = useUiPreferencesStore(
+    (s) => s.setLeftSidebarVisible
+  );
 
   // Memoized callbacks that include workspaceId
   const toggleRightMainPanelModeForWorkspace = useCallback(
@@ -462,7 +511,8 @@ export function useWorkspacePanelState(workspaceId: string | undefined) {
   );
 
   const setRightMainPanelModeForWorkspace = useCallback(
-    (mode: RightMainPanelMode | null) => setRightMainPanelMode(mode, workspaceId),
+    (mode: RightMainPanelMode | null) =>
+      setRightMainPanelMode(mode, workspaceId),
     [setRightMainPanelMode, workspaceId]
   );
 

@@ -484,9 +484,12 @@ export const Actions = {
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
       !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
-    getLabel: (ctx) => (ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel'),
+    getLabel: (ctx) =>
+      ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
     execute: (ctx) => {
-      useUiPreferencesStore.getState().toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
+      useUiPreferencesStore
+        .getState()
+        .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
     },
   },
 
@@ -520,7 +523,10 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.CHANGES, ctx.currentWorkspaceId ?? undefined);
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.CHANGES,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
@@ -539,7 +545,10 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS, ctx.currentWorkspaceId ?? undefined);
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.LOGS,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
@@ -559,7 +568,10 @@ export const Actions = {
     execute: (ctx) => {
       useUiPreferencesStore
         .getState()
-        .toggleRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW, ctx.currentWorkspaceId ?? undefined);
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.PREVIEW,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
@@ -705,7 +717,10 @@ export const Actions = {
         // Auto-open preview mode when starting dev server
         useUiPreferencesStore
           .getState()
-          .setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.PREVIEW, ctx.currentWorkspaceId ?? undefined);
+          .setRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.PREVIEW,
+            ctx.currentWorkspaceId ?? undefined
+          );
       }
     },
   },

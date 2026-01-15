@@ -27,7 +27,9 @@ import type { CommandBarPage } from './pages';
 export function useActionVisibilityContext(): ActionVisibilityContext {
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
   // Use workspace-specific panel state (pass undefined when in create mode)
-  const panelState = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
+  const panelState = useWorkspacePanelState(
+    isCreateMode ? undefined : workspaceId
+  );
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
