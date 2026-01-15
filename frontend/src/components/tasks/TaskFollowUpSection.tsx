@@ -8,6 +8,8 @@ import {
   Paperclip,
   Terminal,
   MessageSquare,
+  Check,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -60,6 +62,7 @@ import { imagesApi, attemptsApi } from '@/lib/api';
 import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
 import type { Session } from 'shared/types';
+import { claudeAccountsApi } from '@/lib/api';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -238,9 +241,43 @@ export function TaskFollowUpSection({
   const { activeRetryProcessId } = useRetryUi();
   const isRetryActive = !!activeRetryProcessId;
 
+  // Get active Claude account for display
+  const { data: claudeAccountsData } = useQuery({
+    queryKey: ['claude-accounts'],
+    queryFn: claudeAccountsApi.list,
+    refetchInterval: 10000,
+  });
+
+  // Compute active account name
+  const activeClaudeAccountName = useMemo(() => {
+    if (!claudeAccountsData?.rotation_enabled) return null;
+    if (claudeAccountsData?.current_account_id) {
+      const activeAccount = claudeAccountsData.accounts.find(
+        (a) => a.id === claudeAccountsData.current_account_id
+      );
+      return activeAccount?.name || null;
+    }
+    if (claudeAccountsData?.accounts?.length > 0) {
+      return claudeAccountsData.accounts[0].name;
+    }
+    return null;
+  }, [claudeAccountsData]);
+
   // Queue status for queuing follow-up messages while agent is running
   const queryClient = useQueryClient();
   const QUEUE_STATUS_KEY = 'queue-status';
+
+  // Mutation to set active Claude account
+  const setActiveAccountMutation = useMutation({
+    mutationFn: (accountId: string) => claudeAccountsApi.setActive(accountId),
+    onSuccess: (data) => {
+      // Directly update the cache instead of invalidating to avoid triggering other queries
+      queryClient.setQueryData(['claude-accounts'], data);
+    },
+    onError: (error) => {
+      console.error('Failed to set active account:', error);
+    },
+  });
 
   const {
     data: queueStatus = { status: 'empty' as const },
@@ -777,13 +814,52 @@ export function TaskFollowUpSection({
       {/* Always-visible action bar */}
       <div className="p-4">
         <div className="flex flex-row gap-2 items-center">
-          <div className="flex-1 flex gap-2">
+          <div className="flex-1 flex gap-2 items-center">
             <VariantSelector
               currentProfile={currentProfile}
               selectedVariant={selectedVariant}
               onChange={setSelectedVariant}
               disabled={!isEditable}
             />
+            {/* Active Claude account selector */}
+            {claudeAccountsData?.rotation_enabled &&
+              claudeAccountsData.accounts.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1"
+                      disabled={setActiveAccountMutation.isPending}
+                    >
+                      <User className="h-3 w-3" />
+                      {activeClaudeAccountName || 'Select Account'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {claudeAccountsData.accounts.map((account) => (
+                      <DropdownMenuItem
+                        key={account.id}
+                        onClick={() => setActiveAccountMutation.mutate(account.id)}
+                        className="flex items-center gap-2"
+                      >
+                        {account.id === claudeAccountsData.current_account_id && (
+                          <Check className="h-3 w-3" />
+                        )}
+                        <span
+                          className={
+                            account.id !== claudeAccountsData.current_account_id
+                              ? 'ml-5'
+                              : ''
+                          }
+                        >
+                          {account.name}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
           </div>
 
           {/* Hidden file input for attachment - always present */}

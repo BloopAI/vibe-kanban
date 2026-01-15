@@ -1047,6 +1047,61 @@ export const profilesApi = {
   },
 };
 
+// Claude Accounts API
+export interface ClaudeAccountWithStatus {
+  id: string;
+  name: string;
+  home_path: string;
+  created_at: number;
+  rate_limited_until: number | null;
+  is_logged_in: boolean;
+}
+
+export interface ClaudeAccountsResponse {
+  accounts: ClaudeAccountWithStatus[];
+  rotation_enabled: boolean;
+  current_account_id: string | null;
+}
+
+export const claudeAccountsApi = {
+  list: async (): Promise<ClaudeAccountsResponse> => {
+    const response = await makeRequest('/api/claude-accounts');
+    return handleApiResponse<ClaudeAccountsResponse>(response);
+  },
+  updateRotation: async (rotationEnabled: boolean): Promise<ClaudeAccountsResponse> => {
+    const response = await makeRequest('/api/claude-accounts', {
+      method: 'PUT',
+      body: JSON.stringify({ rotation_enabled: rotationEnabled }),
+    });
+    return handleApiResponse<ClaudeAccountsResponse>(response);
+  },
+  add: async (name: string): Promise<ClaudeAccountWithStatus> => {
+    const response = await makeRequest('/api/claude-accounts/add', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    return handleApiResponse<ClaudeAccountWithStatus>(response);
+  },
+  delete: async (id: string): Promise<string> => {
+    const response = await makeRequest(`/api/claude-accounts/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<string>(response);
+  },
+  login: async (id: string): Promise<string> => {
+    const response = await makeRequest(`/api/claude-accounts/${id}/login`, {
+      method: 'POST',
+    });
+    return handleApiResponse<string>(response);
+  },
+  setActive: async (id: string): Promise<ClaudeAccountsResponse> => {
+    const response = await makeRequest(`/api/claude-accounts/${id}/set-active`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ClaudeAccountsResponse>(response);
+  },
+};
+
 // Images API
 export const imagesApi = {
   upload: async (file: File): Promise<ImageResponse> => {

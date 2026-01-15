@@ -36,6 +36,20 @@ pub fn credentials_path() -> std::path::PathBuf {
     asset_dir().join("credentials.json")
 }
 
+/// Directory for storing multiple Claude account home directories
+pub fn claude_accounts_dir() -> std::path::PathBuf {
+    let path = asset_dir().join("claude-accounts");
+    if !path.exists() {
+        std::fs::create_dir_all(&path).expect("Failed to create claude-accounts directory");
+    }
+    path
+}
+
+/// Path to the Claude accounts configuration file
+pub fn claude_accounts_config_path() -> std::path::PathBuf {
+    asset_dir().join("claude-accounts.json")
+}
+
 #[derive(RustEmbed)]
 #[folder = "../../assets/sounds"]
 pub struct SoundAssets;

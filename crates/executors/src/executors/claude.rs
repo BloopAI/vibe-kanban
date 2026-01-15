@@ -3,7 +3,15 @@ pub mod client;
 pub mod protocol;
 pub mod types;
 
-use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::Path,
+    process::Stdio,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
@@ -24,6 +32,7 @@ use self::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
+    claude_accounts::ClaudeAccountsConfig,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
@@ -38,6 +47,19 @@ use crate::{
     },
     stdout_dup::create_stdout_pipe_writer,
 };
+
+/// Global account index for rotation (shared across all ClaudeCode instances)
+static ACCOUNT_ROTATION_INDEX: AtomicUsize = AtomicUsize::new(0);
+
+/// Get the current account rotation index
+pub fn get_current_account_index() -> usize {
+    ACCOUNT_ROTATION_INDEX.load(Ordering::Relaxed)
+}
+
+/// Set the current account rotation index
+pub fn set_current_account_index(index: usize) {
+    ACCOUNT_ROTATION_INDEX.store(index, Ordering::Relaxed);
+}
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
@@ -66,6 +88,9 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    /// Enable rotation between multiple Claude accounts when rate limits are hit
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_account_rotation: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -231,6 +256,47 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 }
 
 impl ClaudeCode {
+    /// Get the HOME directory to use for this execution
+    /// If account rotation is enabled (either per-agent or globally) and accounts are configured,
+    /// returns the next available account's home. Otherwise returns None to use the default HOME.
+    fn get_account_home(&self) -> Option<String> {
+        let config = ClaudeAccountsConfig::load_sync();
+
+        // Check if rotation is enabled either per-agent OR globally in settings
+        let rotation_enabled = self.use_account_rotation.unwrap_or(false) || config.rotation_enabled;
+
+        if !rotation_enabled {
+            return None;
+        }
+
+        if config.accounts.is_empty() {
+            tracing::debug!("Account rotation enabled but no accounts configured");
+            return None;
+        }
+
+        if let Some(account) = config.get_next_available_account(&ACCOUNT_ROTATION_INDEX) {
+            tracing::info!(
+                "Using Claude account '{}' (id: {}) for this execution",
+                account.name,
+                account.id
+            );
+            Some(account.home_path.clone())
+        } else {
+            tracing::warn!("No available Claude accounts found, using default");
+            None
+        }
+    }
+
+    /// Advance to the next account (call this when rate limit is detected)
+    pub fn advance_account_rotation() {
+        let config = ClaudeAccountsConfig::load_sync();
+        config.advance_index(&ACCOUNT_ROTATION_INDEX);
+        tracing::info!(
+            "Advanced account rotation index to {}",
+            ACCOUNT_ROTATION_INDEX.load(Ordering::Relaxed)
+        );
+    }
+
     async fn spawn_internal(
         &self,
         current_dir: &Path,
@@ -258,6 +324,12 @@ impl ClaudeCode {
         if self.disable_api_key.unwrap_or(false) {
             command.env_remove("ANTHROPIC_API_KEY");
             tracing::info!("ANTHROPIC_API_KEY removed from environment");
+        }
+
+        // Set HOME directory for account rotation if enabled
+        if let Some(account_home) = self.get_account_home() {
+            command.env("HOME", &account_home);
+            tracing::info!("Set HOME to {} for account rotation", account_home);
         }
 
         let mut child = command.group_spawn()?;
@@ -2032,6 +2104,7 @@ mod tests {
             },
             approvals_service: None,
             disable_api_key: None,
+            use_account_rotation: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

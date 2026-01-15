@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Building2,
   GitBranch,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,10 @@ const settingsNavigation = [
   {
     path: 'agents',
     icon: Cpu,
+  },
+  {
+    path: 'claude-accounts',
+    icon: Users,
   },
   {
     path: 'mcp',

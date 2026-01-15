@@ -7,6 +7,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import { ActiveClaudeAccount } from './ActiveClaudeAccount';
 
 export interface EditorProps {
   value: string;
@@ -176,6 +177,8 @@ export function ChatBoxBase({
                 </ToolbarDropdown>
               )}
             {footerLeft}
+            {/* Active Claude account indicator */}
+            <ActiveClaudeAccount />
           </Toolbar>
           <div className="flex gap-base">{footerRight}</div>
         </div>
