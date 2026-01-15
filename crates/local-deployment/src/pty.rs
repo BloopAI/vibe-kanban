@@ -72,8 +72,8 @@ impl PtyService {
             cmd.env("TERM", "xterm-256color");
             cmd.env("COLORTERM", "truecolor");
             cmd.env("ZDOTDIR", "/nonexistent"); // Skip ~/.zshrc to allow custom prompt
-            cmd.env("PS1", "$ ");               // Bash prompt
-            cmd.env("PROMPT", "$ ");            // Zsh prompt
+            cmd.env("PS1", "$ "); // Bash prompt
+            cmd.env("PROMPT", "$ "); // Zsh prompt
 
             let child = pty_pair
                 .slave
