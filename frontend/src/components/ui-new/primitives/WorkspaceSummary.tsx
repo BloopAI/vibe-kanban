@@ -213,7 +213,7 @@ export function WorkspaceSummary({
               className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary"
               title={t('workspaces.more')}
             >
-              <DotsThreeIcon className="size-icon-xs" weight="bold" />
+              <DotsThreeIcon className="size-5" weight="bold" />
             </button>
           </div>
         </div>
