@@ -181,9 +181,7 @@ function useDiffData(input: DiffInput): DiffData {
   }, [input]);
 }
 
-export function DiffViewCardWithComments(
-  props: DiffViewCardWithCommentsProps
-) {
+export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
   const { input, status, className, projectId, attemptId, mode } = props;
 
   // Extract mode-specific values
