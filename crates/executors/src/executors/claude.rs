@@ -66,8 +66,6 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub commit_reminder: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -130,10 +128,10 @@ impl ClaudeCode {
         }
     }
 
-    pub fn get_hooks(&self) -> Option<serde_json::Value> {
+    pub fn get_hooks(&self, commit_reminder: bool) -> Option<serde_json::Value> {
         let mut hooks = serde_json::Map::new();
 
-        if self.commit_reminder.unwrap_or(false) {
+        if commit_reminder {
             hooks.insert(
                 "Stop".to_string(),
                 serde_json::json!([{
@@ -287,7 +285,7 @@ impl ClaudeCode {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let permission_mode = self.permission_mode();
-        let hooks = self.get_hooks();
+        let hooks = self.get_hooks(env.commit_reminder);
 
         // Create interrupt channel for graceful shutdown
         let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel::<()>();
