@@ -45,7 +45,7 @@ export type DiffInput =
       newContent: string;
       oldPath: string | undefined;
       newPath: string;
-      changeKind: DiffChangeKind | undefined;
+      changeKind: DiffChangeKind;
     }
   | {
       type: 'unified';
