@@ -207,6 +207,7 @@ fn generate_types_content() -> String {
         executors::logs::CommandRunResult::decl(),
         executors::logs::NormalizedEntry::decl(),
         executors::logs::NormalizedEntryType::decl(),
+        executors::logs::TokenUsageInfo::decl(),
         executors::logs::FileChange::decl(),
         executors::logs::ActionType::decl(),
         executors::logs::TodoItem::decl(),

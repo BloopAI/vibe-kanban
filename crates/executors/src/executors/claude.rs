@@ -1348,10 +1348,10 @@ impl ClaudeLogProcessor {
     ) -> json_patch::Patch {
         let entry = NormalizedEntry {
             timestamp: None,
-            entry_type: NormalizedEntryType::TokenUsageInfo {
+            entry_type: NormalizedEntryType::TokenUsageInfo(crate::logs::TokenUsageInfo {
                 total_tokens: self.context_tokens_used,
                 model_context_window: self.main_model_context_window,
-            },
+            }),
             content: format!(
                 "Tokens used: {} / Context window: {}",
                 self.context_tokens_used, self.main_model_context_window

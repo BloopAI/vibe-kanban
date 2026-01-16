@@ -974,13 +974,15 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             &entry_index,
                             NormalizedEntry {
                                 timestamp: None,
-                                entry_type: NormalizedEntryType::TokenUsageInfo {
-                                    total_tokens: info.last_token_usage.total_tokens as u32,
-                                    model_context_window: info
-                                        .model_context_window
-                                        .unwrap_or_default()
-                                        as u32,
-                                },
+                                entry_type: NormalizedEntryType::TokenUsageInfo(
+                                    crate::logs::TokenUsageInfo {
+                                        total_tokens: info.last_token_usage.total_tokens as u32,
+                                        model_context_window: info
+                                            .model_context_window
+                                            .unwrap_or_default()
+                                            as u32,
+                                    },
+                                ),
                                 content: format!(
                                     "Tokens used: {} / Context window: {}",
                                     info.last_token_usage.total_tokens,
