@@ -1628,6 +1628,22 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
+    /// Fetch a specific branch from a remote and create a local tracking branch.
+    /// This is useful for fetching PR branches from GitHub.
+    pub fn fetch_branch(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let git_cli = GitCli::new();
+        // Fetch the branch and create a local branch with the same name
+        let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
+        git_cli
+            .fetch_with_refspec(repo_path, remote_url, &refspec)
+            .map_err(GitServiceError::GitCLI)
+    }
+
     pub fn resolve_remote_name_for_branch(
         &self,
         repo_path: &Path,

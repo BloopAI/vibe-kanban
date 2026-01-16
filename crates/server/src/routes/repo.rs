@@ -10,8 +10,12 @@ use db::models::{
     repo::{Repo, UpdateRepo},
 };
 use deployment::Deployment;
-use serde::Deserialize;
-use services::services::{file_search::SearchQuery, git::GitBranch};
+use serde::{Deserialize, Serialize};
+use services::services::{
+    file_search::SearchQuery,
+    git::GitBranch,
+    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
+};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -206,6 +210,57 @@ pub async fn search_repo(
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum ListPrsError {
+    CliNotInstalled { provider: ProviderKind },
+    AuthFailed { message: String },
+    UnsupportedProvider,
+}
+
+pub async fn list_open_prs(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<Vec<OpenPrInfo>, ListPrsError>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+
+    let remote_url = deployment.git().get_remote_url(&repo.path, "origin")?;
+
+    let git_host = match GitHostService::from_url(&remote_url) {
+        Ok(host) => host,
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ListPrsError::UnsupportedProvider,
+            )));
+        }
+        Err(e) => {
+            tracing::error!("Failed to create git host service: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&e.to_string())));
+        }
+    };
+
+    match git_host.list_open_prs(&repo.path, &remote_url).await {
+        Ok(prs) => Ok(ResponseJson(ApiResponse::success(prs))),
+        Err(GitHostError::CliNotInstalled { provider }) => Ok(ResponseJson(
+            ApiResponse::error_with_data(ListPrsError::CliNotInstalled { provider }),
+        )),
+        Err(GitHostError::AuthFailed(message)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::AuthFailed { message },
+        ))),
+        Err(GitHostError::UnsupportedProvider) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::UnsupportedProvider,
+        ))),
+        Err(e) => {
+            tracing::error!("Failed to list open PRs for repo {}: {}", repo_id, e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
@@ -213,6 +268,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
+        .route("/repos/{repo_id}/prs", get(list_open_prs))
         .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
 }

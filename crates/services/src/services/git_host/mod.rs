@@ -11,8 +11,8 @@ use db::models::merge::PullRequestInfo;
 use detection::detect_provider_from_url;
 use enum_dispatch::enum_dispatch;
 pub use types::{
-    CreatePrRequest, GitHostError, PrComment, PrCommentAuthor, PrReviewComment, ProviderKind,
-    ReviewCommentUser, UnifiedPrComment,
+    CreatePrRequest, GitHostError, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment,
+    ProviderKind, ReviewCommentUser, UnifiedPrComment,
 };
 
 use self::{azure::AzureDevOpsProvider, github::GitHubProvider};
@@ -42,6 +42,12 @@ pub trait GitHostProvider: Send + Sync {
         remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError>;
+
+    async fn list_open_prs(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+    ) -> Result<Vec<OpenPrInfo>, GitHostError>;
 
     fn provider_kind(&self) -> ProviderKind;
 }

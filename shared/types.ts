@@ -280,6 +280,32 @@ export type UnifiedPrComment = { "comment_type": "general", id: string, author: 
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
+export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, };
+
+export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
+
+export type CreateWorkspaceFromPrBody = { 
+/**
+ * The project to create the task and workspace in
+ */
+project_id: string, 
+/**
+ * The repo that has the PR
+ */
+repo_id: string, 
+/**
+ * The PR number to use
+ */
+pr_number: bigint, 
+/**
+ * Whether to run setup scripts (default: true)
+ */
+run_setup: boolean, };
+
+export type CreateWorkspaceFromPrResponse = { workspace: Workspace, task: Task, };
+
+export type CreateFromPrError = { "type": "pr_not_found" } | { "type": "branch_fetch_failed", message: string, } | { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
+
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
  * True if a `git rebase` is currently in progress in this worktree

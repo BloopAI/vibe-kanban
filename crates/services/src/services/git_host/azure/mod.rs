@@ -14,7 +14,7 @@ use tracing::info;
 
 use super::{
     GitHostProvider,
-    types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
+    types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
 };
 
 #[derive(Debug, Clone)]
@@ -244,6 +244,15 @@ impl GitHostProvider for AzureDevOpsProvider {
             );
         })
         .await
+    }
+
+    async fn list_open_prs(
+        &self,
+        _repo_path: &Path,
+        _remote_url: &str,
+    ) -> Result<Vec<OpenPrInfo>, GitHostError> {
+        // TODO: Implement list_open_prs for Azure DevOps
+        Err(GitHostError::UnsupportedProvider)
     }
 
     fn provider_kind(&self) -> ProviderKind {

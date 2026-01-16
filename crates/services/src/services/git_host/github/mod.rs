@@ -14,7 +14,7 @@ use tracing::info;
 
 use super::{
     GitHostProvider,
-    types::{CreatePrRequest, GitHostError, ProviderKind, UnifiedPrComment},
+    types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
 };
 
 #[derive(Debug, Clone)]
@@ -357,6 +357,47 @@ impl GitHostProvider for GitHubProvider {
         unified.sort_by_key(|c| c.created_at());
 
         Ok(unified)
+    }
+
+    async fn list_open_prs(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+    ) -> Result<Vec<OpenPrInfo>, GitHostError> {
+        let repo_info = self.get_repo_info(remote_url, repo_path).await?;
+
+        let cli = self.gh_cli.clone();
+
+        (|| async {
+            let cli = cli.clone();
+            let owner = repo_info.owner.clone();
+            let repo_name = repo_info.repo_name.clone();
+
+            let prs = task::spawn_blocking(move || cli.list_open_prs(&owner, &repo_name))
+                .await
+                .map_err(|err| {
+                    GitHostError::PullRequest(format!(
+                        "Failed to execute GitHub CLI for listing open PRs: {err}"
+                    ))
+                })?;
+            prs.map_err(GitHostError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHostError| e.should_retry())
+        .notify(|err: &GitHostError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
     }
 
     fn provider_kind(&self) -> ProviderKind {
