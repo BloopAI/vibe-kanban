@@ -168,6 +168,11 @@ export function WorkspacesLayout() {
 
   // Mobile: render content based on which panel is visible (one at a time)
   const renderMobileContent = () => {
+    // Sidebar takes priority if visible (works in both create and non-create mode)
+    if (isLeftSidebarVisible) {
+      return <WorkspacesSidebarContainer />;
+    }
+
     // Create mode on mobile: git panel on top, chat below
     if (isCreateMode) {
       return (
@@ -188,9 +193,6 @@ export function WorkspacesLayout() {
     }
 
     // Non-create mode: show one panel at a time (radio button behavior)
-    if (isLeftSidebarVisible) {
-      return <WorkspacesSidebarContainer />;
-    }
 
     if (isRightSidebarVisible) {
       return (
