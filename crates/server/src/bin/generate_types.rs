@@ -34,6 +34,8 @@ fn generate_types_content() -> String {
         db::models::task::Task::decl(),
         db::models::task::TaskWithAttemptStatus::decl(),
         db::models::task::TaskRelationships::decl(),
+        db::models::task::TaskDependency::decl(),
+        db::models::task::TaskWithPosition::decl(),
         db::models::task::CreateTask::decl(),
         db::models::task::UpdateTask::decl(),
         db::models::scratch::DraftFollowUpData::decl(),

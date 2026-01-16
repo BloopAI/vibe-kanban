@@ -65,6 +65,24 @@ pub struct TaskRelationships {
     pub children: Vec<Task>,       // Tasks created from this workspace
 }
 
+/// Represents a dependency relationship between tasks
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct TaskDependency {
+    pub id: Uuid,
+    pub task_id: Uuid,           // The task that has the dependency
+    pub depends_on_task_id: Uuid, // The task that must be completed first
+    pub created_at: DateTime<Utc>,
+}
+
+/// Task with position information for ordering in lists
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct TaskWithPosition {
+    #[serde(flatten)]
+    #[ts(flatten)]
+    pub task: Task,
+    pub position: i32, // Position for ordering tasks in a list
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateTask {
     pub project_id: Uuid,
