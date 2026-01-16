@@ -339,7 +339,7 @@ struct RepositoryIdNode {
 }
 
 pub struct GitHubProjectsService {
-    graphql: GitHubGraphQL,
+    pub graphql: GitHubGraphQL,
 }
 
 impl GitHubProjectsService {

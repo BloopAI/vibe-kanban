@@ -17,12 +17,15 @@ use tracing::{debug, info, warn};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::graphql::GitHubGraphQLError;
 use super::projects::{GitHubIssue, GitHubProjectItem, GitHubProjectsError, GitHubProjectsService};
 
 #[derive(Debug, Error)]
 pub enum GitHubSyncError {
     #[error(transparent)]
     Projects(#[from] GitHubProjectsError),
+    #[error(transparent)]
+    GraphQL(#[from] GitHubGraphQLError),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error("Sync conflict: {0}")]
@@ -434,18 +437,69 @@ impl GitHubSyncService {
             return Ok(());
         }
 
-        // TODO: Implement GitHub issue update via GraphQL mutation
-        // This requires the updateIssue mutation and potentially updateProjectV2ItemFieldValue
-        // for updating the status field in the project
+        // Verify the GitHub link exists
+        let _link = GitHubProjectLink::find_by_id(pool, mapping.github_project_link_id)
+            .await?
+            .ok_or_else(|| {
+                GitHubSyncError::InvalidMapping(format!(
+                    "GitHub link {} not found",
+                    mapping.github_project_link_id
+                ))
+            })?;
+
+        // Determine the target issue state based on task status
+        let issue_state = StatusMapping::vibe_to_github_state(&task.status);
+
+        // Update the GitHub issue via GraphQL
+        self.update_github_issue(
+            &mapping.github_issue_id,
+            Some(&task.title),
+            task.description.as_deref(),
+            Some(issue_state),
+        )?;
 
         info!(
-            "Would sync task {} to GitHub issue #{}",
-            task.id, mapping.github_issue_number
+            "Synced task {} to GitHub issue #{} (state: {})",
+            task.id, mapping.github_issue_number, issue_state
         );
 
         // Update vibe_updated_at timestamp
         GitHubIssueMapping::update_sync_timestamps(pool, mapping.id, None, Some(Utc::now()))
             .await?;
+
+        Ok(())
+    }
+
+    /// Update a GitHub issue via GraphQL mutation
+    fn update_github_issue(
+        &self,
+        issue_id: &str,
+        title: Option<&str>,
+        body: Option<&str>,
+        state: Option<&str>,
+    ) -> Result<(), GitHubSyncError> {
+        use super::graphql::queries;
+
+        let full_query = format!("{}\n{}", queries::ISSUE_FRAGMENT, queries::UPDATE_ISSUE);
+
+        let mut variables = serde_json::json!({
+            "id": issue_id
+        });
+
+        if let Some(t) = title {
+            variables["title"] = serde_json::Value::String(t.to_string());
+        }
+        if let Some(b) = body {
+            variables["body"] = serde_json::Value::String(b.to_string());
+        }
+        if let Some(s) = state {
+            variables["state"] = serde_json::Value::String(s.to_string());
+        }
+
+        let _result: serde_json::Value = self
+            .projects_service
+            .graphql
+            .mutate(&full_query, Some(variables))?;
 
         Ok(())
     }
