@@ -66,6 +66,8 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit_reminder: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -131,13 +133,15 @@ impl ClaudeCode {
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
         let mut hooks = serde_json::Map::new();
 
-        // Always add Stop hook for git status check
-        hooks.insert(
-            "Stop".to_string(),
-            serde_json::json!([{
-                "hookCallbackIds": [STOP_GIT_CHECK_CALLBACK_ID]
-            }]),
-        );
+        // Add Stop hook for git status check if commit_reminder is enabled
+        if self.commit_reminder.unwrap_or(false) {
+            hooks.insert(
+                "Stop".to_string(),
+                serde_json::json!([{
+                    "hookCallbackIds": [STOP_GIT_CHECK_CALLBACK_ID]
+                }]),
+            );
+        }
 
         // Add PreToolUse hooks based on plan/approvals settings
         if self.plan.unwrap_or(false) {
