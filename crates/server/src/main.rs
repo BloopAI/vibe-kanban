@@ -68,6 +68,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         .await
         .map_err(DeploymentError::from)?;
     deployment.spawn_pr_monitor_service().await;
+    deployment.spawn_github_sync_monitor().await;
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;

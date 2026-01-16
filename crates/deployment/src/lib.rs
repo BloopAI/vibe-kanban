@@ -26,6 +26,7 @@ use services::services::{
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
+    github::GitHubSyncMonitor,
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
     project::ProjectService,
@@ -134,6 +135,11 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             });
         let publisher = self.share_publisher().ok();
         PrMonitorService::spawn(db, analytics, publisher).await
+    }
+
+    async fn spawn_github_sync_monitor(&self) -> tokio::task::JoinHandle<()> {
+        let db = self.db().clone();
+        GitHubSyncMonitor::spawn(db).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

@@ -168,4 +168,27 @@ impl GitHubProjectLink {
             .await?;
         Ok(result.rows_affected())
     }
+
+    /// Find all enabled GitHub project links across all projects.
+    /// Results are ordered by last_sync_at ascending (oldest first, nulls first).
+    pub async fn find_all_enabled(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            GitHubProjectLink,
+            r#"SELECT
+                id as "id!: Uuid",
+                project_id as "project_id!: Uuid",
+                github_project_id,
+                github_owner,
+                github_repo,
+                sync_enabled as "sync_enabled!: bool",
+                last_sync_at as "last_sync_at: DateTime<Utc>",
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
+            FROM github_project_links
+            WHERE sync_enabled = 1
+            ORDER BY last_sync_at ASC NULLS FIRST"#
+        )
+        .fetch_all(pool)
+        .await
+    }
 }
