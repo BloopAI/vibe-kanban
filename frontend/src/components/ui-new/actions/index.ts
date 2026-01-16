@@ -484,7 +484,8 @@ export const Actions = {
     // On mobile, always enabled (radio button behavior)
     // On desktop, disabled when chat is the only visible main content
     isEnabled: (ctx) =>
-      ctx.isMobile || !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
+      ctx.isMobile ||
+      !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
     getLabel: (ctx) =>
       ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
     execute: (ctx) => {
