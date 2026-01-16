@@ -251,20 +251,24 @@ export function WorkspacesLayout() {
     return (
       <div className="flex flex-col h-screen">
         <NavbarContainer />
-        <ModeProvider
-          isCreateMode={isCreateMode}
-          executionProps={{
-            key: `${selectedWorkspace?.id}-${selectedSessionId}`,
-            attemptId: selectedWorkspace?.id,
-            sessionId: selectedSessionId,
-          }}
-        >
-          <ReviewProvider attemptId={selectedWorkspace?.id}>
-            <LogsPanelProvider>
-              <ChangesViewProvider>{renderMobileContent()}</ChangesViewProvider>
-            </LogsPanelProvider>
-          </ReviewProvider>
-        </ModeProvider>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ModeProvider
+            isCreateMode={isCreateMode}
+            executionProps={{
+              key: `${selectedWorkspace?.id}-${selectedSessionId}`,
+              attemptId: selectedWorkspace?.id,
+              sessionId: selectedSessionId,
+            }}
+          >
+            <ReviewProvider attemptId={selectedWorkspace?.id}>
+              <LogsPanelProvider>
+                <ChangesViewProvider>
+                  {renderMobileContent()}
+                </ChangesViewProvider>
+              </LogsPanelProvider>
+            </ReviewProvider>
+          </ModeProvider>
+        </div>
       </div>
     );
   }
