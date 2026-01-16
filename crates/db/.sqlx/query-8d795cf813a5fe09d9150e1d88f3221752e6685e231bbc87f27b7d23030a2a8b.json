@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                github_project_link_id as \"github_project_link_id!: Uuid\",\n                github_issue_number as \"github_issue_number!: i64\",\n                github_issue_id,\n                github_issue_url,\n                sync_direction as \"sync_direction!: SyncDirection\",\n                last_synced_at as \"last_synced_at: DateTime<Utc>\",\n                github_updated_at as \"github_updated_at: DateTime<Utc>\",\n                vibe_updated_at as \"vibe_updated_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM github_issue_mappings\n            WHERE task_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "github_project_link_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "github_issue_number!: i64",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "github_issue_id",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_issue_url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_direction!: SyncDirection",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_updated_at: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "vibe_updated_at: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "8d795cf813a5fe09d9150e1d88f3221752e6685e231bbc87f27b7d23030a2a8b"
+}

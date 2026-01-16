@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                github_project_id,\n                github_owner,\n                github_repo,\n                sync_enabled as \"sync_enabled!: bool\",\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM github_project_links\n            WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "github_project_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_owner",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_repo",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_enabled!: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_sync_at: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5ee4a9859b4eb2528121d4caf636d542b6ab4ed2f4d7427ac95292eb9f8e5715"
+}

@@ -78,6 +78,12 @@ pub enum ApiError {
     Forbidden(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Internal server error: {0}")]
+    InternalServer(String),
+    #[error("Service unavailable: {0}")]
+    ServiceUnavailable(String),
 }
 
 impl From<&'static str> for ApiError {
@@ -180,6 +186,9 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::NotFound(_) => (StatusCode::NOT_FOUND, "NotFoundError"),
+            ApiError::InternalServer(_) => (StatusCode::INTERNAL_SERVER_ERROR, "InternalServerError"),
+            ApiError::ServiceUnavailable(_) => (StatusCode::SERVICE_UNAVAILABLE, "ServiceUnavailableError"),
         };
 
         let error_message = match &self {
@@ -256,6 +265,9 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
+            ApiError::NotFound(msg) => msg.clone(),
+            ApiError::InternalServer(msg) => msg.clone(),
+            ApiError::ServiceUnavailable(msg) => msg.clone(),
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);

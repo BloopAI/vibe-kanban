@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO task_properties (id, task_id, property_name, property_value, source)\n            VALUES ($1, $2, $3, $4, $5)\n            ON CONFLICT(task_id, property_name) DO UPDATE SET\n                property_value = excluded.property_value,\n                source = excluded.source,\n                updated_at = CURRENT_TIMESTAMP\n            RETURNING\n                id as \"id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                property_name,\n                property_value,\n                source as \"source!: PropertySource\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "property_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "property_value",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "source!: PropertySource",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "59489eef884df5cc9d3174607f57a3feea8314f1d270f2554b7bcf5702d652a3"
+}

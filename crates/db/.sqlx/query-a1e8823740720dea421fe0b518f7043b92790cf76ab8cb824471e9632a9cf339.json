@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE github_issue_mappings\n            SET last_synced_at = CURRENT_TIMESTAMP,\n                github_updated_at = $2,\n                vibe_updated_at = $3,\n                updated_at = CURRENT_TIMESTAMP\n            WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "a1e8823740720dea421fe0b518f7043b92790cf76ab8cb824471e9632a9cf339"
+}

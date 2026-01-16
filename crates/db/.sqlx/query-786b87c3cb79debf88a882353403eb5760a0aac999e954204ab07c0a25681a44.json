@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                task_id as \"task_id!: Uuid\",\n                property_name,\n                property_value,\n                source as \"source!: PropertySource\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM task_properties\n            WHERE task_id = $1 AND property_name = $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "property_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "property_value",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "source!: PropertySource",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "786b87c3cb79debf88a882353403eb5760a0aac999e954204ab07c0a25681a44"
+}

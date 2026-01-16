@@ -1,46 +1,203 @@
-# Repository Guidelines
+# vibe-kanban-neo - AIエージェント駆動型カンバンボード
 
-## Project Structure & Module Organization
-- `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `deployment`, `local-deployment`, `remote`.
-- `frontend/`: React + TypeScript app (Vite, Tailwind). Source in `frontend/src`.
-- `frontend/src/components/dialogs`: Dialog components for the frontend.
-- `remote-frontend/`: Remote deployment frontend.
-- `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
-- `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
-- `npx-cli/`: Files published to the npm CLI package.
-- `scripts/`: Dev helpers (ports, DB preparation).
-- `docs/`: Documentation files.
+## システム構成
 
-## Managing Shared Types Between Rust and TypeScript
+| レイヤー | 技術 | ディレクトリ |
+|---------|------|-------------|
+| フロントエンド | React + TypeScript + Vite + Tailwind | `frontend/` |
+| バックエンド | Rust (Axum) | `crates/` |
+| DB | SQLite (SQLx) | ローカル |
+| 共有型 | ts-rs自動生成 | `shared/types.ts` |
 
-ts-rs allows you to derive TypeScript types from Rust structs/enums. By annotating your Rust types with #[derive(TS)] and related macros, ts-rs will generate .ts declaration files for those types.
-When making changes to the types, you can regenerate them using `pnpm run generate-types`
-Do not manually edit shared/types.ts, instead edit crates/server/src/bin/generate_types.rs
+```
+crates/           ← Rust バックエンド
+├── server/       ← API + バイナリ
+├── db/           ← SQLx モデル/マイグレーション
+├── executors/    ← タスク実行
+├── services/     ← ビジネスロジック
+└── utils/        ← ユーティリティ
 
-## Build, Test, and Development Commands
-- Install: `pnpm i`
-- Run dev (frontend + backend with ports auto-assigned): `pnpm run dev`
-- Backend (watch): `pnpm run backend:dev:watch`
-- Frontend (dev): `pnpm run frontend:dev`
-- Type checks: `pnpm run check` (frontend) and `pnpm run backend:check` (Rust cargo check)
-- Rust tests: `cargo test --workspace`
-- Generate TS types from Rust: `pnpm run generate-types` (or `generate-types:check` in CI)
-- Prepare SQLx (offline): `pnpm run prepare-db`
-- Prepare SQLx (remote package, postgres): `pnpm run remote:prepare-db`
-- Local NPX build: `pnpm run build:npx` then `pnpm pack` in `npx-cli/`
+frontend/         ← React + TypeScript
+└── src/
+    ├── components/
+    ├── pages/
+    └── hooks/
 
-## Automated QA
-- When testing changes by runnign the application, you should prefer `pnpm run dev:qa` over `pnpm run dev`, which starts the application in a dedicated mode that is optimised for QA testing
+shared/           ← 共有型定義（自動生成・編集禁止）
+docs/             ← ドキュメント
+.cursor/          ← Agents/Rules/Skills
+```
 
-## Coding Style & Naming Conventions
-- Rust: `rustfmt` enforced (`rustfmt.toml`); group imports by crate; snake_case modules, PascalCase types.
-- TypeScript/React: ESLint + Prettier (2 spaces, single quotes, 80 cols). PascalCase components, camelCase vars/functions, kebab-case file names where practical.
-- Keep functions small, add `Debug`/`Serialize`/`Deserialize` where useful.
+---
 
-## Testing Guidelines
-- Rust: prefer unit tests alongside code (`#[cfg(test)]`), run `cargo test --workspace`. Add tests for new logic and edge cases.
-- Frontend: ensure `pnpm run check` and `pnpm run lint` pass. If adding runtime logic, include lightweight tests (e.g., Vitest) in the same directory.
+## 基本原則
 
-## Security & Config Tips
-- Use `.env` for local overrides; never commit secrets. Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST` 
-- Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
+1. **曖昧さの排除**: 不明点はユーザーにヒアリング
+2. **最小変更**: 依頼範囲のみ。ついで修正禁止
+3. **本番操作禁止**: デプロイ系コマンドは提示のみ
+
+---
+
+## Agent呼び出しルール
+
+**トリガーに該当したら即座にAgentに委譲。考える前に起動。**
+
+| 発言パターン | Agent | 備考 |
+|-------------|-------|------|
+| 「#XX やって」「〜を実装して」「〜を作って」「〜を追加して」 | `explorer` → `planner` → `implementer` | 実装依頼全般 |
+| 「#XX 調べて」「〜の影響範囲は？」「〜を確認して」 | `explorer` | 調査・分析全般 |
+| 「どう実装する？」「計画立てて」「方針を決めて」 | `planner` | 実装方針の策定 |
+| 「コード書いて」「修正して」「直して」 | `implementer` | 既に計画がある場合 |
+| 「コードレビュー」「チェックして」 | `reviewer` | レビュー依頼 |
+| 「〜をIssueに」「課題登録して」「タスク追加して」 | `task-organizer` | 課題整理・Issue作成 |
+
+**重要**: Issueがなくても、機能追加・修正・改善の依頼は標準フロー（Explorer → Planner → Implementer）で対応する。
+
+---
+
+## 実装フロー（標準）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  1. Explorer      要件調査・影響範囲分析                   │
+│       ↓                                                     │
+│  2. Planner       計画立案 → ユーザー承認                   │
+│       ↓                                                     │
+│  3. Implementer   TDD実装（RED→GREEN→Refactor）            │
+│       ↓                                                     │
+│  4. Reviewer      コードレビュー                           │
+│       │                                                     │
+│       ├─ NG → Implementerに戻る（テスト作り直し）          │
+│       │                                                     │
+│       └─ OK → ドキュメント作成・完了報告                   │
+│                                                             │
+│  ※ プッシュ・PR作成はユーザーが手動で実行                  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 各Agentの責務
+
+| Agent | 責務 | 出力 |
+|-------|------|------|
+| `explorer` | 要件把握、コード調査、影響範囲分析 | 調査レポート |
+| `planner` | 実装計画立案、ユーザー承認取得 | 承認済み計画 |
+| `implementer` | TDD実装（RED→GREEN→Refactor） | 実装済みコード |
+| `reviewer` | 仕様面（AC）+コード面レビュー、NG時は差し戻し | レビュー結果 |
+| `task-organizer` | 課題整理、要件分類、Issue作成 | Issue + 整理ドキュメント |
+
+### 完了時の成果物
+
+`docs/test-reports/YYYY-MM-DD/issue-XX-slug.md` に以下を記録:
+- 計画内容（Plannerが立案したもの）
+- テスト内容（Implementerが実施したもの）
+- レビュー結果
+
+---
+
+## 開発コマンド
+
+```bash
+# インストール
+pnpm i
+
+# 起動（開発）
+pnpm run dev
+
+# QAモード起動（テスト推奨）
+pnpm run dev:qa
+
+# バックエンド（watch）
+pnpm run backend:dev:watch
+
+# フロントエンド（dev）
+pnpm run frontend:dev
+
+# 型チェック
+pnpm run check          # Frontend
+pnpm run backend:check  # Rust (cargo check)
+
+# Lint
+pnpm run lint           # Frontend
+cargo clippy --workspace  # Rust
+
+# テスト
+cargo test --workspace  # Rust
+
+# 型生成（Rust → TypeScript）
+pnpm run generate-types
+
+# SQLx準備
+pnpm run prepare-db
+```
+
+---
+
+## 型定義の同期
+
+ts-rsを使用してRustの型からTypeScript型を自動生成:
+
+```bash
+pnpm run generate-types
+```
+
+**注意**: `shared/types.ts` を直接編集しない。`crates/server/src/bin/generate_types.rs` を編集すること。
+
+---
+
+## ドキュメント
+
+| パス | 内容 |
+|------|------|
+| `docs/` | ドキュメント全般 |
+| `docs/test-reports/` | テストレポート |
+| `docs/records/issue-records/` | 課題整理の記録 |
+| `.cursor/agents/` | Agent定義 |
+| `.cursor/rules/` | 分野別ルール |
+| `.cursor/skills/` | スキル定義 |
+
+---
+
+## ブランチ運用
+
+新機能・改修は必ず新規ブランチで実施:
+- `feature/<番号>-<slug>` - 新機能
+- `fix/<番号>-<slug>` - バグ修正
+
+---
+
+## コーディングスタイル
+
+### Rust
+- `rustfmt` で自動フォーマット
+- `cargo clippy` で Lint チェック
+- snake_case（モジュール）、PascalCase（型）
+- `unwrap()` 乱用禁止、適切な `Result`/`Option` 処理
+
+### TypeScript/React
+- ESLint + Prettier (2スペース、シングルクォート)
+- PascalCase（コンポーネント）、camelCase（関数・変数）
+- `any` 型の使用禁止
+
+---
+
+## テストガイドライン
+
+### Rust
+- 単体テストはコードと同じファイル (`#[cfg(test)]`)
+- 統合テストは `tests/` ディレクトリ
+- `cargo test --workspace` で全テスト実行
+
+### Frontend
+- `pnpm run check` と `pnpm run lint` を通過すること
+- E2Eテストは MCP browser-test を使用
+
+---
+
+## セキュリティ
+
+- `.env` はコミット禁止
+- 秘匿情報は環境変数で管理
+- SQLxのパラメータバインディング使用
+- ユーザー入力は検証・サニタイズ

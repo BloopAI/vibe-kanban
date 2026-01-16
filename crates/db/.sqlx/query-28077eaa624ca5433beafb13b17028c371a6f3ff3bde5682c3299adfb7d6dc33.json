@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE github_project_links SET sync_enabled = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "28077eaa624ca5433beafb13b17028c371a6f3ff3bde5682c3299adfb7d6dc33"
+}

@@ -8,11 +8,11 @@ use crate::DeploymentImpl;
 pub mod approvals;
 pub mod config;
 pub mod containers;
-pub mod filesystem;
-// pub mod github;
 pub mod events;
 pub mod execution_processes;
+pub mod filesystem;
 pub mod frontend;
+pub mod github;
 pub mod health;
 pub mod images;
 pub mod oauth;
@@ -46,6 +46,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(sessions::router(&deployment))
+        .merge(github::router(&deployment))
         .nest("/images", images::routes())
         .with_state(deployment);
 
