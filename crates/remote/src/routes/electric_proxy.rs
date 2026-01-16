@@ -3,76 +3,296 @@ use std::collections::HashMap;
 use axum::{
     Router,
     body::Body,
-    extract::{Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
     routing::get,
 };
 use futures::TryStreamExt;
 use secrecy::ExposeSecret;
+use serde::Deserialize;
 use tracing::error;
 use uuid::Uuid;
 
 use crate::{
-    AppState, auth::RequestContext, db::organizations::OrganizationRepository, validated_where,
-    validated_where::ValidatedWhere,
+    AppState, auth::RequestContext, db::organization_members, validated_where::ValidatedWhere,
 };
 
-pub fn router() -> Router<AppState> {
-    Router::new().route("/shape/shared_tasks", get(proxy_shared_tasks))
+#[derive(Deserialize)]
+struct OrgShapeQuery {
+    organization_id: Uuid,
+    #[serde(flatten)]
+    params: HashMap<String, String>,
 }
 
-/// Electric protocol query parameters that are safe to forward.
-/// Based on https://electric-sql.com/docs/guides/auth#proxy-auth
-/// Note: "where" is NOT included because it's controlled server-side for security.
+#[derive(Deserialize)]
+struct ShapeQuery {
+    #[serde(flatten)]
+    params: HashMap<String, String>,
+}
+
 const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "columns"];
 
-/// Returns an empty shape response for users with no organization memberships.
-fn empty_shape_response() -> Response {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static("application/json"),
-    );
-    (StatusCode::OK, headers, "[]").into_response()
+pub fn router() -> Router<AppState> {
+    Router::new()
+        // Org-scoped
+        .route("/shape/projects", get(proxy_projects))
+        .route("/shape/notifications", get(proxy_notifications))
+        // Project-scoped
+        .route(
+            "/shape/project/{project_id}/workspaces",
+            get(proxy_workspaces),
+        )
+        .route(
+            "/shape/project/{project_id}/statuses",
+            get(proxy_project_statuses),
+        )
+        .route("/shape/project/{project_id}/tags", get(proxy_tags))
+        .route("/shape/project/{project_id}/issues", get(proxy_issues))
+        .route(
+            "/shape/project/{project_id}/issue_assignees",
+            get(proxy_issue_assignees),
+        )
+        .route(
+            "/shape/project/{project_id}/issue_followers",
+            get(proxy_issue_followers),
+        )
+        .route(
+            "/shape/project/{project_id}/issue_tags",
+            get(proxy_issue_tags),
+        )
+        .route(
+            "/shape/project/{project_id}/issue_dependencies",
+            get(proxy_issue_dependencies),
+        )
+        // Issue-scoped
+        .route(
+            "/shape/issue/{issue_id}/comments",
+            get(proxy_issue_comments),
+        )
+        .route(
+            "/shape/issue/{issue_id}/reactions",
+            get(proxy_issue_comment_reactions),
+        )
 }
 
-/// Proxy Shape requests for the `shared_tasks` table.
-///
-/// Route: GET /v1/shape/shared_tasks?offset=-1
-///
-/// The `require_session` middleware has already validated the Bearer token
-/// before this handler is called.
-pub async fn proxy_shared_tasks(
+async fn proxy_projects(
     State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Query(params): Query<HashMap<String, String>>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<OrgShapeQuery>,
 ) -> Result<Response, ProxyError> {
-    // Get user's organization memberships
-    let org_repo = OrganizationRepository::new(state.pool());
-    let orgs = org_repo
-        .list_user_organizations(ctx.user.id)
+    organization_members::assert_membership(state.pool(), query.organization_id, ctx.user.id)
         .await
-        .map_err(|e| ProxyError::Authorization(format!("failed to fetch organizations: {e}")))?;
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    if orgs.is_empty() {
-        // User has no org memberships - return empty result
-        return Ok(empty_shape_response());
-    }
+    let validated = crate::validated_where!(
+        "projects",
+        r#""organization_id" = $1"#,
+        query.organization_id
+    );
 
-    // Build org_id filter using compile-time validated WHERE clause
-    let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
-    let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
-    let query_params = &[format!(
-        "{{{}}}",
-        org_uuids
-            .iter()
-            .map(|u| u.to_string())
-            .collect::<Vec<_>>()
-            .join(",")
-    )];
-    tracing::debug!("Proxying Electric Shape request for shared_tasks table{query:?}");
-    proxy_table(&state, &query, &params, query_params).await
+    proxy_table(
+        &state,
+        &validated,
+        &query.params,
+        &[query.organization_id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_notifications(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<OrgShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_membership(state.pool(), query.organization_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "notifications",
+        r#""organization_id" = $1 AND "user_id" = $2"#,
+        query.organization_id,
+        ctx.user.id
+    );
+
+    proxy_table(
+        &state,
+        &validated,
+        &query.params,
+        &[query.organization_id.to_string(), ctx.user.id.to_string()],
+    )
+    .await
+}
+
+async fn proxy_workspaces(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!("workspaces", r#""project_id" = $1"#, project_id);
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_project_statuses(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!("project_statuses", r#""project_id" = $1"#, project_id);
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_tags(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!("tags", r#""project_id" = $1"#, project_id);
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!("issues", r#""project_id" = $1"#, project_id);
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issue_assignees(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "issue_assignees",
+        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        project_id
+    );
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issue_followers(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "issue_followers",
+        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        project_id
+    );
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issue_tags(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "issue_tags",
+        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        project_id
+    );
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issue_comments(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(issue_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_issue_access(state.pool(), issue_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!("issue_comments", r#""issue_id" = $1"#, issue_id);
+
+    proxy_table(&state, &validated, &query.params, &[issue_id.to_string()]).await
+}
+
+async fn proxy_issue_dependencies(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_project_access(state.pool(), project_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "issue_dependencies",
+        r#""blocking_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+        project_id
+    );
+
+    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+}
+
+async fn proxy_issue_comment_reactions(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(issue_id): Path<Uuid>,
+    Query(query): Query<ShapeQuery>,
+) -> Result<Response, ProxyError> {
+    organization_members::assert_issue_access(state.pool(), issue_id, ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(e.to_string()))?;
+
+    let validated = crate::validated_where!(
+        "issue_comment_reactions",
+        r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
+        issue_id
+    );
+
+    proxy_table(&state, &validated, &query.params, &[issue_id.to_string()]).await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
@@ -129,7 +349,6 @@ async fn proxy_table(
         .map_err(ProxyError::Connection)?;
 
     let status = response.status();
-
     let mut headers = HeaderMap::new();
 
     // Copy headers from Electric response, but remove problematic ones

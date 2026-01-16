@@ -4,18 +4,24 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use serde::Deserialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
-use utils::api::projects::{ListProjectsResponse, RemoteProject};
 use uuid::Uuid;
 
 use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{CreateProjectData, Project, ProjectError, ProjectRepository},
+    db::{
+        projects::{Project, ProjectRepository},
+        tags::TagRepository,
+    },
 };
+
+#[derive(Debug, Serialize)]
+pub struct ListProjectsResponse {
+    pub projects: Vec<Project>,
+}
 
 #[derive(Debug, Deserialize)]
 struct ProjectsQuery {
@@ -26,14 +32,24 @@ struct ProjectsQuery {
 struct CreateProjectRequest {
     organization_id: Uuid,
     name: String,
-    #[serde(default)]
-    metadata: Value,
+    color: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UpdateProjectRequest {
+    name: String,
+    color: String,
 }
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/projects", get(list_projects).post(create_project))
-        .route("/projects/{project_id}", get(get_project))
+        .route(
+            "/projects/{project_id}",
+            get(get_project)
+                .patch(update_project)
+                .delete(delete_project),
+        )
 }
 
 #[instrument(
@@ -49,16 +65,12 @@ async fn list_projects(
     let target_org = params.organization_id;
     ensure_member_access(state.pool(), target_org, ctx.user.id).await?;
 
-    let projects = match ProjectRepository::list_by_organization(state.pool(), target_org).await {
-        Ok(rows) => rows.into_iter().map(to_remote_project).collect(),
-        Err(error) => {
+    let projects = ProjectRepository::list_by_organization(state.pool(), target_org)
+        .await
+        .map_err(|error| {
             tracing::error!(?error, org_id = %target_org, "failed to list remote projects");
-            return Err(ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to list projects",
-            ));
-        }
-    };
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list projects")
+        })?;
 
     Ok(Json(ListProjectsResponse { projects }))
 }
@@ -72,8 +84,8 @@ async fn get_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
-) -> Result<Json<RemoteProject>, ErrorResponse> {
-    let record = ProjectRepository::fetch_by_id(state.pool(), project_id)
+) -> Result<Json<Project>, ErrorResponse> {
+    let project = ProjectRepository::find_by_id(state.pool(), project_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %project_id, "failed to load project");
@@ -81,9 +93,9 @@ async fn get_project(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
 
-    ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
+    ensure_member_access(state.pool(), project.organization_id, ctx.user.id).await?;
 
-    Ok(Json(to_remote_project(record)))
+    Ok(Json(project))
 }
 
 #[instrument(
@@ -95,78 +107,100 @@ async fn create_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
-) -> Result<Json<RemoteProject>, ErrorResponse> {
+) -> Result<Json<Project>, ErrorResponse> {
     let CreateProjectRequest {
         organization_id,
         name,
-        metadata,
+        color,
     } = payload;
 
     ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
     let mut tx = state.pool().begin().await.map_err(|error| {
-        tracing::error!(?error, "failed to start transaction for project creation");
+        tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
-    let metadata = normalize_metadata(metadata).ok_or_else(|| {
-        ErrorResponse::new(StatusCode::BAD_REQUEST, "metadata must be a JSON object")
-    })?;
+    let project = ProjectRepository::create(&mut *tx, organization_id, name, color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to create remote project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
 
-    let project = match ProjectRepository::insert(
-        &mut tx,
-        CreateProjectData {
-            organization_id,
-            name,
-            metadata,
-        },
-    )
-    .await
-    {
-        Ok(project) => project,
-        Err(error) => {
-            tx.rollback().await.ok();
-            return Err(match error {
-                ProjectError::Conflict(message) => {
-                    tracing::warn!(?message, "remote project conflict");
-                    ErrorResponse::new(StatusCode::CONFLICT, "project already exists")
-                }
-                ProjectError::InvalidMetadata => {
-                    ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid project metadata")
-                }
-                ProjectError::Database(err) => {
-                    tracing::error!(?err, "failed to create remote project");
-                    ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-                }
-            });
-        }
-    };
-
-    if let Err(error) = tx.commit().await {
-        tracing::error!(?error, "failed to commit remote project creation");
+    if let Err(error) = TagRepository::create_default_tags(&mut *tx, project.id).await {
+        tracing::error!(?error, project_id = %project.id, "failed to create default tags");
         return Err(ErrorResponse::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal server error",
         ));
     }
 
-    Ok(Json(to_remote_project(project)))
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(project))
 }
 
-fn to_remote_project(project: Project) -> RemoteProject {
-    RemoteProject {
-        id: project.id,
-        organization_id: project.organization_id,
-        name: project.name,
-        metadata: project.metadata,
-        created_at: project.created_at,
-    }
+#[instrument(
+    name = "projects.update_project",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, project_id = %project_id)
+)]
+async fn update_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+    Json(payload): Json<UpdateProjectRequest>,
+) -> Result<Json<Project>, ErrorResponse> {
+    let existing = ProjectRepository::find_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), existing.organization_id, ctx.user.id).await?;
+
+    let project = ProjectRepository::update(state.pool(), project_id, payload.name, payload.color)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to update remote project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(Json(project))
 }
 
-fn normalize_metadata(value: Value) -> Option<Value> {
-    match value {
-        Value::Null => Some(Value::Object(serde_json::Map::new())),
-        Value::Object(_) => Some(value),
-        _ => None,
-    }
+#[instrument(
+    name = "projects.delete_project",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, project_id = %project_id)
+)]
+async fn delete_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+) -> Result<StatusCode, ErrorResponse> {
+    let record = ProjectRepository::find_by_id(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to load project")
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "project not found"))?;
+
+    ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
+
+    ProjectRepository::delete(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to delete remote project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

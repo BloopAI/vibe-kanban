@@ -21,9 +21,6 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
-    "share": "タスクを共有",
-    "reassign": "再割り当て",
-    "stopShare": "共有を停止",
     "duplicate": "Duplicate",
     "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
@@ -102,41 +99,6 @@
       "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
       "andMore": "...他{{count}}件"
     }
-  },
-  "stopShareDialog": {
-    "title": "タスクの共有を停止",
-    "description": "「{{title}}」の共有を組織向けに停止しますか？",
-    "warning": "組織との共有は停止しますが、ローカルのタスクは保持されます。",
-    "confirm": "共有を停止",
-    "inProgress": "共有を停止中…",
-    "genericError": "タスクの共有を停止できませんでした。もう一度お試しください。"
-  },
-  "shareDialog": {
-    "title": "タスクを共有",
-    "description": "「{{title}}」を組織と共有しますか？",
-    "success": "タスクの共有に成功しました。",
-    "genericError": "タスクを共有できませんでした。もう一度お試しください。",
-    "loadingSystem": "アカウント状態を読み込み中…",
-    "loginRequired": {
-      "title": "続行するにはサインインしてください",
-      "description": "タスクを共有する前にサインインが必要です。サインインページへリダイレクトします。",
-      "action": "サインインへ移動"
-    },
-    "gitProviderRequired": {
-      "title": "Git プロバイダーを接続",
-      "description": "タスクを共有するには、Git プロバイダーアカウントを接続してください。このプロジェクトにはリモートリポジトリが必要です。",
-      "action": "接続"
-    },
-    "linkProjectRequired": {
-      "description": "タスクを共有する前に、このプロジェクトを組織にリンクしてください。",
-      "action": "プロジェクトをリンク"
-    },
-    "confirmationTitle": "共有を確認",
-    "confirmationBody": "共有すると、このタスクが共有ワークスペースに公開されます。",
-    "cancel": "キャンセル",
-    "confirm": "タスクを共有",
-    "inProgress": "共有中…",
-    "closeButton": "閉じる"
   },
   "createPrDialog": {
     "title": "プルリクエストを作成",

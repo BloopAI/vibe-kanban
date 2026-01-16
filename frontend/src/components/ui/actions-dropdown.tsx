@@ -17,38 +17,25 @@ import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTa
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
-import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
-import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
-import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 
 import { useNavigate } from 'react-router-dom';
-import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { useAuth } from '@/hooks';
 import { WorkspaceWithSession } from '@/types/attempt';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: WorkspaceWithSession | null;
-  sharedTask?: SharedTaskRecord;
 }
 
-export function ActionsDropdown({
-  task,
-  attempt,
-  sharedTask,
-}: ActionsDropdownProps) {
+export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
-  const { userId, isSignedIn } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
-  const isShared = Boolean(sharedTask);
-  const canEditShared = (!isShared && !task?.shared_task_id) || isSignedIn;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -140,30 +127,6 @@ export function ActionsDropdown({
       currentBranchName: attempt.branch,
     });
   };
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!task || isShared) return;
-    ShareDialog.show({ task });
-  };
-
-  const handleReassign = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!sharedTask) return;
-    ReassignDialog.show({ sharedTask });
-  };
-
-  const handleStopShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!sharedTask) return;
-    StopShareTaskDialog.show({ sharedTask });
-  };
-
-  const canReassign =
-    Boolean(task) &&
-    Boolean(sharedTask) &&
-    sharedTask?.assignee_user_id === userId;
-  const canStopShare =
-    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
   return (
     <>
@@ -229,37 +192,14 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
-              <DropdownMenuItem
-                disabled={!task || isShared}
-                onClick={handleShare}
-              >
-                {t('actionsMenu.share')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canReassign}
-                onClick={handleReassign}
-              >
-                {t('actionsMenu.reassign')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canStopShare}
-                onClick={handleStopShare}
-                className="text-destructive"
-              >
-                {t('actionsMenu.stopShare')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={!projectId || !canEditShared}
-                onClick={handleEdit}
-              >
+              <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId || !canEditShared}
+                disabled={!projectId}
                 onClick={handleDelete}
                 className="text-destructive"
               >

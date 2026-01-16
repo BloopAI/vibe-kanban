@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -11,9 +10,9 @@ pub struct RemoteProject {
     pub id: Uuid,
     pub organization_id: Uuid,
     pub name: String,
-    #[ts(type = "Record<string, unknown>")]
-    pub metadata: Value,
+    pub color: String,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
