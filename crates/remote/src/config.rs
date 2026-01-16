@@ -76,8 +76,8 @@ pub struct GitHubAppConfig {
 impl GitHubAppConfig {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let app_id = match env::var("GITHUB_APP_ID") {
-            Ok(v) => v,
-            Err(_) => {
+            Ok(v) if !v.is_empty() => v,
+            _ => {
                 tracing::info!("GITHUB_APP_ID not set, GitHub App integration disabled");
                 return Ok(None);
             }
