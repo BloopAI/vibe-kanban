@@ -8,6 +8,21 @@ const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_
 
 const CLI_VERSION = require("../package.json").version;
 
+// ASCII Art Banner
+const ASCII_BANNER = `
+   ██████╗██████╗ ███████╗██╗    ██╗
+  ██╔════╝██╔══██╗██╔════╝██║    ██║
+  ██║     ██████╔╝█████╗  ██║ █╗ ██║
+  ██║     ██╔══██╗██╔══╝  ██║███╗██║
+  ╚██████╗██║  ██║███████╗╚███╔███╔╝
+   ╚═════╝╚═╝  ╚═╝╚══════╝ ╚══╝╚══╝ 
+`;
+
+function showBanner() {
+  console.log('\x1b[36m' + ASCII_BANNER + '\x1b[0m'); // Cyan color
+  console.log('  AI-powered task management for everyone\n');
+}
+
 // Resolve effective arch for our published 64-bit binaries only.
 // Any ARM → arm64; anything else → x64. On macOS, handle Rosetta.
 function getEffectiveArch() {
@@ -188,7 +203,8 @@ async function main() {
     });
   } else {
     const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
-    console.log(`Starting Crew v${CLI_VERSION}${modeLabel}...`);
+    showBanner();
+    console.log(`  v${CLI_VERSION}${modeLabel} を起動中...\n`);
     await extractAndRun("vibe-kanban", (bin) => {
       if (platform === "win32") {
         execSync(`"${bin}"`, { stdio: "inherit" });

@@ -348,6 +348,30 @@ impl GitHubSyncService {
         issue: &GitHubIssue,
         item: &GitHubProjectItem,
     ) -> Result<(), GitHubSyncError> {
+        // Sync GitHub issue URL (for linking back to GitHub)
+        TaskProperty::upsert(
+            pool,
+            &CreateTaskProperty {
+                task_id,
+                property_name: "github_issue_url".to_string(),
+                property_value: issue.url.clone(),
+                source: Some(PropertySource::Github),
+            },
+        )
+        .await?;
+
+        // Sync GitHub issue number
+        TaskProperty::upsert(
+            pool,
+            &CreateTaskProperty {
+                task_id,
+                property_name: "github_issue_number".to_string(),
+                property_value: issue.number.to_string(),
+                source: Some(PropertySource::Github),
+            },
+        )
+        .await?;
+
         // Sync labels
         if !issue.labels.is_empty() {
             let labels_json = serde_json::to_string(&issue.labels)

@@ -8,6 +8,9 @@ export interface TaskPropertiesMap {
 
 export interface ParsedTaskProperties {
   [taskId: string]: {
+    // GitHub Issue info
+    githubIssueUrl?: string;
+    githubIssueNumber?: number;
     // GitHub Project fields (prefixed with github_)
     githubStatus?: string;
     githubPriority?: string;
@@ -42,6 +45,10 @@ function parseTaskProperties(
       } catch {
         parsed.githubLabels = [];
       }
+    } else if (name === 'github_issue_url') {
+      parsed.githubIssueUrl = prop.property_value;
+    } else if (name === 'github_issue_number') {
+      parsed.githubIssueNumber = parseInt(prop.property_value, 10);
     } else if (name === 'github_status') {
       parsed.githubStatus = prop.property_value;
     } else if (name === 'github_priority') {

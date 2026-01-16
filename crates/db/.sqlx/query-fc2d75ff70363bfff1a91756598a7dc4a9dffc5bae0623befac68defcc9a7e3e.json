@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                github_project_id,\n                github_owner,\n                github_repo,\n                sync_enabled as \"sync_enabled!: bool\",\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM github_project_links\n            WHERE project_id = $1\n            ORDER BY created_at DESC",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                github_project_id,\n                github_owner,\n                github_repo,\n                github_project_number as \"github_project_number: i64\",\n                sync_enabled as \"sync_enabled!: bool\",\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM github_project_links\n            WHERE project_id = $1\n            ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -29,23 +29,28 @@
         "type_info": "Text"
       },
       {
-        "name": "sync_enabled!: bool",
+        "name": "github_project_number: i64",
         "ordinal": 5,
         "type_info": "Integer"
       },
       {
-        "name": "last_sync_at: DateTime<Utc>",
+        "name": "sync_enabled!: bool",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "last_sync_at: DateTime<Utc>",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
@@ -58,11 +63,12 @@
       false,
       false,
       true,
+      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "bccacad438e6689002346f517cffcd27078cfca1b8d89ea892885a0b9dde9e24"
+  "hash": "fc2d75ff70363bfff1a91756598a7dc4a9dffc5bae0623befac68defcc9a7e3e"
 }

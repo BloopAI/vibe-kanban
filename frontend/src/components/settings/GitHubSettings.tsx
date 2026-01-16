@@ -38,6 +38,7 @@ interface GitHubSettingsProps {
 
 export function GitHubSettings({ projectId, className }: GitHubSettingsProps) {
   const [syncingLinkId, setSyncingLinkId] = useState<string | null>(null);
+  const [deletingLinkId, setDeletingLinkId] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showSyncResult, setShowSyncResult] = useState(false);
 
@@ -78,13 +79,25 @@ export function GitHubSettings({ projectId, className }: GitHubSettingsProps) {
         githubProjectId: result.project.id,
         githubOwner: result.project.ownerLogin,
         githubRepo: null,
+        githubProjectNumber: BigInt(result.project.number),
       });
     }
   };
 
   const handleDeleteLink = (linkId: string) => {
-    if (window.confirm('Are you sure you want to remove this GitHub Project link?')) {
-      deleteLink.mutate(linkId);
+    if (window.confirm('このGitHub Projectとの連携を解除しますか？\n\n（インポート済みのタスクはそのまま残ります）')) {
+      setDeletingLinkId(linkId);
+      deleteLink.mutate(linkId, {
+        onSuccess: () => {
+          console.log('GitHub link deleted successfully');
+          setDeletingLinkId(null);
+        },
+        onError: (err) => {
+          console.error('Failed to delete GitHub link:', err);
+          alert('削除に失敗しました。コンソールを確認してください。');
+          setDeletingLinkId(null);
+        },
+      });
     }
   };
 
@@ -192,7 +205,7 @@ export function GitHubSettings({ projectId, className }: GitHubSettingsProps) {
                   key={link.id}
                   link={link}
                   isSyncing={syncingLinkId === link.id}
-                  isDeleting={deleteLink.isPending}
+                  isDeleting={deletingLinkId === link.id}
                   onSync={() => handleSync(link.id)}
                   onDelete={() => handleDeleteLink(link.id)}
                   onToggleSync={(enabled) => handleToggleSync(link.id, enabled)}
@@ -306,7 +319,11 @@ function GitHubLinkCard({
               disabled={isDeleting}
               title="Remove link"
             >
-              <Trash2 className="h-4 w-4" />
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -352,7 +369,11 @@ function GitHubLinkCard({
               onClick={onDelete}
               disabled={isDeleting}
             >
-              <Trash2 className="h-4 w-4" />
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

@@ -89,6 +89,7 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
         githubProjectId: result.project.id,
         githubOwner: result.project.ownerLogin,
         githubRepo: null,
+        githubProjectNumber: BigInt(result.project.number),
       });
     }
   };
@@ -340,7 +341,10 @@ function GitHubLinkCard({
   onDelete,
   onToggleSync,
 }: GitHubLinkCardProps) {
-  const projectUrl = `https://github.com/orgs/${link.github_owner}/projects`;
+  // Build project URL with number if available, otherwise fall back to projects list
+  const projectUrl = link.github_project_number
+    ? `https://github.com/orgs/${link.github_owner}/projects/${link.github_project_number}`
+    : `https://github.com/orgs/${link.github_owner}/projects`;
 
   return (
     <motion.div

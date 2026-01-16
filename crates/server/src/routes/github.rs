@@ -25,7 +25,10 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
+use crate::{
+    DeploymentImpl, error::ApiError,
+    middleware::{load_project_middleware, load_project_middleware_with_nested_param},
+};
 
 /// Request to create a GitHub project link
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -34,6 +37,7 @@ pub struct CreateGitHubLinkRequest {
     pub github_project_id: String,
     pub github_owner: String,
     pub github_repo: Option<String>,
+    pub github_project_number: Option<i64>,
 }
 
 /// Response for GitHub project link with mapping count
@@ -117,6 +121,7 @@ pub async fn create_github_link(
         github_project_id: payload.github_project_id,
         github_owner: payload.github_owner,
         github_repo: payload.github_repo,
+        github_project_number: payload.github_project_number,
     };
 
     let link = GitHubProjectLink::create(&deployment.db().pool, &data).await?;
@@ -134,7 +139,7 @@ pub async fn create_github_link(
     Ok(ResponseJson(ApiResponse::success(link)))
 }
 
-/// Delete a GitHub project link
+/// Delete a GitHub project link (keeps tasks, only removes the link)
 pub async fn delete_github_link(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
@@ -151,7 +156,14 @@ pub async fn delete_github_link(
         ));
     }
 
+    // Delete the link (cascade will delete mappings, but tasks remain)
     GitHubProjectLink::delete(&deployment.db().pool, link_id).await?;
+
+    tracing::info!(
+        "Deleted GitHub link {} for project {}",
+        link_id,
+        project.id
+    );
 
     deployment
         .track_if_analytics_allowed(
@@ -301,8 +313,16 @@ pub struct GitHubStatusResponse {
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    let project_github_router = Router::new()
+    // Routes without nested {link_id} parameter - use standard middleware
+    let project_github_base_router = Router::new()
         .route("/github-links", get(get_github_links).post(create_github_link))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_project_middleware,
+        ));
+
+    // Routes with nested {link_id} parameter - use the nested param middleware
+    let project_github_nested_router = Router::new()
         .route(
             "/github-links/{link_id}",
             delete(delete_github_link),
@@ -321,12 +341,13 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .layer(from_fn_with_state(
             deployment.clone(),
-            load_project_middleware,
+            load_project_middleware_with_nested_param,
         ));
 
     Router::new()
         .route("/github/status", get(check_github_status))
         .route("/github/projects", get(list_available_projects))
         .route("/github/organizations/{org}/projects", get(list_org_projects))
-        .nest("/projects/{id}", project_github_router)
+        .nest("/projects/{id}", project_github_base_router)
+        .nest("/projects/{id}", project_github_nested_router)
 }

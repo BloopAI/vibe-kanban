@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO github_project_links (id, project_id, github_project_id, github_owner, github_repo)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                github_project_id,\n                github_owner,\n                github_repo,\n                sync_enabled as \"sync_enabled!: bool\",\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT\n                id as \"id!: Uuid\",\n                project_id as \"project_id!: Uuid\",\n                github_project_id,\n                github_owner,\n                github_repo,\n                github_project_number as \"github_project_number: i64\",\n                sync_enabled as \"sync_enabled!: bool\",\n                last_sync_at as \"last_sync_at: DateTime<Utc>\",\n                created_at as \"created_at!: DateTime<Utc>\",\n                updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM github_project_links\n            WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -29,28 +29,33 @@
         "type_info": "Text"
       },
       {
-        "name": "sync_enabled!: bool",
+        "name": "github_project_number: i64",
         "ordinal": 5,
         "type_info": "Integer"
       },
       {
-        "name": "last_sync_at: DateTime<Utc>",
+        "name": "sync_enabled!: bool",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "last_sync_at: DateTime<Utc>",
         "ordinal": 7,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 1
     },
     "nullable": [
       true,
@@ -58,11 +63,12 @@
       false,
       false,
       true,
+      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "8acf360fee1324683d8ac0642a3dd43c5662607af77452296472e4a3d92bb3b8"
+  "hash": "3dfbba9e6301e22956c39138deab4b6c2ec41c9970948791fdb32c3663c25b8d"
 }

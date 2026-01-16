@@ -110,9 +110,9 @@ export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
 export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
 
-export type GitHubProjectLink = { id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
+export type GitHubProjectLink = { id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, github_project_number: bigint | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
 
-export type CreateGitHubProjectLink = { project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, };
+export type CreateGitHubProjectLink = { project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, github_project_number: bigint | null, };
 
 export type GitHubIssueMapping = { id: string, task_id: string, github_project_link_id: string, github_issue_number: bigint, github_issue_id: string, github_issue_url: string, sync_direction: SyncDirection, last_synced_at: string | null, github_updated_at: string | null, vibe_updated_at: string | null, created_at: string, updated_at: string, };
 
@@ -452,9 +452,9 @@ export type StatusMapping = { vibe_status: TaskStatus, github_project_status: st
 
 export type SyncResult = { itemsSynced: number, itemsCreated: number, itemsUpdated: number, itemsSkipped: number, errors: Array<string>, };
 
-export type CreateGitHubLinkRequest = { githubProjectId: string, githubOwner: string, githubRepo: string | null, };
+export type CreateGitHubLinkRequest = { githubProjectId: string, githubOwner: string, githubRepo: string | null, githubProjectNumber: bigint | null, };
 
-export type GitHubLinkResponse = { issueCount: number, id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
+export type GitHubLinkResponse = { issueCount: number, id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, github_project_number: bigint | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
 
 export type GitHubStatusResponse = { available: boolean, authenticated: boolean, userLogin: string | null, error: string | null, };
 

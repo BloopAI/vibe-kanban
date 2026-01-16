@@ -40,6 +40,35 @@ pub async fn load_project_middleware(
     Ok(next.run(request).await)
 }
 
+/// Like load_project_middleware, but handles routes with an additional path parameter
+/// (e.g., /projects/{id}/github-links/{link_id})
+pub async fn load_project_middleware_with_nested_param(
+    State(deployment): State<DeploymentImpl>,
+    Path((project_id, _)): Path<(Uuid, Uuid)>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // Load the project from the database
+    let project = match Project::find_by_id(&deployment.db().pool, project_id).await {
+        Ok(Some(project)) => project,
+        Ok(None) => {
+            tracing::warn!("Project {} not found", project_id);
+            return Err(StatusCode::NOT_FOUND);
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch project {}: {}", project_id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    // Insert the project as an extension
+    let mut request = request;
+    request.extensions_mut().insert(project);
+
+    // Continue with the next middleware/handler
+    Ok(next.run(request).await)
+}
+
 pub async fn load_task_middleware(
     State(deployment): State<DeploymentImpl>,
     Path(task_id): Path<Uuid>,

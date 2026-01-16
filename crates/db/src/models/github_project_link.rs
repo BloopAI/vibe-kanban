@@ -11,6 +11,7 @@ pub struct GitHubProjectLink {
     pub github_project_id: String,
     pub github_owner: String,
     pub github_repo: Option<String>,
+    pub github_project_number: Option<i64>,
     pub sync_enabled: bool,
     pub last_sync_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -23,6 +24,7 @@ pub struct CreateGitHubProjectLink {
     pub github_project_id: String,
     pub github_owner: String,
     pub github_repo: Option<String>,
+    pub github_project_number: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -40,6 +42,7 @@ impl GitHubProjectLink {
                 github_project_id,
                 github_owner,
                 github_repo,
+                github_project_number as "github_project_number: i64",
                 sync_enabled as "sync_enabled!: bool",
                 last_sync_at as "last_sync_at: DateTime<Utc>",
                 created_at as "created_at!: DateTime<Utc>",
@@ -64,6 +67,7 @@ impl GitHubProjectLink {
                 github_project_id,
                 github_owner,
                 github_repo,
+                github_project_number as "github_project_number: i64",
                 sync_enabled as "sync_enabled!: bool",
                 last_sync_at as "last_sync_at: DateTime<Utc>",
                 created_at as "created_at!: DateTime<Utc>",
@@ -89,6 +93,7 @@ impl GitHubProjectLink {
                 github_project_id,
                 github_owner,
                 github_repo,
+                github_project_number as "github_project_number: i64",
                 sync_enabled as "sync_enabled!: bool",
                 last_sync_at as "last_sync_at: DateTime<Utc>",
                 created_at as "created_at!: DateTime<Utc>",
@@ -109,14 +114,15 @@ impl GitHubProjectLink {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             GitHubProjectLink,
-            r#"INSERT INTO github_project_links (id, project_id, github_project_id, github_owner, github_repo)
-            VALUES ($1, $2, $3, $4, $5)
+            r#"INSERT INTO github_project_links (id, project_id, github_project_id, github_owner, github_repo, github_project_number)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING
                 id as "id!: Uuid",
                 project_id as "project_id!: Uuid",
                 github_project_id,
                 github_owner,
                 github_repo,
+                github_project_number as "github_project_number: i64",
                 sync_enabled as "sync_enabled!: bool",
                 last_sync_at as "last_sync_at: DateTime<Utc>",
                 created_at as "created_at!: DateTime<Utc>",
@@ -125,7 +131,8 @@ impl GitHubProjectLink {
             data.project_id,
             data.github_project_id,
             data.github_owner,
-            data.github_repo
+            data.github_repo,
+            data.github_project_number
         )
         .fetch_one(pool)
         .await
@@ -180,6 +187,7 @@ impl GitHubProjectLink {
                 github_project_id,
                 github_owner,
                 github_repo,
+                github_project_number as "github_project_number: i64",
                 sync_enabled as "sync_enabled!: bool",
                 last_sync_at as "last_sync_at: DateTime<Utc>",
                 created_at as "created_at!: DateTime<Utc>",
