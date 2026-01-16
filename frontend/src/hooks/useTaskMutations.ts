@@ -14,7 +14,10 @@ import type {
 } from 'shared/types';
 import { taskKeys } from './useTask';
 
-export function useTaskMutations(projectId?: string) {
+export function useTaskMutations(
+  projectId?: string,
+  options: { skipNavigation?: boolean } = {}
+) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
 
@@ -37,7 +40,7 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (projectId && !options.skipNavigation) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
@@ -59,7 +62,7 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (projectId && !options.skipNavigation) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },

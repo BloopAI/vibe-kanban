@@ -62,14 +62,20 @@ interface Task {
 }
 
 export type TaskFormDialogProps =
-  | { mode: 'create'; projectId: string }
-  | { mode: 'edit'; projectId: string; task: Task }
-  | { mode: 'duplicate'; projectId: string; initialTask: Task }
+  | { mode: 'create'; projectId: string; skipNavigation?: boolean }
+  | { mode: 'edit'; projectId: string; task: Task; skipNavigation?: boolean }
+  | {
+      mode: 'duplicate';
+      projectId: string;
+      initialTask: Task;
+      skipNavigation?: boolean;
+    }
   | {
       mode: 'subtask';
       projectId: string;
       parentTaskAttemptId: string;
       initialBaseBranch: string;
+      skipNavigation?: boolean;
     };
 
 type RepoBranch = { repoId: string; branch: string };
@@ -85,11 +91,12 @@ type TaskFormValues = {
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { mode, projectId } = props;
+  const skipNavigation = props.skipNavigation;
   const editMode = mode === 'edit';
   const modal = useModal();
   const { t } = useTranslation(['tasks', 'common']);
   const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId);
+    useTaskMutations(projectId, { skipNavigation });
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
