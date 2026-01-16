@@ -48,13 +48,15 @@ function ModeProvider({
     return <CreateModeProvider>{children}</CreateModeProvider>;
   }
   return (
-    <ExecutionProcessesProvider
-      key={executionProps.key}
-      attemptId={executionProps.attemptId}
-      sessionId={executionProps.sessionId}
-    >
-      {children}
-    </ExecutionProcessesProvider>
+    <CreateModeProvider>
+      <ExecutionProcessesProvider
+        key={executionProps.key}
+        attemptId={executionProps.attemptId}
+        sessionId={executionProps.sessionId}
+      >
+        {children}
+      </ExecutionProcessesProvider>
+    </CreateModeProvider>
   );
 }
 

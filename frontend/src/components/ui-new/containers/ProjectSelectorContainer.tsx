@@ -139,89 +139,91 @@ export function ProjectSelectorContainer({
   }, [onCreateProject]);
 
   return (
-    <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'flex items-center justify-between w-full px-base py-half',
-            'text-sm text-left rounded border bg-secondary',
-            'hover:bg-tertiary transition-colors',
-            'focus:outline-none focus:ring-1 focus:ring-accent'
-          )}
-        >
-          <span className={selectedProjectName ? '' : 'text-low'}>
-            {selectedProjectName ?? 'Select project'}
-          </span>
-          <svg
-            className="h-4 w-4 text-low"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+    <div className="p-base w-full">
+      <DropdownMenu open={dropdownOpen} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'flex items-center justify-between w-full px-base py-half',
+              'text-sm text-left rounded border bg-secondary',
+              'hover:bg-tertiary transition-colors',
+              'focus:outline-none focus:ring-1 focus:ring-accent'
+            )}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuSearchInput
-          placeholder="Search projects..."
-          value={searchTerm}
-          onValueChange={handleSearchTermChange}
-          onKeyDown={handleKeyDown}
-        />
-        <DropdownMenuSeparator />
-        {/* Create new project button */}
-        <DropdownMenuItem
-          onSelect={handleCreateClick}
-          onMouseEnter={() => setHighlightedIndex(0)}
-          preventFocusOnHover
-          icon={PlusIcon}
-          className={cn(
-            'text-accent',
-            safeHighlightedIndex === 0 && 'bg-secondary'
-          )}
-        >
-          {t('projects.createNew')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {filteredItems.length === 0 ? (
-          <div className="px-base py-half text-sm text-low text-center">
-            {t('projects.noProjectsFound')}
-          </div>
-        ) : (
-          <Virtuoso
-            ref={virtuosoRef}
-            style={{ height: '14rem' }}
-            totalCount={filteredItems.length}
-            computeItemKey={(idx) => filteredItems[idx]?.id ?? String(idx)}
-            itemContent={(idx) => {
-              const item = filteredItems[idx];
-              // Highlight index is offset by 1 (create button is at 0)
-              const isHighlighted = idx + 1 === safeHighlightedIndex;
-              const isSelected = selectedProjectId === item.id;
-              return (
-                <DropdownMenuItem
-                  onSelect={() => handleSelect(item)}
-                  onMouseEnter={() => setHighlightedIndex(idx + 1)}
-                  preventFocusOnHover
-                  className={cn(
-                    isSelected && 'bg-secondary',
-                    isHighlighted && 'bg-secondary'
-                  )}
-                >
-                  {item.name}
-                </DropdownMenuItem>
-              );
-            }}
+            <span className={selectedProjectName ? '' : 'text-low'}>
+              {selectedProjectName ?? 'Select project'}
+            </span>
+            <svg
+              className="h-4 w-4 text-low"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuSearchInput
+            placeholder="Search projects..."
+            value={searchTerm}
+            onValueChange={handleSearchTermChange}
+            onKeyDown={handleKeyDown}
           />
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+          {/* Create new project button */}
+          <DropdownMenuItem
+            onSelect={handleCreateClick}
+            onMouseEnter={() => setHighlightedIndex(0)}
+            preventFocusOnHover
+            icon={PlusIcon}
+            className={cn(
+              'text-accent',
+              safeHighlightedIndex === 0 && 'bg-secondary'
+            )}
+          >
+            {t('projects.createNew')}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {filteredItems.length === 0 ? (
+            <div className="px-base py-half text-sm text-low text-center">
+              {t('projects.noProjectsFound')}
+            </div>
+          ) : (
+            <Virtuoso
+              ref={virtuosoRef}
+              style={{ height: '14rem' }}
+              totalCount={filteredItems.length}
+              computeItemKey={(idx) => filteredItems[idx]?.id ?? String(idx)}
+              itemContent={(idx) => {
+                const item = filteredItems[idx];
+                // Highlight index is offset by 1 (create button is at 0)
+                const isHighlighted = idx + 1 === safeHighlightedIndex;
+                const isSelected = selectedProjectId === item.id;
+                return (
+                  <DropdownMenuItem
+                    onSelect={() => handleSelect(item)}
+                    onMouseEnter={() => setHighlightedIndex(idx + 1)}
+                    preventFocusOnHover
+                    className={cn(
+                      isSelected && 'bg-secondary',
+                      isHighlighted && 'bg-secondary'
+                    )}
+                  >
+                    {item.name}
+                  </DropdownMenuItem>
+                );
+              }}
+            />
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
