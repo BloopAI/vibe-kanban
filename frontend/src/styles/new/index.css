@@ -7,43 +7,43 @@
 
 /* 1) THEME TOKENS scoped to .new-design */
 @layer base {
-  /* Light defaults - New Design - Soft, rounded, Japanese-friendly */
+  /* Light defaults - New Design - Soft, modern, rounded appearance */
   .new-design {
     color-scheme: light;
-    /* Softer, warmer background tones */
-    --_background: 210 20% 98%;
-    --_foreground: 220 20% 20%;
-    --_primary: 213 94% 55%;
+    /* Cream-tinted white background for softer feel */
+    --_background: 220 30% 98%;
+    --_foreground: 220 15% 25%;
+    --_primary: 220 85% 60%;
     --_primary-foreground: 0 0% 100%;
-    --_secondary: 210 15% 96%;
+    --_secondary: 220 20% 96%;
     --_secondary-foreground: 220 15% 30%;
-    --_muted: 210 15% 93%;
+    --_muted: 220 18% 94%;
     --_muted-foreground: 220 10% 50%;
-    --_accent: 210 20% 94%;
+    --_accent: 220 20% 95%;
     --_accent-foreground: 220 20% 20%;
-    --_destructive: 0 72% 63%;
+    --_destructive: 0 84% 60%;
     --_destructive-foreground: 0 0% 100%;
-    --_border: 210 15% 88%;
-    --_input: 210 20% 97%;
-    --_ring: 213 94% 55%;
-    /* Larger radius for softer corners */
-    --_radius: 0.75rem;
+    --_border: 220 20% 92%;
+    --_input: 220 25% 97%;
+    --_ring: 220 85% 60%;
+    /* More rounded corners - 16px */
+    --_radius: 1rem;
 
-    /* Status (light) - softer colors */
-    --_success: 152 60% 50%;
-    --_success-foreground: 152 60% 20%;
-    --_warning: 38 95% 55%;
-    --_warning-foreground: 38 70% 20%;
-    --_info: 213 94% 55%;
+    /* Status (light) - vibrant yet soft colors */
+    --_success: 158 64% 52%;
+    --_success-foreground: 158 64% 20%;
+    --_warning: 43 96% 56%;
+    --_warning-foreground: 43 70% 20%;
+    --_info: 220 85% 60%;
     --_info-foreground: 0 0% 100%;
-    --_neutral: 210 15% 93%;
-    --_neutral-foreground: 220 15% 30%;
+    --_neutral: 220 18% 94%;
+    --_neutral-foreground: 220 15% 35%;
 
     /* Console (light) */
     --_console-background: 0 0% 100%;
     --_console-foreground: 220 20% 20%;
-    --_console-success: 152 60% 50%;
-    --_console-error: 0 72% 63%;
+    --_console-success: 158 64% 52%;
+    --_console-error: 0 84% 60%;
 
     /* Syntax highlighting (light) - softer */
     --_syntax-keyword: #e45649;
@@ -56,85 +56,93 @@
     --_syntax-punctuation: #383a42;
     --_syntax-deleted: #e45649;
 
-    /* Text (light) - warmer tones */
-    --text-high: 220 20% 15%;
-    --text-normal: 220 15% 30%;
-    --text-low: 220 10% 50%;
+    /* Text (light) - slate tones for modern feel */
+    --text-high: 215 25% 17%;
+    --text-normal: 215 16% 34%;
+    --text-low: 215 14% 54%;
 
-    /* Background (light) - soft blue-gray tint */
-    --bg-primary: 210 25% 99%;
-    --bg-secondary: 210 20% 96%;
-    --bg-panel: 210 15% 93%;
+    /* Background (light) - soft slate tint */
+    --bg-primary: 210 40% 98%;
+    --bg-secondary: 210 40% 96%;
+    --bg-panel: 220 18% 94%;
 
-    /* Accent (light) - friendly blue (like the screenshot) */
-    --brand: 213 94% 55%;
-    --brand-hover: 213 90% 62%;
-    --brand-secondary: 213 85% 45%;
-    --error: 0 72% 63%;
-    --success: 152 60% 50%;
+    /* Accent (light) - friendly blue */
+    --brand: 220 85% 60%;
+    --brand-hover: 220 85% 68%;
+    --brand-secondary: 220 80% 52%;
+    --error: 0 84% 60%;
+    --success: 158 64% 52%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
+
+    /* Card shadows - soft and floaty */
+    --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.08);
+    --shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.12);
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
-  /* Soft dark theme with blue undertones for a gentle feel */
+  /* Modern dark theme with slate undertones */
   .new-design.dark,
   .dark .new-design {
     color-scheme: dark;
 
-    /* Internal variables (dark) - softer dark with blue tint */
-    --_background: 220 20% 10%;
-    --_foreground: 210 20% 95%;
-    --_primary: 213 94% 60%;
+    /* Internal variables (dark) - slate-based dark */
+    --_background: 222 47% 11%;
+    --_foreground: 214 32% 91%;
+    --_primary: 217 91% 60%;
     --_primary-foreground: 0 0% 100%;
-    --_secondary: 220 18% 14%;
-    --_secondary-foreground: 210 15% 80%;
-    --_muted: 220 16% 18%;
-    --_muted-foreground: 210 10% 60%;
-    --_accent: 220 18% 22%;
-    --_accent-foreground: 210 20% 95%;
-    --_destructive: 0 72% 60%;
+    --_secondary: 217 33% 17%;
+    --_secondary-foreground: 214 20% 80%;
+    --_muted: 217 33% 20%;
+    --_muted-foreground: 215 20% 65%;
+    --_accent: 217 33% 22%;
+    --_accent-foreground: 214 32% 91%;
+    --_destructive: 0 62% 55%;
     --_destructive-foreground: 0 0% 100%;
-    --_border: 220 15% 22%;
-    --_input: 220 18% 16%;
-    --_ring: 213 94% 60%;
+    --_border: 217 33% 22%;
+    --_input: 217 33% 17%;
+    --_ring: 217 91% 60%;
 
-    /* Status (dark) - softer colors */
-    --_success: 152 55% 55%;
-    --_success-foreground: 152 55% 95%;
-    --_warning: 38 90% 55%;
-    --_warning-foreground: 38 90% 95%;
-    --_info: 213 94% 60%;
+    /* Status (dark) - vibrant colors */
+    --_success: 160 84% 39%;
+    --_success-foreground: 160 84% 95%;
+    --_warning: 43 96% 56%;
+    --_warning-foreground: 43 96% 95%;
+    --_info: 217 91% 60%;
     --_info-foreground: 0 0% 100%;
-    --_neutral: 220 16% 22%;
-    --_neutral-foreground: 210 15% 85%;
+    --_neutral: 217 33% 24%;
+    --_neutral-foreground: 214 20% 85%;
 
     /* Text (dark) - soft white/gray */
-    --text-high: 210 20% 96%;
-    --text-normal: 210 15% 80%;
-    --text-low: 210 10% 55%;
+    --text-high: 214 32% 96%;
+    --text-normal: 214 20% 80%;
+    --text-low: 215 16% 60%;
 
-    /* Background (dark) - soft dark blue */
-    --bg-primary: 220 20% 10%;
-    --bg-secondary: 220 18% 8%;
-    --bg-panel: 220 16% 14%;
+    /* Background (dark) - slate dark */
+    --bg-primary: 222 47% 11%;
+    --bg-secondary: 217 33% 8%;
+    --bg-panel: 217 33% 17%;
 
-    /* Accent (dark) - same friendly blue */
-    --brand: 213 94% 60%;
-    --brand-hover: 213 90% 68%;
-    --brand-secondary: 213 85% 50%;
-    --error: 0 72% 60%;
-    --success: 152 55% 55%;
+    /* Accent (dark) - bright blue */
+    --brand: 217 91% 60%;
+    --brand-hover: 217 91% 68%;
+    --brand-secondary: 217 85% 52%;
+    --error: 0 62% 55%;
+    --success: 160 84% 39%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
 
+    /* Card shadows - dark mode */
+    --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
+    --shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.5);
+
     /* Console (dark) */
-    --_console-background: 220 25% 6%;
-    --_console-foreground: 210 20% 95%;
-    --_console-success: 152 55% 55%;
-    --_console-error: 0 72% 60%;
+    --_console-background: 222 47% 6%;
+    --_console-foreground: 214 32% 91%;
+    --_console-success: 160 84% 39%;
+    --_console-error: 0 62% 55%;
 
     /* Syntax highlighting (dark) - softer */
     --_syntax-keyword: #ff8b80;

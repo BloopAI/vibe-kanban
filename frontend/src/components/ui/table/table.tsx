@@ -38,8 +38,8 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-t',
-      clickable && 'cursor-pointer hover:bg-muted',
+      'border-t border-border/30',
+      clickable && 'cursor-pointer hover:bg-muted/40 transition-colors duration-150',
       className
     )}
     {...props}

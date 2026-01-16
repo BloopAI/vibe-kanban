@@ -9,7 +9,7 @@ export function NormalLayout() {
 
   return (
     <>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-800/50">
         <DevBanner />
         {!shouldHideNavbar && <Navbar />}
         <div className="flex-1 overflow-auto">

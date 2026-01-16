@@ -46,45 +46,46 @@ function TaskTableRowComponent({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group',
-        isSelected && 'bg-accent',
+        'group transition-colors duration-150',
+        'hover:bg-primary/5 dark:hover:bg-primary/10',
+        isSelected && 'bg-primary/10 dark:bg-primary/15',
         isShared && 'relative'
       )}
     >
       {/* Title */}
-      <TableCell className="max-w-[300px]">
+      <TableCell className="py-4 px-5 max-w-[300px]">
         <div className="flex items-center gap-2">
           {isShared && (
-            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-card-foreground" />
+            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary/60 rounded-r" />
           )}
-          <span className="truncate font-medium" title={task.title}>
+          <span className="truncate font-medium text-foreground" title={task.title}>
             {task.title}
           </span>
         </div>
       </TableCell>
 
       {/* Status */}
-      <TableCell>
+      <TableCell className="py-4 px-5">
         <StatusBadge status={task.status} />
       </TableCell>
 
       {/* Assignee - hidden on small screens */}
-      <TableCell className="hidden sm:table-cell">
+      <TableCell className="py-4 px-5 hidden sm:table-cell">
         {sharedTask && (
           <UserAvatar
             firstName={sharedTask.assignee_first_name}
             lastName={sharedTask.assignee_last_name}
             username={sharedTask.assignee_username}
-            className="h-5 w-5"
+            className="h-6 w-6"
           />
         )}
       </TableCell>
 
       {/* Progress indicators */}
-      <TableCell>
-        <div className="flex items-center gap-1">
+      <TableCell className="py-4 px-5">
+        <div className="flex items-center gap-1.5">
           {task.has_in_progress_attempt && (
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
           )}
           {task.last_attempt_failed && (
             <XCircle className="h-4 w-4 text-destructive" />
@@ -93,14 +94,14 @@ function TaskTableRowComponent({
       </TableCell>
 
       {/* Created at - hidden on medium screens */}
-      <TableCell className="text-muted-foreground whitespace-nowrap hidden md:table-cell">
+      <TableCell className="py-4 px-5 text-foreground/50 text-sm whitespace-nowrap hidden md:table-cell">
         {formatRelativeTime(task.created_at)}
       </TableCell>
 
       {/* Actions */}
-      <TableCell>
+      <TableCell className="py-4 px-5">
         <div
-          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           onClick={(e) => e.stopPropagation()}
         >
           <ActionsDropdown task={task} sharedTask={sharedTask} />

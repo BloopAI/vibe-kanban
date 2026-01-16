@@ -5,7 +5,6 @@ import {
   Square,
   SquareTerminal,
   Settings,
-  ExternalLink,
   Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -164,17 +163,6 @@ export function NoServerContent({
                   ? 'Creating task…'
                   : 'Install companion automatically'}
               </Button>
-              <div>
-                <a
-                  href="https://github.com/BloopAI/vibe-kanban-web-companion"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  {t('preview.noServer.companionLink')}
-                </a>
-              </div>
             </div>
           </div>
         </div>

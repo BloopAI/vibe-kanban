@@ -92,28 +92,28 @@ function TaskTableViewComponent({
   }
 
   return (
-    <div className="w-full h-full overflow-auto px-2 sm:px-4 py-2">
+    <div className="w-full h-full overflow-auto px-4 sm:px-6 py-6">
       <div className="max-w-7xl mx-auto">
-        <div className="border rounded-md overflow-x-auto bg-background">
+        <div className="rounded-2xl overflow-hidden bg-white dark:bg-slate-800/60 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.4)]">
           <Table className="min-w-[600px]">
             <TableHead>
-              <TableRow className="border-b bg-muted/50">
-                <TableHeaderCell className="py-3 px-4 font-medium min-w-[200px]">
+              <TableRow className="border-b border-border/30 bg-muted/30">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 min-w-[200px]">
                   {t('table.title', { defaultValue: 'Title' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-3 px-4 font-medium w-[120px]">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[120px]">
                   {t('table.status', { defaultValue: 'Status' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-3 px-4 font-medium w-[80px] hidden sm:table-cell">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[80px] hidden sm:table-cell">
                   {t('table.assignee', { defaultValue: 'Assignee' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-3 px-4 font-medium w-[80px]">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[80px]">
                   {t('table.progress', { defaultValue: 'Progress' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-3 px-4 font-medium w-[100px] hidden md:table-cell">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[100px] hidden md:table-cell">
                   {t('table.created', { defaultValue: 'Created' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-3 px-4 font-medium w-[60px]">
+                <TableHeaderCell className="py-4 px-5 font-medium w-[60px]">
                   <span className="sr-only">
                     {t('table.actions', { defaultValue: 'Actions' })}
                   </span>
