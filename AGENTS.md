@@ -40,16 +40,30 @@ docs/             ← ドキュメント
 
 ## Agent呼び出しルール
 
-**トリガーに該当したら即座にAgentに委譲。考える前に起動。**
+**トリガーに該当したら、該当Agentの定義ファイルを読んでその指示に従う。**
 
-| 発言パターン | Agent | 備考 |
-|-------------|-------|------|
-| 「#XX やって」「〜を実装して」「〜を作って」「〜を追加して」 | `explorer` → `planner` → `implementer` | 実装依頼全般 |
-| 「#XX 調べて」「〜の影響範囲は？」「〜を確認して」 | `explorer` | 調査・分析全般 |
-| 「どう実装する？」「計画立てて」「方針を決めて」 | `planner` | 実装方針の策定 |
-| 「コード書いて」「修正して」「直して」 | `implementer` | 既に計画がある場合 |
-| 「コードレビュー」「チェックして」 | `reviewer` | レビュー依頼 |
-| 「〜をIssueに」「課題登録して」「タスク追加して」 | `task-organizer` | 課題整理・Issue作成 |
+| 発言パターン | Agent | 定義ファイル |
+|-------------|-------|-------------|
+| 「#XX やって」「〜を実装して」「〜を作って」「〜を追加して」 | `explorer` → `planner` → `implementer` | 順に各定義ファイルを読む |
+| 「#XX 調べて」「〜の影響範囲は？」「〜を確認して」 | `explorer` | `.cursor/agents/explorer.md` |
+| 「どう実装する？」「計画立てて」「方針を決めて」 | `planner` | `.cursor/agents/planner.md` |
+| 「コード書いて」「修正して」「直して」 | `implementer` | `.cursor/agents/implementer.md` |
+| 「コードレビュー」「チェックして」 | `reviewer` | `.cursor/agents/reviewer.md` |
+| 「〜をIssueに」「課題登録して」「タスク追加して」 | `task-organizer` | `.cursor/agents/task-organizer.md` |
+
+### Agent定義ファイルの読み方
+
+1. **トリガー発言を検知したら**、該当する定義ファイルを `Read` ツールで読む
+2. **定義ファイルの指示に従って**タスクを実行する
+3. **スキルが指定されている場合**、`.cursor/skills/<スキル名>/SKILL.md` も読む
+
+例: 「実装して」と言われたら
+```
+1. Read .cursor/agents/implementer.md
+2. implementer.md に skills: implement-tdd と書いてある
+3. Read .cursor/skills/implement-tdd/SKILL.md
+4. これらの指示に従ってTDD実装を行う
+```
 
 **重要**: Issueがなくても、機能追加・修正・改善の依頼は標準フロー（Explorer → Planner → Implementer）で対応する。
 
