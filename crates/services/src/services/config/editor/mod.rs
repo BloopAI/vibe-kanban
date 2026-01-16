@@ -45,6 +45,7 @@ pub struct EditorConfig {
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum EditorType {
     VsCode,
+    VsCodeInsiders,
     Cursor,
     Windsurf,
     IntelliJ,
@@ -84,6 +85,7 @@ impl EditorConfig {
     pub fn get_command(&self) -> CommandBuilder {
         let base_command = match &self.editor_type {
             EditorType::VsCode => "code",
+            EditorType::VsCodeInsiders => "code-insiders",
             EditorType::Cursor => "cursor",
             EditorType::Windsurf => "windsurf",
             EditorType::IntelliJ => "idea",
@@ -149,6 +151,7 @@ impl EditorConfig {
 
         let scheme = match self.editor_type {
             EditorType::VsCode => "vscode",
+            EditorType::VsCodeInsiders => "vscode-insiders",
             EditorType::Cursor => "cursor",
             EditorType::Windsurf => "windsurf",
             EditorType::GoogleAntigravity => "antigravity",
