@@ -10,9 +10,9 @@ use db::models::{
     merge::{Merge, MergeStatus},
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
-    task::{Task, TaskStatus},
-    workspace::{Workspace, WorkspaceError},
-    workspace_repo::WorkspaceRepo,
+    task::{CreateTask, Task, TaskStatus},
+    workspace::{CreateWorkspace, Workspace, WorkspaceError},
+    workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
 use deployment::Deployment;
 use executors::actions::{
@@ -24,7 +24,8 @@ use services::services::{
     container::ContainerService,
     git::{GitCliError, GitServiceError},
     git_host::{
-        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
+        self, CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
+        UnifiedPrComment,
     },
 };
 use ts_rs::TS;
@@ -579,4 +580,239 @@ pub async fn get_pr_comments(
             }
         }
     }
+}
+
+/// Request body for creating a workspace directly from a pull request.
+/// This auto-creates a task using the PR title, no task_id required.
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CreateWorkspaceFromPrBody {
+    /// The project to create the task and workspace in
+    pub project_id: Uuid,
+    /// The repo that has the PR
+    pub repo_id: Uuid,
+    /// The PR number to use
+    pub pr_number: i64,
+    /// Whether to run setup scripts (default: true)
+    #[serde(default = "default_true")]
+    pub run_setup: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Response type containing workspace and the auto-created task
+#[derive(Debug, Serialize, TS)]
+pub struct CreateWorkspaceFromPrResponse {
+    pub workspace: Workspace,
+    pub task: Task,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum CreateFromPrError {
+    PrNotFound,
+    BranchFetchFailed { message: String },
+    CliNotInstalled { provider: ProviderKind },
+    AuthFailed { message: String },
+    UnsupportedProvider,
+}
+
+/// Create a workspace directly from a pull request.
+/// This auto-creates a task using the PR title, fetches the PR branch,
+/// creates a workspace, attaches the PR, and optionally runs setup scripts.
+#[axum::debug_handler]
+pub async fn create_workspace_from_pr(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateWorkspaceFromPrBody>,
+) -> Result<ResponseJson<ApiResponse<CreateWorkspaceFromPrResponse, CreateFromPrError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // 1. Get repo info
+    let repo = Repo::find_by_id(pool, payload.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
+    // 2. Get remote URL
+    let remote_url = deployment.git().get_remote_url(&repo.path, "origin")?;
+
+    // 3. Create git host service and list open PRs to find the one we want
+    let git_host = match GitHostService::from_url(&remote_url) {
+        Ok(host) => host,
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::UnsupportedProvider,
+            )));
+        }
+        Err(e) => {
+            tracing::error!("Failed to create git host service: {}", e);
+            return Err(ApiError::BadRequest(e.to_string()));
+        }
+    };
+
+    // 4. List open PRs and find the matching one
+    let prs = match git_host.list_open_prs(&repo.path, &remote_url).await {
+        Ok(prs) => prs,
+        Err(GitHostError::CliNotInstalled { provider }) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::CliNotInstalled { provider },
+            )));
+        }
+        Err(GitHostError::AuthFailed(message)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::AuthFailed { message },
+            )));
+        }
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::UnsupportedProvider,
+            )));
+        }
+        Err(e) => {
+            tracing::error!("Failed to list open PRs: {}", e);
+            return Err(ApiError::BadRequest(e.to_string()));
+        }
+    };
+
+    let pr_info = prs
+        .into_iter()
+        .find(|pr| pr.number == payload.pr_number)
+        .ok_or_else(|| {
+            ApiError::BadRequest(format!("PR #{} not found or not open", payload.pr_number))
+        })?;
+
+    // 5. Fetch the PR branch from remote
+    if let Err(e) = deployment
+        .git()
+        .fetch_branch(&repo.path, &remote_url, &pr_info.head_branch)
+    {
+        tracing::error!("Failed to fetch PR branch: {}", e);
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            CreateFromPrError::BranchFetchFailed {
+                message: e.to_string(),
+            },
+        )));
+    }
+
+    // 6. Create task using PR title
+    let task_id = Uuid::new_v4();
+    let create_task = CreateTask {
+        project_id: payload.project_id,
+        title: pr_info.title.clone(),
+        description: Some(format!(
+            "Created from PR #{}: {}",
+            pr_info.number, pr_info.url
+        )),
+        status: Some(TaskStatus::InProgress),
+        parent_workspace_id: None,
+        image_ids: None,
+        shared_task_id: None,
+    };
+    let task = Task::create(pool, &create_task, task_id).await?;
+
+    // 7. Compute agent_working_dir (single repo, use repo name)
+    let agent_working_dir = Some(repo.name.clone());
+
+    // 8. Create workspace using the PR's head branch
+    let workspace_id = Uuid::new_v4();
+    let workspace = Workspace::create(
+        pool,
+        &CreateWorkspace {
+            branch: pr_info.head_branch.clone(),
+            agent_working_dir,
+        },
+        workspace_id,
+        task.id,
+    )
+    .await?;
+
+    // 9. Create WorkspaceRepo with PR's base branch as target
+    WorkspaceRepo::create_many(
+        pool,
+        workspace.id,
+        &[CreateWorkspaceRepo {
+            repo_id: payload.repo_id,
+            target_branch: pr_info.base_branch.clone(),
+        }],
+    )
+    .await?;
+
+    // 10. Ensure container exists (creates worktree from existing PR branch)
+    deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+
+    // 11. Attach PR to workspace
+    Merge::create_pr(
+        pool,
+        workspace.id,
+        payload.repo_id,
+        &pr_info.base_branch,
+        pr_info.number,
+        &pr_info.url,
+    )
+    .await?;
+
+    // 12. Optionally run setup script
+    if payload.run_setup {
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+        if let Some(setup_action) = deployment.container().setup_actions_for_repos(&repos) {
+            // Create a session for setup script
+            let session = Session::create(
+                pool,
+                &CreateSession {
+                    executor: Some("setup-script".to_string()),
+                },
+                Uuid::new_v4(),
+                workspace.id,
+            )
+            .await?;
+
+            if let Err(e) = deployment
+                .container()
+                .start_execution(
+                    &workspace,
+                    &session,
+                    &setup_action,
+                    &ExecutionProcessRunReason::SetupScript,
+                )
+                .await
+            {
+                tracing::error!("Failed to run setup script: {}", e);
+                // Don't fail the whole operation, just log the error
+            }
+        }
+    }
+
+    // 13. Track analytics
+    deployment
+        .track_if_analytics_allowed(
+            "workspace_created_from_pr",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+                "project_id": payload.project_id.to_string(),
+                "pr_number": payload.pr_number,
+                "run_setup": payload.run_setup,
+            }),
+        )
+        .await;
+
+    tracing::info!(
+        "Created workspace {} from PR #{} for task {}",
+        workspace.id,
+        payload.pr_number,
+        task.id
+    );
+
+    // 14. Fetch the updated workspace
+    let workspace = Workspace::find_by_id(pool, workspace.id)
+        .await?
+        .ok_or(WorkspaceError::TaskNotFound)?;
+
+    Ok(ResponseJson(ApiResponse::success(
+        CreateWorkspaceFromPrResponse { workspace, task },
+    )))
 }
