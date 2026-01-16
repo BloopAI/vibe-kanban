@@ -53,7 +53,7 @@ impl PtyService {
     ) -> Result<(Uuid, mpsc::UnboundedReceiver<Vec<u8>>), PtyError> {
         let session_id = Uuid::new_v4();
         let (output_tx, output_rx) = mpsc::unbounded_channel();
-        let shell = get_interactive_shell();
+        let shell = get_interactive_shell().await;
 
         let result = tokio::task::spawn_blocking(move || {
             let pty_system = NativePtySystem::default();
@@ -68,12 +68,28 @@ impl PtyService {
                 .map_err(|e| PtyError::CreateFailed(e.to_string()))?;
 
             let mut cmd = CommandBuilder::new(&shell);
-            cmd.arg("-f"); // Skip loading rc files to allow custom prompt
             cmd.cwd(&working_dir);
+
+            // Configure shell-specific options
+            let shell_name = shell
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+
+            if shell_name == "powershell.exe" || shell_name == "pwsh.exe" {
+                // PowerShell: use -NoLogo for cleaner startup
+                cmd.arg("-NoLogo");
+            } else if shell_name == "cmd.exe" {
+                // cmd.exe: no special args needed
+            } else {
+                // Unix shells (bash, zsh, etc.): skip loading rc files
+                cmd.arg("-f");
+                cmd.env("PS1", "$ "); // Bash prompt
+                cmd.env("PROMPT", "$ "); // Zsh prompt
+            }
+
             cmd.env("TERM", "xterm-256color");
             cmd.env("COLORTERM", "truecolor");
-            cmd.env("PS1", "$ "); // Bash prompt
-            cmd.env("PROMPT", "$ "); // Zsh prompt
 
             let child = pty_pair
                 .slave
