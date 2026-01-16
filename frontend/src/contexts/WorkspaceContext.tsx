@@ -188,12 +188,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     [navigate, queryClient]
   );
 
-  const navigateToCreate = useMemo(
-    () => () => {
-      navigate('/workspaces/create');
-    },
-    [navigate]
-  );
+  const navigateToCreate = useCallback(() => {
+    navigate('/workspaces/create');
+    // On mobile, hide sidebar to show create mode panels
+    useUiPreferencesStore.getState().setLeftSidebarVisible(false);
+  }, [navigate]);
 
   const value = useMemo(
     () => ({
