@@ -461,8 +461,43 @@ impl LocalContainerService {
                             ctx.workspace.id
                         );
 
-                        // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        // When bypassing cleanup, we need to process queued messages here
+                        // since should_finalize() will return false (next_action exists)
+                        if let Some(queued_msg) =
+                            container.queued_message_service.take_queued(ctx.session.id)
+                        {
+                            tracing::info!(
+                                "Found queued message for session {} (no changes path), starting follow-up execution",
+                                ctx.session.id
+                            );
+
+                            // Delete the scratch since we're consuming the queued message
+                            if let Err(e) = Scratch::delete(
+                                &db.pool,
+                                ctx.session.id,
+                                &ScratchType::DraftFollowUp,
+                            )
+                            .await
+                            {
+                                tracing::warn!(
+                                    "Failed to delete scratch after consuming queued message: {}",
+                                    e
+                                );
+                            }
+
+                            // Execute the queued follow-up
+                            if let Err(e) = container
+                                .start_queued_follow_up(&ctx, &queued_msg.data)
+                                .await
+                            {
+                                tracing::error!("Failed to start queued follow-up: {}", e);
+                                // Fall back to finalization if follow-up fails
+                                container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                            }
+                        } else {
+                            // No queued message, just finalize
+                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        }
                     }
                 }
 
