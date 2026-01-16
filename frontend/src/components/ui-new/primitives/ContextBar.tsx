@@ -105,6 +105,8 @@ export interface ContextBarProps {
   onExecuteAction: (action: ActionDefinition) => void;
   // IDE editor type for rendering IdeIcon
   editorType?: EditorType | null;
+  // Mobile mode: horizontal static layout instead of vertical floating
+  isMobile?: boolean;
 }
 
 /**
@@ -140,12 +142,17 @@ export function ContextBar({
   actionContext,
   onExecuteAction,
   editorType,
+  isMobile = false,
 }: ContextBarProps) {
   const { style, isDragging, dragHandlers } =
     useContextBarPosition(containerRef);
 
   // Render a single action item
-  const renderActionItem = (action: ActionDefinition, key: string) => {
+  const renderActionItem = (
+    action: ActionDefinition,
+    key: string,
+    tooltipSide: 'left' | 'top' = 'left'
+  ) => {
     // Skip if not visible
     if (!isActionVisible(action, actionContext)) {
       return null;
@@ -161,7 +168,7 @@ export function ContextBar({
       if (iconType === 'ide-icon') {
         // Render IDE icon
         return (
-          <Tooltip key={key} content={tooltip} side="left">
+          <Tooltip key={key} content={tooltip} side={tooltipSide}>
             <button
               className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
               aria-label={tooltip}
@@ -212,14 +219,25 @@ export function ContextBar({
   };
 
   // Render items array
-  const renderItems = (items: ContextBarItem[], prefix: string) => {
+  const renderItems = (
+    items: ContextBarItem[],
+    prefix: string,
+    isHorizontal = false
+  ) => {
     return items.map((item, index) => {
       if (isDivider(item)) {
         return (
-          <div key={`${prefix}-divider-${index}`} className="h-px bg-border" />
+          <div
+            key={`${prefix}-divider-${index}`}
+            className={isHorizontal ? 'w-px h-4 bg-border' : 'h-px bg-border'}
+          />
         );
       }
-      return renderActionItem(item, `${prefix}-${item.id}-${index}`);
+      return renderActionItem(
+        item,
+        `${prefix}-${item.id}-${index}`,
+        isHorizontal ? 'top' : 'left'
+      );
     });
   };
 
@@ -231,6 +249,36 @@ export function ContextBar({
     (item) => isDivider(item) || isActionVisible(item, actionContext)
   );
 
+  // Mobile: horizontal static layout
+  if (isMobile) {
+    return (
+      <div className="flex items-center justify-center py-1 border-t border-border bg-secondary/30">
+        <div className="group flex items-center gap-3 px-3">
+          {/* Primary Icons */}
+          {visiblePrimaryItems.length > 0 && (
+            <div className="flex items-center gap-3">
+              {renderItems(primaryItems, 'primary', true)}
+            </div>
+          )}
+
+          {/* Separator - only show if both sections have items */}
+          {visiblePrimaryItems.length > 0 &&
+            visibleSecondaryItems.length > 0 && (
+              <div className="w-px h-4 bg-border" />
+            )}
+
+          {/* Secondary Icons */}
+          {visibleSecondaryItems.length > 0 && (
+            <div className="flex items-center gap-3">
+              {renderItems(secondaryItems, 'secondary', true)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: vertical floating layout
   return (
     <div
       className={cn(

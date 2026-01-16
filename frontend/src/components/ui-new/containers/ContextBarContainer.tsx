@@ -1,6 +1,7 @@
 import { useMemo, useCallback, type RefObject } from 'react';
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ContextBar } from '../primitives/ContextBar';
 import {
   ContextBarActionGroups,
@@ -66,6 +67,9 @@ export function ContextBarContainer({
   const { config } = useUserSystem();
   const editorType = config?.editor?.editor_type ?? null;
 
+  // Mobile detection (< 640px is Tailwind's sm breakpoint)
+  const isMobile = useMediaQuery('(max-width: 639px)');
+
   // Get visibility context (now includes dev server state)
   const actionCtx = useActionVisibilityContext();
 
@@ -97,6 +101,7 @@ export function ContextBarContainer({
       actionContext={actionCtx}
       onExecuteAction={handleExecuteAction}
       editorType={editorType}
+      isMobile={isMobile}
     />
   );
 }
