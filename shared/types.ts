@@ -110,6 +110,22 @@ export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
 export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
 
+export type GitHubProjectLink = { id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
+
+export type CreateGitHubProjectLink = { project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, };
+
+export type GitHubIssueMapping = { id: string, task_id: string, github_project_link_id: string, github_issue_number: bigint, github_issue_id: string, github_issue_url: string, sync_direction: SyncDirection, last_synced_at: string | null, github_updated_at: string | null, vibe_updated_at: string | null, created_at: string, updated_at: string, };
+
+export type CreateGitHubIssueMapping = { task_id: string, github_project_link_id: string, github_issue_number: bigint, github_issue_id: string, github_issue_url: string, sync_direction: SyncDirection | null, };
+
+export type SyncDirection = "bidirectional" | "github_to_vibe" | "vibe_to_github";
+
+export type TaskProperty = { id: string, task_id: string, property_name: string, property_value: string, source: PropertySource, created_at: string, updated_at: string, };
+
+export type CreateTaskProperty = { task_id: string, property_name: string, property_value: string, source: PropertySource | null, };
+
+export type PropertySource = "vibe" | "github";
+
 export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } | { "status": "denied", reason?: string, } | { "status": "timed_out" };
 
 export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, tool_call_id: string, };
@@ -415,6 +431,32 @@ queued_at: string, };
 export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
+
+export type GitHubProject = { id: string, title: string, number: bigint, url: string, closed: boolean, shortDescription: string | null, public: boolean, ownerLogin: string, };
+
+export type GitHubIssue = { id: string, number: bigint, title: string, body: string | null, state: string, url: string, createdAt: string, updatedAt: string, closedAt: string | null, authorLogin: string | null, assignees: Array<string>, labels: Array<GitHubLabel>, milestone: GitHubMilestone | null, };
+
+export type GitHubLabel = { name: string, color: string, };
+
+export type GitHubMilestone = { id: string, title: string, number: bigint, };
+
+export type GitHubProjectItem = { id: string, issue: GitHubIssue | null, fieldValues: Array<ProjectFieldValue>, };
+
+export type ProjectFieldValue = { fieldName: string, value: string, };
+
+export type ProjectField = { id: string, name: string, dataType: string, options: Array<ProjectFieldOption> | null, };
+
+export type ProjectFieldOption = { id: string, name: string, };
+
+export type StatusMapping = { vibe_status: TaskStatus, github_project_status: string, github_issue_state: string, };
+
+export type SyncResult = { itemsSynced: number, itemsCreated: number, itemsUpdated: number, itemsSkipped: number, errors: Array<string>, };
+
+export type CreateGitHubLinkRequest = { githubProjectId: string, githubOwner: string, githubRepo: string | null, };
+
+export type GitHubLinkResponse = { issueCount: number, id: string, project_id: string, github_project_id: string, github_owner: string, github_repo: string | null, sync_enabled: boolean, last_sync_at: string | null, created_at: string, updated_at: string, };
+
+export type GitHubStatusResponse = { available: boolean, authenticated: boolean, userLogin: string | null, error: string | null, };
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
