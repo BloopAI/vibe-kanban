@@ -132,13 +132,16 @@ export function WorkspacesLayout() {
     WorkspacesGuideDialog.show().finally(() => WorkspacesGuideDialog.hide());
   }, [configLoading, config?.showcases?.seen_features, updateAndSaveConfig]);
 
-  // Ensure left panels visible when right main panel hidden
+  // Ensure left panels visible when right main panel hidden (desktop only)
   useEffect(() => {
+    // Skip on mobile - mobile has its own panel management
+    if (isMobile) return;
     if (rightMainPanelMode === null) {
       setLeftSidebarVisible(true);
       if (!isLeftMainPanelVisible) setLeftMainPanelVisible(true);
     }
   }, [
+    isMobile,
     isLeftMainPanelVisible,
     rightMainPanelMode,
     setLeftSidebarVisible,
