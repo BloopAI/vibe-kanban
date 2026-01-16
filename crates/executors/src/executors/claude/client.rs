@@ -222,11 +222,11 @@ async fn check_git_status(repo_context: &RepoContext) -> serde_json::Value {
             .output()
             .await;
 
-        if let Ok(out) = output {
-            if !out.stdout.is_empty() {
-                let status = String::from_utf8_lossy(&out.stdout);
-                all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
-            }
+        if let Ok(out) = output
+            && !out.stdout.is_empty()
+        {
+            let status = String::from_utf8_lossy(&out.stdout);
+            all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
         }
     }
 
