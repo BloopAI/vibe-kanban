@@ -374,7 +374,7 @@ export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM" }
 
 export type EditorConfig = { editor_type: EditorType, custom_command: string | null, remote_ssh_host: string | null, remote_ssh_user: string | null, };
 
-export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", CUSTOM = "CUSTOM" }
+export enum EditorType { VS_CODE = "VS_CODE", VS_CODE_INSIDERS = "VS_CODE_INSIDERS", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", GOOGLE_ANTIGRAVITY = "GOOGLE_ANTIGRAVITY", CUSTOM = "CUSTOM" }
 
 export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: EditorType, } | { "type": "invalid_command", details: string, editor_type: EditorType, } | { "type": "launch_failed", executable: string, details: string, editor_type: EditorType, };
 
