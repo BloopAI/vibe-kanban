@@ -1,0 +1,22 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ASCII art style "C" with pixel blocks -->
+  <rect x="8" y="4" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="12" y="4" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="16" y="4" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="20" y="4" width="4" height="4" fill="#1a1a1a"/>
+  
+  <rect x="4" y="8" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="8" y="8" width="4" height="4" fill="#1a1a1a"/>
+  
+  <rect x="4" y="12" width="4" height="4" fill="#1a1a1a"/>
+  
+  <rect x="4" y="16" width="4" height="4" fill="#1a1a1a"/>
+  
+  <rect x="4" y="20" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="8" y="20" width="4" height="4" fill="#1a1a1a"/>
+  
+  <rect x="8" y="24" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="12" y="24" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="16" y="24" width="4" height="4" fill="#1a1a1a"/>
+  <rect x="20" y="24" width="4" height="4" fill="#1a1a1a"/>
+</svg>

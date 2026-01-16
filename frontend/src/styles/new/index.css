@@ -7,153 +7,153 @@
 
 /* 1) THEME TOKENS scoped to .new-design */
 @layer base {
-  /* Light defaults - New Design - Soft, modern, rounded appearance */
+  /* Light defaults - New Design - Neutral gray, modern, minimal */
   .new-design {
     color-scheme: light;
-    /* Cream-tinted white background for softer feel */
-    --_background: 220 30% 98%;
-    --_foreground: 220 15% 25%;
-    --_primary: 220 85% 60%;
+    /* Pure neutral white background */
+    --_background: 0 0% 99%;
+    --_foreground: 0 0% 15%;
+    --_primary: 220 10% 40%;
     --_primary-foreground: 0 0% 100%;
-    --_secondary: 220 20% 96%;
-    --_secondary-foreground: 220 15% 30%;
-    --_muted: 220 18% 94%;
-    --_muted-foreground: 220 10% 50%;
-    --_accent: 220 20% 95%;
-    --_accent-foreground: 220 20% 20%;
-    --_destructive: 0 84% 60%;
+    --_secondary: 220 6% 95%;
+    --_secondary-foreground: 0 0% 25%;
+    --_muted: 220 6% 93%;
+    --_muted-foreground: 0 0% 45%;
+    --_accent: 220 6% 92%;
+    --_accent-foreground: 0 0% 20%;
+    --_destructive: 0 65% 55%;
     --_destructive-foreground: 0 0% 100%;
-    --_border: 220 20% 92%;
-    --_input: 220 25% 97%;
-    --_ring: 220 85% 60%;
-    /* More rounded corners - 16px */
-    --_radius: 1rem;
+    --_border: 220 6% 90%;
+    --_input: 220 6% 97%;
+    --_ring: 220 10% 45%;
+    /* Slightly smaller radius for modern clean look */
+    --_radius: 0.625rem;
 
-    /* Status (light) - vibrant yet soft colors */
-    --_success: 158 64% 52%;
-    --_success-foreground: 158 64% 20%;
-    --_warning: 43 96% 56%;
-    --_warning-foreground: 43 70% 20%;
-    --_info: 220 85% 60%;
+    /* Status (light) - muted, professional colors */
+    --_success: 152 45% 45%;
+    --_success-foreground: 152 45% 15%;
+    --_warning: 38 70% 50%;
+    --_warning-foreground: 38 70% 15%;
+    --_info: 220 10% 45%;
     --_info-foreground: 0 0% 100%;
-    --_neutral: 220 18% 94%;
-    --_neutral-foreground: 220 15% 35%;
+    --_neutral: 220 6% 93%;
+    --_neutral-foreground: 0 0% 35%;
 
     /* Console (light) */
     --_console-background: 0 0% 100%;
-    --_console-foreground: 220 20% 20%;
-    --_console-success: 158 64% 52%;
-    --_console-error: 0 84% 60%;
+    --_console-foreground: 0 0% 20%;
+    --_console-success: 152 45% 45%;
+    --_console-error: 0 65% 55%;
 
-    /* Syntax highlighting (light) - softer */
-    --_syntax-keyword: #e45649;
-    --_syntax-function: #a626a4;
-    --_syntax-constant: #4078f2;
-    --_syntax-string: #50a14f;
-    --_syntax-variable: #c18401;
-    --_syntax-comment: #a0a1a7;
-    --_syntax-tag: #0184bc;
-    --_syntax-punctuation: #383a42;
-    --_syntax-deleted: #e45649;
+    /* Syntax highlighting (light) - muted tones */
+    --_syntax-keyword: #a626a4;
+    --_syntax-function: #6c5ce7;
+    --_syntax-constant: #0984e3;
+    --_syntax-string: #00a86b;
+    --_syntax-variable: #d35400;
+    --_syntax-comment: #95a5a6;
+    --_syntax-tag: #00b894;
+    --_syntax-punctuation: #2d3436;
+    --_syntax-deleted: #d63031;
 
-    /* Text (light) - slate tones for modern feel */
-    --text-high: 215 25% 17%;
-    --text-normal: 215 16% 34%;
-    --text-low: 215 14% 54%;
+    /* Text (light) - neutral gray tones */
+    --text-high: 0 0% 12%;
+    --text-normal: 0 0% 32%;
+    --text-low: 0 0% 52%;
 
-    /* Background (light) - soft slate tint */
-    --bg-primary: 210 40% 98%;
-    --bg-secondary: 210 40% 96%;
-    --bg-panel: 220 18% 94%;
+    /* Background (light) - clean neutral */
+    --bg-primary: 0 0% 99%;
+    --bg-secondary: 220 6% 96%;
+    --bg-panel: 220 6% 93%;
 
-    /* Accent (light) - friendly blue */
-    --brand: 220 85% 60%;
-    --brand-hover: 220 85% 68%;
-    --brand-secondary: 220 80% 52%;
-    --error: 0 84% 60%;
-    --success: 158 64% 52%;
+    /* Accent (light) - subtle slate gray */
+    --brand: 220 10% 40%;
+    --brand-hover: 220 12% 50%;
+    --brand-secondary: 220 10% 35%;
+    --error: 0 65% 55%;
+    --success: 152 45% 45%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
 
-    /* Card shadows - soft and floaty */
-    --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.08);
-    --shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.12);
+    /* Card shadows - subtle and clean */
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
-  /* Modern dark theme with slate undertones */
+  /* Modern dark theme with neutral gray */
   .new-design.dark,
   .dark .new-design {
     color-scheme: dark;
 
-    /* Internal variables (dark) - slate-based dark */
-    --_background: 222 47% 11%;
-    --_foreground: 214 32% 91%;
-    --_primary: 217 91% 60%;
+    /* Internal variables (dark) - neutral dark */
+    --_background: 0 0% 9%;
+    --_foreground: 0 0% 92%;
+    --_primary: 220 8% 55%;
     --_primary-foreground: 0 0% 100%;
-    --_secondary: 217 33% 17%;
-    --_secondary-foreground: 214 20% 80%;
-    --_muted: 217 33% 20%;
-    --_muted-foreground: 215 20% 65%;
-    --_accent: 217 33% 22%;
-    --_accent-foreground: 214 32% 91%;
-    --_destructive: 0 62% 55%;
+    --_secondary: 220 6% 14%;
+    --_secondary-foreground: 0 0% 85%;
+    --_muted: 220 6% 18%;
+    --_muted-foreground: 0 0% 60%;
+    --_accent: 220 6% 20%;
+    --_accent-foreground: 0 0% 92%;
+    --_destructive: 0 55% 50%;
     --_destructive-foreground: 0 0% 100%;
-    --_border: 217 33% 22%;
-    --_input: 217 33% 17%;
-    --_ring: 217 91% 60%;
+    --_border: 220 6% 20%;
+    --_input: 220 6% 14%;
+    --_ring: 220 8% 55%;
 
-    /* Status (dark) - vibrant colors */
-    --_success: 160 84% 39%;
-    --_success-foreground: 160 84% 95%;
-    --_warning: 43 96% 56%;
-    --_warning-foreground: 43 96% 95%;
-    --_info: 217 91% 60%;
+    /* Status (dark) - muted colors */
+    --_success: 152 50% 42%;
+    --_success-foreground: 152 50% 95%;
+    --_warning: 38 65% 55%;
+    --_warning-foreground: 38 65% 95%;
+    --_info: 220 8% 60%;
     --_info-foreground: 0 0% 100%;
-    --_neutral: 217 33% 24%;
-    --_neutral-foreground: 214 20% 85%;
+    --_neutral: 220 6% 22%;
+    --_neutral-foreground: 0 0% 80%;
 
-    /* Text (dark) - soft white/gray */
-    --text-high: 214 32% 96%;
-    --text-normal: 214 20% 80%;
-    --text-low: 215 16% 60%;
+    /* Text (dark) - soft neutral */
+    --text-high: 0 0% 95%;
+    --text-normal: 0 0% 75%;
+    --text-low: 0 0% 55%;
 
-    /* Background (dark) - slate dark */
-    --bg-primary: 222 47% 11%;
-    --bg-secondary: 217 33% 8%;
-    --bg-panel: 217 33% 17%;
+    /* Background (dark) - deep neutral */
+    --bg-primary: 0 0% 9%;
+    --bg-secondary: 220 6% 6%;
+    --bg-panel: 220 6% 14%;
 
-    /* Accent (dark) - bright blue */
-    --brand: 217 91% 60%;
-    --brand-hover: 217 91% 68%;
-    --brand-secondary: 217 85% 52%;
-    --error: 0 62% 55%;
-    --success: 160 84% 39%;
+    /* Accent (dark) - soft gray */
+    --brand: 220 8% 55%;
+    --brand-hover: 220 10% 65%;
+    --brand-secondary: 220 8% 48%;
+    --error: 0 55% 50%;
+    --success: 152 50% 42%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
 
     /* Card shadows - dark mode */
-    --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
-    --shadow-card-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.5);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
 
     /* Console (dark) */
-    --_console-background: 222 47% 6%;
-    --_console-foreground: 214 32% 91%;
-    --_console-success: 160 84% 39%;
-    --_console-error: 0 62% 55%;
+    --_console-background: 0 0% 5%;
+    --_console-foreground: 0 0% 92%;
+    --_console-success: 152 50% 42%;
+    --_console-error: 0 55% 50%;
 
     /* Syntax highlighting (dark) - softer */
-    --_syntax-keyword: #ff8b80;
-    --_syntax-function: #dbb8ff;
-    --_syntax-constant: #89d0ff;
-    --_syntax-string: #a8e6cf;
-    --_syntax-variable: #ffb870;
-    --_syntax-comment: #9ba3ae;
-    --_syntax-tag: #8ef7a0;
-    --_syntax-punctuation: #d1d9e3;
-    --_syntax-deleted: #ffe0dc;
+    --_syntax-keyword: #f1a7f1;
+    --_syntax-function: #a29bfe;
+    --_syntax-constant: #74b9ff;
+    --_syntax-string: #55efc4;
+    --_syntax-variable: #ffeaa7;
+    --_syntax-comment: #636e72;
+    --_syntax-tag: #81ecec;
+    --_syntax-punctuation: #dfe6e9;
+    --_syntax-deleted: #fab1a0;
   }
 }
 
@@ -286,8 +286,23 @@
   .new-design a,
   .new-design button,
   .new-design button * {
-    @apply transition-colors duration-200;
+    @apply transition-all duration-200;
     cursor: pointer;
+  }
+
+  /* Smooth transitions for interactive elements */
+  .new-design input,
+  .new-design textarea,
+  .new-design select {
+    @apply transition-all duration-200;
+  }
+
+  /* Card hover lift effect */
+  .new-design .card-interactive {
+    @apply transition-all duration-300;
+  }
+  .new-design .card-interactive:hover {
+    transform: translateY(-2px);
   }
 }
 
@@ -370,6 +385,48 @@
   }
 }
 
+/* Modern animation utilities */
+@layer utilities {
+  /* Staggered animation delays for lists */
+  .new-design .stagger-1 { animation-delay: 0.05s; }
+  .new-design .stagger-2 { animation-delay: 0.1s; }
+  .new-design .stagger-3 { animation-delay: 0.15s; }
+  .new-design .stagger-4 { animation-delay: 0.2s; }
+  .new-design .stagger-5 { animation-delay: 0.25s; }
+  .new-design .stagger-6 { animation-delay: 0.3s; }
+  .new-design .stagger-7 { animation-delay: 0.35s; }
+  .new-design .stagger-8 { animation-delay: 0.4s; }
+
+  /* Shimmer loading effect */
+  .new-design .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--bg-secondary)) 0%,
+      hsl(var(--bg-panel)) 50%,
+      hsl(var(--bg-secondary)) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* Hover glow effect */
+  .new-design .hover-glow {
+    @apply transition-shadow duration-300;
+  }
+  .new-design .hover-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--brand) / 0.15);
+  }
+
+  /* Press effect for buttons */
+  .new-design .press-effect:active {
+    transform: scale(0.98);
+  }
+
+  /* Subtle border animation on focus */
+  .new-design .focus-ring-animated:focus {
+    animation: pulse-subtle 1.5s ease-in-out infinite;
+  }
+}
+
 /* Animated border for running chat box */
 @keyframes border-flash {
   0% {
@@ -391,13 +448,13 @@
     padding: 1px;
     padding-bottom: 0;
     background: linear-gradient(
-      45deg,
-      transparent,
-      hsl(var(--brand-secondary)),
-      transparent
+      90deg,
+      transparent 0%,
+      hsl(var(--brand) / 0.6) 50%,
+      transparent 100%
     );
     background-size: 200% 100%;
-    animation: border-flash 2s linear infinite;
+    animation: border-flash 2.5s ease-in-out infinite;
     -webkit-mask:
       linear-gradient(#fff 0 0) content-box,
       linear-gradient(#fff 0 0);
@@ -406,6 +463,32 @@
       linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
+  }
+
+  /* Skeleton loading component */
+  .new-design .skeleton {
+    @apply bg-panel animate-pulse rounded;
+  }
+
+  /* Modern card with subtle hover */
+  .new-design .card-modern {
+    @apply bg-secondary rounded-lg transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+  .new-design .card-modern:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Glass effect card */
+  .new-design .card-glass {
+    @apply bg-secondary/80 backdrop-blur-sm rounded-lg border border-border/50;
+  }
+
+  /* Gradient text utility */
+  .new-design .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--text-high)) 0%, hsl(var(--text-low)) 100%);
   }
 }
 

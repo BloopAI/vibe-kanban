@@ -297,9 +297,9 @@ impl TaskServer {
 
         if context.is_none() {
             self.tool_router.map.remove("get_context");
-            tracing::debug!("VK context not available, get_context tool will not be registered");
+            tracing::debug!("Crew context not available, get_context tool will not be registered");
         } else {
-            tracing::info!("VK context loaded, get_context tool available");
+            tracing::info!("Crew context loaded, get_context tool available");
         }
 
         self.context = context;
@@ -395,39 +395,39 @@ impl TaskServer {
         let resp = rb
             .send()
             .await
-            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+            .map_err(|e| Self::err("Failed to connect to Crew API", Some(&e.to_string())).unwrap())?;
 
         if !resp.status().is_success() {
             let status = resp.status();
             return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+                Self::err(format!("Crew API returned error status: {}", status), None).unwrap(),
             );
         }
 
         let api_response = resp.json::<ApiResponseEnvelope<T>>().await.map_err(|e| {
-            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
+            Self::err("Failed to parse Crew API response", Some(&e.to_string())).unwrap()
         })?;
 
         if !api_response.success {
             let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+            return Err(Self::err("Crew API returned error", Some(msg)).unwrap());
         }
 
         api_response
             .data
-            .ok_or_else(|| Self::err("VK API response missing data field", None).unwrap())
+            .ok_or_else(|| Self::err("Crew API response missing data field", None).unwrap())
     }
 
     async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), CallToolResult> {
         let resp = rb
             .send()
             .await
-            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+            .map_err(|e| Self::err("Failed to connect to Crew API", Some(&e.to_string())).unwrap())?;
 
         if !resp.status().is_success() {
             let status = resp.status();
             return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+                Self::err(format!("Crew API returned error status: {}", status), None).unwrap(),
             );
         }
 
@@ -438,12 +438,12 @@ impl TaskServer {
         }
 
         let api_response = resp.json::<EmptyApiResponse>().await.map_err(|e| {
-            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
+            Self::err("Failed to parse Crew API response", Some(&e.to_string())).unwrap()
         })?;
 
         if !api_response.success {
             let msg = api_response.message.as_deref().unwrap_or("Unknown error");
-            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+            return Err(Self::err("Crew API returned error", Some(msg)).unwrap());
         }
 
         Ok(())
@@ -518,7 +518,7 @@ impl TaskServer {
     async fn get_context(&self) -> Result<CallToolResult, ErrorData> {
         // Context was fetched at startup and cached
         // This tool is only registered if context exists, so unwrap is safe
-        let context = self.context.as_ref().expect("VK context should exist");
+        let context = self.context.as_ref().expect("Crew context should exist");
         TaskServer::success(context)
     }
 
@@ -841,7 +841,7 @@ impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
         let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
-            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
+            let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Crew workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);
         }
 
@@ -849,7 +849,7 @@ impl ServerHandler for TaskServer {
             protocol_version: ProtocolVersion::V_2025_03_26,
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
-                name: "vibe-kanban".to_string(),
+                name: "crew".to_string(),
                 version: "1.0.0".to_string(),
             },
             instructions: Some(instruction),

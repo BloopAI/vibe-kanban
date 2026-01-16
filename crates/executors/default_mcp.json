@@ -1,10 +1,10 @@
 {
-  "vibe_kanban": {
-    "command": "npx",
+  "crew": {
+    "command": "cargo",
     "args": [
-      "-y",
-      "vibe-kanban@latest",
-      "--mcp"
+      "run",
+      "--bin",
+      "mcp_task_server"
     ]
   },
   "context7": {
@@ -38,11 +38,11 @@
     ]
   },
   "meta": {
-    "vibe_kanban": {
-      "name": "Vibe Kanban",
-      "description": "Create, update and delete Vibe Kanban tasks",
-      "url": "https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server",
-      "icon": "favicon-vk-light.svg"
+    "crew": {
+      "name": "Crew",
+      "description": "Create, update and delete Crew tasks",
+      "url": "https://www.crew.dev/docs/integrations/crew-mcp-server",
+      "icon": "favicon-crew-light.svg"
     },
     "context7": {
       "name": "Context7",

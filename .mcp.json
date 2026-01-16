@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "crew": {
+      "command": "cargo",
+      "args": ["run", "--bin", "mcp_task_server"],
+      "cwd": "/Users/ogasawarariku/Development/Personal/vibe-kanban-neo"
+    }
+  }
+}
