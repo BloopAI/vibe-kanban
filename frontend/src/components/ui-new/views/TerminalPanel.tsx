@@ -1,9 +1,5 @@
-import { useTranslation } from 'react-i18next';
 import type { TerminalTab } from '@/contexts/TerminalContext';
-import { TerminalTabBar } from '../terminal/TerminalTabBar';
 import { XTermInstance } from '../terminal/XTermInstance';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 interface TerminalPanelProps {
   tabs: TerminalTab[];
@@ -19,50 +15,18 @@ export function TerminalPanel({
   tabs,
   activeTabId,
   workspaceId,
-  containerRef,
-  onTabSelect,
   onTabClose,
-  onNewTab,
 }: TerminalPanelProps) {
-  const { t } = useTranslation('tasks');
-
-  if (!workspaceId || !containerRef) {
-    return (
-      <CollapsibleSectionHeader
-        title={t('common:sections.terminal')}
-        persistKey={PERSIST_KEYS.terminalSection}
-        contentClassName="flex-1 min-h-0 flex flex-col"
-      >
-        <div className="flex h-full items-center justify-center text-low">
-          {t('terminal.selectWorkspace')}
-        </div>
-      </CollapsibleSectionHeader>
-    );
-  }
-
   return (
-    <CollapsibleSectionHeader
-      title={t('common:sections.terminal')}
-      persistKey={PERSIST_KEYS.terminalSection}
-      contentClassName="flex-1 min-h-0 flex flex-col"
-    >
-      <TerminalTabBar
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onTabSelect={onTabSelect}
-        onTabClose={onTabClose}
-        onNewTab={onNewTab}
-      />
-      <div className="flex-1 overflow-hidden bg-secondary p-base">
-        {tabs.map((tab) => (
-          <XTermInstance
-            key={tab.id}
-            workspaceId={workspaceId}
-            isActive={tab.id === activeTabId}
-            onClose={() => onTabClose(tab.id)}
-          />
-        ))}
-      </div>
-    </CollapsibleSectionHeader>
+    <div className="flex-1 overflow-hidden bg-secondary p-base">
+      {tabs.map((tab) => (
+        <XTermInstance
+          key={tab.id}
+          workspaceId={workspaceId}
+          isActive={tab.id === activeTabId}
+          onClose={() => onTabClose(tab.id)}
+        />
+      ))}
+    </div>
   );
 }

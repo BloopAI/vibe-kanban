@@ -3,10 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 import { InputField } from '../primitives/InputField';
 import { CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 export function ProcessListContainer() {
   const {
@@ -73,7 +71,7 @@ export function ProcessListContainer() {
 
   const searchBar = showSearch && (
     <div
-      className="p-base flex items-center gap-2 shrink-0"
+      className="my-base flex items-center gap-2 shrink-0"
       onKeyDown={handleSearchKeyDown}
     >
       <InputField
@@ -117,31 +115,25 @@ export function ProcessListContainer() {
   );
 
   return (
-    <div className="h-full w-full bg-secondary flex flex-col overflow-hidden">
-      <CollapsibleSectionHeader
-        title={t('sections.processes')}
-        persistKey={PERSIST_KEYS.processesSection}
-        contentClassName="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent p-base min-h-0"
-      >
-        {sortedProcesses.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-low">
-            <p className="text-sm">{t('processes.noProcesses')}</p>
-          </div>
-        ) : (
-          <div className="space-y-0">
-            {sortedProcesses.map((process) => (
-              <ProcessListItem
-                key={process.id}
-                runReason={process.run_reason}
-                status={process.status}
-                startedAt={process.started_at}
-                selected={process.id === selectedProcessId}
-                onClick={() => handleSelectProcess(process.id)}
-              />
-            ))}
-          </div>
-        )}
-      </CollapsibleSectionHeader>
+    <div className="h-full w-full bg-secondary flex flex-col overflow-hidden p-base">
+      {sortedProcesses.length === 0 ? (
+        <div className="h-full flex items-center justify-center text-low">
+          <p className="text-sm">{t('processes.noProcesses')}</p>
+        </div>
+      ) : (
+        <div className="space-y-0">
+          {sortedProcesses.map((process) => (
+            <ProcessListItem
+              key={process.id}
+              runReason={process.run_reason}
+              status={process.status}
+              startedAt={process.started_at}
+              selected={process.id === selectedProcessId}
+              onClick={() => handleSelectProcess(process.id)}
+            />
+          ))}
+        </div>
+      )}
       {searchBar}
     </div>
   );

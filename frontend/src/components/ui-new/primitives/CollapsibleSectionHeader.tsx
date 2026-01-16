@@ -14,7 +14,6 @@ interface CollapsibleSectionHeaderProps {
   onIconClick?: () => void;
   children?: React.ReactNode;
   className?: string;
-  contentClassName?: string;
 }
 
 export function CollapsibleSectionHeader({
@@ -25,7 +24,6 @@ export function CollapsibleSectionHeader({
   onIconClick,
   children,
   className,
-  contentClassName,
 }: CollapsibleSectionHeaderProps) {
   const [expanded, toggle] = usePersistedExpanded(persistKey, defaultExpanded);
 
@@ -35,42 +33,44 @@ export function CollapsibleSectionHeader({
   };
 
   return (
-    <div className={cn('flex flex-col h-full overflow-auto', className)}>
-      <button
-        type="button"
-        onClick={() => toggle()}
-        className={cn(
-          'flex items-center justify-between w-full border-b px-base py-half bg-secondary border-l-half border-l-low cursor-pointer'
-        )}
-      >
-        <span className="font-medium truncate text-normal">{title}</span>
-        <div className="flex items-center gap-half">
-          {IconComponent && onIconClick && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={handleIconClick}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleIconClick(e as unknown as React.MouseEvent);
-                }
-              }}
-              className="text-low hover:text-normal"
-            >
-              <IconComponent className="size-icon-xs" weight="bold" />
-            </span>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
+      <div className="">
+        <button
+          type="button"
+          onClick={() => toggle()}
+          className={cn(
+            'flex items-center justify-between w-full px-base py-half cursor-pointer'
           )}
-          <CaretDownIcon
-            weight="fill"
-            className={cn(
-              'size-icon-xs text-low transition-transform',
-              !expanded && '-rotate-90'
+        >
+          <span className="font-medium truncate text-normal">{title}</span>
+          <div className="flex items-center gap-half">
+            {IconComponent && onIconClick && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={handleIconClick}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleIconClick(e as unknown as React.MouseEvent);
+                  }
+                }}
+                className="text-low hover:text-normal"
+              >
+                <IconComponent className="size-icon-xs" weight="bold" />
+              </span>
             )}
-          />
-        </div>
-      </button>
-      {expanded && <div className={contentClassName}>{children}</div>}
+            <CaretDownIcon
+              weight="fill"
+              className={cn(
+                'size-icon-xs text-low transition-transform',
+                !expanded && '-rotate-90'
+              )}
+            />
+          </div>
+        </button>
+      </div>
+      {expanded && children}
     </div>
   );
 }

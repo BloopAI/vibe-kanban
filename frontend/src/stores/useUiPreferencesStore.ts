@@ -7,7 +7,6 @@ export const RIGHT_MAIN_PANEL_MODES = {
   CHANGES: 'changes',
   LOGS: 'logs',
   PREVIEW: 'preview',
-  TERMINAL: 'terminal',
 } as const;
 
 export type RightMainPanelMode =
@@ -36,11 +35,13 @@ const DEFAULT_WORKSPACE_PANEL_STATE: WorkspacePanelState = {
 export const PERSIST_KEYS = {
   // Sidebar sections
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
-  // Git panel sections
+  // Right panel sections
   gitAdvancedSettings: 'git-advanced-settings',
   gitPanelRepositories: 'git-panel-repositories',
   gitPanelProject: 'git-panel-project',
   gitPanelAddRepositories: 'git-panel-add-repositories',
+  rightPanelprocesses: 'right-panel-processes',
+  rightPanelPreview: 'right-panel-preview',
   // Process panel sections
   processesSection: 'processes-section',
   // Changes panel sections
@@ -72,6 +73,8 @@ export type PersistKey =
   | typeof PERSIST_KEYS.terminalSection
   | typeof PERSIST_KEYS.showGitHubComments
   | typeof PERSIST_KEYS.rightMainPanel
+  | typeof PERSIST_KEYS.rightPanelprocesses
+  | typeof PERSIST_KEYS.rightPanelPreview
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`

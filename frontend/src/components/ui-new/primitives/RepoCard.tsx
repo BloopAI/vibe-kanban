@@ -25,9 +25,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
-import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
-import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
+import { useRepoAction } from '@/stores/useUiPreferencesStore';
 
 export type RepoAction =
   | 'pull-request'
@@ -113,12 +112,8 @@ export function RepoCard({
     hasPrOpen && selectedAction === 'pull-request' ? 'merge' : selectedAction;
 
   return (
-    <CollapsibleSection
-      persistKey={PERSIST_KEYS.repoCard(repoId)}
-      title={name}
-      className="gap-half"
-      defaultExpanded
-    >
+    <div className="bg-primary rounded-sm my-base p-base space-y-base">
+      <div className="font-medium">{name}</div>
       {/* Branch row */}
       <div className="flex items-center gap-base">
         <div className="flex items-center justify-center">
@@ -290,6 +285,6 @@ export function RepoCard({
           onAction={(action) => onActionsClick?.(action)}
         />
       </div>
-    </CollapsibleSection>
+    </div>
   );
 }

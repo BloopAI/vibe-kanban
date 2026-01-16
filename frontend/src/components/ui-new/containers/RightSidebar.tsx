@@ -14,8 +14,9 @@ import {
   useExpandedAll,
   usePersistedExpanded,
   useUiPreferencesStore,
+  PersistKey,
 } from '@/stores/useUiPreferencesStore';
-import { cn } from '@/lib/utils';
+import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
 
 export interface RightSidebarProps {
   isCreateMode: boolean;
@@ -81,120 +82,98 @@ export function RightSidebar({
 
   const upperExpanded = getUpperExpanded();
 
-  // Build list of sections and their expanded states
-  type SectionId = 'upper' | 'git' | 'terminal';
-  const sections: { id: SectionId; visible: boolean; expanded: boolean }[] = [
-    { id: 'upper', visible: hasUpperContent, expanded: upperExpanded },
-    { id: 'git', visible: true, expanded: gitExpanded },
-    { id: 'terminal', visible: isTerminalVisible, expanded: terminalExpanded },
+  const sections: {
+    title: string;
+    persistKey: PersistKey;
+    visible: boolean;
+    expanded: boolean;
+    content: React.ReactNode;
+  }[] = [
+    {
+      title: 'Git',
+      persistKey: PERSIST_KEYS.gitPanelRepositories,
+      visible: true,
+      expanded: gitExpanded,
+      content: (
+        <GitPanelContainer
+          selectedWorkspace={selectedWorkspace}
+          repos={repos}
+          diffs={diffs}
+        />
+      ),
+    },
+    {
+      title: 'Terminal',
+      persistKey: PERSIST_KEYS.terminalSection,
+      visible: isTerminalVisible,
+      expanded: terminalExpanded,
+      content: <TerminalPanelContainer />,
+    },
   ];
 
-  const visibleSections = sections.filter((s) => s.visible);
-  const expandedSections = visibleSections.filter((s) => s.expanded);
-  const collapsedSections = visibleSections.filter((s) => !s.expanded);
-
-  // Render upper content based on mode
-  const renderUpperContent = () => {
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
-      return (
-        <FileTreeContainer
-          key={selectedWorkspace?.id}
-          workspaceId={selectedWorkspace?.id}
-          diffs={diffs}
-          onSelectFile={(path) => {
-            selectFile(path);
-            setExpanded(`diff:${path}`, true);
-          }}
-        />
-      );
-    }
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
-      return <ProcessListContainer />;
-    }
-    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) {
-      return <PreviewControlsContainer attemptId={selectedWorkspace?.id} />;
-    }
-    return null;
-  };
+  switch (rightMainPanelMode) {
+    case RIGHT_MAIN_PANEL_MODES.CHANGES:
+      sections.unshift({
+        title: 'Changes',
+        persistKey: PERSIST_KEYS.changesSection,
+        visible: hasUpperContent,
+        expanded: upperExpanded,
+        content: (
+          <FileTreeContainer
+            key={selectedWorkspace?.id}
+            workspaceId={selectedWorkspace?.id}
+            diffs={diffs}
+            onSelectFile={(path) => {
+              selectFile(path);
+              setExpanded(`diff:${path}`, true);
+            }}
+          />
+        ),
+      });
+      break;
+    case RIGHT_MAIN_PANEL_MODES.LOGS:
+      sections.unshift({
+        title: 'Logs',
+        persistKey: PERSIST_KEYS.rightPanelprocesses,
+        visible: hasUpperContent,
+        expanded: upperExpanded,
+        content: <ProcessListContainer />,
+      });
+      break;
+    case RIGHT_MAIN_PANEL_MODES.PREVIEW:
+      sections.unshift({
+        title: 'Preview',
+        persistKey: PERSIST_KEYS.rightPanelPreview,
+        visible: hasUpperContent,
+        expanded: upperExpanded,
+        content: <PreviewControlsContainer attemptId={selectedWorkspace?.id} />,
+      });
+      break;
+    case null:
+      break;
+  }
 
   return (
-    <div className="flex flex-col h-full border-l">
-      {/* Expanded sections take available space */}
-      {expandedSections.length > 0 && (
-        <div className="flex-1 flex flex-col min-h-0">
-          {expandedSections.map((section) => {
-            if (section.id === 'upper') {
-              return (
-                <div key="upper" className="flex-1 min-h-0 overflow-hidden">
-                  {renderUpperContent()}
+    <div className="h-full border-l bg-secondary overflow-y-auto">
+      <div className="divide-y border-b">
+        {sections.map((section) => {
+          return (
+            <div
+              key={section.persistKey}
+              className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
+            >
+              <CollapsibleSectionHeader
+                title={section.title}
+                persistKey={section.persistKey}
+              >
+                <div className="flex flex-1 border-t min-h-[200px]">
+                  {section.content}
                 </div>
-              );
-            }
-            if (section.id === 'git') {
-              return (
-                <div key="git" className="flex-1 min-h-0 overflow-hidden">
-                  <GitPanelContainer
-                    selectedWorkspace={selectedWorkspace}
-                    repos={repos}
-                    diffs={diffs}
-                  />
-                </div>
-              );
-            }
-            if (section.id === 'terminal') {
-              return (
-                <div
-                  key="terminal"
-                  className="flex-1 min-h-0 overflow-hidden"
-                  style={{ minHeight: 150 }}
-                >
-                  <TerminalPanelContainer />
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>
-      )}
-
-      {/* Collapsed sections stack at bottom */}
-      {collapsedSections.length > 0 && (
-        <div
-          className={cn(
-            'flex flex-col flex-shrink-0',
-            expandedSections.length === 0 && 'mt-auto'
-          )}
-        >
-          {collapsedSections.map((section) => {
-            if (section.id === 'upper') {
-              return (
-                <div key="upper" className="flex-shrink-0">
-                  {renderUpperContent()}
-                </div>
-              );
-            }
-            if (section.id === 'git') {
-              return (
-                <div key="git" className="flex-shrink-0">
-                  <GitPanelContainer
-                    selectedWorkspace={selectedWorkspace}
-                    repos={repos}
-                    diffs={diffs}
-                  />
-                </div>
-              );
-            }
-            if (section.id === 'terminal') {
-              return (
-                <div key="terminal" className="flex-shrink-0">
-                  <TerminalPanelContainer />
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>
-      )}
+              </CollapsibleSectionHeader>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

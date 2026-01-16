@@ -7,9 +7,6 @@ import {
 } from '@/components/ui-new/primitives/RepoCard';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
-import { CollapsibleSection } from '../primitives/CollapsibleSection';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 export interface RepoInfo {
   id: string;
@@ -60,66 +57,53 @@ export function GitPanel({
   return (
     <div
       className={cn(
-        'w-full h-full bg-secondary flex flex-col text-low overflow-y-auto',
+        'flex flex-col flex-1 w-full bg-secondary text-low overflow-y-auto',
         className
       )}
     >
       {error && <ErrorAlert message={error} />}
-      <CollapsibleSectionHeader
-        title={t('common:sections.repositories')}
-        persistKey={PERSIST_KEYS.gitPanelRepositories}
-        contentClassName="flex flex-col p-base gap-base overflow-auto"
-      >
-        <div className="flex flex-col gap-base">
-          {repos.map((repo) => (
-            <RepoCard
-              key={repo.id}
-              repoId={repo.id}
-              name={repo.name}
-              targetBranch={repo.targetBranch}
-              commitsAhead={repo.commitsAhead}
-              filesChanged={repo.filesChanged}
-              linesAdded={repo.linesAdded}
-              linesRemoved={repo.linesRemoved}
-              prNumber={repo.prNumber}
-              prUrl={repo.prUrl}
-              prStatus={repo.prStatus}
-              showPushButton={repo.showPushButton}
-              isPushPending={repo.isPushPending}
-              isPushSuccess={repo.isPushSuccess}
-              isPushError={repo.isPushError}
-              onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
-              onRebase={() => onActionsClick?.(repo.id, 'rebase')}
-              onActionsClick={(action) => onActionsClick?.(repo.id, action)}
-              onPushClick={() => onPushClick?.(repo.id)}
-              onOpenInEditor={() => onOpenInEditor?.(repo.id)}
-              onCopyPath={() => onCopyPath?.(repo.id)}
-              onOpenSettings={() => onOpenSettings?.(repo.id)}
-            />
-          ))}
+      <div className="gap-base px-base">
+        {repos.map((repo) => (
+          <RepoCard
+            key={repo.id}
+            repoId={repo.id}
+            name={repo.name}
+            targetBranch={repo.targetBranch}
+            commitsAhead={repo.commitsAhead}
+            filesChanged={repo.filesChanged}
+            linesAdded={repo.linesAdded}
+            linesRemoved={repo.linesRemoved}
+            prNumber={repo.prNumber}
+            prUrl={repo.prUrl}
+            prStatus={repo.prStatus}
+            showPushButton={repo.showPushButton}
+            isPushPending={repo.isPushPending}
+            isPushSuccess={repo.isPushSuccess}
+            isPushError={repo.isPushError}
+            onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
+            onRebase={() => onActionsClick?.(repo.id, 'rebase')}
+            onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+            onPushClick={() => onPushClick?.(repo.id)}
+            onOpenInEditor={() => onOpenInEditor?.(repo.id)}
+            onCopyPath={() => onCopyPath?.(repo.id)}
+            onOpenSettings={() => onOpenSettings?.(repo.id)}
+          />
+        ))}
+        <div className="bg-primary flex flex-col gap-base w-full p-base rounded-sm my-base">
+          <div className="flex gap-base items-center">
+            <GitBranchIcon className="size-icon-md text-base" weight="fill" />
+            <p className="font-medium truncate">
+              {t('common:sections.workingBranch')}
+            </p>
+          </div>
+          <InputField
+            variant="editable"
+            value={workingBranchName}
+            onChange={onWorkingBranchNameChange}
+            placeholder={t('gitPanel.advanced.placeholder')}
+          />
         </div>
-        <div className="flex flex-col gap-base w-full">
-          <CollapsibleSection
-            title={t('common:sections.advanced')}
-            persistKey={PERSIST_KEYS.gitAdvancedSettings}
-            defaultExpanded={false}
-            className="flex flex-col gap-half"
-          >
-            <div className="flex gap-base items-center">
-              <GitBranchIcon className="size-icon-xs text-base" weight="fill" />
-              <p className="text-sm font-medium text-low truncate">
-                {t('common:sections.workingBranch')}
-              </p>
-            </div>
-            <InputField
-              variant="editable"
-              value={workingBranchName}
-              onChange={onWorkingBranchNameChange}
-              placeholder={t('gitPanel.advanced.placeholder')}
-            />
-          </CollapsibleSection>
-        </div>
-      </CollapsibleSectionHeader>
+      </div>
     </div>
   );
 }
