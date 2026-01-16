@@ -305,6 +305,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                     is_error: Some(false),
                 }],
                 stop_reason: None,
+                is_synthetic: None,
             },
             session_id: Some(session_id.clone()),
         },
