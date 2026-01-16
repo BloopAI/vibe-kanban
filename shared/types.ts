@@ -54,13 +54,17 @@ export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_att
 
 export type TaskRelationships = { parent_task: Task | null, current_workspace: Workspace, children: Array<Task>, };
 
-export type TaskDependency = { id: string, task_id: string, depends_on_task_id: string, created_at: string, };
-
 export type TaskWithPosition = { position: number, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_workspace_id: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
 export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
+
+export type DependencyCreator = "user" | "ai";
+
+export type TaskDependency = { id: string, task_id: string, depends_on_task_id: string, created_at: string, created_by: DependencyCreator, };
+
+export type CreateTaskDependency = { task_id: string, depends_on_task_id: string, created_by: DependencyCreator | null, };
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 

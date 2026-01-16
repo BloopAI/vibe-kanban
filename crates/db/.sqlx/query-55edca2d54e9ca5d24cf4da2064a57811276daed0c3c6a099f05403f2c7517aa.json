@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO task_dependencies (id, task_id, depends_on_task_id, created_by)\n               VALUES ($1, $2, $3, $4)\n               RETURNING\n                   id as \"id!: Uuid\",\n                   task_id as \"task_id!: Uuid\",\n                   depends_on_task_id as \"depends_on_task_id!: Uuid\",\n                   created_at as \"created_at!: DateTime<Utc>\",\n                   created_by as \"created_by!: DependencyCreator\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "depends_on_task_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_by!: DependencyCreator",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "55edca2d54e9ca5d24cf4da2064a57811276daed0c3c6a099f05403f2c7517aa"
+}

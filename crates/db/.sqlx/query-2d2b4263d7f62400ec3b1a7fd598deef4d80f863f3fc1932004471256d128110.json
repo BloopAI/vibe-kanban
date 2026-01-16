@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "WITH RECURSIVE reachable AS (\n                -- Start from depends_on_task_id's dependencies\n                SELECT depends_on_task_id as target_id\n                FROM task_dependencies\n                WHERE task_id = $2\n\n                UNION\n\n                -- Follow the dependency chain\n                SELECT td.depends_on_task_id\n                FROM task_dependencies td\n                INNER JOIN reachable r ON td.task_id = r.target_id\n            )\n            SELECT EXISTS(\n                SELECT 1 FROM reachable WHERE target_id = $1\n            ) as \"exists!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists!: bool",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2d2b4263d7f62400ec3b1a7fd598deef4d80f863f3fc1932004471256d128110"
+}
