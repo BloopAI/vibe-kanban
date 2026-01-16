@@ -897,7 +897,11 @@ impl ClaudeLogProcessor {
                     }
                 }
             }
-            ClaudeJson::User { message, .. } => {
+            ClaudeJson::User {
+                message,
+                is_synthetic,
+                ..
+            } => {
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -922,6 +926,21 @@ impl ClaudeLogProcessor {
                                 metadata: Some(
                                     serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
                                 ),
+                            };
+                            let id = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(id, entry));
+                        }
+                    }
+                }
+
+                if *is_synthetic {
+                    for item in &message.content {
+                        if let ClaudeContentItem::Text { text } = item {
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: text.clone(),
+                                metadata: None,
                             };
                             let id = entry_index_provider.next();
                             patches.push(ConversationPatch::add_normalized_entry(id, entry));
@@ -1487,6 +1506,8 @@ pub enum ClaudeJson {
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default, rename = "isSynthetic")]
+        is_synthetic: bool,
     },
     ToolUse {
         tool_name: String,
