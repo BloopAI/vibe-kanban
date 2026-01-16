@@ -23,6 +23,7 @@ import {
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import type {
   Workspace as ApiWorkspace,
   Session,
