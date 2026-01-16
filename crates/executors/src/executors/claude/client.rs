@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use tokio::process::Command;
 use workspace_utils::approvals::ApprovalStatus;
@@ -9,6 +6,7 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::types::PermissionMode;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{
         ExecutorError,
         claude::{
@@ -31,7 +29,7 @@ pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
-    working_dir: PathBuf,
+    repo_context: RepoContext,
 }
 
 impl ClaudeAgentClient {
@@ -39,14 +37,14 @@ impl ClaudeAgentClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
-        working_dir: PathBuf,
+        repo_context: RepoContext,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
             log_writer,
             approvals,
             auto_approve,
-            working_dir,
+            repo_context,
         })
     }
 
@@ -157,10 +155,9 @@ impl ClaudeAgentClient {
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
-        // Stop hook git check - uses top-level `continue` and `stopReason` fields
-        // (not wrapped in hookSpecificOutput like PreToolUse hooks)
+        // Stop hook git check - uses `decision` (approve/block) and `reason` fields
         if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
-            return Ok(check_git_status(&self.working_dir).await);
+            return Ok(check_git_status(&self.repo_context).await);
         }
 
         if self.auto_approve {
@@ -202,73 +199,50 @@ impl ClaudeAgentClient {
     }
 }
 
-/// Check for uncommitted git changes in the working directory.
+/// Check for uncommitted git changes across all repos in the workspace.
 /// Returns a Stop hook response using `decision` (approve/block) and `reason` fields.
-async fn check_git_status(working_dir: &Path) -> serde_json::Value {
-    // Find git repo - check current dir first, then subdirs
-    let git_dir = if working_dir.join(".git").exists() {
-        Some(working_dir.to_path_buf())
-    } else {
-        // Check immediate subdirectories (fallback for multi-repo or edge cases)
-        find_git_repo_in_subdirs(working_dir).await
-    };
+async fn check_git_status(repo_context: &RepoContext) -> serde_json::Value {
+    let repo_paths = repo_context.repo_paths();
 
-    let Some(repo_dir) = git_dir else {
-        // No git repo found, allow stop
+    if repo_paths.is_empty() {
+        // No repos configured, allow stop
         return serde_json::json!({"decision": "approve"});
-    };
-
-    // Check for uncommitted changes using git status --porcelain
-    let output = Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(&repo_dir)
-        .env("GIT_TERMINAL_PROMPT", "0")
-        .output()
-        .await;
-
-    match output {
-        Ok(out) if out.stdout.is_empty() => {
-            // No uncommitted changes, allow stop
-            serde_json::json!({"decision": "approve"})
-        }
-        Ok(out) => {
-            // Has uncommitted changes, block stop
-            let status = String::from_utf8_lossy(&out.stdout);
-            serde_json::json!({
-                "decision": "block",
-                "reason": format!(
-                    "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.\n\ngit status:\n{}",
-                    status.trim()
-                )
-            })
-        }
-        Err(e) => {
-            // Git command failed, log warning but allow stop
-            tracing::warn!("Failed to check git status: {e}");
-            serde_json::json!({"decision": "approve"})
-        }
     }
-}
 
-/// Search for a git repository in immediate subdirectories
-async fn find_git_repo_in_subdirs(dir: &Path) -> Option<PathBuf> {
-    let mut entries = match tokio::fs::read_dir(dir).await {
-        Ok(entries) => entries,
-        Err(_) => return None,
-    };
+    let mut all_status = String::new();
 
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        let file_type = match entry.file_type().await {
-            Ok(ft) => ft,
-            Err(_) => continue,
-        };
+    for repo_path in &repo_paths {
+        // Skip if not a git repo
+        if !repo_path.join(".git").exists() {
+            continue;
+        }
 
-        if file_type.is_dir() {
-            let subdir = entry.path();
-            if subdir.join(".git").exists() {
-                return Some(subdir);
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(repo_path)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .output()
+            .await;
+
+        if let Ok(out) = output {
+            if !out.stdout.is_empty() {
+                let status = String::from_utf8_lossy(&out.stdout);
+                all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
             }
         }
     }
-    None
+
+    if all_status.is_empty() {
+        // No uncommitted changes in any repo
+        serde_json::json!({"decision": "approve"})
+    } else {
+        // Has uncommitted changes, block stop
+        serde_json::json!({
+            "decision": "block",
+            "reason": format!(
+                "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                all_status
+            )
+        })
+    }
 }

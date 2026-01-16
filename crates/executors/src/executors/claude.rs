@@ -292,10 +292,10 @@ impl ClaudeCode {
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
-        let working_dir = current_dir.to_path_buf();
+        let repo_context = env.repo_context.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, working_dir);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, repo_context);
             let protocol_peer =
                 ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
 

@@ -33,7 +33,7 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    env::ExecutionEnv,
+    env::{ExecutionEnv, RepoContext},
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
     profile::ExecutorProfileId,
@@ -1115,8 +1115,13 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        // Build ExecutionEnv with VK_* variables
-        let mut env = ExecutionEnv::new();
+        // Build RepoContext for the executor
+        let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+        let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
+        let repo_context = RepoContext::new(current_dir.clone(), repo_names);
+
+        // Build ExecutionEnv with VK_* variables and repo context
+        let mut env = ExecutionEnv::new(repo_context);
 
         // Load task and project context for environment variables
         let task = workspace
