@@ -181,6 +181,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           console.warn('Failed to mark workspace as seen:', error);
         });
       navigate(`/workspaces/${id}`);
+      // On mobile, switch to chat panel (hides sidebar)
+      useUiPreferencesStore.getState().showPanelMobile('chat');
     },
     [navigate, queryClient]
   );
