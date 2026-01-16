@@ -25,7 +25,7 @@ function isPortAvailable(port) {
 /**
  * Find a free port starting from a given port
  */
-async function findFreePort(startPort = 3000) {
+async function findFreePort(startPort = 4000) {
   let port = startPort;
   while (!(await isPortAvailable(port))) {
     port++;
@@ -124,8 +124,8 @@ async function allocatePorts() {
     }
   }
 
-  // Find new free ports
-  const frontendPort = await findFreePort(3000);
+  // Find new free ports (start from 4000 to avoid conflicts with Next.js default 3000)
+  const frontendPort = await findFreePort(4000);
   const backendPort = await findFreePort(frontendPort + 1);
 
   const ports = {

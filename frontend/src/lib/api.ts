@@ -91,6 +91,12 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
+  GitHubStatusResponse,
+  GitHubProject,
+  GitHubLinkResponse,
+  CreateGitHubLinkRequest,
+  SyncResult,
+  GitHubIssueMapping,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -1387,5 +1393,92 @@ export const queueApi = {
   getStatus: async (sessionId: string): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`);
     return handleApiResponse<QueueStatus>(response);
+  },
+};
+
+// GitHub Integration API
+export const githubApi = {
+  /** Check GitHub CLI availability and authentication status */
+  getStatus: async (): Promise<GitHubStatusResponse> => {
+    const response = await makeRequest('/api/github/status');
+    return handleApiResponse<GitHubStatusResponse>(response);
+  },
+
+  /** Get available GitHub Projects for the authenticated user */
+  getProjects: async (): Promise<GitHubProject[]> => {
+    const response = await makeRequest('/api/github/projects');
+    return handleApiResponse<GitHubProject[]>(response);
+  },
+
+  /** Get GitHub project links for a project */
+  getLinks: async (projectId: string): Promise<GitHubLinkResponse[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links`
+    );
+    return handleApiResponse<GitHubLinkResponse[]>(response);
+  },
+
+  /** Create a new GitHub project link */
+  createLink: async (
+    projectId: string,
+    data: CreateGitHubLinkRequest
+  ): Promise<GitHubLinkResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<GitHubLinkResponse>(response);
+  },
+
+  /** Delete a GitHub project link */
+  deleteLink: async (projectId: string, linkId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links/${linkId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  /** Trigger manual sync for a GitHub project link */
+  syncLink: async (projectId: string, linkId: string): Promise<SyncResult> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links/${linkId}/sync`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<SyncResult>(response);
+  },
+
+  /** Update sync enabled status for a GitHub project link */
+  updateLinkSyncEnabled: async (
+    projectId: string,
+    linkId: string,
+    syncEnabled: boolean
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links/${linkId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ sync_enabled: syncEnabled }),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  /** Get issue mappings for a GitHub project link */
+  getMappings: async (
+    projectId: string,
+    linkId: string
+  ): Promise<GitHubIssueMapping[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/github-links/${linkId}/mappings`
+    );
+    return handleApiResponse<GitHubIssueMapping[]>(response);
   },
 };

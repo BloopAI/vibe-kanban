@@ -1,9 +1,9 @@
 {
-  "name": "vibe-kanban",
-  "version": "0.0.153",
+  "name": "crew",
+  "version": "0.0.1",
   "private": true,
   "bin": {
-    "vibe-kanban": "npx-cli/bin/cli.js"
+    "crew": "npx-cli/bin/cli.js"
   },
   "files": [
     "npx-cli/bin/cli.js",
@@ -16,7 +16,7 @@
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"npm run backend:dev:watch\" \"npm run frontend:dev\"",
     "test:npm": "./test-npm-package.sh",
     "frontend:lint": "cd frontend && npm run lint",
-    "frontend:dev": "cd frontend && npm run dev -- --port ${FRONTEND_PORT:-3000} --host",
+    "frontend:dev": "cd frontend && npm run dev -- --port ${FRONTEND_PORT:-4000} --host",
     "frontend:check": "cd frontend && npm run check",
     "backend:lint": "cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "backend:dev": "BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) npm run backend:dev:watch",

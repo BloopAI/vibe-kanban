@@ -55,7 +55,7 @@ mkdir -p docs/records/issue-records/$(date +%Y-%m-%d)
 ## 課題整理.md テンプレート
 
 ```markdown
-# vibe-kanban-neo 課題整理表
+# Crew 課題整理表
 
 **更新日**: YYYY-MM-DD
 
@@ -93,7 +93,7 @@ mkdir -p docs/records/issue-records/$(date +%Y-%m-%d)
 ## 全項目ステータス.md テンプレート
 
 ```markdown
-# vibe-kanban-neo フィードバック全項目ステータス表
+# Crew フィードバック全項目ステータス表
 
 **更新日**: YYYY-MM-DD
 

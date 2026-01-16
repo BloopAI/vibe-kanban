@@ -1,15 +1,15 @@
 {
-  "name": "vibe-kanban",
+  "name": "crew",
   "private": false,
-  "version": "0.0.153",
+  "version": "0.0.1",
   "main": "index.js",
   "bin": {
-    "vibe-kanban": "bin/cli.js"
+    "crew": "bin/cli.js"
   },
-  "keywords": [],
-  "author": "bloop",
-  "license": "",
-  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "keywords": ["ai", "agent", "kanban", "task-management", "team"],
+  "author": "",
+  "license": "MIT",
+  "description": "AI-powered task management for everyone - Engineers, PMs, and Business teams",
   "dependencies": {
     "adm-zip": "^0.5.16"
   },

@@ -9,8 +9,8 @@ const sizes = {
   xl: 1.25,
 }
 
-const lineHeightMultiplier = 1.5;
-const radiusMultiplier = 0.25;
+const lineHeightMultiplier = 1.6;
+const radiusMultiplier = 0.75; // Larger radius for softer, rounder appearance
 const iconMultiplier = 1.25;
 const chatMaxWidth = '48rem';
 
@@ -76,6 +76,20 @@ module.exports = {
           repeating-linear-gradient(-45deg, hsl(var(--text-low) / 0.4) 0 2px, transparent 1px 12px),
           linear-gradient(hsl(var(--bg-primary)), hsl(var(--bg-primary)))
         `,
+        // Soft gradient backgrounds
+        'soft-gradient': 'linear-gradient(135deg, hsl(var(--bg-primary)) 0%, hsl(var(--bg-secondary)) 100%)',
+        'brand-gradient': 'linear-gradient(135deg, hsl(var(--brand)) 0%, hsl(var(--brand-hover)) 100%)',
+      },
+      boxShadow: {
+        // Soft, modern shadows
+        'soft-sm': '0 2px 8px -2px hsl(var(--text-low) / 0.1)',
+        'soft': '0 4px 16px -4px hsl(var(--text-low) / 0.12)',
+        'soft-md': '0 8px 24px -6px hsl(var(--text-low) / 0.15)',
+        'soft-lg': '0 12px 32px -8px hsl(var(--text-low) / 0.18)',
+        'soft-xl': '0 20px 48px -12px hsl(var(--text-low) / 0.22)',
+        // Card shadows with subtle border effect
+        'card': '0 1px 3px hsl(var(--text-low) / 0.08), 0 0 0 1px hsl(var(--border) / 0.5)',
+        'card-hover': '0 4px 12px hsl(var(--text-low) / 0.12), 0 0 0 1px hsl(var(--border))',
       },
       ringColor: {
         DEFAULT: 'hsl(var(--brand))',
@@ -121,17 +135,23 @@ module.exports = {
         border: "hsl(var(--border))",
       },
       borderRadius: {
-        lg: getSize('lg', radiusMultiplier),
-        md: getSize('sm', radiusMultiplier),
-        sm: getSize('xs', radiusMultiplier),
+        'xl': '1rem',
+        lg: '0.75rem',
+        md: '0.5rem',
+        sm: '0.375rem',
+        DEFAULT: '0.5rem',
       },
       borderWidth: {
         base: getSize('base'),
         half: getSize('base', 0.5),
       },
       fontFamily: {
-        'ibm-plex-sans': ['"IBM Plex Sans"', '"Noto Emoji"', 'sans-serif'],
-        'ibm-plex-mono': ['"IBM Plex Mono"', 'monospace'],
+        // Modern, rounded fonts - Japanese-friendly with soft appearance
+        sans: ['Inter', '"Noto Sans JP"', '"Noto Emoji"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // Keep old aliases for backwards compatibility
+        'ibm-plex-sans': ['Inter', '"Noto Sans JP"', '"Noto Emoji"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'ibm-plex-mono': ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       keyframes: {
         "accordion-down": {
@@ -156,6 +176,19 @@ module.exports = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        // Smooth micro-interaction keyframes
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -165,6 +198,15 @@ module.exports = {
         'running-dot-2': 'running-dot 1.4s ease-in-out 0.2s infinite',
         'running-dot-3': 'running-dot 1.4s ease-in-out 0.4s infinite',
         'border-flash': 'border-flash 2s linear infinite',
+        // Smooth micro-interactions
+        'fade-in': 'fade-in 0.2s ease-out',
+        'slide-up': 'slide-up 0.3s ease-out',
+        'scale-in': 'scale-in 0.2s ease-out',
+      },
+      transitionTimingFunction: {
+        // Smooth, natural easing curves
+        'ease-soft': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'ease-bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
     },
   },

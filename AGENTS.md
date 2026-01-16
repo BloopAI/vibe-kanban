@@ -1,4 +1,4 @@
-# vibe-kanban-neo - AIエージェント駆動型カンバンボード
+# Crew - AI-powered task management for everyone
 
 ## システム構成
 

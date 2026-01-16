@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&family=Noto+Emoji:wght@300..700&display=swap');
+/* Modern, rounded fonts - Japanese-friendly with soft appearance */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Emoji:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,141 +7,145 @@
 
 /* 1) THEME TOKENS scoped to .new-design */
 @layer base {
-  /* Light defaults - New Design */
+  /* Light defaults - New Design - Soft, rounded, Japanese-friendly */
   .new-design {
     color-scheme: light;
-    --_background: 0 0% 95%;
-    --_foreground: 0 0% 5%;
-    --_primary: 0 0% 5%;
+    /* Softer, warmer background tones */
+    --_background: 210 20% 98%;
+    --_foreground: 220 20% 20%;
+    --_primary: 213 94% 55%;
     --_primary-foreground: 0 0% 100%;
-    --_secondary: 0 0% 95%;
-    --_secondary-foreground: 0 0% 16%;
-    --_muted: 0 0% 89%;
-    --_muted-foreground: 0 0% 56%;
-    --_accent: 0 0% 92%;
-    --_accent-foreground: 0 0% 5%;
-    --_destructive: 0 59% 57%;
+    --_secondary: 210 15% 96%;
+    --_secondary-foreground: 220 15% 30%;
+    --_muted: 210 15% 93%;
+    --_muted-foreground: 220 10% 50%;
+    --_accent: 210 20% 94%;
+    --_accent-foreground: 220 20% 20%;
+    --_destructive: 0 72% 63%;
     --_destructive-foreground: 0 0% 100%;
-    --_border: 0 0% 85%;
-    --_input: 0 0% 96%;
-    --_ring: 0 0% 5%;
-    --_radius: 0.125rem;
+    --_border: 210 15% 88%;
+    --_input: 210 20% 97%;
+    --_ring: 213 94% 55%;
+    /* Larger radius for softer corners */
+    --_radius: 0.75rem;
 
-    /* Status (light) */
-    --_success: 117 38% 50%;
-    --_success-foreground: 117 38% 20%;
-    --_warning: 32 95% 44%;
-    --_warning-foreground: 32 95% 14%;
-    --_info: 217 91% 60%;
-    --_info-foreground: 0 0% 5%;
-    --_neutral: 0 0% 92%;
-    --_neutral-foreground: 0 0% 5%;
+    /* Status (light) - softer colors */
+    --_success: 152 60% 50%;
+    --_success-foreground: 152 60% 20%;
+    --_warning: 38 95% 55%;
+    --_warning-foreground: 38 70% 20%;
+    --_info: 213 94% 55%;
+    --_info-foreground: 0 0% 100%;
+    --_neutral: 210 15% 93%;
+    --_neutral-foreground: 220 15% 30%;
 
     /* Console (light) */
     --_console-background: 0 0% 100%;
-    --_console-foreground: 0 0% 5%;
-    --_console-success: 117 38% 50%;
-    --_console-error: 0 59% 57%;
+    --_console-foreground: 220 20% 20%;
+    --_console-success: 152 60% 50%;
+    --_console-error: 0 72% 63%;
 
-    /* Syntax highlighting (light) */
-    --_syntax-keyword: #d73a49;
-    --_syntax-function: #6f42c1;
-    --_syntax-constant: #005cc5;
-    --_syntax-string: #032f62;
-    --_syntax-variable: #e36209;
-    --_syntax-comment: #6a737d;
-    --_syntax-tag: #22863a;
-    --_syntax-punctuation: #24292e;
-    --_syntax-deleted: #b31d28;
+    /* Syntax highlighting (light) - softer */
+    --_syntax-keyword: #e45649;
+    --_syntax-function: #a626a4;
+    --_syntax-constant: #4078f2;
+    --_syntax-string: #50a14f;
+    --_syntax-variable: #c18401;
+    --_syntax-comment: #a0a1a7;
+    --_syntax-tag: #0184bc;
+    --_syntax-punctuation: #383a42;
+    --_syntax-deleted: #e45649;
 
-    /* Text (light) */
-    --text-high: 0 0% 5%;
-    --text-normal: 0 0% 20%;
-    --text-low: 0 0% 39%;
+    /* Text (light) - warmer tones */
+    --text-high: 220 20% 15%;
+    --text-normal: 220 15% 30%;
+    --text-low: 220 10% 50%;
 
-    /* Background (light) */
-    --bg-primary: 0 0% 100%;
-    --bg-secondary: 0 0% 95%;
-    --bg-panel: 0 0% 89%;
+    /* Background (light) - soft blue-gray tint */
+    --bg-primary: 210 25% 99%;
+    --bg-secondary: 210 20% 96%;
+    --bg-panel: 210 15% 93%;
 
-    /* Accent (light) */
-    --brand: 25 82% 54%;
-    --brand-hover: 25 75% 62%;
-    --brand-secondary: 25 82% 37%;
-    --error: 0 59% 57%;
-    --success: 117 38% 50%;
+    /* Accent (light) - friendly blue (like the screenshot) */
+    --brand: 213 94% 55%;
+    --brand-hover: 213 90% 62%;
+    --brand-secondary: 213 85% 45%;
+    --error: 0 72% 63%;
+    --success: 152 60% 50%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
+  /* Soft dark theme with blue undertones for a gentle feel */
   .new-design.dark,
   .dark .new-design {
     color-scheme: dark;
 
-    /* Internal variables (dark) - needed for public tokens */
-    --_background: 0 0% 13%;
-    --_foreground: 0 0% 96%;
-    --_primary: 240 4.8% 95.9%;
-    --_primary-foreground: 240 5.9% 10%;
-    --_secondary: 0 0% 12%;
-    --_secondary-foreground: 0 0% 77%;
-    --_muted: 0 0% 16%;
-    --_muted-foreground: 0 0% 64%;
-    --_accent: 0 0% 20%;
-    --_accent-foreground: 0 0% 96%;
-    --_destructive: 0 59% 57%;
-    --_destructive-foreground: 0 0% 96%;
-    --_border: 0 0% 20%;
-    --_input: 0 0% 20%;
-    --_ring: 0 0% 77%;
+    /* Internal variables (dark) - softer dark with blue tint */
+    --_background: 220 20% 10%;
+    --_foreground: 210 20% 95%;
+    --_primary: 213 94% 60%;
+    --_primary-foreground: 0 0% 100%;
+    --_secondary: 220 18% 14%;
+    --_secondary-foreground: 210 15% 80%;
+    --_muted: 220 16% 18%;
+    --_muted-foreground: 210 10% 60%;
+    --_accent: 220 18% 22%;
+    --_accent-foreground: 210 20% 95%;
+    --_destructive: 0 72% 60%;
+    --_destructive-foreground: 0 0% 100%;
+    --_border: 220 15% 22%;
+    --_input: 220 18% 16%;
+    --_ring: 213 94% 60%;
 
-    /* Status (dark) */
-    --_success: 117 38% 50%;
-    --_success-foreground: 117 38% 90%;
-    --_warning: 32.2 95% 44.1%;
-    --_warning-foreground: 32.2 95% 90%;
-    --_info: 217.2 91.2% 59.8%;
-    --_info-foreground: 217.2 91.2% 90%;
-    --_neutral: 0 0% 20%;
-    --_neutral-foreground: 0 0% 90%;
+    /* Status (dark) - softer colors */
+    --_success: 152 55% 55%;
+    --_success-foreground: 152 55% 95%;
+    --_warning: 38 90% 55%;
+    --_warning-foreground: 38 90% 95%;
+    --_info: 213 94% 60%;
+    --_info-foreground: 0 0% 100%;
+    --_neutral: 220 16% 22%;
+    --_neutral-foreground: 210 15% 85%;
 
-    /* Text (dark) */
-    --text-high: 0 0% 96%;
-    --text-normal: 0 0% 77%;
-    --text-low: 0 0% 56%;
+    /* Text (dark) - soft white/gray */
+    --text-high: 210 20% 96%;
+    --text-normal: 210 15% 80%;
+    --text-low: 210 10% 55%;
 
-    /* Background (dark) */
-    --bg-primary: 0 0% 13%;
-    --bg-secondary: 0 0% 11%;
-    --bg-panel: 0 0% 16%;
+    /* Background (dark) - soft dark blue */
+    --bg-primary: 220 20% 10%;
+    --bg-secondary: 220 18% 8%;
+    --bg-panel: 220 16% 14%;
 
-    /* Accent (dark) */
-    --brand: 25 82% 54%;
-    --brand-hover: 25 75% 62%;
-    --brand-secondary: 25 82% 37%;
-    --error: 0 59% 57%;
-    --success: 117 38% 50%;
+    /* Accent (dark) - same friendly blue */
+    --brand: 213 94% 60%;
+    --brand-hover: 213 90% 68%;
+    --brand-secondary: 213 85% 50%;
+    --error: 0 72% 60%;
+    --success: 152 55% 55%;
 
     /* Text on accent */
     --text-on-brand: 0 0% 100%;
-    /* Console (dark) */
-    --_console-background: 0 0% 0%;
-    --_console-foreground: 210 40% 98%;
-    --_console-success: 138.5 76.5% 47.7%;
-    --_console-error: 0 84.2% 60.2%;
 
-    /* Syntax highlighting (dark) */
-    --_syntax-keyword: #ff7b72;
-    --_syntax-function: #d2a8ff;
-    --_syntax-constant: #79c0ff;
-    --_syntax-string: #a5d6ff;
-    --_syntax-variable: #ffa657;
-    --_syntax-comment: #8b949e;
-    --_syntax-tag: #7ee787;
-    --_syntax-punctuation: #c9d1d9;
-    --_syntax-deleted: #ffdcd7;
+    /* Console (dark) */
+    --_console-background: 220 25% 6%;
+    --_console-foreground: 210 20% 95%;
+    --_console-success: 152 55% 55%;
+    --_console-error: 0 72% 60%;
+
+    /* Syntax highlighting (dark) - softer */
+    --_syntax-keyword: #ff8b80;
+    --_syntax-function: #dbb8ff;
+    --_syntax-constant: #89d0ff;
+    --_syntax-string: #a8e6cf;
+    --_syntax-variable: #ffb870;
+    --_syntax-comment: #9ba3ae;
+    --_syntax-tag: #8ef7a0;
+    --_syntax-punctuation: #d1d9e3;
+    --_syntax-deleted: #ffe0dc;
   }
 }
 
@@ -256,7 +261,10 @@
   }
 
   .new-design {
-    @apply bg-background text-foreground font-ibm-plex-sans;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   .new-design *:focus {
