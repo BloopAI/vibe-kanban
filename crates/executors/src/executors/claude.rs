@@ -2068,7 +2068,6 @@ mod tests {
             },
             approvals_service: None,
             disable_api_key: None,
-            commit_reminder: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
