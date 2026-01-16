@@ -79,7 +79,7 @@ export function GitHubSettings({ projectId, className }: GitHubSettingsProps) {
         githubProjectId: result.project.id,
         githubOwner: result.project.ownerLogin,
         githubRepo: null,
-        githubProjectNumber: BigInt(result.project.number),
+        githubProjectNumber: result.project.number,
       });
     }
   };

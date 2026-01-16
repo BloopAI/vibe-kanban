@@ -1444,11 +1444,18 @@ export const githubApi = {
     projectId: string,
     data: CreateGitHubLinkRequest
   ): Promise<GitHubLinkResponse> => {
+    // Convert BigInt to number for JSON serialization
+    const serializedData = {
+      ...data,
+      githubProjectNumber: data.githubProjectNumber != null
+        ? Number(data.githubProjectNumber)
+        : null,
+    };
     const response = await makeRequest(
       `/api/projects/${projectId}/github-links`,
       {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(serializedData),
       }
     );
     return handleApiResponse<GitHubLinkResponse>(response);

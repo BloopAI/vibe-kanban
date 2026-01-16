@@ -52,6 +52,7 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showSyncResult, setShowSyncResult] = useState(false);
   const [githubMenuOpen, setGithubMenuOpen] = useState(false);
+  const [isCreatingAndSyncing, setIsCreatingAndSyncing] = useState(false);
 
   // GitHub CLI status
   const {
@@ -69,14 +70,26 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
   // Mutations
   const { createLink, deleteLink, syncLink, updateSyncEnabled } =
     useGitHubLinkMutations(projectId, {
+      onCreateSuccess: (link) => {
+        // Automatically trigger sync after creating link
+        console.log('GitHub link created, triggering initial sync...', link.id);
+        setSyncingLinkId(link.id);
+        syncLink.mutate(link.id);
+      },
+      onCreateError: (err) => {
+        setIsCreatingAndSyncing(false);
+        console.error('Failed to create GitHub link:', err);
+      },
       onSyncSuccess: (result) => {
         setSyncResult(result);
         setShowSyncResult(true);
         setSyncingLinkId(null);
-        setTimeout(() => setShowSyncResult(false), 5000);
+        setIsCreatingAndSyncing(false);
+        setTimeout(() => setShowSyncResult(false), 8000);
       },
       onSyncError: () => {
         setSyncingLinkId(null);
+        setIsCreatingAndSyncing(false);
       },
     });
 
@@ -85,11 +98,12 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
     const result = await GitHubProjectSelectorDialog.show({});
 
     if (result.status === 'selected' && result.project) {
+      setIsCreatingAndSyncing(true);
       createLink.mutate({
         githubProjectId: result.project.id,
         githubOwner: result.project.ownerLogin,
         githubRepo: null,
-        githubProjectNumber: BigInt(result.project.number),
+        githubProjectNumber: result.project.number,
       });
     }
   };
@@ -142,10 +156,10 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
             <DropdownMenu open={githubMenuOpen} onOpenChange={setGithubMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button
-                  disabled={!isGitHubAvailable || createLink.isPending}
+                  disabled={!isGitHubAvailable || isCreatingAndSyncing}
                   className={cn(
                     'relative flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all min-h-[140px]',
-                    isGitHubAvailable
+                    isGitHubAvailable && !isCreatingAndSyncing
                       ? 'border-border hover:border-primary hover:bg-primary/5 cursor-pointer'
                       : 'border-border opacity-60 cursor-not-allowed'
                   )}
@@ -173,9 +187,10 @@ export function TaskImportSettings({ projectId, className }: TaskImportSettingsP
                       </Badge>
                     )}
                   </div>
-                  {createLink.isPending && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                  {isCreatingAndSyncing && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90 rounded-lg">
+                      <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                      <span className="text-xs text-muted-foreground">Importing...</span>
                     </div>
                   )}
                 </button>
