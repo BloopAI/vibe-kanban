@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { tasksApi } from '@/lib/api';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -21,21 +23,23 @@ export interface DeleteTaskConfirmationDialogProps {
 
 const DeleteTaskConfirmationDialogImpl =
   NiceModal.create<DeleteTaskConfirmationDialogProps>(({ task }) => {
+    const { t } = useTranslation('tasks');
     const modal = useModal();
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteBranches, setDeleteBranches] = useState(false);
 
     const handleConfirmDelete = async () => {
       setIsDeleting(true);
       setError(null);
 
       try {
-        await tasksApi.delete(task.id);
+        await tasksApi.delete(task.id, deleteBranches);
         modal.resolve();
         modal.hide();
       } catch (err: unknown) {
         const errorMessage =
-          err instanceof Error ? err.message : 'Failed to delete task';
+          err instanceof Error ? err.message : t('deleteTaskDialog.error');
         setError(errorMessage);
       } finally {
         setIsDeleting(false);
@@ -54,17 +58,28 @@ const DeleteTaskConfirmationDialogImpl =
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Task</DialogTitle>
+            <DialogTitle>{t('deleteTaskDialog.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
+              {t('deleteTaskDialog.description')}{' '}
               <span className="font-semibold">"{task.title}"</span>?
             </DialogDescription>
           </DialogHeader>
 
           <Alert variant="destructive" className="mb-4">
-            <strong>Warning:</strong> This action will permanently delete the
-            task and cannot be undone.
+            <strong>{t('deleteTaskDialog.warningLabel')}:</strong>{' '}
+            {t('deleteTaskDialog.warning')}
           </Alert>
+
+          <div className="flex items-center space-x-2 mb-4">
+            <Checkbox
+              id="delete-branches"
+              checked={deleteBranches}
+              onCheckedChange={setDeleteBranches}
+            />
+            <label htmlFor="delete-branches" className="text-sm cursor-pointer">
+              {t('deleteTaskDialog.deleteBranchesLabel')}
+            </label>
+          </div>
 
           {error && (
             <Alert variant="destructive" className="mb-4">
@@ -79,14 +94,16 @@ const DeleteTaskConfirmationDialogImpl =
               disabled={isDeleting}
               autoFocus
             >
-              Cancel
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? 'Deleting...' : 'Delete Task'}
+              {isDeleting
+                ? t('deleteTaskDialog.deleting')
+                : t('deleteTaskDialog.deleteButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
