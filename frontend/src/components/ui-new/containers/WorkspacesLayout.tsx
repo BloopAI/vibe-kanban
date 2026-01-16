@@ -96,6 +96,13 @@ export function WorkspacesLayout() {
   // Track previous create mode to detect workspace creation completion
   const prevIsCreateModeRef = useRef<boolean>(isCreateMode);
 
+  // Mobile: hide sidebar when in create mode (show git panel + chat by default)
+  useEffect(() => {
+    if (isMobile && isCreateMode && isLeftSidebarVisible) {
+      setLeftSidebarVisible(false);
+    }
+  }, [isMobile, isCreateMode, isLeftSidebarVisible, setLeftSidebarVisible]);
+
   // Mobile: transition from create mode to chat-only view after workspace creation
   useEffect(() => {
     if (isMobile && prevIsCreateModeRef.current && !isCreateMode) {
