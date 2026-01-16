@@ -375,7 +375,10 @@ pub async fn create_workspace_from_pr(
     let create_task = CreateTask {
         project_id: payload.project_id,
         title: pr_info.title.clone(),
-        description: Some(format!("Created from PR #{}: {}", pr_info.number, pr_info.url)),
+        description: Some(format!(
+            "Created from PR #{}: {}",
+            pr_info.number, pr_info.url
+        )),
         status: Some(TaskStatus::InProgress),
         parent_workspace_id: None,
         image_ids: None,
