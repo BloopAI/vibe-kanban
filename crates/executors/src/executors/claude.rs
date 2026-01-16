@@ -133,7 +133,6 @@ impl ClaudeCode {
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
         let mut hooks = serde_json::Map::new();
 
-        // Add Stop hook for git status check if commit_reminder is enabled
         if self.commit_reminder.unwrap_or(false) {
             hooks.insert(
                 "Stop".to_string(),

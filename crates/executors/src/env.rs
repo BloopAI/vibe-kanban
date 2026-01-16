@@ -7,7 +7,6 @@ use crate::command::CmdOverrides;
 /// Repository context for executor operations
 #[derive(Debug, Clone, Default)]
 pub struct RepoContext {
-    /// Root directory of the workspace
     pub workspace_root: PathBuf,
     /// Names of repositories in the workspace (subdirectory names)
     pub repo_names: Vec<String>,
@@ -21,7 +20,6 @@ impl RepoContext {
         }
     }
 
-    /// Get full paths to all repos
     pub fn repo_paths(&self) -> Vec<PathBuf> {
         self.repo_names
             .iter()

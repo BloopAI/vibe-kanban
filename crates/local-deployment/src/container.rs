@@ -311,14 +311,12 @@ impl LocalContainerService {
         Ok(repos_with_changes)
     }
 
-    /// Check if any commits were made during execution by comparing before_head_commit with current HEAD.
     async fn has_commits_from_execution(
         &self,
         ctx: &ExecutionContext,
     ) -> Result<bool, ContainerError> {
         let workspace_root = self.workspace_to_current_dir(&ctx.workspace);
 
-        // Get repo states for this execution
         let repo_states = ExecutionProcessRepoState::find_by_execution_process_id(
             &self.db.pool,
             ctx.execution_process.id,
@@ -329,13 +327,11 @@ impl LocalContainerService {
             let repo_path = workspace_root.join(&repo.name);
             let current_head = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
 
-            // Find the before_head_commit for this repo
             let before_head = repo_states
                 .iter()
                 .find(|s| s.repo_id == repo.id)
                 .and_then(|s| s.before_head_commit.clone());
 
-            // If HEAD changed, commits were made
             if current_head != before_head {
                 return Ok(true);
             }
@@ -1115,7 +1111,6 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        // Build RepoContext for the executor
         let repos = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
         let repo_names: Vec<String> = repos.iter().map(|r| r.name.clone()).collect();
         let repo_context = RepoContext::new(current_dir.clone(), repo_names);

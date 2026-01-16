@@ -205,14 +205,12 @@ async fn check_git_status(repo_context: &RepoContext) -> serde_json::Value {
     let repo_paths = repo_context.repo_paths();
 
     if repo_paths.is_empty() {
-        // No repos configured, allow stop
         return serde_json::json!({"decision": "approve"});
     }
 
     let mut all_status = String::new();
 
     for repo_path in &repo_paths {
-        // Skip if not a git repo
         if !repo_path.join(".git").exists() {
             continue;
         }
