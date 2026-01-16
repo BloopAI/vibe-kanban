@@ -345,22 +345,30 @@ export const useUiPreferencesStore = create<State>()(
         };
 
         switch (panel) {
-          case 'sidebar':
-            set({
-              ...hideAll,
-              isLeftSidebarVisible: true,
-              ...(workspaceId && {
-                workspacePanelStates: {
-                  ...get().workspacePanelStates,
-                  [workspaceId]: {
-                    ...(get().workspacePanelStates[workspaceId] ??
-                      DEFAULT_WORKSPACE_PANEL_STATE),
-                    ...hideAllWorkspace,
+          case 'sidebar': {
+            const state = get();
+            // Toggle sidebar: if already visible, hide it (return to default view)
+            if (state.isLeftSidebarVisible) {
+              set({ isLeftSidebarVisible: false });
+            } else {
+              // Show sidebar, hide other panels
+              set({
+                ...hideAll,
+                isLeftSidebarVisible: true,
+                ...(workspaceId && {
+                  workspacePanelStates: {
+                    ...state.workspacePanelStates,
+                    [workspaceId]: {
+                      ...(state.workspacePanelStates[workspaceId] ??
+                        DEFAULT_WORKSPACE_PANEL_STATE),
+                      ...hideAllWorkspace,
+                    },
                   },
-                },
-              }),
-            });
+                }),
+              });
+            }
             break;
+          }
           case 'chat':
             set({
               ...hideAll,
