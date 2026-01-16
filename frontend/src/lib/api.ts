@@ -97,6 +97,7 @@ import {
   CreateGitHubLinkRequest,
   SyncResult,
   GitHubIssueMapping,
+  TaskProperty,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -447,6 +448,20 @@ export const tasksApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Task | null>(response);
+  },
+
+  getProperties: async (taskId: string): Promise<TaskProperty[]> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/properties`);
+    return handleApiResponse<TaskProperty[]>(response);
+  },
+
+  getBulkProperties: async (
+    taskIds: string[]
+  ): Promise<Record<string, TaskProperty[]>> => {
+    const response = await makeRequest(
+      `/api/tasks/properties?task_ids=${taskIds.join(',')}`
+    );
+    return handleApiResponse<Record<string, TaskProperty[]>>(response);
   },
 };
 

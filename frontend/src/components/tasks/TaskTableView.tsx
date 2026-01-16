@@ -11,6 +11,7 @@ import { TaskTableRow } from './TaskTableRow';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { useTaskProperties } from '@/hooks/useTaskProperties';
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import type { KanbanColumnItem, KanbanColumns } from './TaskKanbanBoard';
@@ -71,6 +72,15 @@ function TaskTableViewComponent({
     return tasks;
   }, [columns]);
 
+  // Get task IDs for bulk property fetch
+  const taskIds = useMemo(
+    () => allTasks.map(({ item }) => item.task.id),
+    [allTasks]
+  );
+
+  // Fetch properties for all tasks
+  const { data: taskProperties } = useTaskProperties(taskIds);
+
   const isEmpty = allTasks.length === 0;
 
   if (isEmpty) {
@@ -95,7 +105,7 @@ function TaskTableViewComponent({
     <div className="w-full h-full overflow-auto px-4 sm:px-6 py-6">
       <div className="max-w-7xl mx-auto">
         <div className="rounded-2xl overflow-hidden bg-white dark:bg-slate-800/60 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.4)]">
-          <Table className="min-w-[600px]">
+          <Table className="min-w-[700px]">
             <TableHead>
               <TableRow className="border-b border-border/30 bg-muted/30">
                 <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 min-w-[200px]">
@@ -104,14 +114,17 @@ function TaskTableViewComponent({
                 <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[120px]">
                   {t('table.status', { defaultValue: 'Status' })}
                 </TableHeaderCell>
-                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[80px] hidden sm:table-cell">
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[100px] hidden sm:table-cell">
+                  {t('table.priority', { defaultValue: 'Priority' })}
+                </TableHeaderCell>
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[100px] hidden lg:table-cell">
+                  {t('table.genre', { defaultValue: 'Genre' })}
+                </TableHeaderCell>
+                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[100px] hidden md:table-cell">
                   {t('table.assignee', { defaultValue: 'Assignee' })}
                 </TableHeaderCell>
                 <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[80px]">
                   {t('table.progress', { defaultValue: 'Progress' })}
-                </TableHeaderCell>
-                <TableHeaderCell className="py-4 px-5 font-medium text-foreground/70 w-[100px] hidden md:table-cell">
-                  {t('table.created', { defaultValue: 'Created' })}
                 </TableHeaderCell>
                 <TableHeaderCell className="py-4 px-5 font-medium w-[60px]">
                   <span className="sr-only">
@@ -123,11 +136,13 @@ function TaskTableViewComponent({
             <TableBody>
               {allTasks.map(({ item, sharedTask }) => {
                 if (item.type !== 'task') return null;
+                const props = taskProperties?.[item.task.id];
                 return (
                   <TaskTableRow
                     key={item.task.id}
                     task={item.task}
                     sharedTask={sharedTask}
+                    taskProps={props}
                     onViewDetails={onViewTaskDetails}
                     isSelected={selectedTaskId === item.task.id}
                   />

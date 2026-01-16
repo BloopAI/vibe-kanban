@@ -192,9 +192,31 @@ struct ItemsConnection {
 #[derive(Debug, Deserialize)]
 struct ItemNode {
     id: String,
+    #[serde(default, deserialize_with = "deserialize_content")]
     content: Option<IssueContent>,
     #[serde(rename = "fieldValues")]
     field_values: FieldValuesConnection,
+}
+
+/// Custom deserializer that handles empty objects `{}` as None
+fn deserialize_content<'de, D>(deserializer: D) -> Result<Option<IssueContent>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    // First try to deserialize as a generic Value
+    let value = serde_json::Value::deserialize(deserializer)?;
+
+    match value {
+        serde_json::Value::Null => Ok(None),
+        serde_json::Value::Object(obj) if obj.is_empty() => Ok(None),
+        serde_json::Value::Object(_) => {
+            // Try to deserialize as IssueContent
+            serde_json::from_value(value).map(Some).map_err(D::Error::custom)
+        }
+        _ => Err(D::Error::custom("expected object or null for content")),
+    }
 }
 
 #[derive(Debug, Deserialize)]

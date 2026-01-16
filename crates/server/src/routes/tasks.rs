@@ -16,6 +16,7 @@ use db::models::{
     image::TaskImage,
     repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    task_property::TaskProperty,
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -457,11 +458,49 @@ pub async fn share_task(
     })))
 }
 
+pub async fn get_task_properties(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskProperty>>>, ApiError> {
+    let properties = TaskProperty::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(properties)))
+}
+
+/// Bulk fetch task properties for multiple tasks
+#[derive(Debug, Deserialize)]
+pub struct BulkTaskPropertiesQuery {
+    pub task_ids: String, // Comma-separated UUIDs
+}
+
+pub async fn get_bulk_task_properties(
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<BulkTaskPropertiesQuery>,
+) -> Result<ResponseJson<ApiResponse<std::collections::HashMap<Uuid, Vec<TaskProperty>>>>, ApiError>
+{
+    use std::collections::HashMap;
+
+    let task_ids: Vec<Uuid> = query
+        .task_ids
+        .split(',')
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+
+    let mut result: HashMap<Uuid, Vec<TaskProperty>> = HashMap::new();
+
+    for task_id in task_ids {
+        let properties = TaskProperty::find_by_task_id(&deployment.db().pool, task_id).await?;
+        result.insert(task_id, properties);
+    }
+
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
         .route("/", delete(delete_task))
-        .route("/share", post(share_task));
+        .route("/share", post(share_task))
+        .route("/properties", get(get_task_properties));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
@@ -472,6 +511,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_tasks).post(create_task))
         .route("/stream/ws", get(stream_tasks_ws))
         .route("/create-and-start", post(create_task_and_start))
+        .route("/properties", get(get_bulk_task_properties))
         .nest("/{task_id}", task_id_router);
 
     // mount under /projects/:project_id/tasks

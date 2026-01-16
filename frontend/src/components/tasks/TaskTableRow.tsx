@@ -4,14 +4,15 @@ import { TableRow, TableCell } from '@/components/ui/table/table';
 import { StatusBadge } from './StatusBadge';
 import { UserAvatar } from './UserAvatar';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
-import { formatRelativeTime } from '@/utils/date';
 import { cn } from '@/lib/utils';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import type { ParsedTaskProperties } from '@/hooks/useTaskProperties';
 
 interface TaskTableRowProps {
   task: TaskWithAttemptStatus;
   sharedTask?: SharedTaskRecord;
+  taskProps?: ParsedTaskProperties[string];
   onViewDetails: (task: TaskWithAttemptStatus) => void;
   isSelected?: boolean;
 }
@@ -19,6 +20,7 @@ interface TaskTableRowProps {
 function TaskTableRowComponent({
   task,
   sharedTask,
+  taskProps,
   onViewDetails,
   isSelected,
 }: TaskTableRowProps) {
@@ -64,21 +66,83 @@ function TaskTableRowComponent({
         </div>
       </TableCell>
 
-      {/* Status */}
+      {/* Status - show GitHub status if available, otherwise Vibe status */}
       <TableCell className="py-4 px-5">
-        <StatusBadge status={task.status} />
+        {taskProps?.githubStatus ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+            {taskProps.githubStatus}
+          </span>
+        ) : (
+          <StatusBadge status={task.status} />
+        )}
       </TableCell>
 
-      {/* Assignee - hidden on small screens */}
+      {/* Priority - hidden on small screens */}
       <TableCell className="py-4 px-5 hidden sm:table-cell">
-        {sharedTask && (
+        {taskProps?.githubPriority && (
+          <span
+            className={cn(
+              'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+              // P0-P3 priority labels
+              (taskProps.githubPriority === 'P0' ||
+                taskProps.githubPriority.toLowerCase() === 'critical') &&
+                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+              (taskProps.githubPriority === 'P1' ||
+                taskProps.githubPriority.toLowerCase() === 'high') &&
+                'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+              (taskProps.githubPriority === 'P2' ||
+                taskProps.githubPriority.toLowerCase() === 'medium') &&
+                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+              (taskProps.githubPriority === 'P3' ||
+                taskProps.githubPriority.toLowerCase() === 'low') &&
+                'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+              // Default for unknown priorities
+              !['P0', 'P1', 'P2', 'P3', 'critical', 'high', 'medium', 'low'].includes(
+                taskProps.githubPriority.toLowerCase()
+              ) && 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+            )}
+          >
+            {taskProps.githubPriority}
+          </span>
+        )}
+      </TableCell>
+
+      {/* Genre - hidden on large screens */}
+      <TableCell className="py-4 px-5 hidden lg:table-cell">
+        {taskProps?.['ジャンル'] != null && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
+            {taskProps['ジャンル'] as string}
+          </span>
+        )}
+      </TableCell>
+
+      {/* Assignee - hidden on medium screens */}
+      <TableCell className="py-4 px-5 hidden md:table-cell">
+        {taskProps?.githubAssignees && taskProps.githubAssignees.length > 0 ? (
+          <div className="flex items-center gap-1">
+            {taskProps.githubAssignees.slice(0, 2).map((assignee) => (
+              <span
+                key={assignee}
+                className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary/20 text-primary text-xs font-medium"
+                title={assignee}
+              >
+                {assignee.slice(0, 2).toUpperCase()}
+              </span>
+            ))}
+            {taskProps.githubAssignees.length > 2 && (
+              <span className="text-xs text-muted-foreground">
+                +{taskProps.githubAssignees.length - 2}
+              </span>
+            )}
+          </div>
+        ) : sharedTask ? (
           <UserAvatar
             firstName={sharedTask.assignee_first_name}
             lastName={sharedTask.assignee_last_name}
             username={sharedTask.assignee_username}
             className="h-6 w-6"
           />
-        )}
+        ) : null}
       </TableCell>
 
       {/* Progress indicators */}
@@ -91,11 +155,6 @@ function TaskTableRowComponent({
             <XCircle className="h-4 w-4 text-destructive" />
           )}
         </div>
-      </TableCell>
-
-      {/* Created at - hidden on medium screens */}
-      <TableCell className="py-4 px-5 text-foreground/50 text-sm whitespace-nowrap hidden md:table-cell">
-        {formatRelativeTime(task.created_at)}
       </TableCell>
 
       {/* Actions */}

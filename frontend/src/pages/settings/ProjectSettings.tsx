@@ -27,7 +27,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import { GitHubSettings } from '@/components/settings/GitHubSettings';
+import { TaskImportSettings } from '@/components/settings/TaskImportSettings';
 import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -543,8 +543,8 @@ export function ProjectSettings() {
             </CardContent>
           </Card>
 
-          {/* GitHub Integration Section */}
-          <GitHubSettings projectId={selectedProject.id} />
+          {/* Task Import Section */}
+          <TaskImportSettings projectId={selectedProject.id} />
 
           {/* Sticky Save Button for Project Name */}
           {hasUnsavedChanges && (

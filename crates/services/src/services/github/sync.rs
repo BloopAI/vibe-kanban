@@ -271,14 +271,9 @@ impl GitHubSyncService {
         issue: &GitHubIssue,
         item: &GitHubProjectItem,
     ) -> Result<Uuid, GitHubSyncError> {
-        // Determine status from project field values
-        let project_status = item
-            .field_values
-            .iter()
-            .find(|fv| fv.field_name.to_lowercase() == "status")
-            .map(|fv| fv.value.as_str());
-
-        let status = StatusMapping::github_to_vibe(&issue.state, project_status);
+        // All imported tasks start as Todo (agent not started)
+        // GitHub status is stored in task_properties for reference
+        let status = TaskStatus::Todo;
 
         // Create task
         let task_id = Uuid::new_v4();
@@ -297,8 +292,8 @@ impl GitHubSyncService {
         )
         .await?;
 
-        // Store additional properties
-        self.sync_issue_properties(pool, task.id, issue).await?;
+        // Store additional properties (including GitHub status)
+        self.sync_issue_properties(pool, task.id, issue, item).await?;
 
         info!(
             "Created task {} from GitHub issue #{}",
@@ -316,34 +311,26 @@ impl GitHubSyncService {
         issue: &GitHubIssue,
         item: &GitHubProjectItem,
     ) -> Result<(), GitHubSyncError> {
-        // Determine status from project field values
-        let project_status = item
-            .field_values
-            .iter()
-            .find(|fv| fv.field_name.to_lowercase() == "status")
-            .map(|fv| fv.value.as_str());
-
-        let status = StatusMapping::github_to_vibe(&issue.state, project_status);
-
-        // Get the existing task to get project_id
+        // Get the existing task to preserve agent workflow status
         let existing_task = Task::find_by_id(pool, task_id)
             .await?
             .ok_or_else(|| GitHubSyncError::InvalidMapping(format!("Task {} not found", task_id)))?;
 
-        // Update task using the full update function
+        // Update task: keep existing status (agent workflow), only update title/description
+        // GitHub status is stored in task_properties
         Task::update(
             pool,
             task_id,
             existing_task.project_id,
             issue.title.clone(),
             issue.body.clone(),
-            status,
+            existing_task.status, // Preserve agent workflow status
             existing_task.parent_workspace_id,
         )
         .await?;
 
-        // Update properties
-        self.sync_issue_properties(pool, task_id, issue).await?;
+        // Update properties (including GitHub status)
+        self.sync_issue_properties(pool, task_id, issue, item).await?;
 
         debug!(
             "Updated task {} from GitHub issue #{}",
@@ -359,6 +346,7 @@ impl GitHubSyncService {
         pool: &SqlitePool,
         task_id: Uuid,
         issue: &GitHubIssue,
+        item: &GitHubProjectItem,
     ) -> Result<(), GitHubSyncError> {
         // Sync labels
         if !issue.labels.is_empty() {
@@ -402,6 +390,21 @@ impl GitHubSyncService {
                     task_id,
                     property_name: "github_assignees".to_string(),
                     property_value: assignees_json,
+                    source: Some(PropertySource::Github),
+                },
+            )
+            .await?;
+        }
+
+        // Sync GitHub Project field values (Status, Priority, ジャンル, etc.)
+        for field_value in &item.field_values {
+            let property_name = format!("github_{}", field_value.field_name.to_lowercase().replace(' ', "_"));
+            TaskProperty::upsert(
+                pool,
+                &CreateTaskProperty {
+                    task_id,
+                    property_name,
+                    property_value: field_value.value.clone(),
                     source: Some(PropertySource::Github),
                 },
             )

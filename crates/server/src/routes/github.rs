@@ -138,7 +138,7 @@ pub async fn create_github_link(
 pub async fn delete_github_link(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    Path(link_id): Path<Uuid>,
+    Path((_project_id, link_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Verify the link belongs to this project
     let link = GitHubProjectLink::find_by_id(&deployment.db().pool, link_id)
@@ -170,7 +170,7 @@ pub async fn delete_github_link(
 pub async fn toggle_github_link_sync(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    Path(link_id): Path<Uuid>,
+    Path((_project_id, link_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<GitHubProjectLink>>, ApiError> {
     // Verify the link belongs to this project
     let link = GitHubProjectLink::find_by_id(&deployment.db().pool, link_id)
@@ -197,7 +197,7 @@ pub async fn toggle_github_link_sync(
 pub async fn sync_github_link(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    Path(link_id): Path<Uuid>,
+    Path((_project_id, link_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<SyncResult>>, ApiError> {
     // Verify the link belongs to this project
     let link = GitHubProjectLink::find_by_id(&deployment.db().pool, link_id)
@@ -241,7 +241,7 @@ pub async fn sync_github_link(
 pub async fn get_github_link_mappings(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    Path(link_id): Path<Uuid>,
+    Path((_project_id, link_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<Vec<GitHubIssueMapping>>>, ApiError> {
     // Verify the link belongs to this project
     let link = GitHubProjectLink::find_by_id(&deployment.db().pool, link_id)
