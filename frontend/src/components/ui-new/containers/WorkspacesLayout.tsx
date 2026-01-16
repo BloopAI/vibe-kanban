@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -16,11 +16,13 @@ import { NavbarContainer } from '@/components/ui-new/containers/NavbarContainer'
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
+  useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
@@ -75,6 +77,9 @@ export function WorkspacesLayout() {
     startNewSession,
   } = useWorkspaceContext();
 
+  // Mobile detection (< 640px is Tailwind's sm breakpoint)
+  const isMobile = useMediaQuery('(max-width: 639px)');
+
   // Use workspace-specific panel state (pass undefined when in create mode)
   const {
     isLeftSidebarVisible,
@@ -84,6 +89,46 @@ export function WorkspacesLayout() {
     setLeftSidebarVisible,
     setLeftMainPanelVisible,
   } = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
+
+  // Store setters for mobile transitions
+  const setRightSidebarVisible = useUiPreferencesStore(
+    (s) => s.setRightSidebarVisible
+  );
+
+  // Track previous create mode to detect transitions
+  const prevIsCreateModeRef = useRef<boolean | null>(null);
+
+  // Mobile: handle create mode transitions
+  useEffect(() => {
+    // Skip on desktop
+    if (!isMobile) {
+      prevIsCreateModeRef.current = isCreateMode;
+      return;
+    }
+
+    const wasCreateMode = prevIsCreateModeRef.current;
+    prevIsCreateModeRef.current = isCreateMode;
+
+    // Entering create mode (including initial load in create mode)
+    if (isCreateMode && (wasCreateMode === false || wasCreateMode === null)) {
+      // Hide sidebar to show git panel + chat by default
+      setLeftSidebarVisible(false);
+    }
+
+    // Leaving create mode (workspace was created)
+    if (!isCreateMode && wasCreateMode === true) {
+      // Show only chat panel
+      setLeftSidebarVisible(false);
+      setLeftMainPanelVisible(true);
+      setRightSidebarVisible(false);
+    }
+  }, [
+    isMobile,
+    isCreateMode,
+    setLeftSidebarVisible,
+    setLeftMainPanelVisible,
+    setRightSidebarVisible,
+  ]);
 
   const {
     config,
@@ -104,13 +149,16 @@ export function WorkspacesLayout() {
     WorkspacesGuideDialog.show().finally(() => WorkspacesGuideDialog.hide());
   }, [configLoading, config?.showcases?.seen_features, updateAndSaveConfig]);
 
-  // Ensure left panels visible when right main panel hidden
+  // Ensure left panels visible when right main panel hidden (desktop only)
   useEffect(() => {
+    // Skip on mobile - mobile has its own panel management
+    if (isMobile) return;
     if (rightMainPanelMode === null) {
       setLeftSidebarVisible(true);
       if (!isLeftMainPanelVisible) setLeftMainPanelVisible(true);
     }
   }, [
+    isMobile,
     isLeftMainPanelVisible,
     rightMainPanelMode,
     setLeftSidebarVisible,
@@ -135,6 +183,99 @@ export function WorkspacesLayout() {
       setRightMainPanelSize(layout['right-main']);
   };
 
+  // Mobile: render content based on which panel is visible (one at a time)
+  const renderMobileContent = () => {
+    // Sidebar takes priority if visible (works in both create and non-create mode)
+    if (isLeftSidebarVisible) {
+      return <WorkspacesSidebarContainer />;
+    }
+
+    // Create mode on mobile: git panel on top, chat below
+    if (isCreateMode) {
+      return (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-hidden border-b border-border">
+            <RightSidebar
+              isCreateMode={isCreateMode}
+              rightMainPanelMode={rightMainPanelMode}
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+            />
+          </div>
+          <div className="shrink-0 overflow-hidden">
+            <CreateChatBoxContainer />
+          </div>
+        </div>
+      );
+    }
+
+    // Non-create mode: show one panel at a time (radio button behavior)
+
+    if (isRightSidebarVisible) {
+      return (
+        <RightSidebar
+          isCreateMode={isCreateMode}
+          rightMainPanelMode={rightMainPanelMode}
+          selectedWorkspace={selectedWorkspace}
+          repos={repos}
+        />
+      );
+    }
+
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES) {
+      return <ChangesPanelContainer attemptId={selectedWorkspace?.id} />;
+    }
+
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS) {
+      return <LogsContentContainer />;
+    }
+
+    if (rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW) {
+      return <PreviewBrowserContainer attemptId={selectedWorkspace?.id} />;
+    }
+
+    // Default: show chat panel
+    return (
+      <WorkspacesMainContainer
+        selectedWorkspace={selectedWorkspace ?? null}
+        selectedSession={selectedSession}
+        sessions={sessions}
+        onSelectSession={selectSession}
+        isLoading={isLoading}
+        isNewSessionMode={isNewSessionMode}
+        onStartNewSession={startNewSession}
+      />
+    );
+  };
+
+  // Mobile layout: single panel at a time, full width
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen">
+        <NavbarContainer />
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ModeProvider
+            isCreateMode={isCreateMode}
+            executionProps={{
+              key: `${selectedWorkspace?.id}-${selectedSessionId}`,
+              attemptId: selectedWorkspace?.id,
+              sessionId: selectedSessionId,
+            }}
+          >
+            <ReviewProvider attemptId={selectedWorkspace?.id}>
+              <LogsPanelProvider>
+                <ChangesViewProvider>
+                  {renderMobileContent()}
+                </ChangesViewProvider>
+              </LogsPanelProvider>
+            </ReviewProvider>
+          </ModeProvider>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout: resizable panels
   return (
     <div className="flex flex-col h-screen">
       <NavbarContainer />

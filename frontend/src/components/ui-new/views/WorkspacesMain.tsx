@@ -9,6 +9,7 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface DiffStats {
   filesChanged: number;
@@ -45,6 +46,9 @@ export function WorkspacesMain({
   const { t } = useTranslation(['tasks', 'common']);
   const { session } = workspaceWithSession ?? {};
 
+  // Mobile detection (< 640px is Tailwind's sm breakpoint)
+  const isMobile = useMediaQuery('(max-width: 639px)');
+
   // Always render the main structure to prevent chat box flash during workspace transitions
   return (
     <main
@@ -80,6 +84,10 @@ export function WorkspacesMain({
                 </div>
               </div>
             )}
+            {/* Context Bar - static horizontal on mobile, above chat box */}
+            {isMobile && workspaceWithSession && (
+              <ContextBarContainer containerRef={containerRef} />
+            )}
             {/* Chat box - always rendered to prevent flash during workspace switch */}
             <div className="flex justify-center @container pl-px">
               <SessionChatBoxContainer
@@ -98,8 +106,8 @@ export function WorkspacesMain({
           </MessageEditProvider>
         </EntriesProvider>
       </ApprovalFeedbackProvider>
-      {/* Context Bar - floating toolbar */}
-      {workspaceWithSession && (
+      {/* Context Bar - floating toolbar on desktop */}
+      {!isMobile && workspaceWithSession && (
         <ContextBarContainer containerRef={containerRef} />
       )}
     </main>

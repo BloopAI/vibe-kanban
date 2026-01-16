@@ -23,6 +23,7 @@ import {
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import type {
   Workspace as ApiWorkspace,
   Session,
@@ -181,16 +182,17 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           console.warn('Failed to mark workspace as seen:', error);
         });
       navigate(`/workspaces/${id}`);
+      // On mobile, switch to chat panel (hides sidebar)
+      useUiPreferencesStore.getState().showPanelMobile('chat', id);
     },
     [navigate, queryClient]
   );
 
-  const navigateToCreate = useMemo(
-    () => () => {
-      navigate('/workspaces/create');
-    },
-    [navigate]
-  );
+  const navigateToCreate = useCallback(() => {
+    navigate('/workspaces/create');
+    // On mobile, hide sidebar to show create mode panels
+    useUiPreferencesStore.getState().setLeftSidebarVisible(false);
+  }, [navigate]);
 
   const value = useMemo(
     () => ({
