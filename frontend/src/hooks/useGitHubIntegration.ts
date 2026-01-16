@@ -13,6 +13,7 @@ import type {
 export const githubQueryKeys = {
   status: ['github', 'status'] as const,
   projects: ['github', 'projects'] as const,
+  orgProjects: (org: string) => ['github', 'orgProjects', org] as const,
   links: (projectId: string) => ['github', 'links', projectId] as const,
   mappings: (projectId: string, linkId: string) =>
     ['github', 'mappings', projectId, linkId] as const,
@@ -31,13 +32,25 @@ export function useGitHubStatus() {
 }
 
 /**
- * Hook for fetching available GitHub Projects
+ * Hook for fetching available GitHub Projects for the user
  */
 export function useGitHubProjects(options?: { enabled?: boolean }) {
   return useQuery<GitHubProject[]>({
     queryKey: githubQueryKeys.projects,
     queryFn: () => githubApi.getProjects(),
     enabled: options?.enabled ?? true,
+    staleTime: 60000, // Consider fresh for 1 minute
+  });
+}
+
+/**
+ * Hook for fetching GitHub Projects for an organization
+ */
+export function useGitHubOrgProjects(org: string, options?: { enabled?: boolean }) {
+  return useQuery<GitHubProject[]>({
+    queryKey: githubQueryKeys.orgProjects(org),
+    queryFn: () => githubApi.getOrgProjects(org),
+    enabled: (options?.enabled ?? true) && !!org,
     staleTime: 60000, // Consider fresh for 1 minute
   });
 }

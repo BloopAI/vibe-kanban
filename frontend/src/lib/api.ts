@@ -1410,6 +1410,12 @@ export const githubApi = {
     return handleApiResponse<GitHubProject[]>(response);
   },
 
+  /** Get GitHub Projects for an organization */
+  getOrgProjects: async (org: string): Promise<GitHubProject[]> => {
+    const response = await makeRequest(`/api/github/organizations/${org}/projects`);
+    return handleApiResponse<GitHubProject[]>(response);
+  },
+
   /** Get GitHub project links for a project */
   getLinks: async (projectId: string): Promise<GitHubLinkResponse[]> => {
     const response = await makeRequest(

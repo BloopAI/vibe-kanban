@@ -14,7 +14,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useGitHubStatus, useGitHubProjects } from '@/hooks/useGitHubIntegration';
+import { useGitHubStatus, useGitHubOrgProjects } from '@/hooks/useGitHubIntegration';
 import { defineModal } from '@/lib/modals';
 import {
   Loader2,
@@ -25,6 +25,7 @@ import {
   XCircle,
   Lock,
   Globe,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { GitHubProject } from 'shared/types';
@@ -39,6 +40,8 @@ const GitHubProjectSelectorDialogImpl =
   NiceModal.create<GitHubProjectSelectorDialogProps>(() => {
     const modal = useModal();
     const [searchQuery, setSearchQuery] = useState('');
+    const [orgName, setOrgName] = useState('');
+    const [searchedOrg, setSearchedOrg] = useState('');
     const [selectedProject, setSelectedProject] = useState<GitHubProject | null>(
       null
     );
@@ -46,16 +49,22 @@ const GitHubProjectSelectorDialogImpl =
     // GitHub CLI status
     const { data: status, isLoading: statusLoading } = useGitHubStatus();
 
-    // GitHub Projects
+    // GitHub Organization Projects
     const {
       data: projects,
       isLoading: projectsLoading,
       error: projectsError,
-    } = useGitHubProjects({
-      enabled: status?.available && status?.authenticated,
+    } = useGitHubOrgProjects(searchedOrg, {
+      enabled: status?.available && status?.authenticated && !!searchedOrg,
     });
 
     const isGitHubAvailable = status?.available && status?.authenticated;
+
+    const handleSearchOrg = () => {
+      if (orgName.trim()) {
+        setSearchedOrg(orgName.trim());
+      }
+    };
 
     // Filter projects based on search
     const filteredProjects = useMemo(() => {
@@ -75,6 +84,8 @@ const GitHubProjectSelectorDialogImpl =
     useEffect(() => {
       if (modal.visible) {
         setSearchQuery('');
+        setOrgName('');
+        setSearchedOrg('');
         setSelectedProject(null);
       }
     }, [modal.visible]);
@@ -142,43 +153,93 @@ const GitHubProjectSelectorDialogImpl =
             </div>
           ) : (
             <>
-              {/* Search */}
+              {/* Organization Input */}
               <div className="space-y-2">
-                <Label htmlFor="project-search" className="sr-only">
-                  Search projects
+                <Label htmlFor="org-name" className="text-sm font-medium">
+                  GitHub Organization
                 </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="project-search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search projects..."
-                    className="pl-9"
-                    autoFocus
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="org-name"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSearchOrg();
+                        }
+                      }}
+                      placeholder="Enter organization name (e.g. pineal-inc)"
+                      className="pl-9"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSearchOrg}
+                    disabled={!orgName.trim() || projectsLoading}
+                  >
+                    {projectsLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Search'
+                    )}
+                  </Button>
                 </div>
+                {searchedOrg && (
+                  <p className="text-xs text-muted-foreground">
+                    Showing projects from: <strong>{searchedOrg}</strong>
+                  </p>
+                )}
               </div>
+
+              {/* Project Search (when org is selected) */}
+              {searchedOrg && projects && projects.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="project-search" className="sr-only">
+                    Search projects
+                  </Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="project-search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filter projects..."
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Projects List */}
               <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[400px] -mx-6 px-6">
-                {projectsLoading ? (
+                {!searchedOrg ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Enter a GitHub organization name to search for projects</p>
+                    <p className="text-xs mt-1">
+                      Example: <code className="bg-muted px-1 rounded">pineal-inc</code>
+                    </p>
+                  </div>
+                ) : projectsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span className="ml-2 text-sm text-muted-foreground">
-                      Loading projects...
+                      Loading projects from {searchedOrg}...
                     </span>
                   </div>
                 ) : projectsError ? (
                   <Alert variant="destructive">
                     <AlertDescription>
-                      Failed to load GitHub Projects. Please try again.
+                      Failed to load projects from "{searchedOrg}". Make sure the organization name is correct and you have access.
                     </AlertDescription>
                   </Alert>
                 ) : filteredProjects.length === 0 ? (
                   <div className="text-center py-8 text-sm text-muted-foreground">
                     {projects?.length === 0
-                      ? 'No GitHub Projects found. Create one on GitHub first.'
+                      ? `No GitHub Projects found in ${searchedOrg}. Create one on GitHub first.`
                       : 'No projects match your search.'}
                   </div>
                 ) : (

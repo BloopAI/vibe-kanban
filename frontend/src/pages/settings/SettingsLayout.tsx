@@ -6,7 +6,6 @@ import {
   Server,
   X,
   FolderOpen,
-  Building2,
   GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,10 +28,6 @@ const settingsNavigation = [
   {
     path: 'repos',
     icon: GitBranch,
-  },
-  {
-    path: 'organizations',
-    icon: Building2,
   },
   {
     path: 'agents',

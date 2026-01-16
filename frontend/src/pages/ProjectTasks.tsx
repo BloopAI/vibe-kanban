@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus, X } from 'lucide-react';
+import { AlertTriangle, Plus, X, GitBranch } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
@@ -66,6 +66,7 @@ import TaskPanel from '@/components/panels/TaskPanel';
 import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
 import { useAuth } from '@/hooks';
+import { useGitHubLinks } from '@/hooks/useGitHubIntegration';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -163,6 +164,10 @@ export function ProjectTasks() {
     isLoading: projectLoading,
     error: projectError,
   } = useProject();
+
+  // Check if GitHub is linked to this project
+  const { data: githubLinks = [] } = useGitHubLinks(projectId || '');
+  const hasGitHubLink = githubLinks.length > 0;
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -898,20 +903,38 @@ export function ProjectTasks() {
 
   const taskListContent =
     tasks.length === 0 && !hasSharedTasks ? (
-      <div className="max-w-7xl mx-auto mt-8 px-4">
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">{t('empty.noTasks')}</p>
-            <Button className="mt-4" onClick={handleCreateNewTask}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t('empty.createFirst')}
-            </Button>
+      <div className="flex items-center justify-center h-full p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="text-center py-12">
+            <div className="mb-6">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-lg font-medium mb-2">{t('empty.noTasks')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('empty.startByCreating', { defaultValue: 'タスクを作成して始めましょう' })}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button onClick={handleCreateNewTask} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                {t('empty.createFirst')}
+              </Button>
+              {!hasGitHubLink && projectId && (
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to={`/settings/projects?projectId=${projectId}`}>
+                    <GitBranch className="h-4 w-4 mr-2" />
+                    {t('empty.linkGitHub', { defaultValue: 'GitHub Projectsと同期' })}
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
     ) : !hasVisibleLocalTasks && !hasVisibleSharedTasks ? (
-      <div className="max-w-7xl mx-auto mt-8 px-4">
-        <Card>
+      <div className="flex items-center justify-center h-full p-4">
+        <Card className="max-w-md w-full">
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">
               {t('empty.noSearchResults')}
