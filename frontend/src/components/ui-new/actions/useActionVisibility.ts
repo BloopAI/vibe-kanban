@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
-  RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -10,7 +9,6 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
@@ -40,8 +38,6 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     useDevServer(workspaceId);
   const { data: branchStatus } = useBranchStatus(workspaceId);
   const { isAttemptRunningVisible } = useExecutionProcessesContext();
-  // Mobile detection (< 640px is Tailwind's sm breakpoint)
-  const isMobile = useMediaQuery('(max-width: 639px)');
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -70,48 +66,24 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       branchStatus?.some((repo) => (repo.remote_commits_ahead ?? 0) > 0) ??
       false;
 
-    // Compute derived panel mode states
-    const isChangesMode =
-      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES;
-    const isLogsMode =
-      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS;
-    const isPreviewMode =
-      panelState.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW;
-
     return {
-      // Layout state
-      isChangesMode,
-      isLogsMode,
-      isPreviewMode,
-      isSidebarVisible: panelState.isLeftSidebarVisible,
-      isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
-      isGitPanelVisible: panelState.isRightSidebarVisible,
-      isTerminalVisible: panelState.isTerminalVisible,
-      isCreateMode,
       rightMainPanelMode: panelState.rightMainPanelMode,
-      isMobile,
-
-      // Workspace state
+      isLeftSidebarVisible: panelState.isLeftSidebarVisible,
+      isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
+      isRightSidebarVisible: panelState.isRightSidebarVisible,
+      isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
-
-      // Diff state
       hasDiffs: diffPaths.length > 0,
       diffViewMode,
       isAllDiffsExpanded,
-
-      // Dev server state
       editorType: config?.editor?.editor_type ?? null,
       devServerState,
       runningDevServers,
-
-      // Git panel state
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
       hasOpenPR,
       hasUnpushedCommits,
-
-      // Execution state
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
@@ -119,9 +91,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     panelState.isLeftSidebarVisible,
     panelState.isLeftMainPanelVisible,
     panelState.isRightSidebarVisible,
-    panelState.isTerminalVisible,
     isCreateMode,
-    isMobile,
     workspace,
     repos,
     diffPaths,
