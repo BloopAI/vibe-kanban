@@ -480,7 +480,19 @@ export const Actions = {
     label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isLeftMainPanelVisible,
+    isActive: (ctx) => {
+      if (ctx.isMobile) {
+        // On mobile, chat is active when it's the default view being shown
+        // (not sidebar, not git panel, no right main panel mode, not create mode)
+        return (
+          !ctx.isCreateMode &&
+          !ctx.isSidebarVisible &&
+          !ctx.isGitPanelVisible &&
+          ctx.rightMainPanelMode === null
+        );
+      }
+      return ctx.isLeftMainPanelVisible;
+    },
     // On mobile, always enabled (radio button behavior)
     // On desktop, disabled when chat is the only visible main content
     isEnabled: (ctx) =>
