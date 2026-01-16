@@ -93,25 +93,33 @@ export function WorkspacesLayout() {
     (s) => s.setRightSidebarVisible
   );
 
-  // Track previous create mode to detect workspace creation completion
-  const prevIsCreateModeRef = useRef<boolean>(isCreateMode);
+  // Track previous create mode to detect transitions
+  const prevIsCreateModeRef = useRef<boolean | null>(null);
 
-  // Mobile: hide sidebar when in create mode (show git panel + chat by default)
+  // Mobile: handle create mode transitions
   useEffect(() => {
-    if (isMobile && isCreateMode && isLeftSidebarVisible) {
+    // Skip on desktop
+    if (!isMobile) {
+      prevIsCreateModeRef.current = isCreateMode;
+      return;
+    }
+
+    const wasCreateMode = prevIsCreateModeRef.current;
+    prevIsCreateModeRef.current = isCreateMode;
+
+    // Entering create mode (including initial load in create mode)
+    if (isCreateMode && (wasCreateMode === false || wasCreateMode === null)) {
+      // Hide sidebar to show git panel + chat by default
       setLeftSidebarVisible(false);
     }
-  }, [isMobile, isCreateMode, isLeftSidebarVisible, setLeftSidebarVisible]);
 
-  // Mobile: transition from create mode to chat-only view after workspace creation
-  useEffect(() => {
-    if (isMobile && prevIsCreateModeRef.current && !isCreateMode) {
-      // Just finished creating workspace, show only chat panel
+    // Leaving create mode (workspace was created)
+    if (!isCreateMode && wasCreateMode === true) {
+      // Show only chat panel
       setLeftSidebarVisible(false);
       setLeftMainPanelVisible(true);
       setRightSidebarVisible(false);
     }
-    prevIsCreateModeRef.current = isCreateMode;
   }, [
     isMobile,
     isCreateMode,
