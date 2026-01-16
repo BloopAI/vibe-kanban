@@ -71,10 +71,7 @@ impl PtyService {
             cmd.cwd(&working_dir);
 
             // Configure shell-specific options
-            let shell_name = shell
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("");
+            let shell_name = shell.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
             if shell_name == "powershell.exe" || shell_name == "pwsh.exe" {
                 // PowerShell: use -NoLogo for cleaner startup
