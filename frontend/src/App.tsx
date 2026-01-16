@@ -23,6 +23,8 @@ import {
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
+import { TaskViewProvider } from '@/contexts/TaskViewContext';
+import { TaskFiltersProvider } from '@/contexts/TaskFiltersContext';
 
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
@@ -127,7 +129,9 @@ function AppContent() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
-          <SentryRoutes>
+          <TaskViewProvider>
+          <TaskFiltersProvider>
+            <SentryRoutes>
             {/* ========== LEGACY DESIGN ROUTES ========== */}
             {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
             <Route
@@ -193,6 +197,8 @@ function AppContent() {
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
           </SentryRoutes>
+          </TaskFiltersProvider>
+          </TaskViewProvider>
         </SearchProvider>
       </ThemeProvider>
     </I18nextProvider>

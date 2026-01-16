@@ -46,6 +46,11 @@ import {
 import TaskKanbanBoard, {
   type KanbanColumnItem,
 } from '@/components/tasks/TaskKanbanBoard';
+import { TaskTableView } from '@/components/tasks/TaskTableView';
+import { ViewSwitcher } from '@/components/tasks/ViewSwitcher';
+import { FilterBar } from '@/components/tasks/FilterBar';
+import { useTaskView } from '@/contexts/TaskViewContext';
+import { useTaskFilters } from '@/contexts/TaskFiltersContext';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import {
   useProjectTasks,
@@ -149,6 +154,8 @@ export function ProjectTasks() {
     string | null
   >(null);
   const { userId } = useAuth();
+  const { viewMode } = useTaskView();
+  const { statusFilter } = useTaskFilters();
 
   const {
     projectId,
@@ -437,6 +444,11 @@ export function ProjectTasks() {
         return;
       }
 
+      // Apply status filter
+      if (statusFilter.length > 0 && !statusFilter.includes(statusKey)) {
+        return;
+      }
+
       const isSharedAssignedElsewhere =
         !showSharedTasks &&
         !!sharedTask &&
@@ -459,6 +471,10 @@ export function ProjectTasks() {
     ).forEach(([status, items]) => {
       if (!columns[status]) {
         columns[status] = [];
+      }
+      // Apply status filter to shared tasks too
+      if (statusFilter.length > 0 && !statusFilter.includes(status)) {
+        return;
       }
       items.forEach((sharedTask) => {
         if (!matchesSearch(sharedTask.title, sharedTask.description)) {
@@ -495,6 +511,7 @@ export function ProjectTasks() {
     sharedTasksById,
     showSharedTasks,
     userId,
+    statusFilter,
   ]);
 
   const visibleTasksByStatus = useMemo(() => {
@@ -879,9 +896,9 @@ export function ProjectTasks() {
       : `${truncated}...`;
   };
 
-  const kanbanContent =
+  const taskListContent =
     tasks.length === 0 && !hasSharedTasks ? (
-      <div className="max-w-7xl mx-auto mt-8">
+      <div className="max-w-7xl mx-auto mt-8 px-4">
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">{t('empty.noTasks')}</p>
@@ -893,7 +910,7 @@ export function ProjectTasks() {
         </Card>
       </div>
     ) : !hasVisibleLocalTasks && !hasVisibleSharedTasks ? (
-      <div className="max-w-7xl mx-auto mt-8">
+      <div className="max-w-7xl mx-auto mt-8 px-4">
         <Card>
           <CardContent className="text-center py-8">
             <p className="text-muted-foreground">
@@ -902,6 +919,15 @@ export function ProjectTasks() {
           </CardContent>
         </Card>
       </div>
+    ) : viewMode === 'table' ? (
+      <TaskTableView
+        columns={kanbanColumns}
+        onViewTaskDetails={handleViewTaskDetails}
+        onViewSharedTask={handleViewSharedTask}
+        selectedTaskId={selectedTask?.id}
+        selectedSharedTaskId={selectedSharedTaskId}
+        onCreateTask={handleCreateNewTask}
+      />
     ) : (
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">
         <TaskKanbanBoard
@@ -916,6 +942,16 @@ export function ProjectTasks() {
         />
       </div>
     );
+
+  const kanbanContent = (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between px-4 py-2 border-b shrink-0 gap-4">
+        <FilterBar />
+        <ViewSwitcher />
+      </div>
+      <div className="flex-1 min-h-0">{taskListContent}</div>
+    </div>
+  );
 
   const rightHeader = selectedTask ? (
     <NewCardHeader
