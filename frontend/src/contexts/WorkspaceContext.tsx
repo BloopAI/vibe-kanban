@@ -183,7 +183,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         });
       navigate(`/workspaces/${id}`);
       // On mobile, switch to chat panel (hides sidebar)
-      useUiPreferencesStore.getState().showPanelMobile('chat');
+      useUiPreferencesStore.getState().showPanelMobile('chat', id);
     },
     [navigate, queryClient]
   );
