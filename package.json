@@ -25,6 +25,8 @@
     "dev:qa": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && concurrently \"pnpm run backend:dev:watch:qa\" \"pnpm run frontend:dev\"",
     "generate-types": "cargo run --bin generate_types",
     "generate-types:check": "cargo run --bin generate_types -- --check",
+    "export-shapes": "cargo run -p remote --bin export-shapes",
+    "export-shapes:check": "cargo run -p remote --bin export-shapes -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "prepare-db:check": "node scripts/prepare-db.js --check",
     "build:npx": "bash ./local-build.sh",
