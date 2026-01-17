@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type Session,
@@ -122,6 +123,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const sessionId = session?.id;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
@@ -306,6 +308,11 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     },
     [setVariantFromHook, saveToScratch, localMessage]
   );
+
+  // Navigate to agent settings to customise variants
+  const handleCustomise = useCallback(() => {
+    navigate('/settings/agents');
+  }, [navigate]);
 
   // Queue interaction
   const {
@@ -638,6 +645,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         selected: selectedVariant,
         options: variantOptions,
         onChange: setSelectedVariant,
+        onCustomise: handleCustomise,
       }}
       session={{
         sessions,

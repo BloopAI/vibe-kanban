@@ -204,7 +204,8 @@
     "defaultPlaceholder": "输入命令或搜索..."
   },
   "chatBox": {
-    "variants": "变体"
+    "variants": "变体",
+    "customise": "自定义"
   },
   "projects": {
     "noProjectFound": "未找到项目",

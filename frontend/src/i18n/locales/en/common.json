@@ -204,7 +204,8 @@
     "defaultPlaceholder": "Type a command or search..."
   },
   "chatBox": {
-    "variants": "Variants"
+    "variants": "Variants",
+    "customise": "Customise"
   },
   "projects": {
     "noProjectFound": "No project found",

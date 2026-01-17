@@ -204,7 +204,8 @@
     "defaultPlaceholder": "コマンドを入力または検索..."
   },
   "chatBox": {
-    "variants": "バリアント"
+    "variants": "バリアント",
+    "customise": "カスタマイズ"
   },
   "projects": {
     "noProjectFound": "プロジェクトが見つかりません",
