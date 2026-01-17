@@ -92,18 +92,24 @@ export function useTerminalWebSocket({
     };
 
     ws.onmessage = (event) => {
+      console.log('[useTerminalWebSocket] onmessage received', { rawData: event.data });
       try {
         const msg: TerminalMessage = JSON.parse(event.data);
+        console.log('[useTerminalWebSocket] parsed message', { msg });
         switch (msg.type) {
           case MESSAGE_TYPES.OUTPUT:
             if (msg.data) {
-              onDataRef.current(decodeBase64(msg.data));
+              const decoded = decodeBase64(msg.data);
+              console.log('[useTerminalWebSocket] OUTPUT decoded', { decoded, onDataRef: onDataRef.current });
+              onDataRef.current(decoded);
             }
             break;
           case MESSAGE_TYPES.ERROR:
+            console.log('[useTerminalWebSocket] ERROR', { message: msg.message });
             onErrorRef.current?.(msg.message || 'Unknown error');
             break;
           case MESSAGE_TYPES.EXIT:
+            console.log('[useTerminalWebSocket] EXIT');
             onExitRef.current?.();
             break;
         }

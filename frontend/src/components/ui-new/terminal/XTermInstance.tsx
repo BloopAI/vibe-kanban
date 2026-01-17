@@ -31,6 +31,7 @@ export function XTermInstance({
   const sendRef = useRef<(data: string) => void>(() => {});
 
   const onData = useCallback((data: string) => {
+    console.log('[XTermInstance] onData callback called', { data, terminalRef: terminalRef.current });
     terminalRef.current?.write(data);
   }, []);
 
