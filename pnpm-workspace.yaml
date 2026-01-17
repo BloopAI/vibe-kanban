@@ -1,6 +1,7 @@
 packages:
   - frontend
   - remote-frontend
+  - npx-cli
 
 onlyBuiltDependencies:
   - '@sentry/cli'
