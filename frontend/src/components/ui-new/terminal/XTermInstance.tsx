@@ -7,14 +7,17 @@ import '@xterm/xterm/css/xterm.css';
 import { useTerminalWebSocket } from '@/hooks/useTerminalWebSocket';
 import { useTheme } from '@/components/ThemeProvider';
 import { getTerminalTheme } from '@/utils/terminalTheme';
+import { useTerminal } from '@/contexts/TerminalContext';
 
 interface XTermInstanceProps {
+  tabId: string;
   workspaceId: string;
   isActive: boolean;
   onClose?: () => void;
 }
 
 export function XTermInstance({
+  tabId,
   workspaceId,
   isActive,
   onClose,
@@ -24,6 +27,7 @@ export function XTermInstance({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initialSizeRef = useRef({ cols: 80, rows: 24 });
   const { theme } = useTheme();
+  const { registerTerminalInstance, getTerminalInstance } = useTerminal();
 
   const onData = useCallback((data: string) => {
     terminalRef.current?.write(data);
@@ -35,14 +39,36 @@ export function XTermInstance({
     return `${protocol}//${host}/api/terminal/ws?workspace_id=${workspaceId}&cols=${initialSizeRef.current.cols}&rows=${initialSizeRef.current.rows}`;
   }, [workspaceId]);
 
+  // Check if we already have a terminal instance for this tab
+  const existingInstance = getTerminalInstance(tabId);
+
   const { send, resize } = useTerminalWebSocket({
     endpoint,
     onData,
     onExit: onClose,
+    // Skip WebSocket connection if we already have an instance (it has its own connection)
+    skip: !!existingInstance,
   });
 
   useEffect(() => {
-    if (!containerRef.current || terminalRef.current) return;
+    if (!containerRef.current) return;
+
+    // Check if we already have a terminal instance for this tab
+    const existing = getTerminalInstance(tabId);
+    if (existing) {
+      // Reattach existing terminal to new container
+      const { terminal, fitAddon } = existing;
+      if (terminal.element) {
+        containerRef.current.appendChild(terminal.element);
+        fitAddon.fit();
+      }
+      terminalRef.current = terminal;
+      fitAddonRef.current = fitAddon;
+      return;
+    }
+
+    // Don't create new terminal if we already have one in our ref
+    if (terminalRef.current) return;
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -64,16 +90,23 @@ export function XTermInstance({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    // Register the terminal instance in context so it survives unmount
+    registerTerminalInstance(tabId, terminal, fitAddon);
+
     terminal.onData((data) => {
       send(data);
     });
 
+    // Cleanup: detach from DOM but don't dispose (context manages disposal)
     return () => {
-      terminal.dispose();
+      // Only detach from DOM, don't dispose - the context will dispose when tab closes
+      if (terminal.element && terminal.element.parentNode) {
+        terminal.element.parentNode.removeChild(terminal.element);
+      }
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [send]);
+  }, [tabId, send, getTerminalInstance, registerTerminalInstance]);
 
   useEffect(() => {
     if (!isActive || !fitAddonRef.current) return;

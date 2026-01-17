@@ -13,6 +13,7 @@ interface UseTerminalWebSocketOptions {
   onData: (data: string) => void;
   onExit?: () => void;
   onError?: (error: string) => void;
+  skip?: boolean;
 }
 
 interface UseTerminalWebSocketReturn {
@@ -38,6 +39,7 @@ export function useTerminalWebSocket({
   onData,
   onExit,
   onError,
+  skip = false,
 }: UseTerminalWebSocketOptions): UseTerminalWebSocketReturn {
   const onDataRef = useRef(onData);
   const onExitRef = useRef(onExit);
@@ -49,7 +51,8 @@ export function useTerminalWebSocket({
     onErrorRef.current = onError;
   }, [onData, onExit, onError]);
 
-  const wsEndpoint = endpoint ? endpoint.replace(/^http/, 'ws') : null;
+  // If skip is true or endpoint is null, pass null to skip WebSocket connection
+  const wsEndpoint = skip || !endpoint ? null : endpoint.replace(/^http/, 'ws');
 
   const { sendMessage, readyState } = useWebSocket(wsEndpoint, {
     onMessage: (event) => {
