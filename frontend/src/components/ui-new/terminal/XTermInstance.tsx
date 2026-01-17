@@ -47,6 +47,7 @@ export function XTermInstance({
   });
 
   useEffect(() => {
+    console.log('[XTermInstance] updating sendRef', { send });
     sendRef.current = send;
   }, [send]);
 
@@ -94,6 +95,7 @@ export function XTermInstance({
     registerTerminalInstance(tabId, terminal, fitAddon);
 
     terminal.onData((data) => {
+      console.log('[XTermInstance] terminal.onData called', { data, sendRef: sendRef.current });
       sendRef.current(data);
     });
 
