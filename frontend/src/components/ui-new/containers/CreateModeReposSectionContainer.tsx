@@ -7,7 +7,8 @@ import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposL
 
 export function CreateModeReposSectionContainer() {
   const { t } = useTranslation(['tasks']);
-  const { repos, removeRepo, targetBranches, setTargetBranch } = useCreateMode();
+  const { repos, removeRepo, targetBranches, setTargetBranch } =
+    useCreateMode();
 
   const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
   const { branchesByRepo } = useMultiRepoBranches(repoIds);

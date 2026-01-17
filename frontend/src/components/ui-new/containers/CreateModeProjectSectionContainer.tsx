@@ -5,7 +5,8 @@ import { ProjectSelectorContainer } from './ProjectSelectorContainer';
 import { CreateProjectDialog } from '@/components/ui-new/dialogs/CreateProjectDialog';
 
 export function CreateModeProjectSectionContainer() {
-  const { selectedProjectId, setSelectedProjectId, clearRepos } = useCreateMode();
+  const { selectedProjectId, setSelectedProjectId, clearRepos } =
+    useCreateMode();
   const { projects } = useProjects();
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
