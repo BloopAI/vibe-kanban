@@ -18,13 +18,14 @@ type Options = {
 
 export function useTaskAttempts(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? 15000; // 15秒に変更
 
   return useQuery<Workspace[]>({
     queryKey: taskAttemptKeys.byTask(taskId),
     queryFn: () => attemptsApi.getAll(taskId!),
     enabled,
     refetchInterval,
+    staleTime: 10000, // 10秒間はキャッシュを使用
   });
 }
 
@@ -34,7 +35,7 @@ export function useTaskAttempts(taskId?: string, opts?: Options) {
  */
 export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!taskId;
-  const refetchInterval = opts?.refetchInterval ?? 5000;
+  const refetchInterval = opts?.refetchInterval ?? 30000; // 30秒に変更（重い処理のため）
 
   return useQuery<WorkspaceWithSession[]>({
     queryKey: taskAttemptKeys.byTaskWithSessions(taskId),
@@ -51,5 +52,6 @@ export function useTaskAttemptsWithSessions(taskId?: string, opts?: Options) {
     },
     enabled,
     refetchInterval,
+    staleTime: 20000, // 20秒間はキャッシュを使用
   });
 }

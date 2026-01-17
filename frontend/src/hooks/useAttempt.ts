@@ -17,5 +17,6 @@ export function useAttempt(attemptId?: string, opts?: Options) {
     queryKey: attemptKeys.byId(attemptId),
     queryFn: () => attemptsApi.get(attemptId!),
     enabled,
+    staleTime: 30000, // 30秒間はキャッシュを使用
   });
 }

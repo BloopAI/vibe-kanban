@@ -13,5 +13,6 @@ export function useProjectRepos(projectId?: string, opts?: Options) {
     queryKey: ['projectRepositories', projectId],
     queryFn: () => projectsApi.getRepositories(projectId!),
     enabled,
+    staleTime: 60000, // 60秒キャッシュ（リポジトリは頻繁に変わらない）
   });
 }

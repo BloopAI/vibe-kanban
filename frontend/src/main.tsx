@@ -57,7 +57,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10分後にガベージコレクト（メモリ節約）
       refetchOnWindowFocus: false,
+      retry: 1, // リトライ回数を1回に制限（デフォルト3回は遅延の原因）
     },
   },
 });

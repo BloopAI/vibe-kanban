@@ -33,31 +33,27 @@ export const ExecutionProcessesProvider: React.FC<{
     error,
   } = useExecutionProcesses(sessionId, { showSoftDeleted: true });
 
-  // Filter out dropped processes (server already filters by session)
-  const visible = useMemo(() => {
-    return executionProcesses.filter((p) => !p.dropped);
-  }, [executionProcesses]);
+  // 単一のuseMemoで全ての派生値を計算（チェーン計算を削減）
+  const value = useMemo<ExecutionProcessesContextType>(() => {
+    // Filter out dropped processes
+    const visible = executionProcesses.filter((p) => !p.dropped);
 
-  const executionProcessesByIdVisible = useMemo(() => {
-    const m: Record<string, ExecutionProcess> = {};
-    for (const p of visible) m[p.id] = p;
-    return m;
-  }, [visible]);
+    // Build visible lookup map
+    const executionProcessesByIdVisible: Record<string, ExecutionProcess> = {};
+    for (const p of visible) {
+      executionProcessesByIdVisible[p.id] = p;
+    }
 
-  const isAttemptRunningVisible = useMemo(
-    () =>
-      visible.some(
-        (process) =>
-          (process.run_reason === 'codingagent' ||
-            process.run_reason === 'setupscript' ||
-            process.run_reason === 'cleanupscript') &&
-          process.status === 'running'
-      ),
-    [visible]
-  );
+    // Check if any visible process is running
+    const isAttemptRunningVisible = visible.some(
+      (process) =>
+        (process.run_reason === 'codingagent' ||
+          process.run_reason === 'setupscript' ||
+          process.run_reason === 'cleanupscript') &&
+        process.status === 'running'
+    );
 
-  const value = useMemo<ExecutionProcessesContextType>(
-    () => ({
+    return {
       executionProcessesAll: executionProcesses,
       executionProcessesByIdAll: executionProcessesById,
       isAttemptRunningAll: isAttemptRunning,
@@ -67,19 +63,8 @@ export const ExecutionProcessesProvider: React.FC<{
       isLoading,
       isConnected,
       error,
-    }),
-    [
-      executionProcesses,
-      executionProcessesById,
-      isAttemptRunning,
-      visible,
-      executionProcessesByIdVisible,
-      isAttemptRunningVisible,
-      isLoading,
-      isConnected,
-      error,
-    ]
-  );
+    };
+  }, [executionProcesses, executionProcessesById, isAttemptRunning, isLoading, isConnected, error]);
 
   return (
     <ExecutionProcessesContext.Provider value={value}>

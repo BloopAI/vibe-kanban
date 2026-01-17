@@ -43,6 +43,7 @@ export function useWorkspaceSessions(
     queryKey: ['workspaceSessions', workspaceId],
     queryFn: () => sessionsApi.getByWorkspace(workspaceId!),
     enabled: enabled && !!workspaceId,
+    staleTime: 30000, // 30秒キャッシュ
   });
 
   // Combined effect: handle workspace changes and auto-select sessions

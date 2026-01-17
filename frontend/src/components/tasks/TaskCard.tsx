@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { Link, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
@@ -24,7 +24,7 @@ interface TaskCardProps {
   sharedTask?: SharedTaskRecord;
 }
 
-export function TaskCard({
+export const TaskCard = memo(function TaskCard({
   task,
   index,
   status,
@@ -142,4 +142,4 @@ export function TaskCard({
       </div>
     </KanbanCard>
   );
-}
+});

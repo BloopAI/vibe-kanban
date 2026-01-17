@@ -18,5 +18,6 @@ export function useTask(taskId?: string, opts?: Options) {
     queryKey: taskKeys.byId(taskId),
     queryFn: () => tasksApi.getById(taskId!),
     enabled,
+    staleTime: 30000, // 30秒キャッシュ
   });
 }
