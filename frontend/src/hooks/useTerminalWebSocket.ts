@@ -142,7 +142,8 @@ export function useTerminalWebSocket({
       ws.onerror = null;
       ws.onclose = null;
       ws.close();
-      wsRef.current = null;
+      // Don't null wsRef - the readyState check handles closed connections
+      // and the next effect run will overwrite with a new WebSocket
     };
   }, [endpoint, enabled]);
 
