@@ -1,4 +1,4 @@
-import { LayoutGrid, Table2 } from 'lucide-react';
+import { LayoutGrid, Table2, GitBranch } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useTaskView, type TaskViewMode } from '@/contexts/TaskViewContext';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,15 @@ export function ViewSwitcher({ className }: ViewSwitcherProps) {
       >
         <Table2 className="h-4 w-4 shrink-0" />
         <span className="hidden sm:inline whitespace-nowrap">テーブル</span>
+      </ToggleGroupItem>
+      <ToggleGroupItem
+        value="dependencies"
+        aria-label="Dependencies view"
+        active={viewMode === 'dependencies'}
+        className="flex flex-row items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium"
+      >
+        <GitBranch className="h-4 w-4 shrink-0" />
+        <span className="hidden sm:inline whitespace-nowrap">依存関係</span>
       </ToggleGroupItem>
     </ToggleGroup>
   );

@@ -75,6 +75,7 @@
     "react-resizable-panels": "^4.0.13",
     "react-router-dom": "^6.8.1",
     "react-virtuoso": "^4.14.0",
+    "reactflow": "^11.11.4",
     "rfc6902": "^5.1.2",
     "simple-icons": "^15.16.0",
     "tailwind-merge": "^2.2.0",
