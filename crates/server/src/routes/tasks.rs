@@ -279,6 +279,13 @@ pub async fn update_task(
     )
     .await?;
 
+    // Update DAG position if provided
+    if payload.dag_position_x.is_some() || payload.dag_position_y.is_some() {
+        let dag_x = payload.dag_position_x.or(existing_task.dag_position_x);
+        let dag_y = payload.dag_position_y.or(existing_task.dag_position_y);
+        Task::update_dag_position(&deployment.db().pool, existing_task.id, dag_x, dag_y).await?;
+    }
+
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;

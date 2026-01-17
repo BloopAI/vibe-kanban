@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks SET dag_position_x = $2, dag_position_y = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "48f8dd20ad195a068603fb86ec88aced23ff46085b730dce0f3fd1683dbdbd7e"
+}
