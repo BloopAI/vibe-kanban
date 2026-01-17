@@ -17,17 +17,14 @@ import {
   PatchTypeWithKey,
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
-import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
-  task?: TaskWithAttemptStatus;
 }
 
 interface MessageListContext {
   attempt: WorkspaceWithSession;
-  task?: TaskWithAttemptStatus;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -56,7 +53,6 @@ const ItemContent: VirtuosoMessageListProps<
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
-  const task = context?.task;
 
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
@@ -64,14 +60,13 @@ const ItemContent: VirtuosoMessageListProps<
   if (data.type === 'STDERR') {
     return <p>{data.content}</p>;
   }
-  if (data.type === 'NORMALIZED_ENTRY') {
+  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
     return (
       <NewDisplayConversationEntry
         expansionKey={data.patchKey}
         entry={data.content}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
-        task={task}
       />
     );
   }
@@ -84,7 +79,7 @@ const computeItemKey: VirtuosoMessageListProps<
   MessageListContext
 >['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
 
-export function ConversationList({ attempt, task }: ConversationListProps) {
+export function ConversationList({ attempt }: ConversationListProps) {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,10 +144,7 @@ export function ConversationList({ attempt, task }: ConversationListProps) {
   useConversationHistory({ attempt, onEntriesUpdated });
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(
-    () => ({ attempt, task }),
-    [attempt, task]
-  );
+  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
