@@ -86,6 +86,7 @@ export function useTerminalWebSocket({
     wsRef.current = ws;
 
     ws.onopen = () => {
+      console.log('[useTerminalWebSocket] WebSocket opened');
       setIsConnected(true);
       setError(null);
     };
@@ -133,10 +134,19 @@ export function useTerminalWebSocket({
   }, [endpoint, enabled]);
 
   const send = useCallback((data: string) => {
+    console.log('[useTerminalWebSocket] send called', {
+      data,
+      wsRef: wsRef.current,
+      readyState: wsRef.current?.readyState,
+      isOpen: wsRef.current?.readyState === WebSocket.OPEN,
+    });
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({ type: MESSAGE_TYPES.INPUT, data: encodeBase64(data) })
       );
+      console.log('[useTerminalWebSocket] message sent');
+    } else {
+      console.log('[useTerminalWebSocket] NOT sent - WebSocket not open');
     }
   }, []);
 
