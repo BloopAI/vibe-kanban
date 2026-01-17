@@ -82,12 +82,12 @@ export function PreviewControls({
             </div>
           ) : devServerProcesses.length > 0 ? (
             <VirtualizedProcessLogs
-                  logs={logs}
-                  error={logsError}
-                  searchQuery=""
-                  matchIndices={[]}
-                  currentMatchIndex={-1}
-                />
+              logs={logs}
+              error={logsError}
+              searchQuery=""
+              matchIndices={[]}
+              currentMatchIndex={-1}
+            />
           ) : null}
         </div>
       </div>
