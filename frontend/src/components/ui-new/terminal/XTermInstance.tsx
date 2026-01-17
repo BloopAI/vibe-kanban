@@ -39,15 +39,10 @@ export function XTermInstance({
     return `${protocol}//${host}/api/terminal/ws?workspace_id=${workspaceId}&cols=${initialSizeRef.current.cols}&rows=${initialSizeRef.current.rows}`;
   }, [workspaceId]);
 
-  // Check if we already have a terminal instance for this tab
-  const existingInstance = getTerminalInstance(tabId);
-
   const { send, resize } = useTerminalWebSocket({
     endpoint,
     onData,
     onExit: onClose,
-    // Only enable WebSocket connection if we don't already have an instance
-    enabled: !existingInstance,
   });
 
   useEffect(() => {
