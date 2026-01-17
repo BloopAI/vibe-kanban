@@ -1,22 +1,14 @@
-import { useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContainer';
 import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
 import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
-import { ProjectSelectorContainer } from '@/components/ui-new/containers/ProjectSelectorContainer';
-import { RecentReposListContainer } from '@/components/ui-new/containers/RecentReposListContainer';
-import { BrowseRepoButtonContainer } from '@/components/ui-new/containers/BrowseRepoButtonContainer';
-import { CreateRepoButtonContainer } from '@/components/ui-new/containers/CreateRepoButtonContainer';
+import { CreateModeProjectSectionContainer } from '@/components/ui-new/containers/CreateModeProjectSectionContainer';
+import { CreateModeReposSectionContainer } from '@/components/ui-new/containers/CreateModeReposSectionContainer';
+import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containers/CreateModeAddReposSectionContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useCreateMode } from '@/contexts/CreateModeContext';
-import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
-import { useProjects } from '@/hooks/useProjects';
-import { CreateProjectDialog } from '@/components/ui-new/dialogs/CreateProjectDialog';
-import { SelectedReposList } from '@/components/ui-new/primitives/SelectedReposList';
-import { WarningIcon } from '@phosphor-icons/react';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
@@ -56,40 +48,6 @@ export function RightSidebar({
   const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
 
-  const {
-    repos: createRepos,
-    addRepo,
-    removeRepo,
-    clearRepos,
-    targetBranches,
-    setTargetBranch,
-    selectedProjectId,
-    setSelectedProjectId,
-  } = useCreateMode();
-  const { projects } = useProjects();
-
-  const repoIds = useMemo(() => createRepos.map((r) => r.id), [createRepos]);
-  const { branchesByRepo } = useMultiRepoBranches(repoIds);
-
-  useEffect(() => {
-    if (!isCreateMode) return;
-    createRepos.forEach((repo) => {
-      const branches = branchesByRepo[repo.id];
-      if (branches && !targetBranches[repo.id]) {
-        const currentBranch = branches.find((b) => b.is_current);
-        if (currentBranch) {
-          setTargetBranch(repo.id, currentBranch.name);
-        }
-      }
-    });
-  }, [
-    isCreateMode,
-    createRepos,
-    branchesByRepo,
-    targetBranches,
-    setTargetBranch,
-  ]);
-
   const [changesExpanded] = usePersistedExpanded(
     PERSIST_KEYS.changesSection,
     true
@@ -110,22 +68,6 @@ export function RightSidebar({
     PERSIST_KEYS.terminalSection,
     true
   );
-
-  const selectedProject = projects.find((p) => p.id === selectedProjectId);
-  const registeredRepoPaths = useMemo(
-    () => createRepos.map((r) => r.path),
-    [createRepos]
-  );
-
-  const handleCreateProject = useCallback(async () => {
-    const result = await CreateProjectDialog.show({});
-    if (result.status === 'saved') {
-      setSelectedProjectId(result.project.id);
-      clearRepos();
-    }
-  }, [setSelectedProjectId, clearRepos]);
-
-  const hasNoRepos = createRepos.length === 0;
 
   const hasUpperContent =
     rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES ||
@@ -151,66 +93,21 @@ export function RightSidebar({
           persistKey: PERSIST_KEYS.gitPanelProject,
           visible: true,
           expanded: true,
-          content: (
-            <div className="p-base">
-              <ProjectSelectorContainer
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                selectedProjectName={selectedProject?.name}
-                onProjectSelect={(p) => setSelectedProjectId(p.id)}
-                onCreateProject={handleCreateProject}
-              />
-            </div>
-          ),
+          content: <CreateModeProjectSectionContainer />,
         },
         {
           title: t('common:sections.repositories'),
           persistKey: PERSIST_KEYS.gitPanelRepositories,
           visible: true,
           expanded: true,
-          content: hasNoRepos ? (
-            <div className="p-base">
-              <div className="flex items-center gap-2 p-base rounded bg-warning/10 border border-warning/20">
-                <WarningIcon className="h-4 w-4 text-warning shrink-0" />
-                <p className="text-sm text-warning">
-                  {t('gitPanel.create.warnings.noReposSelected')}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <SelectedReposList
-              repos={createRepos}
-              onRemove={removeRepo}
-              branchesByRepo={branchesByRepo}
-              selectedBranches={targetBranches}
-              onBranchChange={setTargetBranch}
-            />
-          ),
+          content: <CreateModeReposSectionContainer />,
         },
         {
           title: t('common:sections.addRepositories'),
           persistKey: PERSIST_KEYS.gitPanelAddRepositories,
           visible: true,
           expanded: true,
-          content: (
-            <div className="flex flex-col gap-base p-base">
-              <p className="text-xs text-low font-medium">
-                {t('common:sections.recent')}
-              </p>
-              <RecentReposListContainer
-                registeredRepoPaths={registeredRepoPaths}
-                onRepoRegistered={addRepo}
-              />
-              <p className="text-xs text-low font-medium">
-                {t('common:sections.other')}
-              </p>
-              <BrowseRepoButtonContainer
-                disabled={false}
-                onRepoRegistered={addRepo}
-              />
-              <CreateRepoButtonContainer onRepoCreated={addRepo} />
-            </div>
-          ),
+          content: <CreateModeAddReposSectionContainer />,
         },
       ]
     : buildWorkspaceSections();

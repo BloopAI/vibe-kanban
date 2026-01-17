@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -28,37 +28,6 @@ import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
-
-interface ModeProviderProps {
-  isCreateMode: boolean;
-  executionProps: {
-    key: string;
-    attemptId?: string;
-    sessionId?: string;
-  };
-  children: ReactNode;
-}
-
-function ModeProvider({
-  isCreateMode,
-  executionProps,
-  children,
-}: ModeProviderProps) {
-  if (isCreateMode) {
-    return <CreateModeProvider>{children}</CreateModeProvider>;
-  }
-  return (
-    <CreateModeProvider>
-      <ExecutionProcessesProvider
-        key={executionProps.key}
-        attemptId={executionProps.attemptId}
-        sessionId={executionProps.sessionId}
-      >
-        {children}
-      </ExecutionProcessesProvider>
-    </CreateModeProvider>
-  );
-}
 
 export function WorkspacesLayout() {
   const {
@@ -135,6 +104,89 @@ export function WorkspacesLayout() {
       setRightMainPanelSize(layout['right-main']);
   };
 
+  const mainContent = (
+    <ReviewProvider attemptId={selectedWorkspace?.id}>
+      <LogsPanelProvider>
+        <ChangesViewProvider>
+          <div className="flex h-full">
+            <Group
+              orientation="horizontal"
+              className="flex-1 min-w-0 h-full"
+              defaultLayout={defaultLayout}
+              onLayoutChange={onLayoutChange}
+            >
+              {isLeftMainPanelVisible && (
+                <Panel
+                  id="left-main"
+                  minSize={20}
+                  className="min-w-0 h-full overflow-hidden"
+                >
+                  {isCreateMode ? (
+                    <CreateChatBoxContainer />
+                  ) : (
+                    <WorkspacesMainContainer
+                      selectedWorkspace={selectedWorkspace ?? null}
+                      selectedSession={selectedSession}
+                      sessions={sessions}
+                      onSelectSession={selectSession}
+                      isLoading={isLoading}
+                      isNewSessionMode={isNewSessionMode}
+                      onStartNewSession={startNewSession}
+                    />
+                  )}
+                </Panel>
+              )}
+
+              {isLeftMainPanelVisible && rightMainPanelMode !== null && (
+                <Separator
+                  id="main-separator"
+                  className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+                />
+              )}
+
+              {rightMainPanelMode !== null && (
+                <Panel
+                  id="right-main"
+                  minSize={20}
+                  className="min-w-0 h-full overflow-hidden"
+                >
+                  {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+                    selectedWorkspace?.id && (
+                      <ChangesPanelContainer
+                        className=""
+                        attemptId={selectedWorkspace.id}
+                      />
+                    )}
+                  {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS && (
+                    <LogsContentContainer className="" />
+                  )}
+                  {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW &&
+                    selectedWorkspace?.id && (
+                      <PreviewBrowserContainer
+                        attemptId={selectedWorkspace.id}
+                        className=""
+                      />
+                    )}
+                </Panel>
+              )}
+            </Group>
+
+            {isRightSidebarVisible && (
+              <div className="w-[300px] shrink-0 h-full overflow-hidden">
+                <RightSidebar
+                  isCreateMode={isCreateMode}
+                  rightMainPanelMode={rightMainPanelMode}
+                  selectedWorkspace={selectedWorkspace}
+                  repos={repos}
+                />
+              </div>
+            )}
+          </div>
+        </ChangesViewProvider>
+      </LogsPanelProvider>
+    </ReviewProvider>
+  );
+
   return (
     <div className="flex flex-col h-screen">
       <NavbarContainer />
@@ -146,99 +198,17 @@ export function WorkspacesLayout() {
         )}
 
         <div className="flex-1 min-w-0 h-full">
-          <ModeProvider
-            isCreateMode={isCreateMode}
-            executionProps={{
-              key: `${selectedWorkspace?.id}-${selectedSessionId}`,
-              attemptId: selectedWorkspace?.id,
-              sessionId: selectedSessionId,
-            }}
-          >
-            <ReviewProvider attemptId={selectedWorkspace?.id}>
-              <LogsPanelProvider>
-                <ChangesViewProvider>
-                  <div className="flex h-full">
-                    <Group
-                      orientation="horizontal"
-                      className="flex-1 min-w-0 h-full"
-                      defaultLayout={defaultLayout}
-                      onLayoutChange={onLayoutChange}
-                    >
-                      {isLeftMainPanelVisible && (
-                        <Panel
-                          id="left-main"
-                          minSize={20}
-                          className="min-w-0 h-full overflow-hidden"
-                        >
-                          {isCreateMode ? (
-                            <CreateChatBoxContainer />
-                          ) : (
-                            <WorkspacesMainContainer
-                              selectedWorkspace={selectedWorkspace ?? null}
-                              selectedSession={selectedSession}
-                              sessions={sessions}
-                              onSelectSession={selectSession}
-                              isLoading={isLoading}
-                              isNewSessionMode={isNewSessionMode}
-                              onStartNewSession={startNewSession}
-                            />
-                          )}
-                        </Panel>
-                      )}
-
-                      {isLeftMainPanelVisible &&
-                        rightMainPanelMode !== null && (
-                          <Separator
-                            id="main-separator"
-                            className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
-                          />
-                        )}
-
-                      {rightMainPanelMode !== null && (
-                        <Panel
-                          id="right-main"
-                          minSize={20}
-                          className="min-w-0 h-full overflow-hidden"
-                        >
-                          {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.CHANGES &&
-                            selectedWorkspace?.id && (
-                              <ChangesPanelContainer
-                                className=""
-                                attemptId={selectedWorkspace.id}
-                              />
-                            )}
-                          {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.LOGS && (
-                            <LogsContentContainer className="" />
-                          )}
-                          {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.PREVIEW &&
-                            selectedWorkspace?.id && (
-                              <PreviewBrowserContainer
-                                attemptId={selectedWorkspace.id}
-                                className=""
-                              />
-                            )}
-                        </Panel>
-                      )}
-                    </Group>
-
-                    {isRightSidebarVisible && (
-                      <div className="w-[300px] shrink-0 h-full overflow-hidden">
-                        <RightSidebar
-                          isCreateMode={isCreateMode}
-                          rightMainPanelMode={rightMainPanelMode}
-                          selectedWorkspace={selectedWorkspace}
-                          repos={repos}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </ChangesViewProvider>
-              </LogsPanelProvider>
-            </ReviewProvider>
-          </ModeProvider>
+          {isCreateMode ? (
+            <CreateModeProvider>{mainContent}</CreateModeProvider>
+          ) : (
+            <ExecutionProcessesProvider
+              key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+              attemptId={selectedWorkspace?.id}
+              sessionId={selectedSessionId}
+            >
+              {mainContent}
+            </ExecutionProcessesProvider>
+          )}
         </div>
       </div>
     </div>
