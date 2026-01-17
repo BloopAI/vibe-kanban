@@ -11,6 +11,7 @@ import type { LogsPanelContent } from '@/components/ui-new/containers/LogsConten
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
+  useUiPreferencesStore,
 } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
@@ -29,6 +30,9 @@ interface LogsPanelContextValue {
     content: string,
     command?: string
   ) => void;
+  expandTerminal: () => void;
+  collapseTerminal: () => void;
+  isTerminalExpanded: boolean;
 }
 
 const defaultValue: LogsPanelContextValue = {
@@ -42,6 +46,9 @@ const defaultValue: LogsPanelContextValue = {
   handleLogNextMatch: () => {},
   viewProcessInPanel: () => {},
   viewToolContentInPanel: () => {},
+  expandTerminal: () => {},
+  collapseTerminal: () => {},
+  isTerminalExpanded: false,
 };
 
 const LogsPanelContext = createContext<LogsPanelContextValue>(defaultValue);
@@ -55,12 +62,15 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
   const { rightMainPanelMode, setRightMainPanelMode } = useWorkspacePanelState(
     isCreateMode ? undefined : workspaceId
   );
+  const setTerminalVisible = useUiPreferencesStore((s) => s.setTerminalVisible);
 
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logMatchIndices, setLogMatchIndices] = useState<number[]>([]);
   const [logCurrentMatchIdx, setLogCurrentMatchIdx] = useState(0);
+
+  const isTerminalExpanded = logsPanelContent?.type === 'terminal';
 
   const logContentId =
     logsPanelContent?.type === 'process'
@@ -112,6 +122,19 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
     [rightMainPanelMode, setRightMainPanelMode]
   );
 
+  const expandTerminal = useCallback(() => {
+    if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS) {
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
+    }
+    setLogsPanelContent({ type: 'terminal' });
+    setTerminalVisible(false);
+  }, [rightMainPanelMode, setRightMainPanelMode, setTerminalVisible]);
+
+  const collapseTerminal = useCallback(() => {
+    setLogsPanelContent(null);
+    setTerminalVisible(true);
+  }, [setTerminalVisible]);
+
   const value = useMemo(
     () => ({
       logsPanelContent,
@@ -124,6 +147,9 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
       handleLogNextMatch,
       viewProcessInPanel,
       viewToolContentInPanel,
+      expandTerminal,
+      collapseTerminal,
+      isTerminalExpanded,
     }),
     [
       logsPanelContent,
@@ -134,6 +160,9 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
       handleLogNextMatch,
       viewProcessInPanel,
       viewToolContentInPanel,
+      expandTerminal,
+      collapseTerminal,
+      isTerminalExpanded,
     ]
   );
 

@@ -4,7 +4,12 @@ import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesConte
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
 import { InputField } from '../primitives/InputField';
-import { CaretUpIcon, CaretDownIcon } from '@phosphor-icons/react';
+import {
+  CaretUpIcon,
+  CaretDownIcon,
+  TerminalIcon,
+} from '@phosphor-icons/react';
+import { cn } from '@/lib/utils';
 
 export function ProcessListContainer() {
   const {
@@ -16,11 +21,14 @@ export function ProcessListContainer() {
     handleLogPrevMatch: onPrevMatch,
     handleLogNextMatch: onNextMatch,
     viewProcessInPanel: onSelectProcess,
+    expandTerminal,
+    isTerminalExpanded,
   } = useLogsPanel();
 
   const selectedProcessId =
     logsPanelContent?.type === 'process' ? logsPanelContent.processId : null;
-  const disableAutoSelect = logsPanelContent?.type === 'tool';
+  const disableAutoSelect =
+    logsPanelContent?.type === 'tool' || logsPanelContent?.type === 'terminal';
   const matchCount = logMatchIndices.length;
   const { t } = useTranslation('common');
   const { executionProcessesVisible } = useExecutionProcessesContext();
@@ -114,24 +122,47 @@ export function ProcessListContainer() {
     </div>
   );
 
+  const terminalItem = (
+    <button
+      type="button"
+      onClick={expandTerminal}
+      className={cn(
+        'w-full h-[26px] flex items-center gap-half px-half rounded-sm text-left transition-colors'
+      )}
+    >
+      <TerminalIcon
+        className="size-icon-sm flex-shrink-0 text-low"
+        weight="regular"
+      />
+      <span
+        className={cn(
+          'text-sm truncate flex-1',
+          isTerminalExpanded ? 'text-high' : 'text-normal'
+        )}
+      >
+        {t('processes.terminal')}
+      </span>
+    </button>
+  );
+
   return (
     <div className="h-full w-full bg-secondary flex flex-col overflow-hidden p-base">
-      {sortedProcesses.length === 0 ? (
-        <div className="h-full flex items-center justify-center text-low">
+      <div className="space-y-0">
+        {terminalItem}
+        {sortedProcesses.map((process) => (
+          <ProcessListItem
+            key={process.id}
+            runReason={process.run_reason}
+            status={process.status}
+            startedAt={process.started_at}
+            selected={process.id === selectedProcessId}
+            onClick={() => handleSelectProcess(process.id)}
+          />
+        ))}
+      </div>
+      {sortedProcesses.length === 0 && !isTerminalExpanded && (
+        <div className="flex-1 flex items-center justify-center text-low">
           <p className="text-sm">{t('processes.noProcesses')}</p>
-        </div>
-      ) : (
-        <div className="space-y-0">
-          {sortedProcesses.map((process) => (
-            <ProcessListItem
-              key={process.id}
-              runReason={process.run_reason}
-              status={process.status}
-              startedAt={process.started_at}
-              selected={process.id === selectedProcessId}
-              onClick={() => handleSelectProcess(process.id)}
-            />
-          ))}
         </div>
       )}
       {searchBar}
