@@ -30,8 +30,8 @@ type SectionDef = {
   visible: boolean;
   expanded: boolean;
   content: React.ReactNode;
-  icon?: Icon;
-  onIconClick?: () => void;
+  icon: Icon | undefined;
+  onIconClick: (() => void) | undefined;
 };
 
 export interface RightSidebarProps {
@@ -100,6 +100,8 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeProjectSectionContainer />,
+          icon: undefined,
+          onIconClick: undefined,
         },
         {
           title: t('common:sections.repositories'),
@@ -107,6 +109,8 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeReposSectionContainer />,
+          icon: undefined,
+          onIconClick: undefined,
         },
         {
           title: t('common:sections.addRepositories'),
@@ -114,6 +118,8 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeAddReposSectionContainer />,
+          icon: undefined,
+          onIconClick: undefined,
         },
       ]
     : buildWorkspaceSections();
@@ -132,6 +138,8 @@ export function RightSidebar({
             diffs={diffs}
           />
         ),
+        icon: undefined,
+        onIconClick: undefined,
       },
       {
         title: 'Terminal',
@@ -164,6 +172,8 @@ export function RightSidebar({
                 className=""
               />
             ),
+            icon: undefined,
+            onIconClick: undefined,
           });
         }
         break;
@@ -174,6 +184,8 @@ export function RightSidebar({
           visible: hasUpperContent,
           expanded: upperExpanded,
           content: <ProcessListContainer />,
+          icon: undefined,
+          onIconClick: undefined,
         });
         break;
       case RIGHT_MAIN_PANEL_MODES.PREVIEW:
@@ -189,6 +201,8 @@ export function RightSidebar({
                 className=""
               />
             ),
+            icon: undefined,
+            onIconClick: undefined,
           });
         }
         break;
