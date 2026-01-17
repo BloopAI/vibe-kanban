@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", position as \"position: i32\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -39,23 +39,28 @@
         "type_info": "Blob"
       },
       {
-        "name": "dag_position_x: f64",
+        "name": "position: i32",
         "ordinal": 7,
-        "type_info": "Float"
+        "type_info": "Integer"
       },
       {
-        "name": "dag_position_y: f64",
+        "name": "dag_position_x: f64",
         "ordinal": 8,
         "type_info": "Float"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "dag_position_y: f64",
         "ordinal": 9,
+        "type_info": "Float"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
@@ -72,9 +77,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "9052561e5444558cc7a6a5576fb80af3f25c9e03fa558921cc900a7eedd09d3f"
+  "hash": "3572f9aaa2ddec0c44d6672b2f57ed2db9dec6d4d23cdeafb5a87486967409f8"
 }

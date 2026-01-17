@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, shared_task_id)\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE tasks\n               SET position = $2, updated_at = CURRENT_TIMESTAMP\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", position as \"position: i32\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -39,28 +39,33 @@
         "type_info": "Blob"
       },
       {
-        "name": "dag_position_x: f64",
+        "name": "position: i32",
         "ordinal": 7,
-        "type_info": "Float"
+        "type_info": "Integer"
       },
       {
-        "name": "dag_position_y: f64",
+        "name": "dag_position_x: f64",
         "ordinal": 8,
         "type_info": "Float"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "dag_position_y: f64",
         "ordinal": 9,
+        "type_info": "Float"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 2
     },
     "nullable": [
       true,
@@ -72,9 +77,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "60b084268a143871d761fb17537893eab81622de78c959dfa8ab2b822803b69b"
+  "hash": "4cc1f187d0dd799b7bca2cb5e19b1a1de41393d6c8c8b3fa9fff53e7c6500d46"
 }

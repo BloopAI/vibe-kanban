@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_workspace_id as \"parent_workspace_id: Uuid\", shared_task_id as \"shared_task_id: Uuid\", position as \"position: i32\", dag_position_x as \"dag_position_x: f64\", dag_position_y as \"dag_position_y: f64\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE shared_task_id IS NOT NULL",
   "describe": {
     "columns": [
       {
@@ -39,28 +39,33 @@
         "type_info": "Blob"
       },
       {
-        "name": "dag_position_x: f64",
+        "name": "position: i32",
         "ordinal": 7,
-        "type_info": "Float"
+        "type_info": "Integer"
       },
       {
-        "name": "dag_position_y: f64",
+        "name": "dag_position_x: f64",
         "ordinal": 8,
         "type_info": "Float"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "dag_position_y: f64",
         "ordinal": 9,
+        "type_info": "Float"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -72,9 +77,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "2b2acae8b9cc534ab5a04f85fd5273d81550049ce379758a55523f8d02909ea5"
+  "hash": "974efa7ecc15c6872361662c6bdc4217c0a590139444aedb4261a416983bad4d"
 }
