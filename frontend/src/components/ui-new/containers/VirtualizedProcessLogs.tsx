@@ -20,17 +20,17 @@ export type LogEntry = Extract<
 export interface VirtualizedProcessLogsProps {
   logs: LogEntry[];
   error: string | null;
-  searchQuery?: string;
-  matchIndices?: number[];
-  currentMatchIndex?: number;
+  searchQuery: string;
+  matchIndices: number[];
+  currentMatchIndex: number;
 }
 
 type LogEntryWithKey = LogEntry & { key: string; originalIndex: number };
 
 interface SearchContext {
-  searchQuery?: string;
-  matchIndices?: number[];
-  currentMatchIndex?: number;
+  searchQuery: string;
+  matchIndices: number[];
+  currentMatchIndex: number;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -55,10 +55,9 @@ const ItemContent: VirtuosoMessageListProps<
   LogEntryWithKey,
   SearchContext
 >['ItemContent'] = ({ data, context }) => {
-  const isMatch = context?.matchIndices?.includes(data.originalIndex) ?? false;
+  const isMatch = context.matchIndices.includes(data.originalIndex);
   const isCurrentMatch =
-    context?.matchIndices?.[context?.currentMatchIndex ?? -1] ===
-    data.originalIndex;
+    context.matchIndices[context.currentMatchIndex] === data.originalIndex;
 
   return (
     <RawLogText
@@ -66,7 +65,7 @@ const ItemContent: VirtuosoMessageListProps<
       channel={data.type === 'STDERR' ? 'stderr' : 'stdout'}
       className="text-sm px-4 py-1"
       linkifyUrls
-      searchQuery={isMatch ? context?.searchQuery : undefined}
+      searchQuery={isMatch ? context.searchQuery : undefined}
       isCurrentMatch={isCurrentMatch}
     />
   );
@@ -121,9 +120,8 @@ export function VirtualizedProcessLogs({
   // Scroll to current match when it changes
   useEffect(() => {
     if (
-      matchIndices &&
       matchIndices.length > 0 &&
-      currentMatchIndex !== undefined &&
+      currentMatchIndex >= 0 &&
       currentMatchIndex !== prevCurrentMatchRef.current
     ) {
       const logIndex = matchIndices[currentMatchIndex];

@@ -81,7 +81,13 @@ export function PreviewControls({
               <SpinnerIcon className="size-icon-sm animate-spin" />
             </div>
           ) : devServerProcesses.length > 0 ? (
-            <VirtualizedProcessLogs logs={logs} error={logsError} />
+            <VirtualizedProcessLogs
+                  logs={logs}
+                  error={logsError}
+                  searchQuery=""
+                  matchIndices={[]}
+                  currentMatchIndex={-1}
+                />
           ) : null}
         </div>
       </div>
