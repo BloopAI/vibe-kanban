@@ -34,6 +34,7 @@ tracing-error = "0.2"
 thiserror = { workspace = true }
 ts-rs = { workspace = true }
 utils = { path = "../utils" }
+shape-macros = { path = "../shape-macros" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 rand = "0.9"
