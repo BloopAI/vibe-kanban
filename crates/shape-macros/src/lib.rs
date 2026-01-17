@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use regex::Regex;
-use syn::{parse::Parse, parse_macro_input, Ident, LitStr, Token};
+use syn::{Ident, LitStr, Token, parse::Parse, parse_macro_input};
 
 struct ShapeInput {
     name: Ident,
