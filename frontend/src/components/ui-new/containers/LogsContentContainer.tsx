@@ -10,7 +10,12 @@ import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 export type LogsPanelContent =
   | { type: 'process'; processId: string }
-  | { type: 'tool'; toolName: string; content: string; command: string | undefined };
+  | {
+      type: 'tool';
+      toolName: string;
+      content: string;
+      command: string | undefined;
+    };
 
 interface LogsContentContainerProps {
   className: string;

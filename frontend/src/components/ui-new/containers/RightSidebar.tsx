@@ -204,7 +204,10 @@ export function RightSidebar({
               <p className="text-xs text-low font-medium">
                 {t('common:sections.other')}
               </p>
-              <BrowseRepoButtonContainer disabled={false} onRepoRegistered={addRepo} />
+              <BrowseRepoButtonContainer
+                disabled={false}
+                onRepoRegistered={addRepo}
+              />
               <CreateRepoButtonContainer onRepoCreated={addRepo} />
             </div>
           ),
