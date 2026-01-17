@@ -238,23 +238,26 @@ export function RightSidebar({
 
     switch (rightMainPanelMode) {
       case RIGHT_MAIN_PANEL_MODES.CHANGES:
-        result.unshift({
-          title: 'Changes',
-          persistKey: PERSIST_KEYS.changesSection,
-          visible: hasUpperContent,
-          expanded: upperExpanded,
-          content: (
-            <FileTreeContainer
-              key={selectedWorkspace?.id}
-              workspaceId={selectedWorkspace?.id}
-              diffs={diffs}
-              onSelectFile={(path) => {
-                selectFile(path);
-                setExpanded(`diff:${path}`, true);
-              }}
-            />
-          ),
-        });
+        if (selectedWorkspace) {
+          result.unshift({
+            title: 'Changes',
+            persistKey: PERSIST_KEYS.changesSection,
+            visible: hasUpperContent,
+            expanded: upperExpanded,
+            content: (
+              <FileTreeContainer
+                key={selectedWorkspace.id}
+                workspaceId={selectedWorkspace.id}
+                diffs={diffs}
+                onSelectFile={(path) => {
+                  selectFile(path);
+                  setExpanded(`diff:${path}`, true);
+                }}
+                className=""
+              />
+            ),
+          });
+        }
         break;
       case RIGHT_MAIN_PANEL_MODES.LOGS:
         result.unshift({

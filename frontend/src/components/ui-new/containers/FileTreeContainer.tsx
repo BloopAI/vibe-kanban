@@ -12,10 +12,10 @@ import { useChangesView } from '@/contexts/ChangesViewContext';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
-  workspaceId?: string;
+  workspaceId: string;
   diffs: Diff[];
-  onSelectFile?: (path: string, diff: Diff) => void;
-  className?: string;
+  onSelectFile: (path: string, diff: Diff) => void;
+  className: string;
 }
 
 export function FileTreeContainer({
@@ -118,7 +118,7 @@ export function FileTreeContainer({
       setSelectedPath(path);
       // Find the diff for this path
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
-      if (diff && onSelectFile) {
+      if (diff) {
         onSelectFile(path, diff);
       }
     },
