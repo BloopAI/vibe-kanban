@@ -53,6 +53,8 @@ export function useTerminalWebSocket({
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Track mount to force WebSocket reconnection on component remount
+  const [mountId, setMountId] = useState(0);
 
   // Callback refs to prevent stale closures
   const onDataRef = useRef(onData);
@@ -64,6 +66,11 @@ export function useTerminalWebSocket({
     onExitRef.current = onExit;
     onErrorRef.current = onError;
   }, [onData, onExit, onError]);
+
+  // Increment mountId on mount to trigger WebSocket effect
+  useEffect(() => {
+    setMountId((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     // Close existing connection and reset state if disabled or no endpoint
@@ -145,7 +152,8 @@ export function useTerminalWebSocket({
       // Don't null wsRef - the readyState check handles closed connections
       // and the next effect run will overwrite with a new WebSocket
     };
-  }, [endpoint, enabled]);
+    // mountId ensures effect re-runs on component remount
+  }, [endpoint, enabled, mountId]);
 
   const send = useCallback((data: string) => {
     console.log('[useTerminalWebSocket] send called', {
