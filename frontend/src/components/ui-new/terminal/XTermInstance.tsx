@@ -34,6 +34,9 @@ export function XTermInstance({
     console.log('[XTermInstance] onData callback called', {
       data,
       terminalRef: terminalRef.current,
+      hasElement: !!terminalRef.current?.element,
+      elementInDOM: terminalRef.current?.element?.isConnected,
+      elementParent: terminalRef.current?.element?.parentElement,
     });
     terminalRef.current?.write(data);
   }, []);
