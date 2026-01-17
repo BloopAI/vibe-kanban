@@ -85,6 +85,13 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
     setLogCurrentMatchIdx(0);
   }, [logSearchQuery]);
 
+  // Collapse terminal when switching away from Logs panel mode
+  useEffect(() => {
+    if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS && isTerminalExpanded) {
+      setLogsPanelContent(null);
+    }
+  }, [rightMainPanelMode, isTerminalExpanded]);
+
   const handleLogPrevMatch = useCallback(() => {
     if (logMatchIndices.length === 0) return;
     setLogCurrentMatchIdx((prev) =>
