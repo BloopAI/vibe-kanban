@@ -4,7 +4,6 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
-import { useTerminalWebSocket } from '@/hooks/useTerminalWebSocket';
 import { useTheme } from '@/components/ThemeProvider';
 import { getTerminalTheme } from '@/utils/terminalTheme';
 import { useTerminal } from '@/contexts/TerminalContext';
@@ -27,17 +26,14 @@ export function XTermInstance({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initialSizeRef = useRef({ cols: 80, rows: 24 });
   const { theme } = useTheme();
-  const { registerTerminalInstance, getTerminalInstance } = useTerminal();
-  const sendRef = useRef<(data: string) => void>(() => {});
+  const {
+    registerTerminalInstance,
+    getTerminalInstance,
+    createTerminalConnection,
+    getTerminalConnection,
+  } = useTerminal();
 
   const onData = useCallback((data: string) => {
-    console.log('[XTermInstance] onData callback called', {
-      data,
-      terminalRef: terminalRef.current,
-      hasElement: !!terminalRef.current?.element,
-      elementInDOM: terminalRef.current?.element?.isConnected,
-      elementParent: terminalRef.current?.element?.parentElement,
-    });
     terminalRef.current?.write(data);
   }, []);
 
@@ -46,17 +42,6 @@ export function XTermInstance({
     const host = window.location.host;
     return `${protocol}//${host}/api/terminal/ws?workspace_id=${workspaceId}&cols=${initialSizeRef.current.cols}&rows=${initialSizeRef.current.rows}`;
   }, [workspaceId]);
-
-  const { send, resize } = useTerminalWebSocket({
-    endpoint,
-    onData,
-    onExit: onClose,
-  });
-
-  useEffect(() => {
-    console.log('[XTermInstance] updating sendRef', { send });
-    sendRef.current = send;
-  }, [send]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -77,6 +62,11 @@ export function XTermInstance({
 
     // Don't create new terminal if we already have one in our ref
     if (terminalRef.current) return;
+
+    // Create the WebSocket connection if it doesn't exist
+    if (!getTerminalConnection(tabId)) {
+      createTerminalConnection(tabId, endpoint, onData, onClose);
+    }
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -101,12 +91,10 @@ export function XTermInstance({
     // Register the terminal instance in context so it survives unmount
     registerTerminalInstance(tabId, terminal, fitAddon);
 
+    // Set up terminal input handler - connection.send is stable
     terminal.onData((data) => {
-      console.log('[XTermInstance] terminal.onData called', {
-        data,
-        sendRef: sendRef.current,
-      });
-      sendRef.current(data);
+      const conn = getTerminalConnection(tabId);
+      conn?.send(data);
     });
 
     // Cleanup: detach from DOM but don't dispose (context manages disposal)
@@ -118,7 +106,16 @@ export function XTermInstance({
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [tabId, getTerminalInstance, registerTerminalInstance]);
+  }, [
+    tabId,
+    endpoint,
+    onData,
+    onClose,
+    getTerminalInstance,
+    registerTerminalInstance,
+    createTerminalConnection,
+    getTerminalConnection,
+  ]);
 
   useEffect(() => {
     if (!isActive || !fitAddonRef.current) return;
@@ -126,7 +123,8 @@ export function XTermInstance({
     const handleResize = () => {
       fitAddonRef.current?.fit();
       if (terminalRef.current) {
-        resize(terminalRef.current.cols, terminalRef.current.rows);
+        const conn = getTerminalConnection(tabId);
+        conn?.resize(terminalRef.current.cols, terminalRef.current.rows);
       }
     };
 
@@ -140,7 +138,7 @@ export function XTermInstance({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [isActive, resize]);
+  }, [isActive, tabId, getTerminalConnection]);
 
   useEffect(() => {
     if (isActive) {
