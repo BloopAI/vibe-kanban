@@ -46,8 +46,8 @@ export function XTermInstance({
     endpoint,
     onData,
     onExit: onClose,
-    // Skip WebSocket connection if we already have an instance (it has its own connection)
-    skip: !!existingInstance,
+    // Only enable WebSocket connection if we don't already have an instance
+    enabled: !existingInstance,
   });
 
   useEffect(() => {
