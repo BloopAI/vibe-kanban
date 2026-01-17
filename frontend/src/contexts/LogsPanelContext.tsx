@@ -11,7 +11,6 @@ import type { LogsPanelContent } from '@/components/ui-new/containers/LogsConten
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
-  useUiPreferencesStore,
 } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
@@ -62,8 +61,6 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
   const { rightMainPanelMode, setRightMainPanelMode } = useWorkspacePanelState(
     isCreateMode ? undefined : workspaceId
   );
-  const setTerminalVisible = useUiPreferencesStore((s) => s.setTerminalVisible);
-
   const [logsPanelContent, setLogsPanelContent] =
     useState<LogsPanelContent | null>(null);
   const [logSearchQuery, setLogSearchQuery] = useState('');
@@ -127,13 +124,11 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
       setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
     }
     setLogsPanelContent({ type: 'terminal' });
-    setTerminalVisible(false);
-  }, [rightMainPanelMode, setRightMainPanelMode, setTerminalVisible]);
+  }, [rightMainPanelMode, setRightMainPanelMode]);
 
   const collapseTerminal = useCallback(() => {
     setLogsPanelContent(null);
-    setTerminalVisible(true);
-  }, [setTerminalVisible]);
+  }, []);
 
   const value = useMemo(
     () => ({
