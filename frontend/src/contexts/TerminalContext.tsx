@@ -186,7 +186,10 @@ interface TerminalContextType {
     endpoint: string,
     onData: (data: string) => void,
     onExit?: () => void
-  ) => { send: (data: string) => void; resize: (cols: number, rows: number) => void };
+  ) => {
+    send: (data: string) => void;
+    resize: (cols: number, rows: number) => void;
+  };
   getTerminalConnection: (tabId: string) => TerminalConnection | null;
 }
 
