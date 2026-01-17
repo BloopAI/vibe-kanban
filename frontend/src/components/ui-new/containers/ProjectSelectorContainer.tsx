@@ -17,7 +17,7 @@ import type { Project } from 'shared/types';
 interface ProjectSelectorContainerProps {
   projects: Project[];
   selectedProjectId: string | null;
-  selectedProjectName?: string;
+  selectedProjectName: string | undefined;
   onProjectSelect: (project: Project) => void;
   onCreateProject: () => void;
 }

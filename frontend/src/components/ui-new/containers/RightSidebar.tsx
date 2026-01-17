@@ -204,7 +204,7 @@ export function RightSidebar({
               <p className="text-xs text-low font-medium">
                 {t('common:sections.other')}
               </p>
-              <BrowseRepoButtonContainer onRepoRegistered={addRepo} />
+              <BrowseRepoButtonContainer disabled={false} onRepoRegistered={addRepo} />
               <CreateRepoButtonContainer onRepoCreated={addRepo} />
             </div>
           ),
@@ -269,15 +269,20 @@ export function RightSidebar({
         });
         break;
       case RIGHT_MAIN_PANEL_MODES.PREVIEW:
-        result.unshift({
-          title: 'Preview',
-          persistKey: PERSIST_KEYS.rightPanelPreview,
-          visible: hasUpperContent,
-          expanded: upperExpanded,
-          content: (
-            <PreviewControlsContainer attemptId={selectedWorkspace?.id} />
-          ),
-        });
+        if (selectedWorkspace) {
+          result.unshift({
+            title: 'Preview',
+            persistKey: PERSIST_KEYS.rightPanelPreview,
+            visible: hasUpperContent,
+            expanded: upperExpanded,
+            content: (
+              <PreviewControlsContainer
+                attemptId={selectedWorkspace.id}
+                className=""
+              />
+            ),
+          });
+        }
         break;
       case null:
         break;

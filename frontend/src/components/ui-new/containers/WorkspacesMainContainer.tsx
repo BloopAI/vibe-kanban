@@ -12,9 +12,9 @@ interface WorkspacesMainContainerProps {
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
   /** Whether user is creating a new session */
-  isNewSessionMode?: boolean;
+  isNewSessionMode: boolean;
   /** Callback to start new session mode */
-  onStartNewSession?: () => void;
+  onStartNewSession: () => void;
 }
 
 export function WorkspacesMainContainer({

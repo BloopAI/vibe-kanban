@@ -210,14 +210,16 @@ export function WorkspacesLayout() {
                             )}
                           {rightMainPanelMode ===
                             RIGHT_MAIN_PANEL_MODES.LOGS && (
-                            <LogsContentContainer />
+                            <LogsContentContainer className="" />
                           )}
                           {rightMainPanelMode ===
-                            RIGHT_MAIN_PANEL_MODES.PREVIEW && (
-                            <PreviewBrowserContainer
-                              attemptId={selectedWorkspace?.id}
-                            />
-                          )}
+                            RIGHT_MAIN_PANEL_MODES.PREVIEW &&
+                            selectedWorkspace?.id && (
+                              <PreviewBrowserContainer
+                                attemptId={selectedWorkspace.id}
+                                className=""
+                              />
+                            )}
                         </Panel>
                       )}
                     </Group>

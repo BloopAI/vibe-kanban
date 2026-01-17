@@ -27,8 +27,8 @@ const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
 interface PreviewBrowserContainerProps {
-  attemptId?: string;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewBrowserContainer({

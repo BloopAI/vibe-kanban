@@ -10,8 +10,8 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface PreviewControlsContainerProps {
-  attemptId?: string;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewControlsContainer({
