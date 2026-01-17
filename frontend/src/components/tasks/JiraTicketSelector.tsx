@@ -30,13 +30,15 @@ export function JiraTicketSelector({
   const [hasLoaded, setHasLoaded] = useState(false);
   const [cooldown, setCooldown] = useState(false);
 
-  const fetchIssues = async () => {
+  const fetchIssues = async (forceRefresh = false) => {
     if (loading || cooldown) return; // Debounce: prevent spam clicks
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/jira/my-issues');
+      const endpoint = forceRefresh ? '/api/jira/refresh' : '/api/jira/my-issues';
+      const options = forceRefresh ? { method: 'POST' } : undefined;
+      const response = await fetch(endpoint, options);
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -167,7 +169,7 @@ export function JiraTicketSelector({
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
-                  fetchIssues();
+                  fetchIssues(true); // Force refresh - bypass cache
                 }}
                 className="justify-center text-muted-foreground"
               >
