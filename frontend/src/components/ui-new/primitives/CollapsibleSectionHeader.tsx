@@ -6,12 +6,16 @@ import {
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
 
+export type SectionAction = {
+  icon: Icon;
+  onClick: () => void;
+};
+
 interface CollapsibleSectionHeaderProps {
   persistKey: PersistKey;
   title: string;
   defaultExpanded?: boolean;
-  icon?: Icon;
-  onIconClick?: () => void;
+  actions: SectionAction[];
   children?: React.ReactNode;
   className?: string;
 }
@@ -20,16 +24,15 @@ export function CollapsibleSectionHeader({
   persistKey,
   title,
   defaultExpanded = true,
-  icon: IconComponent,
-  onIconClick,
+  actions,
   children,
   className,
 }: CollapsibleSectionHeaderProps) {
   const [expanded, toggle] = usePersistedExpanded(persistKey, defaultExpanded);
 
-  const handleIconClick = (e: React.MouseEvent) => {
+  const handleActionClick = (e: React.MouseEvent, onClick: () => void) => {
     e.stopPropagation();
-    onIconClick?.();
+    onClick();
   };
 
   return (
@@ -44,22 +47,26 @@ export function CollapsibleSectionHeader({
         >
           <span className="font-medium truncate text-normal">{title}</span>
           <div className="flex items-center gap-half">
-            {IconComponent && onIconClick && (
+            {actions.map((action, index) => (
               <span
+                key={index}
                 role="button"
                 tabIndex={0}
-                onClick={handleIconClick}
+                onClick={(e) => handleActionClick(e, action.onClick)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    handleIconClick(e as unknown as React.MouseEvent);
+                    handleActionClick(
+                      e as unknown as React.MouseEvent,
+                      action.onClick
+                    );
                   }
                 }}
                 className="text-low hover:text-normal"
               >
-                <IconComponent className="size-icon-xs" weight="bold" />
+                <action.icon className="size-icon-xs" weight="bold" />
               </span>
-            )}
+            ))}
             <CaretDownIcon
               weight="fill"
               className={cn(
