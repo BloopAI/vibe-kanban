@@ -10,6 +10,9 @@ import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containe
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
@@ -28,6 +31,8 @@ type SectionDef = {
   visible: boolean;
   expanded: boolean;
   content: React.ReactNode;
+  icon?: Icon;
+  onIconClick?: () => void;
 };
 
 export interface RightSidebarProps {
@@ -48,6 +53,7 @@ export function RightSidebar({
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
+  const { expandTerminal, isTerminalExpanded } = useLogsPanel();
 
   const [changesExpanded] = usePersistedExpanded(
     PERSIST_KEYS.changesSection,
@@ -135,9 +141,11 @@ export function RightSidebar({
       {
         title: 'Terminal',
         persistKey: PERSIST_KEYS.terminalSection,
-        visible: isTerminalVisible,
+        visible: isTerminalVisible && !isTerminalExpanded,
         expanded: terminalExpanded,
         content: <TerminalPanelContainer />,
+        icon: ArrowsOutSimpleIcon,
+        onIconClick: expandTerminal,
       },
       {
         title: t('common:sections.notes'),
@@ -206,7 +214,7 @@ export function RightSidebar({
   return (
     <div className="h-full border-l bg-secondary overflow-y-auto">
       <div className="divide-y border-b">
-        {sections.map((section) => (
+        {sections.filter((section) => section.visible).map((section) => (
           <div
             key={section.persistKey}
             className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
@@ -215,6 +223,8 @@ export function RightSidebar({
               title={section.title}
               persistKey={section.persistKey}
               defaultExpanded={section.expanded}
+              icon={section.icon}
+              onIconClick={section.onIconClick}
             >
               <div className="flex flex-1 border-t min-h-[200px]">
                 {section.content}
