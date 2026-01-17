@@ -11,7 +11,6 @@ import { WorkspaceNotesContainer } from '@/components/ui-new/containers/Workspac
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
-import type { Icon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
@@ -23,7 +22,10 @@ import {
   useUiPreferencesStore,
   PersistKey,
 } from '@/stores/useUiPreferencesStore';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
+import {
+  CollapsibleSectionHeader,
+  type SectionAction,
+} from '../primitives/CollapsibleSectionHeader';
 
 type SectionDef = {
   title: string;
@@ -31,8 +33,7 @@ type SectionDef = {
   visible: boolean;
   expanded: boolean;
   content: React.ReactNode;
-  icon: Icon | undefined;
-  onIconClick: (() => void) | undefined;
+  actions: SectionAction[];
 };
 
 export interface RightSidebarProps {
@@ -105,8 +106,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeProjectSectionContainer />,
-          icon: undefined,
-          onIconClick: undefined,
+          actions: [],
         },
         {
           title: t('common:sections.repositories'),
@@ -114,8 +114,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeReposSectionContainer />,
-          icon: undefined,
-          onIconClick: undefined,
+          actions: [],
         },
         {
           title: t('common:sections.addRepositories'),
@@ -123,8 +122,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeAddReposSectionContainer />,
-          icon: undefined,
-          onIconClick: undefined,
+          actions: [],
         },
       ]
     : buildWorkspaceSections();
@@ -143,8 +141,7 @@ export function RightSidebar({
             diffs={diffs}
           />
         ),
-        icon: undefined,
-        onIconClick: undefined,
+        actions: [],
       },
       {
         title: 'Terminal',
@@ -152,8 +149,7 @@ export function RightSidebar({
         visible: isTerminalVisible && !isTerminalExpanded,
         expanded: terminalExpanded,
         content: <TerminalPanelContainer />,
-        icon: ArrowsOutSimpleIcon,
-        onIconClick: expandTerminal,
+        actions: [{ icon: ArrowsOutSimpleIcon, onClick: expandTerminal }],
       },
       {
         title: t('common:sections.notes'),
@@ -161,6 +157,7 @@ export function RightSidebar({
         visible: true,
         expanded: notesExpanded,
         content: <WorkspaceNotesContainer />,
+        actions: [],
       },
     ];
 
@@ -184,8 +181,7 @@ export function RightSidebar({
                 className=""
               />
             ),
-            icon: undefined,
-            onIconClick: undefined,
+            actions: [],
           });
         }
         break;
@@ -196,8 +192,7 @@ export function RightSidebar({
           visible: hasUpperContent,
           expanded: upperExpanded,
           content: <ProcessListContainer />,
-          icon: undefined,
-          onIconClick: undefined,
+          actions: [],
         });
         break;
       case RIGHT_MAIN_PANEL_MODES.PREVIEW:
@@ -213,8 +208,7 @@ export function RightSidebar({
                 className=""
               />
             ),
-            icon: undefined,
-            onIconClick: undefined,
+            actions: [],
           });
         }
         break;
@@ -239,8 +233,7 @@ export function RightSidebar({
                 title={section.title}
                 persistKey={section.persistKey}
                 defaultExpanded={section.expanded}
-                icon={section.icon}
-                onIconClick={section.onIconClick}
+                actions={section.actions}
               >
                 <div className="flex flex-1 border-t min-h-[200px]">
                   {section.content}
