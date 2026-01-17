@@ -28,6 +28,7 @@ export function XTermInstance({
   const initialSizeRef = useRef({ cols: 80, rows: 24 });
   const { theme } = useTheme();
   const { registerTerminalInstance, getTerminalInstance } = useTerminal();
+  const sendRef = useRef<(data: string) => void>(() => {});
 
   const onData = useCallback((data: string) => {
     terminalRef.current?.write(data);
@@ -44,6 +45,10 @@ export function XTermInstance({
     onData,
     onExit: onClose,
   });
+
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -89,7 +94,7 @@ export function XTermInstance({
     registerTerminalInstance(tabId, terminal, fitAddon);
 
     terminal.onData((data) => {
-      send(data);
+      sendRef.current(data);
     });
 
     // Cleanup: detach from DOM but don't dispose (context manages disposal)
@@ -101,7 +106,7 @@ export function XTermInstance({
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [tabId, send, getTerminalInstance, registerTerminalInstance]);
+  }, [tabId, getTerminalInstance, registerTerminalInstance]);
 
   useEffect(() => {
     if (!isActive || !fitAddonRef.current) return;
