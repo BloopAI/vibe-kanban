@@ -4,8 +4,16 @@ import {
   useReducer,
   useMemo,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
+import type { Terminal } from '@xterm/xterm';
+import type { FitAddon } from '@xterm/addon-fit';
+
+export interface TerminalInstance {
+  terminal: Terminal;
+  fitAddon: FitAddon;
+}
 
 export interface TerminalTab {
   id: string;
@@ -146,6 +154,14 @@ interface TerminalContextType {
   setActiveTab: (workspaceId: string, tabId: string) => void;
   updateTabTitle: (workspaceId: string, tabId: string, title: string) => void;
   clearWorkspaceTabs: (workspaceId: string) => void;
+  // Terminal instance management
+  registerTerminalInstance: (
+    tabId: string,
+    terminal: Terminal,
+    fitAddon: FitAddon
+  ) => void;
+  getTerminalInstance: (tabId: string) => TerminalInstance | null;
+  unregisterTerminalInstance: (tabId: string) => void;
 }
 
 const TerminalContext = createContext<TerminalContextType | null>(null);
@@ -159,6 +175,9 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     tabsByWorkspace: {},
     activeTabByWorkspace: {},
   });
+
+  // Store terminal instances in a ref to persist across re-renders
+  const terminalInstancesRef = useRef<Map<string, TerminalInstance>>(new Map());
 
   const getTabsForWorkspace = useCallback(
     (workspaceId: string): TerminalTab[] => {
@@ -182,6 +201,12 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
   }, []);
 
   const closeTab = useCallback((workspaceId: string, tabId: string) => {
+    // Dispose the terminal instance when closing the tab
+    const instance = terminalInstancesRef.current.get(tabId);
+    if (instance) {
+      instance.terminal.dispose();
+      terminalInstancesRef.current.delete(tabId);
+    }
     dispatch({ type: 'CLOSE_TAB', workspaceId, tabId });
   }, []);
 
@@ -196,8 +221,38 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     []
   );
 
-  const clearWorkspaceTabs = useCallback((workspaceId: string) => {
-    dispatch({ type: 'CLEAR_WORKSPACE_TABS', workspaceId });
+  const clearWorkspaceTabs = useCallback(
+    (workspaceId: string) => {
+      // Dispose all terminal instances for this workspace
+      const tabs = state.tabsByWorkspace[workspaceId] || [];
+      tabs.forEach((tab) => {
+        const instance = terminalInstancesRef.current.get(tab.id);
+        if (instance) {
+          instance.terminal.dispose();
+          terminalInstancesRef.current.delete(tab.id);
+        }
+      });
+      dispatch({ type: 'CLEAR_WORKSPACE_TABS', workspaceId });
+    },
+    [state.tabsByWorkspace]
+  );
+
+  const registerTerminalInstance = useCallback(
+    (tabId: string, terminal: Terminal, fitAddon: FitAddon) => {
+      terminalInstancesRef.current.set(tabId, { terminal, fitAddon });
+    },
+    []
+  );
+
+  const getTerminalInstance = useCallback(
+    (tabId: string): TerminalInstance | null => {
+      return terminalInstancesRef.current.get(tabId) || null;
+    },
+    []
+  );
+
+  const unregisterTerminalInstance = useCallback((tabId: string) => {
+    terminalInstancesRef.current.delete(tabId);
   }, []);
 
   const value = useMemo(
@@ -209,6 +264,9 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       setActiveTab,
       updateTabTitle,
       clearWorkspaceTabs,
+      registerTerminalInstance,
+      getTerminalInstance,
+      unregisterTerminalInstance,
     }),
     [
       getTabsForWorkspace,
@@ -218,6 +276,9 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       setActiveTab,
       updateTabTitle,
       clearWorkspaceTabs,
+      registerTerminalInstance,
+      getTerminalInstance,
+      unregisterTerminalInstance,
     ]
   );
 
