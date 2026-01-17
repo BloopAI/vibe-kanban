@@ -1,0 +1,87 @@
+[
+  {
+    "table": "projects",
+    "params": [
+      "organization_id"
+    ],
+    "url": "/shape/projects"
+  },
+  {
+    "table": "notifications",
+    "params": [
+      "organization_id",
+      "user_id"
+    ],
+    "url": "/shape/notifications"
+  },
+  {
+    "table": "workspaces",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/workspaces"
+  },
+  {
+    "table": "project_statuses",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/statuses"
+  },
+  {
+    "table": "tags",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/tags"
+  },
+  {
+    "table": "issues",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/issues"
+  },
+  {
+    "table": "issue_assignees",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/issue_assignees"
+  },
+  {
+    "table": "issue_followers",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/issue_followers"
+  },
+  {
+    "table": "issue_tags",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/issue_tags"
+  },
+  {
+    "table": "issue_dependencies",
+    "params": [
+      "project_id"
+    ],
+    "url": "/shape/project/{project_id}/issue_dependencies"
+  },
+  {
+    "table": "issue_comments",
+    "params": [
+      "issue_id"
+    ],
+    "url": "/shape/issue/{issue_id}/comments"
+  },
+  {
+    "table": "issue_comment_reactions",
+    "params": [
+      "issue_id"
+    ],
+    "url": "/shape/issue/{issue_id}/reactions"
+  }
+]
