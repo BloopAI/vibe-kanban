@@ -1,4 +1,6 @@
+use db::models::jira_cache::{JiraCacheError, JiraCacheRepo};
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
@@ -6,6 +8,9 @@ use ts_rs::TS;
 
 /// Timeout for Claude CLI command execution
 const CLAUDE_TIMEOUT_SECS: u64 = 30;
+
+/// Cache key for the user's assigned issues
+const CACHE_KEY_MY_ISSUES: &str = "my_issues";
 
 /// A Jira issue returned from Claude MCP
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -56,15 +61,66 @@ pub enum JiraError {
 
     #[error("Request timed out after {0} seconds")]
     Timeout(u64),
+
+    #[error("Cache error: {0}")]
+    CacheError(#[from] JiraCacheError),
 }
 
 pub struct JiraService;
 
 impl JiraService {
-    /// Fetch assigned Jira issues using Claude MCP (Atlassian plugin)
-    pub async fn fetch_my_issues() -> Result<JiraIssuesResponse, JiraError> {
-        tracing::info!("Fetching Jira issues via Claude MCP");
+    /// Fetch assigned Jira issues with caching (5-minute TTL)
+    ///
+    /// Returns cached data if available and valid, otherwise fetches fresh data
+    /// from Claude MCP and caches it.
+    pub async fn fetch_my_issues(pool: &SqlitePool) -> Result<JiraIssuesResponse, JiraError> {
+        // Check cache first
+        if let Some(cached) =
+            JiraCacheRepo::get::<JiraIssuesResponse>(pool, CACHE_KEY_MY_ISSUES).await?
+        {
+            tracing::info!(
+                "Returning {} cached Jira issues (TTL: {}s remaining)",
+                cached.data.total,
+                cached.remaining_ttl_secs()
+            );
+            return Ok(cached.data);
+        }
 
+        // Cache miss - fetch fresh data
+        tracing::info!("Cache miss - fetching Jira issues via Claude MCP");
+        let response = Self::fetch_from_claude_mcp().await?;
+
+        // Store in cache
+        if let Err(e) = JiraCacheRepo::set(pool, CACHE_KEY_MY_ISSUES, &response).await {
+            // Log cache write error but don't fail the request
+            tracing::warn!("Failed to cache Jira issues: {}", e);
+        }
+
+        Ok(response)
+    }
+
+    /// Force refresh: bypass cache and fetch fresh data from Claude MCP
+    pub async fn refresh_my_issues(pool: &SqlitePool) -> Result<JiraIssuesResponse, JiraError> {
+        tracing::info!("Force refreshing Jira issues via Claude MCP");
+
+        // Invalidate existing cache
+        if let Err(e) = JiraCacheRepo::delete(pool, CACHE_KEY_MY_ISSUES).await {
+            tracing::warn!("Failed to invalidate Jira cache: {}", e);
+        }
+
+        // Fetch fresh data
+        let response = Self::fetch_from_claude_mcp().await?;
+
+        // Store in cache
+        if let Err(e) = JiraCacheRepo::set(pool, CACHE_KEY_MY_ISSUES, &response).await {
+            tracing::warn!("Failed to cache Jira issues: {}", e);
+        }
+
+        Ok(response)
+    }
+
+    /// Internal method to fetch issues from Claude MCP (no caching)
+    async fn fetch_from_claude_mcp() -> Result<JiraIssuesResponse, JiraError> {
         let prompt = r#"Use the Atlassian MCP search tool to find my assigned Jira issues that are not resolved. For each issue found, also fetch the full issue details to get the description. Return ONLY a valid JSON array (no markdown, no explanation) with objects containing these exact keys: "key", "summary", "status", "url", "description". The url should be the full Jira issue URL. The description should be the full ticket description text. Example format: [{"key":"PROJ-123","summary":"Fix bug","status":"In Progress","url":"https://company.atlassian.net/browse/PROJ-123","description":"Full description text here..."}]"#;
 
         let command_future = Command::new("claude")
