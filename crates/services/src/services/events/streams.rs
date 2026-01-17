@@ -2,7 +2,7 @@ use db::models::{
     execution_process::ExecutionProcess,
     project::Project,
     scratch::Scratch,
-    task::{Task, TaskWithAttemptStatus},
+    task::{GlobalTaskWithAttemptStatus, Task, TaskWithAttemptStatus},
     workspace::Workspace,
 };
 use futures::StreamExt;
@@ -521,5 +521,113 @@ impl EventService {
 
         let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
         Ok(initial_stream.chain(filtered_stream).boxed())
+    }
+
+    pub async fn stream_global_tasks_raw(
+        &self,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        let tasks = Task::find_all_with_attempt_status_and_project_name(&self.db.pool).await?;
+
+        let tasks_map: serde_json::Map<String, serde_json::Value> = tasks
+            .into_iter()
+            .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
+            .collect();
+
+        let initial_patch = json!([
+            {
+                "op": "replace",
+                "path": "/tasks",
+                "value": tasks_map
+            }
+        ]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        let db_pool = self.db.pool.clone();
+
+        let filtered_stream =
+            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let db_pool = db_pool.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            if let Some(patch_op) = patch.0.first() {
+                                if patch_op.path().starts_with("/tasks/") {
+                                    match patch_op {
+                                        json_patch::PatchOperation::Add(op) => {
+                                            if let Ok(task) =
+                                                serde_json::from_value::<TaskWithAttemptStatus>(
+                                                    op.value.clone(),
+                                                )
+                                            {
+                                                if let Ok(Some(project)) =
+                                                    Project::find_by_id(&db_pool, task.project_id).await
+                                                {
+                                                    let global_task = GlobalTaskWithAttemptStatus {
+                                                        task: task.task,
+                                                        has_in_progress_attempt: task.has_in_progress_attempt,
+                                                        last_attempt_failed: task.last_attempt_failed,
+                                                        executor: task.executor,
+                                                        project_name: project.name,
+                                                    };
+                                                    let new_patch = json_patch::Patch(vec![
+                                                        json_patch::PatchOperation::Add(
+                                                            json_patch::AddOperation {
+                                                                path: op.path.clone(),
+                                                                value: serde_json::to_value(global_task).unwrap(),
+                                                            },
+                                                        ),
+                                                    ]);
+                                                    return Some(Ok(LogMsg::JsonPatch(new_patch)));
+                                                }
+                                            }
+                                        }
+                                        json_patch::PatchOperation::Replace(op) => {
+                                            if let Ok(task) =
+                                                serde_json::from_value::<TaskWithAttemptStatus>(
+                                                    op.value.clone(),
+                                                )
+                                            {
+                                                if let Ok(Some(project)) =
+                                                    Project::find_by_id(&db_pool, task.project_id).await
+                                                {
+                                                    let global_task = GlobalTaskWithAttemptStatus {
+                                                        task: task.task,
+                                                        has_in_progress_attempt: task.has_in_progress_attempt,
+                                                        last_attempt_failed: task.last_attempt_failed,
+                                                        executor: task.executor,
+                                                        project_name: project.name,
+                                                    };
+                                                    let new_patch = json_patch::Patch(vec![
+                                                        json_patch::PatchOperation::Replace(
+                                                            json_patch::ReplaceOperation {
+                                                                path: op.path.clone(),
+                                                                value: serde_json::to_value(global_task).unwrap(),
+                                                            },
+                                                        ),
+                                                    ]);
+                                                    return Some(Ok(LogMsg::JsonPatch(new_patch)));
+                                                }
+                                            }
+                                        }
+                                        json_patch::PatchOperation::Remove(_) => {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)),
+                        Err(_) => None,
+                    }
+                }
+            });
+
+        let initial_stream = futures::stream::iter(vec![Ok(initial_msg), Ok(LogMsg::Ready)]);
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
+
+        Ok(combined_stream)
     }
 }
