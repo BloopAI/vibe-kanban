@@ -3,6 +3,31 @@ pub struct ValidatedWhere {
     pub table: &'static str,
     pub where_clause: &'static str,
 }
+
+#[derive(Debug, Clone)]
+pub struct ShapeDefinition {
+    pub table: &'static str,
+    pub where_clause: &'static str,
+    pub params: &'static [&'static str],
+    pub url: &'static str,
+}
+
+impl ShapeDefinition {
+    pub const fn new(
+        table: &'static str,
+        where_clause: &'static str,
+        params: &'static [&'static str],
+        url: &'static str,
+    ) -> Self {
+        Self {
+            table,
+            where_clause,
+            params,
+            url,
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! validated_where {
     ($table:literal, $where:literal $(, $arg:expr)* $(,)?) => {{
