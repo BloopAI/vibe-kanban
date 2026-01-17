@@ -75,6 +75,29 @@ impl TaskDependency {
         .await
     }
 
+    /// Find all dependencies for tasks in a given project
+    pub async fn find_by_project_id(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            TaskDependency,
+            r#"SELECT
+                td.id as "id!: Uuid",
+                td.task_id as "task_id!: Uuid",
+                td.depends_on_task_id as "depends_on_task_id!: Uuid",
+                td.created_at as "created_at!: DateTime<Utc>",
+                td.created_by as "created_by!: DependencyCreator"
+            FROM task_dependencies td
+            INNER JOIN tasks t ON td.task_id = t.id
+            WHERE t.project_id = $1
+            ORDER BY td.created_at ASC"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     /// Find all dependents of a task (tasks that depend on this task)
     pub async fn find_dependents(
         pool: &SqlitePool,
