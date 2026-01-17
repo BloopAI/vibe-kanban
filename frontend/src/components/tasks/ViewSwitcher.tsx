@@ -40,13 +40,13 @@ export function ViewSwitcher({ className }: ViewSwitcherProps) {
         <span className="hidden sm:inline whitespace-nowrap">テーブル</span>
       </ToggleGroupItem>
       <ToggleGroupItem
-        value="dependencies"
-        aria-label="Dependencies view"
-        active={viewMode === 'dependencies'}
+        value="dag"
+        aria-label="DAG view"
+        active={viewMode === 'dag'}
         className="flex flex-row items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium"
       >
         <GitBranch className="h-4 w-4 shrink-0" />
-        <span className="hidden sm:inline whitespace-nowrap">依存関係</span>
+        <span className="hidden sm:inline whitespace-nowrap">DAG</span>
       </ToggleGroupItem>
     </ToggleGroup>
   );

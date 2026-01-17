@@ -47,7 +47,7 @@ import TaskKanbanBoard, {
   type KanbanColumnItem,
 } from '@/components/tasks/TaskKanbanBoard';
 import { TaskTableView } from '@/components/tasks/TaskTableView';
-import { DependenciesView } from '@/components/tasks/DependenciesView';
+import { TaskDAGView } from '@/components/tasks/TaskDAGView';
 import { ViewSwitcher } from '@/components/tasks/ViewSwitcher';
 import { useTaskView } from '@/contexts/TaskViewContext';
 import { useTaskFilters } from '@/contexts/TaskFiltersContext';
@@ -999,11 +999,11 @@ export function ProjectTasks() {
         selectedSharedTaskId={selectedSharedTaskId}
         onCreateTask={handleCreateNewTask}
       />
-    ) : viewMode === 'dependencies' ? (
-      <DependenciesView
+    ) : viewMode === 'dag' ? (
+      <TaskDAGView
         tasks={tasks}
-        selectedTaskId={selectedTask?.id}
-        onViewTaskDetails={handleViewTaskDetails}
+        projectId={projectId!}
+        onViewDetails={handleViewTaskDetails}
       />
     ) : (
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">

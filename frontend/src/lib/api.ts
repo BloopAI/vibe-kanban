@@ -11,6 +11,7 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
+  CreateTaskDependency,
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
@@ -26,6 +27,7 @@ import {
   SearchResult,
   ShareTaskResponse,
   Task,
+  TaskDependency,
   TaskRelationships,
   Tag,
   TagSearchParams,
@@ -1508,5 +1510,42 @@ export const githubApi = {
       `/api/projects/${projectId}/github-links/${linkId}/mappings`
     );
     return handleApiResponse<GitHubIssueMapping[]>(response);
+  },
+};
+
+// Task Dependencies API
+export const dependenciesApi = {
+  /** Get all dependencies for a project */
+  getByProject: async (projectId: string): Promise<TaskDependency[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/dependencies`
+    );
+    return handleApiResponse<TaskDependency[]>(response);
+  },
+
+  /** Create a new dependency */
+  create: async (
+    projectId: string,
+    data: Omit<CreateTaskDependency, 'created_by'> & { created_by?: string }
+  ): Promise<TaskDependency> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/dependencies`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          created_by: data.created_by ?? 'user',
+        }),
+      }
+    );
+    return handleApiResponse<TaskDependency>(response);
+  },
+
+  /** Delete a dependency */
+  delete: async (dependencyId: string): Promise<void> => {
+    const response = await makeRequest(`/api/dependencies/${dependencyId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
