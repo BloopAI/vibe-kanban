@@ -95,7 +95,10 @@ export function XTermInstance({
     registerTerminalInstance(tabId, terminal, fitAddon);
 
     terminal.onData((data) => {
-      console.log('[XTermInstance] terminal.onData called', { data, sendRef: sendRef.current });
+      console.log('[XTermInstance] terminal.onData called', {
+        data,
+        sendRef: sendRef.current,
+      });
       sendRef.current(data);
     });
 
