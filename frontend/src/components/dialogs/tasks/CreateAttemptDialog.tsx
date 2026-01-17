@@ -214,7 +214,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
             >
               {t('common:buttons.cancel')}
             </Button>
-            <Button onClick={handleCreate} disabled={!canCreate}>
+            <Button variant="accent" onClick={handleCreate} disabled={!canCreate}>
               {isCreating
                 ? t('createAttemptDialog.creating')
                 : t('createAttemptDialog.start')}

@@ -129,6 +129,8 @@ pub struct UpdateTask {
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub dag_position_x: Option<f64>,
+    pub dag_position_y: Option<f64>,
 }
 
 impl Task {
@@ -519,5 +521,23 @@ ORDER BY t.created_at DESC"#,
             current_workspace: workspace.clone(),
             children,
         })
+    }
+
+    /// Update the DAG position fields for a task
+    pub async fn update_dag_position(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        dag_position_x: Option<f64>,
+        dag_position_y: Option<f64>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET dag_position_x = $2, dag_position_y = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            dag_position_x,
+            dag_position_y
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 }
