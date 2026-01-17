@@ -87,7 +87,10 @@ export function LogsPanelProvider({ children }: LogsPanelProviderProps) {
 
   // Collapse terminal when switching away from Logs panel mode
   useEffect(() => {
-    if (rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS && isTerminalExpanded) {
+    if (
+      rightMainPanelMode !== RIGHT_MAIN_PANEL_MODES.LOGS &&
+      isTerminalExpanded
+    ) {
       setLogsPanelContent(null);
     }
   }, [rightMainPanelMode, isTerminalExpanded]);
