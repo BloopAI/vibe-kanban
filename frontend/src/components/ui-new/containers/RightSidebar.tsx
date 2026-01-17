@@ -214,24 +214,26 @@ export function RightSidebar({
   return (
     <div className="h-full border-l bg-secondary overflow-y-auto">
       <div className="divide-y border-b">
-        {sections.filter((section) => section.visible).map((section) => (
-          <div
-            key={section.persistKey}
-            className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
-          >
-            <CollapsibleSectionHeader
-              title={section.title}
-              persistKey={section.persistKey}
-              defaultExpanded={section.expanded}
-              icon={section.icon}
-              onIconClick={section.onIconClick}
+        {sections
+          .filter((section) => section.visible)
+          .map((section) => (
+            <div
+              key={section.persistKey}
+              className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
             >
-              <div className="flex flex-1 border-t min-h-[200px]">
-                {section.content}
-              </div>
-            </CollapsibleSectionHeader>
-          </div>
-        ))}
+              <CollapsibleSectionHeader
+                title={section.title}
+                persistKey={section.persistKey}
+                defaultExpanded={section.expanded}
+                icon={section.icon}
+                onIconClick={section.onIconClick}
+              >
+                <div className="flex flex-1 border-t min-h-[200px]">
+                  {section.content}
+                </div>
+              </CollapsibleSectionHeader>
+            </div>
+          ))}
       </div>
     </div>
   );
