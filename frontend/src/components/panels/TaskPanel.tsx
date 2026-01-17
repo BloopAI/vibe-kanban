@@ -299,6 +299,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                   {t('taskPanel.noAttempts')}
                 </div>
                 <Button
+                  variant="accent"
                   size="lg"
                   className="gap-2"
                   onClick={() =>
