@@ -133,15 +133,19 @@ export function useTerminalWebSocket({
   }, [endpoint, enabled]);
 
   const send = useCallback((data: string) => {
-    wsRef.current?.send(
-      JSON.stringify({ type: MESSAGE_TYPES.INPUT, data: encodeBase64(data) })
-    );
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: MESSAGE_TYPES.INPUT, data: encodeBase64(data) })
+      );
+    }
   }, []);
 
   const resize = useCallback((cols: number, rows: number) => {
-    wsRef.current?.send(
-      JSON.stringify({ type: MESSAGE_TYPES.RESIZE, cols, rows })
-    );
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: MESSAGE_TYPES.RESIZE, cols, rows })
+      );
+    }
   }, []);
 
   return {
