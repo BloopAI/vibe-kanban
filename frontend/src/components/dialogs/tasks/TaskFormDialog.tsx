@@ -28,6 +28,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import RepoBranchSelector from '@/components/tasks/RepoBranchSelector';
+import { JiraTicketSelector } from '@/components/tasks/JiraTicketSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
 import {
@@ -49,6 +50,7 @@ import type {
   TaskStatus,
   ExecutorProfileId,
   ImageResponse,
+  JiraIssue,
 } from 'shared/types';
 
 interface Task {
@@ -81,6 +83,7 @@ type TaskFormValues = {
   executorProfileId: ExecutorProfileId | null;
   repoBranches: RepoBranch[];
   autoStart: boolean;
+  jiraTicket: JiraIssue | null;
 };
 
 const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
@@ -136,6 +139,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: false,
+          jiraTicket: null,
         };
 
       case 'duplicate':
@@ -146,6 +150,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          jiraTicket: null,
         };
 
       case 'subtask':
@@ -158,6 +163,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           executorProfileId: baseProfile,
           repoBranches: defaultRepoBranches,
           autoStart: true,
+          jiraTicket: null,
         };
     }
   }, [mode, props, system.config?.executor_profile, defaultRepoBranches]);
@@ -438,6 +444,38 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               )}
             </form.Field>
           </div>
+
+          {/* Jira Ticket Selector - only show for create/duplicate/subtask modes */}
+          {!editMode && (
+            <div className="flex-none px-2">
+              <form.Field name="jiraTicket">
+                {(field) => (
+                  <JiraTicketSelector
+                    selectedTicket={field.state.value}
+                    onSelectTicket={(ticket) => {
+                      field.handleChange(ticket);
+                      // Auto-populate title from ticket if title is empty
+                      if (ticket && !form.getFieldValue('title')) {
+                        form.setFieldValue(
+                          'title',
+                          `${ticket.key}: ${ticket.summary}`
+                        );
+                      }
+                      // Auto-populate description from ticket if description is empty
+                      if (ticket?.description && !form.getFieldValue('description')) {
+                        // Format description with Jira link for context
+                        const descWithLink = ticket.url
+                          ? `**Jira Ticket:** [${ticket.key}](${ticket.url})\n\n${ticket.description}`
+                          : ticket.description;
+                        form.setFieldValue('description', descWithLink);
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  />
+                )}
+              </form.Field>
+            </div>
+          )}
 
           <div className="flex-1 p-4 min-h-0 overflow-y-auto overscroll-contain space-y-1 border border-1 border-border">
             {/* Description */}

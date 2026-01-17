@@ -128,3 +128,18 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
 See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
+
+### Jira Integration
+
+Vibe Kanban can import your assigned Jira tickets directly into new tasks, including the full ticket description so your coding agents have all the context they need.
+
+**Prerequisites:**
+- [Claude CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- Atlassian MCP plugin configured in Claude
+
+**Setup:**
+1. Install the Atlassian MCP plugin for Claude Code following the [official instructions](https://github.com/anthropics/claude-code/tree/main/plugins/atlassian)
+2. Authenticate with your Atlassian account when prompted
+3. In Vibe Kanban, create a new task and click "Load Jira tickets" to see your assigned issues
+
+When you select a Jira ticket, the task title and description are automatically populated with the ticket details.
