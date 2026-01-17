@@ -80,6 +80,10 @@ export function TaskFollowUpSection({
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(workspaceId, task.id);
 
+  // Stable boolean to avoid re-renders when process count changes (but still has processes)
+  const hasProcesses = processes.length > 0;
+  const processCount = processes.length;
+
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(workspaceId);
   const { repos, selectedRepoId } = useAttemptRepo(workspaceId);
@@ -292,23 +296,27 @@ export function TaskFollowUpSection({
   const isQueueLoading = queueMutation.isPending || cancelMutation.isPending;
 
   // Track previous process count to detect new processes
-  const prevProcessCountRef = useRef(processes.length);
+  const prevProcessCountRef = useRef(processCount);
+  const prevIsRunningRef = useRef(isAttemptRunning);
 
   // Refresh queue status when execution stops OR when a new process starts
+  // Uses refs to avoid excessive effect triggers
   useEffect(() => {
     const prevCount = prevProcessCountRef.current;
-    prevProcessCountRef.current = processes.length;
+    const wasRunning = prevIsRunningRef.current;
+    prevProcessCountRef.current = processCount;
+    prevIsRunningRef.current = isAttemptRunning;
 
     if (!workspaceId) return;
 
-    // Refresh when execution stops
-    if (!isAttemptRunning) {
+    // Refresh when execution stops (was running, now not running)
+    if (wasRunning && !isAttemptRunning) {
       refreshQueueStatus();
       return;
     }
 
     // Refresh when a new process starts (could be queued message consumption or follow-up)
-    if (processes.length > prevCount) {
+    if (processCount > prevCount) {
       refreshQueueStatus();
       // Re-sync local message from current scratch state
       // If scratch was deleted, scratchData will be undefined, so localMessage becomes ''
@@ -317,7 +325,7 @@ export function TaskFollowUpSection({
   }, [
     isAttemptRunning,
     workspaceId,
-    processes.length,
+    processCount,
     refreshQueueStatus,
     scratchData?.message,
   ]);
@@ -359,7 +367,7 @@ export function TaskFollowUpSection({
 
   // Separate logic for when textarea should be disabled vs when send button should be disabled
   const canTypeFollowUp = useMemo(() => {
-    if (!workspaceId || processes.length === 0 || isSendingFollowUp) {
+    if (!workspaceId || !hasProcesses || isSendingFollowUp) {
       return false;
     }
 
@@ -369,7 +377,7 @@ export function TaskFollowUpSection({
     return true;
   }, [
     workspaceId,
-    processes.length,
+    hasProcesses,
     isSendingFollowUp,
     isRetryActive,
     hasPendingApproval,
@@ -608,6 +616,7 @@ export function TaskFollowUpSection({
   }, [workspaceId, getSelectedRepoId, getQueueState, cancelMutation]);
 
   // Stable onChange handler for WYSIWYGEditor
+  // Optimized to avoid unnecessary re-renders by using refs for conditional checks
   const handleEditorChange = useCallback(
     (value: string) => {
       // Auto-cancel queue when user starts editing
@@ -617,7 +626,11 @@ export function TaskFollowUpSection({
       }
       setLocalMessage(value); // Immediate update for UI responsiveness
       setFollowUpMessageRef.current(value); // Debounced save to scratch
-      if (followUpErrorRef.current) setFollowUpError(null);
+      // Only call setFollowUpError if there was actually an error (avoid unnecessary state updates)
+      if (followUpErrorRef.current) {
+        followUpErrorRef.current = null; // Clear the ref immediately
+        setFollowUpError(null);
+      }
     },
     [setFollowUpError, getQueueState, cancelMutation]
   );
@@ -775,9 +788,9 @@ export function TaskFollowUpSection({
       </div>
 
       {/* Always-visible action bar */}
-      <div className="p-4">
-        <div className="flex flex-row gap-2 items-center">
-          <div className="flex-1 flex gap-2">
+      <div className="p-4 overflow-x-auto">
+        <div className="flex flex-row gap-2 items-center min-w-0">
+          <div className="flex-1 flex gap-2 min-w-0 shrink">
             <VariantSelector
               currentProfile={currentProfile}
               selectedVariant={selectedVariant}
@@ -856,7 +869,7 @@ export function TaskFollowUpSection({
           )}
 
           {isAttemptRunning ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Queue/Cancel Queue button when running */}
               {isQueued ? (
                 <Button
@@ -913,7 +926,7 @@ export function TaskFollowUpSection({
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {comments.length > 0 && (
                 <Button
                   onClick={clearComments}

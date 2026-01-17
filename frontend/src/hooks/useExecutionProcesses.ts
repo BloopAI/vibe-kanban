@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
 
@@ -47,19 +47,31 @@ export const useExecutionProcesses = (
       initialData
     );
 
+  // Memoize derived values to prevent unnecessary re-renders
   const executionProcessesById = data?.execution_processes ?? {};
-  const executionProcesses = Object.values(executionProcessesById).sort(
-    (a, b) =>
-      new Date(a.created_at as unknown as string).getTime() -
-      new Date(b.created_at as unknown as string).getTime()
+
+  const executionProcesses = useMemo(
+    () =>
+      Object.values(executionProcessesById).sort(
+        (a, b) =>
+          new Date(a.created_at as unknown as string).getTime() -
+          new Date(b.created_at as unknown as string).getTime()
+      ),
+    [executionProcessesById]
   );
-  const isAttemptRunning = executionProcesses.some(
-    (process) =>
-      (process.run_reason === 'codingagent' ||
-        process.run_reason === 'setupscript' ||
-        process.run_reason === 'cleanupscript') &&
-      process.status === 'running'
+
+  const isAttemptRunning = useMemo(
+    () =>
+      executionProcesses.some(
+        (process) =>
+          (process.run_reason === 'codingagent' ||
+            process.run_reason === 'setupscript' ||
+            process.run_reason === 'cleanupscript') &&
+          process.status === 'running'
+      ),
+    [executionProcesses]
   );
+
   const isLoading = !!sessionId && !isInitialized && !error; // until first snapshot
 
   return {

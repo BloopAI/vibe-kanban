@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { produce } from 'immer';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
@@ -7,6 +7,9 @@ type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsReadyMsg = { Ready: true };
 type WsFinishedMsg = { finished: boolean };
 type WsMsg = WsJsonPatchMsg | WsReadyMsg | WsFinishedMsg;
+
+// Throttle interval for batching rapid WebSocket updates (ms)
+const WS_UPDATE_THROTTLE_MS = 50;
 
 interface UseJsonPatchStreamOptions<T> {
   /**
@@ -46,8 +49,48 @@ export const useJsonPatchWsStream = <T extends object>(
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
 
+  // Throttling refs for batching rapid updates
+  const pendingPatchesRef = useRef<Operation[]>([]);
+  const throttleTimerRef = useRef<number | null>(null);
+
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+
+  // Flush pending patches and update state
+  const flushPatches = useCallback(() => {
+    const patches = pendingPatchesRef.current;
+    pendingPatchesRef.current = [];
+    throttleTimerRef.current = null;
+
+    if (!patches.length || !dataRef.current) return;
+
+    const filtered = deduplicatePatches ? deduplicatePatches(patches) : patches;
+    if (!filtered.length) return;
+
+    // Use Immer for structural sharing - only modified parts get new references
+    const next = produce(dataRef.current, (draft) => {
+      applyPatch(draft, filtered);
+    });
+
+    dataRef.current = next;
+    setData(next);
+  }, [deduplicatePatches]);
+
+  // Queue patches and schedule flush (throttled)
+  const queuePatches = useCallback(
+    (patches: Operation[]) => {
+      pendingPatchesRef.current.push(...patches);
+
+      // If no timer is running, schedule a flush
+      if (!throttleTimerRef.current) {
+        throttleTimerRef.current = window.setTimeout(
+          flushPatches,
+          WS_UPDATE_THROTTLE_MS
+        );
+      }
+    },
+    [flushPatches]
+  );
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -71,6 +114,11 @@ export const useJsonPatchWsStream = <T extends object>(
         window.clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      if (throttleTimerRef.current) {
+        window.clearTimeout(throttleTimerRef.current);
+        throttleTimerRef.current = null;
+      }
+      pendingPatchesRef.current = [];
       retryAttemptsRef.current = 0;
       finishedRef.current = false;
       setData(undefined);
@@ -116,32 +164,30 @@ export const useJsonPatchWsStream = <T extends object>(
           const msg: WsMsg = JSON.parse(event.data);
 
           // Handle JsonPatch messages (same as SSE json_patch event)
+          // Uses throttled queue to batch rapid consecutive updates
           if ('JsonPatch' in msg) {
             const patches: Operation[] = msg.JsonPatch;
-            const filtered = deduplicatePatches
-              ? deduplicatePatches(patches)
-              : patches;
-
-            const current = dataRef.current;
-            if (!filtered.length || !current) return;
-
-            // Use Immer for structural sharing - only modified parts get new references
-            const next = produce(current, (draft) => {
-              applyPatch(draft, filtered);
-            });
-
-            dataRef.current = next;
-            setData(next);
+            if (patches.length && dataRef.current) {
+              queuePatches(patches);
+            }
           }
 
           // Handle Ready messages (initial data has been sent)
           if ('Ready' in msg) {
+            // Flush any pending patches before marking as initialized
+            if (pendingPatchesRef.current.length) {
+              flushPatches();
+            }
             setIsInitialized(true);
           }
 
           // Handle finished messages ({finished: true})
           // Treat finished as terminal - do NOT reconnect
           if ('finished' in msg) {
+            // Flush any pending patches before closing
+            if (pendingPatchesRef.current.length) {
+              flushPatches();
+            }
             finishedRef.current = true;
             ws.close(1000, 'finished');
             wsRef.current = null;
@@ -192,6 +238,11 @@ export const useJsonPatchWsStream = <T extends object>(
         window.clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      if (throttleTimerRef.current) {
+        window.clearTimeout(throttleTimerRef.current);
+        throttleTimerRef.current = null;
+      }
+      pendingPatchesRef.current = [];
       finishedRef.current = false;
       // Preserve data during reconnection attempts - only clear on unmount/disable
       // Data will be refreshed when the new connection receives its initial snapshot
@@ -201,7 +252,8 @@ export const useJsonPatchWsStream = <T extends object>(
     enabled,
     initialData,
     injectInitialEntry,
-    deduplicatePatches,
+    queuePatches,
+    flushPatches,
     retryNonce,
   ]);
 
