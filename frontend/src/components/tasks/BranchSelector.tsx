@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
-import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
@@ -114,7 +114,8 @@ function BranchSelector({
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizerRef = useRef<Virtualizer<HTMLDivElement, Element> | null>(null);
 
   const effectivePlaceholder = placeholder ?? t('branchSelector.placeholder');
   const defaultDisabledTooltip = t('branchSelector.currentDisabled');
@@ -128,6 +129,16 @@ function BranchSelector({
     }
     return filtered;
   }, [branches, branchSearchTerm]);
+
+  const virtualizer = useVirtualizer({
+    count: filteredBranches.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 36,
+    overscan: 5,
+  });
+
+  // Update ref when virtualizer changes
+  virtualizerRef.current = virtualizer;
 
   const handleBranchSelect = useCallback(
     (branchName: string) => {
@@ -169,10 +180,7 @@ function BranchSelector({
           (next + delta + filteredBranches.length) % filteredBranches.length;
         if (!isBranchDisabled(filteredBranches[next])) {
           setHighlightedIndex(next);
-          virtuosoRef.current?.scrollIntoView({
-            index: next,
-            behavior: 'auto',
-          });
+          virtualizerRef.current?.scrollToIndex(next, { align: 'auto' });
           return;
         }
       }
@@ -269,34 +277,52 @@ function BranchSelector({
               {t('branchSelector.empty')}
             </div>
           ) : (
-            <Virtuoso
-              ref={virtuosoRef}
-              style={{ height: '16rem' }}
-              totalCount={filteredBranches.length}
-              computeItemKey={(idx) => filteredBranches[idx]?.name ?? idx}
-              itemContent={(idx) => {
-                const branch = filteredBranches[idx];
-                const isDisabled = isBranchDisabled(branch);
-                const isHighlighted = idx === highlightedIndex;
-                const isSelected = selectedBranch === branch.name;
+            <div
+              ref={parentRef}
+              style={{ height: '16rem', overflow: 'auto' }}
+            >
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const branch = filteredBranches[virtualRow.index];
+                  const isDisabled = isBranchDisabled(branch);
+                  const isHighlighted = virtualRow.index === highlightedIndex;
+                  const isSelected = selectedBranch === branch.name;
 
-                return (
-                  <BranchRow
-                    branch={branch}
-                    isSelected={isSelected}
-                    isDisabled={isDisabled}
-                    isHighlighted={isHighlighted}
-                    onHover={() => setHighlightedIndex(idx)}
-                    onSelect={() => handleBranchSelect(branch.name)}
-                    disabledTooltip={
-                      isDisabled
-                        ? (disabledTooltip ?? defaultDisabledTooltip)
-                        : undefined
-                    }
-                  />
-                );
-              }}
-            />
+                  return (
+                    <div
+                      key={branch.name ?? virtualRow.index}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <BranchRow
+                        branch={branch}
+                        isSelected={isSelected}
+                        isDisabled={isDisabled}
+                        isHighlighted={isHighlighted}
+                        onHover={() => setHighlightedIndex(virtualRow.index)}
+                        onSelect={() => handleBranchSelect(branch.name)}
+                        disabledTooltip={
+                          isDisabled
+                            ? (disabledTooltip ?? defaultDisabledTooltip)
+                            : undefined
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </DropdownMenuContent>
       </TooltipProvider>

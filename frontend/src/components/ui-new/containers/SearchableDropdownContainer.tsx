@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { VirtuosoHandle } from 'react-virtuoso';
+import { Virtualizer } from '@tanstack/react-virtual';
 import { SearchableDropdown } from '@/components/ui-new/primitives/SearchableDropdown';
 
 interface SearchableDropdownContainerProps<T> {
@@ -48,7 +48,7 @@ export function SearchableDropdownContainer<T>({
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const virtualizerRef = useRef<Virtualizer<HTMLDivElement, Element> | null>(null);
 
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return items;
@@ -80,7 +80,7 @@ export function SearchableDropdownContainer<T>({
       const next =
         (start + delta + filteredItems.length) % filteredItems.length;
       setHighlightedIndex(next);
-      virtuosoRef.current?.scrollIntoView({ index: next, behavior: 'auto' });
+      virtualizerRef.current?.scrollToIndex(next, { align: 'auto' });
     },
     [filteredItems, safeHighlightedIndex]
   );
@@ -156,7 +156,7 @@ export function SearchableDropdownContainer<T>({
       open={dropdownOpen}
       onOpenChange={handleOpenChange}
       onKeyDown={handleKeyDown}
-      virtuosoRef={virtuosoRef}
+      virtualizerRef={virtualizerRef}
       contentClassName={contentClassName}
       placeholder={placeholder}
       emptyMessage={emptyMessage}
