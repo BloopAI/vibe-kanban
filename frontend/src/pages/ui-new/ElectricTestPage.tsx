@@ -719,7 +719,7 @@ export function ElectricTestPage() {
   }
 
   return (
-    <div className="p-double space-y-double max-w-6xl">
+    <div className="h-full overflow-auto p-double space-y-double max-w-6xl">
       <h2 className="text-xl font-medium text-high">Electric SDK Test</h2>
 
       {/* Configuration */}
