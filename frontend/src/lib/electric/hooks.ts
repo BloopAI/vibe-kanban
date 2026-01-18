@@ -63,31 +63,11 @@ export function useElectricCollection<S extends ShapeDefinition<unknown>>(
     query.from({ item: collection })
   );
 
+  // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
   const items = useMemo(() => {
     if (!data) return [];
-    // Debug logging to investigate undefined items
-    console.log('[useElectricCollection] shape:', shape.table);
-    console.log('[useElectricCollection] raw data length:', data.length);
-    console.log('[useElectricCollection] raw data:', data);
-    if (data.length > 0) {
-      console.log('[useElectricCollection] first row:', data[0]);
-      console.log(
-        '[useElectricCollection] first row keys:',
-        Object.keys(data[0])
-      );
-    }
-    const extracted = data.map(
-      (row) => (row as { item: ShapeRowType<S> }).item
-    );
-    console.log('[useElectricCollection] extracted items:', extracted);
-    const undefinedCount = extracted.filter((item) => item == null).length;
-    if (undefinedCount > 0) {
-      console.warn(
-        `[useElectricCollection] ${undefinedCount} undefined items found in ${shape.table}`
-      );
-    }
-    return extracted;
-  }, [data, shape.table]);
+    return data as unknown as ShapeRowType<S>[];
+  }, [data]);
 
   return { data: items, isLoading, error, retry };
 }
