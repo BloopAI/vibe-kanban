@@ -39,7 +39,8 @@
               "agents/opencode",
               "agents/droid",
               "agents/ccr",
-              "agents/qwen-code"
+              "agents/qwen-code",
+              "agents/codebuddy"
             ]
           }
         ]
