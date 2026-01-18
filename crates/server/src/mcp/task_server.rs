@@ -363,6 +363,8 @@ struct ApiResponseEnvelope<T> {
     success: bool,
     data: Option<T>,
     message: Option<String>,
+    #[serde(default)]
+    error_data: Option<serde_json::Value>,
 }
 
 impl TaskServer {
