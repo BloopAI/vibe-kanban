@@ -102,6 +102,7 @@ pub struct UpdateWorkspace {
     pub archived: Option<bool>,
     pub pinned: Option<bool>,
     pub name: Option<String>,
+    pub sort_order: Option<f64>,
 }
 
 pub async fn get_task_attempts(
@@ -139,6 +140,7 @@ pub async fn update_workspace(
         request.archived,
         request.pinned,
         request.name.as_deref(),
+        request.sort_order,
     )
     .await?;
     let updated = Workspace::find_by_id(pool, workspace.id)

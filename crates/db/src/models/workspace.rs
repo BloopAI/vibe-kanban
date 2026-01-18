@@ -48,6 +48,7 @@ pub struct Workspace {
     pub archived: bool,
     pub pinned: bool,
     pub name: Option<String>,
+    pub sort_order: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -126,7 +127,8 @@ impl Workspace {
                               updated_at AS "updated_at!: DateTime<Utc>",
                               archived AS "archived!: bool",
                               pinned AS "pinned!: bool",
-                              name
+                              name,
+                              sort_order AS "sort_order!: f64"
                        FROM workspaces
                        WHERE task_id = $1
                        ORDER BY created_at DESC"#,
@@ -147,7 +149,8 @@ impl Workspace {
                               updated_at AS "updated_at!: DateTime<Utc>",
                               archived AS "archived!: bool",
                               pinned AS "pinned!: bool",
-                              name
+                              name,
+                              sort_order AS "sort_order!: f64"
                        FROM workspaces
                        ORDER BY created_at DESC"#
             )
@@ -178,7 +181,8 @@ impl Workspace {
                        w.updated_at        AS "updated_at!: DateTime<Utc>",
                        w.archived          AS "archived!: bool",
                        w.pinned            AS "pinned!: bool",
-                       w.name
+                       w.name,
+                       w.sort_order        AS "sort_order!: f64"
                FROM    workspaces w
                JOIN    tasks t ON w.task_id = t.id
                JOIN    projects p ON t.project_id = p.id
@@ -267,7 +271,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       sort_order        AS "sort_order!: f64"
                FROM    workspaces
                WHERE   id = $1"#,
             id
@@ -289,7 +294,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       sort_order        AS "sort_order!: f64"
                FROM    workspaces
                WHERE   rowid = $1"#,
             rowid
@@ -332,7 +338,8 @@ impl Workspace {
                 w.updated_at as "updated_at!: DateTime<Utc>",
                 w.archived as "archived!: bool",
                 w.pinned as "pinned!: bool",
-                w.name
+                w.name,
+                w.sort_order as "sort_order!: f64"
             FROM workspaces w
             JOIN tasks t ON w.task_id = t.id
             LEFT JOIN sessions s ON w.id = s.workspace_id
@@ -381,7 +388,7 @@ impl Workspace {
             Workspace,
             r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
+               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, sort_order as "sort_order!: f64""#,
             id,
             task_id,
             Option::<String>::None,
@@ -478,6 +485,7 @@ impl Workspace {
         archived: Option<bool>,
         pinned: Option<bool>,
         name: Option<&str>,
+        sort_order: Option<f64>,
     ) -> Result<(), sqlx::Error> {
         // Convert empty string to None for name field (to store as NULL)
         let name_value = name.filter(|s| !s.is_empty());
@@ -488,12 +496,14 @@ impl Workspace {
                 archived = COALESCE($1, archived),
                 pinned = COALESCE($2, pinned),
                 name = CASE WHEN $3 THEN $4 ELSE name END,
+                sort_order = COALESCE($5, sort_order),
                 updated_at = datetime('now', 'subsec')
-            WHERE id = $5"#,
+            WHERE id = $6"#,
             archived,
             pinned,
             name_provided,
             name_value,
+            sort_order,
             workspace_id
         )
         .execute(pool)
@@ -555,6 +565,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.sort_order AS "sort_order!: f64",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -597,6 +608,7 @@ impl Workspace {
                     archived: rec.archived,
                     pinned: rec.pinned,
                     name: rec.name,
+                    sort_order: rec.sort_order,
                 },
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
@@ -615,7 +627,7 @@ impl Workspace {
                 && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
             {
                 let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
-                Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
+                Self::update(pool, ws.workspace.id, None, None, Some(&name), None).await?;
                 ws.workspace.name = Some(name);
             }
         }
@@ -656,6 +668,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.sort_order AS "sort_order!: f64",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -701,6 +714,7 @@ impl Workspace {
                 archived: rec.archived,
                 pinned: rec.pinned,
                 name: rec.name,
+                sort_order: rec.sort_order,
             },
             is_running: rec.is_running != 0,
             is_errored: rec.is_errored != 0,
@@ -710,7 +724,7 @@ impl Workspace {
             && let Some(prompt) = Self::get_first_user_message(pool, ws.workspace.id).await?
         {
             let name = Self::truncate_to_name(&prompt, WORKSPACE_NAME_MAX_LEN);
-            Self::update(pool, ws.workspace.id, None, None, Some(&name)).await?;
+            Self::update(pool, ws.workspace.id, None, None, Some(&name), None).await?;
             ws.workspace.name = Some(name);
         }
 
