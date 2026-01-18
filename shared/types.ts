@@ -4,6 +4,36 @@
 
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.
 
+export type ProjectRow = { id: string, organization_id: string, name: string, color: string, created_at: string, updated_at: string, };
+
+export type Notification = { id: string, organization_id: string, user_id: string, notification_type: NotificationType, payload: JsonValue, issue_id: string | null, comment_id: string | null, seen: boolean, dismissed_at: string | null, created_at: string, };
+
+export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "IssueAssigneeChanged" | "IssueDeleted";
+
+export type WorkspaceRow = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
+
+export type ProjectStatus = { id: string, project_id: string, name: string, color: string, sort_order: number, created_at: string, };
+
+export type TagRow = { id: string, project_id: string, name: string, color: string, };
+
+export type Issue = { id: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
+
+export type IssueAssignee = { issue_id: string, user_id: string, assigned_at: string, };
+
+export type IssueFollower = { issue_id: string, user_id: string, };
+
+export type IssueTag = { issue_id: string, tag_id: string, };
+
+export type IssueDependency = { blocking_issue_id: string, blocked_issue_id: string, created_at: string, };
+
+export type IssueComment = { id: string, issue_id: string, author_id: string, message: string, created_at: string, updated_at: string, };
+
+export type IssueCommentReaction = { id: string, comment_id: string, user_id: string, emoji: string, created_at: string, };
+
+export type IssuePriority = "urgent" | "high" | "medium" | "low";
+
+export type WorkspacePrStatus = "open" | "merged" | "closed";
+
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
 export type Project = { id: string, name: string, default_agent_working_dir: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };

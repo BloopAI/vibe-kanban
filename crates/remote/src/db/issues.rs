@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, Postgres};
 use thiserror::Error;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::types::IssuePriority;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,
