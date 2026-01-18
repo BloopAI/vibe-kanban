@@ -531,7 +531,14 @@ impl WorktreeManager {
 
     /// Get the base directory for vibe-kanban worktrees
     pub fn get_worktree_base_dir() -> std::path::PathBuf {
-        utils::path::get_vibe_kanban_temp_dir().join("worktrees")
+        Self::get_worktree_base_dir_with_config(None)
+    }
+
+    pub fn get_worktree_base_dir_with_config(configured_path: Option<&str>) -> std::path::PathBuf {
+        match configured_path {
+            Some(path) if !path.trim().is_empty() => utils::path::expand_tilde(path.trim()),
+            _ => utils::path::get_vibe_kanban_temp_dir().join("worktrees"),
+        }
     }
 
     pub async fn cleanup_suspected_worktree(path: &Path) -> Result<bool, WorktreeError> {
@@ -590,4 +597,47 @@ async fn create_worktree_when_repo_path_is_a_worktree() {
     )
     .await
     .unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_none() {
+        let result = WorktreeManager::get_worktree_base_dir_with_config(None);
+        assert!(result.to_string_lossy().contains("worktrees"));
+    }
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_empty_string() {
+        let result = WorktreeManager::get_worktree_base_dir_with_config(Some(""));
+        assert!(result.to_string_lossy().contains("worktrees"));
+    }
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_whitespace_only() {
+        let result = WorktreeManager::get_worktree_base_dir_with_config(Some("   "));
+        assert!(result.to_string_lossy().contains("worktrees"));
+    }
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_absolute_path() {
+        let result = WorktreeManager::get_worktree_base_dir_with_config(Some("/custom/worktrees"));
+        assert_eq!(result, PathBuf::from("/custom/worktrees"));
+    }
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_tilde() {
+        let result = WorktreeManager::get_worktree_base_dir_with_config(Some("~/my-worktrees"));
+        assert!(result.is_absolute());
+        assert!(result.to_string_lossy().ends_with("my-worktrees"));
+    }
+
+    #[test]
+    fn test_get_worktree_base_dir_with_config_trims_whitespace() {
+        let result =
+            WorktreeManager::get_worktree_base_dir_with_config(Some("  /custom/worktrees  "));
+        assert_eq!(result, PathBuf::from("/custom/worktrees"));
+    }
 }

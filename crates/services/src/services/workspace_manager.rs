@@ -206,7 +206,11 @@ impl WorkspaceManager {
 
     /// Get the base directory for workspaces (same as worktree base dir)
     pub fn get_workspace_base_dir() -> PathBuf {
-        WorktreeManager::get_worktree_base_dir()
+        Self::get_workspace_base_dir_with_config(None)
+    }
+
+    pub fn get_workspace_base_dir_with_config(project_worktree_dir: Option<&str>) -> PathBuf {
+        WorktreeManager::get_worktree_base_dir_with_config(project_worktree_dir)
     }
 
     /// Migrate a legacy single-worktree layout to the new workspace layout.
