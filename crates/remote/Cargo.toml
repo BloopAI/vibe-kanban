@@ -4,6 +4,10 @@ version = "0.0.152"
 edition = "2024"
 publish = false
 
+[[bin]]
+name = "export-shapes"
+path = "src/bin/export_shapes.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 axum = { workspace = true }
@@ -30,6 +34,7 @@ tracing-error = "0.2"
 thiserror = { workspace = true }
 ts-rs = { workspace = true }
 utils = { path = "../utils" }
+shape-macros = { path = "../shape-macros" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 rand = "0.9"

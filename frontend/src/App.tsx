@@ -42,6 +42,7 @@ import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
+import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -190,6 +191,7 @@ function AppContent() {
             >
               <Route index element={<WorkspacesLanding />} />
               <Route path="create" element={<Workspaces />} />
+              <Route path="electric-test" element={<ElectricTestPage />} />
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
           </SentryRoutes>

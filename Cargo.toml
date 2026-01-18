@@ -9,7 +9,8 @@ members = [
     "crates/local-deployment",
     "crates/deployment",
     "crates/remote",
-    "crates/review"
+    "crates/review",
+    "crates/shape-macros",
 ]
 
 [workspace.dependencies]

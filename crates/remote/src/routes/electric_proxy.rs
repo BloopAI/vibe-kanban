@@ -15,7 +15,8 @@ use tracing::error;
 use uuid::Uuid;
 
 use crate::{
-    AppState, auth::RequestContext, db::organization_members, validated_where::ValidatedWhere,
+    AppState, auth::RequestContext, db::organization_members, shapes,
+    validated_where::ValidatedWhere,
 };
 
 #[derive(Deserialize)]
@@ -36,42 +37,24 @@ const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "column
 pub fn router() -> Router<AppState> {
     Router::new()
         // Org-scoped
-        .route("/shape/projects", get(proxy_projects))
-        .route("/shape/notifications", get(proxy_notifications))
+        .route(shapes::PROJECTS.url, get(proxy_projects))
+        .route(shapes::NOTIFICATIONS.url, get(proxy_notifications))
         // Project-scoped
+        .route(shapes::WORKSPACES.url, get(proxy_workspaces))
+        .route(shapes::PROJECT_STATUSES.url, get(proxy_project_statuses))
+        .route(shapes::TAGS.url, get(proxy_tags))
+        .route(shapes::ISSUES.url, get(proxy_issues))
+        .route(shapes::ISSUE_ASSIGNEES.url, get(proxy_issue_assignees))
+        .route(shapes::ISSUE_FOLLOWERS.url, get(proxy_issue_followers))
+        .route(shapes::ISSUE_TAGS.url, get(proxy_issue_tags))
         .route(
-            "/shape/project/{project_id}/workspaces",
-            get(proxy_workspaces),
-        )
-        .route(
-            "/shape/project/{project_id}/statuses",
-            get(proxy_project_statuses),
-        )
-        .route("/shape/project/{project_id}/tags", get(proxy_tags))
-        .route("/shape/project/{project_id}/issues", get(proxy_issues))
-        .route(
-            "/shape/project/{project_id}/issue_assignees",
-            get(proxy_issue_assignees),
-        )
-        .route(
-            "/shape/project/{project_id}/issue_followers",
-            get(proxy_issue_followers),
-        )
-        .route(
-            "/shape/project/{project_id}/issue_tags",
-            get(proxy_issue_tags),
-        )
-        .route(
-            "/shape/project/{project_id}/issue_dependencies",
+            shapes::ISSUE_DEPENDENCIES.url,
             get(proxy_issue_dependencies),
         )
         // Issue-scoped
+        .route(shapes::ISSUE_COMMENTS.url, get(proxy_issue_comments))
         .route(
-            "/shape/issue/{issue_id}/comments",
-            get(proxy_issue_comments),
-        )
-        .route(
-            "/shape/issue/{issue_id}/reactions",
+            shapes::ISSUE_COMMENT_REACTIONS.url,
             get(proxy_issue_comment_reactions),
         )
 }
