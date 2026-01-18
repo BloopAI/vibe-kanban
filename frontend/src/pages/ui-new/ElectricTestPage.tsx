@@ -15,10 +15,7 @@ import {
   ISSUE_COMMENTS_SHAPE,
   ISSUE_COMMENT_REACTIONS_SHAPE,
 } from 'shared/shapes';
-import type {
-  ElectricProject,
-  ElectricIssue,
-} from 'shared/types';
+import type { ElectricProject, ElectricIssue } from 'shared/types';
 
 // ============================================================================
 // Types
@@ -191,7 +188,8 @@ function ProjectsList({
     { organization_id: organizationId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading projects..." />;
 
   return (
@@ -240,7 +238,8 @@ function NotificationsList({
     { organization_id: organizationId, user_id: userId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading notifications..." />;
 
   return (
@@ -282,7 +281,8 @@ function IssuesList({
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading issues..." />;
 
   return (
@@ -314,7 +314,8 @@ function WorkspacesList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading workspaces..." />;
 
   return (
@@ -348,7 +349,8 @@ function StatusesList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading statuses..." />;
 
   return (
@@ -380,12 +382,12 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useElectricCollection(
-    TAGS_SHAPE,
-    { project_id: projectId }
-  );
+  const { data, isLoading, error, retry } = useElectricCollection(TAGS_SHAPE, {
+    project_id: projectId,
+  });
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading tags..." />;
 
   return (
@@ -421,7 +423,8 @@ function AssigneesList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading assignees..." />;
 
   return (
@@ -458,7 +461,8 @@ function FollowersList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading followers..." />;
 
   return (
@@ -490,7 +494,8 @@ function IssueTagsList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading issue tags..." />;
 
   return (
@@ -522,7 +527,8 @@ function DependenciesList({ projectId }: { projectId: string }) {
     { project_id: projectId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading dependencies..." />;
 
   return (
@@ -559,7 +565,8 @@ function CommentsList({ issueId }: { issueId: string }) {
     { issue_id: issueId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading comments..." />;
 
   return (
@@ -600,7 +607,8 @@ function ReactionsList({ issueId }: { issueId: string }) {
     { issue_id: issueId }
   );
 
-  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
+  if (error)
+    return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading reactions..." />;
 
   return (
