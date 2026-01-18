@@ -7,7 +7,7 @@ import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
 interface ReviewCommentRendererProps {
   comment: ReviewComment;
-  projectId?: string;
+  projectId: string;
 }
 
 export function ReviewCommentRenderer({

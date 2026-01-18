@@ -46,7 +46,7 @@ use self::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
@@ -174,7 +174,7 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let action = CodexSessionAction::Chat {
             prompt: combined_prompt,
@@ -190,7 +190,7 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_follow_up(&[])?;
+        let command_parts = self.build_command_builder()?.build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let action = CodexSessionAction::Chat {
             prompt: combined_prompt,
@@ -242,7 +242,7 @@ impl StandardCodingAgentExecutor for Codex {
         session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_parts = self.build_command_builder().build_initial()?;
+        let command_parts = self.build_command_builder()?.build_initial()?;
         let review_target = ReviewTarget::Custom {
             instructions: prompt.to_string(),
         };
@@ -259,7 +259,7 @@ impl Codex {
         "npx -y @openai/codex@0.77.0"
     }
 
-    fn build_command_builder(&self) -> CommandBuilder {
+    fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let mut builder = CommandBuilder::new(Self::base_command());
         builder = builder.extend_params(["app-server"]);
         if self.oss.unwrap_or(false) {

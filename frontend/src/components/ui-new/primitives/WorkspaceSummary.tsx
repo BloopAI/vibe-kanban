@@ -1,12 +1,12 @@
 import {
   PushPinIcon,
-  DotsThreeIcon,
   HandIcon,
   TriangleIcon,
   PlayIcon,
   FileIcon,
   CircleIcon,
   GitPullRequestIcon,
+  DotsThreeIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -70,19 +70,40 @@ export function WorkspaceSummary({
   };
 
   return (
-    <div className={cn('group relative', className)}>
+    <div
+      className={cn(
+        'group relative rounded-sm transition-all duration-100 overflow-hidden',
+        isActive ? 'bg-tertiary' : '',
+        className
+      )}
+    >
+      {/* Selection indicator - thin colored tab on the left */}
+      <div
+        className={cn(
+          'absolute left-0 top-1 bottom-1 w-0.5 rounded-full transition-colors duration-100',
+          isActive ? 'bg-brand' : 'bg-transparent'
+        )}
+      />
       <button
         onClick={onClick}
         className={cn(
-          'flex w-full cursor-pointer flex-col border-l-4 text-left text-low',
-          isActive ? 'border-normal pl-base' : 'border-none'
+          'flex w-full cursor-pointer flex-col text-left px-base py-half transition-all duration-150',
+          isActive
+            ? 'text-normal'
+            : 'text-low opacity-60 hover:opacity-100 hover:text-normal'
         )}
       >
         <div
           className={cn(
-            'truncate group-hover:text-high pr-double',
+            'overflow-hidden whitespace-nowrap pr-double',
             !summary && 'text-normal'
           )}
+          style={{
+            maskImage:
+              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+          }}
         >
           {name}
         </div>
@@ -179,15 +200,22 @@ export function WorkspaceSummary({
         )}
       </button>
 
+      {/* Right-side hover action - more options only */}
       {workspaceId && (
-        <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={handleOpenCommandBar}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="p-half rounded-sm hover:bg-tertiary text-low hover:text-high focus:outline-none"
-          >
-            <DotsThreeIcon className="size-icon-sm" weight="bold" />
-          </button>
+        <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-0 group-hover:opacity-100">
+          {/* Gradient fade from transparent to background */}
+          <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />
+          {/* Single action button */}
+          <div className="flex items-center pr-base h-full bg-secondary">
+            <button
+              onClick={handleOpenCommandBar}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary"
+              title={t('workspaces.more')}
+            >
+              <DotsThreeIcon className="size-5" weight="bold" />
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -238,6 +238,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 }],
                 stop_reason: None,
             },
+            is_synthetic: false,
             session_id: Some(session_id.clone()),
         },
         // 5. Write tool use
@@ -273,6 +274,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 stop_reason: None,
             },
             session_id: Some(session_id.clone()),
+            is_synthetic: false,
         },
         // 7. Bash tool use
         ClaudeJson::Assistant {
@@ -306,6 +308,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
                 }],
                 stop_reason: None,
             },
+            is_synthetic: false,
             session_id: Some(session_id.clone()),
         },
         // 9. Assistant final message

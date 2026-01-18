@@ -220,7 +220,7 @@ pub struct StartWorkspaceSessionRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
     #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
+        description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
@@ -416,6 +416,37 @@ impl TaskServer {
         api_response
             .data
             .ok_or_else(|| Self::err("VK API response missing data field", None).unwrap())
+    }
+
+    async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), CallToolResult> {
+        let resp = rb
+            .send()
+            .await
+            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            return Err(
+                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+            );
+        }
+
+        #[derive(Deserialize)]
+        struct EmptyApiResponse {
+            success: bool,
+            message: Option<String>,
+        }
+
+        let api_response = resp.json::<EmptyApiResponse>().await.map_err(|e| {
+            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
+        })?;
+
+        if !api_response.success {
+            let msg = api_response.message.as_deref().unwrap_or("Unknown error");
+            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+        }
+
+        Ok(())
     }
 
     fn url(&self, path: &str) -> String {
@@ -719,7 +750,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
+        description = "Update an existing task/ticket's title, description, or status. `task_id` is required. `title`, `description`, and `status` are optional."
     )]
     async fn update_task(
         &self,
@@ -768,30 +799,25 @@ impl TaskServer {
         TaskServer::success(&repsonse)
     }
 
-    #[tool(
-        description = "Delete a task/ticket from a project. `project_id` and `task_id` are required!"
-    )]
+    #[tool(description = "Delete a task/ticket. `task_id` is required.")]
     async fn delete_task(
         &self,
         Parameters(DeleteTaskRequest { task_id }): Parameters<DeleteTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/tasks/{}", task_id));
-        if let Err(e) = self
-            .send_json::<serde_json::Value>(self.client.delete(&url))
-            .await
-        {
+        if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
             return Ok(e);
         }
 
-        let repsonse = DeleteTaskResponse {
+        let response = DeleteTaskResponse {
             deleted_task_id: Some(task_id.to_string()),
         };
 
-        TaskServer::success(&repsonse)
+        TaskServer::success(&response)
     }
 
     #[tool(
-        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `project_id` and `task_id` are required!"
+        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `task_id` is required."
     )]
     async fn get_task(
         &self,

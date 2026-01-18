@@ -11,7 +11,12 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  Session,
+  TodoItem,
+  TokenUsageInfo,
+} from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
@@ -36,6 +41,7 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
+import { ContextUsageGauge } from './ContextUsageGauge';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -77,7 +83,6 @@ interface StatsProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
-  onViewCode?: () => void;
   hasConflicts?: boolean;
   conflictedFilesCount?: number;
 }
@@ -135,6 +140,8 @@ interface SessionChatBoxProps {
   executor?: ExecutorProps;
   inProgressTodo?: TodoItem | null;
   localImages?: LocalImageMetadata[];
+  onViewCode?: () => void;
+  tokenUsageInfo?: TokenUsageInfo | null;
 }
 
 /**
@@ -160,6 +167,8 @@ export function SessionChatBox({
   executor,
   inProgressTodo,
   localImages,
+  onViewCode,
+  tokenUsageInfo,
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -554,7 +563,7 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+                  <PrimaryButton variant="tertiary" onClick={onViewCode}>
                     <span className="text-sm space-x-half">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
@@ -584,6 +593,7 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
+          <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}

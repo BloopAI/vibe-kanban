@@ -2,22 +2,27 @@ import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface PreviewControlsContainerProps {
-  attemptId?: string;
-  onViewProcessInPanel?: (processId: string) => void;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewControlsContainer({
   attemptId,
-  onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
   const { repos } = useWorkspaceContext();
-  const setLogsMode = useLayoutStore((s) => s.setLogsMode);
+  const { viewProcessInPanel } = useLogsPanel();
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
 
   const { isStarting, runningDevServers, devServerProcesses } =
     usePreviewDevServer(attemptId);
@@ -36,17 +41,14 @@ export function PreviewControlsContainer({
 
   const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
 
-  const handleViewFullLogs = useCallback(
-    (processId?: string) => {
-      const targetId = processId ?? activeProcess?.id;
-      if (targetId && onViewProcessInPanel) {
-        onViewProcessInPanel(targetId);
-      } else {
-        setLogsMode(true);
-      }
-    },
-    [activeProcess?.id, onViewProcessInPanel, setLogsMode]
-  );
+  const handleViewFullLogs = useCallback(() => {
+    const targetId = activeProcess?.id;
+    if (targetId) {
+      viewProcessInPanel(targetId);
+    } else {
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
+    }
+  }, [activeProcess?.id, viewProcessInPanel, setRightMainPanelMode]);
 
   const handleTabChange = useCallback((processId: string) => {
     setActiveProcessId(processId);

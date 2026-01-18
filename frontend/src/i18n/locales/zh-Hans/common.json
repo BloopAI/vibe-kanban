@@ -131,6 +131,13 @@
     "loading": "加载中...",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
+    "viewArchive": "查看归档",
+    "backToActive": "返回活跃",
+    "noArchived": "没有已归档的工作区",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "archive": "归档",
+    "more": "更多操作",
     "rename": {
       "title": "重命名工作区",
       "description": "输入此工作区的新名称。",
@@ -158,7 +165,8 @@
     "workingBranch": "工作分支",
     "recent": "最近",
     "other": "其他",
-    "devServerPreview": "开发服务器预览"
+    "devServerPreview": "开发服务器预览",
+    "terminal": "终端"
   },
   "repos": {
     "loading": "正在加载仓库...",
@@ -196,7 +204,8 @@
     "defaultPlaceholder": "输入命令或搜索..."
   },
   "chatBox": {
-    "variants": "变体"
+    "variants": "变体",
+    "customise": "自定义"
   },
   "projects": {
     "noProjectFound": "未找到项目",
@@ -261,5 +270,22 @@
       "title": "返回经典界面",
       "content": "点击导航栏左侧的退出图标可返回经典看板。要完全禁用新界面，请在设置中的「测试版功能」下更新「启用 Workspaces 测试版」选项。"
     }
+  },
+  "logs": {
+    "searchLogs": "搜索日志",
+    "selectProcessToView": "选择一个进程以查看日志"
+  },
+  "processes": {
+    "noProcesses": "无进程"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "无匹配项"
+  },
+  "contextUsage": {
+    "label": "上下文使用量",
+    "emptyTooltip": "上下文使用量将在下一次回复后显示",
+    "tooltip": "上下文：{{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "上下文使用量：{{percentage}}%"
   }
 }

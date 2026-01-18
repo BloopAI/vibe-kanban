@@ -16,9 +16,9 @@ interface ChangesPanelProps {
   diffItems: DiffItemData[];
   onDiffRef?: (path: string, el: HTMLDivElement | null) => void;
   /** Project ID for @ mentions in comments */
-  projectId?: string;
+  projectId: string;
   /** Attempt ID for opening files in IDE */
-  attemptId?: string;
+  attemptId: string;
 }
 
 // Memoized DiffItem - only re-renders when its specific diff reference changes
@@ -32,8 +32,8 @@ const DiffItem = memo(function DiffItem({
   diff: Diff;
   initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
-  projectId?: string;
-  attemptId?: string;
+  projectId: string;
+  attemptId: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
   const [expanded, toggle] = usePersistedExpanded(
@@ -55,9 +55,11 @@ const DiffItem = memo(function DiffItem({
   return (
     <div ref={(el) => onRef?.(path, el)}>
       <DiffViewCardWithComments
+        mode="collapsible"
         input={input}
         expanded={expanded}
         onToggle={toggle}
+        className=""
         projectId={projectId}
         attemptId={attemptId}
       />

@@ -56,11 +56,11 @@ pub struct WorkspaceSummaryResponse {
     pub summaries: Vec<WorkspaceSummary>,
 }
 
-#[derive(Debug, Clone, Default)]
-struct DiffStats {
-    files_changed: usize,
-    lines_added: usize,
-    lines_removed: usize,
+#[derive(Debug, Clone, Default, Serialize, TS)]
+pub struct DiffStats {
+    pub files_changed: usize,
+    pub lines_added: usize,
+    pub lines_removed: usize,
 }
 
 /// Fetch summary information for workspaces filtered by archived status.

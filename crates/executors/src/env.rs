@@ -1,19 +1,47 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use tokio::process::Command;
 
 use crate::command::CmdOverrides;
 
-/// Environment variables to inject into executor processes
+/// Repository context for executor operations
 #[derive(Debug, Clone, Default)]
+pub struct RepoContext {
+    pub workspace_root: PathBuf,
+    /// Names of repositories in the workspace (subdirectory names)
+    pub repo_names: Vec<String>,
+}
+
+impl RepoContext {
+    pub fn new(workspace_root: PathBuf, repo_names: Vec<String>) -> Self {
+        Self {
+            workspace_root,
+            repo_names,
+        }
+    }
+
+    pub fn repo_paths(&self) -> Vec<PathBuf> {
+        self.repo_names
+            .iter()
+            .map(|name| self.workspace_root.join(name))
+            .collect()
+    }
+}
+
+/// Environment variables to inject into executor processes
+#[derive(Debug, Clone)]
 pub struct ExecutionEnv {
     pub vars: HashMap<String, String>,
+    pub repo_context: RepoContext,
+    pub commit_reminder: bool,
 }
 
 impl ExecutionEnv {
-    pub fn new() -> Self {
+    pub fn new(repo_context: RepoContext, commit_reminder: bool) -> Self {
         Self {
             vars: HashMap::new(),
+            repo_context,
+            commit_reminder,
         }
     }
 
@@ -61,7 +89,7 @@ mod tests {
 
     #[test]
     fn profile_overrides_runtime_env() {
-        let mut base = ExecutionEnv::default();
+        let mut base = ExecutionEnv::new(RepoContext::default(), false);
         base.insert("VK_PROJECT_NAME", "runtime");
         base.insert("FOO", "runtime");
 

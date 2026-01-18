@@ -7,7 +7,7 @@ import { IconListItem } from '@/components/ui-new/primitives/IconListItem';
 import type { Repo } from 'shared/types';
 
 interface BrowseRepoButtonContainerProps {
-  disabled?: boolean;
+  disabled: boolean;
   onRepoRegistered: (repo: Repo) => void;
 }
 

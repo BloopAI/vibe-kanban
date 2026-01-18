@@ -239,6 +239,10 @@
         "workspaces": {
           "label": "Habilitar Beta de Workspaces",
           "helper": "Usa la nueva interfaz de workspaces al ver intentos de tareas. Las tareas se abrirán primero en la vista de tareas, y los intentos se abrirán en la nueva vista de workspaces."
+        },
+        "commitReminder": {
+          "label": "Recordatorio de commit",
+          "helper": "Solicitar a los agentes compatibles que confirmen los cambios antes de detenerse."
         }
       }
     },
