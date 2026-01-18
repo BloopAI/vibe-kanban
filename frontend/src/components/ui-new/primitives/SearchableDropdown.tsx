@@ -1,5 +1,5 @@
-import type { RefObject } from 'react';
-import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { useRef, useEffect } from 'react';
+import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -42,8 +42,8 @@ interface SearchableDropdownProps<T> {
   /** Keyboard handler */
   onKeyDown: (e: React.KeyboardEvent) => void;
 
-  /** Virtuoso ref for scrolling */
-  virtuosoRef: RefObject<VirtuosoHandle | null>;
+  /** Virtualizer ref for scrolling */
+  virtualizerRef?: React.MutableRefObject<Virtualizer<HTMLDivElement, Element> | null>;
 
   /** Class name for dropdown content */
   contentClassName?: string;
@@ -70,12 +70,28 @@ export function SearchableDropdown<T>({
   open,
   onOpenChange,
   onKeyDown,
-  virtuosoRef,
+  virtualizerRef,
   contentClassName,
   placeholder = 'Search',
   emptyMessage = 'No items found',
   getItemBadge,
 }: SearchableDropdownProps<T>) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: filteredItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 32,
+    overscan: 5,
+  });
+
+  // Expose virtualizer to parent via ref
+  useEffect(() => {
+    if (virtualizerRef) {
+      virtualizerRef.current = virtualizer;
+    }
+  }, [virtualizer, virtualizerRef]);
+
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
@@ -92,34 +108,50 @@ export function SearchableDropdown<T>({
             {emptyMessage}
           </div>
         ) : (
-          <Virtuoso
-            ref={virtuosoRef as React.RefObject<VirtuosoHandle>}
-            style={{ height: '16rem' }}
-            totalCount={filteredItems.length}
-            computeItemKey={(idx) =>
-              getItemKey(filteredItems[idx]) ?? String(idx)
-            }
-            itemContent={(idx) => {
-              const item = filteredItems[idx];
-              const key = getItemKey(item);
-              const isHighlighted = idx === highlightedIndex;
-              const isSelected = selectedValue === key;
-              return (
-                <DropdownMenuItem
-                  onSelect={() => onSelect(item)}
-                  onMouseEnter={() => onHighlightedIndexChange(idx)}
-                  preventFocusOnHover
-                  badge={getItemBadge?.(item)}
-                  className={cn(
-                    isSelected && 'bg-secondary',
-                    isHighlighted && 'bg-secondary'
-                  )}
-                >
-                  {getItemLabel(item)}
-                </DropdownMenuItem>
-              );
-            }}
-          />
+          <div
+            ref={parentRef}
+            style={{ height: '16rem', overflow: 'auto' }}
+          >
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const item = filteredItems[virtualRow.index];
+                const key = getItemKey(item);
+                const isHighlighted = virtualRow.index === highlightedIndex;
+                const isSelected = selectedValue === key;
+                return (
+                  <div
+                    key={key ?? virtualRow.index}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <DropdownMenuItem
+                      onSelect={() => onSelect(item)}
+                      onMouseEnter={() => onHighlightedIndexChange(virtualRow.index)}
+                      preventFocusOnHover
+                      badge={getItemBadge?.(item)}
+                      className={cn(
+                        isSelected && 'bg-secondary',
+                        isHighlighted && 'bg-secondary'
+                      )}
+                    >
+                      {getItemLabel(item)}
+                    </DropdownMenuItem>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
