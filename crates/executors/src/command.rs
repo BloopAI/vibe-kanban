@@ -16,6 +16,8 @@ pub enum CommandBuildError {
     EmptyCommand,
     #[error("failed to quote command: {0}")]
     QuoteError(#[from] shlex::QuoteError),
+    #[error("invalide shell parameters: {0}")]
+    InvalidShellParams(String),
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +92,27 @@ impl CommandBuilder {
         self
     }
 
+    fn extend_shell_params<I>(mut self, more: I) -> Result<Self, CommandBuildError>
+    where
+        I: IntoIterator,
+        I::Item: Into<String>,
+    {
+        let joined = more
+            .into_iter()
+            .map(|p| p.into())
+            .collect::<Vec<String>>()
+            .join(" ");
+
+        let extra: Vec<String> = split_command_line(&joined)
+            .map_err(|err| CommandBuildError::InvalidShellParams(format!("{joined}: {err}")))?;
+
+        match &mut self.params {
+            Some(p) => p.extend(extra),
+            None => self.params = Some(extra),
+        }
+        Ok(self)
+    }
+
     pub fn extend_params<I>(mut self, more: I) -> Self
     where
         I: IntoIterator,
@@ -115,19 +138,20 @@ impl CommandBuilder {
     }
 
     fn build(&self, additional_args: &[String]) -> Result<CommandParts, CommandBuildError> {
-        let mut parts = split_command_line(&self.simple_join(additional_args))?;
-
-        let program = parts.remove(0);
-        Ok(CommandParts::new(program, parts))
-    }
-
-    fn simple_join(&self, additional_args: &[String]) -> String {
-        let mut parts = vec![self.base.clone()];
+        let mut parts = vec![];
+        let base_parts = split_command_line(&self.base)?;
+        parts.extend(base_parts);
         if let Some(ref params) = self.params {
             parts.extend(params.clone());
         }
         parts.extend(additional_args.iter().cloned());
-        parts.join(" ")
+
+        if parts.is_empty() {
+            return Err(CommandBuildError::EmptyCommand);
+        }
+
+        let program = parts.remove(0);
+        Ok(CommandParts::new(program, parts))
     }
 }
 
@@ -148,15 +172,18 @@ fn split_command_line(input: &str) -> Result<Vec<String>, CommandBuildError> {
     }
 }
 
-pub fn apply_overrides(builder: CommandBuilder, overrides: &CmdOverrides) -> CommandBuilder {
+pub fn apply_overrides(
+    builder: CommandBuilder,
+    overrides: &CmdOverrides,
+) -> Result<CommandBuilder, CommandBuildError> {
     let builder = if let Some(ref base) = overrides.base_command_override {
         builder.override_base(base.clone())
     } else {
         builder
     };
     if let Some(ref extra) = overrides.additional_params {
-        builder.extend_params(extra.clone())
+        builder.extend_shell_params(extra.clone())
     } else {
-        builder
+        Ok(builder)
     }
 }

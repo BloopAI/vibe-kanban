@@ -228,6 +228,20 @@ module.exports = {
       },
     },
     {
+      // Container components should not have optional props
+      files: ['src/components/ui-new/containers/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'TSPropertySignature[optional=true]',
+            message:
+              'Optional props are not allowed in container components. Make the prop required or provide a default value.',
+          },
+        ],
+      },
+    },
+    {
       // Logic hooks in ui-new/hooks/ - no JSX allowed
       files: ['src/components/ui-new/hooks/**/*.{ts,tsx}'],
       rules: {

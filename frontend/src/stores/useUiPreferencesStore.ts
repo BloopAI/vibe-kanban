@@ -3,6 +3,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
+export const RIGHT_MAIN_PANEL_MODES = {
+  CHANGES: 'changes',
+  LOGS: 'logs',
+  PREVIEW: 'preview',
+} as const;
+
+export type RightMainPanelMode =
+  (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -11,52 +20,61 @@ export type ContextBarPosition =
   | 'bottom-left'
   | 'bottom-right';
 
+// Workspace-specific panel state
+export type WorkspacePanelState = {
+  rightMainPanelMode: RightMainPanelMode | null;
+  isLeftMainPanelVisible: boolean;
+};
+
+const DEFAULT_WORKSPACE_PANEL_STATE: WorkspacePanelState = {
+  rightMainPanelMode: null,
+  isLeftMainPanelVisible: true,
+};
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
-  workspacesSidebarActive: 'workspaces-sidebar-active',
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
-  // Git panel sections
+  // Right panel sections
   gitAdvancedSettings: 'git-advanced-settings',
-  gitPanelCreateAddRepo: 'git-panel-create-add-repo',
   gitPanelRepositories: 'git-panel-repositories',
   gitPanelProject: 'git-panel-project',
   gitPanelAddRepositories: 'git-panel-add-repositories',
+  rightPanelprocesses: 'right-panel-processes',
+  rightPanelPreview: 'right-panel-preview',
   // Process panel sections
   processesSection: 'processes-section',
   // Changes panel sections
   changesSection: 'changes-section',
   // Preview panel sections
   devServerSection: 'dev-server-section',
-  // Context bar
-  contextBarPosition: 'context-bar-position',
+  // Terminal panel section
+  terminalSection: 'terminal-section',
   // GitHub comments toggle
   showGitHubComments: 'show-github-comments',
-  // Pane sizes
-  sidebarWidth: 'workspaces-sidebar-width',
-  gitPanelWidth: 'workspaces-git-panel-width',
-  changesPanelWidth: 'workspaces-changes-panel-width',
-  fileTreeHeight: 'workspaces-file-tree-height',
+  // Panel sizes
+  rightMainPanel: 'right-main-panel',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
 
+// Check if screen is wide enough to keep sidebar visible
+const isWideScreen = () => window.innerWidth > 2048;
+
 export type PersistKey =
-  | typeof PERSIST_KEYS.workspacesSidebarActive
   | typeof PERSIST_KEYS.workspacesSidebarArchived
   | typeof PERSIST_KEYS.gitAdvancedSettings
-  | typeof PERSIST_KEYS.gitPanelCreateAddRepo
   | typeof PERSIST_KEYS.gitPanelRepositories
   | typeof PERSIST_KEYS.gitPanelProject
   | typeof PERSIST_KEYS.gitPanelAddRepositories
   | typeof PERSIST_KEYS.processesSection
   | typeof PERSIST_KEYS.changesSection
   | typeof PERSIST_KEYS.devServerSection
+  | typeof PERSIST_KEYS.terminalSection
   | typeof PERSIST_KEYS.showGitHubComments
-  | typeof PERSIST_KEYS.sidebarWidth
-  | typeof PERSIST_KEYS.gitPanelWidth
-  | typeof PERSIST_KEYS.changesPanelWidth
-  | typeof PERSIST_KEYS.fileTreeHeight
+  | typeof PERSIST_KEYS.rightMainPanel
+  | typeof PERSIST_KEYS.rightPanelprocesses
+  | typeof PERSIST_KEYS.rightPanelPreview
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`
@@ -69,11 +87,23 @@ export type PersistKey =
   | `entry:${string}`;
 
 type State = {
+  // UI preferences
   repoActions: Record<string, RepoAction>;
   expanded: Record<string, boolean>;
   contextBarPosition: ContextBarPosition;
   paneSizes: Record<string, number | string>;
   collapsedPaths: Record<string, string[]>;
+
+  // Global layout state (applies across all workspaces)
+  isLeftSidebarVisible: boolean;
+  isRightSidebarVisible: boolean;
+  isTerminalVisible: boolean;
+  previewRefreshKey: number;
+
+  // Workspace-specific panel state
+  workspacePanelStates: Record<string, WorkspacePanelState>;
+
+  // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
   toggleExpanded: (key: string, defaultValue?: boolean) => void;
@@ -81,16 +111,53 @@ type State = {
   setContextBarPosition: (position: ContextBarPosition) => void;
   setPaneSize: (key: string, size: number | string) => void;
   setCollapsedPaths: (key: string, paths: string[]) => void;
+
+  // Layout actions
+  toggleLeftSidebar: () => void;
+  toggleLeftMainPanel: (workspaceId?: string) => void;
+  toggleRightSidebar: () => void;
+  toggleTerminal: () => void;
+  setTerminalVisible: (value: boolean) => void;
+  toggleRightMainPanelMode: (
+    mode: RightMainPanelMode,
+    workspaceId?: string
+  ) => void;
+  setRightMainPanelMode: (
+    mode: RightMainPanelMode | null,
+    workspaceId?: string
+  ) => void;
+  setLeftSidebarVisible: (value: boolean) => void;
+  setLeftMainPanelVisible: (value: boolean, workspaceId?: string) => void;
+  triggerPreviewRefresh: () => void;
+
+  // Workspace-specific panel state actions
+  getWorkspacePanelState: (workspaceId: string) => WorkspacePanelState;
+  setWorkspacePanelState: (
+    workspaceId: string,
+    state: Partial<WorkspacePanelState>
+  ) => void;
 };
 
 export const useUiPreferencesStore = create<State>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      // UI preferences state
       repoActions: {},
       expanded: {},
       contextBarPosition: 'middle-right',
       paneSizes: {},
       collapsedPaths: {},
+
+      // Global layout state
+      isLeftSidebarVisible: true,
+      isRightSidebarVisible: true,
+      isTerminalVisible: true,
+      previewRefreshKey: 0,
+
+      // Workspace-specific panel state
+      workspacePanelStates: {},
+
+      // UI preferences actions
       setRepoAction: (repoId, action) =>
         set((s) => ({ repoActions: { ...s.repoActions, [repoId]: action } })),
       setExpanded: (key, value) =>
@@ -115,8 +182,151 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ paneSizes: { ...s.paneSizes, [key]: size } })),
       setCollapsedPaths: (key, paths) =>
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
+
+      // Layout actions
+      toggleLeftSidebar: () =>
+        set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
+
+      toggleLeftMainPanel: (workspaceId) => {
+        if (!workspaceId) return;
+        const state = get();
+        const wsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
+        if (
+          wsState.isLeftMainPanelVisible &&
+          wsState.rightMainPanelMode === null
+        )
+          return;
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...wsState,
+              isLeftMainPanelVisible: !wsState.isLeftMainPanelVisible,
+            },
+          },
+        });
+      },
+
+      toggleRightSidebar: () =>
+        set((s) => ({ isRightSidebarVisible: !s.isRightSidebarVisible })),
+
+      toggleTerminal: () =>
+        set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
+
+      setTerminalVisible: (value) => set({ isTerminalVisible: value }),
+
+      toggleRightMainPanelMode: (mode, workspaceId) => {
+        if (!workspaceId) return;
+        const state = get();
+        const wsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
+        const isCurrentlyActive = wsState.rightMainPanelMode === mode;
+
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...wsState,
+              rightMainPanelMode: isCurrentlyActive ? null : mode,
+            },
+          },
+          isLeftSidebarVisible: isCurrentlyActive
+            ? true
+            : isWideScreen()
+              ? state.isLeftSidebarVisible
+              : false,
+        });
+      },
+
+      setRightMainPanelMode: (mode, workspaceId) => {
+        if (!workspaceId) return;
+        const state = get();
+        const wsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...wsState,
+              rightMainPanelMode: mode,
+            },
+          },
+          ...(mode !== null && {
+            isLeftSidebarVisible: isWideScreen()
+              ? state.isLeftSidebarVisible
+              : false,
+          }),
+        });
+      },
+
+      setLeftSidebarVisible: (value) => set({ isLeftSidebarVisible: value }),
+
+      setLeftMainPanelVisible: (value, workspaceId) => {
+        if (!workspaceId) return;
+        const state = get();
+        const wsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...wsState,
+              isLeftMainPanelVisible: value,
+            },
+          },
+        });
+      },
+
+      triggerPreviewRefresh: () =>
+        set((s) => ({ previewRefreshKey: s.previewRefreshKey + 1 })),
+
+      // Workspace-specific panel state actions
+      getWorkspacePanelState: (workspaceId) => {
+        const state = get();
+        return (
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE
+        );
+      },
+
+      setWorkspacePanelState: (workspaceId, panelState) => {
+        const state = get();
+        const currentWsState =
+          state.workspacePanelStates[workspaceId] ??
+          DEFAULT_WORKSPACE_PANEL_STATE;
+        set({
+          workspacePanelStates: {
+            ...state.workspacePanelStates,
+            [workspaceId]: {
+              ...currentWsState,
+              ...panelState,
+            },
+          },
+        });
+      },
     }),
-    { name: 'ui-preferences' }
+    {
+      name: 'ui-preferences',
+      partialize: (state) => ({
+        // UI preferences (all persisted)
+        repoActions: state.repoActions,
+        expanded: state.expanded,
+        contextBarPosition: state.contextBarPosition,
+        paneSizes: state.paneSizes,
+        collapsedPaths: state.collapsedPaths,
+        // Global layout (persist sidebar visibility)
+        isLeftSidebarVisible: state.isLeftSidebarVisible,
+        isRightSidebarVisible: state.isRightSidebarVisible,
+        isTerminalVisible: state.isTerminalVisible,
+        // Workspace-specific panel state (persisted)
+        workspacePanelStates: state.workspacePanelStates,
+      }),
+    }
   )
 );
 
@@ -196,4 +406,74 @@ export function usePersistedCollapsedPaths(
   );
 
   return [pathSet, setPathSet];
+}
+
+// Hook for workspace-specific panel state
+export function useWorkspacePanelState(workspaceId: string | undefined) {
+  // Get workspace-specific state (falls back to defaults when no workspaceId)
+  const workspacePanelStates = useUiPreferencesStore(
+    (s) => s.workspacePanelStates
+  );
+  const wsState = workspaceId
+    ? (workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE)
+    : DEFAULT_WORKSPACE_PANEL_STATE;
+
+  // Global state (sidebars are global)
+  const isLeftSidebarVisible = useUiPreferencesStore(
+    (s) => s.isLeftSidebarVisible
+  );
+  const isRightSidebarVisible = useUiPreferencesStore(
+    (s) => s.isRightSidebarVisible
+  );
+  const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
+
+  // Actions from store
+  const toggleRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.toggleRightMainPanelMode
+  );
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
+  const setLeftMainPanelVisible = useUiPreferencesStore(
+    (s) => s.setLeftMainPanelVisible
+  );
+  const setLeftSidebarVisible = useUiPreferencesStore(
+    (s) => s.setLeftSidebarVisible
+  );
+
+  // Memoized callbacks that include workspaceId
+  const toggleRightMainPanelModeForWorkspace = useCallback(
+    (mode: RightMainPanelMode) => toggleRightMainPanelMode(mode, workspaceId),
+    [toggleRightMainPanelMode, workspaceId]
+  );
+
+  const setRightMainPanelModeForWorkspace = useCallback(
+    (mode: RightMainPanelMode | null) =>
+      setRightMainPanelMode(mode, workspaceId),
+    [setRightMainPanelMode, workspaceId]
+  );
+
+  const setLeftMainPanelVisibleForWorkspace = useCallback(
+    (value: boolean) => setLeftMainPanelVisible(value, workspaceId),
+    [setLeftMainPanelVisible, workspaceId]
+  );
+
+  return {
+    // Workspace-specific state
+    rightMainPanelMode: wsState.rightMainPanelMode,
+    isLeftMainPanelVisible: wsState.isLeftMainPanelVisible,
+
+    // Global state (sidebars and terminal)
+    isLeftSidebarVisible,
+    isRightSidebarVisible,
+    isTerminalVisible,
+
+    // Workspace-specific actions
+    toggleRightMainPanelMode: toggleRightMainPanelModeForWorkspace,
+    setRightMainPanelMode: setRightMainPanelModeForWorkspace,
+    setLeftMainPanelVisible: setLeftMainPanelVisibleForWorkspace,
+
+    // Global actions
+    setLeftSidebarVisible,
+  };
 }

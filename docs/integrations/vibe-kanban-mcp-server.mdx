@@ -59,6 +59,13 @@ The Vibe Kanban MCP server provides the following tools for managing projects, t
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
 | `list_projects` | Fetch all projects | None | None | List of projects with metadata |
+| `list_repos` | List repositories in a project | `project_id` | None | List of repositories with IDs |
+
+### Context
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `get_context` | Get current workspace context (only available within an active workspace session) | None | None | Project, task, and workspace metadata |
 
 ### Task Management
 
@@ -74,11 +81,15 @@ The Vibe Kanban MCP server provides the following tools for managing projects, t
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `start_task_attempt` | Start working on a task with a coding agent | `task_id`<br/>`executor`<br/>`base_branch` | `variant` | Attempt ID and confirmation |
+| `start_workspace_session` | Start working on a task with a coding agent | `task_id`<br/>`executor`<br/>`repos` | `variant` | Task ID and workspace ID |
+
+The `repos` parameter is an array of objects with:
+- `repo_id`: The repository ID (UUID)
+- `base_branch`: The base branch for this repository
 
 ### Supported Executors
 
-When using `start_task_attempt`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
+When using `start_workspace_session`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
 
 - `claude-code` / `CLAUDE_CODE`
 - `amp` / `AMP`
@@ -97,7 +108,7 @@ Once you have the MCP server configured, you can leverage it to streamline your 
 1. **Plan Your Work**: Describe a large feature or project to your MCP client
 2. **Request Task Creation**: At the end of your task description, simply add "then turn this plan into tasks"
 3. **Automatic Task Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured tasks in your project
-4. **Start Task Execution**: Use `start_task_attempt` to programmatically begin work on tasks with specific coding agents
+4. **Start Task Execution**: Use `start_workspace_session` to programmatically begin work on tasks with specific coding agents
 
 ## Example Usage
 
@@ -124,12 +135,17 @@ After tasks are created, you can start work on them programmatically:
 Start working on the user registration task using Claude Code on the main branch.
 ```
 
-Your MCP client will use the `start_task_attempt` tool with parameters like:
+Your MCP client will use the `start_workspace_session` tool with parameters like:
 ```json
 {
   "task_id": "123e4567-e89b-12d3-a456-426614174000",
   "executor": "claude-code",
-  "base_branch": "main"
+  "repos": [
+    {
+      "repo_id": "987fcdeb-51a2-3d4e-b678-426614174001",
+      "base_branch": "main"
+    }
+  ]
 }
 ```
 
@@ -144,7 +160,7 @@ This creates a new task attempt, generates a feature branch, and starts the codi
 4. Start a task attempt for the new task using Amp on the develop branch
 ```
 
-Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_task_attempt`) to manage the complete workflow from planning to execution.
+Each step uses the appropriate MCP tool (`list_projects`, `list_tasks`, `create_task`, `start_workspace_session`) to manage the complete workflow from planning to execution.
 
 ### Internal Coding Agents (Within Vibe Kanban)
 

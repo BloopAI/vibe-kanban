@@ -1,6 +1,6 @@
 [package]
 name = "db"
-version = "0.0.151"
+version = "0.0.155"
 edition = "2024"
 
 [dependencies]
@@ -15,6 +15,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs",
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
+serde_with = { workspace = true }
 strum = "0.27.2"
 strum_macros = "0.27.2"
 

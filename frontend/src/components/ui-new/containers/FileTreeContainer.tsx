@@ -8,23 +8,23 @@ import {
 } from '@/utils/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useChangesView } from '@/contexts/ChangesViewContext';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
-  workspaceId?: string;
+  workspaceId: string;
   diffs: Diff[];
-  selectedFilePath?: string | null;
-  onSelectFile?: (path: string, diff: Diff) => void;
-  className?: string;
+  onSelectFile: (path: string, diff: Diff) => void;
+  className: string;
 }
 
 export function FileTreeContainer({
   workspaceId,
   diffs,
-  selectedFilePath,
   onSelectFile,
   className,
 }: FileTreeContainerProps) {
+  const { fileInView } = useChangesView();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedPaths, setCollapsedPaths] =
     usePersistedCollapsedPaths(workspaceId);
@@ -39,19 +39,19 @@ export function FileTreeContainer({
     isGitHubCommentsLoading,
   } = useWorkspaceContext();
 
-  // Sync selectedPath with external selectedFilePath prop and scroll into view
+  // Sync selectedPath with fileInView from context and scroll into view
   useEffect(() => {
-    if (selectedFilePath !== undefined) {
-      setSelectedPath(selectedFilePath);
+    if (fileInView !== undefined) {
+      setSelectedPath(fileInView);
       // Scroll the selected node into view if needed
-      if (selectedFilePath) {
-        const el = nodeRefs.current.get(selectedFilePath);
+      if (fileInView) {
+        const el = nodeRefs.current.get(fileInView);
         if (el) {
           el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         }
       }
     }
-  }, [selectedFilePath]);
+  }, [fileInView]);
 
   const handleNodeRef = useCallback(
     (path: string, el: HTMLDivElement | null) => {
@@ -118,7 +118,7 @@ export function FileTreeContainer({
       setSelectedPath(path);
       // Find the diff for this path
       const diff = diffs.find((d) => d.newPath === path || d.oldPath === path);
-      if (diff && onSelectFile) {
+      if (diff) {
         onSelectFile(path, diff);
       }
     },

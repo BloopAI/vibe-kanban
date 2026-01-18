@@ -980,7 +980,7 @@ export function ProjectTasks() {
       actions={
         <Button
           variant="icon"
-          aria-label={t('common:buttons.close', { defaultValue: 'Close' })}
+          aria-label={t('common:buttons.close')}
           onClick={() => {
             setSelectedSharedTaskId(null);
             if (projectId) {

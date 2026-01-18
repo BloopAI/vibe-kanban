@@ -131,6 +131,13 @@
     "loading": "読み込み中...",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
+    "viewArchive": "アーカイブを表示",
+    "backToActive": "アクティブに戻る",
+    "noArchived": "アーカイブされたワークスペースはありません",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "archive": "アーカイブ",
+    "more": "その他の操作",
     "rename": {
       "title": "ワークスペースの名前を変更",
       "description": "このワークスペースの新しい名前を入力してください。",
@@ -158,7 +165,8 @@
     "workingBranch": "作業ブランチ",
     "recent": "最近",
     "other": "その他",
-    "devServerPreview": "開発サーバープレビュー"
+    "devServerPreview": "開発サーバープレビュー",
+    "terminal": "ターミナル"
   },
   "repos": {
     "loading": "リポジトリを読み込み中...",
@@ -196,7 +204,8 @@
     "defaultPlaceholder": "コマンドを入力または検索..."
   },
   "chatBox": {
-    "variants": "バリアント"
+    "variants": "バリアント",
+    "customise": "カスタマイズ"
   },
   "projects": {
     "noProjectFound": "プロジェクトが見つかりません",
@@ -261,5 +270,22 @@
       "title": "クラシックUIに戻る",
       "content": "ナビバー左側の終了アイコンをクリックすると、クラシックカンバンボードに戻ります。新しいUIを完全に無効にするには、設定の「ベータ機能」にある「Workspacesベータを有効にする」オプションを更新してください。"
     }
+  },
+  "logs": {
+    "searchLogs": "ログを検索",
+    "selectProcessToView": "プロセスを選択してログを表示"
+  },
+  "processes": {
+    "noProcesses": "プロセスがありません"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "一致なし"
+  },
+  "contextUsage": {
+    "label": "コンテキスト使用量",
+    "emptyTooltip": "コンテキスト使用量は次の返信後に表示されます",
+    "tooltip": "コンテキスト: {{percentage}}% · {{used}} / {{total}} tokens",
+    "ariaLabel": "コンテキスト使用量: {{percentage}}%"
   }
 }

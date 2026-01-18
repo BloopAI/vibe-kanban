@@ -26,8 +26,7 @@ import {
 import { CommentWidgetLine } from './CommentWidgetLine';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
-import type { ToolStatus, DiffChangeKind } from 'shared/types';
-import { ToolStatusDot } from '../primitives/conversation/ToolStatusDot';
+import type { DiffChangeKind } from 'shared/types';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import '@/styles/diff-style-overrides.css';
@@ -44,33 +43,44 @@ export type DiffInput =
       type: 'content';
       oldContent: string;
       newContent: string;
-      oldPath?: string;
+      oldPath: string | undefined;
       newPath: string;
-      changeKind?: DiffChangeKind;
+      changeKind: DiffChangeKind;
     }
   | {
       type: 'unified';
       path: string;
       unifiedDiff: string;
-      hasLineNumbers?: boolean;
+      hasLineNumbers: boolean;
     };
 
-interface DiffViewCardWithCommentsProps {
+/** Base props shared across all modes */
+interface BaseProps {
   /** Diff data - either raw content or unified diff string */
   input: DiffInput;
-  /** Expansion state */
-  expanded?: boolean;
-  /** Toggle expansion callback */
-  onToggle?: () => void;
-  /** Optional status indicator */
-  status?: ToolStatus;
   /** Additional className */
-  className?: string;
+  className: string;
   /** Project ID for @ mentions in comments */
-  projectId?: string;
+  projectId: string;
   /** Attempt ID for opening files in IDE */
-  attemptId?: string;
+  attemptId: string;
 }
+
+/** Props for collapsible mode (with expand/collapse) */
+interface CollapsibleProps extends BaseProps {
+  mode: 'collapsible';
+  /** Expansion state */
+  expanded: boolean;
+  /** Toggle expansion callback */
+  onToggle: () => void;
+}
+
+/** Props for static mode (always expanded, no toggle) */
+interface StaticProps extends BaseProps {
+  mode: 'static';
+}
+
+type DiffViewCardWithCommentsProps = CollapsibleProps | StaticProps;
 
 interface DiffData {
   diffFile: DiffFile | null;
@@ -168,15 +178,13 @@ function useDiffData(input: DiffInput): DiffData {
   }, [input]);
 }
 
-export function DiffViewCardWithComments({
-  input,
-  expanded = false,
-  onToggle,
-  status,
-  className,
-  projectId,
-  attemptId,
-}: DiffViewCardWithCommentsProps) {
+export function DiffViewCardWithComments(props: DiffViewCardWithCommentsProps) {
+  const { input, className, projectId, attemptId, mode } = props;
+
+  // Extract mode-specific values
+  const expanded = mode === 'collapsible' ? props.expanded : true;
+  const onToggle = mode === 'collapsible' ? props.onToggle : undefined;
+
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
   const globalMode = useDiffViewMode();
@@ -349,12 +357,6 @@ export function DiffViewCardWithComments({
       >
         <span className="relative shrink-0">
           <FileIcon className="size-icon-base" />
-          {status && (
-            <ToolStatusDot
-              status={status}
-              className="absolute -bottom-0.5 -right-0.5"
-            />
-          )}
         </span>
         {changeLabel && (
           <span
@@ -406,14 +408,12 @@ export function DiffViewCardWithComments({
           </span>
         )}
         <div className="flex items-center gap-1 shrink-0">
-          {attemptId && (
-            <span onClick={(e) => e.stopPropagation()}>
-              <OpenInIdeButton
-                onClick={handleOpenInIde}
-                className="size-icon-xs p-0"
-              />
-            </span>
-          )}
+          <span onClick={(e) => e.stopPropagation()}>
+            <OpenInIdeButton
+              onClick={handleOpenInIde}
+              className="size-icon-xs p-0"
+            />
+          </span>
           {onToggle && (
             <CaretDownIcon
               className={cn(

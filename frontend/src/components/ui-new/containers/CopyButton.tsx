@@ -6,7 +6,7 @@ import { Tooltip } from '../primitives/Tooltip';
 
 interface CopyButtonProps {
   onCopy: () => void;
-  disabled?: boolean;
+  disabled: boolean;
 }
 
 /**

@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use tokio::process::Command;
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::types::PermissionMode;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
+    env::RepoContext,
     executors::{
         ExecutorError,
         claude::{
@@ -20,12 +22,14 @@ use crate::{
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
+pub const STOP_GIT_CHECK_CALLBACK_ID: &str = "STOP_GIT_CHECK_CALLBACK_ID";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
+    repo_context: RepoContext,
 }
 
 impl ClaudeAgentClient {
@@ -33,12 +37,14 @@ impl ClaudeAgentClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        repo_context: RepoContext,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
             log_writer,
             approvals,
             auto_approve,
+            repo_context,
         })
     }
 
@@ -149,6 +155,11 @@ impl ClaudeAgentClient {
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
+        // Stop hook git check - uses `decision` (approve/block) and `reason` fields
+        if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
+            return Ok(check_git_status(&self.repo_context).await);
+        }
+
         if self.auto_approve {
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
@@ -185,5 +196,51 @@ impl ClaudeAgentClient {
     pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await
+    }
+}
+
+/// Check for uncommitted git changes across all repos in the workspace.
+/// Returns a Stop hook response using `decision` (approve/block) and `reason` fields.
+async fn check_git_status(repo_context: &RepoContext) -> serde_json::Value {
+    let repo_paths = repo_context.repo_paths();
+
+    if repo_paths.is_empty() {
+        return serde_json::json!({"decision": "approve"});
+    }
+
+    let mut all_status = String::new();
+
+    for repo_path in &repo_paths {
+        if !repo_path.join(".git").exists() {
+            continue;
+        }
+
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(repo_path)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .output()
+            .await;
+
+        if let Ok(out) = output
+            && !out.stdout.is_empty()
+        {
+            let status = String::from_utf8_lossy(&out.stdout);
+            all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
+        }
+    }
+
+    if all_status.is_empty() {
+        // No uncommitted changes in any repo
+        serde_json::json!({"decision": "approve"})
+    } else {
+        // Has uncommitted changes, block stop
+        serde_json::json!({
+            "decision": "block",
+            "reason": format!(
+                "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                all_status
+            )
+        })
     }
 }

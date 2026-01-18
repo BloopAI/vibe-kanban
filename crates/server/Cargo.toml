@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.0.151"
+version = "0.0.155"
 edition = "2024"
 default-run = "server"
 
@@ -39,6 +39,7 @@ strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
+base64 = "0.22"
 ignore = "0.4"
 git2 = { workspace = true }
 mime_guess = "2.0"

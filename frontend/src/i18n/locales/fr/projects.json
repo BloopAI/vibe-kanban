@@ -1,0 +1,59 @@
+{
+  "title": "Projets",
+  "subtitle": "Gérez vos projets et suivez leur progression",
+  "createProject": "Créer un projet",
+  "linkToOrganization": "Lier à un projet distant",
+  "loading": "Chargement des projets...",
+  "repoSearch": {
+    "searching": "Recherche de dépôts...",
+    "stillSearching": "Recherche en cours... ({{seconds}}s)",
+    "takingLonger": "Cela prend plus de temps que prévu. Vous pouvez parcourir manuellement ci-dessous.",
+    "noReposFound": "Aucun dépôt trouvé dans les emplacements courants.",
+    "browseHint": "Utilisez l'option ci-dessous pour parcourir et trouver un dépôt."
+  },
+  "errors": {
+    "fetchFailed": "Échec de la récupération des projets",
+    "deleteFailed": "Échec de la suppression du projet"
+  },
+  "empty": {
+    "title": "Aucun projet pour le moment",
+    "description": "Commencez par créer votre premier projet.",
+    "createFirst": "Créer votre premier projet"
+  },
+  "linkDialog": {
+    "title": "Lier le projet à un projet distant",
+    "description": "Liez ce projet local à un projet distant pour la collaboration et la synchronisation.",
+    "projectLabel": "Projet",
+    "organizationLabel": "Organisation",
+    "loadingOrganizations": "Chargement des organisations...",
+    "noOrganizations": "Aucune organisation disponible. Créez d'abord une organisation.",
+    "selectOrganization": "Sélectionner une organisation",
+    "loginRequired": {
+      "title": "Connexion requise",
+      "description": "Vous devez être connecté pour lier des projets.",
+      "action": "Connexion"
+    },
+    "linkModeLabel": "Mode de liaison",
+    "linkToExisting": "Lier à un existant",
+    "createNew": "Créer un nouveau",
+    "remoteProjectLabel": "Projet distant",
+    "loadingRemoteProjects": "Chargement des projets distants...",
+    "noRemoteProjects": "Aucun projet distant trouvé dans cette organisation. Essayez d'en créer un nouveau à la place.",
+    "selectRemoteProject": "Sélectionner un projet distant",
+    "newProjectNameLabel": "Nom du nouveau projet distant",
+    "newProjectNamePlaceholder": "Saisir le nom du projet",
+    "linking": "Liaison en cours...",
+    "linkButton": "Lier le projet",
+    "errors": {
+      "selectOrganization": "Veuillez sélectionner une organisation",
+      "selectRemoteProject": "Veuillez sélectionner un projet distant",
+      "enterProjectName": "Veuillez saisir un nom de projet",
+      "linkFailed": "Échec de la liaison du projet"
+    }
+  },
+  "unlinkFromOrganization": "Délier du projet distant",
+  "projectNotFound": "Le projet que vous recherchez n'existe pas ou a été supprimé.",
+  "viewProject": "Voir le projet",
+  "openInIDE": "Ouvrir dans l'IDE",
+  "createdDate": "Créé le {{date}}"
+}

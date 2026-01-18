@@ -1,5 +1,16 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
-import { PreviewBrowser } from '../views/PreviewBrowser';
+import {
+  useCallback,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from 'react';
+import {
+  PreviewBrowser,
+  MOBILE_WIDTH,
+  MOBILE_HEIGHT,
+  PHONE_FRAME_PADDING,
+} from '../views/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {
@@ -7,7 +18,7 @@ import {
   type ScreenSize,
 } from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
 import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialog';
@@ -16,8 +27,8 @@ const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
 interface PreviewBrowserContainerProps {
-  attemptId?: string;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewBrowserContainer({
@@ -25,8 +36,10 @@ export function PreviewBrowserContainer({
   className,
 }: PreviewBrowserContainerProps) {
   const navigate = useNavigate();
-  const previewRefreshKey = useLayoutStore((s) => s.previewRefreshKey);
-  const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
+  const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
+  const triggerPreviewRefresh = useUiPreferencesStore(
+    (s) => s.triggerPreviewRefresh
+  );
   const { repos, workspaceId } = useWorkspaceContext();
 
   const {
@@ -105,6 +118,44 @@ export function PreviewBrowserContainer({
       setLocalDimensions(responsiveDimensions);
     }
   }, [responsiveDimensions]);
+
+  // Calculate scale for mobile preview to fit container
+  const [mobileScale, setMobileScale] = useState(1);
+
+  useLayoutEffect(() => {
+    if (screenSize !== 'mobile' || !containerRef.current) {
+      setMobileScale(1);
+      return;
+    }
+
+    const updateScale = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Get available space (subtract padding from p-double which is typically 32px total)
+      const availableWidth = container.clientWidth - 32;
+      const availableHeight = container.clientHeight - 32;
+
+      // Total phone frame dimensions including padding
+      const totalFrameWidth = MOBILE_WIDTH + PHONE_FRAME_PADDING;
+      const totalFrameHeight = MOBILE_HEIGHT + PHONE_FRAME_PADDING;
+
+      // Calculate scale needed to fit
+      const scaleX = availableWidth / totalFrameWidth;
+      const scaleY = availableHeight / totalFrameHeight;
+      const scale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+
+      setMobileScale(scale);
+    };
+
+    updateScale();
+
+    // Observe container size changes
+    const resizeObserver = new ResizeObserver(updateScale);
+    resizeObserver.observe(containerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, [screenSize]);
 
   // Handle resize events - register listeners once on mount
   useEffect(() => {
@@ -295,6 +346,7 @@ export function PreviewBrowserContainer({
         attemptId && repos.length > 0 ? handleFixDevScript : undefined
       }
       hasFailedDevServer={hasFailedDevServer}
+      mobileScale={mobileScale}
       className={className}
     />
   );

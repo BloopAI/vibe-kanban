@@ -25,8 +25,10 @@ import type {
   ResponsiveDimensions,
 } from '@/hooks/usePreviewSettings';
 
-const MOBILE_WIDTH = 390;
-const MOBILE_HEIGHT = 844;
+export const MOBILE_WIDTH = 390;
+export const MOBILE_HEIGHT = 844;
+// Phone frame adds padding (p-3 = 12px * 2) and rounded corners
+export const PHONE_FRAME_PADDING = 24;
 
 interface PreviewBrowserProps {
   url?: string;
@@ -56,6 +58,7 @@ interface PreviewBrowserProps {
   handleEditDevScript: () => void;
   handleFixDevScript?: () => void;
   hasFailedDevServer?: boolean;
+  mobileScale: number;
   className?: string;
 }
 
@@ -85,6 +88,7 @@ export function PreviewBrowser({
   handleEditDevScript,
   handleFixDevScript,
   hasFailedDevServer,
+  mobileScale,
   className,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
@@ -260,20 +264,27 @@ export function PreviewBrowser({
       {/* Content area */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 relative overflow-auto px-double pb-double"
+        className={cn(
+          'flex-1 min-h-0 relative px-double pb-double',
+          screenSize === 'mobile' ? 'overflow-hidden' : 'overflow-auto'
+        )}
       >
         {showIframe ? (
           <div
             className={cn(
               'h-full',
-              screenSize === 'desktop'
-                ? ''
-                : 'flex items-center justify-center p-double'
+              screenSize === 'desktop' ? '' : 'flex items-center justify-center'
             )}
           >
             {screenSize === 'mobile' ? (
-              // Phone frame for mobile mode
-              <div className="bg-primary rounded-[2rem] p-3 shadow-xl">
+              // Phone frame for mobile mode - scales down to fit container
+              <div
+                className="bg-primary rounded-[2rem] p-3 shadow-xl origin-center"
+                style={{
+                  transform:
+                    mobileScale < 1 ? `scale(${mobileScale})` : undefined,
+                }}
+              >
                 <div
                   className="rounded-[1.5rem] overflow-hidden"
                   style={{ width: MOBILE_WIDTH, height: MOBILE_HEIGHT }}

@@ -586,6 +586,9 @@
       "discardChanges": "放棄變更"
     }
   },
+  "terminal": {
+    "selectWorkspace": "選擇一個工作區以開啟終端機"
+  },
   "restoreLogsDialog": {
     "title": "確認重試",
     "historyChange": {
