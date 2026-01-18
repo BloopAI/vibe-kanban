@@ -47,15 +47,15 @@ function CollectionTabs<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-base mb-base">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`px-3 py-1 text-sm rounded-md ${
+          className={`px-base py-half text-sm rounded-sm ${
             value === opt.value
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-brand text-on-brand'
+              : 'bg-secondary text-normal hover:bg-panel'
           }`}
         >
           {opt.label}
@@ -67,7 +67,7 @@ function CollectionTabs<T extends string>({
 
 function LoadingState({ message }: { message: string }) {
   return (
-    <div className="p-4 bg-gray-50 border border-gray-200 rounded text-gray-600">
+    <div className="p-base bg-secondary border rounded-sm text-low">
       {message}
     </div>
   );
@@ -84,16 +84,16 @@ function ErrorState({
 }) {
   if (!syncError) return null;
   return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700">
-      <p className="font-semibold">
+    <div className="p-base bg-error/10 border border-error rounded-sm text-error">
+      <p className="font-medium">
         {title}
         {syncError.status ? ` (${syncError.status})` : ''}:
       </p>
-      <pre className="mt-2 text-sm overflow-auto">{syncError.message}</pre>
+      <pre className="mt-base text-sm overflow-auto">{syncError.message}</pre>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          className="mt-base px-base py-half bg-error text-on-brand rounded-sm"
         >
           Retry
         </button>
@@ -121,7 +121,7 @@ function DataTable<T extends Record<string, unknown>>({
 }) {
   if (data.length === 0) {
     return (
-      <div className="p-4 bg-gray-50 border border-gray-200 rounded text-gray-600">
+      <div className="p-base bg-secondary border rounded-sm text-low">
         No data found.
       </div>
     );
@@ -129,13 +129,13 @@ function DataTable<T extends Record<string, unknown>>({
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border border-gray-200 rounded text-sm">
-        <thead className="bg-gray-50">
+      <table className="min-w-full border rounded-sm text-sm">
+        <thead className="bg-secondary">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-3 py-2 text-left font-medium text-gray-700 border-b"
+                className="px-base py-half text-left font-medium text-normal border-b"
               >
                 {col.label}
               </th>
@@ -151,11 +151,11 @@ function DataTable<T extends Record<string, unknown>>({
                 key={rowId}
                 onClick={() => onRowClick?.(item)}
                 className={`${onRowClick ? 'cursor-pointer' : ''} ${
-                  isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-brand/10' : 'hover:bg-secondary'
                 }`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-3 py-2 border-b">
+                  <td key={col.key} className="px-base py-half border-b">
                     {col.render
                       ? col.render(item)
                       : String(item[col.key] ?? '')}
@@ -194,7 +194,7 @@ function ProjectsList({
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(p) => p.id}
@@ -244,7 +244,7 @@ function NotificationsList({
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(n) => n.id}
@@ -287,7 +287,7 @@ function IssuesList({
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(i) => i.id}
@@ -320,7 +320,7 @@ function WorkspacesList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(w) => w.id}
@@ -355,7 +355,7 @@ function StatusesList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(s) => s.id}
@@ -392,7 +392,7 @@ function TagsList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(t) => t.id}
@@ -429,7 +429,7 @@ function AssigneesList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(a) => `${a.issue_id}-${a.user_id}`}
@@ -467,7 +467,7 @@ function FollowersList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(f) => `${f.issue_id}-${f.user_id}`}
@@ -500,7 +500,7 @@ function IssueTagsList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(t) => `${t.issue_id}-${t.tag_id}`}
@@ -533,7 +533,7 @@ function DependenciesList({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(d) => `${d.blocking_issue_id}-${d.blocked_issue_id}`}
@@ -571,7 +571,7 @@ function CommentsList({ issueId }: { issueId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(c) => c.id}
@@ -613,7 +613,7 @@ function ReactionsList({ issueId }: { issueId: string }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
+      <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
         getRowId={(r) => r.id}
@@ -701,34 +701,34 @@ export function ElectricTestPage() {
 
   if (!isLoaded) {
     return (
-      <div className="p-6">
-        <p className="text-gray-500">Loading...</p>
+      <div className="p-double">
+        <p className="text-low">Loading...</p>
       </div>
     );
   }
 
   if (!isSignedIn) {
     return (
-      <div className="p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
+      <div className="p-double">
+        <h2 className="text-xl font-medium text-high mb-base">
           Electric SDK Test
         </h2>
-        <p className="text-gray-500">Please sign in to test Electric sync.</p>
+        <p className="text-low">Please sign in to test Electric sync.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
-      <h2 className="text-xl font-bold text-gray-900">Electric SDK Test</h2>
+    <div className="p-double space-y-double max-w-6xl">
+      <h2 className="text-xl font-medium text-high">Electric SDK Test</h2>
 
       {/* Configuration */}
-      <div className="bg-white rounded-lg shadow p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">Configuration</h3>
+      <div className="bg-primary border rounded-sm p-base space-y-base">
+        <h3 className="text-lg font-medium text-normal">Configuration</h3>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-base">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-normal mb-half">
               Organization
             </label>
             <select
@@ -741,7 +741,7 @@ export function ElectricTestPage() {
                 setSelectedIssue(null);
               }}
               disabled={isConnected}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              className="w-full px-base py-half border rounded-sm bg-primary text-normal focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand disabled:bg-secondary disabled:text-low"
             >
               <option value="">Select an organization...</option>
               {organizations.map((org) => (
@@ -752,25 +752,25 @@ export function ElectricTestPage() {
             </select>
           </div>
 
-          <div className="flex items-end gap-4">
+          <div className="flex items-end gap-base">
             {!isConnected ? (
               <button
                 onClick={() => setIsConnected(true)}
                 disabled={!selectedOrgId}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-base py-half bg-brand text-on-brand rounded-sm hover:bg-brand-hover focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:bg-panel disabled:text-low disabled:cursor-not-allowed"
               >
                 Connect
               </button>
             ) : (
               <button
                 onClick={handleDisconnect}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                className="px-base py-half bg-error text-on-brand rounded-sm focus:outline-none focus:ring-2 focus:ring-error focus:ring-offset-2"
               >
                 Disconnect
               </button>
             )}
             <span
-              className={`text-sm ${isConnected ? 'text-green-600' : 'text-gray-500'}`}
+              className={`text-sm ${isConnected ? 'text-success' : 'text-low'}`}
             >
               {isConnected ? 'Connected' : 'Not connected'}
             </span>
@@ -778,17 +778,17 @@ export function ElectricTestPage() {
         </div>
 
         {selectedOrgId && (
-          <div className="text-xs text-gray-500 font-mono">
+          <div className="text-xs text-low font-ibm-plex-mono">
             Organization ID: {selectedOrgId}
-            {userId && <span className="ml-4">User ID: {userId}</span>}
+            {userId && <span className="ml-base">User ID: {userId}</span>}
           </div>
         )}
       </div>
 
       {/* Organization-scoped collections */}
       {isConnected && selectedOrgId && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="bg-primary border rounded-sm p-base">
+          <h3 className="text-lg font-medium text-normal mb-base">
             Organization Collections
           </h3>
 
@@ -816,7 +816,7 @@ export function ElectricTestPage() {
           )}
 
           {selectedProject && (
-            <p className="mt-4 text-sm text-blue-600">
+            <p className="mt-base text-sm text-brand">
               Selected project: <strong>{selectedProject.name}</strong> (click a
               row to select)
             </p>
@@ -826,10 +826,10 @@ export function ElectricTestPage() {
 
       {/* Project-scoped collections */}
       {isConnected && selectedProjectId && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="bg-primary border rounded-sm p-base">
+          <h3 className="text-lg font-medium text-normal mb-base">
             Project Collections
-            <span className="text-sm font-normal text-gray-500 ml-2">
+            <span className="text-sm font-normal text-low ml-base">
               ({selectedProject?.name})
             </span>
           </h3>
@@ -879,7 +879,7 @@ export function ElectricTestPage() {
           )}
 
           {selectedIssue && (
-            <p className="mt-4 text-sm text-blue-600">
+            <p className="mt-base text-sm text-brand">
               Selected issue: <strong>{selectedIssue.title}</strong>
             </p>
           )}
@@ -888,10 +888,10 @@ export function ElectricTestPage() {
 
       {/* Issue-scoped collections */}
       {isConnected && selectedIssueId && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="bg-primary border rounded-sm p-base">
+          <h3 className="text-lg font-medium text-normal mb-base">
             Issue Collections
-            <span className="text-sm font-normal text-gray-500 ml-2">
+            <span className="text-sm font-normal text-low ml-base">
               ({selectedIssue?.title})
             </span>
           </h3>
