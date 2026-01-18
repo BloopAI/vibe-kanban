@@ -162,7 +162,7 @@ export function ConversationList({ attempt }: ConversationListProps) {
         >
           <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
             ref={messageListRef}
-            className="h-full scrollbar-none"
+            className="h-full scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent"
             data={channelData}
             initialLocation={INITIAL_TOP_ITEM}
             context={messageListContext}
