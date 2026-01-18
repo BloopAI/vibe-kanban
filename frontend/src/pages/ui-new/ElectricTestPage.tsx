@@ -1,34 +1,23 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useLiveQuery } from '@tanstack/react-db';
+import { useState } from 'react';
 import { useAuth, useUserOrganizations, useCurrentUser } from '@/hooks';
+import { useElectricCollection, type SyncError } from '@/lib/electric';
 import {
-  createProjectsCollection,
-  createNotificationsCollection,
-  createWorkspacesCollection,
-  createProjectStatusesCollection,
-  createTagsCollection,
-  createIssuesCollection,
-  createIssueAssigneesCollection,
-  createIssueFollowersCollection,
-  createIssueTagsCollection,
-  createIssueDependenciesCollection,
-  createIssueCommentsCollection,
-  createIssueCommentReactionsCollection,
-  type SyncError,
-} from '@/lib/electric';
+  PROJECTS_SHAPE,
+  NOTIFICATIONS_SHAPE,
+  WORKSPACES_SHAPE,
+  PROJECT_STATUSES_SHAPE,
+  TAGS_SHAPE,
+  ISSUES_SHAPE,
+  ISSUE_ASSIGNEES_SHAPE,
+  ISSUE_FOLLOWERS_SHAPE,
+  ISSUE_TAGS_SHAPE,
+  ISSUE_DEPENDENCIES_SHAPE,
+  ISSUE_COMMENTS_SHAPE,
+  ISSUE_COMMENT_REACTIONS_SHAPE,
+} from 'shared/shapes';
 import type {
   ElectricProject,
-  ElectricNotification,
-  ElectricWorkspace,
-  ElectricProjectStatus,
-  ElectricTag,
   ElectricIssue,
-  ElectricIssueAssignee,
-  ElectricIssueFollower,
-  ElectricIssueTag,
-  ElectricIssueDependency,
-  ElectricIssueComment,
-  ElectricIssueCommentReaction,
 } from 'shared/types';
 
 // ============================================================================
@@ -90,9 +79,11 @@ function LoadingState({ message }: { message: string }) {
 function ErrorState({
   syncError,
   title,
+  onRetry,
 }: {
   syncError: SyncError | null;
   title: string;
+  onRetry?: () => void;
 }) {
   if (!syncError) return null;
   return (
@@ -102,6 +93,14 @@ function ErrorState({
         {syncError.status ? ` (${syncError.status})` : ''}:
       </p>
       <pre className="mt-2 text-sm overflow-auto">{syncError.message}</pre>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }
@@ -175,7 +174,7 @@ function DataTable<T extends Record<string, unknown>>({
 }
 
 // ============================================================================
-// Collection List Components
+// Collection List Components (using generic hook)
 // ============================================================================
 
 function ProjectsList({
@@ -187,31 +186,19 @@ function ProjectsList({
   onSelectProject: (project: ElectricProject) => void;
   selectedProjectId: string | null;
 }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    PROJECTS_SHAPE,
+    { organization_id: organizationId }
   );
 
-  const collection = useMemo(
-    () => createProjectsCollection(organizationId, { onError: handleError }),
-    [organizationId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading projects..." />;
-
-  const items = extractItems<ElectricProject>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(p) => p.id}
         selectedId={selectedProjectId ?? undefined}
         onRowClick={onSelectProject}
@@ -248,34 +235,19 @@ function NotificationsList({
   organizationId: string;
   userId: string;
 }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    NOTIFICATIONS_SHAPE,
+    { organization_id: organizationId, user_id: userId }
   );
 
-  const collection = useMemo(
-    () =>
-      createNotificationsCollection(organizationId, userId, {
-        onError: handleError,
-      }),
-    [organizationId, userId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading notifications..." />;
-
-  const items = extractItems<ElectricNotification>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(n) => n.id}
         columns={[
           { key: 'notification_type', label: 'Type' },
@@ -305,31 +277,19 @@ function IssuesList({
   onSelectIssue: (issue: ElectricIssue) => void;
   selectedIssueId: string | null;
 }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUES_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createIssuesCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading issues..." />;
-
-  const items = extractItems<ElectricIssue>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(i) => i.id}
         selectedId={selectedIssueId ?? undefined}
         onRowClick={onSelectIssue}
@@ -349,31 +309,19 @@ function IssuesList({
 }
 
 function WorkspacesList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    WORKSPACES_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createWorkspacesCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading workspaces..." />;
-
-  const items = extractItems<ElectricWorkspace>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(w) => w.id}
         columns={[
           { key: 'id', label: 'ID', render: (w) => truncateId(w.id) },
@@ -395,31 +343,19 @@ function WorkspacesList({ projectId }: { projectId: string }) {
 }
 
 function StatusesList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    PROJECT_STATUSES_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createProjectStatusesCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading statuses..." />;
-
-  const items = extractItems<ElectricProjectStatus>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(s) => s.id}
         columns={[
           {
@@ -444,31 +380,19 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    TAGS_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createTagsCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading tags..." />;
-
-  const items = extractItems<ElectricTag>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(t) => t.id}
         columns={[
           {
@@ -492,31 +416,19 @@ function TagsList({ projectId }: { projectId: string }) {
 }
 
 function AssigneesList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_ASSIGNEES_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createIssueAssigneesCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading assignees..." />;
-
-  const items = extractItems<ElectricIssueAssignee>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(a) => `${a.issue_id}-${a.user_id}`}
         columns={[
           {
@@ -541,31 +453,19 @@ function AssigneesList({ projectId }: { projectId: string }) {
 }
 
 function FollowersList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_FOLLOWERS_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createIssueFollowersCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading followers..." />;
-
-  const items = extractItems<ElectricIssueFollower>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(f) => `${f.issue_id}-${f.user_id}`}
         columns={[
           {
@@ -585,31 +485,19 @@ function FollowersList({ projectId }: { projectId: string }) {
 }
 
 function IssueTagsList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_TAGS_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () => createIssueTagsCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading issue tags..." />;
-
-  const items = extractItems<ElectricIssueTag>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(t) => `${t.issue_id}-${t.tag_id}`}
         columns={[
           {
@@ -629,32 +517,19 @@ function IssueTagsList({ projectId }: { projectId: string }) {
 }
 
 function DependenciesList({ projectId }: { projectId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_DEPENDENCIES_SHAPE,
+    { project_id: projectId }
   );
 
-  const collection = useMemo(
-    () =>
-      createIssueDependenciesCollection(projectId, { onError: handleError }),
-    [projectId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading dependencies..." />;
-
-  const items = extractItems<ElectricIssueDependency>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(d) => `${d.blocking_issue_id}-${d.blocked_issue_id}`}
         columns={[
           {
@@ -679,31 +554,19 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_COMMENTS_SHAPE,
+    { issue_id: issueId }
   );
 
-  const collection = useMemo(
-    () => createIssueCommentsCollection(issueId, { onError: handleError }),
-    [issueId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading comments..." />;
-
-  const items = extractItems<ElectricIssueComment>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(c) => c.id}
         columns={[
           {
@@ -732,32 +595,19 @@ function CommentsList({ issueId }: { issueId: string }) {
 }
 
 function ReactionsList({ issueId }: { issueId: string }) {
-  const [syncError, setSyncError] = useState<SyncError | null>(null);
-  const handleError = useCallback(
-    (error: SyncError) => setSyncError(error),
-    []
+  const { data, isLoading, error, retry } = useElectricCollection(
+    ISSUE_COMMENT_REACTIONS_SHAPE,
+    { issue_id: issueId }
   );
 
-  const collection = useMemo(
-    () =>
-      createIssueCommentReactionsCollection(issueId, { onError: handleError }),
-    [issueId, handleError]
-  );
-
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
-  );
-
-  if (syncError) return <ErrorState syncError={syncError} title="Sync Error" />;
+  if (error) return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
   if (isLoading) return <LoadingState message="Loading reactions..." />;
-
-  const items = extractItems<ElectricIssueCommentReaction>(data, 'item');
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-2">{items.length} synced</p>
+      <p className="text-sm text-gray-500 mb-2">{data.length} synced</p>
       <DataTable
-        data={items}
+        data={data}
         getRowId={(r) => r.id}
         columns={[
           { key: 'emoji', label: 'Emoji' },
@@ -781,23 +631,6 @@ function ReactionsList({ issueId }: { issueId: string }) {
 // ============================================================================
 // Utility functions
 // ============================================================================
-
-function extractItems<T>(data: unknown, key: string): T[] {
-  if (!data || !Array.isArray(data)) return [];
-  return data
-    .map((item: unknown) => {
-      if (item && typeof item === 'object') {
-        if (key in item && (item as Record<string, unknown>)[key]) {
-          return (item as Record<string, unknown>)[key] as T;
-        }
-        if ('id' in item) {
-          return item as T;
-        }
-      }
-      return null;
-    })
-    .filter((item): item is T => item !== null);
-}
 
 function truncateId(id: string): string {
   return id.length > 8 ? id.slice(0, 8) + '...' : id;
