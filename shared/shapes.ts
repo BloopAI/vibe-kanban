@@ -1,17 +1,17 @@
 // This file was auto-generated. Do not edit manually.
 import type {
-  ProjectRow,
-  Notification,
-  WorkspaceRow,
-  ProjectStatus,
-  TagRow,
-  Issue,
-  IssueAssignee,
-  IssueFollower,
-  IssueTag,
-  IssueDependency,
-  IssueComment,
-  IssueCommentReaction,
+  ElectricProject,
+  ElectricNotification,
+  ElectricWorkspace,
+  ElectricProjectStatus,
+  ElectricTag,
+  ElectricIssue,
+  ElectricIssueAssignee,
+  ElectricIssueFollower,
+  ElectricIssueTag,
+  ElectricIssueDependency,
+  ElectricIssueComment,
+  ElectricIssueCommentReaction,
 } from './types';
 
 // Shape definition interface
@@ -32,73 +32,73 @@ function defineShape<T>(
 }
 
 // Individual shape definitions with embedded types
-export const PROJECTS_SHAPE = defineShape<ProjectRow>(
+export const PROJECTS_SHAPE = defineShape<ElectricProject>(
   'projects',
   ['organization_id'] as const,
   '/shape/projects'
 );
 
-export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
+export const NOTIFICATIONS_SHAPE = defineShape<ElectricNotification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
   '/shape/notifications'
 );
 
-export const WORKSPACES_SHAPE = defineShape<WorkspaceRow>(
+export const WORKSPACES_SHAPE = defineShape<ElectricWorkspace>(
   'workspaces',
   ['project_id'] as const,
   '/shape/project/{project_id}/workspaces'
 );
 
-export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
+export const PROJECT_STATUSES_SHAPE = defineShape<ElectricProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
   '/shape/project/{project_id}/statuses'
 );
 
-export const TAGS_SHAPE = defineShape<TagRow>(
+export const TAGS_SHAPE = defineShape<ElectricTag>(
   'tags',
   ['project_id'] as const,
   '/shape/project/{project_id}/tags'
 );
 
-export const ISSUES_SHAPE = defineShape<Issue>(
+export const ISSUES_SHAPE = defineShape<ElectricIssue>(
   'issues',
   ['project_id'] as const,
   '/shape/project/{project_id}/issues'
 );
 
-export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
+export const ISSUE_ASSIGNEES_SHAPE = defineShape<ElectricIssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
   '/shape/project/{project_id}/issue_assignees'
 );
 
-export const ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
+export const ISSUE_FOLLOWERS_SHAPE = defineShape<ElectricIssueFollower>(
   'issue_followers',
   ['project_id'] as const,
   '/shape/project/{project_id}/issue_followers'
 );
 
-export const ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
+export const ISSUE_TAGS_SHAPE = defineShape<ElectricIssueTag>(
   'issue_tags',
   ['project_id'] as const,
   '/shape/project/{project_id}/issue_tags'
 );
 
-export const ISSUE_DEPENDENCIES_SHAPE = defineShape<IssueDependency>(
+export const ISSUE_DEPENDENCIES_SHAPE = defineShape<ElectricIssueDependency>(
   'issue_dependencies',
   ['project_id'] as const,
   '/shape/project/{project_id}/issue_dependencies'
 );
 
-export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
+export const ISSUE_COMMENTS_SHAPE = defineShape<ElectricIssueComment>(
   'issue_comments',
   ['issue_id'] as const,
   '/shape/issue/{issue_id}/comments'
 );
 
-export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
+export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<ElectricIssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
   '/shape/issue/{issue_id}/reactions'
@@ -128,16 +128,16 @@ export type AnyShape = typeof ALL_SHAPES[number];
 
 // Type-safe shape to row type mapping
 export type ShapeRowTypes = {
-  'projects': ProjectRow;
-  'notifications': Notification;
-  'workspaces': WorkspaceRow;
-  'project_statuses': ProjectStatus;
-  'tags': TagRow;
-  'issues': Issue;
-  'issue_assignees': IssueAssignee;
-  'issue_followers': IssueFollower;
-  'issue_tags': IssueTag;
-  'issue_dependencies': IssueDependency;
-  'issue_comments': IssueComment;
-  'issue_comment_reactions': IssueCommentReaction;
+  'projects': ElectricProject;
+  'notifications': ElectricNotification;
+  'workspaces': ElectricWorkspace;
+  'project_statuses': ElectricProjectStatus;
+  'tags': ElectricTag;
+  'issues': ElectricIssue;
+  'issue_assignees': ElectricIssueAssignee;
+  'issue_followers': ElectricIssueFollower;
+  'issue_tags': ElectricIssueTag;
+  'issue_dependencies': ElectricIssueDependency;
+  'issue_comments': ElectricIssueComment;
+  'issue_comment_reactions': ElectricIssueCommentReaction;
 };

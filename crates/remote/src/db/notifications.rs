@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
-#[ts(export)]
+#[ts(export, rename = "ElectricNotificationType")]
 pub enum NotificationType {
     IssueCommentAdded,
     IssueStatusChanged,
@@ -17,7 +17,7 @@ pub enum NotificationType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[ts(export, rename = "ElectricNotification")]
 pub struct Notification {
     pub id: Uuid,
     pub organization_id: Uuid,

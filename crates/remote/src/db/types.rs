@@ -4,7 +4,7 @@ use ts_rs::TS;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
 #[sqlx(type_name = "issue_priority", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
-#[ts(export)]
+#[ts(export, rename = "ElectricIssuePriority")]
 pub enum IssuePriority {
     Urgent,
     High,
@@ -15,7 +15,7 @@ pub enum IssuePriority {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
 #[sqlx(type_name = "workspace_pr_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-#[ts(export)]
+#[ts(export, rename = "ElectricWorkspacePrStatus")]
 pub enum WorkspacePrStatus {
     Open,
     Merged,

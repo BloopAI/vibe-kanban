@@ -6,7 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
+#[ts(export, rename = "ElectricIssueDependency")]
 pub struct IssueDependency {
     pub blocking_issue_id: Uuid,
     pub blocked_issue_id: Uuid,
