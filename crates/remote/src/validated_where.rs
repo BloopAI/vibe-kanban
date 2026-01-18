@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+
 use ts_rs::TS;
 
 #[derive(Debug)]

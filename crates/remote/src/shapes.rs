@@ -1,20 +1,15 @@
 use shape_macros::define_shape;
 
-use crate::db::{
-    issue_assignees::IssueAssignee,
-    issue_comment_reactions::IssueCommentReaction,
-    issue_comments::IssueComment,
-    issue_dependencies::IssueDependency,
-    issue_followers::IssueFollower,
-    issue_tags::IssueTag,
-    issues::Issue,
-    notifications::Notification,
-    project_statuses::ProjectStatus,
-    projects::Project,
-    tags::Tag,
-    workspaces::Workspace,
+use crate::{
+    db::{
+        issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
+        issue_comments::IssueComment, issue_dependencies::IssueDependency,
+        issue_followers::IssueFollower, issue_tags::IssueTag, issues::Issue,
+        notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
+        workspaces::Workspace,
+    },
+    validated_where::ShapeExport,
 };
-use crate::validated_where::ShapeExport;
 
 // Organization-scoped shapes
 define_shape!(
@@ -209,9 +204,8 @@ pub fn export_shapes_typescript() -> String {
 
     // Type helpers
     output.push_str("// Type helper to extract row type from a shape\n");
-    output.push_str(
-        "export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n",
-    );
+    output
+        .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
 
     output.push_str("// Union of all shape types\n");
     output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n\n");
