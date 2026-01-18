@@ -22,6 +22,7 @@ export function TerminalPanel({
       {tabs.map((tab) => (
         <XTermInstance
           key={tab.id}
+          tabId={tab.id}
           workspaceId={workspaceId}
           isActive={tab.id === activeTabId}
           onClose={() => onTabClose(tab.id)}

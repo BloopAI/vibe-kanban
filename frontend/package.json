@@ -79,7 +79,6 @@
     "tailwind-merge": "^2.2.0",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss-animate": "^1.0.7",
-    "react-use-websocket": "^4.13.0",
     "vibe-kanban-web-companion": "^0.0.4",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
