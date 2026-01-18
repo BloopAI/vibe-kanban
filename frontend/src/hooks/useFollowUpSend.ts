@@ -9,6 +9,7 @@ type Args = {
   reviewMarkdown: string;
   clickedMarkdown?: string;
   selectedVariant: string | null;
+  timeLimitSeconds?: number;
   clearComments: () => void;
   clearClickedElements?: () => void;
   onAfterSendCleanup: () => void;
@@ -21,6 +22,7 @@ export function useFollowUpSend({
   reviewMarkdown,
   clickedMarkdown,
   selectedVariant,
+  timeLimitSeconds,
   clearComments,
   clearClickedElements,
   onAfterSendCleanup,
@@ -46,6 +48,10 @@ export function useFollowUpSend({
       const body: CreateFollowUpAttempt = {
         prompt: finalPrompt,
         variant: selectedVariant,
+        ...(timeLimitSeconds !== undefined &&
+          !Number.isNaN(timeLimitSeconds) && {
+            time_limit_seconds: timeLimitSeconds,
+          }),
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
@@ -70,6 +76,7 @@ export function useFollowUpSend({
     reviewMarkdown,
     clickedMarkdown,
     selectedVariant,
+    timeLimitSeconds,
     clearComments,
     clearClickedElements,
     onAfterSendCleanup,
