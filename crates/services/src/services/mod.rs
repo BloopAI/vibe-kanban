@@ -13,6 +13,7 @@ pub mod filesystem_watcher;
 pub mod git;
 pub mod github;
 pub mod image;
+pub mod jira;
 pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;

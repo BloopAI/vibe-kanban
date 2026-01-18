@@ -155,6 +155,8 @@ fn generate_types_content() -> String {
         services::services::queued_message::QueuedMessage::decl(),
         services::services::queued_message::QueueStatus::decl(),
         services::services::git::ConflictOp::decl(),
+        services::services::jira::JiraIssue::decl(),
+        services::services::jira::JiraIssuesResponse::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
         executors::actions::ExecutorActionType::decl(),

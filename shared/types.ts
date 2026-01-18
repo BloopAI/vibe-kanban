@@ -256,7 +256,7 @@ export type GitOperationError = { "type": "merge_conflicts", message: string, op
 
 export type PushError = { "type": "force_push_required" };
 
-export type CreatePrError = { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, };
+export type CreatePrError = { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "bitbucket_auth_required" } | { "type": "bitbucket_auth_failed", message: string, } | { "type": "unsupported_vcs_provider", message: string, };
 
 export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
@@ -280,7 +280,7 @@ export type AttachExistingPrRequest = { repo_id: string, };
 
 export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 
-export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" };
+export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "bitbucket_auth_required" } | { "type": "bitbucket_auth_failed", message: string, } | { "type": "unsupported_vcs_provider", message: string, };
 
 export type GetPrCommentsQuery = { repo_id: string, };
 
@@ -345,6 +345,38 @@ queued_at: string, };
 export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
+
+export type JiraIssue = { 
+/**
+ * Issue key (e.g., "PROJ-123")
+ */
+key: string, 
+/**
+ * Issue summary/title
+ */
+summary: string, 
+/**
+ * Current status (e.g., "In Progress", "To Do")
+ */
+status: string, 
+/**
+ * Issue type (e.g., "Story", "Bug", "Task") - optional since MCP may not return it
+ */
+issue_type: string | null, 
+/**
+ * Priority level (e.g., "High", "Medium", "Low")
+ */
+priority: string | null, 
+/**
+ * Direct URL to the issue in Jira
+ */
+url: string | null, 
+/**
+ * Full description/details of the ticket
+ */
+description: string | null, };
+
+export type JiraIssuesResponse = { issues: Array<JiraIssue>, total: number, };
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
