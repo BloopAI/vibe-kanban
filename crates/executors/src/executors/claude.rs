@@ -2471,4 +2471,55 @@ mod tests {
 
         // ToolResult entry is ignored - no third entry
     }
+
+    #[test]
+    fn test_control_request_with_permission_suggestions() {
+        // Test the exact JSON format from GitHub issue #2126
+        // This was previously causing "Unrecognized JSON message" errors
+        let control_request_json = r#"{"type":"control_request","request_id":"f559d907-b139-475b-addd-79c05591eb99","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"./gradlew :web:testApi","timeout":300000,"description":"Run API tests"},"permission_suggestions":[{"type":"addRules","rules":[{"toolName":"Bash","ruleContent":"./gradlew :web:testApi:"}],"behavior":"allow","destination":"localSettings"}],"tool_use_id":"toolu_014PR3WXsJfiftSCbjcjEbeM"}}"#;
+
+        let parsed: ClaudeJson = serde_json::from_str(control_request_json).unwrap();
+
+        // Verify it parses as ControlRequest, not Unknown
+        match &parsed {
+            ClaudeJson::ControlRequest { request_id, request } => {
+                assert_eq!(request_id, "f559d907-b139-475b-addd-79c05591eb99");
+                match request {
+                    super::types::ControlRequestType::CanUseTool {
+                        tool_name,
+                        permission_suggestions,
+                        tool_use_id,
+                        ..
+                    } => {
+                        assert_eq!(tool_name, "Bash");
+                        assert!(permission_suggestions.is_some());
+                        let suggestions = permission_suggestions.as_ref().unwrap();
+                        assert_eq!(suggestions.len(), 1);
+                        let first = &suggestions[0];
+                        assert!(first.rules.is_some());
+                        let rules = first.rules.as_ref().unwrap();
+                        assert_eq!(rules.len(), 1);
+                        assert_eq!(rules[0].tool_name, "Bash");
+                        assert_eq!(
+                            rules[0].rule_content.as_ref().unwrap(),
+                            "./gradlew :web:testApi:"
+                        );
+                        assert_eq!(tool_use_id, &Some("toolu_014PR3WXsJfiftSCbjcjEbeM".to_string()));
+                    }
+                    _ => panic!("Expected CanUseTool request type"),
+                }
+            }
+            ClaudeJson::Unknown { data } => {
+                panic!(
+                    "control_request parsed as Unknown instead of ControlRequest: {:?}",
+                    data
+                );
+            }
+            other => panic!("Expected ControlRequest, got: {:?}", other),
+        }
+
+        // Verify it generates no entries (control messages are handled at protocol level)
+        let entries = normalize(&parsed, "");
+        assert_eq!(entries.len(), 0);
+    }
 }
