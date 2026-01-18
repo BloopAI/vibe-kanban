@@ -636,7 +636,8 @@ function DependenciesList({ projectId }: { projectId: string }) {
   );
 
   const collection = useMemo(
-    () => createIssueDependenciesCollection(projectId, { onError: handleError }),
+    () =>
+      createIssueDependenciesCollection(projectId, { onError: handleError }),
     [projectId, handleError]
   );
 
@@ -709,7 +710,9 @@ function CommentsList({ issueId }: { issueId: string }) {
             key: 'message',
             label: 'Message',
             render: (c) =>
-              c.message.length > 50 ? c.message.slice(0, 50) + '...' : c.message,
+              c.message.length > 50
+                ? c.message.slice(0, 50) + '...'
+                : c.message,
           },
           {
             key: 'author_id',
@@ -736,7 +739,8 @@ function ReactionsList({ issueId }: { issueId: string }) {
   );
 
   const collection = useMemo(
-    () => createIssueCommentReactionsCollection(issueId, { onError: handleError }),
+    () =>
+      createIssueCommentReactionsCollection(issueId, { onError: handleError }),
     [issueId, handleError]
   );
 
