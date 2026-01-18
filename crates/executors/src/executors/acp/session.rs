@@ -152,6 +152,72 @@ impl SessionManager {
     pub fn generate_resume_prompt(&self, session_id: &str, current_prompt: &str) -> Result<String> {
         let session_context = self.read_session_raw(session_id)?;
 
+        let cleaned_context = if session_context.trim().is_empty() {
+            "No previous session history available.".to_string()
+        } else {
+            let mut records: Vec<serde_json::Value> = Vec::new();
+
+            // Filter out tool execution records from context
+            for line in session_context.lines() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed) {
+                    if let Some(obj) = parsed.as_object() {
+                        // Skip ToolCall and ToolUpdate records
+                        if obj.contains_key("ToolCall") || obj.contains_key("ToolUpdate") {
+                            continue;
+                        }
+
+                        records.push(parsed);
+                    }
+                }
+            }
+
+            // Group consecutive assistant messages
+            let mut grouped_records: Vec<serde_json::Value> = Vec::new();
+            let mut previous_record: Option<serde_json::Map<String, serde_json::Value>> = None;
+
+            for record in &records {
+                if let Some(obj) = record.as_object() {
+                    if !obj.contains_key("assistant") {
+                        if let Some(r) = previous_record.take() {
+                            grouped_records.push(serde_json::Value::Object(r));
+                            previous_record = None;
+                        }
+                        grouped_records.push(record.clone());
+                        continue;
+                    }
+
+                    if let Some(prev) = previous_record.as_mut() {
+                        if let (
+                            Some(serde_json::Value::String(prev_text)),
+                            Some(serde_json::Value::String(curr_text)),
+                        ) = (prev.get_mut("assistant"), obj.get("assistant"))
+                        {
+                            prev_text.push_str(curr_text);
+                        }
+                    } else {
+                        previous_record = Some(obj.clone());
+                    }
+                }
+            }
+
+            // Don't forget the last record
+            if let Some(r) = previous_record.take() {
+                grouped_records.push(serde_json::Value::Object(r));
+            }
+
+            let mut formatted_message: String = Default::default();
+
+            for record in grouped_records {
+                formatted_message.push_str(&format!("{}\n", record));
+            }
+            formatted_message
+        };
+
         Ok(format!(
             concat!(
                 "RESUME CONTEXT FOR CONTINUING TASK\n\n",
@@ -165,7 +231,7 @@ impl SessionManager {
                 "the previous conversation in this session. Please continue from where ",
                 "the previous execution left off, taking into account all the context provided above."
             ),
-            session_context, current_prompt
+            cleaned_context, current_prompt
         ))
     }
 }
