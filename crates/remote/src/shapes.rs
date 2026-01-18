@@ -119,23 +119,6 @@ pub fn all_shapes() -> Vec<&'static dyn ShapeExport> {
     ]
 }
 
-/// Export all shapes to JSON (legacy format)
-pub fn export_shapes_json() -> String {
-    serde_json::to_string_pretty(
-        &all_shapes()
-            .iter()
-            .map(|s| {
-                serde_json::json!({
-                    "table": s.table(),
-                    "params": s.params(),
-                    "url": s.url()
-                })
-            })
-            .collect::<Vec<_>>(),
-    )
-    .unwrap()
-}
-
 /// Generate TypeScript shapes file with type imports and ShapeDefinition<T>
 pub fn export_shapes_typescript() -> String {
     let shapes = all_shapes();
