@@ -1,0 +1,19 @@
+services:
+  remote-db:
+    ports: !override
+      - "127.0.0.1:5434:5432"
+
+  electric:
+    ports: !override
+      - "127.0.0.1:3002:3000"
+
+  remote-server:
+    ports: !override
+      - "127.0.0.1:8081:8081"
+    environment:
+      SERVER_PUBLIC_BASE_URL: https://api.vibekanban.tob.sh
+      VITE_APP_BASE_URL: https://vibekanban.tob.sh
+      VITE_API_BASE_URL: https://api.vibekanban.tob.sh
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
