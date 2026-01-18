@@ -3,11 +3,13 @@
  *
  * Usage:
  * ```typescript
- * import { createProjectsCollection, SyncError } from '@/lib/electric';
+ * import { useElectricCollection } from '@/lib/electric';
+ * import { PROJECTS_SHAPE } from 'shared/shapes';
  *
- * const collection = createProjectsCollection(organizationId, {
- *   onError: (error) => console.error('Sync failed:', error.message),
- * });
+ * const { data, isLoading, error, retry } = useElectricCollection(
+ *   PROJECTS_SHAPE,
+ *   { organization_id: orgId }
+ * );
  * ```
  */
 
@@ -21,24 +23,5 @@ export { useElectricCollection } from './hooks';
 // Generic factory (for advanced usage)
 export { createElectricCollection, getRowKey, buildUrl } from './collections';
 
-// Typed convenience functions
-export {
-  // Organization-scoped
-  createProjectsCollection,
-  createNotificationsCollection,
-  // Project-scoped
-  createWorkspacesCollection,
-  createProjectStatusesCollection,
-  createTagsCollection,
-  createIssuesCollection,
-  createIssueAssigneesCollection,
-  createIssueFollowersCollection,
-  createIssueTagsCollection,
-  createIssueDependenciesCollection,
-  // Issue-scoped
-  createIssueCommentsCollection,
-  createIssueCommentReactionsCollection,
-} from './sdk';
-
-// Re-export shapes for advanced usage
+// Re-export shapes for convenience
 export * from 'shared/shapes';
