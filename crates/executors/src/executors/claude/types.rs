@@ -123,6 +123,15 @@ pub enum PermissionUpdateDestination {
     Unknown,
 }
 
+/// A permission rule value with tool name and optional rule content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionRuleValue {
+    pub tool_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule_content: Option<String>,
+}
+
 /// Permission update operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -134,7 +143,7 @@ pub struct PermissionUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination: Option<PermissionUpdateDestination>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rules: Option<Vec<String>>,
+    pub rules: Option<Vec<PermissionRuleValue>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub behavior: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
