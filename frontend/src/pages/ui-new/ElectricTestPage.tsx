@@ -1,17 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { useAuth, useUserOrganizations } from '@/hooks';
-import {
-  createProjectsCollection,
-  type SyncError,
-} from '@/lib/electric';
+import { createProjectsCollection, type SyncError } from '@/lib/electric';
 import type { ElectricProject } from 'shared/types';
 
-function ProjectsList({
-  organizationId,
-}: {
-  organizationId: string;
-}) {
+function ProjectsList({ organizationId }: { organizationId: string }) {
   const [syncError, setSyncError] = useState<SyncError | null>(null);
 
   const handleError = useCallback((error: SyncError) => {
@@ -23,12 +16,19 @@ function ProjectsList({
     [organizationId, handleError]
   );
 
-  const { data: projects, isLoading, isError } = useLiveQuery((query) =>
-    query.from({ project: collection })
-  );
+  const {
+    data: projects,
+    isLoading,
+    isError,
+  } = useLiveQuery((query) => query.from({ project: collection }));
 
   // Debug logging
-  console.log('useLiveQuery result:', { projects, isLoading, isError, syncError });
+  console.log('useLiveQuery result:', {
+    projects,
+    isLoading,
+    isError,
+    syncError,
+  });
 
   if (syncError) {
     return (

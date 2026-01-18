@@ -94,7 +94,11 @@ export function createTagsCollection(
   projectId: string,
   config?: CollectionConfig
 ) {
-  return createElectricCollection(TAGS_SHAPE, { project_id: projectId }, config);
+  return createElectricCollection(
+    TAGS_SHAPE,
+    { project_id: projectId },
+    config
+  );
 }
 
 /**
@@ -104,7 +108,11 @@ export function createIssuesCollection(
   projectId: string,
   config?: CollectionConfig
 ) {
-  return createElectricCollection(ISSUES_SHAPE, { project_id: projectId }, config);
+  return createElectricCollection(
+    ISSUES_SHAPE,
+    { project_id: projectId },
+    config
+  );
 }
 
 /**
