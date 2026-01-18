@@ -5,7 +5,6 @@ import { REMOTE_API_URL } from '@/lib/remoteApi';
 import type { ShapeDefinition } from 'shared/shapes';
 import type { CollectionConfig, SyncError } from './types';
 
-
 /**
  * Substitute URL parameters in a path template.
  * e.g., "/shape/project/{project_id}/issues" with { project_id: "123" }
@@ -83,9 +82,7 @@ type ElectricRow = Record<string, unknown> & { [key: string]: unknown };
  * to bridge the gap between our runtime-correct values and the library's
  * static type requirements.
  */
-export function createElectricCollection<
-  T extends ElectricRow = ElectricRow,
->(
+export function createElectricCollection<T extends ElectricRow = ElectricRow>(
   shape: ShapeDefinition<unknown>,
   params: Record<string, string>,
   config?: CollectionConfig
@@ -103,5 +100,7 @@ export function createElectricCollection<
     getKey: (item: ElectricRow) => getRowKey(item),
   });
 
-  return createCollection(options) as unknown as ReturnType<typeof createCollection> & { __rowType?: T };
+  return createCollection(options) as unknown as ReturnType<
+    typeof createCollection
+  > & { __rowType?: T };
 }
