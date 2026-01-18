@@ -125,19 +125,3 @@ export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];
 
 // Union of all shape types
 export type AnyShape = typeof ALL_SHAPES[number];
-
-// Type-safe shape to row type mapping
-export type ShapeRowTypes = {
-  'projects': ElectricProject;
-  'notifications': ElectricNotification;
-  'workspaces': ElectricWorkspace;
-  'project_statuses': ElectricProjectStatus;
-  'tags': ElectricTag;
-  'issues': ElectricIssue;
-  'issue_assignees': ElectricIssueAssignee;
-  'issue_followers': ElectricIssueFollower;
-  'issue_tags': ElectricIssueTag;
-  'issue_dependencies': ElectricIssueDependency;
-  'issue_comments': ElectricIssueComment;
-  'issue_comment_reactions': ElectricIssueCommentReaction;
-};

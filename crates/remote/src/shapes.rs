@@ -191,19 +191,7 @@ pub fn export_shapes_typescript() -> String {
         .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
 
     output.push_str("// Union of all shape types\n");
-    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n\n");
-
-    // Generate shape-to-type mapping
-    output.push_str("// Type-safe shape to row type mapping\n");
-    output.push_str("export type ShapeRowTypes = {\n");
-    for shape in &shapes {
-        output.push_str(&format!(
-            "  '{}': {};\n",
-            shape.table(),
-            shape.ts_type_name()
-        ));
-    }
-    output.push_str("};\n");
+    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n");
 
     output
 }
