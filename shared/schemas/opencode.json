@@ -11,6 +11,12 @@
       "format": "textarea",
       "default": null
     },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "model": {
       "type": [
         "string",
