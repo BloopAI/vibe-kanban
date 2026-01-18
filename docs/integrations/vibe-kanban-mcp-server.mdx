@@ -77,6 +77,16 @@ The Vibe Kanban MCP server provides the following tools for managing projects, t
 | `update_task` | Update task details | `task_id` | `title`<br/>`description`<br/>`status` | Updated task information |
 | `delete_task` | Delete a task | `task_id` | None | Deletion confirmation |
 
+### Repository Management
+
+| Tool | Purpose | Required Parameters | Optional Parameters | Returns |
+|------|---------|-------------------|-------------------|---------|
+| `list_repos` | List repositories in a project | `project_id` | None | List of repositories with IDs and names |
+| `get_repo` | Get repository details including scripts | `repo_id` | None | Repository info with setup, cleanup, and dev server scripts |
+| `update_setup_script` | Update a repository's setup script | `repo_id` | `script` | Update confirmation |
+| `update_cleanup_script` | Update a repository's cleanup script | `repo_id` | `script` | Update confirmation |
+| `update_dev_server_script` | Update a repository's dev server script | `repo_id` | `script` | Update confirmation |
+
 ### Task Execution
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
