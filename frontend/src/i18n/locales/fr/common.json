@@ -204,7 +204,8 @@
     "defaultPlaceholder": "Tapez une commande ou recherchez..."
   },
   "chatBox": {
-    "variants": "Variantes"
+    "variants": "Variantes",
+    "customise": "Personnaliser"
   },
   "projects": {
     "noProjectFound": "Aucun projet trouvé",
