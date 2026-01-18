@@ -4,28 +4,28 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let check_mode = args.iter().any(|arg| arg == "--check");
 
-    let json = remote::shapes::export_shapes_json();
+    let typescript = remote::shapes::export_shapes_typescript();
 
-    // Path to shared/shapes.json relative to workspace root
+    // Path to shared/shapes.ts relative to workspace root
     let output_path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent() // crates/
         .unwrap()
         .parent() // workspace root
         .unwrap()
-        .join("shared/shapes.json");
+        .join("shared/shapes.ts");
 
     if check_mode {
         let current = fs::read_to_string(&output_path).unwrap_or_default();
-        if current == json {
-            println!("✅ shared/shapes.json is up to date.");
+        if current == typescript {
+            println!("✅ shared/shapes.ts is up to date.");
             std::process::exit(0);
         } else {
-            eprintln!("❌ shared/shapes.json is not up to date.");
+            eprintln!("❌ shared/shapes.ts is not up to date.");
             eprintln!("Please run 'pnpm run export-shapes' and commit the changes.");
             std::process::exit(1);
         }
     } else {
-        fs::write(&output_path, &json).expect("Failed to write shapes.json");
+        fs::write(&output_path, &typescript).expect("Failed to write shapes.ts");
         println!("✅ Wrote shapes to {}", output_path.display());
     }
 }
