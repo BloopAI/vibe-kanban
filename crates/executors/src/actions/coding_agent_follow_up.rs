@@ -17,6 +17,10 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentFollowUpRequest {
     pub prompt: String,
+    /// Original user input before system instructions were appended.
+    /// Used for display purposes in the frontend.
+    #[serde(default)]
+    pub user_input: Option<String>,
     pub session_id: String,
     /// Executor profile specification
     #[serde(alias = "profile_variant_label")]

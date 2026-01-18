@@ -59,37 +59,10 @@ export function GeneralSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
-    null
-  );
   const { setTheme } = useTheme();
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
-
-  const validateBranchPrefix = useCallback(
-    (prefix: string): string | null => {
-      if (!prefix) return null; // empty allowed
-      if (prefix.includes('/'))
-        return t('settings.general.git.branchPrefix.errors.slash');
-      if (prefix.startsWith('.'))
-        return t('settings.general.git.branchPrefix.errors.startsWithDot');
-      if (prefix.endsWith('.') || prefix.endsWith('.lock'))
-        return t('settings.general.git.branchPrefix.errors.endsWithDot');
-      if (prefix.includes('..') || prefix.includes('@{'))
-        return t('settings.general.git.branchPrefix.errors.invalidSequence');
-      if (/[ \t~^:?*[\\]/.test(prefix))
-        return t('settings.general.git.branchPrefix.errors.invalidChars');
-      // Control chars check
-      for (let i = 0; i < prefix.length; i++) {
-        const code = prefix.charCodeAt(i);
-        if (code < 0x20 || code === 0x7f)
-          return t('settings.general.git.branchPrefix.errors.controlChars');
-      }
-      return null;
-    },
-    [t]
-  );
 
   // When config loads or changes externally, update draft only if not dirty
   useEffect(() => {
@@ -416,58 +389,6 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings.general.git.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.general.git.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="git-branch-prefix">
-              {t('settings.general.git.branchPrefix.label')}
-            </Label>
-            <Input
-              id="git-branch-prefix"
-              type="text"
-              placeholder={t('settings.general.git.branchPrefix.placeholder')}
-              value={draft?.git_branch_prefix ?? ''}
-              onChange={(e) => {
-                const value = e.target.value.trim();
-                updateDraft({ git_branch_prefix: value });
-                setBranchPrefixError(validateBranchPrefix(value));
-              }}
-              aria-invalid={!!branchPrefixError}
-              className={branchPrefixError ? 'border-destructive' : undefined}
-            />
-            {branchPrefixError && (
-              <p className="text-sm text-destructive">{branchPrefixError}</p>
-            )}
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.git.branchPrefix.helper')}{' '}
-              {draft?.git_branch_prefix ? (
-                <>
-                  {t('settings.general.git.branchPrefix.preview')}{' '}
-                  <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    {t('settings.general.git.branchPrefix.previewWithPrefix', {
-                      prefix: draft.git_branch_prefix,
-                    })}
-                  </code>
-                </>
-              ) : (
-                <>
-                  {t('settings.general.git.branchPrefix.preview')}{' '}
-                  <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    {t('settings.general.git.branchPrefix.previewNoPrefix')}
-                  </code>
-                </>
-              )}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>{t('settings.general.pullRequests.title')}</CardTitle>
           <CardDescription>
             {t('settings.general.pullRequests.description')}
@@ -778,7 +699,7 @@ export function GeneralSettings() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!hasUnsavedChanges || saving || !!branchPrefixError}
+              disabled={!hasUnsavedChanges || saving}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('settings.general.save.button')}

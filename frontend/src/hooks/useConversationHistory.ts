@@ -233,11 +233,22 @@ export const useConversationHistory = ({
           ) {
             // New user message
             const actionType = p.executionProcess.executor_action.typ;
+
+            // Use user_input if available (excludes system instructions), fall back to prompt
+            let displayContent = actionType.prompt;
+            if (
+              (actionType.type === 'CodingAgentInitialRequest' ||
+                actionType.type === 'CodingAgentFollowUpRequest') &&
+              actionType.user_input
+            ) {
+              displayContent = actionType.user_input;
+            }
+
             const userNormalizedEntry: NormalizedEntry = {
               entry_type: {
                 type: 'user_message',
               },
-              content: actionType.prompt,
+              content: displayContent,
               timestamp: null,
             };
             const userPatch: PatchType = {

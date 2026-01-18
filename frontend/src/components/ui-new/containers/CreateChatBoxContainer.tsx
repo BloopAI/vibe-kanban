@@ -160,6 +160,7 @@ export function CreateChatBoxContainer() {
         title,
         description,
         status: null,
+        task_type: null,
         parent_workspace_id: null,
         image_ids: getImageIds(),
         shared_task_id: null,

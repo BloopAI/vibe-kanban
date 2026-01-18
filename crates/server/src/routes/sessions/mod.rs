@@ -182,7 +182,11 @@ pub async fn follow_up(
     let latest_agent_session_id =
         ExecutionProcess::find_latest_coding_agent_turn_session_id(pool, session.id).await?;
 
-    let prompt = payload.prompt;
+    // Append commit instruction to follow-up prompts (same as to_prompt() for initial requests)
+    let prompt = format!(
+        "{}\n\nDo not commit. Your final message becomes the commit body - output ONLY bullet points of changes made, nothing else.",
+        payload.prompt
+    );
 
     let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let cleanup_action = deployment.container().cleanup_actions_for_repos(&repos);
@@ -196,6 +200,7 @@ pub async fn follow_up(
     let action_type = if let Some(agent_session_id) = latest_agent_session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
+            user_input: Some(payload.prompt.clone()),
             session_id: agent_session_id,
             executor_profile_id: executor_profile_id.clone(),
             working_dir: working_dir.clone(),
@@ -204,6 +209,7 @@ pub async fn follow_up(
         ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
                 prompt,
+                user_input: Some(payload.prompt.clone()),
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
             },
