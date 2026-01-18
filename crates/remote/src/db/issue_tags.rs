@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Postgres};
 use thiserror::Error;
+use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, rename = "ElectricIssueTag")]
 pub struct IssueTag {
     pub issue_id: Uuid,
     pub tag_id: Uuid,

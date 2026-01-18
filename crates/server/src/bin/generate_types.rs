@@ -11,6 +11,22 @@ fn generate_types_content() -> String {
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.";
 
     let decls: Vec<String> = vec![
+        // Remote DB row types (for Electric SQL shapes)
+        remote::db::projects::Project::decl(),
+        remote::db::notifications::Notification::decl(),
+        remote::db::notifications::NotificationType::decl(),
+        remote::db::workspaces::Workspace::decl(),
+        remote::db::project_statuses::ProjectStatus::decl(),
+        remote::db::tags::Tag::decl(),
+        remote::db::issues::Issue::decl(),
+        remote::db::issue_assignees::IssueAssignee::decl(),
+        remote::db::issue_followers::IssueFollower::decl(),
+        remote::db::issue_tags::IssueTag::decl(),
+        remote::db::issue_dependencies::IssueDependency::decl(),
+        remote::db::issue_comments::IssueComment::decl(),
+        remote::db::issue_comment_reactions::IssueCommentReaction::decl(),
+        remote::db::types::IssuePriority::decl(),
+        remote::db::types::WorkspacePrStatus::decl(),
         remote::db::users::UserData::decl(),
         db::models::project::Project::decl(),
         db::models::project::CreateProject::decl(),

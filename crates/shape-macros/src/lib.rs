@@ -2,13 +2,14 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use regex::Regex;
-use syn::{Ident, LitStr, Token, parse::Parse, parse_macro_input};
+use syn::{Ident, LitStr, Token, Type, parse::Parse, parse_macro_input};
 
 struct ShapeInput {
     name: Ident,
     table: LitStr,
     where_clause: LitStr,
     url: LitStr,
+    row_type: Type,
 }
 
 impl Parse for ShapeInput {
@@ -20,11 +21,14 @@ impl Parse for ShapeInput {
         let where_clause: LitStr = input.parse()?;
         input.parse::<Token![,]>()?;
         let url: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let row_type: Type = input.parse()?;
         Ok(ShapeInput {
             name,
             table,
             where_clause,
             url,
+            row_type,
         })
     }
 }
@@ -49,13 +53,14 @@ pub fn define_shape(input: TokenStream) -> TokenStream {
         table,
         where_clause,
         url,
+        row_type,
     } = parse_macro_input!(input as ShapeInput);
 
     let params = extract_params(&where_clause.value());
     let params_tokens: Vec<TokenStream2> = params.iter().map(|p| quote! { #p }).collect();
 
     quote! {
-        pub const #name: crate::validated_where::ShapeDefinition =
+        pub const #name: crate::validated_where::ShapeDefinition<#row_type> =
             crate::validated_where::ShapeDefinition::new(
                 #table,
                 #where_clause,
