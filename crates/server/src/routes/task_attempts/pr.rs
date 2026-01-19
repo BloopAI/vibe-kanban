@@ -765,7 +765,12 @@ pub async fn create_workspace_from_pr(
     let repo_info = GhCli::new()
         .get_repo_info(&remote_url, &worktree_path)
         .map_err(|e| ApiError::BadRequest(format!("Failed to get repo info: {e}")))?;
-    if let Err(e) = GhCli::new().pr_checkout(&worktree_path, &repo_info.owner, &repo_info.repo_name, payload.pr_number) {
+    if let Err(e) = GhCli::new().pr_checkout(
+        &worktree_path,
+        &repo_info.owner,
+        &repo_info.repo_name,
+        payload.pr_number,
+    ) {
         tracing::warn!("Failed to configure PR branch tracking: {e}");
         // Non-fatal - workspace is still usable, just won't auto-push to fork
     }
