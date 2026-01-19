@@ -62,6 +62,7 @@ import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog'
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
+import { CreateWorkspaceFromPrDialog } from '@/components/dialogs/CreateWorkspaceFromPrDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -415,6 +416,16 @@ export const Actions = {
       ctx.navigate('/workspaces/create');
     },
   },
+
+  CreateWorkspaceFromPR: {
+    id: 'create-workspace-from-pr',
+    label: 'Create Workspace from PR',
+    icon: GitPullRequestIcon,
+    requiresTarget: false,
+    execute: async () => {
+      await CreateWorkspaceFromPrDialog.show({});
+    },
+  } satisfies GlobalActionDefinition,
 
   Settings: {
     id: 'settings',
