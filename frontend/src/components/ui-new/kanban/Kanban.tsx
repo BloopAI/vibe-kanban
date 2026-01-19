@@ -21,7 +21,17 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { PlusIcon } from '@phosphor-icons/react';
+import {
+  PlusIcon,
+  WarningCircleIcon,
+  ArrowUpIcon,
+  MinusIcon,
+  ArrowDownIcon,
+  UsersIcon,
+} from '@phosphor-icons/react';
+import type { IssuePriority } from 'shared/remote-types';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -31,6 +41,184 @@ export type Status = {
   id: string;
   name: string;
   color: string;
+};
+
+// =============================================================================
+// Priority Icon Component
+// =============================================================================
+
+export type PriorityIconProps = {
+  priority: IssuePriority;
+  className?: string;
+};
+
+const priorityConfig: Record<
+  IssuePriority,
+  { icon: typeof WarningCircleIcon; colorClass: string }
+> = {
+  urgent: { icon: WarningCircleIcon, colorClass: 'text-error' },
+  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+  medium: { icon: MinusIcon, colorClass: 'text-low' },
+  low: { icon: ArrowDownIcon, colorClass: 'text-low' },
+};
+
+export const PriorityIcon = ({ priority, className }: PriorityIconProps) => {
+  const { icon: IconComponent, colorClass } = priorityConfig[priority];
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center',
+        'h-5 w-5',
+        'bg-panel rounded-sm',
+        className
+      )}
+      aria-label={`Priority: ${priority}`}
+    >
+      <IconComponent className={cn('size-icon-xs', colorClass)} weight="bold" />
+    </div>
+  );
+};
+
+// =============================================================================
+// Kanban Badge Component
+// =============================================================================
+
+export type KanbanBadgeProps = {
+  name: string;
+  className?: string;
+};
+
+export const KanbanBadge = ({ name, className }: KanbanBadgeProps) => {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center justify-center',
+        'h-5 px-base',
+        'bg-panel rounded-sm',
+        'text-sm text-low font-medium',
+        'whitespace-nowrap',
+        className
+      )}
+    >
+      {name}
+    </span>
+  );
+};
+
+// =============================================================================
+// Kanban Assignee Component
+// =============================================================================
+
+export type KanbanAssigneeProps = {
+  assignee: {
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    imageUrl?: string | null;
+  } | null;
+  className?: string;
+};
+
+export const KanbanAssignee = ({ assignee, className }: KanbanAssigneeProps) => {
+  if (!assignee) {
+    // Unassigned state - show users icon
+    return (
+      <div
+        className={cn(
+          'flex items-center justify-center',
+          'h-5 w-5',
+          className
+        )}
+        aria-label="Unassigned"
+      >
+        <UsersIcon className="size-icon-xs text-low" weight="bold" />
+      </div>
+    );
+  }
+
+  // Assigned state - show avatar with name
+  const displayName =
+    [assignee.firstName, assignee.lastName].filter(Boolean).join(' ') ||
+    assignee.username ||
+    '';
+
+  return (
+    <div className={cn('flex items-center gap-half h-5', className)}>
+      <UserAvatar
+        firstName={assignee.firstName}
+        lastName={assignee.lastName}
+        username={assignee.username}
+        imageUrl={assignee.imageUrl}
+        className="h-3 w-3 text-[8px] border-white"
+      />
+      {displayName && (
+        <span className="text-sm text-normal truncate max-w-[80px]">
+          {displayName}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// =============================================================================
+// Kanban Card Content Component
+// =============================================================================
+
+export type KanbanCardContentProps = {
+  displayId: string;
+  title: string;
+  description?: string | null;
+  priority: IssuePriority;
+  tags: { id: string; name: string }[];
+  assignee: KanbanAssigneeProps['assignee'];
+  isLoading?: boolean;
+  className?: string;
+};
+
+export const KanbanCardContent = ({
+  displayId,
+  title,
+  description,
+  priority,
+  tags,
+  assignee,
+  isLoading = false,
+  className,
+}: KanbanCardContentProps) => {
+  return (
+    <div className={cn('flex flex-col gap-half', className)}>
+      {/* Row 1: Task ID + loading dots */}
+      <div className="flex items-center gap-half">
+        <span className="font-ibm-plex-mono text-sm text-low">{displayId}</span>
+        {isLoading && <RunningDots />}
+      </div>
+
+      {/* Row 2: Title */}
+      <span className="text-base text-high">{title}</span>
+
+      {/* Row 3: Description (optional, truncated) */}
+      {description && (
+        <p className="text-sm text-low m-0 leading-relaxed line-clamp-2">
+          {description}
+        </p>
+      )}
+
+      {/* Row 4: Priority, Tags, Assignee */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-half flex-wrap flex-1 min-w-0">
+          <PriorityIcon priority={priority} />
+          {tags.slice(0, 2).map((tag) => (
+            <KanbanBadge key={tag.id} name={tag.name} />
+          ))}
+          {tags.length > 2 && (
+            <span className="text-sm text-low">+{tags.length - 2}</span>
+          )}
+        </div>
+        <KanbanAssignee assignee={assignee} />
+      </div>
+    </div>
+  );
 };
 
 export type Feature = {
@@ -112,7 +300,7 @@ export const KanbanCard = ({
   return (
     <Card
       className={cn(
-        'p-3 outline-none border-b flex-col space-y-2',
+        'p-base outline-none border-b flex-col',
         isDragging && 'cursor-grabbing',
         isOpen && 'ring-2 ring-secondary-foreground ring-inset',
         className
