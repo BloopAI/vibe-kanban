@@ -13,6 +13,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        project_statuses::ProjectStatusRepository,
         projects::{Project, ProjectRepository},
         tags::TagRepository,
     },
@@ -130,6 +131,15 @@ async fn create_project(
 
     if let Err(error) = TagRepository::create_default_tags(&mut *tx, project.id).await {
         tracing::error!(?error, project_id = %project.id, "failed to create default tags");
+        return Err(ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal server error",
+        ));
+    }
+
+    if let Err(error) = ProjectStatusRepository::create_default_statuses(&mut *tx, project.id).await
+    {
+        tracing::error!(?error, project_id = %project.id, "failed to create default statuses");
         return Err(ErrorResponse::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal server error",
