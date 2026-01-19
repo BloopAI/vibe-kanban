@@ -22,7 +22,13 @@ function LoadingState() {
   );
 }
 
-function KanbanBoardContent({ projectId }: { projectId: string }) {
+function KanbanBoardContent({
+  projectId,
+  projectName,
+}: {
+  projectId: string;
+  projectName: string;
+}) {
   const { data: statuses, isLoading } = useElectricCollection(
     PROJECT_STATUSES_SHAPE,
     { project_id: projectId }
@@ -50,30 +56,33 @@ function KanbanBoardContent({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="h-full overflow-x-auto p-base">
-      <KanbanProvider onDragEnd={handleDragEnd}>
-        {sortedStatuses.map((status) => (
-          <KanbanBoard key={status.id} id={status.id}>
-            <KanbanHeader>
-              <div className="sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed bg-background">
-                <div
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: status.color }}
+    <div className="flex flex-col h-full">
+      <h2 className="px-double pt-double text-lg font-medium">{projectName}</h2>
+      <div className="flex-1 overflow-x-auto p-double pt-base">
+        <KanbanProvider onDragEnd={handleDragEnd}>
+          {sortedStatuses.map((status) => (
+            <KanbanBoard key={status.id} id={status.id}>
+              <KanbanHeader>
+                <div className="sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed bg-background">
+                  <div
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: status.color }}
+                  />
+                  <p className="m-0 text-sm">{status.name}</p>
+                </div>
+              </KanbanHeader>
+              <KanbanCards>
+                <KanbanCard
+                  id={`placeholder-${status.id}`}
+                  name="Placeholder card"
+                  index={0}
+                  parent={status.id}
                 />
-                <p className="m-0 text-sm">{status.name}</p>
-              </div>
-            </KanbanHeader>
-            <KanbanCards>
-              <KanbanCard
-                id={`placeholder-${status.id}`}
-                name="Placeholder card"
-                index={0}
-                parent={status.id}
-              />
-            </KanbanCards>
-          </KanbanBoard>
-        ))}
-      </KanbanProvider>
+              </KanbanCards>
+            </KanbanBoard>
+          ))}
+        </KanbanProvider>
+      </div>
     </div>
   );
 }
@@ -96,7 +105,12 @@ function KanbanWithProjects({ organizationId }: { organizationId: string }) {
     );
   }
 
-  return <KanbanBoardContent projectId={firstProject.id} />;
+  return (
+    <KanbanBoardContent
+      projectId={firstProject.id}
+      projectName={firstProject.name}
+    />
+  );
 }
 
 export function KanbanContainer() {
