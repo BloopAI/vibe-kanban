@@ -231,6 +231,10 @@
     "title_one": "待辦事項（{{count}}）",
     "title_other": "待辦事項（{{count}}）"
   },
+  "todoPopup": {
+    "title": "任務",
+    "progress": "{{completed}}/{{total}} 已完成"
+  },
   "projects": {
     "create": {
       "dialog": {

@@ -218,6 +218,10 @@
     "title_one": "À faire ({{count}})",
     "title_other": "À faire ({{count}})"
   },
+  "todoPopup": {
+    "title": "Tâches",
+    "progress": "{{completed}}/{{total}} terminées"
+  },
   "projects": {
     "create": {
       "dialog": {
