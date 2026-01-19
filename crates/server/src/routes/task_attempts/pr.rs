@@ -26,7 +26,7 @@ use services::services::{
     git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
-        UnifiedPrComment, github::GhCli,
+        UnifiedPrComment,
     },
 };
 use ts_rs::TS;
@@ -648,8 +648,9 @@ pub async fn create_workspace_from_pr(
         })?
         .project_id;
 
-    // 3. Get remote URL
-    let remote_url = deployment.git().get_remote_url(&repo.path, "origin")?;
+    // 3. Get remote URL using default remote (not hardcoded "origin")
+    let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
+    let remote_url = deployment.git().get_remote_url(&repo.path, &default_remote)?;
 
     // 3. Create git host service and list open PRs to find the one we want
     let git_host = match GitHostService::from_url(&remote_url) {
@@ -742,13 +743,13 @@ pub async fn create_workspace_from_pr(
     )
     .await?;
 
-    // 9. Create WorkspaceRepo with PR's base branch as target
+    // 9. Create WorkspaceRepo with PR's base branch as target (use remote tracking branch)
     WorkspaceRepo::create_many(
         pool,
         workspace.id,
         &[CreateWorkspaceRepo {
             repo_id: payload.repo_id,
-            target_branch: pr_info.base_branch.clone(),
+            target_branch: format!("{}/{}", default_remote, pr_info.base_branch),
         }],
     )
     .await?;
@@ -759,28 +760,35 @@ pub async fn create_workspace_from_pr(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // 10b. Configure branch tracking for fork PRs using gh pr checkout
-    // This sets up pushremote so git push goes to the fork, not origin
-    let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-    let repo_info = GhCli::new()
-        .get_repo_info(&remote_url, &worktree_path)
-        .map_err(|e| ApiError::BadRequest(format!("Failed to get repo info: {e}")))?;
-    if let Err(e) = GhCli::new().pr_checkout(
-        &worktree_path,
-        &repo_info.owner,
-        &repo_info.repo_name,
-        payload.pr_number,
-    ) {
-        tracing::warn!("Failed to configure PR branch tracking: {e}");
-        // Non-fatal - workspace is still usable, just won't auto-push to fork
+    // 10b. Configure branch tracking for fork PRs
+    // Set pushremote to the fork URL so git push goes to the right place
+    if let Some(fork_url) = &pr_info.head_repo_url {
+        let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
+        let branch = &pr_info.head_branch;
+
+        // Set pushremote to fork URL - this is what gh pr checkout does
+        if let Err(e) =
+            deployment
+                .git()
+                .set_branch_config(&worktree_path, branch, "pushremote", fork_url)
+        {
+            tracing::error!(
+                "Failed to set branch.{}.pushremote to {}: {}",
+                branch,
+                fork_url,
+                e
+            );
+        } else {
+            tracing::info!("Configured branch.{}.pushremote = {}", branch, fork_url);
+        }
     }
 
-    // 11. Attach PR to workspace
+    // 11. Attach PR to workspace (use remote tracking branch for base)
     Merge::create_pr(
         pool,
         workspace.id,
         payload.repo_id,
-        &pr_info.base_branch,
+        &format!("{}/{}", default_remote, pr_info.base_branch),
         pr_info.number,
         &pr_info.url,
     )

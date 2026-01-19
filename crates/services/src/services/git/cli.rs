@@ -654,6 +654,21 @@ impl GitCli {
         }
         Ok(files)
     }
+
+    /// Set a branch-specific config value (e.g., pushremote, remote)
+    pub fn set_branch_config(
+        &self,
+        repo_path: &Path,
+        branch: &str,
+        key: &str,
+        value: &str,
+    ) -> Result<(), GitCliError> {
+        self.git(
+            repo_path,
+            ["config", &format!("branch.{}.{}", branch, key), value],
+        )?;
+        Ok(())
+    }
 }
 
 // Private methods
