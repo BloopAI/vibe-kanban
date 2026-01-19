@@ -166,7 +166,12 @@
     "recent": "Recent",
     "other": "Other",
     "devServerPreview": "Dev Server Preview",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "notes": "Notes"
+  },
+  "notes": {
+    "placeholder": "Add notes about this workspace...",
+    "selectWorkspace": "Select a workspace to view notes"
   },
   "repos": {
     "loading": "Loading repositories...",

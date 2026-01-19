@@ -7,6 +7,7 @@ import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalP
 import { CreateModeProjectSectionContainer } from '@/components/ui-new/containers/CreateModeProjectSectionContainer';
 import { CreateModeReposSectionContainer } from '@/components/ui-new/containers/CreateModeReposSectionContainer';
 import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containers/CreateModeAddReposSectionContainer';
+import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
@@ -66,7 +67,11 @@ export function RightSidebar({
   );
   const [terminalExpanded] = usePersistedExpanded(
     PERSIST_KEYS.terminalSection,
-    true
+    false
+  );
+  const [notesExpanded] = usePersistedExpanded(
+    PERSIST_KEYS.notesSection,
+    false
   );
 
   const hasUpperContent =
@@ -133,6 +138,13 @@ export function RightSidebar({
         visible: isTerminalVisible,
         expanded: terminalExpanded,
         content: <TerminalPanelContainer />,
+      },
+      {
+        title: t('common:sections.notes'),
+        persistKey: PERSIST_KEYS.notesSection,
+        visible: true,
+        expanded: notesExpanded,
+        content: <WorkspaceNotesContainer />,
       },
     ];
 

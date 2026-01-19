@@ -166,7 +166,12 @@
     "recent": "最近",
     "other": "其他",
     "devServerPreview": "开发服务器预览",
-    "terminal": "终端"
+    "terminal": "终端",
+    "notes": "笔记"
+  },
+  "notes": {
+    "placeholder": "添加关于此工作区的笔记...",
+    "selectWorkspace": "选择一个工作区以查看笔记"
   },
   "repos": {
     "loading": "正在加载仓库...",

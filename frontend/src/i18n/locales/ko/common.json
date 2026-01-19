@@ -166,7 +166,12 @@
     "recent": "최근",
     "other": "기타",
     "devServerPreview": "개발 서버 미리보기",
-    "terminal": "터미널"
+    "terminal": "터미널",
+    "notes": "노트"
+  },
+  "notes": {
+    "placeholder": "이 워크스페이스에 대한 노트 추가...",
+    "selectWorkspace": "노트를 보려면 워크스페이스를 선택하세요"
   },
   "repos": {
     "loading": "저장소 로딩 중...",

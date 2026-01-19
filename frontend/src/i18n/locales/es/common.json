@@ -166,7 +166,12 @@
     "recent": "Reciente",
     "other": "Otro",
     "devServerPreview": "Vista previa del servidor de desarrollo",
-    "terminal": "Terminal"
+    "terminal": "Terminal",
+    "notes": "Notas"
+  },
+  "notes": {
+    "placeholder": "Agregar notas sobre este espacio de trabajo...",
+    "selectWorkspace": "Selecciona un espacio de trabajo para ver notas"
   },
   "repos": {
     "loading": "Cargando repositorios...",
