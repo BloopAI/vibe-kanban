@@ -12,7 +12,7 @@ import {
   KanbanCards,
   KanbanHeader,
   type DragEndEvent,
-} from '@/components/ui/shadcn-io/kanban';
+} from '@/components/ui-new/kanban';
 
 function LoadingState() {
   return (
