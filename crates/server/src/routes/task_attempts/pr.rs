@@ -26,7 +26,7 @@ use services::services::{
     git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
-        UnifiedPrComment,
+        UnifiedPrComment, github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -754,10 +754,21 @@ pub async fn create_workspace_from_pr(
     .await?;
 
     // 10. Ensure container exists (creates worktree from existing PR branch)
-    deployment
+    let container_ref = deployment
         .container()
         .ensure_container_exists(&workspace)
         .await?;
+
+    // 10b. Configure branch tracking for fork PRs using gh pr checkout
+    // This sets up pushremote so git push goes to the fork, not origin
+    let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
+    let repo_info = GhCli::new()
+        .get_repo_info(&remote_url, &worktree_path)
+        .map_err(|e| ApiError::BadRequest(format!("Failed to get repo info: {e}")))?;
+    if let Err(e) = GhCli::new().pr_checkout(&worktree_path, &repo_info.owner, &repo_info.repo_name, payload.pr_number) {
+        tracing::warn!("Failed to configure PR branch tracking: {e}");
+        // Non-fatal - workspace is still usable, just won't auto-push to fork
+    }
 
     // 11. Attach PR to workspace
     Merge::create_pr(

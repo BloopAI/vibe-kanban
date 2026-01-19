@@ -353,6 +353,28 @@ impl GhCli {
         )?;
         Self::parse_pr_review_comments(&raw)
     }
+
+    /// Checkout a PR in the given directory.
+    /// This sets up branch tracking for fork PRs (pushremote, remote, merge).
+    pub fn pr_checkout(
+        &self,
+        repo_path: &Path,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+    ) -> Result<(), GhCliError> {
+        self.run(
+            [
+                "pr",
+                "checkout",
+                &pr_number.to_string(),
+                "--repo",
+                &format!("{owner}/{repo}"),
+            ],
+            Some(repo_path),
+        )?;
+        Ok(())
+    }
 }
 
 impl GhCli {
