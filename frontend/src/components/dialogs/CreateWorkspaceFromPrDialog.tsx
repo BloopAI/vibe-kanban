@@ -36,7 +36,6 @@ const CreateWorkspaceFromPrDialogImpl =
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
 
-    // Try to get current workspace's primary repo (optional - may be null)
     const workspaceContext = useContext(WorkspaceContext);
     const currentWorkspaceRepoId = workspaceContext?.repos[0]?.id ?? null;
 
@@ -46,14 +45,12 @@ const CreateWorkspaceFromPrDialogImpl =
     );
     const [runSetup, setRunSetup] = useState(true);
 
-    // Fetch all repos
     const { data: repos = [], isLoading: isLoadingRepos } = useQuery({
       queryKey: ['repos'],
       queryFn: () => repoApi.list(),
       enabled: modal.visible,
     });
 
-    // Auto-select repo: prefer current workspace's repo, then single repo
     useEffect(() => {
       if (selectedRepoId) return;
       if (
@@ -66,7 +63,6 @@ const CreateWorkspaceFromPrDialogImpl =
       }
     }, [repos, selectedRepoId, currentWorkspaceRepoId]);
 
-    // Fetch open PRs for the selected repo
     const {
       data: prsResult,
       isLoading: isLoadingPrs,
@@ -108,7 +104,6 @@ const CreateWorkspaceFromPrDialogImpl =
       prsErrorMessage = t('createWorkspaceFromPr.errors.failedToLoadPrs');
     }
 
-    // Create workspace mutation
     const createMutation = useMutation({
       mutationFn: async () => {
         if (!selectedRepoId || !selectedPrNumber) {
@@ -142,7 +137,6 @@ const CreateWorkspaceFromPrDialogImpl =
                 t('createWorkspaceFromPr.errors.repoNotInProject')
               );
             default:
-              // Catch-all for unknown error types
               throw new Error(
                 result.message ||
                   t('createWorkspaceFromPr.errors.failedToCreateWorkspace')
@@ -159,7 +153,6 @@ const CreateWorkspaceFromPrDialogImpl =
       },
     });
 
-    // Reset state when modal closes
     useEffect(() => {
       if (!modal.visible) {
         setSelectedRepoId(null);
@@ -195,7 +188,6 @@ const CreateWorkspaceFromPrDialogImpl =
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Repo selector */}
             <div className="space-y-2">
               <Label>{t('createWorkspaceFromPr.repositoryLabel')}</Label>
               {isLoadingRepos ? (
@@ -230,7 +222,6 @@ const CreateWorkspaceFromPrDialogImpl =
               )}
             </div>
 
-            {/* PR selector */}
             <div className="space-y-2">
               <Label>{t('createWorkspaceFromPr.pullRequestLabel')}</Label>
               {isLoadingPrs ? (
@@ -278,7 +269,6 @@ const CreateWorkspaceFromPrDialogImpl =
               )}
             </div>
 
-            {/* Run setup checkbox */}
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="run-setup"
@@ -290,7 +280,6 @@ const CreateWorkspaceFromPrDialogImpl =
               </Label>
             </div>
 
-            {/* Error message */}
             {createMutation.error && (
               <div className="text-sm text-destructive">
                 {createMutation.error.message}

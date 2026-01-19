@@ -583,16 +583,10 @@ pub async fn get_pr_comments(
     }
 }
 
-/// Request body for creating a workspace directly from a pull request.
-/// This auto-creates a task using the PR title, no task_id required.
-/// Project is derived from the repo automatically.
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateWorkspaceFromPrBody {
-    /// The repo that has the PR
     pub repo_id: Uuid,
-    /// The PR number to use
     pub pr_number: i64,
-    /// Whether to run setup scripts (default: true)
     #[serde(default = "default_true")]
     pub run_setup: bool,
 }
@@ -601,7 +595,6 @@ fn default_true() -> bool {
     true
 }
 
-/// Response type containing workspace and the auto-created task
 #[derive(Debug, Serialize, TS)]
 pub struct CreateWorkspaceFromPrResponse {
     pub workspace: Workspace,
@@ -620,9 +613,6 @@ pub enum CreateFromPrError {
     RepoNotInProject,
 }
 
-/// Create a workspace directly from a pull request.
-/// This auto-creates a task using the PR title, fetches the PR branch,
-/// creates a workspace, attaches the PR, and optionally runs setup scripts.
 #[axum::debug_handler]
 pub async fn create_workspace_from_pr(
     State(deployment): State<DeploymentImpl>,
@@ -630,12 +620,10 @@ pub async fn create_workspace_from_pr(
 ) -> Result<ResponseJson<ApiResponse<CreateWorkspaceFromPrResponse, CreateFromPrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    // 1. Get repo info
     let repo = Repo::find_by_id(pool, payload.repo_id)
         .await?
         .ok_or(RepoError::NotFound)?;
 
-    // 2. Derive project_id from repo
     let project_repos = ProjectRepo::find_by_repo_id(pool, payload.repo_id).await?;
     let project_id = match project_repos.first() {
         Some(project_repo) => project_repo.project_id,
@@ -650,13 +638,11 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    // 3. Get remote URL using default remote (not hardcoded "origin")
     let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
     let remote_url = deployment
         .git()
         .get_remote_url(&repo.path, &default_remote)?;
 
-    // 3. Create git host service and list open PRs to find the one we want
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
@@ -670,7 +656,6 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    // 4. List open PRs and find the matching one
     let prs = match git_host.list_open_prs(&repo.path, &remote_url).await {
         Ok(prs) => prs,
         Err(GitHostError::CliNotInstalled { provider }) => {
@@ -703,7 +688,6 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    // 5. Fetch the PR branch from remote (use fork URL if available)
     let fetch_url = pr_info.head_repo_url.as_deref().unwrap_or(&remote_url);
     if let Err(e) = deployment
         .git()
@@ -717,7 +701,6 @@ pub async fn create_workspace_from_pr(
         )));
     }
 
-    // 6. Create task using PR title
     let task_id = Uuid::new_v4();
     let create_task = CreateTask {
         project_id,
@@ -732,10 +715,8 @@ pub async fn create_workspace_from_pr(
     };
     let task = Task::create(pool, &create_task, task_id).await?;
 
-    // 7. Compute agent_working_dir (single repo, use repo name)
     let agent_working_dir = Some(repo.name.clone());
 
-    // 8. Create workspace using the PR's head branch
     let workspace_id = Uuid::new_v4();
     let workspace = Workspace::create(
         pool,
@@ -748,7 +729,6 @@ pub async fn create_workspace_from_pr(
     )
     .await?;
 
-    // 9. Create WorkspaceRepo with PR's base branch as target (use remote tracking branch)
     WorkspaceRepo::create_many(
         pool,
         workspace.id,
@@ -759,14 +739,11 @@ pub async fn create_workspace_from_pr(
     )
     .await?;
 
-    // 10. Ensure container exists (creates worktree from existing PR branch)
     let container_ref = deployment
         .container()
         .ensure_container_exists(&workspace)
         .await?;
 
-    // 10b. Configure branch tracking for fork PRs using gh pr checkout
-    // This sets up pushremote so git push goes to the fork, not origin
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
     let repo_info = GhCli::new()
         .get_repo_info(&remote_url, &worktree_path)
@@ -778,10 +755,8 @@ pub async fn create_workspace_from_pr(
         payload.pr_number,
     ) {
         tracing::warn!("Failed to configure PR branch tracking: {e}");
-        // Non-fatal - workspace is still usable, just won't auto-push to fork
     }
 
-    // 11. Attach PR to workspace (use remote tracking branch for base)
     Merge::create_pr(
         pool,
         workspace.id,
@@ -792,11 +767,9 @@ pub async fn create_workspace_from_pr(
     )
     .await?;
 
-    // 12. Optionally run setup script
     if payload.run_setup {
         let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
         if let Some(setup_action) = deployment.container().setup_actions_for_repos(&repos) {
-            // Create a session for setup script
             let session = Session::create(
                 pool,
                 &CreateSession {
@@ -818,12 +791,10 @@ pub async fn create_workspace_from_pr(
                 .await
             {
                 tracing::error!("Failed to run setup script: {}", e);
-                // Don't fail the whole operation, just log the error
             }
         }
     }
 
-    // 13. Track analytics
     deployment
         .track_if_analytics_allowed(
             "workspace_created_from_pr",
@@ -844,7 +815,6 @@ pub async fn create_workspace_from_pr(
         task.id
     );
 
-    // 14. Fetch the updated workspace
     let workspace = Workspace::find_by_id(pool, workspace.id)
         .await?
         .ok_or(WorkspaceError::TaskNotFound)?;

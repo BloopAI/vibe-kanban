@@ -1616,8 +1616,6 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
-    /// Get the default remote name for a repository.
-    /// Checks remote.pushDefault config, falls back to first remote, then "origin".
     pub fn get_default_remote_name(&self, repo_path: &Path) -> Result<String, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         Ok(self.default_remote_name(&repo))
@@ -1635,8 +1633,6 @@ impl GitService {
             .map_err(GitServiceError::GitCLI)
     }
 
-    /// Fetch a specific branch from a remote and create a local tracking branch.
-    /// This is useful for fetching PR branches from GitHub.
     pub fn fetch_branch(
         &self,
         repo_path: &Path,
@@ -1644,7 +1640,6 @@ impl GitService {
         branch_name: &str,
     ) -> Result<(), GitServiceError> {
         let git_cli = GitCli::new();
-        // Fetch the branch and create a local branch with the same name
         let refspec = format!("+refs/heads/{branch_name}:refs/heads/{branch_name}");
         git_cli
             .fetch_with_refspec(repo_path, remote_url, &refspec)

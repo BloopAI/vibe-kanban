@@ -97,7 +97,6 @@ struct GhPrResponse {
     merge_commit: Option<GhMergeCommit>,
 }
 
-/// Extended PR response that includes head/base branch info for listing open PRs
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhPrListExtendedResponse {
@@ -297,7 +296,6 @@ impl GhCli {
         Self::parse_pr_list(&raw)
     }
 
-    /// List all open pull requests for a repository.
     pub fn list_open_prs(&self, owner: &str, repo: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
         let raw = self.run(
             [
@@ -354,8 +352,6 @@ impl GhCli {
         Self::parse_pr_review_comments(&raw)
     }
 
-    /// Checkout a PR in the given directory.
-    /// This sets up branch tracking for fork PRs (pushremote, remote, merge).
     pub fn pr_checkout(
         &self,
         repo_path: &Path,
@@ -446,7 +442,6 @@ impl GhCli {
         Ok(prs
             .into_iter()
             .map(|pr| {
-                // Construct URL from owner + repo name (gh CLI doesn't expose url directly)
                 let head_repo_url = match (&pr.head_repository, &pr.head_repository_owner) {
                     (Some(repo), Some(owner)) => {
                         Some(format!("https://github.com/{}/{}", owner.login, repo.name))
