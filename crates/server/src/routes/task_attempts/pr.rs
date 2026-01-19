@@ -640,7 +640,10 @@ pub async fn create_workspace_from_pr(
     let project_id = project_repos
         .first()
         .ok_or_else(|| {
-            tracing::error!("Repo {} is not associated with any project", payload.repo_id);
+            tracing::error!(
+                "Repo {} is not associated with any project",
+                payload.repo_id
+            );
             ApiError::BadRequest("Repo is not associated with any project".to_string())
         })?
         .project_id;
