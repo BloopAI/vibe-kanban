@@ -187,7 +187,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const isInEditMode = editContext.isInEditMode;
 
   // Get todos from entries
-  const { inProgressTodo } = useTodos(entries);
+  const { todos, inProgressTodo } = useTodos(entries);
 
   // Review comments context (optional - only available when ReviewProvider wraps this)
   const reviewContext = useReviewOptional();
@@ -668,6 +668,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }}
       error={sendError}
       agent={latestProfileId?.executor}
+      todos={todos}
       inProgressTodo={inProgressTodo}
       executor={
         isNewSessionMode

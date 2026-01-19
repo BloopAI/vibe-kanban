@@ -42,6 +42,7 @@ import {
 } from './Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
+import { TodoProgressPopup } from './TodoProgressPopup';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -138,6 +139,7 @@ interface SessionChatBoxProps {
   projectId?: string;
   agent?: BaseCodingAgent | null;
   executor?: ExecutorProps;
+  todos?: TodoItem[];
   inProgressTodo?: TodoItem | null;
   localImages?: LocalImageMetadata[];
   onViewCode?: () => void;
@@ -165,6 +167,7 @@ export function SessionChatBox({
   projectId,
   agent,
   executor,
+  todos,
   inProgressTodo,
   localImages,
   onViewCode,
@@ -593,6 +596,8 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
+          {/* Todo progress popup - only show when there are todos */}
+          {todos && todos.length > 0 && <TodoProgressPopup todos={todos} />}
           <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
           <ToolbarDropdown
             label={sessionLabel}

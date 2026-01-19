@@ -218,6 +218,10 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
+  "todoPopup": {
+    "title": "Tasks",
+    "progress": "{{completed}}/{{total}} completed"
+  },
   "projects": {
     "create": {
       "dialog": {
