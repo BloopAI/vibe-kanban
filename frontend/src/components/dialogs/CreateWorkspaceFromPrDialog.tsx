@@ -96,7 +96,9 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
         if (selectedProjectId) {
-          navigate(paths.attempt(selectedProjectId, data.task.id, data.workspace.id));
+          navigate(
+            paths.attempt(selectedProjectId, data.task.id, data.workspace.id)
+          );
         }
       },
     });
