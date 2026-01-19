@@ -16,6 +16,7 @@ services:
       start_period: 5s
     ports:
       - "5432:5432"
+    restart: unless-stopped
 
   electric:
     image: electricsql/electric:latest
@@ -33,6 +34,7 @@ services:
     depends_on:
       remote-db:
         condition: service_healthy
+    restart: unless-stopped
 
   remote-server:
     build:
