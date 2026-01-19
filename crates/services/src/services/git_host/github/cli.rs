@@ -107,6 +107,13 @@ struct GhPrListExtendedResponse {
     title: String,
     head_ref_name: String,
     base_ref_name: String,
+    head_repository: Option<GhPrHeadRepository>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhPrHeadRepository {
+    url: String,
 }
 
 #[derive(Debug, Error)]
@@ -294,7 +301,7 @@ impl GhCli {
                 "--state",
                 "open",
                 "--json",
-                "number,url,title,headRefName,baseRefName",
+                "number,url,title,headRefName,baseRefName,headRepository",
             ],
             None,
         )?;
@@ -415,6 +422,7 @@ impl GhCli {
                 title: pr.title,
                 head_branch: pr.head_ref_name,
                 base_branch: pr.base_ref_name,
+                head_repo_url: pr.head_repository.map(|r| r.url),
             })
             .collect())
     }

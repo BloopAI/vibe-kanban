@@ -143,4 +143,6 @@ pub struct OpenPrInfo {
     pub title: String,
     pub head_branch: String,
     pub base_branch: String,
+    /// URL of the repo containing the head branch (for fork PRs)
+    pub head_repo_url: Option<String>,
 }

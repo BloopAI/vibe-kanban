@@ -280,7 +280,11 @@ export type UnifiedPrComment = { "comment_type": "general", id: string, author: 
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
-export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, };
+export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, 
+/**
+ * URL of the repo containing the head branch (for fork PRs)
+ */
+head_repo_url: string | null, };
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
 

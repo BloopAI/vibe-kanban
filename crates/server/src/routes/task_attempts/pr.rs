@@ -696,10 +696,11 @@ pub async fn create_workspace_from_pr(
             ApiError::BadRequest(format!("PR #{} not found or not open", payload.pr_number))
         })?;
 
-    // 5. Fetch the PR branch from remote
+    // 5. Fetch the PR branch from remote (use fork URL if available)
+    let fetch_url = pr_info.head_repo_url.as_deref().unwrap_or(&remote_url);
     if let Err(e) = deployment
         .git()
-        .fetch_branch(&repo.path, &remote_url, &pr_info.head_branch)
+        .fetch_branch(&repo.path, fetch_url, &pr_info.head_branch)
     {
         tracing::error!("Failed to fetch PR branch: {}", e);
         return Ok(ResponseJson(ApiResponse::error_with_data(
