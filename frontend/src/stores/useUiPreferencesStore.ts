@@ -12,6 +12,8 @@ export const RIGHT_MAIN_PANEL_MODES = {
 export type RightMainPanelMode =
   (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES];
 
+export type LayoutMode = 'workspaces' | 'kanban';
+
 export type ContextBarPosition =
   | 'top-left'
   | 'top-right'
@@ -60,6 +62,7 @@ export const PERSIST_KEYS = {
   showGitHubComments: 'show-github-comments',
   // Panel sizes
   rightMainPanel: 'right-main-panel',
+  kanbanLeftPanel: 'kanban-left-panel',
   // Dynamic keys (use helper functions)
   repoCard: (repoId: string) => `repo-card-${repoId}` as const,
 } as const;
@@ -86,6 +89,7 @@ export type PersistKey =
   | typeof PERSIST_KEYS.rightMainPanel
   | typeof PERSIST_KEYS.rightPanelprocesses
   | typeof PERSIST_KEYS.rightPanelPreview
+  | typeof PERSIST_KEYS.kanbanLeftPanel
   | `repo-card-${string}`
   | `diff:${string}`
   | `edit:${string}`
@@ -107,9 +111,11 @@ type State = {
   collapsedPaths: Record<string, string[]>;
 
   // Global layout state (applies across all workspaces)
+  layoutMode: LayoutMode;
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
+  isKanbanRightPanelVisible: boolean;
   previewRefreshKey: number;
 
   // Workspace-specific panel state
@@ -125,11 +131,14 @@ type State = {
   setCollapsedPaths: (key: string, paths: string[]) => void;
 
   // Layout actions
+  setLayoutMode: (mode: LayoutMode) => void;
+  toggleLayoutMode: () => void;
   toggleLeftSidebar: () => void;
   toggleLeftMainPanel: (workspaceId?: string) => void;
   toggleRightSidebar: () => void;
   toggleTerminal: () => void;
   setTerminalVisible: (value: boolean) => void;
+  setKanbanRightPanelVisible: (value: boolean) => void;
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string
@@ -161,9 +170,11 @@ export const useUiPreferencesStore = create<State>()(
       collapsedPaths: {},
 
       // Global layout state
+      layoutMode: 'workspaces' as LayoutMode,
       isLeftSidebarVisible: true,
       isRightSidebarVisible: true,
       isTerminalVisible: true,
+      isKanbanRightPanelVisible: true,
       previewRefreshKey: 0,
 
       // Workspace-specific panel state
@@ -196,6 +207,11 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ collapsedPaths: { ...s.collapsedPaths, [key]: paths } })),
 
       // Layout actions
+      setLayoutMode: (mode) => set({ layoutMode: mode }),
+      toggleLayoutMode: () =>
+        set((s) => ({
+          layoutMode: s.layoutMode === 'workspaces' ? 'kanban' : 'workspaces',
+        })),
       toggleLeftSidebar: () =>
         set((s) => ({ isLeftSidebarVisible: !s.isLeftSidebarVisible })),
 
@@ -228,6 +244,9 @@ export const useUiPreferencesStore = create<State>()(
         set((s) => ({ isTerminalVisible: !s.isTerminalVisible })),
 
       setTerminalVisible: (value) => set({ isTerminalVisible: value }),
+
+      setKanbanRightPanelVisible: (value) =>
+        set({ isKanbanRightPanelVisible: value }),
 
       toggleRightMainPanelMode: (mode, workspaceId) => {
         if (!workspaceId) return;
@@ -332,9 +351,11 @@ export const useUiPreferencesStore = create<State>()(
         paneSizes: state.paneSizes,
         collapsedPaths: state.collapsedPaths,
         // Global layout (persist sidebar visibility)
+        layoutMode: state.layoutMode,
         isLeftSidebarVisible: state.isLeftSidebarVisible,
         isRightSidebarVisible: state.isRightSidebarVisible,
         isTerminalVisible: state.isTerminalVisible,
+        isKanbanRightPanelVisible: state.isKanbanRightPanelVisible,
         // Workspace-specific panel state (persisted)
         workspacePanelStates: state.workspacePanelStates,
       }),
