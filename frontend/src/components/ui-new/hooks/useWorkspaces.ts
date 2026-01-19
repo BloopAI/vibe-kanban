@@ -13,6 +13,7 @@ export interface SidebarWorkspace {
   id: string;
   taskId: string;
   name: string;
+  branch: string;
   description: string;
   filesChanged?: number;
   linesAdded?: number;
@@ -53,6 +54,7 @@ function toSidebarWorkspace(
     id: ws.id,
     taskId: ws.task_id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
+    branch: ws.branch,
     description: '',
     // Use real stats from summary if available
     filesChanged: summary?.files_changed ?? undefined,

@@ -97,11 +97,19 @@ export function WorkspacesSidebar({
   const DISPLAY_LIMIT = 10;
 
   const filteredWorkspaces = workspaces
-    .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
+    .filter(
+      (workspace) =>
+        workspace.name.toLowerCase().includes(searchLower) ||
+        workspace.branch.toLowerCase().includes(searchLower)
+    )
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
   const filteredArchivedWorkspaces = archivedWorkspaces
-    .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
+    .filter(
+      (workspace) =>
+        workspace.name.toLowerCase().includes(searchLower) ||
+        workspace.branch.toLowerCase().includes(searchLower)
+    )
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
   // Categorize workspaces for accordion layout
