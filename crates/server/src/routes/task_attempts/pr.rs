@@ -8,6 +8,7 @@ use axum::{
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
+    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     task::{CreateTask, Task, TaskStatus},
@@ -584,10 +585,9 @@ pub async fn get_pr_comments(
 
 /// Request body for creating a workspace directly from a pull request.
 /// This auto-creates a task using the PR title, no task_id required.
+/// Project is derived from the repo automatically.
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateWorkspaceFromPrBody {
-    /// The project to create the task and workspace in
-    pub project_id: Uuid,
     /// The repo that has the PR
     pub repo_id: Uuid,
     /// The PR number to use
@@ -617,6 +617,7 @@ pub enum CreateFromPrError {
     CliNotInstalled { provider: ProviderKind },
     AuthFailed { message: String },
     UnsupportedProvider,
+    RepoNotInProject,
 }
 
 /// Create a workspace directly from a pull request.
@@ -634,7 +635,17 @@ pub async fn create_workspace_from_pr(
         .await?
         .ok_or(RepoError::NotFound)?;
 
-    // 2. Get remote URL
+    // 2. Derive project_id from repo
+    let project_repos = ProjectRepo::find_by_repo_id(pool, payload.repo_id).await?;
+    let project_id = project_repos
+        .first()
+        .ok_or_else(|| {
+            tracing::error!("Repo {} is not associated with any project", payload.repo_id);
+            ApiError::BadRequest("Repo is not associated with any project".to_string())
+        })?
+        .project_id;
+
+    // 3. Get remote URL
     let remote_url = deployment.git().get_remote_url(&repo.path, "origin")?;
 
     // 3. Create git host service and list open PRs to find the one we want
@@ -698,7 +709,7 @@ pub async fn create_workspace_from_pr(
     // 6. Create task using PR title
     let task_id = Uuid::new_v4();
     let create_task = CreateTask {
-        project_id: payload.project_id,
+        project_id,
         title: pr_info.title.clone(),
         description: Some(format!(
             "Created from PR #{}: {}",
@@ -793,7 +804,7 @@ pub async fn create_workspace_from_pr(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "workspace_id": workspace.id.to_string(),
-                "project_id": payload.project_id.to_string(),
+                "project_id": project_id.to_string(),
                 "pr_number": payload.pr_number,
                 "run_setup": payload.run_setup,
             }),

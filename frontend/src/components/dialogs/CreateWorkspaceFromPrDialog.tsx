@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
-import { useCreateMode } from '@/contexts/CreateModeContext';
+import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -33,7 +32,6 @@ const CreateWorkspaceFromPrDialogImpl =
   NiceModal.create<CreateWorkspaceFromPrDialogProps>(() => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
-    const { selectedProjectId } = useCreateMode();
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
 
@@ -43,19 +41,19 @@ const CreateWorkspaceFromPrDialogImpl =
     );
     const [runSetup, setRunSetup] = useState(true);
 
-    const { data: projectRepos = [] } = useProjectRepos(
-      selectedProjectId ?? undefined,
-      {
-        enabled: modal.visible && !!selectedProjectId,
-      }
-    );
+    // Fetch all repos
+    const { data: repos = [], isLoading: isLoadingRepos } = useQuery({
+      queryKey: ['repos'],
+      queryFn: () => repoApi.list(),
+      enabled: modal.visible,
+    });
 
     // Auto-select first repo if only one
     useEffect(() => {
-      if (projectRepos.length === 1 && !selectedRepoId) {
-        setSelectedRepoId(projectRepos[0].id);
+      if (repos.length === 1 && !selectedRepoId) {
+        setSelectedRepoId(repos[0].id);
       }
-    }, [projectRepos, selectedRepoId]);
+    }, [repos, selectedRepoId]);
 
     // Fetch open PRs for the selected repo
     const {
@@ -77,11 +75,10 @@ const CreateWorkspaceFromPrDialogImpl =
     // Create workspace mutation
     const createMutation = useMutation({
       mutationFn: async () => {
-        if (!selectedProjectId || !selectedRepoId || !selectedPrNumber) {
+        if (!selectedRepoId || !selectedPrNumber) {
           throw new Error('Missing required fields');
         }
         const result = await attemptsApi.createFromPr({
-          project_id: selectedProjectId,
           repo_id: selectedRepoId,
           pr_number: BigInt(selectedPrNumber),
           run_setup: runSetup,
@@ -95,11 +92,9 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
-        if (selectedProjectId) {
-          navigate(
-            paths.attempt(selectedProjectId, data.task.id, data.workspace.id)
-          );
-        }
+        navigate(
+          paths.attempt(data.task.project_id, data.task.id, data.workspace.id)
+        );
       },
     });
 
@@ -140,10 +135,18 @@ const CreateWorkspaceFromPrDialogImpl =
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Repo selector (only if multiple repos) */}
-            {projectRepos.length > 1 && (
-              <div className="space-y-2">
-                <Label>Repository</Label>
+            {/* Repo selector */}
+            <div className="space-y-2">
+              <Label>Repository</Label>
+              {isLoadingRepos ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading repositories...
+                </div>
+              ) : repos.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  No repositories found
+                </div>
+              ) : (
                 <Select
                   value={selectedRepoId ?? undefined}
                   onValueChange={(value) => {
@@ -155,15 +158,15 @@ const CreateWorkspaceFromPrDialogImpl =
                     <SelectValue placeholder="Select a repository" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projectRepos.map((repo) => (
+                    {repos.map((repo) => (
                       <SelectItem key={repo.id} value={repo.id}>
-                        {repo.name}
+                        {repo.display_name || repo.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* PR selector */}
             <div className="space-y-2">
