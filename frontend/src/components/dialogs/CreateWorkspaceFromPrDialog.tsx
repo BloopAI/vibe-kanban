@@ -95,7 +95,9 @@ const CreateWorkspaceFromPrDialogImpl =
           prsErrorMessage = prsResult.error.message;
           break;
         case 'unsupported_provider':
-          prsErrorMessage = t('createWorkspaceFromPr.errors.unsupportedProvider');
+          prsErrorMessage = t(
+            'createWorkspaceFromPr.errors.unsupportedProvider'
+          );
           break;
         default:
           prsErrorMessage =
@@ -136,7 +138,9 @@ const CreateWorkspaceFromPrDialogImpl =
                 t('createWorkspaceFromPr.errors.unsupportedProvider')
               );
             case 'repo_not_in_project':
-              throw new Error(t('createWorkspaceFromPr.errors.repoNotInProject'));
+              throw new Error(
+                t('createWorkspaceFromPr.errors.repoNotInProject')
+              );
             default:
               // Catch-all for unknown error types
               throw new Error(
