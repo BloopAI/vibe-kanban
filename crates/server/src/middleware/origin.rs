@@ -24,7 +24,7 @@ impl OriginKey {
             _ => return None,
         };
         let host = normalize_host(url.host_str()?);
-        let port = url.port_or_known_default()? as u16;
+        let port = url.port_or_known_default()?;
         Some(Self { https, host, port })
     }
 
@@ -36,6 +36,7 @@ impl OriginKey {
     }
 }
 
+#[allow(clippy::result_large_err)]
 pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     let origin = match req
         .headers()
