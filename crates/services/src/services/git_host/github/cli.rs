@@ -425,13 +425,12 @@ impl GhCli {
             .into_iter()
             .map(|pr| {
                 // Construct URL from owner + repo name (gh CLI doesn't expose url directly)
-                let head_repo_url =
-                    match (&pr.head_repository, &pr.head_repository_owner) {
-                        (Some(repo), Some(owner)) => {
-                            Some(format!("https://github.com/{}/{}", owner.login, repo.name))
-                        }
-                        _ => None,
-                    };
+                let head_repo_url = match (&pr.head_repository, &pr.head_repository_owner) {
+                    (Some(repo), Some(owner)) => {
+                        Some(format!("https://github.com/{}/{}", owner.login, repo.name))
+                    }
+                    _ => None,
+                };
                 OpenPrInfo {
                     number: pr.number,
                     url: pr.url,
