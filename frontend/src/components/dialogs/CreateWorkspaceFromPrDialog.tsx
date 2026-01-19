@@ -87,19 +87,23 @@ const CreateWorkspaceFromPrDialogImpl =
     if (prsResult?.success === false) {
       switch (prsResult.error?.type) {
         case 'cli_not_installed':
-          prsErrorMessage = `${prsResult.error.provider} CLI is not installed`;
+          prsErrorMessage = t('createWorkspaceFromPr.errors.cliNotInstalled', {
+            provider: prsResult.error.provider,
+          });
           break;
         case 'auth_failed':
           prsErrorMessage = prsResult.error.message;
           break;
         case 'unsupported_provider':
-          prsErrorMessage = 'Git provider not supported';
+          prsErrorMessage = t('createWorkspaceFromPr.errors.unsupportedProvider');
           break;
         default:
-          prsErrorMessage = prsResult.message || 'Failed to load pull requests';
+          prsErrorMessage =
+            prsResult.message ||
+            t('createWorkspaceFromPr.errors.failedToLoadPrs');
       }
     } else if (prsError) {
-      prsErrorMessage = 'Failed to load pull requests';
+      prsErrorMessage = t('createWorkspaceFromPr.errors.failedToLoadPrs');
     }
 
     // Create workspace mutation
@@ -120,16 +124,25 @@ const CreateWorkspaceFromPrDialogImpl =
             case 'auth_failed':
               throw new Error(result.error.message);
             case 'cli_not_installed':
-              throw new Error(`${result.error.provider} CLI is not installed`);
+              throw new Error(
+                t('createWorkspaceFromPr.errors.cliNotInstalled', {
+                  provider: result.error.provider,
+                })
+              );
             case 'pr_not_found':
-              throw new Error('Pull request not found');
+              throw new Error(t('createWorkspaceFromPr.errors.prNotFound'));
             case 'unsupported_provider':
-              throw new Error('Git provider not supported');
+              throw new Error(
+                t('createWorkspaceFromPr.errors.unsupportedProvider')
+              );
             case 'repo_not_in_project':
-              throw new Error('Repository is not in any project');
+              throw new Error(t('createWorkspaceFromPr.errors.repoNotInProject'));
             default:
               // Catch-all for unknown error types
-              throw new Error(result.message || 'Failed to create workspace');
+              throw new Error(
+                result.message ||
+                  t('createWorkspaceFromPr.errors.failedToCreateWorkspace')
+              );
           }
         }
         return result.data;
@@ -171,24 +184,23 @@ const CreateWorkspaceFromPrDialogImpl =
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Create Workspace from PR</DialogTitle>
+            <DialogTitle>{t('createWorkspaceFromPr.title')}</DialogTitle>
             <DialogDescription>
-              Select an open pull request to create a workspace from. A task
-              will be created automatically using the PR title.
+              {t('createWorkspaceFromPr.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {/* Repo selector */}
             <div className="space-y-2">
-              <Label>Repository</Label>
+              <Label>{t('createWorkspaceFromPr.repositoryLabel')}</Label>
               {isLoadingRepos ? (
                 <div className="text-sm text-muted-foreground">
-                  Loading repositories...
+                  {t('createWorkspaceFromPr.loadingRepositories')}
                 </div>
               ) : repos.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  No repositories found
+                  {t('createWorkspaceFromPr.noRepositoriesFound')}
                 </div>
               ) : (
                 <Select
@@ -199,7 +211,9 @@ const CreateWorkspaceFromPrDialogImpl =
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a repository" />
+                    <SelectValue
+                      placeholder={t('createWorkspaceFromPr.selectRepository')}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {repos.map((repo) => (
@@ -214,10 +228,10 @@ const CreateWorkspaceFromPrDialogImpl =
 
             {/* PR selector */}
             <div className="space-y-2">
-              <Label>Pull Request</Label>
+              <Label>{t('createWorkspaceFromPr.pullRequestLabel')}</Label>
               {isLoadingPrs ? (
                 <div className="text-sm text-muted-foreground">
-                  Loading pull requests...
+                  {t('createWorkspaceFromPr.loadingPullRequests')}
                 </div>
               ) : prsErrorMessage ? (
                 <div className="text-sm text-destructive">
@@ -225,11 +239,11 @@ const CreateWorkspaceFromPrDialogImpl =
                 </div>
               ) : !selectedRepoId ? (
                 <div className="text-sm text-muted-foreground">
-                  Select a repository first
+                  {t('createWorkspaceFromPr.selectRepositoryFirst')}
                 </div>
               ) : openPrs.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  No open pull requests found
+                  {t('createWorkspaceFromPr.noPullRequestsFound')}
                 </div>
               ) : (
                 <SearchableDropdownContainer
@@ -249,12 +263,12 @@ const CreateWorkspaceFromPrDialogImpl =
                     >
                       {selectedPrNumber
                         ? `#${selectedPrNumber}: ${openPrs.find((pr) => Number(pr.number) === selectedPrNumber)?.title ?? ''}`
-                        : 'Select a pull request'}
+                        : t('createWorkspaceFromPr.selectPullRequest')}
                     </Button>
                   }
                   contentClassName="w-[400px]"
-                  placeholder="Search PRs by number or title..."
-                  emptyMessage="No matching pull requests"
+                  placeholder={t('createWorkspaceFromPr.searchPrsPlaceholder')}
+                  emptyMessage={t('createWorkspaceFromPr.noMatchingPrs')}
                   getItemBadge={null}
                 />
               )}
@@ -267,7 +281,9 @@ const CreateWorkspaceFromPrDialogImpl =
                 checked={runSetup}
                 onCheckedChange={(checked) => setRunSetup(checked === true)}
               />
-              <Label htmlFor="run-setup">Run setup script</Label>
+              <Label htmlFor="run-setup">
+                {t('createWorkspaceFromPr.runSetupScript')}
+              </Label>
             </div>
 
             {/* Error message */}
@@ -287,7 +303,9 @@ const CreateWorkspaceFromPrDialogImpl =
               {t('common:buttons.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={!canCreate}>
-              {createMutation.isPending ? 'Creating...' : 'Create Workspace'}
+              {createMutation.isPending
+                ? t('createWorkspaceFromPr.creating')
+                : t('createWorkspaceFromPr.createWorkspace')}
             </Button>
           </DialogFooter>
         </DialogContent>
