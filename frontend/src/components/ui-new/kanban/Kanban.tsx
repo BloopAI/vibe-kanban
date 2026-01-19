@@ -120,16 +120,15 @@ export type KanbanAssigneeProps = {
   className?: string;
 };
 
-export const KanbanAssignee = ({ assignee, className }: KanbanAssigneeProps) => {
+export const KanbanAssignee = ({
+  assignee,
+  className,
+}: KanbanAssigneeProps) => {
   if (!assignee) {
     // Unassigned state - show users icon
     return (
       <div
-        className={cn(
-          'flex items-center justify-center',
-          'h-5 w-5',
-          className
-        )}
+        className={cn('flex items-center justify-center', 'h-5 w-5', className)}
         aria-label="Unassigned"
       >
         <UsersIcon className="size-icon-xs text-low" weight="bold" />
