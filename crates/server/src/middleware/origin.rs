@@ -3,7 +3,7 @@ use std::{net::IpAddr, sync::OnceLock};
 use axum::{
     body::Body,
     extract::Request,
-    http::{HeaderValue, StatusCode, header},
+    http::{StatusCode, header},
     response::Response,
 };
 use url::Url;
@@ -37,22 +37,18 @@ impl OriginKey {
 }
 
 pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
-    let origin = match req
-        .headers()
-        .get(header::ORIGIN)
-        .and_then(|v| v.to_str().ok())
-    {
-        Some(origin) => origin.trim(),
-        None => return Ok(()),
+    let Some(origin) = get_origin_header(req) else {
+        return Ok(());
     };
 
     if origin.eq_ignore_ascii_case("null") {
         return Err(forbidden());
     }
 
-    if let Some(host) = host_header(req.headers().get(header::HOST))
-        && origin_matches_host(origin, host)
-    {
+    let host = get_host_header(req);
+
+    // quick short-circuit same-origin check
+    if host.is_some_and(|host| origin_matches_host(origin, host)) {
         return Ok(());
     }
 
@@ -67,8 +63,8 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
         return Ok(());
     }
 
-    if let Some(host) = host_header(req.headers().get(header::HOST))
-        && let Some(host_key) = OriginKey::from_host_header(host, origin_key.https)
+    if let Some(host_key) =
+        host.and_then(|host| OriginKey::from_host_header(host, origin_key.https))
         && host_key == origin_key
     {
         return Ok(());
@@ -77,15 +73,26 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
     Err(forbidden())
 }
 
+fn get_origin_header<B>(req: &Request<B>) -> Option<&str> {
+    get_header(req, header::ORIGIN)
+}
+
+fn get_host_header<B>(req: &Request<B>) -> Option<&str> {
+    get_header(req, header::HOST)
+}
+
+fn get_header<B>(req: &Request<B>, name: header::HeaderName) -> Option<&str> {
+    req.headers()
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+}
+
 fn forbidden() -> Response {
     Response::builder()
         .status(StatusCode::FORBIDDEN)
         .body(Body::empty())
         .unwrap_or_else(|_| Response::new(Body::empty()))
-}
-
-fn host_header(value: Option<&HeaderValue>) -> Option<&str> {
-    value.and_then(|v| v.to_str().ok()).map(str::trim)
 }
 
 fn origin_matches_host(origin: &str, host: &str) -> bool {
