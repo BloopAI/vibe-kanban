@@ -491,10 +491,13 @@ impl JsonRpcCallbacks for AppServerClient {
                             ),
                         )
                         .await;
+                    // Only block exit if we successfully sent the message
+                    return Ok(false);
                 }
-
-                // Don't exit yet - wait for Codex to commit and send another task_complete
-                return Ok(false);
+                // No conversation_id - can't send message, allow exit to avoid zombie state
+                tracing::warn!(
+                    "commit reminder: uncommitted changes detected but no conversation_id available"
+                );
             }
         }
 
