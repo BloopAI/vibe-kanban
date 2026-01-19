@@ -136,3 +136,111 @@ fn allowed_origins() -> &'static Vec<OriginKey> {
             .collect()
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use axum::http::{Request, header};
+
+    use super::*;
+
+    fn make_request(origin: Option<&str>, host: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder().uri("/test").method("GET");
+        if let Some(origin) = origin {
+            builder = builder.header(header::ORIGIN, origin);
+        }
+        if let Some(host) = host {
+            builder = builder.header(header::HOST, host);
+        }
+        builder.body(Body::empty()).unwrap()
+    }
+
+    fn is_forbidden(result: Result<(), Response>) -> bool {
+        matches!(result, Err(resp) if resp.status() == StatusCode::FORBIDDEN)
+    }
+
+    #[test]
+    fn no_origin_header_allows_request() {
+        let mut req = make_request(None, Some("example.com"));
+        assert!(validate_origin(&mut req).is_ok());
+    }
+
+    #[test]
+    fn null_origin_is_forbidden() {
+        for null in ["null", "NULL", "Null"] {
+            let mut req = make_request(Some(null), Some("example.com"));
+            assert!(is_forbidden(validate_origin(&mut req)));
+        }
+    }
+
+    #[test]
+    fn same_origin_allows_request() {
+        // HTTP, HTTPS, with port, case-insensitive
+        let cases = [
+            ("http://example.com", "example.com"),
+            ("https://example.com", "example.com"),
+            ("http://example.com:8080", "example.com:8080"),
+            ("http://EXAMPLE.COM", "example.com"),
+        ];
+        for (origin, host) in cases {
+            let mut req = make_request(Some(origin), Some(host));
+            assert!(validate_origin(&mut req).is_ok(), "{origin} vs {host}");
+        }
+    }
+
+    #[test]
+    fn cross_origin_forbidden() {
+        let cases = [
+            ("http://unknown.com", "example.com"),         // different host
+            ("http://example.com:8080", "example.com:80"), // different port
+            ("ftp://example.com", "example.com"),          // non-http scheme
+            ("not-a-valid-url", "example.com"),            // invalid URL
+            ("http://example.com", ""),                    // missing host (invalid)
+        ];
+        for (origin, host) in cases {
+            let host_opt = if host.is_empty() { None } else { Some(host) };
+            let mut req = make_request(Some(origin), host_opt);
+            assert!(is_forbidden(validate_origin(&mut req)), "{origin}");
+        }
+    }
+
+    #[test]
+    fn loopback_addresses_normalized_and_equivalent() {
+        // All loopback forms normalize to "localhost"
+        assert_eq!(
+            OriginKey::from_origin("http://localhost:3000")
+                .unwrap()
+                .host,
+            "localhost"
+        );
+        assert_eq!(
+            OriginKey::from_origin("http://127.0.0.1:3000")
+                .unwrap()
+                .host,
+            "localhost"
+        );
+        assert_eq!(
+            OriginKey::from_origin("http://[::1]:3000").unwrap().host,
+            "localhost"
+        );
+
+        // Cross-loopback requests should be allowed
+        let mut req = make_request(Some("http://127.0.0.1:3000"), Some("[::1]:3000"));
+        assert!(validate_origin(&mut req).is_ok());
+    }
+
+    #[test]
+    fn default_ports_handled_correctly() {
+        assert_eq!(
+            OriginKey::from_origin("http://example.com").unwrap().port,
+            80
+        );
+        assert_eq!(
+            OriginKey::from_origin("https://example.com").unwrap().port,
+            443
+        );
+
+        // Explicit default port matches implicit
+        let mut req = make_request(Some("http://example.com:80"), Some("example.com"));
+        assert!(validate_origin(&mut req).is_ok());
+    }
+}
