@@ -14,52 +14,31 @@ import {
   type DragEndEvent,
 } from '@/components/ui/shadcn-io/kanban';
 
-export function KanbanContainer() {
-  // 1. Get first organization
-  const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
-  const firstOrg = orgsData?.organizations?.[0];
-
-  // 2. Get first project from that org
-  const { data: projects, isLoading: projectsLoading } = useElectricCollection(
-    PROJECTS_SHAPE,
-    { organization_id: firstOrg?.id ?? '' }
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <p className="text-low">Loading kanban board...</p>
+    </div>
   );
-  const firstProject = projects?.[0];
+}
 
-  // 3. Fetch project statuses (kanban columns)
-  const { data: statuses, isLoading: statusesLoading } = useElectricCollection(
+function KanbanBoardContent({ projectId }: { projectId: string }) {
+  const { data: statuses, isLoading } = useElectricCollection(
     PROJECT_STATUSES_SHAPE,
-    { project_id: firstProject?.id ?? '' }
+    { project_id: projectId }
   );
 
-  // Sort statuses by sort_order
   const sortedStatuses = useMemo(
     () => [...statuses].sort((a, b) => a.sort_order - b.sort_order),
     [statuses]
   );
 
-  // Handle drag end (placeholder - no actual reordering yet)
   const handleDragEnd = (event: DragEndEvent) => {
     console.log('Drag ended:', event);
   };
 
-  // Loading state
-  const isLoading = orgsLoading || projectsLoading || statusesLoading;
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-low">Loading kanban board...</p>
-      </div>
-    );
-  }
-
-  if (!firstOrg || !firstProject) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-low">No project found</p>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (sortedStatuses.length === 0) {
@@ -77,7 +56,6 @@ export function KanbanContainer() {
           <KanbanBoard key={status.id} id={status.id}>
             <KanbanHeader name={status.name} color={status.color} />
             <KanbanCards>
-              {/* Placeholder cards for now */}
               <KanbanCard
                 id={`placeholder-${status.id}`}
                 name="Placeholder card"
@@ -90,4 +68,44 @@ export function KanbanContainer() {
       </KanbanProvider>
     </div>
   );
+}
+
+function KanbanWithProjects({ organizationId }: { organizationId: string }) {
+  const { data: projects, isLoading } = useElectricCollection(PROJECTS_SHAPE, {
+    organization_id: organizationId,
+  });
+  const firstProject = projects?.[0];
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (!firstProject) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-low">No project found</p>
+      </div>
+    );
+  }
+
+  return <KanbanBoardContent projectId={firstProject.id} />;
+}
+
+export function KanbanContainer() {
+  const { data: orgsData, isLoading } = useUserOrganizations();
+  const firstOrg = orgsData?.organizations?.[0];
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (!firstOrg) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-low">No organization found</p>
+      </div>
+    );
+  }
+
+  return <KanbanWithProjects organizationId={firstOrg.id} />;
 }
