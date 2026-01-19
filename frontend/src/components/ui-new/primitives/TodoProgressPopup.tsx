@@ -72,10 +72,13 @@ export function TodoProgressPopup({
           </PopoverTrigger>
         </span>
       </Tooltip>
-      <PopoverContent align="end" className="w-80">
-        <div className="space-y-base">
+      <PopoverContent
+        align="end"
+        className="w-80 max-h-[min(75vh,var(--radix-popover-content-available-height))] flex flex-col"
+      >
+        <div className="flex flex-col gap-base min-h-0">
           {/* Header with progress */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between shrink-0">
             <h4 className="text-sm font-medium text-normal">
               {t('todoPopup.title')}
             </h4>
@@ -85,7 +88,7 @@ export function TodoProgressPopup({
           </div>
 
           {/* Progress bar */}
-          <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-border rounded-full overflow-hidden shrink-0">
             <div
               className={cn(
                 'h-full transition-all duration-300 rounded-full',
@@ -96,7 +99,7 @@ export function TodoProgressPopup({
           </div>
 
           {/* Todo list */}
-          <ul className="space-y-1 max-h-60 overflow-y-auto">
+          <ul className="space-y-1 overflow-y-auto min-h-0">
             {todos.map((todo, index) => (
               <li
                 key={`${todo.content}-${index}`}
