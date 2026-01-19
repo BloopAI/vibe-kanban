@@ -20,6 +20,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value};
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
+    process::Command,
     sync::Mutex,
 };
 use workspace_utils::approvals::ApprovalStatus;
@@ -27,7 +28,8 @@ use workspace_utils::approvals::ApprovalStatus;
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
-    executors::{ExecutorError, codex::normalize_logs::Approval},
+    env::RepoContext,
+    executors::{ExecutorError, codex::normalize_logs::{Approval, Error}},
 };
 
 pub struct AppServerClient {
@@ -37,6 +39,8 @@ pub struct AppServerClient {
     conversation_id: Mutex<Option<ConversationId>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
+    repo_context: RepoContext,
+    commit_reminder: bool,
 }
 
 impl AppServerClient {
@@ -44,6 +48,8 @@ impl AppServerClient {
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
+        repo_context: RepoContext,
+        commit_reminder: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
@@ -52,6 +58,8 @@ impl AppServerClient {
             auto_approve,
             conversation_id: Mutex::new(None),
             pending_feedback: Mutex::new(VecDeque::new()),
+            repo_context,
+            commit_reminder,
         })
     }
 
@@ -474,6 +482,60 @@ impl JsonRpcCallbacks for AppServerClient {
         self.log_writer.log_raw(raw).await?;
         Ok(())
     }
+
+    async fn on_exit(&self) -> Result<(), ExecutorError> {
+        if !self.commit_reminder {
+            return Ok(());
+        }
+
+        let status = check_git_status(&self.repo_context).await;
+        if !status.is_empty() {
+            self.log_writer
+                .log_raw(
+                    &Error::commit_reminder(format!(
+                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                        status
+                    ))
+                    .raw(),
+                )
+                .await?;
+        }
+        Ok(())
+    }
+}
+
+/// Check for uncommitted git changes across all repos in the workspace.
+/// Returns a string with the git status for all repos with changes, or empty if clean.
+async fn check_git_status(repo_context: &RepoContext) -> String {
+    let repo_paths = repo_context.repo_paths();
+
+    if repo_paths.is_empty() {
+        return String::new();
+    }
+
+    let mut all_status = String::new();
+
+    for repo_path in &repo_paths {
+        if !repo_path.join(".git").exists() {
+            continue;
+        }
+
+        let output = Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(repo_path)
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .output()
+            .await;
+
+        if let Ok(out) = output
+            && !out.stdout.is_empty()
+        {
+            let status = String::from_utf8_lossy(&out.stdout);
+            all_status.push_str(&format!("\n{}:\n{}", repo_path.display(), status));
+        }
+    }
+
+    all_status
 }
 
 async fn send_server_response<T>(
