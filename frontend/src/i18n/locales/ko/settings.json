@@ -259,9 +259,7 @@
         "loginDetected": "최근 사용 감지됨",
         "loginDetectedTooltip": "이 에이전트에 대한 최근 인증 자격 증명이 발견되었습니다",
         "installationFound": "이전 사용 감지됨",
-        "installationFoundTooltip": "에이전트 구성이 발견되었습니다. 사용하려면 로그인해야 할 수 있습니다.",
-        "notFound": "알 수 없음",
-        "notFoundTooltip": "이 에이전트가 설정되어 있는지 확인할 수 없지만, 시도해 보세요."
+        "installationFoundTooltip": "에이전트 구성이 발견되었습니다. 사용하려면 로그인해야 할 수 있습니다."
       },
       "editor": {
         "formLabel": "JSON 편집",

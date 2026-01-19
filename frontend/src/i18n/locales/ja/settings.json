@@ -259,9 +259,7 @@
         "loginDetected": "最近の使用を検出",
         "loginDetectedTooltip": "このエージェントの最近の認証情報が見つかりました",
         "installationFound": "以前の使用を検出",
-        "installationFoundTooltip": "エージェント設定が見つかりました。使用するにはログインが必要な場合があります。",
-        "notFound": "不明",
-        "notFoundTooltip": "このエージェントが設定されているか確認できませんでしたが、試してみてください。"
+        "installationFoundTooltip": "エージェント設定が見つかりました。使用するにはログインが必要な場合があります。"
       },
       "editor": {
         "formLabel": "JSONを編集",

@@ -259,9 +259,7 @@
         "loginDetected": "Recent Usage Detected",
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
-        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
-        "notFound": "Unknown",
-        "notFoundTooltip": "We couldn't verify this agent is set up, but go ahead and try it."
+        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it."
       },
       "editor": {
         "formLabel": "Edit JSON",

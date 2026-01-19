@@ -259,9 +259,7 @@
         "loginDetected": "Utilisation récente détectée",
         "loginDetectedTooltip": "Identifiants d'authentification récents trouvés pour cet agent",
         "installationFound": "Utilisation précédente détectée",
-        "installationFoundTooltip": "Configuration d'agent trouvée. Vous devrez peut-être vous connecter pour l'utiliser.",
-        "notFound": "Inconnu",
-        "notFoundTooltip": "Nous n'avons pas pu vérifier que cet agent est configuré, mais vous pouvez essayer."
+        "installationFoundTooltip": "Configuration d'agent trouvée. Vous devrez peut-être vous connecter pour l'utiliser."
       },
       "editor": {
         "formLabel": "Modifier le JSON",
