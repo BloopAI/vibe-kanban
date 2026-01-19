@@ -2,8 +2,9 @@ use axum::{
     Router,
     routing::{IntoMakeService, get},
 };
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
-use crate::DeploymentImpl;
+use crate::{DeploymentImpl, middleware};
 
 pub mod approvals;
 pub mod config;
@@ -49,6 +50,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/images", images::routes())
+        .layer(ValidateRequestHeaderLayer::custom(middleware::validate_origin))
         .with_state(deployment);
 
     Router::new()
