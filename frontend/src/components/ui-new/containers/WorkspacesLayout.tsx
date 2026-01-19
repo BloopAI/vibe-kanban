@@ -4,8 +4,8 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
+import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
@@ -196,7 +196,7 @@ export function WorkspacesLayout() {
               {isLeftMainPanelVisible && (
                 <Panel
                   id="left-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {isCreateMode ? (
@@ -226,7 +226,7 @@ export function WorkspacesLayout() {
               {rightMainPanelMode !== null && (
                 <Panel
                   id="right-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
