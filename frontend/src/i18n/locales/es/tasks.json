@@ -21,16 +21,15 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
-    "share": "Compartir tarea",
-    "reassign": "Reasignar",
-    "stopShare": "Dejar de compartir",
     "duplicate": "Duplicate",
     "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "Iniciar revisión",
+    "startingReview": "Iniciando revisión..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +40,15 @@
       "renaming": "Renombrando...",
       "action": "Renombrar rama"
     }
+  },
+  "startReviewDialog": {
+    "title": "Iniciar revisión",
+    "description": "Pide al agente de codificación que revise tus cambios y proporcione comentarios.",
+    "additionalInstructions": "Instrucciones adicionales (opcional)",
+    "reviewComments": "Comentarios de revisión ({{count}})",
+    "includeGitContext": "Incluir contexto de git",
+    "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
+    "newSession": "Nueva sesión"
   },
   "attempt": {
     "actions": {
@@ -78,40 +86,19 @@
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
-  "stopShareDialog": {
-    "title": "Detener uso compartido de la tarea",
-    "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
-    "warning": "Detiene el uso compartido de la tarea con tu organización, pero mantiene tu tarea local.",
-    "confirm": "Dejar de compartir tarea",
-    "inProgress": "Deteniendo el uso compartido...",
-    "genericError": "No se pudo dejar de compartir la tarea. Inténtalo de nuevo."
-  },
-  "shareDialog": {
-    "title": "Compartir tarea",
-    "description": "¿Compartir \"{{title}}\" con tu organización?",
-    "success": "Tarea compartida correctamente.",
-    "genericError": "No se pudo compartir la tarea. Inténtalo de nuevo.",
-    "loadingSystem": "Cargando estado de cuenta…",
-    "loginRequired": {
-      "title": "Inicia sesión para continuar",
-      "description": "Debes iniciar sesión antes de poder compartir tareas. Te redirigiremos a la página de inicio de sesión.",
-      "action": "Ir a iniciar sesión"
-    },
-    "gitProviderRequired": {
-      "title": "Conectar proveedor de Git",
-      "description": "Conecta tu cuenta de proveedor de Git para compartir tareas. Este proyecto debe tener un repositorio remoto.",
-      "action": "Conectar"
-    },
-    "linkProjectRequired": {
-      "description": "Vincula este proyecto a una organización antes de compartir tareas.",
-      "action": "Vincular Proyecto"
-    },
-    "confirmationTitle": "Confirma el uso compartido",
-    "confirmationBody": "Compartir publicará esta tarea en tu espacio de trabajo compartido.",
-    "cancel": "Cancelar",
-    "confirm": "Compartir tarea",
-    "inProgress": "Compartiendo…",
-    "closeButton": "Cerrar"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Resolver Conflictos",
+      "description": "Se detectaron conflictos. Elige cómo quieres que el agente los resuelva.",
+      "sessionLabel": "Sesión",
+      "existingSession": "Continuar en la sesión actual",
+      "newSession": "Nueva sesión",
+      "resolve": "Resolver Conflictos",
+      "resolving": "Iniciando...",
+      "filesWithConflicts_one": "{{count}} archivo tiene conflictos",
+      "filesWithConflicts_other": "{{count}} archivos tienen conflictos",
+      "andMore": "...y {{count}} más"
+    }
   },
   "createPrDialog": {
     "title": "Crear Pull Request",
@@ -309,6 +296,7 @@
       "push": "Enviar",
       "pushed": "¡Enviado!",
       "pushing": "Enviando...",
+      "pushFailed": "Falló",
       "rebase": "Rebase",
       "rebasing": "Rebaseando..."
     },
@@ -347,19 +335,24 @@
     "noDevScriptHint": "Agrega un script de desarrollo en la configuración del proyecto para habilitar la vista previa.",
     "browser": {
       "title": "Vista previa del servidor de desarrollo",
-      "startButton": "Iniciar servidor de desarrollo",
-      "stopButton": "Detener",
-      "startingButton": "Iniciar"
+      "devServerFallback": "Servidor de desarrollo"
+    },
+    "urlInput": {
+      "placeholder": "Ingresar URL..."
     },
     "noServer": {
       "companionLink": "Ver guía de instalación",
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
       "configureButton": "Configurar",
+      "setupTitle": "Debes configurar un script de servidor de desarrollo para usar la función de vista previa",
       "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
       "startButton": "Iniciar Servidor de Desarrollo",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
       "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas",
-      "title": "No hay servidor de desarrollo en ejecución"
+      "title": "No hay servidor de desarrollo en ejecución",
+      "fixScript": "Corregir Script de Desarrollo",
+      "editDevScript": "Editar Script de Servidor de Desarrollo",
+      "learnMore": "Más información sobre cómo probar aplicaciones"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -369,7 +362,16 @@
       "refresh": "Actualizar vista previa",
       "stopDevServer": "Detener servidor de desarrollo",
       "clickToEdit": "Clic para editar URL",
-      "resetUrl": "Restablecer a URL detectada"
+      "resetUrl": "Restablecer a URL detectada",
+      "clearUrlOverride": "Limpiar anulación de URL",
+      "desktopView": "Vista de escritorio",
+      "mobileView": "Vista móvil (390x844)",
+      "responsiveView": "Vista adaptable (redimensionable)",
+      "startDevServer": "Iniciar servidor de desarrollo"
+    },
+    "loading": {
+      "startingServer": "Iniciando servidor de desarrollo...",
+      "waitingForServer": "Esperando servidor..."
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
@@ -377,7 +379,8 @@
       "item2Suffix": "? (así es como sabemos que está funcionando)",
       "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
       "item3Link": "sigue las instrucciones de instalación aquí",
-      "title": "Tenemos problemas al previsualizar tu aplicación:"
+      "title": "Tenemos problemas al previsualizar tu aplicación:",
+      "fixScript": "Corregir Script de Desarrollo"
     }
   },
   "processes": {
@@ -545,6 +548,9 @@
       "discardChanges": "Descartar Cambios"
     }
   },
+  "terminal": {
+    "selectWorkspace": "Selecciona un espacio de trabajo para abrir terminal"
+  },
   "restoreLogsDialog": {
     "title": "Confirmar Reintento",
     "historyChange": {
@@ -654,5 +660,24 @@
       "deleted": "Eliminado",
       "renamed": "Renombrado"
     }
+  },
+  "scriptFixer": {
+    "title": "Corregir Script",
+    "setupScriptTitle": "Corregir Script de Configuración",
+    "cleanupScriptTitle": "Corregir Script de Limpieza",
+    "devServerTitle": "Corregir Script del Servidor de Desarrollo",
+    "scriptLabel": "Script (editar)",
+    "logsLabel": "Últimos Registros de Ejecución",
+    "saveButton": "Guardar",
+    "saveAndTestButton": "Guardar y Probar",
+    "saving": "Guardando...",
+    "testing": "Probando...",
+    "noLogs": "No hay registros de ejecución disponibles",
+    "selectRepo": "Repositorio",
+    "fixScript": "Corregir Script",
+    "statusRunning": "Ejecutando...",
+    "statusSuccess": "Completado exitosamente",
+    "statusFailed": "Falló con código de salida {{exitCode}}",
+    "statusKilled": "El proceso fue terminado"
   }
 }

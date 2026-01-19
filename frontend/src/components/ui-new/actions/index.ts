@@ -1,4 +1,5 @@
-import type { Icon } from '@phosphor-icons/react';
+import { forwardRef, createElement } from 'react';
+import type { Icon, IconProps } from '@phosphor-icons/react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { QueryClient } from '@tanstack/react-query';
 import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
@@ -30,10 +31,18 @@ import {
   CrosshairIcon,
   DesktopIcon,
   PencilSimpleIcon,
+  ArrowUpIcon,
+  HighlighterIcon,
+  ListIcon,
+  MegaphoneIcon,
+  QuestionIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
+
 import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { taskKeys } from '@/hooks/useTask';
@@ -41,10 +50,25 @@ import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
+import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
+import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import posthog from 'posthog-js';
+import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+
+// Mirrored sidebar icon for right sidebar toggle
+const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
+  (props, ref) =>
+    createElement(SidebarSimpleIcon, {
+      ref,
+      ...props,
+      style: { transform: 'scaleX(-1)', ...props.style },
+    })
+);
+RightSidebarIcon.displayName = 'RightSidebarIcon';
 
 // Special icon types for ContextBar
 export type SpecialIconType = 'ide-icon' | 'copy-icon';
@@ -74,12 +98,12 @@ export interface ActionExecutorContext {
 // Context for evaluating action visibility and state conditions
 export interface ActionVisibilityContext {
   // Layout state
-  isChangesMode: boolean;
-  isLogsMode: boolean;
-  isPreviewMode: boolean;
-  isSidebarVisible: boolean;
-  isMainPanelVisible: boolean;
-  isGitPanelVisible: boolean;
+  rightMainPanelMode:
+    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
+    | null;
+  isLeftSidebarVisible: boolean;
+  isLeftMainPanelVisible: boolean;
+  isRightSidebarVisible: boolean;
   isCreateMode: boolean;
 
   // Workspace state
@@ -99,6 +123,11 @@ export interface ActionVisibilityContext {
   // Git panel state
   hasGitRepos: boolean;
   hasMultipleRepos: boolean;
+  hasOpenPR: boolean;
+  hasUnpushedCommits: boolean;
+
+  // Execution state
+  isAttemptRunning: boolean;
 }
 
 // Base properties shared by all actions
@@ -153,18 +182,19 @@ export type ActionDefinition =
   | WorkspaceActionDefinition
   | GitActionDefinition;
 
-// Helper to get workspace from query cache
-function getWorkspaceFromCache(
+// Helper to get workspace from query cache or fetch from API
+async function getWorkspace(
   queryClient: QueryClient,
   workspaceId: string
-): Workspace {
-  const workspace = queryClient.getQueryData<Workspace>(
+): Promise<Workspace> {
+  const cached = queryClient.getQueryData<Workspace>(
     attemptKeys.byId(workspaceId)
   );
-  if (!workspace) {
-    throw new Error('Workspace not found');
+  if (cached) {
+    return cached;
   }
-  return workspace;
+  // Fetch from API if not in cache
+  return attemptsApi.get(workspaceId);
 }
 
 // Helper to invalidate workspace-related queries
@@ -174,6 +204,22 @@ function invalidateWorkspaceQueries(
 ) {
   queryClient.invalidateQueries({ queryKey: attemptKeys.byId(workspaceId) });
   queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+}
+
+// Helper to find the next workspace to navigate to when removing current workspace
+function getNextWorkspaceId(
+  activeWorkspaces: SidebarWorkspace[],
+  removingWorkspaceId: string
+): string | null {
+  const currentIndex = activeWorkspaces.findIndex(
+    (ws) => ws.id === removingWorkspaceId
+  );
+  if (currentIndex >= 0 && activeWorkspaces.length > 1) {
+    const nextWorkspace =
+      activeWorkspaces[currentIndex + 1] || activeWorkspaces[currentIndex - 1];
+    return nextWorkspace?.id ?? null;
+  }
+  return null;
 }
 
 // All application actions
@@ -203,7 +249,7 @@ export const Actions = {
     icon: PencilSimpleIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
         workspaceId,
         currentName: workspace.name || workspace.branch,
@@ -217,7 +263,7 @@ export const Actions = {
     icon: PushPinIcon,
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await attemptsApi.update(workspaceId, {
         pinned: !workspace.pinned,
       });
@@ -234,22 +280,13 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace,
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const wasArchived = workspace.archived;
 
       // Calculate next workspace before archiving
-      let nextWorkspaceId: string | null = null;
-      if (!wasArchived) {
-        const currentIndex = ctx.activeWorkspaces.findIndex(
-          (ws) => ws.id === workspaceId
-        );
-        if (currentIndex >= 0 && ctx.activeWorkspaces.length > 1) {
-          const nextWorkspace =
-            ctx.activeWorkspaces[currentIndex + 1] ||
-            ctx.activeWorkspaces[currentIndex - 1];
-          nextWorkspaceId = nextWorkspace?.id ?? null;
-        }
-      }
+      const nextWorkspaceId = !wasArchived
+        ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+        : null;
 
       // Perform the archive/unarchive
       await attemptsApi.update(workspaceId, { archived: !wasArchived });
@@ -269,7 +306,7 @@ export const Actions = {
     variant: 'destructive',
     requiresTarget: true,
     execute: async (ctx, workspaceId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const result = await ConfirmDialog.show({
         title: 'Delete Workspace',
         message:
@@ -279,12 +316,41 @@ export const Actions = {
         variant: 'destructive',
       });
       if (result === 'confirmed') {
+        // Calculate next workspace before deleting (only if deleting current)
+        const isCurrentWorkspace = ctx.currentWorkspaceId === workspaceId;
+        const nextWorkspaceId = isCurrentWorkspace
+          ? getNextWorkspaceId(ctx.activeWorkspaces, workspaceId)
+          : null;
+
         await tasksApi.delete(workspace.task_id);
         ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
+
+        // Navigate away if we deleted the current workspace
+        if (isCurrentWorkspace) {
+          if (nextWorkspaceId) {
+            ctx.selectWorkspace(nextWorkspaceId);
+          } else {
+            ctx.navigate('/workspaces/create');
+          }
+        }
       }
+    },
+  },
+
+  StartReview: {
+    id: 'start-review',
+    label: 'Start Review',
+    icon: HighlighterIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    getTooltip: () => 'Ask the agent to review your changes',
+    execute: async (_ctx, workspaceId) => {
+      await StartReviewDialog.show({
+        workspaceId,
+      });
     },
   },
 
@@ -309,6 +375,40 @@ export const Actions = {
     },
   },
 
+  Feedback: {
+    id: 'feedback',
+    label: 'Give Feedback',
+    icon: MegaphoneIcon,
+    requiresTarget: false,
+    execute: () => {
+      posthog.displaySurvey('019bb6e8-3d36-0000-1806-7330cd3c727e');
+    },
+  },
+
+  WorkspacesGuide: {
+    id: 'workspaces-guide',
+    label: 'Workspaces Guide',
+    icon: QuestionIcon,
+    requiresTarget: false,
+    execute: async () => {
+      await WorkspacesGuideDialog.show();
+    },
+  },
+
+  OpenCommandBar: {
+    id: 'open-command-bar',
+    label: 'Open Command Bar',
+    icon: ListIcon,
+    requiresTarget: false,
+    execute: async () => {
+      // Dynamic import to avoid circular dependency (pages.ts imports Actions)
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
+      CommandBarDialog.show();
+    },
+  },
+
   // === Diff View Actions ===
   ToggleDiffViewMode: {
     id: 'toggle-diff-view-mode',
@@ -318,7 +418,8 @@ export const Actions = {
         : 'Switch to Inline View',
     icon: ColumnsIcon,
     requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isActive: (ctx) => ctx.diffViewMode === 'split',
     getIcon: (ctx) => (ctx.diffViewMode === 'split' ? ColumnsIcon : RowsIcon),
     getTooltip: (ctx) =>
@@ -336,7 +437,8 @@ export const Actions = {
         : 'Ignore Whitespace Changes',
     icon: EyeSlashIcon,
     requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setIgnoreWhitespace(!store.ignoreWhitespace);
@@ -351,7 +453,8 @@ export const Actions = {
         : 'Enable Line Wrapping',
     icon: TextAlignLeftIcon,
     requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setWrapText(!store.wrapText);
@@ -359,94 +462,116 @@ export const Actions = {
   },
 
   // === Layout Panel Actions ===
-  ToggleSidebar: {
-    id: 'toggle-sidebar',
+  ToggleLeftSidebar: {
+    id: 'toggle-left-sidebar',
     label: () =>
-      useLayoutStore.getState().isSidebarVisible
-        ? 'Hide Sidebar'
-        : 'Show Sidebar',
+      useUiPreferencesStore.getState().isLeftSidebarVisible
+        ? 'Hide Left Sidebar'
+        : 'Show Left Sidebar',
     icon: SidebarSimpleIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isSidebarVisible,
+    isActive: (ctx) => ctx.isLeftSidebarVisible,
     execute: () => {
-      useLayoutStore.getState().toggleSidebar();
+      useUiPreferencesStore.getState().toggleLeftSidebar();
     },
   },
 
-  ToggleMainPanel: {
-    id: 'toggle-main-panel',
-    label: () =>
-      useLayoutStore.getState().isMainPanelVisible
-        ? 'Hide Chat Panel'
-        : 'Show Chat Panel',
+  ToggleLeftMainPanel: {
+    id: 'toggle-left-main-panel',
+    label: 'Toggle Chat Panel',
     icon: ChatsTeardropIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isMainPanelVisible,
-    isEnabled: (ctx) => !(ctx.isMainPanelVisible && !ctx.isChangesMode),
-    execute: () => {
-      useLayoutStore.getState().toggleMainPanel();
+    isActive: (ctx) => ctx.isLeftMainPanelVisible,
+    isEnabled: (ctx) =>
+      !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
+    getLabel: (ctx) =>
+      ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
     },
   },
 
-  ToggleGitPanel: {
-    id: 'toggle-git-panel',
+  ToggleRightSidebar: {
+    id: 'toggle-right-sidebar',
     label: () =>
-      useLayoutStore.getState().isGitPanelVisible
-        ? 'Hide Git Panel'
-        : 'Show Git Panel',
-    icon: SidebarSimpleIcon,
+      useUiPreferencesStore.getState().isRightSidebarVisible
+        ? 'Hide Right Sidebar'
+        : 'Show Right Sidebar',
+    icon: RightSidebarIcon,
     requiresTarget: false,
-    isActive: (ctx) => ctx.isGitPanelVisible,
+    isActive: (ctx) => ctx.isRightSidebarVisible,
     execute: () => {
-      useLayoutStore.getState().toggleGitPanel();
+      useUiPreferencesStore.getState().toggleRightSidebar();
     },
   },
 
   ToggleChangesMode: {
     id: 'toggle-changes-mode',
-    label: () =>
-      useLayoutStore.getState().isChangesMode
-        ? 'Hide Changes Panel'
-        : 'Show Changes Panel',
+    label: 'Toggle Changes Panel',
     icon: GitDiffIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isChangesMode,
+    isActive: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().toggleChangesMode();
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
+        ? 'Hide Changes Panel'
+        : 'Show Changes Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.CHANGES,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
   ToggleLogsMode: {
     id: 'toggle-logs-mode',
-    label: () =>
-      useLayoutStore.getState().isLogsMode
-        ? 'Hide Logs Panel'
-        : 'Show Logs Panel',
+    label: 'Toggle Logs Panel',
     icon: TerminalIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isLogsMode,
+    isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().toggleLogsMode();
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS
+        ? 'Hide Logs Panel'
+        : 'Show Logs Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.LOGS,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
   TogglePreviewMode: {
     id: 'toggle-preview-mode',
-    label: () =>
-      useLayoutStore.getState().isPreviewMode
-        ? 'Hide Preview Panel'
-        : 'Show Preview Panel',
+    label: 'Toggle Preview Panel',
     icon: DesktopIcon,
     requiresTarget: false,
     isVisible: (ctx) => !ctx.isCreateMode,
-    isActive: (ctx) => ctx.isPreviewMode,
+    isActive: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
     isEnabled: (ctx) => !ctx.isCreateMode,
-    execute: () => {
-      useLayoutStore.getState().togglePreviewMode();
+    getLabel: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW
+        ? 'Hide Preview Panel'
+        : 'Show Preview Panel',
+    execute: (ctx) => {
+      useUiPreferencesStore
+        .getState()
+        .toggleRightMainPanelMode(
+          RIGHT_MAIN_PANEL_MODES.PREVIEW,
+          ctx.currentWorkspaceId ?? undefined
+        );
     },
   },
 
@@ -463,7 +588,7 @@ export const Actions = {
         return;
       }
 
-      const workspace = getWorkspaceFromCache(
+      const workspace = await getWorkspace(
         ctx.queryClient,
         ctx.currentWorkspaceId
       );
@@ -475,9 +600,7 @@ export const Actions = {
       // Fetch task lazily to get project_id
       const task = await tasksApi.getById(workspace.task_id);
       if (task?.project_id) {
-        ctx.navigate(
-          `/projects/${task.project_id}/tasks/${workspace.task_id}/attempts/${workspace.id}`
-        );
+        ctx.navigate(`/projects/${task.project_id}/tasks/${workspace.task_id}`);
       } else {
         ctx.navigate('/');
       }
@@ -497,7 +620,8 @@ export const Actions = {
     },
     icon: CaretDoubleUpIcon,
     requiresTarget: false,
-    isVisible: (ctx) => ctx.isChangesMode,
+    isVisible: (ctx) =>
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     getIcon: (ctx) =>
       ctx.isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon,
     getTooltip: (ctx) =>
@@ -591,7 +715,12 @@ export const Actions = {
       } else {
         ctx.startDevServer();
         // Auto-open preview mode when starting dev server
-        useLayoutStore.getState().setPreviewMode(true);
+        useUiPreferencesStore
+          .getState()
+          .setRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.PREVIEW,
+            ctx.currentWorkspaceId ?? undefined
+          );
       }
     },
   },
@@ -604,7 +733,7 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
-      const workspace = getWorkspaceFromCache(ctx.queryClient, workspaceId);
+      const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       const task = await tasksApi.getById(workspace.task_id);
 
       const repos = await attemptsApi.getRepos(workspaceId);
@@ -635,6 +764,59 @@ export const Actions = {
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'merge',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+
+        if (result.action === 'resolved') {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
+      // Check if branch is behind - need to rebase first
+      const commitsBehind = repoStatus?.commits_behind ?? 0;
+      if (commitsBehind > 0) {
+        // Prompt user to rebase first
+        const confirmRebase = await ConfirmDialog.show({
+          title: 'Rebase Required',
+          message: `Your branch is ${commitsBehind} commit${commitsBehind === 1 ? '' : 's'} behind the target branch. Would you like to rebase first?`,
+          confirmText: 'Rebase',
+          cancelText: 'Cancel',
+        });
+
+        if (confirmRebase === 'confirmed') {
+          // Trigger the rebase action
+          const repos = await attemptsApi.getRepos(workspaceId);
+          const repo = repos.find((r) => r.id === repoId);
+          if (!repo) throw new Error('Repository not found');
+
+          const branches = await repoApi.getBranches(repoId);
+          await RebaseDialog.show({
+            attemptId: workspaceId,
+            repoId,
+            branches,
+            initialTargetBranch: repo.target_branch,
+          });
+        }
+        return;
+      }
+
       const confirmResult = await ConfirmDialog.show({
         title: 'Merge Branch',
         message:
@@ -656,7 +838,32 @@ export const Actions = {
     icon: ArrowsClockwiseIcon,
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, workspaceId, repoId) => {
+    execute: async (ctx, workspaceId, repoId) => {
+      // Check for existing conflicts first
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const repoStatus = branchStatus?.find((s) => s.repo_id === repoId);
+      const hasConflicts =
+        repoStatus?.is_rebase_in_progress ||
+        (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+      if (hasConflicts && repoStatus) {
+        // Show resolve conflicts dialog
+        const workspace = await getWorkspace(ctx.queryClient, workspaceId);
+        const result = await ResolveConflictsDialog.show({
+          workspaceId,
+          conflictOp: repoStatus.conflict_op ?? 'rebase',
+          sourceBranch: workspace.branch,
+          targetBranch: repoStatus.target_branch_name,
+          conflictedFiles: repoStatus.conflicted_files ?? [],
+          repoName: repoStatus.repo_name,
+        });
+
+        if (result.action === 'resolved') {
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        }
+        return;
+      }
+
       const repos = await attemptsApi.getRepos(workspaceId);
       const repo = repos.find((r) => r.id === repoId);
       if (!repo) throw new Error('Repository not found');
@@ -686,6 +893,73 @@ export const Actions = {
       });
     },
   },
+
+  GitPush: {
+    id: 'git-push',
+    label: 'Push',
+    icon: ArrowUpIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) =>
+      ctx.hasWorkspace &&
+      ctx.hasGitRepos &&
+      ctx.hasOpenPR &&
+      ctx.hasUnpushedCommits,
+    execute: async (ctx, workspaceId, repoId) => {
+      const result = await attemptsApi.push(workspaceId, { repo_id: repoId });
+      if (!result.success) {
+        if (result.error?.type === 'force_push_required') {
+          throw new Error(
+            'Force push required. The remote branch has diverged.'
+          );
+        }
+        throw new Error('Failed to push changes');
+      }
+      invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+    },
+  },
+
+  // === Script Actions ===
+  RunSetupScript: {
+    id: 'run-setup-script',
+    label: 'Run Setup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runSetupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No setup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run setup script');
+      }
+    },
+  },
+
+  RunCleanupScript: {
+    id: 'run-cleanup-script',
+    label: 'Run Cleanup Script',
+    icon: TerminalIcon,
+    requiresTarget: true,
+    isVisible: (ctx) => ctx.hasWorkspace,
+    isEnabled: (ctx) => !ctx.isAttemptRunning,
+    execute: async (_ctx, workspaceId) => {
+      const result = await attemptsApi.runCleanupScript(workspaceId);
+      if (!result.success) {
+        if (result.error?.type === 'no_script_configured') {
+          throw new Error('No cleanup script configured for this project');
+        }
+        if (result.error?.type === 'process_already_running') {
+          throw new Error('Cannot run script while another process is running');
+        }
+        throw new Error('Failed to run cleanup script');
+      }
+    },
+  },
 } as const satisfies Record<string, ActionDefinition>;
 
 // Helper to resolve dynamic label
@@ -709,12 +983,17 @@ export const NavbarActionGroups = {
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
     NavbarDivider,
-    Actions.ToggleSidebar,
-    Actions.ToggleMainPanel,
+    Actions.ToggleLeftSidebar,
+    Actions.ToggleLeftMainPanel,
     Actions.ToggleChangesMode,
     Actions.ToggleLogsMode,
     Actions.TogglePreviewMode,
-    Actions.ToggleGitPanel,
+    Actions.ToggleRightSidebar,
+    NavbarDivider,
+    Actions.OpenCommandBar,
+    Actions.Feedback,
+    Actions.WorkspacesGuide,
+    Actions.Settings,
   ] as NavbarItem[],
 };
 

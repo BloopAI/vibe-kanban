@@ -37,14 +37,17 @@ interface ToolbarIconButtonProps
 function ToolbarIconButton({
   icon: IconComponent,
   className,
+  disabled,
   ...props
 }: ToolbarIconButtonProps) {
   return (
     <button
       className={cn(
         'flex items-center justify-center text-low hover:text-normal',
+        disabled && 'opacity-40 cursor-not-allowed hover:text-low',
         className
       )}
+      disabled={disabled}
       {...props}
     >
       <IconComponent className="size-icon-base" />

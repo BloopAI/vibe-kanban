@@ -92,17 +92,22 @@
       "item2": "您的開發伺服器是否以格式將 URL 與連接埠輸出到終端機",
       "item2Suffix": "？（這是我們判斷它是否在執行的方式）",
       "item3": "您是否安裝了 Web Companion（點擊編輯所需）？如果沒有，請",
-      "item3Link": "依照此處的安裝說明操作"
+      "item3Link": "依照此處的安裝說明操作",
+      "fixScript": "修復開發腳本"
     },
     "noServer": {
       "title": "沒有執行中的開發伺服器",
       "startPrompt": "請啟動開發伺服器以查看預覽",
+      "setupTitle": "必須設定開發伺服器腳本才能使用預覽功能",
       "setupPrompt": "要使用即時預覽與點擊編輯，請為此專案新增開發伺服器腳本。",
       "companionPrompt": "要使用點擊編輯功能，請將瀏覽器 Companion 加到您的專案。",
       "companionLink": "查看安裝指南",
       "startButton": "啟動開發伺服器",
       "configureButton": "設定",
-      "stopAndEditButton": "停止開發伺服器並解決問題"
+      "stopAndEditButton": "停止開發伺服器並解決問題",
+      "fixScript": "修復開發腳本",
+      "editDevScript": "編輯開發伺服器腳本",
+      "learnMore": "了解更多關於測試應用程式的資訊"
     },
     "devScript": {
       "saveAndStart": "儲存並啟動",
@@ -125,9 +130,10 @@
     "noDevScriptHint": "在專案設定中新增開發指令碼以啟用預覽。",
     "browser": {
       "title": "開發伺服器預覽",
-      "startButton": "啟動開發伺服器",
-      "stopButton": "停止",
-      "startingButton": "啟動"
+      "devServerFallback": "開發伺服器"
+    },
+    "urlInput": {
+      "placeholder": "輸入 URL..."
     },
     "iframe": {
       "title": "開發伺服器預覽"
@@ -138,7 +144,16 @@
       "openInTab": "在新分頁開啟",
       "stopDevServer": "停止開發伺服器",
       "clickToEdit": "點擊以編輯 URL",
-      "resetUrl": "重設為偵測到的 URL"
+      "resetUrl": "重設為偵測到的 URL",
+      "clearUrlOverride": "清除 URL 覆寫",
+      "desktopView": "桌面檢視",
+      "mobileView": "行動裝置檢視 (390x844)",
+      "responsiveView": "響應式檢視（可調整大小）",
+      "startDevServer": "啟動開發伺服器"
+    },
+    "loading": {
+      "startingServer": "正在啟動開發伺服器...",
+      "waitingForServer": "正在等待伺服器..."
     }
   },
   "diff": {
@@ -298,6 +313,7 @@
       "pushed": "已推送！",
       "pushing": "推送中...",
       "push": "推送",
+      "pushFailed": "失敗",
       "forcePush": "強制推送",
       "forcePushing": "強制推送中...",
       "creating": "建立中...",
@@ -396,10 +412,9 @@
     "gitActions": "Git 操作",
     "editBranchName": "編輯分支名稱",
     "task": "任務",
-    "share": "分享",
-    "reassign": "重新指派",
-    "stopShare": "停止分享",
-    "duplicate": "複製"
+    "duplicate": "複製",
+    "startReview": "開始審查",
+    "startingReview": "正在開始審查..."
   },
   "editBranchName": {
     "dialog": {
@@ -411,40 +426,28 @@
       "action": "重新命名分支"
     }
   },
-  "stopShareDialog": {
-    "title": "停止分享任務",
-    "description": "停止與您的組織分享 {{title}}？",
-    "warning": "停止與組織分享任務，但保留本地任務。",
-    "confirm": "停止分享任務",
-    "inProgress": "停止分享中...",
-    "genericError": "停止分享任務失敗。請重試。"
+  "startReviewDialog": {
+    "title": "開始審查",
+    "description": "請求編碼代理審查您的變更並提供反饋。",
+    "additionalInstructions": "附加說明（可選）",
+    "reviewComments": "審查評論（{{count}}）",
+    "includeGitContext": "包含 Git 上下文",
+    "includeGitContextDescription": "告訴代理如何查看此分支上的所有變更",
+    "newSession": "新工作階段"
   },
-  "shareDialog": {
-    "title": "分享任務",
-    "description": "與您的組織分享 {{title}}？",
-    "success": "任務分享成功。",
-    "genericError": "分享任務失敗。請重試。",
-    "loadingSystem": "載入帳戶狀態中...",
-    "loginRequired": {
-      "title": "需要登入",
-      "description": "您需要登入才能分享任務。我們會將您導向登入頁面。",
-      "action": "前往登入"
-    },
-    "gitProviderRequired": {
-      "title": "連結 Git 提供者",
-      "description": "連結您的 Git 提供者帳號以分享任務。此專案必須有遠端儲存庫。",
-      "action": "連結"
-    },
-    "linkProjectRequired": {
-      "description": "分享任務前，請先將此專案連結到組織。",
-      "action": "連結專案"
-    },
-    "confirmationTitle": "確認分享",
-    "confirmationBody": "分享會將此任務發佈到您的共享工作區。",
-    "cancel": "取消",
-    "confirm": "分享任務",
-    "inProgress": "分享中...",
-    "closeButton": "關閉"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "解決衝突",
+      "description": "偵測到衝突。選擇您希望代理如何解決它們。",
+      "sessionLabel": "工作階段",
+      "existingSession": "在目前工作階段中繼續",
+      "newSession": "新工作階段",
+      "resolve": "解決衝突",
+      "resolving": "開始中...",
+      "filesWithConflicts_one": "{{count}} 個檔案有衝突",
+      "filesWithConflicts_other": "{{count}} 個檔案有衝突",
+      "andMore": "...還有 {{count}} 個"
+    }
   },
   "createPrDialog": {
     "title": "建立 PR",
@@ -544,6 +547,9 @@
       "continueEditing": "繼續編輯",
       "discardChanges": "放棄變更"
     }
+  },
+  "terminal": {
+    "selectWorkspace": "選擇一個工作區以開啟終端機"
   },
   "restoreLogsDialog": {
     "title": "確認重試",
@@ -654,5 +660,24 @@
       "deleted": "已刪除",
       "renamed": "已重新命名"
     }
+  },
+  "scriptFixer": {
+    "title": "修復腳本",
+    "setupScriptTitle": "修復設定腳本",
+    "cleanupScriptTitle": "修復清理腳本",
+    "devServerTitle": "修復開發伺服器腳本",
+    "scriptLabel": "腳本（編輯）",
+    "logsLabel": "上次執行日誌",
+    "saveButton": "儲存",
+    "saveAndTestButton": "儲存並測試",
+    "saving": "儲存中...",
+    "testing": "測試中...",
+    "noLogs": "沒有可用的執行日誌",
+    "selectRepo": "儲存庫",
+    "fixScript": "修復腳本",
+    "statusRunning": "執行中...",
+    "statusSuccess": "成功完成",
+    "statusFailed": "失敗，結束代碼 {{exitCode}}",
+    "statusKilled": "程序已被終止"
   }
 }

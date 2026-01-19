@@ -78,6 +78,62 @@ pub struct ListReposRequest {
     pub project_id: Uuid,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetRepoRequest {
+    #[schemars(description = "The ID of the repository to retrieve")]
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct RepoDetails {
+    #[schemars(description = "The unique identifier of the repository")]
+    pub id: String,
+    #[schemars(description = "The name of the repository")]
+    pub name: String,
+    #[schemars(description = "The display name of the repository")]
+    pub display_name: String,
+    #[schemars(description = "The setup script that runs when initializing a workspace")]
+    pub setup_script: Option<String>,
+    #[schemars(description = "The cleanup script that runs when tearing down a workspace")]
+    pub cleanup_script: Option<String>,
+    #[schemars(description = "The dev server script that starts the development server")]
+    pub dev_server_script: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateSetupScriptRequest {
+    #[schemars(description = "The ID of the repository to update")]
+    pub repo_id: Uuid,
+    #[schemars(description = "The new setup script content (use empty string to clear)")]
+    pub script: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateCleanupScriptRequest {
+    #[schemars(description = "The ID of the repository to update")]
+    pub repo_id: Uuid,
+    #[schemars(description = "The new cleanup script content (use empty string to clear)")]
+    pub script: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateDevServerScriptRequest {
+    #[schemars(description = "The ID of the repository to update")]
+    pub repo_id: Uuid,
+    #[schemars(description = "The new dev server script content (use empty string to clear)")]
+    pub script: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct UpdateRepoScriptResponse {
+    #[schemars(description = "Whether the update was successful")]
+    pub success: bool,
+    #[schemars(description = "The repository ID that was updated")]
+    pub repo_id: String,
+    #[schemars(description = "The script field that was updated")]
+    pub field: String,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ListReposResponse {
     pub repos: Vec<McpRepoSummary>,
@@ -220,7 +276,7 @@ pub struct StartWorkspaceSessionRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
     #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR_AGENT', 'OPENCODE')"
+        description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
@@ -418,6 +474,37 @@ impl TaskServer {
             .ok_or_else(|| Self::err("VK API response missing data field", None).unwrap())
     }
 
+    async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), CallToolResult> {
+        let resp = rb
+            .send()
+            .await
+            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            return Err(
+                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+            );
+        }
+
+        #[derive(Deserialize)]
+        struct EmptyApiResponse {
+            success: bool,
+            message: Option<String>,
+        }
+
+        let api_response = resp.json::<EmptyApiResponse>().await.map_err(|e| {
+            Self::err("Failed to parse VK API response", Some(&e.to_string())).unwrap()
+        })?;
+
+        if !api_response.success {
+            let msg = api_response.message.as_deref().unwrap_or("Unknown error");
+            return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+        }
+
+        Ok(())
+    }
+
     fn url(&self, path: &str) -> String {
         format!(
             "{}/{}",
@@ -581,6 +668,115 @@ impl TaskServer {
     }
 
     #[tool(
+        description = "Get detailed information about a repository including its scripts. Use `list_repos` to find available repo IDs."
+    )]
+    async fn get_repo(
+        &self,
+        Parameters(GetRepoRequest { repo_id }): Parameters<GetRepoRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/repos/{}", repo_id));
+        let repo: Repo = match self.send_json(self.client.get(&url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+        TaskServer::success(&RepoDetails {
+            id: repo.id.to_string(),
+            name: repo.name,
+            display_name: repo.display_name,
+            setup_script: repo.setup_script,
+            cleanup_script: repo.cleanup_script,
+            dev_server_script: repo.dev_server_script,
+        })
+    }
+
+    #[tool(
+        description = "Update a repository's setup script. The setup script runs when initializing a workspace."
+    )]
+    async fn update_setup_script(
+        &self,
+        Parameters(UpdateSetupScriptRequest { repo_id, script }): Parameters<
+            UpdateSetupScriptRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
+        let payload = serde_json::json!({
+            "setup_script": script_value
+        });
+        let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+        TaskServer::success(&UpdateRepoScriptResponse {
+            success: true,
+            repo_id: repo_id.to_string(),
+            field: "setup_script".to_string(),
+        })
+    }
+
+    #[tool(
+        description = "Update a repository's cleanup script. The cleanup script runs when tearing down a workspace."
+    )]
+    async fn update_cleanup_script(
+        &self,
+        Parameters(UpdateCleanupScriptRequest { repo_id, script }): Parameters<
+            UpdateCleanupScriptRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
+        let payload = serde_json::json!({
+            "cleanup_script": script_value
+        });
+        let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+        TaskServer::success(&UpdateRepoScriptResponse {
+            success: true,
+            repo_id: repo_id.to_string(),
+            field: "cleanup_script".to_string(),
+        })
+    }
+
+    #[tool(
+        description = "Update a repository's dev server script. The dev server script starts the development server for the repository."
+    )]
+    async fn update_dev_server_script(
+        &self,
+        Parameters(UpdateDevServerScriptRequest { repo_id, script }): Parameters<
+            UpdateDevServerScriptRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
+        let payload = serde_json::json!({
+            "dev_server_script": script_value
+        });
+        let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+        TaskServer::success(&UpdateRepoScriptResponse {
+            success: true,
+            repo_id: repo_id.to_string(),
+            field: "dev_server_script".to_string(),
+        })
+    }
+
+    #[tool(
         description = "List all the task/tickets in a project with optional filtering and execution status. `project_id` is required!"
     )]
     async fn list_tasks(
@@ -719,7 +915,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
+        description = "Update an existing task/ticket's title, description, or status. `task_id` is required. `title`, `description`, and `status` are optional."
     )]
     async fn update_task(
         &self,
@@ -768,30 +964,25 @@ impl TaskServer {
         TaskServer::success(&repsonse)
     }
 
-    #[tool(
-        description = "Delete a task/ticket from a project. `project_id` and `task_id` are required!"
-    )]
+    #[tool(description = "Delete a task/ticket. `task_id` is required.")]
     async fn delete_task(
         &self,
         Parameters(DeleteTaskRequest { task_id }): Parameters<DeleteTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/tasks/{}", task_id));
-        if let Err(e) = self
-            .send_json::<serde_json::Value>(self.client.delete(&url))
-            .await
-        {
+        if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
             return Ok(e);
         }
 
-        let repsonse = DeleteTaskResponse {
+        let response = DeleteTaskResponse {
             deleted_task_id: Some(task_id.to_string()),
         };
 
-        TaskServer::success(&repsonse)
+        TaskServer::success(&response)
     }
 
     #[tool(
-        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `project_id` and `task_id` are required!"
+        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `task_id` is required."
     )]
     async fn get_task(
         &self,
@@ -813,7 +1004,7 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_workspace_session', 'get_task', 'update_task', 'delete_task', 'list_repos', 'get_repo', 'update_setup_script', 'update_cleanup_script', 'update_dev_server_script'. Make sure to pass `project_id`, `task_id`, or `repo_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/workspace metadata for the active Vibe Kanban workspace session when available.";
             instruction = format!("{} {}", context_instruction, instruction);

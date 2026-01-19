@@ -11,7 +11,12 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Session, BaseCodingAgent, TodoItem } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  Session,
+  TodoItem,
+  TokenUsageInfo,
+} from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
@@ -25,11 +30,18 @@ import {
 import { PrimaryButton } from './PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import {
+  type ActionDefinition,
+  type ActionVisibilityContext,
+  isSpecialIcon,
+} from '../actions';
+import { isActionEnabled } from '../actions/useActionVisibility';
+import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from './Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
+import { ContextUsageGauge } from './ContextUsageGauge';
 
 // Re-export shared types
 export type { EditorProps, VariantProps } from './ChatBoxBase';
@@ -57,17 +69,20 @@ interface SessionProps {
   sessions: Session[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
-  /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
-  /** Callback to start new session mode */
   onNewSession?: () => void;
+}
+
+interface ToolbarActionsProps {
+  actions: ActionDefinition[];
+  context: ActionVisibilityContext;
+  onExecuteAction: (action: ActionDefinition) => void;
 }
 
 interface StatsProps {
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
-  onViewCode?: () => void;
   hasConflicts?: boolean;
   conflictedFilesCount?: number;
 }
@@ -115,19 +130,18 @@ interface SessionChatBoxProps {
   variant?: VariantProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
-  /** Approval mode for pending plan approvals */
   approvalMode?: ApprovalModeProps;
-  /** Review comments from diff viewer */
   reviewComments?: ReviewCommentsProps;
+  toolbarActions?: ToolbarActionsProps;
   error?: string | null;
+  workspaceId?: string;
   projectId?: string;
   agent?: BaseCodingAgent | null;
-  /** Executor selection for new session mode */
   executor?: ExecutorProps;
-  /** Currently in-progress todo item (shown when agent is running) */
   inProgressTodo?: TodoItem | null;
-  /** Local images for immediate preview (before saved to server) */
   localImages?: LocalImageMetadata[];
+  onViewCode?: () => void;
+  tokenUsageInfo?: TokenUsageInfo | null;
 }
 
 /**
@@ -145,12 +159,16 @@ export function SessionChatBox({
   editMode,
   approvalMode,
   reviewComments,
+  toolbarActions,
   error,
+  workspaceId,
   projectId,
   agent,
   executor,
   inProgressTodo,
   localImages,
+  onViewCode,
+  tokenUsageInfo,
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,7 +205,6 @@ export function SessionChatBox({
     !isInApprovalMode &&
     editor.value.trim().length === 0;
 
-  // Placeholder
   const placeholder = isInFeedbackMode
     ? 'Provide feedback for the plan...'
     : isInEditMode
@@ -235,7 +252,6 @@ export function SessionChatBox({
     fileInputRef.current?.click();
   };
 
-  // Session dropdown
   const {
     sessions,
     selectedSessionId,
@@ -483,6 +499,7 @@ export function SessionChatBox({
       placeholder={placeholder}
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
+      workspaceId={workspaceId}
       projectId={projectId}
       autoFocus={true}
       focusKey={focusKey}
@@ -546,7 +563,7 @@ export function SessionChatBox({
                       </span>
                     </span>
                   )}
-                  <PrimaryButton variant="tertiary" onClick={stats?.onViewCode}>
+                  <PrimaryButton variant="tertiary" onClick={onViewCode}>
                     <span className="text-sm space-x-half">
                       <span>
                         {t('diff.filesChanged', { count: filesChanged })}
@@ -576,6 +593,7 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
+          <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
           <ToolbarDropdown
             label={sessionLabel}
             disabled={isInFeedbackMode || isInEditMode || isInApprovalMode}
@@ -633,6 +651,29 @@ export function SessionChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
+          {toolbarActions?.actions.map((action) => {
+            const icon = action.icon;
+            // Skip special icons in toolbar (only standard phosphor icons)
+            if (isSpecialIcon(icon)) return null;
+            const actionEnabled = isActionEnabled(
+              action,
+              toolbarActions.context
+            );
+            const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
+            const label =
+              typeof action.label === 'function'
+                ? action.label()
+                : action.label;
+            return (
+              <ToolbarIconButton
+                key={action.id}
+                icon={icon}
+                aria-label={label}
+                onClick={() => toolbarActions.onExecuteAction(action)}
+                disabled={isButtonDisabled}
+              />
+            );
+          })}
         </>
       }
       footerRight={renderActionButtons()}

@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.0.148"
+version = "0.0.156"
 edition = "2024"
 
 [dependencies]
@@ -26,6 +26,7 @@ futures = "0.3"
 json-patch = "2.0"
 tokio = { workspace = true }
 globwalk = "0.9"
+portable-pty = "0.8"
 
 [dev-dependencies]
 tempfile = "3.8"

@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  useWorkspacePanelState,
+} from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
-import type { Workspace } from 'shared/types';
+import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import type { Workspace, Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
   ActionDefinition,
@@ -21,14 +25,19 @@ import type { CommandBarPage } from './pages';
  * action visibility and state conditions.
  */
 export function useActionVisibilityContext(): ActionVisibilityContext {
-  const layout = useLayoutStore();
   const { workspace, workspaceId, isCreateMode, repos } = useWorkspaceContext();
+  // Use workspace-specific panel state (pass undefined when in create mode)
+  const panelState = useWorkspacePanelState(
+    isCreateMode ? undefined : workspaceId
+  );
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
+  const { data: branchStatus } = useBranchStatus(workspaceId);
+  const { isAttemptRunningVisible } = useExecutionProcessesContext();
 
   return useMemo(() => {
     // Compute isAllDiffsExpanded
@@ -45,13 +54,23 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
           ? 'running'
           : 'stopped';
 
+    // Compute git state from branch status
+    const hasOpenPR =
+      branchStatus?.some((repo) =>
+        repo.merges?.some(
+          (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+        )
+      ) ?? false;
+
+    const hasUnpushedCommits =
+      branchStatus?.some((repo) => (repo.remote_commits_ahead ?? 0) > 0) ??
+      false;
+
     return {
-      isChangesMode: layout.isChangesMode,
-      isLogsMode: layout.isLogsMode,
-      isPreviewMode: layout.isPreviewMode,
-      isSidebarVisible: layout.isSidebarVisible,
-      isMainPanelVisible: layout.isMainPanelVisible,
-      isGitPanelVisible: layout.isGitPanelVisible,
+      rightMainPanelMode: panelState.rightMainPanelMode,
+      isLeftSidebarVisible: panelState.isLeftSidebarVisible,
+      isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
+      isRightSidebarVisible: panelState.isRightSidebarVisible,
       isCreateMode,
       hasWorkspace: !!workspace,
       workspaceArchived: workspace?.archived ?? false,
@@ -63,14 +82,15 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       runningDevServers,
       hasGitRepos: repos.length > 0,
       hasMultipleRepos: repos.length > 1,
+      hasOpenPR,
+      hasUnpushedCommits,
+      isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
-    layout.isChangesMode,
-    layout.isLogsMode,
-    layout.isPreviewMode,
-    layout.isSidebarVisible,
-    layout.isMainPanelVisible,
-    layout.isGitPanelVisible,
+    panelState.rightMainPanelMode,
+    panelState.isLeftSidebarVisible,
+    panelState.isLeftMainPanelVisible,
+    panelState.isRightSidebarVisible,
     isCreateMode,
     workspace,
     repos,
@@ -81,6 +101,8 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
     isStarting,
     isStopping,
     runningDevServers,
+    branchStatus,
+    isAttemptRunningVisible,
   ]);
 }
 

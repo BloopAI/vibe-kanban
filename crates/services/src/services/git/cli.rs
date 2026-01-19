@@ -424,12 +424,6 @@ impl GitCli {
         Ok(output.trim().to_string())
     }
 
-    /// Get the default remote name (first remote listed, or "origin" as fallback).
-    pub fn default_remote_name(&self, repo_path: &Path) -> Result<String, GitCliError> {
-        let output = self.git(repo_path, ["remote"])?;
-        Ok(output.lines().next().unwrap_or("origin").to_string())
-    }
-
     // Parse `git diff --name-status` output into structured entries.
     // Handles rename/copy scores like `R100` by matching the first letter.
     fn parse_name_status(output: &str) -> Vec<StatusDiffEntry> {
@@ -478,7 +472,12 @@ impl GitCli {
 
     /// Return the merge base commit sha of two refs in the given worktree.
     /// If `git merge-base --fork-point` fails, falls back to regular `merge-base`.
-    fn merge_base(&self, worktree_path: &Path, a: &str, b: &str) -> Result<String, GitCliError> {
+    pub fn merge_base(
+        &self,
+        worktree_path: &Path,
+        a: &str,
+        b: &str,
+    ) -> Result<String, GitCliError> {
         let out = self
             .git(worktree_path, ["merge-base", "--fork-point", a, b])
             .unwrap_or(self.git(worktree_path, ["merge-base", a, b])?);

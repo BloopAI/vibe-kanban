@@ -299,6 +299,8 @@ impl CodingAgent {
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
+            #[cfg(feature = "qa-mode")]
+            CodingAgent::QaMock(_) => Passthrough, // QA mock doesn't need MCP
         };
 
         let canonical = PRECONFIGURED_MCP_SERVERS.clone();

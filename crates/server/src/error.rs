@@ -10,8 +10,9 @@ use db::models::{
     workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
-use executors::executors::ExecutorError;
+use executors::{command::CommandBuildError, executors::ExecutorError};
 use git2::Error as Git2Error;
+use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
@@ -21,7 +22,6 @@ use services::services::{
     project::ProjectServiceError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
-    share::ShareError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -76,6 +76,10 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error(transparent)]
+    CommandBuilder(#[from] CommandBuildError),
+    #[error(transparent)]
+    Pty(#[from] PtyError),
 }
 
 impl From<&'static str> for ApiError {
@@ -124,6 +128,7 @@ impl IntoResponse for ApiError {
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
+            ApiError::CommandBuilder(_) => (StatusCode::INTERNAL_SERVER_ERROR, "CommandBuildError"),
             ApiError::Database(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError"),
             ApiError::Worktree(_) => (StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError"),
             ApiError::Config(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ConfigError"),
@@ -177,6 +182,11 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::Pty(err) => match err {
+                PtyError::SessionNotFound(_) => (StatusCode::NOT_FOUND, "PtyError"),
+                PtyError::SessionClosed => (StatusCode::GONE, "PtyError"),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, "PtyError"),
+            },
         };
 
         let error_message = match &self {
@@ -260,66 +270,12 @@ impl IntoResponse for ApiError {
     }
 }
 
-impl From<ShareError> for ApiError {
-    fn from(err: ShareError) -> Self {
-        match err {
-            ShareError::Database(db_err) => ApiError::Database(db_err),
-            ShareError::AlreadyShared(_) => ApiError::Conflict("Task already shared".to_string()),
-            ShareError::TaskNotFound(_) => {
-                ApiError::Conflict("Task not found for sharing".to_string())
-            }
-            ShareError::ProjectNotFound(_) => {
-                ApiError::Conflict("Project not found for sharing".to_string())
-            }
-            ShareError::ProjectNotLinked(project_id) => {
-                tracing::warn!(
-                    %project_id,
-                    "project must be linked to a remote project before sharing tasks"
-                );
-                ApiError::Conflict(
-                    "Link this project to a remote project before sharing tasks.".to_string(),
-                )
-            }
-            ShareError::MissingConfig(reason) => {
-                ApiError::Conflict(format!("Share service not configured: {reason}"))
-            }
-            ShareError::Transport(err) => {
-                tracing::error!(?err, "share task transport error");
-                ApiError::Conflict("Failed to share task with remote service".to_string())
-            }
-            ShareError::Serialization(err) => {
-                tracing::error!(?err, "share task serialization error");
-                ApiError::Conflict("Failed to parse remote share response".to_string())
-            }
-            ShareError::Url(err) => {
-                tracing::error!(?err, "share task URL error");
-                ApiError::Conflict("Share service URL is invalid".to_string())
-            }
-            ShareError::InvalidResponse => ApiError::Conflict(
-                "Remote share service returned an unexpected response".to_string(),
-            ),
-            ShareError::MissingGitHubToken => ApiError::Conflict(
-                "GitHub token is required to fetch repository metadata for sharing".to_string(),
-            ),
-            ShareError::Git(err) => ApiError::GitService(err),
-            ShareError::GitHost(err) => ApiError::GitHost(err),
-            ShareError::MissingAuth => ApiError::Unauthorized,
-            ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
-            ShareError::InvalidOrganizationId => {
-                ApiError::Conflict("Invalid organization ID format".to_string())
-            }
-            ShareError::RemoteClientError(err) => ApiError::Conflict(err.to_string()),
-        }
-    }
-}
-
 impl From<ProjectServiceError> for ApiError {
     fn from(err: ProjectServiceError) -> Self {
         match err {
             ProjectServiceError::Database(db_err) => ApiError::Database(db_err),
             ProjectServiceError::Io(io_err) => ApiError::Io(io_err),
             ProjectServiceError::Project(proj_err) => ApiError::Project(proj_err),
-            ProjectServiceError::Share(share_err) => ApiError::from(share_err),
             ProjectServiceError::PathNotFound(path) => {
                 ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
             }

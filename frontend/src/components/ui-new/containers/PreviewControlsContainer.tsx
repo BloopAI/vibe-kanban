@@ -1,34 +1,31 @@
 import { useCallback, useState, useEffect } from 'react';
 import { PreviewControls } from '../views/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
-import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useLayoutStore } from '@/stores/useLayoutStore';
+import {
+  useUiPreferencesStore,
+  RIGHT_MAIN_PANEL_MODES,
+} from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface PreviewControlsContainerProps {
-  attemptId?: string;
-  onViewProcessInPanel?: (processId: string) => void;
-  className?: string;
+  attemptId: string;
+  className: string;
 }
 
 export function PreviewControlsContainer({
   attemptId,
-  onViewProcessInPanel,
   className,
 }: PreviewControlsContainerProps) {
   const { repos } = useWorkspaceContext();
-  const setLogsMode = useLayoutStore((s) => s.setLogsMode);
-  const triggerPreviewRefresh = useLayoutStore((s) => s.triggerPreviewRefresh);
+  const { viewProcessInPanel } = useLogsPanel();
+  const setRightMainPanelMode = useUiPreferencesStore(
+    (s) => s.setRightMainPanelMode
+  );
 
-  const {
-    start,
-    stop,
-    isStarting,
-    isStopping,
-    runningDevServers,
-    devServerProcesses,
-  } = usePreviewDevServer(attemptId);
+  const { isStarting, runningDevServers, devServerProcesses } =
+    usePreviewDevServer(attemptId);
 
   const [activeProcessId, setActiveProcessId] = useState<string | null>(null);
 
@@ -44,49 +41,18 @@ export function PreviewControlsContainer({
 
   const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
 
-  const primaryDevServer = runningDevServers[0];
-  const { logs: primaryLogs } = useLogStream(primaryDevServer?.id ?? '');
-  const urlInfo = usePreviewUrl(primaryLogs);
-
-  const handleViewFullLogs = useCallback(
-    (processId?: string) => {
-      const targetId = processId ?? activeProcess?.id;
-      if (targetId && onViewProcessInPanel) {
-        onViewProcessInPanel(targetId);
-      } else {
-        setLogsMode(true);
-      }
-    },
-    [activeProcess?.id, onViewProcessInPanel, setLogsMode]
-  );
+  const handleViewFullLogs = useCallback(() => {
+    const targetId = activeProcess?.id;
+    if (targetId) {
+      viewProcessInPanel(targetId);
+    } else {
+      setRightMainPanelMode(RIGHT_MAIN_PANEL_MODES.LOGS);
+    }
+  }, [activeProcess?.id, viewProcessInPanel, setRightMainPanelMode]);
 
   const handleTabChange = useCallback((processId: string) => {
     setActiveProcessId(processId);
   }, []);
-
-  const handleStart = useCallback(() => {
-    start();
-  }, [start]);
-
-  const handleStop = useCallback(() => {
-    stop();
-  }, [stop]);
-
-  const handleRefresh = useCallback(() => {
-    triggerPreviewRefresh();
-  }, [triggerPreviewRefresh]);
-
-  const handleCopyUrl = useCallback(async () => {
-    if (urlInfo?.url) {
-      await navigator.clipboard.writeText(urlInfo.url);
-    }
-  }, [urlInfo?.url]);
-
-  const handleOpenInNewTab = useCallback(() => {
-    if (urlInfo?.url) {
-      window.open(urlInfo.url, '_blank');
-    }
-  }, [urlInfo?.url]);
 
   const hasDevScript = repos.some(
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
@@ -103,16 +69,9 @@ export function PreviewControlsContainer({
       activeProcessId={activeProcess?.id ?? null}
       logs={logs}
       logsError={logsError}
-      url={urlInfo?.url}
       onViewFullLogs={handleViewFullLogs}
       onTabChange={handleTabChange}
-      onStart={handleStart}
-      onStop={handleStop}
-      onRefresh={handleRefresh}
-      onCopyUrl={handleCopyUrl}
-      onOpenInNewTab={handleOpenInNewTab}
       isStarting={isStarting}
-      isStopping={isStopping}
       isServerRunning={runningDevServers.length > 0}
       className={className}
     />

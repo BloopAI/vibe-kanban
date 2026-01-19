@@ -187,17 +187,19 @@ impl GitService {
         }
     }
 
-    pub fn default_remote_name(&self, repo: &Repository) -> String {
-        if let Ok(repos) = repo.remotes() {
-            repos
-                .iter()
-                .flatten()
-                .next()
-                .map(|r| r.to_owned())
-                .unwrap_or_else(|| "origin".to_string())
-        } else {
-            "origin".to_string()
+    fn default_remote_name(&self, repo: &Repository) -> String {
+        if let Ok(config) = repo.config()
+            && let Ok(default) = config.get_string("remote.pushDefault")
+        {
+            return default;
         }
+
+        if let Ok(remotes) = repo.remotes()
+            && let Some(first) = remotes.iter().flatten().next()
+        {
+            return first.to_string();
+        }
+        "origin".to_string()
     }
 
     /// Initialize a new git repository with a main branch and initial commit
@@ -535,6 +537,7 @@ impl GitService {
                     content_omitted,
                     additions,
                     deletions,
+                    repo_id: None,
                 });
 
                 delta_index += 1;
@@ -756,6 +759,7 @@ impl GitService {
             content_omitted,
             additions,
             deletions,
+            repo_id: None,
         }
     }
 
@@ -1052,6 +1056,16 @@ impl GitService {
         let branch = Self::find_branch(&repo, branch_name)?;
         let oid = branch.get().peel_to_commit()?.id().to_string();
         Ok(oid)
+    }
+
+    pub fn get_fork_point(
+        &self,
+        worktree_path: &Path,
+        target_branch: &str,
+        task_branch: &str,
+    ) -> Result<String, GitServiceError> {
+        let git = GitCli::new();
+        Ok(git.merge_base(worktree_path, target_branch, task_branch)?)
     }
 
     /// Get the subject/summary line for a given commit OID
@@ -1443,34 +1457,6 @@ impl GitService {
         }
     }
 
-    pub fn check_remote_branch_exists(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<bool, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let default_remote_name = self.default_remote_name(&repo);
-        let stripped_branch_name = match self.find_branch_type(repo_path, branch_name) {
-            Ok(BranchType::Remote) => {
-                // strip remote prefix if present
-                Ok(branch_name
-                    .strip_prefix(&format!("{default_remote_name}/"))
-                    .unwrap_or(branch_name))
-            }
-            Ok(BranchType::Local) => Ok(branch_name),
-            Err(e) => Err(e),
-        }?;
-        let remote = repo.find_remote(&default_remote_name)?;
-        let remote_url = remote
-            .url()
-            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-
-        let git_cli = GitCli::new();
-        git_cli
-            .check_remote_branch_exists(repo_path, remote_url, stripped_branch_name)
-            .map_err(|e| e.into())
-    }
-
     pub fn rename_local_branch(
         &self,
         worktree_path: &Path,
@@ -1611,19 +1597,38 @@ impl GitService {
             })
     }
 
-    /// Get the remote URL for a branch. For remote-tracking branches, uses the branch's remote.
-    /// For local branches or if remote detection fails, falls back to the default remote.
-    pub fn get_remote_url_from_branch_or_default(
+    pub fn get_remote_url(
+        &self,
+        repo_path: &Path,
+        remote_name: &str,
+    ) -> Result<String, GitServiceError> {
+        let cli = GitCli::new();
+        cli.get_remote_url(repo_path, remote_name)
+            .map_err(GitServiceError::GitCLI)
+    }
+
+    pub fn check_remote_branch_exists(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        branch_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let git_cli = GitCli::new();
+        git_cli
+            .check_remote_branch_exists(repo_path, remote_url, branch_name)
+            .map_err(GitServiceError::GitCLI)
+    }
+
+    pub fn resolve_remote_name_for_branch(
         &self,
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<String, GitServiceError> {
-        let remote_name = self
-            .get_remote_name_from_branch_name(repo_path, branch_name)
-            .unwrap_or(self.default_remote_name(&Repository::open(repo_path)?));
-        let cli = GitCli::new();
-        cli.get_remote_url(repo_path, &remote_name)
-            .map_err(GitServiceError::GitCLI)
+        self.get_remote_name_from_branch_name(repo_path, branch_name)
+            .or_else(|_| {
+                let repo = self.open_repo(repo_path)?;
+                Ok(self.default_remote_name(&repo))
+            })
     }
 
     fn get_remote_from_branch_ref<'a>(

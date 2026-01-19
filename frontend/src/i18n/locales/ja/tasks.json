@@ -21,16 +21,15 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
-    "share": "タスクを共有",
-    "reassign": "再割り当て",
-    "stopShare": "共有を停止",
     "duplicate": "Duplicate",
     "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "startReview": "レビューを開始",
+    "startingReview": "レビューを開始中..."
   },
   "editBranchName": {
     "dialog": {
@@ -41,6 +40,15 @@
       "renaming": "名前を変更中...",
       "action": "ブランチ名を変更"
     }
+  },
+  "startReviewDialog": {
+    "title": "レビューを開始",
+    "description": "コーディングエージェントに変更のレビューとフィードバックを依頼します。",
+    "additionalInstructions": "追加の指示（オプション）",
+    "reviewComments": "レビューコメント（{{count}}）",
+    "includeGitContext": "Gitコンテキストを含める",
+    "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
+    "newSession": "新しいセッション"
   },
   "attempt": {
     "actions": {
@@ -78,40 +86,19 @@
     "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
-  "stopShareDialog": {
-    "title": "タスクの共有を停止",
-    "description": "「{{title}}」の共有を組織向けに停止しますか？",
-    "warning": "組織との共有は停止しますが、ローカルのタスクは保持されます。",
-    "confirm": "共有を停止",
-    "inProgress": "共有を停止中…",
-    "genericError": "タスクの共有を停止できませんでした。もう一度お試しください。"
-  },
-  "shareDialog": {
-    "title": "タスクを共有",
-    "description": "「{{title}}」を組織と共有しますか？",
-    "success": "タスクの共有に成功しました。",
-    "genericError": "タスクを共有できませんでした。もう一度お試しください。",
-    "loadingSystem": "アカウント状態を読み込み中…",
-    "loginRequired": {
-      "title": "続行するにはサインインしてください",
-      "description": "タスクを共有する前にサインインが必要です。サインインページへリダイレクトします。",
-      "action": "サインインへ移動"
-    },
-    "gitProviderRequired": {
-      "title": "Git プロバイダーを接続",
-      "description": "タスクを共有するには、Git プロバイダーアカウントを接続してください。このプロジェクトにはリモートリポジトリが必要です。",
-      "action": "接続"
-    },
-    "linkProjectRequired": {
-      "description": "タスクを共有する前に、このプロジェクトを組織にリンクしてください。",
-      "action": "プロジェクトをリンク"
-    },
-    "confirmationTitle": "共有を確認",
-    "confirmationBody": "共有すると、このタスクが共有ワークスペースに公開されます。",
-    "cancel": "キャンセル",
-    "confirm": "タスクを共有",
-    "inProgress": "共有中…",
-    "closeButton": "閉じる"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "競合を解決",
+      "description": "競合が検出されました。エージェントにどのように解決させるか選択してください。",
+      "sessionLabel": "セッション",
+      "existingSession": "現在のセッションで続行",
+      "newSession": "新規セッション",
+      "resolve": "競合を解決",
+      "resolving": "開始中...",
+      "filesWithConflicts_one": "{{count}}件のファイルに競合があります",
+      "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
+      "andMore": "...他{{count}}件"
+    }
   },
   "createPrDialog": {
     "title": "プルリクエストを作成",
@@ -307,6 +294,7 @@
       "push": "プッシュ",
       "pushed": "プッシュ完了！",
       "pushing": "プッシュ中...",
+      "pushFailed": "失敗",
       "forcePush": "強制プッシュ",
       "forcePushing": "強制プッシュ中...",
       "rebase": "リベース",
@@ -345,9 +333,10 @@
     },
     "browser": {
       "title": "開発サーバープレビュー",
-      "startButton": "開発サーバーを開始",
-      "stopButton": "停止",
-      "startingButton": "開始"
+      "devServerFallback": "開発サーバー"
+    },
+    "urlInput": {
+      "placeholder": "URLを入力..."
     },
     "noDevScript": "開発スクリプトが設定されていません",
     "noDevScriptHint": "プレビューを有効にするには、プロジェクト設定で開発スクリプトを追加してください。",
@@ -355,11 +344,15 @@
       "companionLink": "インストールガイドを表示",
       "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
       "configureButton": "設定",
+      "setupTitle": "プレビュー機能を使用するには、開発サーバースクリプトを設定する必要があります",
       "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
       "startButton": "開発サーバーを開始",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
       "stopAndEditButton": "開発サーバーを停止して問題を解決",
-      "title": "開発サーバーが実行されていません"
+      "title": "開発サーバーが実行されていません",
+      "fixScript": "開発スクリプトを修正",
+      "editDevScript": "開発サーバースクリプトを編集",
+      "learnMore": "アプリケーションのテストについてもっと詳しく"
     },
     "selectAttempt": "Select an attempt to see preview",
     "title": "Preview",
@@ -369,7 +362,16 @@
       "refresh": "プレビューを更新",
       "stopDevServer": "開発サーバーを停止",
       "clickToEdit": "クリックしてURLを編集",
-      "resetUrl": "検出されたURLにリセット"
+      "resetUrl": "検出されたURLにリセット",
+      "clearUrlOverride": "URL オーバーライドをクリア",
+      "desktopView": "デスクトップ表示",
+      "mobileView": "モバイル表示 (390x844)",
+      "responsiveView": "レスポンシブ表示（リサイズ可能）",
+      "startDevServer": "開発サーバーを開始"
+    },
+    "loading": {
+      "startingServer": "開発サーバーを起動中...",
+      "waitingForServer": "サーバーを待機中..."
     },
     "troubleAlert": {
       "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",
@@ -377,7 +379,8 @@
       "item2Suffix": "？（これにより実行中であることを認識します）",
       "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
       "item3Link": "こちらのインストール手順に従ってください",
-      "title": "アプリケーションのプレビューに問題があります："
+      "title": "アプリケーションのプレビューに問題があります：",
+      "fixScript": "開発スクリプトを修正"
     }
   },
   "processes": {
@@ -545,6 +548,9 @@
       "discardChanges": "変更を破棄"
     }
   },
+  "terminal": {
+    "selectWorkspace": "ターミナルを開くにはワークスペースを選択してください"
+  },
   "restoreLogsDialog": {
     "title": "リトライを確認",
     "historyChange": {
@@ -654,5 +660,24 @@
       "deleted": "削除済み",
       "renamed": "名前変更済み"
     }
+  },
+  "scriptFixer": {
+    "title": "スクリプトを修正",
+    "setupScriptTitle": "セットアップスクリプトを修正",
+    "cleanupScriptTitle": "クリーンアップスクリプトを修正",
+    "devServerTitle": "開発サーバースクリプトを修正",
+    "scriptLabel": "スクリプト（編集）",
+    "logsLabel": "最後の実行ログ",
+    "saveButton": "保存",
+    "saveAndTestButton": "保存してテスト",
+    "saving": "保存中...",
+    "testing": "テスト中...",
+    "noLogs": "利用可能な実行ログがありません",
+    "selectRepo": "リポジトリ",
+    "fixScript": "スクリプトを修正",
+    "statusRunning": "実行中...",
+    "statusSuccess": "正常に完了しました",
+    "statusFailed": "終了コード {{exitCode}} で失敗しました",
+    "statusKilled": "プロセスが強制終了されました"
   }
 }

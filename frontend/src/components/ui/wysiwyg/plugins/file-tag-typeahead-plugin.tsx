@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useContext, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -13,6 +13,7 @@ import {
 } from 'lexical';
 import { Tag as TagIcon, FileText } from 'lucide-react';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
   searchTagsAndFiles,
   type SearchResultItem,
@@ -33,6 +34,43 @@ const VIEWPORT_MARGIN = 8;
 const VERTICAL_GAP = 4;
 const VERTICAL_GAP_ABOVE = 24;
 const MIN_WIDTH = 320;
+const MAX_FILE_RESULTS = 10;
+
+interface DiffFileResult {
+  path: string;
+  name: string;
+  is_file: boolean;
+  match_type: 'FileName' | 'DirectoryName' | 'FullPath';
+  score: bigint;
+}
+
+function getMatchingDiffFiles(
+  query: string,
+  diffPaths: Set<string>
+): DiffFileResult[] {
+  if (!query) return [];
+  const lowerQuery = query.toLowerCase();
+  return Array.from(diffPaths)
+    .filter((path) => {
+      const name = path.split('/').pop() || path;
+      return (
+        name.toLowerCase().includes(lowerQuery) ||
+        path.toLowerCase().includes(lowerQuery)
+      );
+    })
+    .map((path) => {
+      const name = path.split('/').pop() || path;
+      const nameMatches = name.toLowerCase().includes(lowerQuery);
+      return {
+        path,
+        name,
+        is_file: true,
+        match_type: nameMatches ? ('FileName' as const) : ('FullPath' as const),
+        // High score to rank diff files above server results
+        score: BigInt(Number.MAX_SAFE_INTEGER),
+      };
+    });
+}
 
 function getMenuPosition(anchorEl: HTMLElement) {
   const rect = anchorEl.getBoundingClientRect();
@@ -62,11 +100,23 @@ function getMenuPosition(anchorEl: HTMLElement) {
   return { top, bottom, left };
 }
 
-export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
+export function FileTagTypeaheadPlugin({
+  workspaceId,
+  projectId,
+}: {
+  workspaceId?: string;
+  projectId?: string;
+}) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const lastMousePositionRef = useRef<{ x: number; y: number } | null>(null);
   const portalContainer = usePortalContainer();
+  // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
+  const workspaceContext = useContext(WorkspaceContext);
+  const diffPaths = useMemo(
+    () => workspaceContext?.diffPaths ?? new Set<string>(),
+    [workspaceContext?.diffPaths]
+  );
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -76,16 +126,41 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
         return;
       }
 
+      // Get local diff files first (files from current workspace changes)
+      const localFiles = getMatchingDiffFiles(query, diffPaths);
+      const localFilePaths = new Set(localFiles.map((f) => f.path));
+
       // Here query is a string, including possible empty string ''
-      searchTagsAndFiles(query, projectId)
-        .then((results) => {
-          setOptions(results.map((r) => new FileTagOption(r)));
+      searchTagsAndFiles(query, { workspaceId, projectId })
+        .then((serverResults) => {
+          // Separate tags and files from server results
+          const tagResults = serverResults.filter((r) => r.type === 'tag');
+          const serverFileResults = serverResults
+            .filter((r) => r.type === 'file')
+            .filter((r) => !localFilePaths.has(r.file!.path)); // Dedupe
+
+          // Limit total file results: prioritize local diff files
+          const limitedLocalFiles = localFiles.slice(0, MAX_FILE_RESULTS);
+          const remainingSlots = MAX_FILE_RESULTS - limitedLocalFiles.length;
+          const limitedServerFiles = serverFileResults.slice(0, remainingSlots);
+
+          // Build merged results: tags, then local files (ranked higher), then server files
+          const mergedResults: SearchResultItem[] = [
+            ...tagResults,
+            ...limitedLocalFiles.map((file) => ({
+              type: 'file' as const,
+              file,
+            })),
+            ...limitedServerFiles,
+          ];
+
+          setOptions(mergedResults.map((r) => new FileTagOption(r)));
         })
         .catch((err) => {
           console.error('Failed to search tags/files', err);
         });
     },
-    [projectId]
+    [workspaceId, projectId, diffPaths]
   );
 
   return (
@@ -204,10 +279,10 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          className={`px-3 py-2 cursor-pointer text-sm ${
+                          className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground text-high'
-                              : 'hover:bg-muted text-muted-foreground'
+                              ? 'bg-muted bg-secondary border-l-brand text-high'
+                              : 'hover:bg-muted border-l-transparent text-muted-foreground'
                           }`}
                           onMouseMove={(e) => {
                             const pos = { x: e.clientX, y: e.clientY };
@@ -248,10 +323,10 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          className={`px-3 py-2 cursor-pointer text-sm ${
+                          className={`px-3 py-2 cursor-pointer text-sm border-l-2 ${
                             index === selectedIndex
-                              ? 'bg-muted text-foreground text-high'
-                              : 'hover:bg-muted text-muted-foreground'
+                              ? 'bg-muted bg-secondary border-l-brand text-high'
+                              : 'hover:bg-muted border-l-transparent text-muted-foreground'
                           }`}
                           onMouseMove={(e) => {
                             const pos = { x: e.clientX, y: e.clientY };

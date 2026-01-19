@@ -21,7 +21,7 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery, project::ProjectServiceError,
+    file_search::SearchQuery, project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;

@@ -111,6 +111,7 @@ impl ProtocolPeer {
                 tool_name,
                 input,
                 permission_suggestions,
+                blocked_paths: _,
                 tool_use_id,
             } => {
                 match client

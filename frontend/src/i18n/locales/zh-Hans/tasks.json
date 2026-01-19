@@ -92,17 +92,22 @@
       "item2": "您的开发服务器是否以格式打印 URL 和端口到终端",
       "item2Suffix": "？（这就是我们如何知道它正在运行）",
       "item3": "您是否安装了 Web Companion（点击编辑所需）？如果没有，请",
-      "item3Link": "按照此处的安装说明操作"
+      "item3Link": "按照此处的安装说明操作",
+      "fixScript": "修复开发脚本"
     },
     "noServer": {
       "title": "没有运行开发服务器",
       "startPrompt": "请启动开发服务器以查看预览",
+      "setupTitle": "必须设置开发服务器脚本才能使用预览功能",
       "setupPrompt": "要使用实时预览和点击编辑，请为此项目添加开发服务器脚本。",
       "companionPrompt": "要使用点击编辑功能，请将浏览器伴侣添加到您的项目。",
       "companionLink": "查看安装指南",
       "startButton": "启动开发服务器",
       "configureButton": "配置",
-      "stopAndEditButton": "停止开发服务器并解决问题"
+      "stopAndEditButton": "停止开发服务器并解决问题",
+      "fixScript": "修复开发脚本",
+      "editDevScript": "编辑开发服务器脚本",
+      "learnMore": "了解更多关于测试应用程序的信息"
     },
     "devScript": {
       "saveAndStart": "保存并启动",
@@ -125,9 +130,10 @@
     "noDevScriptHint": "在项目设置中添加开发脚本以启用预览。",
     "browser": {
       "title": "开发服务器预览",
-      "startButton": "启动开发服务器",
-      "stopButton": "停止",
-      "startingButton": "启动"
+      "devServerFallback": "开发服务器"
+    },
+    "urlInput": {
+      "placeholder": "输入 URL..."
     },
     "iframe": {
       "title": "开发服务器预览"
@@ -138,7 +144,16 @@
       "openInTab": "在新标签页中打开",
       "stopDevServer": "停止开发服务器",
       "clickToEdit": "点击编辑 URL",
-      "resetUrl": "重置为检测到的 URL"
+      "resetUrl": "重置为检测到的 URL",
+      "clearUrlOverride": "清除 URL 覆盖",
+      "desktopView": "桌面视图",
+      "mobileView": "移动视图 (390x844)",
+      "responsiveView": "响应式视图（可调整大小）",
+      "startDevServer": "启动开发服务器"
+    },
+    "loading": {
+      "startingServer": "正在启动开发服务器...",
+      "waitingForServer": "正在等待服务器..."
     }
   },
   "diff": {
@@ -298,6 +313,7 @@
       "pushed": "已推送！",
       "pushing": "推送中...",
       "push": "推送",
+      "pushFailed": "失败",
       "forcePush": "强制推送",
       "forcePushing": "强制推送中...",
       "creating": "创建中...",
@@ -396,10 +412,9 @@
     "gitActions": "Git 操作",
     "editBranchName": "编辑分支名称",
     "task": "任务",
-    "share": "共享",
-    "reassign": "重新分配",
-    "stopShare": "停止共享",
-    "duplicate": "复制"
+    "duplicate": "复制",
+    "startReview": "开始审查",
+    "startingReview": "正在开始审查..."
   },
   "editBranchName": {
     "dialog": {
@@ -411,40 +426,28 @@
       "action": "重命名分支"
     }
   },
-  "stopShareDialog": {
-    "title": "停止共享任务",
-    "description": "停止与您的组织共享 {{title}} ？",
-    "warning": "停止与您的组织共享任务，但保留您的本地任务。",
-    "confirm": "停止共享任务",
-    "inProgress": "停止共享中...",
-    "genericError": "停止共享任务失败。请重试。"
+  "startReviewDialog": {
+    "title": "开始审查",
+    "description": "请求编码代理审查您的更改并提供反馈。",
+    "additionalInstructions": "附加说明（可选）",
+    "reviewComments": "审查评论（{{count}}）",
+    "includeGitContext": "包含 Git 上下文",
+    "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
+    "newSession": "新会话"
   },
-  "shareDialog": {
-    "title": "共享任务",
-    "description": "与您的组织共享 {{title}} ？",
-    "success": "任务共享成功。",
-    "genericError": "共享任务失败。请重试。",
-    "loadingSystem": "加载账户状态中...",
-    "loginRequired": {
-      "title": "登录以继续",
-      "description": "您需要登录才能共享任务。我们将重定向您到登录页面。",
-      "action": "前往登录"
-    },
-    "gitProviderRequired": {
-      "title": "连接 Git 提供商",
-      "description": "连接您的 Git 提供商账户以共享任务。此项目必须有远程仓库。",
-      "action": "连接"
-    },
-    "linkProjectRequired": {
-      "description": "在共享任务之前，将此项目链接到组织。",
-      "action": "链接项目"
-    },
-    "confirmationTitle": "确认共享",
-    "confirmationBody": "共享将发布此任务到您的共享工作区。",
-    "cancel": "取消",
-    "confirm": "共享任务",
-    "inProgress": "共享中...",
-    "closeButton": "关闭"
+  "resolveConflicts": {
+    "dialog": {
+      "title": "解决冲突",
+      "description": "检测到冲突。选择您希望代理如何解决它们。",
+      "sessionLabel": "会话",
+      "existingSession": "在当前会话中继续",
+      "newSession": "新会话",
+      "resolve": "解决冲突",
+      "resolving": "开始中...",
+      "filesWithConflicts_one": "{{count}} 个文件有冲突",
+      "filesWithConflicts_other": "{{count}} 个文件有冲突",
+      "andMore": "...还有 {{count}} 个"
+    }
   },
   "createPrDialog": {
     "title": "创建拉取请求",
@@ -544,6 +547,9 @@
       "continueEditing": "继续编辑",
       "discardChanges": "放弃更改"
     }
+  },
+  "terminal": {
+    "selectWorkspace": "选择一个工作区以打开终端"
   },
   "restoreLogsDialog": {
     "title": "确认重试",
@@ -654,5 +660,24 @@
     "updatedTodos": "更新的待办事项",
     "viewInChangesPanel": "在更改面板中查看",
     "unableToRenderDiff": "无法显示差异。"
+  },
+  "scriptFixer": {
+    "title": "修复脚本",
+    "setupScriptTitle": "修复设置脚本",
+    "cleanupScriptTitle": "修复清理脚本",
+    "devServerTitle": "修复开发服务器脚本",
+    "scriptLabel": "脚本（编辑）",
+    "logsLabel": "上次执行日志",
+    "saveButton": "保存",
+    "saveAndTestButton": "保存并测试",
+    "saving": "保存中...",
+    "testing": "测试中...",
+    "noLogs": "没有可用的执行日志",
+    "selectRepo": "仓库",
+    "fixScript": "修复脚本",
+    "statusRunning": "运行中...",
+    "statusSuccess": "成功完成",
+    "statusFailed": "失败，退出代码 {{exitCode}}",
+    "statusKilled": "进程已被终止"
   }
 }

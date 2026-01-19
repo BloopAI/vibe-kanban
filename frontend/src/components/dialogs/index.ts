@@ -47,7 +47,6 @@ export {
   DeleteTaskConfirmationDialog,
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
-export { ShareDialog, type ShareDialogProps } from './tasks/ShareDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,
@@ -81,18 +80,14 @@ export {
   type GitActionsDialogProps,
 } from './tasks/GitActionsDialog';
 export {
-  ReassignDialog,
-  type ReassignDialogProps,
-} from './tasks/ReassignDialog';
-export {
-  StopShareTaskDialog,
-  type StopShareTaskDialogProps,
-} from './tasks/StopShareTaskDialog';
-export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
+export {
+  StartReviewDialog,
+  type StartReviewDialogProps,
+} from './tasks/StartReviewDialog';
 
 // Auth dialogs
 export { GhCliSetupDialog } from './auth/GhCliSetupDialog';

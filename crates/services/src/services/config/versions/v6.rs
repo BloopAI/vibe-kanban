@@ -16,6 +16,7 @@ pub enum UiLanguage {
     #[default]
     Browser, // Detect from browser
     En,     // Force English
+    Fr,     // Force French
     Ja,     // Force Japanese
     Es,     // Force Spanish
     Ko,     // Force Korean

@@ -47,11 +47,8 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
-import type {
-  DraftFollowUpData,
-  ExecutorAction,
-  ExecutorProfileId,
-} from 'shared/types';
+import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
+import { extractProfileFromAction } from '@/utils/executor';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
@@ -152,29 +149,11 @@ export function TaskFollowUpSection({
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
     if (!processes?.length) return null;
-
-    const extractProfile = (
-      action: ExecutorAction | null
-    ): ExecutorProfileId | null => {
-      let curr: ExecutorAction | null = action;
-      while (curr) {
-        const typ = curr.typ;
-        switch (typ.type) {
-          case 'CodingAgentInitialRequest':
-          case 'CodingAgentFollowUpRequest':
-            return typ.executor_profile_id;
-          case 'ScriptRequest':
-            curr = curr.next_action;
-            continue;
-        }
-      }
-      return null;
-    };
     return (
       processes
         .slice()
         .reverse()
-        .map((p) => extractProfile(p.executor_action ?? null))
+        .map((p) => extractProfileFromAction(p.executor_action ?? null))
         .find((pid) => pid !== null) ?? null
     );
   }, [processes]);

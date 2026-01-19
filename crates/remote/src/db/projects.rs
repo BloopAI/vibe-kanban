@@ -1,34 +1,23 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use sqlx::PgPool;
+use sqlx::{Executor, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
-
-use super::Tx;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     pub id: Uuid,
     pub organization_id: Uuid,
     pub name: String,
-    pub metadata: Value,
+    pub color: String,
     pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateProjectData {
-    pub organization_id: Uuid,
-    pub name: String,
-    pub metadata: Value,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Error)]
 pub enum ProjectError {
     #[error("project conflict: {0}")]
     Conflict(String),
-    #[error("invalid project metadata")]
-    InvalidMetadata,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
@@ -36,145 +25,155 @@ pub enum ProjectError {
 pub struct ProjectRepository;
 
 impl ProjectRepository {
-    pub async fn find_by_id(tx: &mut Tx<'_>, id: Uuid) -> Result<Option<Project>, ProjectError> {
-        let record = sqlx::query!(
+    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Project>, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let record = sqlx::query_as!(
+            Project,
             r#"
             SELECT
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
-                metadata         AS "metadata!: Value",
-                created_at       AS "created_at!: DateTime<Utc>"
+                color            AS "color!",
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
             WHERE id = $1
             "#,
             id
         )
-        .fetch_optional(&mut **tx)
+        .fetch_optional(executor)
         .await?;
 
-        Ok(record.map(|row| Project {
-            id: row.id,
-            organization_id: row.organization_id,
-            name: row.name,
-            metadata: row.metadata,
-            created_at: row.created_at,
-        }))
+        Ok(record)
     }
 
-    pub async fn insert(tx: &mut Tx<'_>, data: CreateProjectData) -> Result<Project, ProjectError> {
-        let CreateProjectData {
-            organization_id,
-            name,
-            metadata,
-        } = data;
-
-        let metadata = if metadata.is_null() {
-            Value::Object(serde_json::Map::new())
-        } else if !metadata.is_object() {
-            return Err(ProjectError::InvalidMetadata);
-        } else {
-            metadata
-        };
-
-        let record = sqlx::query!(
+    pub async fn create<'e, E>(
+        executor: E,
+        organization_id: Uuid,
+        name: String,
+        color: String,
+    ) -> Result<Project, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let id = Uuid::new_v4();
+        let now = Utc::now();
+        let record = sqlx::query_as!(
+            Project,
             r#"
             INSERT INTO projects (
-                organization_id,
-                name,
-                metadata
+                id, organization_id, name, color,
+                created_at, updated_at
             )
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
-                metadata         AS "metadata!: Value",
-                created_at       AS "created_at!: DateTime<Utc>"
+                color            AS "color!",
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
             "#,
+            id,
             organization_id,
             name,
-            metadata
+            color,
+            now,
+            now
         )
-        .fetch_one(&mut **tx)
-        .await
-        .map_err(ProjectError::from)?;
+        .fetch_one(executor)
+        .await?;
 
-        Ok(Project {
-            id: record.id,
-            organization_id: record.organization_id,
-            name: record.name,
-            metadata: record.metadata,
-            created_at: record.created_at,
-        })
+        Ok(record)
     }
 
-    pub async fn list_by_organization(
-        pool: &PgPool,
+    pub async fn list_by_organization<'e, E>(
+        executor: E,
         organization_id: Uuid,
-    ) -> Result<Vec<Project>, ProjectError> {
-        let rows = sqlx::query!(
+    ) -> Result<Vec<Project>, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let records = sqlx::query_as!(
+            Project,
             r#"
             SELECT
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
-                metadata         AS "metadata!: Value",
-                created_at       AS "created_at!: DateTime<Utc>"
+                color            AS "color!",
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
             FROM projects
             WHERE organization_id = $1
             ORDER BY created_at DESC
             "#,
             organization_id
         )
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|row| Project {
-                id: row.id,
-                organization_id: row.organization_id,
-                name: row.name,
-                metadata: row.metadata,
-                created_at: row.created_at,
-            })
-            .collect())
+        Ok(records)
     }
 
-    pub async fn fetch_by_id(
-        pool: &PgPool,
-        project_id: Uuid,
-    ) -> Result<Option<Project>, ProjectError> {
-        let record = sqlx::query!(
+    pub async fn update<'e, E>(
+        executor: E,
+        id: Uuid,
+        name: String,
+        color: String,
+    ) -> Result<Project, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let updated_at = Utc::now();
+        let record = sqlx::query_as!(
+            Project,
             r#"
-            SELECT
+            UPDATE projects
+            SET
+                name = $1,
+                color = $2,
+                updated_at = $3
+            WHERE id = $4
+            RETURNING
                 id               AS "id!: Uuid",
                 organization_id  AS "organization_id!: Uuid",
                 name             AS "name!",
-                metadata         AS "metadata!: Value",
-                created_at       AS "created_at!: DateTime<Utc>"
-            FROM projects
-            WHERE id = $1
+                color            AS "color!",
+                created_at       AS "created_at!: DateTime<Utc>",
+                updated_at       AS "updated_at!: DateTime<Utc>"
             "#,
-            project_id
+            name,
+            color,
+            updated_at,
+            id
         )
-        .fetch_optional(pool)
+        .fetch_one(executor)
         .await?;
 
-        Ok(record.map(|row| Project {
-            id: row.id,
-            organization_id: row.organization_id,
-            name: row.name,
-            metadata: row.metadata,
-            created_at: row.created_at,
-        }))
+        Ok(record)
     }
 
-    pub async fn organization_id(
-        pool: &PgPool,
+    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query!("DELETE FROM projects WHERE id = $1", id)
+            .execute(executor)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn organization_id<'e, E>(
+        executor: E,
         project_id: Uuid,
-    ) -> Result<Option<Uuid>, ProjectError> {
+    ) -> Result<Option<Uuid>, ProjectError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_scalar!(
             r#"
             SELECT organization_id
@@ -183,7 +182,7 @@ impl ProjectRepository {
             "#,
             project_id
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await
         .map_err(ProjectError::from)
     }

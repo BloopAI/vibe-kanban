@@ -1,12 +1,16 @@
 import { type ReactNode } from 'react';
-import { CheckIcon } from '@phosphor-icons/react';
+import { CheckIcon, GearIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
-import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './Dropdown';
 
 export interface EditorProps {
   value: string;
@@ -17,6 +21,7 @@ export interface VariantProps {
   selected: string | null;
   options: string[];
   onChange: (variant: string | null) => void;
+  onCustomise?: () => void;
 }
 
 export enum VisualVariant {
@@ -32,6 +37,7 @@ interface ChatBoxBaseProps {
   placeholder: string;
   onCmdEnter: () => void;
   disabled?: boolean;
+  workspaceId?: string;
   projectId?: string;
   autoFocus?: boolean;
 
@@ -81,6 +87,7 @@ export function ChatBoxBase({
   placeholder,
   onCmdEnter,
   disabled,
+  workspaceId,
   projectId,
   autoFocus,
   variant,
@@ -141,7 +148,8 @@ export function ChatBoxBase({
           onChange={editor.onChange}
           onCmdEnter={onCmdEnter}
           disabled={disabled}
-          className="min-h-0 max-h-[min(15rem,20vh)] overflow-y-auto"
+          className="min-h-0 max-h-[50vh] overflow-y-auto"
+          workspaceId={workspaceId}
           projectId={projectId}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
@@ -170,6 +178,17 @@ export function ChatBoxBase({
                       {toPrettyCase(variantName)}
                     </DropdownMenuItem>
                   ))}
+                  {variant?.onCustomise && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        icon={GearIcon}
+                        onClick={variant.onCustomise}
+                      >
+                        {t('chatBox.customise')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </ToolbarDropdown>
               )}
             {footerLeft}

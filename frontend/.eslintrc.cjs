@@ -1,3 +1,5 @@
+const path = require('path');
+
 const i18nCheck = process.env.LINT_I18N === 'true';
 
 // Presentational components - these must be stateless and receive all data via props
@@ -26,7 +28,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: path.join(__dirname, 'tsconfig.json'),
   },
   rules: {
     'eslint-comments/no-use': ['error', { allow: [] }],
@@ -221,6 +223,20 @@ module.exports = {
             selector: 'Literal[value=/(?<!icon-)(?<!-)size-[0-9]/]',
             message:
               'Use design system sizes (size-icon-xs, size-icon-sm, size-icon-base, size-icon-lg, size-icon-xl, size-dot) instead of generic Tailwind sizes.',
+          },
+        ],
+      },
+    },
+    {
+      // Container components should not have optional props
+      files: ['src/components/ui-new/containers/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'TSPropertySignature[optional=true]',
+            message:
+              'Optional props are not allowed in container components. Make the prop required or provide a default value.',
           },
         ],
       },

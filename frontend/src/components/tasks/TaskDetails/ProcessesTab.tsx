@@ -223,7 +223,9 @@ function ProcessesTab({ sessionId }: ProcessesTabProps) {
                             {process.executor_action.typ.type ===
                               'CodingAgentInitialRequest' ||
                             process.executor_action.typ.type ===
-                              'CodingAgentFollowUpRequest' ? (
+                              'CodingAgentFollowUpRequest' ||
+                            process.executor_action.typ.type ===
+                              'ReviewRequest' ? (
                               <ProfileVariantBadge
                                 profileVariant={
                                   process.executor_action.typ

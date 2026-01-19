@@ -10,7 +10,7 @@ use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
-    command::CommandParts,
+    command::{CommandBuildError, CommandBuilder, CommandParts},
     env::ExecutionEnv,
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::utils::EntryIndexProvider,
@@ -83,7 +83,7 @@ pub struct Droid {
 }
 
 impl Droid {
-    pub fn build_command_builder(&self) -> crate::command::CommandBuilder {
+    pub fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         use crate::command::{CommandBuilder, apply_overrides};
         let mut builder =
             CommandBuilder::new("droid exec").params(["--output-format", "stream-json"]);
@@ -145,7 +145,7 @@ impl StandardCodingAgentExecutor for Droid {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let droid_command = self.build_command_builder().build_initial()?;
+        let droid_command = self.build_command_builder()?.build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         spawn_droid(droid_command, &combined_prompt, current_dir, env, &self.cmd).await
@@ -164,7 +164,7 @@ impl StandardCodingAgentExecutor for Droid {
             ))
         })?;
         let continue_cmd = self
-            .build_command_builder()
+            .build_command_builder()?
             .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

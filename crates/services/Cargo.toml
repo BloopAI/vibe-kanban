@@ -1,11 +1,12 @@
 [package]
 name = "services"
-version = "0.0.148"
+version = "0.0.156"
 edition = "2024"
 
 [features]
 default = []
 cloud = []
+qa-mode = ["executors/qa-mode"]
 
 [dependencies]
 utils = { path = "../utils" }

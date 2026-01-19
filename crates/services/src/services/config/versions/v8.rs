@@ -41,6 +41,12 @@ pub struct Config {
     pub pr_auto_description_enabled: bool,
     #[serde(default)]
     pub pr_auto_description_prompt: Option<String>,
+    #[serde(default)]
+    pub beta_workspaces: bool,
+    #[serde(default)]
+    pub beta_workspaces_invitation_sent: bool,
+    #[serde(default)]
+    pub commit_reminder: bool,
 }
 
 impl Config {
@@ -66,6 +72,9 @@ impl Config {
             showcases: old_config.showcases,
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            beta_workspaces: false,
+            beta_workspaces_invitation_sent: false,
+            commit_reminder: false,
         }
     }
 
@@ -116,6 +125,9 @@ impl Default for Config {
             showcases: ShowcaseState::default(),
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
+            beta_workspaces: false,
+            beta_workspaces_invitation_sent: false,
+            commit_reminder: false,
         }
     }
 }

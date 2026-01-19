@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
@@ -36,13 +36,27 @@ export function useDevServer(
     [attemptData.processes]
   );
 
+  // Track when mutation succeeded but no running process exists yet
+  const [pendingStart, setPendingStart] = useState(false);
+
+  // Clear pendingStart when a running process appears
+  useEffect(() => {
+    if (runningDevServers.length > 0 && pendingStart) {
+      setPendingStart(false);
+    }
+  }, [runningDevServers.length, pendingStart]);
+
   const startMutation = useMutation({
     mutationKey: ['startDevServer', attemptId],
     mutationFn: async () => {
       if (!attemptId) return;
       await attemptsApi.startDevServer(attemptId);
     },
+    onMutate: () => {
+      setPendingStart(true);
+    },
     onSuccess: async () => {
+      // Don't clear pendingStart here - wait for process to appear via useEffect
       await queryClient.invalidateQueries({
         queryKey: ['executionProcesses', attemptId],
       });
@@ -50,6 +64,7 @@ export function useDevServer(
       options?.onStartSuccess?.();
     },
     onError: (err) => {
+      setPendingStart(false);
       console.error('Failed to start dev server:', err);
       options?.onStartError?.(err);
     },
@@ -86,7 +101,7 @@ export function useDevServer(
   return {
     start: startMutation.mutate,
     stop: stopMutation.mutate,
-    isStarting: startMutation.isPending,
+    isStarting: startMutation.isPending || pendingStart,
     isStopping: stopMutation.isPending,
     runningDevServers,
     devServerProcesses,

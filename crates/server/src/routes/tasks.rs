@@ -14,8 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
-    project::{Project, ProjectError},
-    repo::Repo,
+    repo::{Repo, RepoError},
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     workspace::{CreateWorkspace, Workspace},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
@@ -24,12 +23,10 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::{
-    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
-};
+use services::services::{container::ContainerService, workspace_manager::WorkspaceManager};
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::{api::oauth::LoginStatus, response::ApiResponse};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
@@ -178,21 +175,23 @@ pub async fn create_task_and_start(
         )
         .await;
 
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
         .git_branch_from_workspace(&attempt_id, &task.title)
         .await;
 
-    let agent_working_dir = project
-        .default_agent_working_dir
-        .as_ref()
-        .filter(|dir: &&String| !dir.is_empty())
-        .cloned();
+    // Compute agent_working_dir based on repo count:
+    // - Single repo: use repo name as working dir (agent runs in repo directory)
+    // - Multiple repos: use None (agent runs in workspace root)
+    let agent_working_dir = if payload.repos.len() == 1 {
+        let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+        Some(repo.name)
+    } else {
+        None
+    };
 
     let workspace = Workspace::create(
         pool,
@@ -252,8 +251,6 @@ pub async fn update_task(
 
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
-    ensure_shared_task_auth(&existing_task, &deployment).await?;
-
     // Use existing values if not provided in update
     let title = payload.title.unwrap_or(existing_task.title);
     let description = match payload.description {
@@ -282,38 +279,13 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
-    // If task has been shared, broadcast update
-    if task.shared_task_id.is_some() {
-        let Ok(publisher) = deployment.share_publisher() else {
-            return Err(ShareError::MissingConfig("share publisher unavailable").into());
-        };
-        publisher.update_shared_task(&task).await?;
-    }
-
     Ok(ResponseJson(ApiResponse::success(task)))
-}
-
-async fn ensure_shared_task_auth(
-    existing_task: &Task,
-    deployment: &local_deployment::LocalDeployment,
-) -> Result<(), ApiError> {
-    if existing_task.shared_task_id.is_some() {
-        match deployment.get_login_status().await {
-            LoginStatus::LoggedIn { .. } => return Ok(()),
-            LoginStatus::LoggedOut => {
-                return Err(ShareError::MissingAuth.into());
-            }
-        }
-    }
-    Ok(())
 }
 
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
-    ensure_shared_task_auth(&task, &deployment).await?;
-
     let pool = &deployment.db().pool;
 
     // Gather task attempts data needed for background cleanup
@@ -336,13 +308,6 @@ pub async fn delete_task(
         .iter()
         .filter_map(|attempt| attempt.container_ref.as_ref().map(PathBuf::from))
         .collect();
-
-    if let Some(shared_task_id) = task.shared_task_id {
-        let Ok(publisher) = deployment.share_publisher() else {
-            return Err(ShareError::MissingConfig("share publisher unavailable").into());
-        };
-        publisher.delete_shared_task(shared_task_id).await?;
-    }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
     let mut tx = pool.begin().await?;
@@ -424,43 +389,10 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct ShareTaskResponse {
-    pub shared_task_id: Uuid,
-}
-
-pub async fn share_task(
-    Extension(task): Extension<Task>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
-    let Ok(publisher) = deployment.share_publisher() else {
-        return Err(ShareError::MissingConfig("share publisher unavailable").into());
-    };
-    let profile = deployment
-        .auth_context()
-        .cached_profile()
-        .await
-        .ok_or(ShareError::MissingAuth)?;
-    let shared_task_id = publisher.share_task(task.id, profile.user_id).await?;
-
-    let props = serde_json::json!({
-        "task_id": task.id,
-        "shared_task_id": shared_task_id,
-    });
-    deployment
-        .track_if_analytics_allowed("start_sharing_task", props)
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
-        shared_task_id,
-    })))
-}
-
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_actions_router = Router::new()
         .route("/", put(update_task))
-        .route("/", delete(delete_task))
-        .route("/share", post(share_task));
+        .route("/", delete(delete_task));
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

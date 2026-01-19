@@ -232,6 +232,18 @@
           "description": "重設入門流程。",
           "button": "重設"
         }
+      },
+      "beta": {
+        "title": "Beta 功能",
+        "description": "在正式發布前試用實驗性功能。",
+        "workspaces": {
+          "label": "啟用工作區 Beta",
+          "helper": "查看任務嘗試時使用新的工作區介面。任務將首先在任務檢視中開啟，嘗試將在新的工作區檢視中開啟。"
+        },
+        "commitReminder": {
+          "label": "提交提醒",
+          "helper": "提示支援的代理在停止前提交變更。"
+        }
       }
     },
     "agents": {
@@ -248,8 +260,8 @@
         "loginDetectedTooltip": "找到此代理的最近驗證憑證",
         "installationFound": "偵測到曾使用",
         "installationFoundTooltip": "找到代理設定。您可能需要登入才能使用。",
-        "notFound": "未找到",
-        "notFoundTooltip": "未偵測到曾使用。代理可能需要安裝和/或登入。"
+        "notFound": "未知",
+        "notFoundTooltip": "我們無法驗證此代理是否已設定，但請繼續嘗試。"
       },
       "editor": {
         "formLabel": "編輯 JSON",
@@ -333,11 +345,6 @@
           "helper": "磁碟上的 Git 儲存庫絕對路徑。"
         }
       },
-      "agentWorkingDir": {
-        "label": "代理工作目錄",
-        "placeholder": "例如：my-repo",
-        "helper": "新工作區執行編碼代理的預設目錄，相對於工作區根目錄。此值在建立工作區時保存，不會影響現有工作區。單一儲存庫專案預設為儲存庫名稱。留空則從工作區根目錄執行。"
-      },
       "save": {
         "button": "儲存專案設定",
         "success": "✓ 專案設定儲存成功！",
@@ -385,7 +392,8 @@
         },
         "copyFiles": {
           "label": "複製檔案",
-          "helper": "要從原始儲存庫目錄複製到工作樹的檔案清單（以逗號分隔）。適合用於 .env 等環境檔案。請確保這些檔案已加入 gitignore！"
+          "helper": "要從原始儲存庫目錄複製到工作樹的檔案清單（以逗號分隔）。適合用於 .env 等環境檔案。請確保這些檔案已加入 gitignore！",
+          "placeholder": "檔案路徑或 glob 模式（例如：.env、config/*.json）"
         },
         "devServer": {
           "label": "開發伺服器腳本",

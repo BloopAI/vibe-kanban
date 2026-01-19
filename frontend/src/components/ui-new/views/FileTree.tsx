@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
+import { GithubLogoIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { Tooltip } from '../primitives/Tooltip';
 import { FileTreeSearchBar } from './FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
 import type { TreeNode } from '../types/fileTree';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 
 interface FileTreeProps {
   nodes: TreeNode[];
@@ -18,6 +18,14 @@ interface FileTreeProps {
   isAllExpanded: boolean;
   onToggleExpandAll: () => void;
   className?: string;
+  /** Whether to show GitHub comments */
+  showGitHubComments?: boolean;
+  /** Callback to toggle GitHub comments visibility */
+  onToggleGitHubComments?: (show: boolean) => void;
+  /** Function to get comment count for a file path (handles prefixed paths) */
+  getGitHubCommentCountForFile?: (filePath: string) => number;
+  /** Whether GitHub comments are currently loading */
+  isGitHubCommentsLoading?: boolean;
 }
 
 export function FileTree({
@@ -32,6 +40,10 @@ export function FileTree({
   isAllExpanded,
   onToggleExpandAll,
   className,
+  showGitHubComments,
+  onToggleGitHubComments,
+  getGitHubCommentCountForFile,
+  isGitHubCommentsLoading,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
 
@@ -56,6 +68,8 @@ export function FileTree({
               ? () => onSelectFile(node.path)
               : undefined
           }
+          commentCount={getGitHubCommentCountForFile?.(node.path)}
+          showCommentBadge={showGitHubComments}
         />
         {node.type === 'folder' &&
           node.children &&
@@ -66,32 +80,54 @@ export function FileTree({
   };
 
   return (
-    <div className={cn('w-full h-full bg-secondary flex flex-col', className)}>
-      <CollapsibleSectionHeader
-        title="Changes"
-        persistKey={PERSIST_KEYS.changesSection}
-        contentClassName="flex flex-col flex-1 min-h-0"
-      >
-        <div className="px-base pt-base">
-          <FileTreeSearchBar
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-            isAllExpanded={isAllExpanded}
-            onToggleExpandAll={onToggleExpandAll}
-          />
-        </div>
-        <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
-          {nodes.length > 0 ? (
-            renderNodes(nodes)
-          ) : (
-            <div className="p-base text-low text-sm">
-              {searchQuery
-                ? t('common:fileTree.noResults')
-                : 'No changed files'}
-            </div>
+    <div className={cn('w-full bg-secondary flex flex-col', className)}>
+      <div className="px-base pt-base">
+        <div className="flex items-center gap-half">
+          <div className="flex-1">
+            <FileTreeSearchBar
+              searchQuery={searchQuery}
+              onSearchChange={onSearchChange}
+              isAllExpanded={isAllExpanded}
+              onToggleExpandAll={onToggleExpandAll}
+            />
+          </div>
+          {onToggleGitHubComments && (
+            <Tooltip
+              content={
+                showGitHubComments
+                  ? t('common:fileTree.hideGitHubComments')
+                  : t('common:fileTree.showGitHubComments')
+              }
+            >
+              <button
+                type="button"
+                onClick={() => onToggleGitHubComments(!showGitHubComments)}
+                className={cn(
+                  'p-1 rounded hover:bg-panel transition-colors shrink-0',
+                  showGitHubComments ? 'text-normal' : 'text-low',
+                  isGitHubCommentsLoading && 'opacity-50 animate-pulse'
+                )}
+                aria-label={
+                  showGitHubComments
+                    ? t('common:fileTree.hideGitHubComments')
+                    : t('common:fileTree.showGitHubComments')
+                }
+              >
+                <GithubLogoIcon className="size-icon-sm" weight="fill" />
+              </button>
+            </Tooltip>
           )}
         </div>
-      </CollapsibleSectionHeader>
+      </div>
+      <div className="p-base flex-1 min-h-0 overflow-auto scrollbar-thin scrollbar-thumb-panel scrollbar-track-transparent">
+        {nodes.length > 0 ? (
+          renderNodes(nodes)
+        ) : (
+          <div className="p-base text-low text-sm">
+            {searchQuery ? t('common:fileTree.noResults') : 'No changed files'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

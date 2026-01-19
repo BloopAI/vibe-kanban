@@ -108,6 +108,7 @@ export function SearchableDropdown<T>({
                 <DropdownMenuItem
                   onSelect={() => onSelect(item)}
                   onMouseEnter={() => onHighlightedIndexChange(idx)}
+                  preventFocusOnHover
                   badge={getItemBadge?.(item)}
                   className={cn(
                     isSelected && 'bg-secondary',

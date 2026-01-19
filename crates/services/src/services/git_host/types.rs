@@ -28,6 +28,8 @@ pub struct CreatePrRequest {
     pub head_branch: String,
     pub base_branch: String,
     pub draft: Option<bool>,
+    /// URL of the repo containing the head branch (for cross-fork PRs).
+    pub head_repo_url: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -119,6 +121,7 @@ pub enum UnifiedPrComment {
         url: Option<String>,
         path: String,
         line: Option<i64>,
+        side: Option<String>,
         diff_hunk: Option<String>,
     },
 }

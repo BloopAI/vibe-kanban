@@ -24,6 +24,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { MultiFileSearchTextarea } from '@/components/ui/multi-file-search-textarea';
 import { repoApi } from '@/lib/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Repo, UpdateRepo } from 'shared/types';
@@ -336,6 +337,27 @@ export function ReposSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="dev-server-script">
+                  {t('settings.repos.scripts.devServer.label')}
+                </Label>
+                <AutoExpandingTextarea
+                  id="dev-server-script"
+                  value={draft.dev_server_script}
+                  onChange={(e) =>
+                    updateDraft({
+                      dev_server_script: e.target.value,
+                    })
+                  }
+                  placeholder={placeholders.dev}
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.repos.scripts.devServer.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="setup-script">
                   {t('settings.repos.scripts.setup.label')}
                 </Label>
@@ -401,37 +423,18 @@ export function ReposSettings() {
                 <Label htmlFor="copy-files">
                   {t('settings.repos.scripts.copyFiles.label')}
                 </Label>
-                <AutoExpandingTextarea
-                  id="copy-files"
+                <MultiFileSearchTextarea
                   value={draft.copy_files}
-                  onChange={(e) => updateDraft({ copy_files: e.target.value })}
-                  placeholder=".env, .env.local"
+                  onChange={(value) => updateDraft({ copy_files: value })}
+                  placeholder={t(
+                    'settings.repos.scripts.copyFiles.placeholder'
+                  )}
                   maxRows={6}
+                  repoId={selectedRepo.id}
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.repos.scripts.copyFiles.helper')}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dev-server-script">
-                  {t('settings.repos.scripts.devServer.label')}
-                </Label>
-                <AutoExpandingTextarea
-                  id="dev-server-script"
-                  value={draft.dev_server_script}
-                  onChange={(e) =>
-                    updateDraft({
-                      dev_server_script: e.target.value,
-                    })
-                  }
-                  placeholder={placeholders.dev}
-                  maxRows={12}
-                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.repos.scripts.devServer.helper')}
                 </p>
               </div>
 

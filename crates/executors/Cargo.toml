@@ -1,6 +1,6 @@
 [package]
 name = "executors"
-version = "0.0.148"
+version = "0.0.156"
 edition = "2024"
 
 [dependencies]
@@ -47,6 +47,12 @@ derivative = "2.2.0"
 reqwest = { workspace = true }
 rustls = { workspace = true }
 eventsource-stream = "0.2"
+walkdir = "2"
+rand = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"
+
+[features]
+default = []
+qa-mode = []

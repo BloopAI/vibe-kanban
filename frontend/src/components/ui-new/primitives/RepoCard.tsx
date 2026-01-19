@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   GitBranchIcon,
   GitPullRequestIcon,
@@ -11,6 +12,10 @@ import {
   CopyIcon,
   GitMergeIcon,
   CheckCircleIcon,
+  SpinnerGapIcon,
+  WarningCircleIcon,
+  DotsThreeIcon,
+  GearIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -20,11 +25,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
-import { CollapsibleSection } from './CollapsibleSection';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
-import { useRepoAction, PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
+import { useRepoAction } from '@/stores/useUiPreferencesStore';
 
-export type RepoAction = 'pull-request' | 'merge' | 'change-target' | 'rebase';
+export type RepoAction =
+  | 'pull-request'
+  | 'merge'
+  | 'change-target'
+  | 'rebase'
+  | 'push';
 
 const repoActionOptions: SplitButtonOption<RepoAction>[] = [
   {
@@ -46,12 +55,18 @@ interface RepoCardProps {
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  showPushButton?: boolean;
+  isPushPending?: boolean;
+  isPushSuccess?: boolean;
+  isPushError?: boolean;
   branchDropdownContent?: React.ReactNode;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
+  onPushClick?: () => void;
   onOpenInEditor?: () => void;
   onCopyPath?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export function RepoCard({
@@ -65,24 +80,40 @@ export function RepoCard({
   prNumber,
   prUrl,
   prStatus,
+  showPushButton = false,
+  isPushPending = false,
+  isPushSuccess = false,
+  isPushError = false,
   branchDropdownContent,
   onChangeTarget,
   onRebase,
   onActionsClick,
+  onPushClick,
   onOpenInEditor,
   onCopyPath,
+  onOpenSettings,
 }: RepoCardProps) {
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
   const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
+  // Hide "Open pull request" option when PR is already open
+  const hasPrOpen = prStatus === 'open';
+  const availableActionOptions = useMemo(
+    () =>
+      hasPrOpen
+        ? repoActionOptions.filter((opt) => opt.value !== 'pull-request')
+        : repoActionOptions,
+    [hasPrOpen]
+  );
+
+  // If PR is open and 'pull-request' was selected, fall back to 'merge'
+  const effectiveSelectedAction =
+    hasPrOpen && selectedAction === 'pull-request' ? 'merge' : selectedAction;
+
   return (
-    <CollapsibleSection
-      persistKey={PERSIST_KEYS.repoCard(repoId)}
-      title={name}
-      className="gap-half"
-      defaultExpanded
-    >
+    <div className="bg-primary rounded-sm my-base p-base space-y-base">
+      <div className="font-medium">{name}</div>
       {/* Branch row */}
       <div className="flex items-center gap-base">
         <div className="flex items-center justify-center">
@@ -125,7 +156,7 @@ export function RepoCard({
                 className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
                 title="Repo actions"
               >
-                <ArrowSquareOutIcon className="size-icon-base" weight="bold" />
+                <DotsThreeIcon className="size-icon-base" weight="bold" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -134,6 +165,9 @@ export function RepoCard({
               </DropdownMenuItem>
               <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
                 {tCommon('actions.openInIde')}
+              </DropdownMenuItem>
+              <DropdownMenuItem icon={GearIcon} onClick={onOpenSettings}>
+                {tCommon('actions.repoSettings')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -205,18 +239,52 @@ export function RepoCard({
               {t('git.pr.open', { number: prNumber })}
             </span>
           )}
+          {/* Push button - shows loading/success/error state */}
+          {(showPushButton ||
+            isPushPending ||
+            isPushSuccess ||
+            isPushError) && (
+            <button
+              onClick={onPushClick}
+              disabled={isPushPending || isPushSuccess || isPushError}
+              className={`inline-flex items-center gap-half px-base py-half rounded-sm text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                isPushSuccess
+                  ? 'bg-success/20 text-success'
+                  : isPushError
+                    ? 'bg-error/20 text-error'
+                    : 'bg-panel text-normal hover:bg-tertiary disabled:opacity-50'
+              }`}
+            >
+              {isPushPending ? (
+                <SpinnerGapIcon className="size-icon-xs animate-spin" />
+              ) : isPushSuccess ? (
+                <CheckCircleIcon className="size-icon-xs" weight="fill" />
+              ) : isPushError ? (
+                <WarningCircleIcon className="size-icon-xs" weight="fill" />
+              ) : (
+                <ArrowUpIcon className="size-icon-xs" weight="bold" />
+              )}
+              {isPushPending
+                ? t('git.states.pushing')
+                : isPushSuccess
+                  ? t('git.states.pushed')
+                  : isPushError
+                    ? t('git.states.pushFailed')
+                    : t('git.states.push')}
+            </button>
+          )}
         </div>
       )}
 
       {/* Actions row */}
       <div className="my-base">
         <SplitButton
-          options={repoActionOptions}
-          selectedValue={selectedAction}
+          options={availableActionOptions}
+          selectedValue={effectiveSelectedAction}
           onSelectionChange={setSelectedAction}
           onAction={(action) => onActionsClick?.(action)}
         />
       </div>
-    </CollapsibleSection>
+    </div>
   );
 }

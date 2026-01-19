@@ -22,8 +22,8 @@ import {
   CreateProject,
   CreateProjectRepo,
   UpdateRepo,
+  SearchMode,
   SearchResult,
-  ShareTaskResponse,
   Task,
   TaskRelationships,
   Tag,
@@ -78,8 +78,6 @@ import {
   PushError,
   TokenResponse,
   CurrentUserResponse,
-  SharedTaskResponse,
-  SharedTaskDetails,
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
@@ -88,6 +86,8 @@ import {
   AbortConflictsRequest,
   Session,
   Workspace,
+  StartReviewRequest,
+  ReviewError,
 } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -281,7 +281,7 @@ export const projectsApi = {
   searchFiles: async (
     id: string,
     query: string,
-    mode?: string,
+    mode?: SearchMode,
     options?: RequestInit
   ): Promise<SearchResult[]> => {
     const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
@@ -398,47 +398,6 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
-
-  share: async (taskId: string): Promise<ShareTaskResponse> => {
-    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
-      method: 'POST',
-    });
-    return handleApiResponse<ShareTaskResponse>(response);
-  },
-
-  reassign: async (
-    sharedTaskId: string,
-    data: { new_assignee_user_id: string | null }
-  ): Promise<SharedTaskResponse> => {
-    const payload = {
-      new_assignee_user_id: data.new_assignee_user_id,
-    };
-
-    const response = await makeRequest(
-      `/api/shared-tasks/${sharedTaskId}/assign`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }
-    );
-
-    return handleApiResponse<SharedTaskResponse>(response);
-  },
-
-  unshare: async (sharedTaskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-
-  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
-    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Task | null>(response);
-  },
 };
 
 // Sessions API
@@ -476,6 +435,17 @@ export const sessionsApi = {
     });
     return handleApiResponse<ExecutionProcess>(response);
   },
+
+  startReview: async (
+    sessionId: string,
+    data: StartReviewRequest
+  ): Promise<ExecutionProcess> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ExecutionProcess, ReviewError>(response);
+  },
 };
 
 // Task Attempts APIs
@@ -496,6 +466,12 @@ export const attemptsApi = {
   getAllWorkspaces: async (): Promise<Workspace[]> => {
     const response = await makeRequest('/api/task-attempts');
     return handleApiResponse<Workspace[]>(response);
+  },
+
+  /** Get total count of workspaces */
+  getCount: async (): Promise<number> => {
+    const response = await makeRequest('/api/task-attempts/count');
+    return handleApiResponse<number>(response);
   },
 
   get: async (attemptId: string): Promise<Workspace> => {
@@ -543,6 +519,18 @@ export const attemptsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  searchFiles: async (
+    workspaceId: string,
+    query: string,
+    mode?: string
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${workspaceId}/search?q=${encodeURIComponent(query)}${modeParam}`
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 
   runAgentSetup: async (
@@ -881,6 +869,20 @@ export const repoApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  searchFiles: async (
+    repoId: string,
+    query: string,
+    mode?: SearchMode,
+    options?: RequestInit
+  ): Promise<SearchResult[]> => {
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const response = await makeRequest(
+      `/api/repos/${repoId}/search?q=${encodeURIComponent(query)}${modeParam}`,
+      options
+    );
+    return handleApiResponse<SearchResult[]>(response);
   },
 };
 

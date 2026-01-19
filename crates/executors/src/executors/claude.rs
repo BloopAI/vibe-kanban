@@ -18,13 +18,13 @@ use workspace_utils::{
 };
 
 use self::{
-    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
+    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient, STOP_GIT_CHECK_CALLBACK_ID},
     protocol::ProtocolPeer,
-    types::PermissionMode,
+    types::{ControlRequestType, ControlResponseType, PermissionMode},
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -43,7 +43,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.76"
+        "npx -y @anthropic-ai/claude-code@2.1.7"
     }
 }
 
@@ -76,7 +76,7 @@ pub struct ClaudeCode {
 }
 
 impl ClaudeCode {
-    async fn build_command_builder(&self) -> CommandBuilder {
+    async fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         // If base_command_override is provided and claude_code_router is also set, log a warning
         if self.cmd.base_command_override.is_some() && self.claude_code_router.is_some() {
             tracing::warn!(
@@ -128,10 +128,23 @@ impl ClaudeCode {
         }
     }
 
-    pub fn get_hooks(&self) -> Option<serde_json::Value> {
+    pub fn get_hooks(&self, commit_reminder: bool) -> Option<serde_json::Value> {
+        let mut hooks = serde_json::Map::new();
+
+        if commit_reminder {
+            hooks.insert(
+                "Stop".to_string(),
+                serde_json::json!([{
+                    "hookCallbackIds": [STOP_GIT_CHECK_CALLBACK_ID]
+                }]),
+            );
+        }
+
+        // Add PreToolUse hooks based on plan/approvals settings
         if self.plan.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
+            hooks.insert(
+                "PreToolUse".to_string(),
+                serde_json::json!([
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
@@ -140,20 +153,21 @@ impl ClaudeCode {
                         "matcher": "^(?!ExitPlanMode$).*",
                         "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
                     }
-                ]
-            }))
+                ]),
+            );
         } else if self.approvals.unwrap_or(false) {
-            Some(serde_json::json!({
-                "PreToolUse": [
+            hooks.insert(
+                "PreToolUse".to_string(),
+                serde_json::json!([
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
                         "hookCallbackIds": ["tool_approval"],
                     }
-                ]
-            }))
-        } else {
-            None
+                ]),
+            );
         }
+
+        Some(serde_json::Value::Object(hooks))
     }
 }
 
@@ -169,7 +183,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_builder = self.build_command_builder().await;
+        let command_builder = self.build_command_builder().await?;
         let command_parts = command_builder.build_initial()?;
         self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
@@ -182,7 +196,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command_builder = self.build_command_builder().await;
+        let command_builder = self.build_command_builder().await?;
         let command_parts = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
@@ -271,7 +285,7 @@ impl ClaudeCode {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let permission_mode = self.permission_mode();
-        let hooks = self.get_hooks();
+        let hooks = self.get_hooks(env.commit_reminder);
 
         // Create interrupt channel for graceful shutdown
         let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel::<()>();
@@ -279,9 +293,10 @@ impl ClaudeCode {
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
+        let repo_context = env.repo_context.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, repo_context);
             let protocol_peer =
                 ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
 
@@ -323,6 +338,9 @@ pub enum HistoryStrategy {
     AmpResume,
 }
 
+/// Default context window for models (used until we get actual value from result)
+const DEFAULT_CLAUDE_CONTEXT_WINDOW: u32 = 200_000;
+
 /// Handles log processing and interpretation for Claude executor
 pub struct ClaudeLogProcessor {
     model_name: Option<String>,
@@ -332,6 +350,10 @@ pub struct ClaudeLogProcessor {
     strategy: HistoryStrategy,
     streaming_messages: HashMap<String, StreamingMessageState>,
     streaming_message_id: Option<String>,
+    // Main model name (excluding subagents). Only used internally for context window tracking.
+    main_model_name: Option<String>,
+    main_model_context_window: u32,
+    context_tokens_used: u32,
 }
 
 impl ClaudeLogProcessor {
@@ -343,10 +365,13 @@ impl ClaudeLogProcessor {
     fn new_with_strategy(strategy: HistoryStrategy) -> Self {
         Self {
             model_name: None,
+            main_model_name: None,
             tool_map: HashMap::new(),
             strategy,
             streaming_messages: HashMap::new(),
             streaming_message_id: None,
+            main_model_context_window: DEFAULT_CLAUDE_CONTEXT_WINDOW,
+            context_tokens_used: 0,
         }
     }
 
@@ -466,6 +491,9 @@ impl ClaudeLogProcessor {
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { .. } => None, // session might not have been initialized yet
             ClaudeJson::ApprovalResponse { .. } => None,
+            ClaudeJson::ControlRequest { .. } => None,
+            ClaudeJson::ControlResponse { .. } => None,
+            ClaudeJson::ControlCancelRequest { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -751,6 +779,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::System {
                 subtype,
                 api_key_source,
+                model,
                 ..
             } => {
                 // emit billing warning if required
@@ -762,6 +791,12 @@ impl ClaudeLogProcessor {
                 // keep the existing behaviour for the normal system message
                 match subtype.as_deref() {
                     Some("init") => {
+                        if self.main_model_name.is_none() {
+                            // this name matches the model names in the usage report in the result message
+                            if let Some(model) = model {
+                                self.main_model_name = Some(model.clone());
+                            }
+                        }
                         // Skip system init messages because it doesn't contain the actual model that will be used in assistant messages in case of claude-code-router.
                         // We'll send system initialized message with first assistant message that has a model field.
                     }
@@ -877,7 +912,11 @@ impl ClaudeLogProcessor {
                     }
                 }
             }
-            ClaudeJson::User { message, .. } => {
+            ClaudeJson::User {
+                message,
+                is_synthetic,
+                ..
+            } => {
                 if matches!(self.strategy, HistoryStrategy::AmpResume)
                     && message
                         .content
@@ -902,6 +941,21 @@ impl ClaudeLogProcessor {
                                 metadata: Some(
                                     serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
                                 ),
+                            };
+                            let id = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(id, entry));
+                        }
+                    }
+                }
+
+                if *is_synthetic {
+                    for item in &message.content {
+                        if let ClaudeContentItem::Text { text } = item {
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::SystemMessage,
+                                content: text.clone(),
+                                metadata: None,
                             };
                             let id = entry_index_provider.next();
                             patches.push(ConversationPatch::add_normalized_entry(id, entry));
@@ -1066,7 +1120,11 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolResult { .. } => {
                 // Add proper ToolResult support to NormalizedEntry when the type system supports it
             }
-            ClaudeJson::StreamEvent { event, .. } => match event {
+            ClaudeJson::StreamEvent {
+                event,
+                parent_tool_use_id,
+                ..
+            } => match event {
                 ClaudeStreamEvent::MessageStart { message } => {
                     if message.role == "assistant" {
                         if let Some(patch) = extract_model_name(self, message, entry_index_provider)
@@ -1115,7 +1173,21 @@ impl ClaudeLogProcessor {
                     }
                 }
                 ClaudeStreamEvent::ContentBlockStop { .. } => {}
-                ClaudeStreamEvent::MessageDelta { .. } => {}
+                ClaudeStreamEvent::MessageDelta { usage, .. } => {
+                    // do not report context token usage for subagents
+                    if parent_tool_use_id.is_none()
+                        && let Some(usage) = usage
+                    {
+                        let input_tokens = usage.input_tokens.unwrap_or(0)
+                            + usage.cache_creation_input_tokens.unwrap_or(0)
+                            + usage.cache_read_input_tokens.unwrap_or(0);
+                        let output_tokens = usage.output_tokens.unwrap_or(0);
+                        let total_tokens = input_tokens + output_tokens;
+                        self.context_tokens_used = total_tokens as u32;
+
+                        patches.push(self.add_token_usage_entry(entry_index_provider));
+                    }
+                }
                 ClaudeStreamEvent::MessageStop => {
                     if let Some(message_id) = self.streaming_message_id.take() {
                         let _ = self.streaming_messages.remove(&message_id);
@@ -1123,7 +1195,22 @@ impl ClaudeLogProcessor {
                 }
                 ClaudeStreamEvent::Unknown => {}
             },
-            ClaudeJson::Result { is_error, .. } => {
+            ClaudeJson::Result {
+                is_error,
+                model_usage,
+                ..
+            } => {
+                // get the real model context window and correct the context usage entry
+                if let Some(context_window) = model_usage.as_ref().and_then(|model_usage| {
+                    self.main_model_name
+                        .as_ref()
+                        .and_then(|name| model_usage.get(name))
+                        .and_then(|usage| usage.context_window)
+                }) {
+                    self.main_model_context_window = context_window;
+                    patches.push(self.add_token_usage_entry(entry_index_provider));
+                }
+
                 if matches!(self.strategy, HistoryStrategy::AmpResume) && is_error.unwrap_or(false)
                 {
                     let entry = NormalizedEntry {
@@ -1190,6 +1277,9 @@ impl ClaudeLogProcessor {
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
             }
+            ClaudeJson::ControlRequest { .. }
+            | ClaudeJson::ControlResponse { .. }
+            | ClaudeJson::ControlCancelRequest { .. } => {}
         }
         patches
     }
@@ -1284,6 +1374,26 @@ impl ClaudeLogProcessor {
                 _ => tool_data.get_name().to_string(),
             },
         }
+    }
+
+    fn add_token_usage_entry(
+        &mut self,
+        entry_index_provider: &EntryIndexProvider,
+    ) -> json_patch::Patch {
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::TokenUsageInfo(crate::logs::TokenUsageInfo {
+                total_tokens: self.context_tokens_used,
+                model_context_window: self.main_model_context_window,
+            }),
+            content: format!(
+                "Tokens used: {} / Context window: {}",
+                self.context_tokens_used, self.main_model_context_window
+            ),
+            metadata: None,
+        };
+        let idx = entry_index_provider.next();
+        ConversationPatch::add_normalized_entry(idx, entry)
     }
 }
 
@@ -1446,9 +1556,8 @@ impl StreamingContentState {
 
 // Data structures for parsing Claude's JSON output format
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClaudeJson {
-    #[serde(rename = "system")]
     System {
         subtype: Option<String>,
         session_id: Option<String>,
@@ -1458,30 +1567,27 @@ pub enum ClaudeJson {
         #[serde(default, rename = "apiKeySource")]
         api_key_source: Option<String>,
     },
-    #[serde(rename = "assistant")]
     Assistant {
         message: ClaudeMessage,
         session_id: Option<String>,
     },
-    #[serde(rename = "user")]
     User {
         message: ClaudeMessage,
         session_id: Option<String>,
+        #[serde(default, rename = "isSynthetic")]
+        is_synthetic: bool,
     },
-    #[serde(rename = "tool_use")]
     ToolUse {
         tool_name: String,
         #[serde(flatten)]
         tool_data: ClaudeToolData,
         session_id: Option<String>,
     },
-    #[serde(rename = "tool_result")]
     ToolResult {
         result: serde_json::Value,
         is_error: Option<bool>,
         session_id: Option<String>,
     },
-    #[serde(rename = "stream_event")]
     StreamEvent {
         event: ClaudeStreamEvent,
         #[serde(default)]
@@ -1491,7 +1597,6 @@ pub enum ClaudeJson {
         #[serde(default)]
         uuid: Option<String>,
     },
-    #[serde(rename = "result")]
     Result {
         #[serde(default)]
         subtype: Option<String>,
@@ -1507,12 +1612,25 @@ pub enum ClaudeJson {
         num_turns: Option<u32>,
         #[serde(default, alias = "sessionId")]
         session_id: Option<String>,
+        #[serde(default, alias = "modelUsage")]
+        model_usage: Option<HashMap<String, ClaudeModelUsage>>,
+        #[serde(default)]
+        usage: Option<ClaudeUsage>,
     },
-    #[serde(rename = "approval_response")]
     ApprovalResponse {
         call_id: String,
         tool_name: String,
         approval_status: ApprovalStatus,
+    },
+    ControlRequest {
+        request_id: String,
+        request: ControlRequestType,
+    },
+    ControlResponse {
+        response: ControlResponseType,
+    },
+    ControlCancelRequest {
+        request_id: String,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
@@ -1615,6 +1733,14 @@ pub struct ClaudeUsage {
     pub cache_read_input_tokens: Option<u64>,
     #[serde(default)]
     pub service_tier: Option<String>,
+}
+
+/// Per-model usage statistics from result message
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeModelUsage {
+    #[serde(default)]
+    pub context_window: Option<u32>,
 }
 
 /// Structured tool data for Claude tools based on real samples

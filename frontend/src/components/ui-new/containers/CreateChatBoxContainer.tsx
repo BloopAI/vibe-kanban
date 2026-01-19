@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -11,6 +12,7 @@ import { CreateChatBox } from '../primitives/CreateChatBox';
 
 export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
+  const navigate = useNavigate();
   const { profiles, config, updateAndSaveConfig } = useUserSystem();
   const {
     repos,
@@ -100,6 +102,11 @@ export function CreateChatBoxContainer() {
     [effectiveProfile, setSelectedProfile]
   );
 
+  // Navigate to agent settings to customise variants
+  const handleCustomise = useCallback(() => {
+    navigate('/settings/agents');
+  }, [navigate]);
+
   // Handle executor change - use saved variant if switching to default executor
   const handleExecutorChange = useCallback(
     (executor: BaseCodingAgent) => {
@@ -155,7 +162,6 @@ export function CreateChatBoxContainer() {
         status: null,
         parent_workspace_id: null,
         image_ids: getImageIds(),
-        shared_task_id: null,
       },
       executor_profile_id: effectiveProfile,
       repos: repos.map((r) => ({
@@ -235,6 +241,7 @@ export function CreateChatBoxContainer() {
                   selected: effectiveProfile.variant ?? 'DEFAULT',
                   options: variantOptions,
                   onChange: handleVariantChange,
+                  onCustomise: handleCustomise,
                 }
               : undefined
           }

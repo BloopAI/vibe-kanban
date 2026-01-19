@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::rust::double_option;
 use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
@@ -35,12 +36,53 @@ pub struct Repo {
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]
 pub struct UpdateRepo {
-    pub display_name: Option<String>,
-    pub setup_script: Option<String>,
-    pub cleanup_script: Option<String>,
-    pub copy_files: Option<String>,
-    pub parallel_setup_script: Option<bool>,
-    pub dev_server_script: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub display_name: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub setup_script: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub cleanup_script: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub copy_files: Option<Option<String>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "boolean | null")]
+    pub parallel_setup_script: Option<Option<bool>>,
+
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    #[ts(optional, type = "string | null")]
+    pub dev_server_script: Option<Option<String>>,
 }
 
 impl Repo {
@@ -203,17 +245,33 @@ impl Repo {
             .await?
             .ok_or(RepoError::NotFound)?;
 
-        let display_name = payload
-            .display_name
-            .clone()
-            .unwrap_or(existing.display_name);
-        let setup_script = payload.setup_script.clone();
-        let cleanup_script = payload.cleanup_script.clone();
-        let copy_files = payload.copy_files.clone();
-        let parallel_setup_script = payload
-            .parallel_setup_script
-            .unwrap_or(existing.parallel_setup_script);
-        let dev_server_script = payload.dev_server_script.clone();
+        // None = don't update (use existing)
+        // Some(None) = set to NULL
+        // Some(Some(v)) = set to v
+        let display_name = match &payload.display_name {
+            None => existing.display_name,
+            Some(v) => v.clone().unwrap_or_default(),
+        };
+        let setup_script = match &payload.setup_script {
+            None => existing.setup_script,
+            Some(v) => v.clone(),
+        };
+        let cleanup_script = match &payload.cleanup_script {
+            None => existing.cleanup_script,
+            Some(v) => v.clone(),
+        };
+        let copy_files = match &payload.copy_files {
+            None => existing.copy_files,
+            Some(v) => v.clone(),
+        };
+        let parallel_setup_script = match &payload.parallel_setup_script {
+            None => existing.parallel_setup_script,
+            Some(v) => v.unwrap_or(false),
+        };
+        let dev_server_script = match &payload.dev_server_script {
+            None => existing.dev_server_script,
+            Some(v) => v.clone(),
+        };
 
         sqlx::query_as!(
             Repo,

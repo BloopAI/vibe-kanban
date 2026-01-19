@@ -6,61 +6,94 @@ import {
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
 
+export type HeaderActionIcon = {
+  icon: Icon;
+  onClick: () => void;
+  isActive?: boolean;
+};
+
 interface CollapsibleSectionHeaderProps {
-  persistKey: PersistKey;
+  persistKey?: PersistKey;
   title: string;
   defaultExpanded?: boolean;
+  collapsible?: boolean;
   icon?: Icon;
   onIconClick?: () => void;
+  actionIcons?: HeaderActionIcon[];
   children?: React.ReactNode;
   className?: string;
-  contentClassName?: string;
 }
 
 export function CollapsibleSectionHeader({
   persistKey,
   title,
   defaultExpanded = true,
+  collapsible = true,
   icon: IconComponent,
   onIconClick,
+  actionIcons,
   children,
   className,
-  contentClassName,
 }: CollapsibleSectionHeaderProps) {
-  const [expanded, toggle] = usePersistedExpanded(persistKey, defaultExpanded);
+  const [expanded, toggle] = usePersistedExpanded(
+    persistKey ?? ('unused-key' as PersistKey),
+    defaultExpanded
+  );
 
-  const handleIconClick = (e: React.MouseEvent) => {
+  const handleIconClick = (e: React.MouseEvent, callback?: () => void) => {
     e.stopPropagation();
-    onIconClick?.();
+    callback?.();
   };
 
-  return (
-    <div className={cn('flex flex-col h-full overflow-auto', className)}>
-      <button
-        type="button"
-        onClick={() => toggle()}
-        className={cn(
-          'flex items-center justify-between w-full border-b px-base py-half bg-secondary border-l-half border-l-low cursor-pointer'
-        )}
-      >
-        <span className="font-medium truncate text-normal">{title}</span>
-        <div className="flex items-center gap-half">
-          {IconComponent && onIconClick && (
+  const isExpanded = collapsible ? expanded : true;
+
+  const headerContent = (
+    <>
+      <span className="font-medium truncate text-normal">{title}</span>
+      <div className="flex items-center gap-half">
+        {actionIcons?.map((action, index) => {
+          const ActionIcon = action.icon;
+          return (
             <span
+              key={index}
               role="button"
               tabIndex={0}
-              onClick={handleIconClick}
+              onClick={(e) => handleIconClick(e, action.onClick)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleIconClick(e as unknown as React.MouseEvent);
+                  handleIconClick(
+                    e as unknown as React.MouseEvent,
+                    action.onClick
+                  );
                 }
               }}
-              className="text-low hover:text-normal"
+              className={cn(
+                'hover:text-normal',
+                action.isActive ? 'text-brand' : 'text-low'
+              )}
             >
-              <IconComponent className="size-icon-xs" weight="bold" />
+              <ActionIcon className="size-icon-xs" weight="bold" />
             </span>
-          )}
+          );
+        })}
+        {IconComponent && onIconClick && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => handleIconClick(e, onIconClick)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleIconClick(e as unknown as React.MouseEvent, onIconClick);
+              }
+            }}
+            className="text-low hover:text-normal"
+          >
+            <IconComponent className="size-icon-xs" weight="bold" />
+          </span>
+        )}
+        {collapsible && (
           <CaretDownIcon
             weight="fill"
             className={cn(
@@ -68,9 +101,35 @@ export function CollapsibleSectionHeader({
               !expanded && '-rotate-90'
             )}
           />
-        </div>
-      </button>
-      {expanded && <div className={contentClassName}>{children}</div>}
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
+      <div className="">
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => toggle()}
+            className={cn(
+              'flex items-center justify-between w-full px-base py-half cursor-pointer'
+            )}
+          >
+            {headerContent}
+          </button>
+        ) : (
+          <div
+            className={cn(
+              'flex items-center justify-between w-full px-base py-half'
+            )}
+          >
+            {headerContent}
+          </div>
+        )}
+      </div>
+      {isExpanded && children}
     </div>
   );
 }

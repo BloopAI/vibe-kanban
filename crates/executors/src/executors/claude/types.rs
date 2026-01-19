@@ -16,6 +16,9 @@ pub enum CLIMessage {
     ControlResponse {
         response: ControlResponseType,
     },
+    ControlCancelRequest {
+        request_id: String,
+    },
     Result(serde_json::Value),
     #[serde(untagged)]
     Other(serde_json::Value),
@@ -68,6 +71,8 @@ pub enum ControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         permission_suggestions: Option<Vec<PermissionUpdate>>,
         #[serde(skip_serializing_if = "Option::is_none")]
+        blocked_paths: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         tool_use_id: Option<String>,
     },
     HookCallback {
@@ -103,6 +108,8 @@ pub enum PermissionUpdateType {
     AddRules,
     RemoveRules,
     ClearRules,
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -112,17 +119,26 @@ pub enum PermissionUpdateDestination {
     UserSettings,
     ProjectSettings,
     LocalSettings,
+    #[serde(other)]
+    Unknown,
 }
 
 /// Permission update operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct PermissionUpdate {
     #[serde(rename = "type")]
     pub update_type: PermissionUpdateType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<PermissionMode>,
-    pub destination: PermissionUpdateDestination,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination: Option<PermissionUpdateDestination>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub behavior: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub directories: Option<Vec<String>>,
 }
 
 /// Control response from SDK to CLI

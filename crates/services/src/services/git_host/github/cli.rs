@@ -28,6 +28,17 @@ pub struct GitHubRepoInfo {
 }
 
 #[derive(Deserialize)]
+struct GhRepoViewResponse {
+    owner: GhRepoOwner,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct GhRepoOwner {
+    login: String,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhCommentResponse {
     id: String,
@@ -155,21 +166,20 @@ impl GhCli {
         Err(GhCliError::CommandFailed(stderr))
     }
 
-    /// Get repository info (owner and name) from a local repository path.
-    pub fn get_repo_info(&self, repo_path: &Path) -> Result<GitHubRepoInfo, GhCliError> {
-        let raw = self.run(["repo", "view", "--json", "owner,name"], Some(repo_path))?;
+    pub fn get_repo_info(
+        &self,
+        remote_url: &str,
+        repo_path: &Path,
+    ) -> Result<GitHubRepoInfo, GhCliError> {
+        let raw = self.run(
+            ["repo", "view", remote_url, "--json", "owner,name"],
+            Some(repo_path),
+        )?;
+        Self::parse_repo_info_response(&raw)
+    }
 
-        #[derive(Deserialize)]
-        struct Response {
-            owner: Owner,
-            name: String,
-        }
-        #[derive(Deserialize)]
-        struct Owner {
-            login: String,
-        }
-
-        let resp: Response = serde_json::from_str(&raw).map_err(|e| {
+    fn parse_repo_info_response(raw: &str) -> Result<GitHubRepoInfo, GhCliError> {
+        let resp: GhRepoViewResponse = serde_json::from_str(raw).map_err(|e| {
             GhCliError::UnexpectedOutput(format!("Failed to parse gh repo view response: {e}"))
         })?;
 
@@ -180,11 +190,16 @@ impl GhCli {
     }
 
     /// Run `gh pr create` and parse the response.
+    ///
+    /// The `repo_path` parameter specifies the working directory for the command.
+    /// This is required for compatibility with older `gh` CLI versions (e.g., v2.4.0)
+    /// that require running from within a git repository.
     pub fn create_pr(
         &self,
         request: &CreatePrRequest,
         owner: &str,
         repo_name: &str,
+        repo_path: &Path,
     ) -> Result<PullRequestInfo, GhCliError> {
         // Write body to temp file to avoid shell escaping and length issues
         let body = request.body.as_deref().unwrap_or("");
@@ -212,7 +227,7 @@ impl GhCli {
             args.push(OsString::from("--draft"));
         }
 
-        let raw = self.run(args, None)?;
+        let raw = self.run(args, Some(repo_path))?;
         Self::parse_pr_create_text(&raw)
     }
 
