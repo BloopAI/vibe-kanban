@@ -104,24 +104,24 @@ pub struct RepoDetails {
 pub struct UpdateSetupScriptRequest {
     #[schemars(description = "The ID of the repository to update")]
     pub repo_id: Uuid,
-    #[schemars(description = "The new setup script content (or null to clear)")]
-    pub script: Option<String>,
+    #[schemars(description = "The new setup script content (use empty string to clear)")]
+    pub script: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateCleanupScriptRequest {
     #[schemars(description = "The ID of the repository to update")]
     pub repo_id: Uuid,
-    #[schemars(description = "The new cleanup script content (or null to clear)")]
-    pub script: Option<String>,
+    #[schemars(description = "The new cleanup script content (use empty string to clear)")]
+    pub script: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateDevServerScriptRequest {
     #[schemars(description = "The ID of the repository to update")]
     pub repo_id: Uuid,
-    #[schemars(description = "The new dev server script content (or null to clear)")]
-    pub script: Option<String>,
+    #[schemars(description = "The new dev server script content (use empty string to clear)")]
+    pub script: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -699,8 +699,13 @@ impl TaskServer {
         >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
         let payload = serde_json::json!({
-            "setup_script": script
+            "setup_script": script_value
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
@@ -723,8 +728,13 @@ impl TaskServer {
         >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
         let payload = serde_json::json!({
-            "cleanup_script": script
+            "cleanup_script": script_value
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
@@ -747,8 +757,13 @@ impl TaskServer {
         >,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/repos/{}", repo_id));
+        let script_value = if script.is_empty() {
+            None
+        } else {
+            Some(script)
+        };
         let payload = serde_json::json!({
-            "dev_server_script": script
+            "dev_server_script": script_value
         });
         let _repo: Repo = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(r) => r,
