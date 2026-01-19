@@ -1,5 +1,10 @@
 import { useMemo } from 'react';
-import { PlusIcon, ArrowLeftIcon, ArchiveIcon, StackIcon } from '@phosphor-icons/react';
+import {
+  PlusIcon,
+  ArrowLeftIcon,
+  ArchiveIcon,
+  StackIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { InputField } from '@/components/ui-new/primitives/InputField';
@@ -100,13 +105,20 @@ export function WorkspacesSidebar({
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
   // Categorize workspaces for accordion layout
-  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } = useMemo(() => {
-    return {
-      raisedHandWorkspaces: filteredWorkspaces.filter(ws => ws.hasPendingApproval),
-      idleWorkspaces: filteredWorkspaces.filter(ws => !ws.isRunning && !ws.hasPendingApproval),
-      runningWorkspaces: filteredWorkspaces.filter(ws => ws.isRunning && !ws.hasPendingApproval),
-    };
-  }, [filteredWorkspaces]);
+  const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
+    useMemo(() => {
+      return {
+        raisedHandWorkspaces: filteredWorkspaces.filter(
+          (ws) => ws.hasPendingApproval
+        ),
+        idleWorkspaces: filteredWorkspaces.filter(
+          (ws) => !ws.isRunning && !ws.hasPendingApproval
+        ),
+        runningWorkspaces: filteredWorkspaces.filter(
+          (ws) => ws.isRunning && !ws.hasPendingApproval
+        ),
+      };
+    }, [filteredWorkspaces]);
 
   const headerActionIcons: HeaderActionIcon[] = [
     {

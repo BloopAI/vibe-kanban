@@ -62,7 +62,10 @@ export function CollapsibleSectionHeader({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleIconClick(e as unknown as React.MouseEvent, action.onClick);
+                  handleIconClick(
+                    e as unknown as React.MouseEvent,
+                    action.onClick
+                  );
                 }
               }}
               className={cn(

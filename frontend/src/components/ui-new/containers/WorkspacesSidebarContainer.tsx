@@ -34,7 +34,9 @@ export function WorkspacesSidebarContainer() {
     false
   );
 
-  const layoutMode: WorkspaceLayoutMode = isAccordionLayout ? 'accordion' : 'flat';
+  const layoutMode: WorkspaceLayoutMode = isAccordionLayout
+    ? 'accordion'
+    : 'flat';
   const toggleLayoutMode = () => setAccordionLayout(!isAccordionLayout);
 
   // Read persisted draft for sidebar placeholder
