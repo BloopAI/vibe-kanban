@@ -193,7 +193,8 @@
     "repoSettings": "Paramètres du dépôt",
     "cancel": "Annuler",
     "saveChanges": "Enregistrer les modifications",
-    "copied": "Copié"
+    "copied": "Copié",
+    "collapse": "Réduire"
   },
   "comments": {
     "addReviewComment": "Ajouter un commentaire de révision",
@@ -285,7 +286,8 @@
     "selectProcessToView": "Sélectionnez un processus pour voir les logs"
   },
   "processes": {
-    "noProcesses": "Aucun processus"
+    "noProcesses": "Aucun processus",
+    "terminal": "Terminal"
   },
   "search": {
     "matchCount": "{{current}} sur {{total}}",
