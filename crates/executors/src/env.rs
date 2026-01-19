@@ -81,6 +81,10 @@ impl ExecutionEnv {
     pub fn contains_key(&self, key: &str) -> bool {
         self.vars.contains_key(key)
     }
+
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.vars.get(key)
+    }
 }
 
 #[cfg(test)]

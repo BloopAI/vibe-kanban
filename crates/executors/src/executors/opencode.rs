@@ -5,6 +5,7 @@ use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Map;
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
@@ -200,7 +201,7 @@ impl StandardCodingAgentExecutor for Opencode {
         prompt: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let env = setup_approvals_env(self.auto_approve, env);
+        let env = setup_permissions_env(self.auto_approve, env);
         self.spawn_inner(current_dir, prompt, None, &env).await
     }
 
@@ -211,7 +212,7 @@ impl StandardCodingAgentExecutor for Opencode {
         session_id: &str,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let env = setup_approvals_env(self.auto_approve, env);
+        let env = setup_permissions_env(self.auto_approve, env);
         self.spawn_inner(current_dir, prompt, Some(session_id), &env)
             .await
     }
@@ -253,10 +254,34 @@ fn default_to_true() -> bool {
     true
 }
 
-fn setup_approvals_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv {
+fn setup_permissions_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv {
     let mut env = env.clone();
-    if !auto_approve && !env.contains_key("OPENCODE_PERMISSION") {
-        env.insert("OPENCODE_PERMISSION", r#"{"edit": "ask", "bash": "ask", "webfetch": "ask", "doom_loop": "ask", "external_directory": "ask"}"#);
-    }
+
+    let permissions = match env.get("OPENCODE_PERMISSION") {
+        Some(existing) => merge_question_deny(existing),
+        None => build_default_permissions(auto_approve),
+    };
+
+    env.insert("OPENCODE_PERMISSION", &permissions);
     env
+}
+
+fn build_default_permissions(auto_approve: bool) -> String {
+    if auto_approve {
+        r#"{"question":"deny"}"#.to_string()
+    } else {
+        r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"deny"}"#.to_string()
+    }
+}
+
+fn merge_question_deny(existing_json: &str) -> String {
+    let mut permissions: Map<String, serde_json::Value> =
+        serde_json::from_str(existing_json.trim()).unwrap_or_default();
+
+    permissions.insert(
+        "question".to_string(),
+        serde_json::Value::String("deny".to_string()),
+    );
+
+    serde_json::to_string(&permissions).unwrap_or_else(|_| r#"{"question":"deny"}"#.to_string())
 }
