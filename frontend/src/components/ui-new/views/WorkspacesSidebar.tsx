@@ -6,7 +6,6 @@ import {
   StackIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
@@ -154,15 +153,10 @@ export function WorkspacesSidebar({
       </div>
 
       {/* Scrollable workspace list */}
-      <div
-        className={cn(
-          'flex-1 overflow-y-auto',
-          layoutMode === 'accordion' && !showArchive ? 'py-base' : 'p-base'
-        )}
-      >
+      <div className="flex-1 overflow-y-auto py-base">
         {showArchive ? (
           /* Archived workspaces view */
-          <div className="flex flex-col gap-base">
+          <div className="flex flex-col gap-base px-base">
             <span className="text-sm font-medium text-low">
               {t('common:workspaces.archived')}
             </span>
@@ -270,7 +264,7 @@ export function WorkspacesSidebar({
           </div>
         ) : (
           /* Active workspaces flat view */
-          <div className="flex flex-col gap-base">
+          <div className="flex flex-col gap-base px-base">
             <span className="text-sm font-medium text-low">
               {t('common:workspaces.active')}
             </span>
