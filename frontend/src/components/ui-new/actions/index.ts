@@ -6,6 +6,7 @@ import type { EditorType, ExecutionProcess, Workspace } from 'shared/types';
 import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
+import type { LayoutMode } from '@/stores/useUiPreferencesStore';
 import {
   CopyIcon,
   PushPinIcon,
@@ -39,6 +40,8 @@ import {
   ListIcon,
   MegaphoneIcon,
   QuestionIcon,
+  SquaresFourIcon,
+  KanbanIcon,
 } from '@phosphor-icons/react';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
 import {
@@ -106,6 +109,7 @@ export interface ActionExecutorContext {
 // Context for evaluating action visibility and state conditions
 export interface ActionVisibilityContext {
   // Layout state
+  layoutMode: LayoutMode;
   rightMainPanelMode:
     | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
     | null;
@@ -304,7 +308,7 @@ export const Actions = {
     icon: ArchiveIcon,
     shortcut: 'W A',
     requiresTarget: true,
-    isVisible: (ctx) => ctx.hasWorkspace,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.workspaceArchived,
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
@@ -382,7 +386,7 @@ export const Actions = {
     },
   },
 
-  SpinOffWorkspace: {
+SpinOffWorkspace: {
     id: 'spin-off-workspace',
     label: 'Spin off workspace',
     icon: GitForkIcon,
@@ -407,6 +411,29 @@ export const Actions = {
       } catch {
         ctx.navigate('/workspaces/create');
       }
+    },
+  },
+
+  // === Layout Mode Actions ===
+  ToggleWorkspacesMode: {
+    id: 'toggle-workspaces-mode',
+    label: 'Workspaces Layout',
+    icon: SquaresFourIcon,
+    requiresTarget: false,
+    isActive: (ctx) => ctx.layoutMode === 'workspaces',
+    execute: () => {
+      useUiPreferencesStore.getState().setLayoutMode('workspaces');
+    },
+  },
+
+  ToggleKanbanMode: {
+    id: 'toggle-kanban-mode',
+    label: 'Kanban Layout',
+    icon: KanbanIcon,
+    requiresTarget: false,
+    isActive: (ctx) => ctx.layoutMode === 'kanban',
+    execute: () => {
+      useUiPreferencesStore.getState().setLayoutMode('kanban');
     },
   },
 
@@ -488,7 +515,8 @@ export const Actions = {
     icon: ColumnsIcon,
     requiresTarget: false,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.diffViewMode === 'split',
     getIcon: (ctx) => (ctx.diffViewMode === 'split' ? ColumnsIcon : RowsIcon),
     getTooltip: (ctx) =>
@@ -507,7 +535,8 @@ export const Actions = {
     icon: EyeSlashIcon,
     requiresTarget: false,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setIgnoreWhitespace(!store.ignoreWhitespace);
@@ -524,7 +553,8 @@ export const Actions = {
     shortcut: 'T W',
     requiresTarget: false,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     execute: () => {
       const store = useDiffViewStore.getState();
       store.setWrapText(!store.wrapText);
@@ -541,6 +571,7 @@ export const Actions = {
     icon: SidebarSimpleIcon,
     shortcut: 'V S',
     requiresTarget: false,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isLeftSidebarVisible,
     execute: () => {
       useUiPreferencesStore.getState().toggleLeftSidebar();
@@ -553,6 +584,7 @@ export const Actions = {
     icon: ChatsTeardropIcon,
     shortcut: 'V H',
     requiresTarget: false,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
       !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
@@ -573,6 +605,7 @@ export const Actions = {
         : 'Show Right Sidebar',
     icon: RightSidebarIcon,
     requiresTarget: false,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.isRightSidebarVisible,
     execute: () => {
       useUiPreferencesStore.getState().toggleRightSidebar();
@@ -585,7 +618,7 @@ export const Actions = {
     icon: GitDiffIcon,
     shortcut: 'V C',
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isEnabled: (ctx) => !ctx.isCreateMode,
@@ -609,7 +642,7 @@ export const Actions = {
     icon: TerminalIcon,
     shortcut: 'V L',
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
@@ -632,7 +665,7 @@ export const Actions = {
     icon: DesktopIcon,
     shortcut: 'V P',
     requiresTarget: false,
-    isVisible: (ctx) => !ctx.isCreateMode,
+    isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
     isEnabled: (ctx) => !ctx.isCreateMode,
@@ -656,6 +689,7 @@ export const Actions = {
     label: 'Open in Old UI',
     icon: SignOutIcon,
     requiresTarget: false,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     execute: async (ctx) => {
       // If no workspace is selected, navigate to root
       if (!ctx.currentWorkspaceId) {
@@ -696,7 +730,8 @@ export const Actions = {
     icon: CaretDoubleUpIcon,
     requiresTarget: false,
     isVisible: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+      ctx.layoutMode === 'workspaces',
     getIcon: (ctx) =>
       ctx.isAllDiffsExpanded ? CaretDoubleUpIcon : CaretDoubleDownIcon,
     getTooltip: (ctx) =>
@@ -1091,7 +1126,13 @@ export type NavbarItem = ActionDefinition | typeof NavbarDivider;
 
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
-  left: [Actions.ArchiveWorkspace, Actions.OpenInOldUI] as ActionDefinition[],
+  left: [
+    Actions.ToggleWorkspacesMode,
+    Actions.ToggleKanbanMode,
+    NavbarDivider,
+    Actions.ArchiveWorkspace,
+    Actions.OpenInOldUI,
+  ] as NavbarItem[],
   right: [
     Actions.ToggleDiffViewMode,
     Actions.ToggleAllDiffs,
