@@ -33,6 +33,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
+  const layoutMode = useUiPreferencesStore((s) => s.layoutMode);
   const { config } = useUserSystem();
   const { isStarting, isStopping, runningDevServers } =
     useDevServer(workspaceId);
@@ -67,6 +68,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       false;
 
     return {
+      layoutMode,
       rightMainPanelMode: panelState.rightMainPanelMode,
       isLeftSidebarVisible: panelState.isLeftSidebarVisible,
       isLeftMainPanelVisible: panelState.isLeftMainPanelVisible,
@@ -87,6 +89,7 @@ export function useActionVisibilityContext(): ActionVisibilityContext {
       isAttemptRunning: isAttemptRunningVisible,
     };
   }, [
+    layoutMode,
     panelState.rightMainPanelMode,
     panelState.isLeftSidebarVisible,
     panelState.isLeftMainPanelVisible,
