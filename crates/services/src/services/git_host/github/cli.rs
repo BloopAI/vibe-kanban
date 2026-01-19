@@ -108,12 +108,19 @@ struct GhPrListExtendedResponse {
     head_ref_name: String,
     base_ref_name: String,
     head_repository: Option<GhPrHeadRepository>,
+    head_repository_owner: Option<GhPrHeadRepositoryOwner>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GhPrHeadRepository {
-    url: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GhPrHeadRepositoryOwner {
+    login: String,
 }
 
 #[derive(Debug, Error)]
@@ -301,7 +308,7 @@ impl GhCli {
                 "--state",
                 "open",
                 "--json",
-                "number,url,title,headRefName,baseRefName,headRepository",
+                "number,url,title,headRefName,baseRefName,headRepository,headRepositoryOwner",
             ],
             None,
         )?;
@@ -416,13 +423,23 @@ impl GhCli {
             })?;
         Ok(prs
             .into_iter()
-            .map(|pr| OpenPrInfo {
-                number: pr.number,
-                url: pr.url,
-                title: pr.title,
-                head_branch: pr.head_ref_name,
-                base_branch: pr.base_ref_name,
-                head_repo_url: pr.head_repository.map(|r| r.url),
+            .map(|pr| {
+                // Construct URL from owner + repo name (gh CLI doesn't expose url directly)
+                let head_repo_url =
+                    match (&pr.head_repository, &pr.head_repository_owner) {
+                        (Some(repo), Some(owner)) => {
+                            Some(format!("https://github.com/{}/{}", owner.login, repo.name))
+                        }
+                        _ => None,
+                    };
+                OpenPrInfo {
+                    number: pr.number,
+                    url: pr.url,
+                    title: pr.title,
+                    head_branch: pr.head_ref_name,
+                    base_branch: pr.base_ref_name,
+                    head_repo_url,
+                }
             })
             .collect())
     }
