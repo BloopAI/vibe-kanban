@@ -2,7 +2,10 @@ use std::{
     borrow::Cow,
     collections::VecDeque,
     io,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use async_trait::async_trait;
@@ -40,6 +43,7 @@ pub struct AppServerClient {
     auto_approve: bool,
     repo_context: RepoContext,
     commit_reminder: bool,
+    commit_reminder_sent: AtomicBool,
 }
 
 impl AppServerClient {
@@ -59,6 +63,7 @@ impl AppServerClient {
             pending_feedback: Mutex::new(VecDeque::new()),
             repo_context,
             commit_reminder,
+            commit_reminder_sent: AtomicBool::new(false),
         })
     }
 
@@ -367,19 +372,17 @@ impl AppServerClient {
             if trimmed.is_empty() {
                 continue;
             }
-            self.spawn_feedback_message(conversation_id, trimmed.to_string());
+            self.spawn_user_message(conversation_id, format!("User feedback: {trimmed}"));
         }
     }
 
-    fn spawn_feedback_message(&self, conversation_id: ConversationId, feedback: String) {
+    fn spawn_user_message(&self, conversation_id: ConversationId, message: String) {
         let peer = self.rpc().clone();
         let request = ClientRequest::SendUserMessage {
             request_id: peer.next_request_id(),
             params: SendUserMessageParams {
                 conversation_id,
-                items: vec![InputItem::Text {
-                    text: format!("User feedback: {feedback}"),
-                }],
+                items: vec![InputItem::Text { text: message }],
             },
         };
         tokio::spawn(async move {
@@ -391,7 +394,7 @@ impl AppServerClient {
                 )
                 .await
             {
-                tracing::error!("failed to send feedback follow-up message: {err}");
+                tracing::error!("failed to send user message: {err}");
             }
         });
     }
@@ -474,30 +477,24 @@ impl JsonRpcCallbacks for AppServerClient {
             .strip_prefix("codex/event/")
             .is_some_and(|suffix| suffix == "task_complete");
 
-        // Check for uncommitted changes before allowing exit
-        if has_finished && self.commit_reminder {
+        if has_finished
+            && self.commit_reminder
+            && !self.commit_reminder_sent.swap(true, Ordering::SeqCst)
+        {
             let status =
                 workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
                     .await;
-            if !status.is_empty() {
-                // Send message to Codex asking it to commit
-                if let Some(conversation_id) = *self.conversation_id.lock().await {
-                    let _ = self
-                        .send_user_message(
-                            conversation_id,
-                            format!(
-                                "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                                status
-                            ),
-                        )
-                        .await;
-                    // Only block exit if we successfully sent the message
-                    return Ok(false);
-                }
-                // No conversation_id - can't send message, allow exit to avoid zombie state
-                tracing::warn!(
-                    "commit reminder: uncommitted changes detected but no conversation_id available"
+            if !status.is_empty()
+                && let Some(conversation_id) = *self.conversation_id.lock().await
+            {
+                self.spawn_user_message(
+                    conversation_id,
+                    format!(
+                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                        status
+                    ),
                 );
+                return Ok(false);
             }
         }
 

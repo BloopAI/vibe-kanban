@@ -2,9 +2,6 @@ use std::path::PathBuf;
 
 use tokio::process::Command;
 
-/// Check for uncommitted git changes across multiple repository paths.
-/// Returns a string with the git status for all repos with changes, or empty if clean.
-/// Each repo with changes is formatted as "\n{path}:\n{status}".
 pub async fn check_uncommitted_changes(repo_paths: &[PathBuf]) -> String {
     if repo_paths.is_empty() {
         return String::new();
