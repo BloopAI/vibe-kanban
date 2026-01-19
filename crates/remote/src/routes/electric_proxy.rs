@@ -12,12 +12,10 @@ use futures::TryStreamExt;
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 use tracing::error;
+use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::{
-    AppState, auth::RequestContext, db::organization_members, shapes,
-    validated_where::ValidatedWhere,
-};
+use crate::{AppState, auth::RequestContext, db::organization_members, shapes};
 
 #[derive(Deserialize)]
 struct OrgShapeQuery {
@@ -68,15 +66,9 @@ async fn proxy_projects(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "projects",
-        r#""organization_id" = $1"#,
-        query.organization_id
-    );
-
     proxy_table(
         &state,
-        &validated,
+        &shapes::PROJECTS,
         &query.params,
         &[query.organization_id.to_string()],
     )
@@ -92,16 +84,9 @@ async fn proxy_notifications(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "notifications",
-        r#""organization_id" = $1 AND "user_id" = $2"#,
-        query.organization_id,
-        ctx.user.id
-    );
-
     proxy_table(
         &state,
-        &validated,
+        &shapes::NOTIFICATIONS,
         &query.params,
         &[query.organization_id.to_string(), ctx.user.id.to_string()],
     )
@@ -118,9 +103,13 @@ async fn proxy_workspaces(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!("workspaces", r#""project_id" = $1"#, project_id);
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::WORKSPACES,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_project_statuses(
@@ -133,9 +122,13 @@ async fn proxy_project_statuses(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!("project_statuses", r#""project_id" = $1"#, project_id);
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::PROJECT_STATUSES,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_tags(
@@ -148,9 +141,13 @@ async fn proxy_tags(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!("tags", r#""project_id" = $1"#, project_id);
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::TAGS,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issues(
@@ -163,9 +160,13 @@ async fn proxy_issues(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!("issues", r#""project_id" = $1"#, project_id);
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUES,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_assignees(
@@ -178,13 +179,13 @@ async fn proxy_issue_assignees(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "issue_assignees",
-        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-        project_id
-    );
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_ASSIGNEES,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_followers(
@@ -197,13 +198,13 @@ async fn proxy_issue_followers(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "issue_followers",
-        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-        project_id
-    );
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_FOLLOWERS,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_tags(
@@ -216,13 +217,13 @@ async fn proxy_issue_tags(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "issue_tags",
-        r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-        project_id
-    );
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_TAGS,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_comments(
@@ -235,9 +236,13 @@ async fn proxy_issue_comments(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!("issue_comments", r#""issue_id" = $1"#, issue_id);
-
-    proxy_table(&state, &validated, &query.params, &[issue_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_COMMENTS,
+        &query.params,
+        &[issue_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_dependencies(
@@ -250,13 +255,13 @@ async fn proxy_issue_dependencies(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "issue_dependencies",
-        r#""blocking_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-        project_id
-    );
-
-    proxy_table(&state, &validated, &query.params, &[project_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_DEPENDENCIES,
+        &query.params,
+        &[project_id.to_string()],
+    )
+    .await
 }
 
 async fn proxy_issue_comment_reactions(
@@ -269,22 +274,22 @@ async fn proxy_issue_comment_reactions(
         .await
         .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-    let validated = crate::validated_where!(
-        "issue_comment_reactions",
-        r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
-        issue_id
-    );
-
-    proxy_table(&state, &validated, &query.params, &[issue_id.to_string()]).await
+    proxy_table(
+        &state,
+        &shapes::ISSUE_COMMENT_REACTIONS,
+        &query.params,
+        &[issue_id.to_string()],
+    )
+    .await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
 ///
 /// The table and where clause are set server-side (not from client params)
 /// to prevent unauthorized access to other tables or data.
-async fn proxy_table(
+async fn proxy_table<T: TS + Sync>(
     state: &AppState,
-    query: &ValidatedWhere,
+    shape: &shapes::ShapeDefinition<T>,
     client_params: &HashMap<String, String>,
     electric_params: &[String],
 ) -> Result<Response, ProxyError> {
@@ -297,12 +302,12 @@ async fn proxy_table(
     // Set table server-side (security: client can't override)
     origin_url
         .query_pairs_mut()
-        .append_pair("table", query.table);
+        .append_pair("table", shape.table);
 
     // Set WHERE clause with parameterized values
     origin_url
         .query_pairs_mut()
-        .append_pair("where", query.where_clause);
+        .append_pair("where", shape.where_clause);
 
     // Pass params for $1, $2, etc. placeholders
     for (i, param) in electric_params.iter().enumerate() {

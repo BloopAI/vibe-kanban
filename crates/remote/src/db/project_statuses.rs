@@ -6,7 +6,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, rename = "ElectricProjectStatus")]
+#[ts(export)]
 pub struct ProjectStatus {
     pub id: Uuid,
     pub project_id: Uuid,

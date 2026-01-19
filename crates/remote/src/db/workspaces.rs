@@ -8,7 +8,7 @@ use super::types::WorkspacePrStatus;
 
 /// Workspace metadata pushed from local clients
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
-#[ts(export, rename = "ElectricWorkspace")]
+#[ts(export)]
 pub struct Workspace {
     pub id: Uuid,
     pub project_id: Uuid,

@@ -9,7 +9,7 @@ use uuid::Uuid;
 use super::types::IssuePriority;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, rename = "ElectricIssue")]
+#[ts(export)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,

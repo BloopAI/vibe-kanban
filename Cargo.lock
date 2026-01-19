@@ -4164,7 +4164,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "shape-macros",
  "sqlx",
  "subtle",
  "tar",
@@ -4865,7 +4864,6 @@ dependencies = [
  "os_info",
  "rand 0.8.5",
  "regex",
- "remote",
  "reqwest",
  "rmcp",
  "rust-embed",
@@ -4965,16 +4963,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
-]
-
-[[package]]
-name = "shape-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "regex",
- "syn 2.0.111",
 ]
 
 [[package]]

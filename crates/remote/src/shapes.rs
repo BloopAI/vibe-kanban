@@ -1,104 +1,197 @@
-use shape_macros::define_shape;
+use std::marker::PhantomData;
 
-use crate::{
-    db::{
-        issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
-        issue_comments::IssueComment, issue_dependencies::IssueDependency,
-        issue_followers::IssueFollower, issue_tags::IssueTag, issues::Issue,
-        notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
-        workspaces::Workspace,
-    },
-    validated_where::ShapeExport,
+use ts_rs::TS;
+
+use crate::db::{
+    issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
+    issue_comments::IssueComment, issue_dependencies::IssueDependency,
+    issue_followers::IssueFollower, issue_tags::IssueTag, issues::Issue,
+    notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
+    workspaces::Workspace,
 };
+
+#[derive(Debug)]
+pub struct ShapeDefinition<T: TS> {
+    pub table: &'static str,
+    pub where_clause: &'static str,
+    pub params: &'static [&'static str],
+    pub url: &'static str,
+    _phantom: PhantomData<T>,
+}
+
+/// Trait to allow heterogeneous collection of shapes for export
+pub trait ShapeExport: Sync {
+    fn table(&self) -> &'static str;
+    fn where_clause(&self) -> &'static str;
+    fn params(&self) -> &'static [&'static str];
+    fn url(&self) -> &'static str;
+    fn ts_type_name(&self) -> String;
+}
+
+impl<T: TS + Sync> ShapeExport for ShapeDefinition<T> {
+    fn table(&self) -> &'static str {
+        self.table
+    }
+    fn where_clause(&self) -> &'static str {
+        self.where_clause
+    }
+    fn params(&self) -> &'static [&'static str] {
+        self.params
+    }
+    fn url(&self) -> &'static str {
+        self.url
+    }
+    fn ts_type_name(&self) -> String {
+        T::name()
+    }
+}
+
+/// Macro to define shapes with compile-time SQL validation.
+///
+/// The macro validates SQL at compile time using `sqlx::query!`, ensuring that:
+/// - The table exists
+/// - The columns in the WHERE clause exist
+/// - The SQL syntax is correct
+///
+/// Usage:
+/// ```ignore
+/// define_shape!(
+///     PROJECTS, Project,
+///     table: "projects",
+///     where_clause: r#""organization_id" = $1"#,
+///     url: "/shape/projects",
+///     params: ["organization_id"]
+/// );
+/// ```
+#[macro_export]
+macro_rules! define_shape {
+    (
+        $name:ident, $type:ty,
+        table: $table:literal,
+        where_clause: $where:literal,
+        url: $url:literal,
+        params: [$($param:literal),* $(,)?]
+    ) => {
+        pub const $name: $crate::shapes::ShapeDefinition<$type> = {
+            // Compile-time SQL validation - this ensures table and columns exist
+            // We use dummy UUID values for parameter validation since all shape
+            // params are UUIDs
+            #[allow(dead_code)]
+            fn _validate() {
+                let _ = sqlx::query!(
+                    "SELECT 1 AS v FROM " + $table + " WHERE " + $where
+                    $(, { let _ = stringify!($param); uuid::Uuid::nil() })*
+                );
+            }
+
+            $crate::shapes::ShapeDefinition {
+                table: $table,
+                where_clause: $where,
+                params: &[$($param),*],
+                url: $url,
+                _phantom: std::marker::PhantomData,
+            }
+        };
+    };
+}
 
 // Organization-scoped shapes
 define_shape!(
-    PROJECTS,
-    "projects",
-    r#""organization_id" = $1"#,
-    "/shape/projects",
-    Project
+    PROJECTS, Project,
+    table: "projects",
+    where_clause: r#""organization_id" = $1"#,
+    url: "/shape/projects",
+    params: ["organization_id"]
 );
+
 define_shape!(
-    NOTIFICATIONS,
-    "notifications",
-    r#""organization_id" = $1 AND "user_id" = $2"#,
-    "/shape/notifications",
-    Notification
+    NOTIFICATIONS, Notification,
+    table: "notifications",
+    where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
+    url: "/shape/notifications",
+    params: ["organization_id", "user_id"]
 );
 
 // Project-scoped shapes
 define_shape!(
-    WORKSPACES,
-    "workspaces",
-    r#""project_id" = $1"#,
-    "/shape/project/{project_id}/workspaces",
-    Workspace
+    WORKSPACES, Workspace,
+    table: "workspaces",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/workspaces",
+    params: ["project_id"]
 );
+
 define_shape!(
-    PROJECT_STATUSES,
-    "project_statuses",
-    r#""project_id" = $1"#,
-    "/shape/project/{project_id}/statuses",
-    ProjectStatus
+    PROJECT_STATUSES, ProjectStatus,
+    table: "project_statuses",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/statuses",
+    params: ["project_id"]
 );
+
 define_shape!(
-    TAGS,
-    "tags",
-    r#""project_id" = $1"#,
-    "/shape/project/{project_id}/tags",
-    Tag
+    TAGS, Tag,
+    table: "tags",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/tags",
+    params: ["project_id"]
 );
+
 define_shape!(
-    ISSUES,
-    "issues",
-    r#""project_id" = $1"#,
-    "/shape/project/{project_id}/issues",
-    Issue
+    ISSUES, Issue,
+    table: "issues",
+    where_clause: r#""project_id" = $1"#,
+    url: "/shape/project/{project_id}/issues",
+    params: ["project_id"]
 );
+
 define_shape!(
-    ISSUE_ASSIGNEES,
-    "issue_assignees",
-    r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    "/shape/project/{project_id}/issue_assignees",
-    IssueAssignee
+    ISSUE_ASSIGNEES, IssueAssignee,
+    table: "issue_assignees",
+    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/issue_assignees",
+    params: ["project_id"]
 );
+
 define_shape!(
-    ISSUE_FOLLOWERS,
-    "issue_followers",
-    r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    "/shape/project/{project_id}/issue_followers",
-    IssueFollower
+    ISSUE_FOLLOWERS, IssueFollower,
+    table: "issue_followers",
+    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/issue_followers",
+    params: ["project_id"]
 );
+
 define_shape!(
-    ISSUE_TAGS,
-    "issue_tags",
-    r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    "/shape/project/{project_id}/issue_tags",
-    IssueTag
+    ISSUE_TAGS, IssueTag,
+    table: "issue_tags",
+    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/issue_tags",
+    params: ["project_id"]
 );
+
 define_shape!(
-    ISSUE_DEPENDENCIES,
-    "issue_dependencies",
-    r#""blocking_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    "/shape/project/{project_id}/issue_dependencies",
-    IssueDependency
+    ISSUE_DEPENDENCIES, IssueDependency,
+    table: "issue_dependencies",
+    where_clause: r#""blocking_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/issue_dependencies",
+    params: ["project_id"]
 );
 
 // Issue-scoped shapes
 define_shape!(
-    ISSUE_COMMENTS,
-    "issue_comments",
-    r#""issue_id" = $1"#,
-    "/shape/issue/{issue_id}/comments",
-    IssueComment
+    ISSUE_COMMENTS, IssueComment,
+    table: "issue_comments",
+    where_clause: r#""issue_id" = $1"#,
+    url: "/shape/issue/{issue_id}/comments",
+    params: ["issue_id"]
 );
+
 define_shape!(
-    ISSUE_COMMENT_REACTIONS,
-    "issue_comment_reactions",
-    r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
-    "/shape/issue/{issue_id}/reactions",
-    IssueCommentReaction
+    ISSUE_COMMENT_REACTIONS, IssueCommentReaction,
+    table: "issue_comment_reactions",
+    where_clause: r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
+    url: "/shape/issue/{issue_id}/reactions",
+    params: ["issue_id"]
 );
 
 /// All shape definitions for export - uses trait objects for heterogeneous collection
@@ -117,81 +210,4 @@ pub fn all_shapes() -> Vec<&'static dyn ShapeExport> {
         &ISSUE_COMMENTS,
         &ISSUE_COMMENT_REACTIONS,
     ]
-}
-
-/// Generate TypeScript shapes file with type imports and ShapeDefinition<T>
-pub fn export_shapes_typescript() -> String {
-    let shapes = all_shapes();
-
-    // Collect unique type names for imports
-    let type_names: Vec<String> = shapes.iter().map(|s| s.ts_type_name()).collect();
-
-    let imports = type_names.join(",\n  ");
-
-    let mut output = String::new();
-
-    // Header and imports
-    output.push_str("// This file was auto-generated. Do not edit manually.\n");
-    output.push_str("import type {\n  ");
-    output.push_str(&imports);
-    output.push_str(",\n} from './types';\n\n");
-
-    // ShapeDefinition interface
-    output.push_str("// Shape definition interface\n");
-    output.push_str("export interface ShapeDefinition<T> {\n");
-    output.push_str("  readonly table: string;\n");
-    output.push_str("  readonly params: readonly string[];\n");
-    output.push_str("  readonly url: string;\n");
-    output.push_str("  readonly _type: T;  // Phantom field for type inference\n");
-    output.push_str("}\n\n");
-
-    // Helper function
-    output.push_str("// Helper to create type-safe shape definitions\n");
-    output.push_str("function defineShape<T>(\n");
-    output.push_str("  table: string,\n");
-    output.push_str("  params: readonly string[],\n");
-    output.push_str("  url: string\n");
-    output.push_str("): ShapeDefinition<T> {\n");
-    output.push_str("  return { table, params, url, _type: null as unknown as T };\n");
-    output.push_str("}\n\n");
-
-    // Generate individual shape definitions with embedded types
-    output.push_str("// Individual shape definitions with embedded types\n");
-    for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
-        let params_str = shape
-            .params()
-            .iter()
-            .map(|p| format!("'{}'", p))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        output.push_str(&format!(
-            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '{}'\n);\n\n",
-            const_name,
-            shape.ts_type_name(),
-            shape.table(),
-            params_str,
-            shape.url()
-        ));
-    }
-
-    // Generate ALL_SHAPES array
-    output.push_str("// All shapes as an array for iteration and factory building\n");
-    output.push_str("export const ALL_SHAPES = [\n");
-    for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
-        output.push_str(&format!("  {}_SHAPE,\n", const_name));
-    }
-    output.push_str("] as const;\n\n");
-
-    // Type helpers
-    output.push_str("// Type helper to extract row type from a shape\n");
-    output
-        .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
-
-    output.push_str("// Union of all shape types\n");
-    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n");
-
-    output
 }

@@ -10,7 +10,6 @@ members = [
     "crates/deployment",
     "crates/remote",
     "crates/review",
-    "crates/shape-macros",
 ]
 
 [workspace.dependencies]

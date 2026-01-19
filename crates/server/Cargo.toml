@@ -11,7 +11,6 @@ uninlined-format-args = "allow"
 deployment = { path = "../deployment" }
 executors = { path = "../executors" }
 local-deployment = { path = "../local-deployment" }
-remote = { path = "../remote" }
 utils = { path = "../utils" }
 db = { path = "../db" }
 services = { path = "../services" }

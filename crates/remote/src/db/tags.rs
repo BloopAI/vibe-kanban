@@ -5,7 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, rename = "ElectricTag")]
+#[ts(export)]
 pub struct Tag {
     pub id: Uuid,
     pub project_id: Uuid,
