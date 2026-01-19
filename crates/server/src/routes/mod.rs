@@ -50,7 +50,9 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/images", images::routes())
-        .layer(ValidateRequestHeaderLayer::custom(middleware::validate_origin))
+        .layer(ValidateRequestHeaderLayer::custom(
+            middleware::validate_origin,
+        ))
         .with_state(deployment);
 
     Router::new()
