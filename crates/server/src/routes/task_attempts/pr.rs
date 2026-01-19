@@ -637,16 +637,18 @@ pub async fn create_workspace_from_pr(
 
     // 2. Derive project_id from repo
     let project_repos = ProjectRepo::find_by_repo_id(pool, payload.repo_id).await?;
-    let project_id = project_repos
-        .first()
-        .ok_or_else(|| {
+    let project_id = match project_repos.first() {
+        Some(project_repo) => project_repo.project_id,
+        None => {
             tracing::error!(
                 "Repo {} is not associated with any project",
                 payload.repo_id
             );
-            ApiError::BadRequest("Repo is not associated with any project".to_string())
-        })?
-        .project_id;
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::RepoNotInProject,
+            )));
+        }
+    };
 
     // 3. Get remote URL using default remote (not hardcoded "origin")
     let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
@@ -692,12 +694,17 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    let pr_info = prs
+    let pr_info = match prs
         .into_iter()
         .find(|pr| pr.number == payload.pr_number)
-        .ok_or_else(|| {
-            ApiError::BadRequest(format!("PR #{} not found or not open", payload.pr_number))
-        })?;
+    {
+        Some(pr_info) => pr_info,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreateFromPrError::PrNotFound,
+            )));
+        }
+    };
 
     // 5. Fetch the PR branch from remote (use fork URL if available)
     let fetch_url = pr_info.head_repo_url.as_deref().unwrap_or(&remote_url);

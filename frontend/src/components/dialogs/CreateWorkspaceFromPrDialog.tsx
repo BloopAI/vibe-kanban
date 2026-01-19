@@ -83,6 +83,24 @@ const CreateWorkspaceFromPrDialogImpl =
     const openPrs: OpenPrInfo[] =
       prsResult?.success === true ? prsResult.data : [];
 
+    const prsErrorMessage =
+      prsResult?.success === false
+        ? (() => {
+            if (prsResult.error?.type === 'cli_not_installed') {
+              return `${prsResult.error.provider} CLI is not installed`;
+            }
+            if (prsResult.error?.type === 'auth_failed') {
+              return prsResult.error.message;
+            }
+            if (prsResult.error?.type === 'unsupported_provider') {
+              return 'Git provider not supported';
+            }
+            return prsResult.message || 'Failed to load pull requests';
+          })()
+        : prsError
+          ? 'Failed to load pull requests'
+          : null;
+
     // Create workspace mutation
     const createMutation = useMutation({
       mutationFn: async () => {
@@ -203,9 +221,9 @@ const CreateWorkspaceFromPrDialogImpl =
                 <div className="text-sm text-muted-foreground">
                   Loading pull requests...
                 </div>
-              ) : prsError ? (
+              ) : prsErrorMessage ? (
                 <div className="text-sm text-destructive">
-                  Failed to load pull requests
+                  {prsErrorMessage}
                 </div>
               ) : !selectedRepoId ? (
                 <div className="text-sm text-muted-foreground">
