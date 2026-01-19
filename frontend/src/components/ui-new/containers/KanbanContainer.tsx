@@ -50,11 +50,19 @@ function KanbanBoardContent({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="h-full overflow-x-auto">
+    <div className="h-full overflow-x-auto p-base">
       <KanbanProvider onDragEnd={handleDragEnd}>
         {sortedStatuses.map((status) => (
           <KanbanBoard key={status.id} id={status.id}>
-            <KanbanHeader name={status.name} color={status.color} />
+            <KanbanHeader>
+              <div className="sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed bg-background">
+                <div
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: status.color }}
+                />
+                <p className="m-0 text-sm">{status.name}</p>
+              </div>
+            </KanbanHeader>
             <KanbanCards>
               <KanbanCard
                 id={`placeholder-${status.id}`}
