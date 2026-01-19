@@ -140,7 +140,7 @@ export function WorkspacesSidebar({
           title={t('common:workspaces.title')}
           collapsible={false}
           actionIcons={headerActionIcons}
-          className="border-b border-l-half border-l-low"
+          className="border-b"
         />
         <div className="px-base">
           <InputField
@@ -198,7 +198,15 @@ export function WorkspacesSidebar({
               defaultExpanded={true}
             >
               <div className="flex flex-col gap-base py-half">
-                {raisedHandWorkspaces.length === 0 ? (
+                {draftTitle && (
+                  <WorkspaceSummary
+                    name={draftTitle}
+                    isActive={isCreateMode}
+                    isDraft={true}
+                    onClick={onSelectCreate}
+                  />
+                )}
+                {raisedHandWorkspaces.length === 0 && !draftTitle ? (
                   <span className="text-sm text-low opacity-60 pl-base">
                     {t('common:workspaces.noWorkspaces')}
                   </span>
@@ -240,15 +248,7 @@ export function WorkspacesSidebar({
               defaultExpanded={true}
             >
               <div className="flex flex-col gap-base py-half">
-                {draftTitle && (
-                  <WorkspaceSummary
-                    name={draftTitle}
-                    isActive={isCreateMode}
-                    isDraft={true}
-                    onClick={onSelectCreate}
-                  />
-                )}
-                {runningWorkspaces.length === 0 && !draftTitle ? (
+                {runningWorkspaces.length === 0 ? (
                   <span className="text-sm text-low opacity-60 pl-base">
                     {t('common:workspaces.noWorkspaces')}
                   </span>
