@@ -56,7 +56,10 @@ const CreateWorkspaceFromPrDialogImpl =
     // Auto-select repo: prefer current workspace's repo, then single repo
     useEffect(() => {
       if (selectedRepoId) return;
-      if (currentWorkspaceRepoId && repos.some((r) => r.id === currentWorkspaceRepoId)) {
+      if (
+        currentWorkspaceRepoId &&
+        repos.some((r) => r.id === currentWorkspaceRepoId)
+      ) {
         setSelectedRepoId(currentWorkspaceRepoId);
       } else if (repos.length === 1) {
         setSelectedRepoId(repos[0].id);
