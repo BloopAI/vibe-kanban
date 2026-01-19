@@ -123,7 +123,6 @@ pub enum PermissionUpdateDestination {
     Unknown,
 }
 
-/// A permission rule value with tool name and optional rule content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionRuleValue {
