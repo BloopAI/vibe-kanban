@@ -15,7 +15,7 @@ members = [
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
 axum = { version = "0.8.4", features = ["macros", "multipart", "ws"] }
-tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs"] }
+tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 anyhow = "1.0"

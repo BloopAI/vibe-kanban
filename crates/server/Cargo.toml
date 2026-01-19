@@ -28,6 +28,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs",
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
+tower-http = { workspace = true }
 nix = { version = "0.29", features = ["signal", "process"] }
 rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
