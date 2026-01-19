@@ -115,7 +115,7 @@ export function ProcessListContainer() {
   );
 
   return (
-    <div className="h-full w-full bg-secondary flex flex-col overflow-hidden p-base">
+    <div className="w-full bg-secondary flex flex-col overflow-auto p-base">
       {sortedProcesses.length === 0 ? (
         <div className="h-full flex items-center justify-center text-low">
           <p className="text-sm">{t('processes.noProcesses')}</p>
