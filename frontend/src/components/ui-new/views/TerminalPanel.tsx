@@ -18,7 +18,7 @@ export function TerminalPanel({
   onTabClose,
 }: TerminalPanelProps) {
   return (
-    <div className="h-full w-full overflow-hidden bg-secondary p-base">
+    <>
       {tabs.map((tab) => (
         <XTermInstance
           key={tab.id}
@@ -28,6 +28,6 @@ export function TerminalPanel({
           onClose={() => onTabClose(tab.id)}
         />
       ))}
-    </div>
+    </>
   );
 }

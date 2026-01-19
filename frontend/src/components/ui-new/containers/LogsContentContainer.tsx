@@ -118,8 +118,10 @@ export function LogsContentContainer({ className }: LogsContentContainerProps) {
             <ArrowsInSimpleIcon className="size-icon-sm" weight="bold" />
           </button>
         </div>
-        <div className="flex-1 min-h-0">
-          <TerminalPanelContainer />
+        <div className="flex-1 flex min-h-0">
+          <div className="flex-1 min-h-0 w-full">
+            <TerminalPanelContainer />
+          </div>
         </div>
       </div>
     );
