@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNavigateWithSearch, useProjectRepos } from '@/hooks';
-import { useProject } from '@/contexts/ProjectContext';
+import { useCreateMode } from '@/contexts/CreateModeContext';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -33,7 +33,7 @@ const CreateWorkspaceFromPrDialogImpl =
   NiceModal.create<CreateWorkspaceFromPrDialogProps>(() => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
-    const { projectId } = useProject();
+    const { selectedProjectId } = useCreateMode();
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
 
@@ -43,9 +43,12 @@ const CreateWorkspaceFromPrDialogImpl =
     );
     const [runSetup, setRunSetup] = useState(true);
 
-    const { data: projectRepos = [] } = useProjectRepos(projectId, {
-      enabled: modal.visible,
-    });
+    const { data: projectRepos = [] } = useProjectRepos(
+      selectedProjectId ?? undefined,
+      {
+        enabled: modal.visible && !!selectedProjectId,
+      }
+    );
 
     // Auto-select first repo if only one
     useEffect(() => {
@@ -74,11 +77,11 @@ const CreateWorkspaceFromPrDialogImpl =
     // Create workspace mutation
     const createMutation = useMutation({
       mutationFn: async () => {
-        if (!projectId || !selectedRepoId || !selectedPrNumber) {
+        if (!selectedProjectId || !selectedRepoId || !selectedPrNumber) {
           throw new Error('Missing required fields');
         }
         const result = await attemptsApi.createFromPr({
-          project_id: projectId,
+          project_id: selectedProjectId,
           repo_id: selectedRepoId,
           pr_number: BigInt(selectedPrNumber),
           run_setup: runSetup,
@@ -92,8 +95,8 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
-        if (projectId) {
-          navigate(paths.attempt(projectId, data.task.id, data.workspace.id));
+        if (selectedProjectId) {
+          navigate(paths.attempt(selectedProjectId, data.task.id, data.workspace.id));
         }
       },
     });
