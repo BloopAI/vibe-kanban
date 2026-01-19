@@ -26,7 +26,7 @@ use services::services::{
     git::{GitCliError, GitServiceError},
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
-        UnifiedPrComment,
+        UnifiedPrComment, github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -725,7 +725,6 @@ pub async fn create_workspace_from_pr(
         status: Some(TaskStatus::InProgress),
         parent_workspace_id: None,
         image_ids: None,
-        shared_task_id: None,
     };
     let task = Task::create(pool, &create_task, task_id).await?;
 
@@ -762,27 +761,20 @@ pub async fn create_workspace_from_pr(
         .ensure_container_exists(&workspace)
         .await?;
 
-    // 10b. Configure branch tracking for fork PRs
-    // Set pushremote to the fork URL so git push goes to the right place
-    if let Some(fork_url) = &pr_info.head_repo_url {
-        let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-        let branch = &pr_info.head_branch;
-
-        // Set pushremote to fork URL - this is what gh pr checkout does
-        if let Err(e) =
-            deployment
-                .git()
-                .set_branch_config(&worktree_path, branch, "pushremote", fork_url)
-        {
-            tracing::error!(
-                "Failed to set branch.{}.pushremote to {}: {}",
-                branch,
-                fork_url,
-                e
-            );
-        } else {
-            tracing::info!("Configured branch.{}.pushremote = {}", branch, fork_url);
-        }
+    // 10b. Configure branch tracking for fork PRs using gh pr checkout
+    // This sets up pushremote so git push goes to the fork, not origin
+    let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
+    let repo_info = GhCli::new()
+        .get_repo_info(&remote_url, &worktree_path)
+        .map_err(|e| ApiError::BadRequest(format!("Failed to get repo info: {e}")))?;
+    if let Err(e) = GhCli::new().pr_checkout(
+        &worktree_path,
+        &repo_info.owner,
+        &repo_info.repo_name,
+        payload.pr_number,
+    ) {
+        tracing::warn!("Failed to configure PR branch tracking: {e}");
+        // Non-fatal - workspace is still usable, just won't auto-push to fork
     }
 
     // 11. Attach PR to workspace (use remote tracking branch for base)
