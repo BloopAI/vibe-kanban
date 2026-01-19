@@ -80,7 +80,7 @@ const CreateWorkspaceFromPrDialogImpl =
         }
         const result = await attemptsApi.createFromPr({
           repo_id: selectedRepoId,
-          pr_number: BigInt(selectedPrNumber),
+          pr_number: selectedPrNumber as unknown as bigint,
           run_setup: runSetup,
         });
         if (!result.success) {
