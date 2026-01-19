@@ -156,12 +156,12 @@ export function WorkspacesSidebar({
       <div className="flex-1 overflow-y-auto py-base">
         {showArchive ? (
           /* Archived workspaces view */
-          <div className="flex flex-col gap-base px-base">
-            <span className="text-sm font-medium text-low">
+          <div className="flex flex-col gap-base">
+            <span className="text-sm font-medium text-low px-base">
               {t('common:workspaces.archived')}
             </span>
             {filteredArchivedWorkspaces.length === 0 ? (
-              <span className="text-sm text-low opacity-60">
+              <span className="text-sm text-low opacity-60 px-base">
                 {t('common:workspaces.noArchived')}
               </span>
             ) : (
@@ -264,8 +264,8 @@ export function WorkspacesSidebar({
           </div>
         ) : (
           /* Active workspaces flat view */
-          <div className="flex flex-col gap-base px-base">
-            <span className="text-sm font-medium text-low">
+          <div className="flex flex-col gap-base">
+            <span className="text-sm font-medium text-low px-base">
               {t('common:workspaces.active')}
             </span>
             {draftTitle && (
