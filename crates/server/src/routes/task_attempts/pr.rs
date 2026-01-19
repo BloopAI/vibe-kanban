@@ -694,10 +694,7 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    let pr_info = match prs
-        .into_iter()
-        .find(|pr| pr.number == payload.pr_number)
-    {
+    let pr_info = match prs.into_iter().find(|pr| pr.number == payload.pr_number) {
         Some(pr_info) => pr_info,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
