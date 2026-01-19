@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            ep.id as \"id!: Uuid\",\n            ep.session_id as \"session_id!: Uuid\",\n            ep.run_reason as \"run_reason!: ExecutionProcessRunReason\",\n            ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n            ep.status as \"status!: ExecutionProcessStatus\",\n            ep.exit_code,\n            ep.dropped as \"dropped!: bool\",\n            ep.started_at as \"started_at!: DateTime<Utc>\",\n            ep.completed_at as \"completed_at?: DateTime<Utc>\",\n            ep.created_at as \"created_at!: DateTime<Utc>\",\n            ep.updated_at as \"updated_at!: DateTime<Utc>\"\n        FROM execution_processes ep\n        JOIN sessions s ON ep.session_id = s.id\n        WHERE s.workspace_id = ?\n          AND ep.status = 'running'\n          AND ep.run_reason = 'devserver'\n        ORDER BY ep.created_at DESC\n        ",
+  "query": "SELECT ep.id as \"id!: Uuid\", ep.session_id as \"session_id!: Uuid\", ep.run_reason as \"run_reason!: ExecutionProcessRunReason\", ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                      ep.status as \"status!: ExecutionProcessStatus\", ep.exit_code,\n                      ep.dropped as \"dropped!: bool\", ep.time_limit_seconds, ep.started_at as \"started_at!: DateTime<Utc>\", ep.completed_at as \"completed_at?: DateTime<Utc>\", ep.created_at as \"created_at!: DateTime<Utc>\", ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN sessions s ON ep.session_id = s.id\n               JOIN workspaces w ON s.workspace_id = w.id\n               JOIN tasks t ON w.task_id = t.id\n               WHERE ep.status = 'running' AND ep.run_reason = 'devserver' AND t.project_id = ?\n               ORDER BY ep.created_at ASC",
   "describe": {
     "columns": [
       {
@@ -39,23 +39,28 @@
         "type_info": "Integer"
       },
       {
-        "name": "started_at!: DateTime<Utc>",
+        "name": "time_limit_seconds",
         "ordinal": 7,
-        "type_info": "Text"
+        "type_info": "Integer"
       },
       {
-        "name": "completed_at?: DateTime<Utc>",
+        "name": "started_at!: DateTime<Utc>",
         "ordinal": 8,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "completed_at?: DateTime<Utc>",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
@@ -70,11 +75,12 @@
       false,
       true,
       false,
+      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "13826fc6fdd367255cb921640e5972f30905ac7a81ad477cf8bbcfc24f06f39b"
+  "hash": "7051d12ce1fff9510730eee7680a7fab8e7b99a7c45bebf5e5ee18a7b4db042c"
 }

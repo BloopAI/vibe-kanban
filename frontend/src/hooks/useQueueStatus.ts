@@ -12,7 +12,11 @@ interface UseQueueStatusResult {
   /** Whether an operation is in progress */
   isLoading: boolean;
   /** Queue a new message */
-  queueMessage: (message: string, variant: string | null) => Promise<void>;
+  queueMessage: (
+    message: string,
+    variant: string | null,
+    timeLimitSeconds?: number | null
+  ) => Promise<void>;
   /** Cancel the queued message */
   cancelQueue: () => Promise<void>;
   /** Refresh the queue status from the server */
@@ -36,11 +40,15 @@ export function useQueueStatus(sessionId?: string): UseQueueStatusResult {
   }, [sessionId]);
 
   const queueMessage = useCallback(
-    async (message: string, variant: string | null) => {
+    async (message: string, variant: string | null, timeLimitSeconds?: number | null) => {
       if (!sessionId) return;
       setIsLoading(true);
       try {
-        const status = await queueApi.queue(sessionId, { message, variant });
+        const status = await queueApi.queue(sessionId, {
+          message,
+          variant,
+          ...(timeLimitSeconds !== undefined && { time_limit_seconds: timeLimitSeconds }),
+        });
         setQueueStatus(status);
       } finally {
         setIsLoading(false);

@@ -148,10 +148,10 @@ pub trait ContainerService {
             return false;
         }
 
-        // Always finalize failed or killed executions, regardless of next action
+        // Always finalize failed, killed, or time-bounded executions, regardless of next action
         if matches!(
             ctx.execution_process.status,
-            ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+            ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed | ExecutionProcessStatus::TimeBounded
         ) {
             return true;
         }
@@ -177,6 +177,10 @@ pub trait ContainerService {
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
                 "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
+                ctx.task.title, ctx.workspace.branch, ctx.session.executor
+            ),
+            ExecutionProcessStatus::TimeBounded => format!(
+                "⏱️ '{}' execution stopped due to time limit\nBranch: {:?}\nExecutor: {:?}",
                 ctx.task.title, ctx.workspace.branch, ctx.session.executor
             ),
             ExecutionProcessStatus::Failed => format!(
@@ -890,6 +894,7 @@ pub trait ContainerService {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
                 working_dir,
+                time_limit_seconds: None,
             }),
             cleanup_action.map(Box::new),
         );
@@ -976,10 +981,31 @@ pub trait ContainerService {
                 merge_commit: None,
             });
         }
+        // Extract time_limit_seconds from executor_action if it's a coding agent request.
+        //
+        // Semantics:
+        // - None: default 120 seconds (2 minutes) for coding agents
+        // - Some(0): no time limit
+        // - Some(n>0): explicit limit in seconds
+        let time_limit_seconds = match executor_action.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(req) => match req.time_limit_seconds {
+                None => Some(120),
+                Some(0) => None,
+                Some(n) => Some(n),
+            },
+            ExecutorActionType::CodingAgentFollowUpRequest(req) => match req.time_limit_seconds {
+                None => Some(120),
+                Some(0) => None,
+                Some(n) => Some(n),
+            },
+            _ => None, // No time limit for other execution types
+        };
+
         let create_execution_process = CreateExecutionProcess {
             session_id: session.id,
             executor_action: executor_action.clone(),
             run_reason: run_reason.clone(),
+            time_limit_seconds,
         };
 
         let execution_process = ExecutionProcess::create(
