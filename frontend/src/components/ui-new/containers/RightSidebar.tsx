@@ -214,6 +214,7 @@ export function RightSidebar({
             <CollapsibleSectionHeader
               title={section.title}
               persistKey={section.persistKey}
+              defaultExpanded={section.expanded}
             >
               <div className="flex flex-1 border-t min-h-[200px]">
                 {section.content}
