@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,6 +23,8 @@ import { useNavigateWithSearch } from '@/hooks';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { attemptsApi, repoApi } from '@/lib/api';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import type { OpenPrInfo } from 'shared/types';
 
 export interface CreateWorkspaceFromPrDialogProps {}
@@ -33,6 +35,10 @@ const CreateWorkspaceFromPrDialogImpl =
     const navigate = useNavigateWithSearch();
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
+
+    // Try to get current workspace's primary repo (optional - may be null)
+    const workspaceContext = useContext(WorkspaceContext);
+    const currentWorkspaceRepoId = workspaceContext?.repos[0]?.id ?? null;
 
     const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
     const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(
@@ -47,12 +53,15 @@ const CreateWorkspaceFromPrDialogImpl =
       enabled: modal.visible,
     });
 
-    // Auto-select first repo if only one
+    // Auto-select repo: prefer current workspace's repo, then single repo
     useEffect(() => {
-      if (repos.length === 1 && !selectedRepoId) {
+      if (selectedRepoId) return;
+      if (currentWorkspaceRepoId && repos.some((r) => r.id === currentWorkspaceRepoId)) {
+        setSelectedRepoId(currentWorkspaceRepoId);
+      } else if (repos.length === 1) {
         setSelectedRepoId(repos[0].id);
       }
-    }, [repos, selectedRepoId]);
+    }, [repos, selectedRepoId, currentWorkspaceRepoId]);
 
     // Fetch open PRs for the selected repo
     const {
@@ -204,21 +213,31 @@ const CreateWorkspaceFromPrDialogImpl =
                   No open pull requests found
                 </div>
               ) : (
-                <Select
-                  value={selectedPrNumber?.toString() ?? undefined}
-                  onValueChange={(value) => setSelectedPrNumber(Number(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a pull request" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {openPrs.map((pr) => (
-                      <SelectItem key={pr.number} value={String(pr.number)}>
-                        #{String(pr.number)}: {pr.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableDropdownContainer
+                  items={openPrs}
+                  selectedValue={selectedPrNumber?.toString() ?? null}
+                  getItemKey={(pr) => String(pr.number)}
+                  getItemLabel={(pr) => `#${pr.number}: ${pr.title}`}
+                  filterItem={(pr, query) =>
+                    String(pr.number).includes(query) ||
+                    pr.title.toLowerCase().includes(query)
+                  }
+                  onSelect={(pr) => setSelectedPrNumber(Number(pr.number))}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start font-normal"
+                    >
+                      {selectedPrNumber
+                        ? `#${selectedPrNumber}: ${openPrs.find((pr) => Number(pr.number) === selectedPrNumber)?.title ?? ''}`
+                        : 'Select a pull request'}
+                    </Button>
+                  }
+                  contentClassName="w-[400px]"
+                  placeholder="Search PRs by number or title..."
+                  emptyMessage="No matching pull requests"
+                  getItemBadge={null}
+                />
               )}
             </div>
 
