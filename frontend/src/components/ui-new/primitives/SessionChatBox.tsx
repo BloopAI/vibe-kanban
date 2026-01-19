@@ -545,9 +545,9 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <>
               {isRunning && inProgressTodo ? (
-                <span className="text-sm flex items-center gap-1">
+                <span className="text-sm flex items-center gap-1 min-w-0">
                   <SpinnerIcon className="size-icon-sm animate-spin flex-shrink-0" />
-                  <span className="truncate max-w-[200px]">
+                  <span className="truncate">
                     {inProgressTodo.content}
                   </span>
                 </span>
