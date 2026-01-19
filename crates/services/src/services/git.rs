@@ -1623,19 +1623,6 @@ impl GitService {
         Ok(self.default_remote_name(&repo))
     }
 
-    /// Set a branch-specific git config value (e.g., pushremote, remote)
-    pub fn set_branch_config(
-        &self,
-        repo_path: &Path,
-        branch: &str,
-        key: &str,
-        value: &str,
-    ) -> Result<(), GitServiceError> {
-        let git = GitCli::new();
-        git.set_branch_config(repo_path, branch, key, value)
-            .map_err(GitServiceError::GitCLI)
-    }
-
     pub fn check_remote_branch_exists(
         &self,
         repo_path: &Path,
