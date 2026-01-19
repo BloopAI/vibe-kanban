@@ -30,6 +30,7 @@ import {
 
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
+import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -155,9 +156,9 @@ export function WorkspacesLayout() {
             <Panel
               id="kanban-left"
               minSize="20%"
-              className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
+              className="min-w-0 h-full overflow-hidden bg-secondary"
             >
-              <p className="text-low">Kanban Left Panel</p>
+              <KanbanContainer />
             </Panel>
 
             {isKanbanRightPanelVisible && (
