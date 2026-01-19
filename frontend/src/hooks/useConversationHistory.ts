@@ -251,11 +251,14 @@ export const useConversationHistory = ({
             );
             entries.push(userPatchTypeWithKey);
 
-            // Remove all coding agent added user messages, replace with our custom one
+            // Remove user_message entries (replaced with our custom one) and
+            // token_usage_info entries (render as null causing VirtuosoMessageList
+            // height issues; token usage is displayed in header gauge instead)
             const entriesExcludingUser = p.entries.filter(
               (e) =>
                 e.type !== 'NORMALIZED_ENTRY' ||
-                e.content.entry_type.type !== 'user_message'
+                (e.content.entry_type.type !== 'user_message' &&
+                  e.content.entry_type.type !== 'token_usage_info')
             );
 
             const hasPendingApprovalEntry = entriesExcludingUser.some(
