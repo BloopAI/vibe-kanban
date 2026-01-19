@@ -23,7 +23,10 @@ function getStatusIcon(status?: string) {
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
-export function TodoProgressPopup({ todos, className }: TodoProgressPopupProps) {
+export function TodoProgressPopup({
+  todos,
+  className,
+}: TodoProgressPopupProps) {
   const { t } = useTranslation('tasks');
 
   const { completed, total, percentage } = useMemo(() => {
