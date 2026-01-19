@@ -21,7 +21,7 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Plus } from 'lucide-react';
+import { PlusIcon } from '@phosphor-icons/react';
 import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
@@ -190,7 +190,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
               onClick={props.onAddTask}
               aria-label={t('actions.addTask')}
             >
-              <Plus className="h-4 w-4" />
+              <PlusIcon className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
