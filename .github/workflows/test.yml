@@ -17,10 +17,10 @@ env:
   PNPM_VERSION: 10.13.1
 
 jobs:
-  test:
-    runs-on: buildjet-8vcpu-ubuntu-2204
+  frontend-test:
+    runs-on: ubuntu-latest-arm64-l
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
         uses: ./.github/actions/setup-node
@@ -28,19 +28,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint frontend
-        run: cd frontend && npm run lint
+      - name: Run checks
+        run: |
+          (cd frontend && npm run lint) &
+          (GITHUB_BASE_REF=${{ github.base_ref || 'main' }} ./scripts/check-i18n.sh) &
+          (cd frontend && npm run format:check) &
+          (cd frontend && npx tsc --noEmit) &
+          wait
 
-      - name: Check i18n regressions
+      - name: Build frontend
+        run: cd frontend && npm run build
         env:
-          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
-        run: ./scripts/check-i18n.sh
+          NODE_OPTIONS: --max-old-space-size=8192
 
-      - name: Format check frontend
-        run: cd frontend && npm run format:check
+  backend-quality:
+    runs-on: ubuntu-latest-arm64-l
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v5
 
-      - name: Type check frontend
-        run: cd frontend && npx tsc --noEmit
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -54,9 +67,9 @@ jobs:
           RUST_CACHE_DEBUG: true
         with:
           workspaces: "."
-          cache-provider: "buildjet"
+          cache-provider: "github"
           cache-on-failure: true
-          shared-key: "shared"
+          shared-key: "shared-${{ runner.os }}-${{ runner.arch }}"
           cache-all-crates: true
 
       - name: Install sqlx-cli
@@ -66,16 +79,48 @@ jobs:
           no-default-features: true
           features: sqlite,postgres
 
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
-
       - name: Checks
         run: |
-          cargo fmt --all -- --check
-          npm run generate-types:check
-          npm run prepare-db:check
-          npm run remote:prepare-db:check
-          cargo test --workspace
-          cargo clippy --all --all-targets -- -D warnings  
+          (cargo fmt --all -- --check) &
+          cargo run --bin generate_types -- --check
+          node scripts/prepare-db.js --check
+          (cd crates/remote && bash scripts/prepare-db.sh --check)
+          cargo clippy --all --all-targets -- -D warnings
+          wait
+
+  backend-test:
+    runs-on: ubuntu-latest-arm64-l
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2025-12-04
+          # No extra components needed for testing
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        env:
+          RUST_CACHE_DEBUG: true
+        with:
+          workspaces: "."
+          cache-provider: "github"
+          cache-on-failure: true
+          shared-key: "shared-${{ runner.os }}-${{ runner.arch }}"
+          cache-all-crates: true
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Run tests
+        run: cargo nextest run --workspace
