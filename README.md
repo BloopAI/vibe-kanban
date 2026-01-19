@@ -115,6 +115,20 @@ The following environment variables can be configured at build time or runtime:
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 
+#### Self-Hosting with a Reverse Proxy or Custom Domain
+
+When running Vibe Kanban behind a reverse proxy (e.g., nginx, Caddy, Traefik) or on a custom domain, you must set the `VK_ALLOWED_ORIGINS` environment variable. Without this, the browser's Origin header won't match the backend's expected host, and API requests will be rejected with a 403 Forbidden error.
+
+Set it to the full origin URL(s) where your frontend is accessible:
+
+```bash
+# Single origin
+VK_ALLOWED_ORIGINS=https://vk.example.com
+
+# Multiple origins (comma-separated)
+VK_ALLOWED_ORIGINS=https://vk.example.com,https://vk-staging.example.com
+```
+
 ### Remote Deployment
 
 When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
