@@ -187,7 +187,7 @@ export function WorkspacesLayout() {
               {isLeftMainPanelVisible && (
                 <Panel
                   id="left-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {isCreateMode ? (
@@ -216,7 +216,7 @@ export function WorkspacesLayout() {
               {rightMainPanelMode !== null && (
                 <Panel
                   id="right-main"
-                  minSize={20}
+                  minSize="20%"
                   className="min-w-0 h-full overflow-hidden"
                 >
                   {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES &&
