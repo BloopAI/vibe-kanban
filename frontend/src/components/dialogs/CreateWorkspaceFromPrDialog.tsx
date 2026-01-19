@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNavigateWithSearch } from '@/hooks';
-import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { attemptsApi, repoApi } from '@/lib/api';
@@ -92,9 +91,7 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
-        navigate(
-          paths.attempt(data.task.project_id, data.task.id, data.workspace.id)
-        );
+        navigate(`/workspaces/${data.workspace.id}`);
       },
     });
 
