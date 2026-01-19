@@ -24,6 +24,7 @@ import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
+  useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
@@ -69,6 +70,11 @@ export function WorkspacesLayout() {
     loading: configLoading,
   } = useUserSystem();
 
+  const layoutMode = useUiPreferencesStore((s) => s.layoutMode);
+  const isKanbanRightPanelVisible = useUiPreferencesStore(
+    (s) => s.isKanbanRightPanelVisible
+  );
+
   useCommandBarShortcut(() => CommandBarDialog.show());
 
   // Auto-show Workspaces Guide on first visit
@@ -100,6 +106,12 @@ export function WorkspacesLayout() {
     50
   );
 
+  // Kanban panel sizing (75% left / 25% right default)
+  const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
+    PERSIST_KEYS.kanbanLeftPanel,
+    75
+  );
+
   const defaultLayout: Layout =
     typeof rightMainPanelSize === 'number'
       ? {
@@ -112,6 +124,63 @@ export function WorkspacesLayout() {
     if (isLeftMainPanelVisible && rightMainPanelMode !== null)
       setRightMainPanelSize(layout['right-main']);
   };
+
+  const kanbanDefaultLayout: Layout =
+    typeof kanbanLeftPanelSize === 'number'
+      ? {
+          'kanban-left': kanbanLeftPanelSize,
+          'kanban-right': 100 - kanbanLeftPanelSize,
+        }
+      : { 'kanban-left': 75, 'kanban-right': 25 };
+
+  const onKanbanLayoutChange = (layout: Layout) => {
+    if (isKanbanRightPanelVisible) {
+      setKanbanLeftPanelSize(layout['kanban-left']);
+    }
+  };
+
+  // Kanban mode layout
+  if (layoutMode === 'kanban') {
+    return (
+      <div className="flex flex-col h-screen">
+        <NavbarContainer />
+        <div className="flex flex-1 min-h-0">
+          <Group
+            orientation="horizontal"
+            className="flex-1 min-w-0 h-full"
+            defaultLayout={kanbanDefaultLayout}
+            onLayoutChange={onKanbanLayoutChange}
+          >
+            {/* Left Kanban Panel */}
+            <Panel
+              id="kanban-left"
+              minSize={20}
+              className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
+            >
+              <p className="text-low">Kanban Left Panel</p>
+            </Panel>
+
+            {isKanbanRightPanelVisible && (
+              <Separator
+                id="kanban-separator"
+                className="w-1 bg-transparent hover:bg-brand/50 transition-colors cursor-col-resize"
+              />
+            )}
+
+            {isKanbanRightPanelVisible && (
+              <Panel
+                id="kanban-right"
+                minSize={20}
+                className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
+              >
+                <p className="text-low">Kanban Right Panel</p>
+              </Panel>
+            )}
+          </Group>
+        </div>
+      </div>
+    );
+  }
 
   const mainContent = (
     <ReviewProvider attemptId={selectedWorkspace?.id}>
