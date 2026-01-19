@@ -7,6 +7,9 @@ on:
     paths-ignore:
       - .github/workflows/**
       - '!.github/workflows/test.yml'
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -17,10 +20,12 @@ env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: 22
   PNPM_VERSION: 10.13.1
+  RUST_TOOLCHAIN: nightly-2025-12-04
+  RUNNER_LABEL: &runner_label blacksmith-16vcpu-ubuntu-2404
 
 jobs:
-  test:
-    runs-on: buildjet-8vcpu-ubuntu-2204
+  frontend-checks:
+    runs-on: *runner_label
     steps:
       - uses: actions/checkout@v6
 
@@ -30,66 +35,107 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint frontend
-        run: cd frontend && npm run lint
-
-      - name: Check i18n regressions
+      - name: Run frontend checks
         env:
-          GITHUB_BASE_REF: ${{ github.base_ref || 'main' }}
-        run: ./scripts/check-i18n.sh
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: |
+          npx concurrently \
+            --kill-others-on-fail \
+            --names "lint,i18n,fmt,build" \
+            --timings \
+            "cd frontend && npm run lint" \
+            "GITHUB_BASE_REF=${{ github.base_ref || 'main' }} ./scripts/check-i18n.sh" \
+            "cd frontend && npm run format:check" \
+            "cd frontend && npm run build"
 
-      - name: Format check frontend
-        run: cd frontend && npm run format:check
+  backend-schema-checks:
+    runs-on: *runner_label
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
 
-      - name: Type check frontend
-        run: cd frontend && npx tsc --noEmit
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: ./.github/actions/cargo-checks-common-setup
         with:
-          toolchain: nightly-2025-12-04
-          components: rustfmt, clippy
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          cache-key: backend-schema-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
+          setup-node: 'true'
+          setup-sqlx-cli: 'true'
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        env:
-          RUST_CACHE_DEBUG: true
+      - name: Check generated types
+        run: npm run generate-types:check
+
+      - name: Sqlx checks
+        run: npm run prepare-db:check
+
+  backend-remote-checks:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: *runner_label
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: ./.github/actions/cargo-checks-common-setup
         with:
-          workspaces: "."
-          cache-provider: "buildjet"
-          cache-on-failure: true
-          shared-key: "shared"
-          cache-all-crates: true
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          cache-key: backend-remote-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
+          setup-node: 'true'
+          setup-sqlx-cli: 'true'
 
       - name: Setup SSH Agent for private dependencies
-        id: ssh-setup
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.VK_PRIVATE_DEPLOY_KEY }}
 
-      - name: Install sqlx-cli
-        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+      - name: Check generated types
+        run: npm run remote:generate-types:check
+
+      - name: Sqlx checks
+        run: npm run remote:prepare-db:check
+
+  backend-clippy:
+    runs-on: *runner_label
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: ./.github/actions/cargo-checks-common-setup
         with:
-          tool: sqlx-cli
-          no-default-features: true
-          features: sqlite,postgres
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+          cache-key: backend-clippy-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
 
-      - name: Build frontend
-        run: cd frontend && npm run build
-        env:
-          NODE_OPTIONS: --max-old-space-size=8192
-
-      - name: Checks
+      - name: Run Clippy and fmt checks
         run: |
-          cargo fmt --all -- --check
-          npm run generate-types:check
-          npm run prepare-db:check
-          cargo test --workspace
+          set -x
+          cargo fmt --all -- --check & pid_fmt=$!
           cargo clippy --all --all-targets -- -D warnings
+          wait $pid_fmt
 
-      - name: Remote crate checks
-        if: ${{ steps.ssh-setup.outcome == 'success' }}
-        run: |
-          npm run remote:generate-types:check
-          npm run remote:prepare-db:check  
+  backend-test:
+    runs-on: *runner_label
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: ./.github/actions/cargo-checks-common-setup
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          cache-key: backend-test-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Run Cargo tests
+        run: cargo nextest run --workspace
