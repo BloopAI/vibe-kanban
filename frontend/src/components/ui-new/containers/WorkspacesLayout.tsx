@@ -154,7 +154,7 @@ export function WorkspacesLayout() {
             {/* Left Kanban Panel */}
             <Panel
               id="kanban-left"
-              minSize={20}
+              minSize="20%"
               className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
             >
               <p className="text-low">Kanban Left Panel</p>
@@ -170,7 +170,7 @@ export function WorkspacesLayout() {
             {isKanbanRightPanelVisible && (
               <Panel
                 id="kanban-right"
-                minSize={20}
+                minSize="20%"
                 className="min-w-0 h-full overflow-hidden flex items-center justify-center bg-secondary"
               >
                 <p className="text-low">Kanban Right Panel</p>
