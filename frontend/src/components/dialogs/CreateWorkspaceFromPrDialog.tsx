@@ -83,23 +83,24 @@ const CreateWorkspaceFromPrDialogImpl =
     const openPrs: OpenPrInfo[] =
       prsResult?.success === true ? prsResult.data : [];
 
-    const prsErrorMessage =
-      prsResult?.success === false
-        ? (() => {
-            if (prsResult.error?.type === 'cli_not_installed') {
-              return `${prsResult.error.provider} CLI is not installed`;
-            }
-            if (prsResult.error?.type === 'auth_failed') {
-              return prsResult.error.message;
-            }
-            if (prsResult.error?.type === 'unsupported_provider') {
-              return 'Git provider not supported';
-            }
-            return prsResult.message || 'Failed to load pull requests';
-          })()
-        : prsError
-          ? 'Failed to load pull requests'
-          : null;
+    let prsErrorMessage: string | null = null;
+    if (prsResult?.success === false) {
+      switch (prsResult.error?.type) {
+        case 'cli_not_installed':
+          prsErrorMessage = `${prsResult.error.provider} CLI is not installed`;
+          break;
+        case 'auth_failed':
+          prsErrorMessage = prsResult.error.message;
+          break;
+        case 'unsupported_provider':
+          prsErrorMessage = 'Git provider not supported';
+          break;
+        default:
+          prsErrorMessage = prsResult.message || 'Failed to load pull requests';
+      }
+    } else if (prsError) {
+      prsErrorMessage = 'Failed to load pull requests';
+    }
 
     // Create workspace mutation
     const createMutation = useMutation({
@@ -113,26 +114,23 @@ const CreateWorkspaceFromPrDialogImpl =
           run_setup: runSetup,
         });
         if (!result.success) {
-          if (result.error?.type === 'branch_fetch_failed') {
-            throw new Error(result.error.message);
+          switch (result.error?.type) {
+            case 'branch_fetch_failed':
+              throw new Error(result.error.message);
+            case 'auth_failed':
+              throw new Error(result.error.message);
+            case 'cli_not_installed':
+              throw new Error(`${result.error.provider} CLI is not installed`);
+            case 'pr_not_found':
+              throw new Error('Pull request not found');
+            case 'unsupported_provider':
+              throw new Error('Git provider not supported');
+            case 'repo_not_in_project':
+              throw new Error('Repository is not in any project');
+            default:
+              // Catch-all for unknown error types
+              throw new Error(result.message || 'Failed to create workspace');
           }
-          if (result.error?.type === 'auth_failed') {
-            throw new Error(result.error.message);
-          }
-          if (result.error?.type === 'cli_not_installed') {
-            throw new Error(`${result.error.provider} CLI is not installed`);
-          }
-          if (result.error?.type === 'pr_not_found') {
-            throw new Error('Pull request not found');
-          }
-          if (result.error?.type === 'unsupported_provider') {
-            throw new Error('Git provider not supported');
-          }
-          if (result.error?.type === 'repo_not_in_project') {
-            throw new Error('Repository is not in any project');
-          }
-          // Catch-all for unknown error types
-          throw new Error(result.message || 'Failed to create workspace');
         }
         return result.data;
       },
