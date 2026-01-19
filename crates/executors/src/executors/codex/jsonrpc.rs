@@ -156,8 +156,6 @@ impl JsonRpcPeer {
                 }
             }
 
-            // Call on_exit for cleanup tasks like commit reminders
-            let _ = callbacks.on_exit().await;
             exit_tx.send_exit_signal(ExecutorExitResult::Success).await;
             let _ = reader_peer.shutdown().await;
         });
@@ -281,8 +279,4 @@ pub trait JsonRpcCallbacks: Send + Sync {
     ) -> Result<bool, ExecutorError>;
 
     async fn on_non_json(&self, _raw: &str) -> Result<(), ExecutorError>;
-
-    /// Called when the JSON-RPC connection is about to close.
-    /// Use this for cleanup tasks like commit reminders.
-    async fn on_exit(&self) -> Result<(), ExecutorError>;
 }

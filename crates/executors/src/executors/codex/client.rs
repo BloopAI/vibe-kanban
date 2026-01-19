@@ -477,32 +477,44 @@ impl JsonRpcCallbacks for AppServerClient {
             .strip_prefix("codex/event/")
             .is_some_and(|suffix| suffix == "task_complete");
 
+        // Check for uncommitted changes before allowing exit
+        if has_finished && self.commit_reminder {
+            let status =
+                workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
+                    .await;
+            if !status.is_empty() {
+                // Log the commit reminder
+                self.log_writer
+                    .log_raw(
+                        &Error::commit_reminder(format!(
+                            "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                            status
+                        ))
+                        .raw(),
+                    )
+                    .await?;
+
+                // Send message to Codex asking it to commit
+                if let Some(conversation_id) = *self.conversation_id.lock().await {
+                    let _ = self
+                        .send_user_message(
+                            conversation_id,
+                            "Please commit these changes now with a descriptive commit message."
+                                .to_string(),
+                        )
+                        .await;
+                }
+
+                // Don't exit yet - wait for Codex to commit and send another task_complete
+                return Ok(false);
+            }
+        }
+
         Ok(has_finished)
     }
 
     async fn on_non_json(&self, raw: &str) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(raw).await?;
-        Ok(())
-    }
-
-    async fn on_exit(&self) -> Result<(), ExecutorError> {
-        if !self.commit_reminder {
-            return Ok(());
-        }
-
-        let status =
-            workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths()).await;
-        if !status.is_empty() {
-            self.log_writer
-                .log_raw(
-                    &Error::commit_reminder(format!(
-                        "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                        status
-                    ))
-                    .raw(),
-                )
-                .await?;
-        }
         Ok(())
     }
 }
