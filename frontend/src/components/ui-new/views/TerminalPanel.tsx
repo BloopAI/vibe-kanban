@@ -18,7 +18,7 @@ export function TerminalPanel({
   onTabClose,
 }: TerminalPanelProps) {
   return (
-    <div className="flex-1 overflow-hidden bg-secondary p-base">
+    <div className="h-full overflow-hidden bg-secondary p-base">
       {tabs.map((tab) => (
         <XTermInstance
           key={tab.id}

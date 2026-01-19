@@ -50,16 +50,18 @@ export function TerminalPanelContainer() {
   }, [workspaceId, containerRef, tabs.length, createTab]);
 
   return (
-    <TerminalPanel
-      tabs={tabs}
-      activeTabId={activeTab?.id ?? null}
-      workspaceId={workspaceId ?? ''}
-      containerRef={containerRef}
-      onTabSelect={(tabId) => workspaceId && setActiveTab(workspaceId, tabId)}
-      onTabClose={(tabId) => workspaceId && closeTab(workspaceId, tabId)}
-      onNewTab={() =>
-        workspaceId && containerRef && createTab(workspaceId, containerRef)
-      }
-    />
+    <div className="h-full">
+      <TerminalPanel
+        tabs={tabs}
+        activeTabId={activeTab?.id ?? null}
+        workspaceId={workspaceId ?? ''}
+        containerRef={containerRef}
+        onTabSelect={(tabId) => workspaceId && setActiveTab(workspaceId, tabId)}
+        onTabClose={(tabId) => workspaceId && closeTab(workspaceId, tabId)}
+        onNewTab={() =>
+          workspaceId && containerRef && createTab(workspaceId, containerRef)
+        }
+      />
+    </div>
   );
 }
