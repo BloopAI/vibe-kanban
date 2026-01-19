@@ -11,6 +11,7 @@ import {
   KanbanCard,
   KanbanCards,
   KanbanHeader,
+  KanbanCardContent,
   type DragEndEvent,
 } from '@/components/ui-new/kanban/Kanban';
 
@@ -73,11 +74,43 @@ function KanbanBoardContent({
               </KanbanHeader>
               <KanbanCards>
                 <KanbanCard
-                  id={`placeholder-${status.id}`}
-                  name="Placeholder card"
+                  id={`sample-1-${status.id}`}
+                  name="Add Welcome Modal"
                   index={0}
                   parent={status.id}
-                />
+                >
+                  <KanbanCardContent
+                    displayId="Task-001"
+                    title="Add Welcome Modal"
+                    description="Goal: to successfully on-board a user onto Vibe Kanban in a few clicks as possible"
+                    priority="urgent"
+                    tags={[
+                      { id: '1', name: 'On-boarding' },
+                      { id: '2', name: 'Front-end' },
+                    ]}
+                    assignee={null}
+                  />
+                </KanbanCard>
+                <KanbanCard
+                  id={`sample-2-${status.id}`}
+                  name="Setup CI Pipeline"
+                  index={1}
+                  parent={status.id}
+                >
+                  <KanbanCardContent
+                    displayId="Task-002"
+                    title="Setup CI Pipeline"
+                    description="Configure GitHub Actions for automated testing and deployment"
+                    priority="low"
+                    tags={[{ id: '3', name: 'DevOps' }]}
+                    assignee={{
+                      firstName: 'Schnitzel',
+                      lastName: 'Boy',
+                      username: 'schnitzelboy',
+                    }}
+                    isLoading
+                  />
+                </KanbanCard>
               </KanbanCards>
             </KanbanBoard>
           ))}
