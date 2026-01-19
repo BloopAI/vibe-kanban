@@ -83,6 +83,25 @@ const CreateWorkspaceFromPrDialogImpl =
           run_setup: runSetup,
         });
         if (!result.success) {
+          if (result.error?.type === 'branch_fetch_failed') {
+            throw new Error(result.error.message);
+          }
+          if (result.error?.type === 'auth_failed') {
+            throw new Error(result.error.message);
+          }
+          if (result.error?.type === 'cli_not_installed') {
+            throw new Error(`${result.error.provider} CLI is not installed`);
+          }
+          if (result.error?.type === 'pr_not_found') {
+            throw new Error('Pull request not found');
+          }
+          if (result.error?.type === 'unsupported_provider') {
+            throw new Error('Git provider not supported');
+          }
+          if (result.error?.type === 'repo_not_in_project') {
+            throw new Error('Repository is not in any project');
+          }
+          // Catch-all for unknown error types
           throw new Error(result.message || 'Failed to create workspace');
         }
         return result.data;
