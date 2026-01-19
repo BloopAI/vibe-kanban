@@ -689,14 +689,14 @@ export const attemptsApi = {
     return handleApiResponseAsResult<string, PrError>(response);
   },
 
-  startDevServer: async (attemptId: string): Promise<void> => {
+  startDevServer: async (attemptId: string): Promise<ExecutionProcess[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/start-dev-server`,
       {
         method: 'POST',
       }
     );
-    return handleApiResponse<void>(response);
+    return handleApiResponse<ExecutionProcess[]>(response);
   },
 
   setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
