@@ -12,7 +12,7 @@ import {
   KanbanCards,
   KanbanHeader,
   type DragEndEvent,
-} from '@/components/ui-new/kanban';
+} from '@/components/ui-new/kanban/Kanban';
 
 function LoadingState() {
   return (
