@@ -476,8 +476,13 @@ impl Codex {
         repo_context: crate::env::RepoContext,
         commit_reminder: bool,
     ) -> Result<(), ExecutorError> {
-        let client =
-            AppServerClient::new(log_writer, approvals, auto_approve, repo_context, commit_reminder);
+        let client = AppServerClient::new(
+            log_writer,
+            approvals,
+            auto_approve,
+            repo_context,
+            commit_reminder,
+        );
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);

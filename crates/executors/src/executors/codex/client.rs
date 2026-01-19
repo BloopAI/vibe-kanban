@@ -29,7 +29,10 @@ use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     env::RepoContext,
-    executors::{ExecutorError, codex::normalize_logs::{Approval, Error}},
+    executors::{
+        ExecutorError,
+        codex::normalize_logs::{Approval, Error},
+    },
 };
 
 pub struct AppServerClient {
