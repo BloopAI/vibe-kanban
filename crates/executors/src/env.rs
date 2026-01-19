@@ -21,10 +21,15 @@ impl RepoContext {
     }
 
     pub fn repo_paths(&self) -> Vec<PathBuf> {
-        self.repo_names
-            .iter()
-            .map(|name| self.workspace_root.join(name))
-            .collect()
+        if self.repo_names.is_empty() {
+            // Single repo workspace - the workspace root is the repo
+            vec![self.workspace_root.clone()]
+        } else {
+            self.repo_names
+                .iter()
+                .map(|name| self.workspace_root.join(name))
+                .collect()
+        }
     }
 }
 
