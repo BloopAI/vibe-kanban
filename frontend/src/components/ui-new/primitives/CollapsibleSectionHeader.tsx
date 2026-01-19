@@ -17,7 +17,7 @@ interface CollapsibleSectionHeaderProps {
   title: string;
   defaultExpanded?: boolean;
   collapsible?: boolean;
-  actions: SectionAction[];
+  actions?: SectionAction[];
   children?: React.ReactNode;
   className?: string;
 }
@@ -27,7 +27,7 @@ export function CollapsibleSectionHeader({
   title,
   defaultExpanded = true,
   collapsible = true,
-  actions,
+  actions = [],
   children,
   className,
 }: CollapsibleSectionHeaderProps) {
