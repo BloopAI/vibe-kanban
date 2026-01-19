@@ -4,7 +4,7 @@
  * Usage:
  * ```typescript
  * import { useElectricCollection } from '@/lib/electric';
- * import { PROJECTS_SHAPE } from 'shared/shapes';
+ * import { PROJECTS_SHAPE } from 'shared/remote-types';
  *
  * const { data, isLoading, error, retry } = useElectricCollection(
  *   PROJECTS_SHAPE,
@@ -24,4 +24,4 @@ export { useElectricCollection } from './hooks';
 export { createElectricCollection, getRowKey, buildUrl } from './collections';
 
 // Re-export shapes for convenience
-export * from 'shared/shapes';
+export * from 'shared/remote-types';

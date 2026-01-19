@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createElectricCollection } from './collections';
-import type { ShapeDefinition, ShapeRowType } from 'shared/shapes';
+import type { ShapeDefinition, ShapeRowType } from 'shared/remote-types';
 import type { SyncError } from './types';
 
 /**

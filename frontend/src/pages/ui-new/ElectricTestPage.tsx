@@ -14,8 +14,9 @@ import {
   ISSUE_DEPENDENCIES_SHAPE,
   ISSUE_COMMENTS_SHAPE,
   ISSUE_COMMENT_REACTIONS_SHAPE,
-} from 'shared/shapes';
-import type { ElectricProject, ElectricIssue } from 'shared/types';
+  type Project,
+  type Issue,
+} from 'shared/remote-types';
 
 // ============================================================================
 // Types
@@ -180,7 +181,7 @@ function ProjectsList({
   selectedProjectId,
 }: {
   organizationId: string;
-  onSelectProject: (project: ElectricProject) => void;
+  onSelectProject: (project: Project) => void;
   selectedProjectId: string | null;
 }) {
   const { data, isLoading, error, retry } = useElectricCollection(
@@ -273,7 +274,7 @@ function IssuesList({
   selectedIssueId,
 }: {
   projectId: string;
-  onSelectIssue: (issue: ElectricIssue) => void;
+  onSelectIssue: (issue: Issue) => void;
   selectedIssueId: string | null;
 }) {
   const { data, isLoading, error, retry } = useElectricCollection(
@@ -662,9 +663,9 @@ export function ElectricTestPage() {
     null
   );
   const [selectedProject, setSelectedProject] =
-    useState<ElectricProject | null>(null);
+    useState<Project | null>(null);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<ElectricIssue | null>(
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(
     null
   );
   const [isConnected, setIsConnected] = useState(false);
@@ -687,14 +688,14 @@ export function ElectricTestPage() {
     setSelectedIssue(null);
   };
 
-  const handleSelectProject = (project: ElectricProject) => {
+  const handleSelectProject = (project: Project) => {
     setSelectedProjectId(project.id);
     setSelectedProject(project);
     setSelectedIssueId(null);
     setSelectedIssue(null);
   };
 
-  const handleSelectIssue = (issue: ElectricIssue) => {
+  const handleSelectIssue = (issue: Issue) => {
     setSelectedIssueId(issue.id);
     setSelectedIssue(issue);
   };
