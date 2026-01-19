@@ -662,12 +662,9 @@ export function ElectricTestPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
-  const [selectedProject, setSelectedProject] =
-    useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(
-    null
-  );
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   const [activeOrgCollection, setActiveOrgCollection] =
