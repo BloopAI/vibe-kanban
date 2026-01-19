@@ -1114,7 +1114,6 @@ static SESSION_ID: LazyLock<Regex> = LazyLock::new(|| {
 pub enum Error {
     LaunchError { error: String },
     AuthRequired { error: String },
-    CommitReminder { message: String },
 }
 
 impl Error {
@@ -1123,9 +1122,6 @@ impl Error {
     }
     pub fn auth_required(error: String) -> Self {
         Self::AuthRequired { error }
-    }
-    pub fn commit_reminder(message: String) -> Self {
-        Self::CommitReminder { message }
     }
 
     pub fn raw(&self) -> String {
@@ -1150,12 +1146,6 @@ impl ToNormalizedEntry for Error {
                     error_type: NormalizedEntryError::SetupRequired,
                 },
                 content: error.clone(),
-                metadata: None,
-            },
-            Error::CommitReminder { message } => NormalizedEntry {
-                timestamp: None,
-                entry_type: NormalizedEntryType::SystemMessage,
-                content: message.clone(),
                 metadata: None,
             },
         }

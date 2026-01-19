@@ -28,10 +28,7 @@ use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     env::RepoContext,
-    executors::{
-        ExecutorError,
-        codex::normalize_logs::{Approval, Error},
-    },
+    executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
 pub struct AppServerClient {
@@ -483,24 +480,15 @@ impl JsonRpcCallbacks for AppServerClient {
                 workspace_utils::git::check_uncommitted_changes(&self.repo_context.repo_paths())
                     .await;
             if !status.is_empty() {
-                // Log the commit reminder
-                self.log_writer
-                    .log_raw(
-                        &Error::commit_reminder(format!(
-                            "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
-                            status
-                        ))
-                        .raw(),
-                    )
-                    .await?;
-
                 // Send message to Codex asking it to commit
                 if let Some(conversation_id) = *self.conversation_id.lock().await {
                     let _ = self
                         .send_user_message(
                             conversation_id,
-                            "Please commit these changes now with a descriptive commit message."
-                                .to_string(),
+                            format!(
+                                "You have uncommitted changes. Please stage and commit them now with a descriptive commit message.{}",
+                                status
+                            ),
                         )
                         .await;
                 }
