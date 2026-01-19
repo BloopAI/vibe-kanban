@@ -650,7 +650,9 @@ pub async fn create_workspace_from_pr(
 
     // 3. Get remote URL using default remote (not hardcoded "origin")
     let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
-    let remote_url = deployment.git().get_remote_url(&repo.path, &default_remote)?;
+    let remote_url = deployment
+        .git()
+        .get_remote_url(&repo.path, &default_remote)?;
 
     // 3. Create git host service and list open PRs to find the one we want
     let git_host = match GitHostService::from_url(&remote_url) {
