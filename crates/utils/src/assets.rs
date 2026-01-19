@@ -4,7 +4,9 @@ use rust_embed::RustEmbed;
 const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 pub fn asset_dir() -> std::path::PathBuf {
-    let path = if cfg!(debug_assertions) {
+    let path = if let Ok(override_path) = std::env::var("VIBE_KANBAN_ASSET_DIR") {
+        std::path::PathBuf::from(override_path)
+    } else if cfg!(debug_assertions) {
         std::path::PathBuf::from(PROJECT_ROOT).join("../../dev_assets")
     } else {
         ProjectDirs::from("ai", "bloop", "vibe-kanban")
