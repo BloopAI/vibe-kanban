@@ -1,5 +1,20 @@
+import { useMemo } from 'react';
 import { PlusIcon, ArrowLeftIcon, ArchiveIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
@@ -23,6 +38,62 @@ interface WorkspacesSidebarProps {
   showArchive?: boolean;
   /** Handler for toggling archive view */
   onShowArchiveChange?: (show: boolean) => void;
+  /** Handler for drag end on pinned workspaces */
+  onPinnedDragEnd?: (event: DragEndEvent) => void;
+  /** Handler for drag end on unpinned workspaces */
+  onUnpinnedDragEnd?: (event: DragEndEvent) => void;
+}
+
+// Props for the sortable workspace item
+interface SortableWorkspaceItemProps {
+  workspace: Workspace;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+// Sortable wrapper component for WorkspaceSummary
+function SortableWorkspaceItem({
+  workspace,
+  isActive,
+  onClick,
+}: SortableWorkspaceItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: workspace.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <WorkspaceSummary
+        name={workspace.name}
+        workspaceId={workspace.id}
+        filesChanged={workspace.filesChanged}
+        linesAdded={workspace.linesAdded}
+        linesRemoved={workspace.linesRemoved}
+        isActive={isActive}
+        isRunning={workspace.isRunning}
+        isPinned={workspace.isPinned}
+        hasPendingApproval={workspace.hasPendingApproval}
+        hasRunningDevServer={workspace.hasRunningDevServer}
+        hasUnseenActivity={workspace.hasUnseenActivity}
+        latestProcessCompletedAt={workspace.latestProcessCompletedAt}
+        latestProcessStatus={workspace.latestProcessStatus}
+        prStatus={workspace.prStatus}
+        onClick={onClick}
+      />
+    </div>
+  );
 }
 
 export function WorkspacesSidebar({
@@ -38,19 +109,57 @@ export function WorkspacesSidebar({
   onSelectCreate,
   showArchive = false,
   onShowArchiveChange,
+  onPinnedDragEnd,
+  onUnpinnedDragEnd,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
   const DISPLAY_LIMIT = 10;
 
-  const filteredWorkspaces = workspaces
+  // Split workspaces into pinned and unpinned for drag-drop restrictions
+  const pinnedWorkspaces = useMemo(
+    () => workspaces.filter((ws) => ws.isPinned),
+    [workspaces]
+  );
+  const unpinnedWorkspaces = useMemo(
+    () => workspaces.filter((ws) => !ws.isPinned),
+    [workspaces]
+  );
+  const pinnedArchivedWorkspaces = useMemo(
+    () => archivedWorkspaces.filter((ws) => ws.isPinned),
+    [archivedWorkspaces]
+  );
+  const unpinnedArchivedWorkspaces = useMemo(
+    () => archivedWorkspaces.filter((ws) => !ws.isPinned),
+    [archivedWorkspaces]
+  );
+
+  const filteredPinnedWorkspaces = pinnedWorkspaces.filter((workspace) =>
+    workspace.name.toLowerCase().includes(searchLower)
+  );
+  const filteredUnpinnedWorkspaces = unpinnedWorkspaces
     .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
 
-  const filteredArchivedWorkspaces = archivedWorkspaces
+  const filteredPinnedArchivedWorkspaces = pinnedArchivedWorkspaces.filter(
+    (workspace) => workspace.name.toLowerCase().includes(searchLower)
+  );
+  const filteredUnpinnedArchivedWorkspaces = unpinnedArchivedWorkspaces
     .filter((workspace) => workspace.name.toLowerCase().includes(searchLower))
     .slice(0, isSearching ? undefined : DISPLAY_LIMIT);
+
+  // Sensors with activation constraint to prevent accidental drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  // Disable drag-drop during search or when handlers not provided
+  const isDragDisabled = isSearching || !onPinnedDragEnd || !onUnpinnedDragEnd;
 
   return (
     <div className="w-full h-full bg-secondary flex flex-col">
@@ -79,32 +188,66 @@ export function WorkspacesSidebar({
             <span className="text-sm font-medium text-low">
               {t('common:workspaces.archived')}
             </span>
-            {filteredArchivedWorkspaces.length === 0 ? (
+            {filteredPinnedArchivedWorkspaces.length === 0 &&
+            filteredUnpinnedArchivedWorkspaces.length === 0 ? (
               <span className="text-sm text-low opacity-60">
                 {t('common:workspaces.noArchived')}
               </span>
             ) : (
-              filteredArchivedWorkspaces.map((workspace) => (
-                <WorkspaceSummary
-                  summary
-                  key={workspace.id}
-                  name={workspace.name}
-                  workspaceId={workspace.id}
-                  filesChanged={workspace.filesChanged}
-                  linesAdded={workspace.linesAdded}
-                  linesRemoved={workspace.linesRemoved}
-                  isActive={selectedWorkspaceId === workspace.id}
-                  isRunning={workspace.isRunning}
-                  isPinned={workspace.isPinned}
-                  hasPendingApproval={workspace.hasPendingApproval}
-                  hasRunningDevServer={workspace.hasRunningDevServer}
-                  hasUnseenActivity={workspace.hasUnseenActivity}
-                  latestProcessCompletedAt={workspace.latestProcessCompletedAt}
-                  latestProcessStatus={workspace.latestProcessStatus}
-                  prStatus={workspace.prStatus}
-                  onClick={() => onSelectWorkspace(workspace.id)}
-                />
-              ))
+              <>
+                {/* Pinned archived workspaces */}
+                {filteredPinnedArchivedWorkspaces.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={onPinnedDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredPinnedArchivedWorkspaces.map((w) => w.id)}
+                      strategy={verticalListSortingStrategy}
+                      disabled={isDragDisabled}
+                    >
+                      <div className="flex flex-col gap-base">
+                        {filteredPinnedArchivedWorkspaces.map((workspace) => (
+                          <SortableWorkspaceItem
+                            key={workspace.id}
+                            workspace={workspace}
+                            isActive={selectedWorkspaceId === workspace.id}
+                            onClick={() => onSelectWorkspace(workspace.id)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+                {/* Unpinned archived workspaces */}
+                {filteredUnpinnedArchivedWorkspaces.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={onUnpinnedDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredUnpinnedArchivedWorkspaces.map(
+                        (w) => w.id
+                      )}
+                      strategy={verticalListSortingStrategy}
+                      disabled={isDragDisabled}
+                    >
+                      <div className="flex flex-col gap-base">
+                        {filteredUnpinnedArchivedWorkspaces.map((workspace) => (
+                          <SortableWorkspaceItem
+                            key={workspace.id}
+                            workspace={workspace}
+                            isActive={selectedWorkspaceId === workspace.id}
+                            onClick={() => onSelectWorkspace(workspace.id)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -121,26 +264,56 @@ export function WorkspacesSidebar({
                 onClick={onSelectCreate}
               />
             )}
-            {filteredWorkspaces.map((workspace) => (
-              <WorkspaceSummary
-                key={workspace.id}
-                name={workspace.name}
-                workspaceId={workspace.id}
-                filesChanged={workspace.filesChanged}
-                linesAdded={workspace.linesAdded}
-                linesRemoved={workspace.linesRemoved}
-                isActive={selectedWorkspaceId === workspace.id}
-                isRunning={workspace.isRunning}
-                isPinned={workspace.isPinned}
-                hasPendingApproval={workspace.hasPendingApproval}
-                hasRunningDevServer={workspace.hasRunningDevServer}
-                hasUnseenActivity={workspace.hasUnseenActivity}
-                latestProcessCompletedAt={workspace.latestProcessCompletedAt}
-                latestProcessStatus={workspace.latestProcessStatus}
-                prStatus={workspace.prStatus}
-                onClick={() => onSelectWorkspace(workspace.id)}
-              />
-            ))}
+            {/* Pinned workspaces */}
+            {filteredPinnedWorkspaces.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onPinnedDragEnd}
+              >
+                <SortableContext
+                  items={filteredPinnedWorkspaces.map((w) => w.id)}
+                  strategy={verticalListSortingStrategy}
+                  disabled={isDragDisabled}
+                >
+                  <div className="flex flex-col gap-base">
+                    {filteredPinnedWorkspaces.map((workspace) => (
+                      <SortableWorkspaceItem
+                        key={workspace.id}
+                        workspace={workspace}
+                        isActive={selectedWorkspaceId === workspace.id}
+                        onClick={() => onSelectWorkspace(workspace.id)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+            {/* Unpinned workspaces */}
+            {filteredUnpinnedWorkspaces.length > 0 && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={onUnpinnedDragEnd}
+              >
+                <SortableContext
+                  items={filteredUnpinnedWorkspaces.map((w) => w.id)}
+                  strategy={verticalListSortingStrategy}
+                  disabled={isDragDisabled}
+                >
+                  <div className="flex flex-col gap-base">
+                    {filteredUnpinnedWorkspaces.map((workspace) => (
+                      <SortableWorkspaceItem
+                        key={workspace.id}
+                        workspace={workspace}
+                        isActive={selectedWorkspaceId === workspace.id}
+                        onClick={() => onSelectWorkspace(workspace.id)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
           </div>
         )}
       </div>

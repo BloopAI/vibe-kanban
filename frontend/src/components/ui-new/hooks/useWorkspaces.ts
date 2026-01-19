@@ -14,6 +14,7 @@ export interface SidebarWorkspace {
   taskId: string;
   name: string;
   description: string;
+  sortOrder: number;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
@@ -54,6 +55,7 @@ function toSidebarWorkspace(
     taskId: ws.task_id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
     description: '',
+    sortOrder: ws.sort_order,
     // Use real stats from summary if available
     filesChanged: summary?.files_changed ?? undefined,
     linesAdded: summary?.lines_added ?? undefined,
@@ -179,10 +181,8 @@ export function useWorkspaces(): UseWorkspacesResult {
         if (a.pinned !== b.pinned) {
           return a.pinned ? -1 : 1;
         }
-        // Then by created_at (newest first)
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        // Then by sort_order (ascending - lower values first)
+        return a.sort_order - b.sort_order;
       })
       .map((ws) => toSidebarWorkspace(ws, activeSummaries.get(ws.id)));
   }, [activeData, activeSummaries]);
@@ -195,10 +195,8 @@ export function useWorkspaces(): UseWorkspacesResult {
         if (a.pinned !== b.pinned) {
           return a.pinned ? -1 : 1;
         }
-        // Then by created_at (newest first)
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        // Then by sort_order (ascending - lower values first)
+        return a.sort_order - b.sort_order;
       })
       .map((ws) => toSidebarWorkspace(ws, archivedSummaries.get(ws.id)));
   }, [archivedData, archivedSummaries]);
