@@ -240,7 +240,9 @@ export function SettingsSaveBar({
         )}
       >
         {onDiscard && (
-          <span className="text-sm text-low">{t('settings.common.unsavedChanges')}</span>
+          <span className="text-sm text-low">
+            {t('settings.common.unsavedChanges')}
+          </span>
         )}
         <div className="flex gap-2">
           {onDiscard && (
