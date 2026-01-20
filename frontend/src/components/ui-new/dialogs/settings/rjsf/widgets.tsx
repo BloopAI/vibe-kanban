@@ -81,11 +81,10 @@ export const SelectWidget = (props: WidgetProps) => {
     onChange(finalValue);
   };
 
-  const selectOptions = enumOptions || [];
-
   // Handle nullable types
   const isNullable = Array.isArray(schema.type) && schema.type.includes('null');
   const allOptions = useMemo(() => {
+    const selectOptions = enumOptions || [];
     if (isNullable) {
       return [
         { value: '__null__', label: t('form.notSpecified') },
@@ -93,7 +92,7 @@ export const SelectWidget = (props: WidgetProps) => {
       ];
     }
     return selectOptions;
-  }, [isNullable, selectOptions, t]);
+  }, [isNullable, enumOptions, t]);
 
   const currentValue = value === null ? '__null__' : (value ?? '');
   const selectedOption = allOptions.find(

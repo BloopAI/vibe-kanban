@@ -3,7 +3,7 @@ export {
   settingsWidgets,
   settingsTemplates,
   settingsFields,
-} from './theme';
-export * from './widgets';
-export * from './templates';
-export * from './fields';
+} from './Theme';
+export * from './Widgets';
+export * from './Templates';
+export * from './Fields';
