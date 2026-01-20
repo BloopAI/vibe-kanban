@@ -85,11 +85,13 @@ impl TagRepository {
         Ok(record)
     }
 
+    /// Update a tag with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
     pub async fn update<'e, E>(
         executor: E,
         id: Uuid,
-        name: String,
-        color: String,
+        name: Option<String>,
+        color: Option<String>,
     ) -> Result<Tag, TagError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -99,8 +101,8 @@ impl TagRepository {
             r#"
             UPDATE tags
             SET
-                name = $1,
-                color = $2
+                name = COALESCE($1, name),
+                color = COALESCE($2, color)
             WHERE id = $3
             RETURNING
                 id          AS "id!: Uuid",

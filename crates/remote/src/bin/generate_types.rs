@@ -17,6 +17,7 @@ use remote::{
         users::UserData,
         workspaces::Workspace,
     },
+    routes::tags::{CreateTagRequest, UpdateTagRequest},
     shapes::all_shapes,
 };
 use ts_rs::TS;
@@ -84,6 +85,9 @@ fn export_shapes() -> String {
         IssuePriority::decl(),
         WorkspacePrStatus::decl(),
         UserData::decl(),
+        // Mutation request types
+        CreateTagRequest::decl(),
+        UpdateTagRequest::decl(),
     ];
 
     for decl in type_decls {

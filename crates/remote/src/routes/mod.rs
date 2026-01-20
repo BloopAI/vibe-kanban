@@ -27,7 +27,7 @@ mod organizations;
 mod project_statuses;
 mod projects;
 mod review;
-mod tags;
+pub mod tags;
 mod tokens;
 
 pub fn router(state: AppState) -> Router {
