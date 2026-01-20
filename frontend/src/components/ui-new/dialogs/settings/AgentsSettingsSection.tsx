@@ -7,7 +7,7 @@ import {
   WarningIcon,
   CaretDownIcon,
 } from '@phosphor-icons/react';
-import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
+import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
