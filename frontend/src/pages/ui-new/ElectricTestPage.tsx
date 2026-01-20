@@ -239,12 +239,46 @@ function ProjectsList({
   selectedProjectId,
 }: {
   organizationId: string;
-  onSelectProject: (project: Project) => void;
+  onSelectProject: (project: Project | null) => void;
   selectedProjectId: string | null;
 }) {
-  const { data, isLoading, error, retry } = useEntity(PROJECT_ENTITY, {
-    organization_id: organizationId,
-  });
+  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
+    PROJECT_ENTITY,
+    { organization_id: organizationId }
+  );
+
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
+
+  const handleCreate = () => {
+    if (!newProjectName.trim()) return;
+    insert({
+      organization_id: organizationId,
+      name: newProjectName.trim(),
+      color: newProjectColor,
+    });
+    setNewProjectName('');
+  };
+
+  const handleUpdate = () => {
+    if (!selectedProjectId || !newProjectName.trim()) return;
+    update(selectedProjectId, {
+      name: newProjectName.trim(),
+      color: newProjectColor,
+    });
+  };
+
+  const handleDelete = () => {
+    if (!selectedProjectId) return;
+    remove(selectedProjectId);
+    onSelectProject(null);
+  };
+
+  const handleRowClick = (project: Project) => {
+    onSelectProject(project);
+    setNewProjectName(project.name);
+    setNewProjectColor(project.color);
+  };
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -257,7 +291,7 @@ function ProjectsList({
         data={data}
         getRowId={(p) => p.id}
         selectedId={selectedProjectId ?? undefined}
-        onRowClick={onSelectProject}
+        onRowClick={handleRowClick}
         columns={[
           {
             key: 'name',
@@ -280,6 +314,36 @@ function ProjectsList({
           },
         ]}
       />
+
+      <MutationPanel
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        selectedId={selectedProjectId}
+        disabled={isLoading}
+      >
+        <div className="flex gap-base items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-low mb-half">Name</label>
+            <input
+              type="text"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder="Project name"
+              className="px-base py-half text-sm border rounded-sm bg-primary text-normal focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-low mb-half">Color</label>
+            <input
+              type="color"
+              value={newProjectColor}
+              onChange={(e) => setNewProjectColor(e.target.value)}
+              className="w-10 h-8 border rounded-sm cursor-pointer"
+            />
+          </div>
+        </div>
+      </MutationPanel>
     </div>
   );
 }
@@ -849,8 +913,8 @@ export function ElectricTestPage() {
     setSelectedIssue(null);
   };
 
-  const handleSelectProject = (project: Project) => {
-    setSelectedProjectId(project.id);
+  const handleSelectProject = (project: Project | null) => {
+    setSelectedProjectId(project?.id ?? null);
     setSelectedProject(project);
     setSelectedIssueId(null);
     setSelectedIssue(null);
