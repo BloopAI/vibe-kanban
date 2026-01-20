@@ -446,7 +446,13 @@ impl GhCli {
                 let head_repo_url = match (&pr.head_repository, &pr.head_repository_owner) {
                     (Some(repo), Some(owner)) => Url::parse(&pr.url).ok().and_then(|parsed| {
                         let host = parsed.host_str()?;
-                        Some(format!("{}://{}/{}/{}", parsed.scheme(), host, owner.login, repo.name))
+                        Some(format!(
+                            "{}://{}/{}/{}",
+                            parsed.scheme(),
+                            host,
+                            owner.login,
+                            repo.name
+                        ))
                     }),
                     _ => None,
                 };
