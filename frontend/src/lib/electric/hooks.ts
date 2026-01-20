@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import type { EntityDefinition } from 'shared/remote-types';
@@ -83,22 +83,6 @@ export function useEntity<
     [paramsKey]
   );
 
-  // Track which paramsKey has valid loaded data
-  // This ensures we don't show stale data from a previous params when switching
-  const [validParamsKey, setValidParamsKey] = useState<string | null>(null);
-  const prevParamsKeyRef = useRef(paramsKey);
-
-  // Single effect to handle both invalidation and validation
-  useEffect(() => {
-    const paramsChanged = prevParamsKeyRef.current !== paramsKey;
-
-    if (paramsChanged) {
-      // Params changed - invalidate immediately
-      setValidParamsKey(null);
-      prevParamsKeyRef.current = paramsKey;
-    }
-  }, [paramsKey]);
-
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
     const config = { onError: handleError };
@@ -110,19 +94,12 @@ export function useEntity<
     query.from({ item: collection })
   );
 
-  // Mark data as valid once loading completes for current params
-  useEffect(() => {
-    if (!isLoading && validParamsKey !== paramsKey) {
-      setValidParamsKey(paramsKey);
-    }
-  }, [isLoading, paramsKey, validParamsKey]);
-
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
-  // Only return data if it was loaded for the current params
+  // Return empty array while loading to avoid showing stale data during collection transitions
   const items = useMemo(() => {
-    if (!data || validParamsKey !== paramsKey) return [];
+    if (!data || isLoading) return [];
     return data as unknown as EntityRowType<E>[];
-  }, [data, validParamsKey, paramsKey]);
+  }, [data, isLoading]);
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
@@ -167,7 +144,7 @@ export function useEntity<
 
   return {
     data: items,
-    isLoading: isLoading || validParamsKey !== paramsKey,
+    isLoading,
     error,
     retry,
     insert,
