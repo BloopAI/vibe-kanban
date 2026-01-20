@@ -10,7 +10,6 @@ import { projectsApi } from '@/lib/api';
 import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import type { Project, Repo, UpdateProject } from 'shared/types';
 import { cn } from '@/lib/utils';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +22,7 @@ import {
   SettingsCard,
   SettingsField,
   SettingsInput,
+  SettingsSaveBar,
 } from './SettingsComponents';
 
 interface ProjectFormState {
@@ -422,30 +422,15 @@ export function ProjectsSettingsSection() {
             )}
           </SettingsCard>
 
-          {/* Sticky Save Button */}
-          {hasUnsavedChanges && (
-            <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-low">
-                  {t('settings.projects.save.unsavedChanges')}
-                </span>
-                <div className="flex gap-2">
-                  <PrimaryButton
-                    variant="tertiary"
-                    value={t('settings.projects.save.discard')}
-                    onClick={handleDiscard}
-                    disabled={saving}
-                  />
-                  <PrimaryButton
-                    value={t('settings.projects.save.button')}
-                    onClick={handleSave}
-                    disabled={saving}
-                    actionIcon={saving ? 'spinner' : undefined}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <SettingsSaveBar
+            show={hasUnsavedChanges}
+            saving={saving}
+            saveLabel={t('settings.projects.save.button')}
+            unsavedMessage={t('settings.projects.save.unsavedChanges')}
+            discardLabel={t('settings.projects.save.discard')}
+            onSave={handleSave}
+            onDiscard={handleDiscard}
+          />
         </>
       )}
     </>

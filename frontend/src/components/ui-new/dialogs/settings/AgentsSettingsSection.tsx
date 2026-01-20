@@ -34,6 +34,7 @@ import {
   SettingsCard,
   SettingsField,
   SettingsCheckbox,
+  SettingsSaveBar,
 } from './SettingsComponents';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
@@ -374,6 +375,20 @@ export function AgentsSettingsSection() {
     }
   };
 
+  const handleJsonEditorSave = async () => {
+    setSaveError(null);
+    try {
+      await saveProfiles(localProfilesContent);
+      setProfilesSuccess(true);
+      setIsDirty(false);
+      setTimeout(() => setProfilesSuccess(false), 3000);
+      reloadSystem();
+    } catch (err: unknown) {
+      console.error('Failed to save profiles:', err);
+      setSaveError(t('settings.agents.errors.saveFailed'));
+    }
+  };
+
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2">
@@ -701,31 +716,13 @@ export function AgentsSettingsSection() {
               </p>
             )}
 
-            {/* Sticky Save Button for JSON editor */}
-            {isDirty && (
-              <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
-                <div className="flex justify-end">
-                  <PrimaryButton
-                    value={t('settings.agents.save.button')}
-                    onClick={async () => {
-                      setSaveError(null);
-                      try {
-                        await saveProfiles(localProfilesContent);
-                        setProfilesSuccess(true);
-                        setIsDirty(false);
-                        setTimeout(() => setProfilesSuccess(false), 3000);
-                        reloadSystem();
-                      } catch (err: unknown) {
-                        console.error('Failed to save profiles:', err);
-                        setSaveError(t('settings.agents.errors.saveFailed'));
-                      }
-                    }}
-                    disabled={!isDirty || profilesSaving || !!profilesError}
-                    actionIcon={profilesSaving ? 'spinner' : undefined}
-                  />
-                </div>
-              </div>
-            )}
+            <SettingsSaveBar
+              show={isDirty}
+              saving={profilesSaving}
+              saveDisabled={!!profilesError}
+              saveLabel={t('settings.agents.save.button')}
+              onSave={handleJsonEditorSave}
+            />
           </div>
         )}
       </SettingsCard>

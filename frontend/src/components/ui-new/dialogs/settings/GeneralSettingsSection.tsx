@@ -33,6 +33,7 @@ import {
   SettingsSelect,
   SettingsInput,
   SettingsTextarea,
+  SettingsSaveBar,
 } from './SettingsComponents';
 
 function EditorAvailabilityIndicator({
@@ -627,30 +628,16 @@ export function GeneralSettingsSection() {
         />
       </SettingsCard>
 
-      {/* Sticky Save Button */}
-      {hasUnsavedChanges && (
-        <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-low">
-              {t('settings.general.save.unsavedChanges')}
-            </span>
-            <div className="flex gap-2">
-              <PrimaryButton
-                variant="tertiary"
-                value={t('settings.general.save.discard')}
-                onClick={handleDiscard}
-                disabled={saving}
-              />
-              <PrimaryButton
-                value={t('settings.general.save.button')}
-                onClick={handleSave}
-                disabled={saving || !!branchPrefixError}
-                actionIcon={saving ? 'spinner' : undefined}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsSaveBar
+        show={hasUnsavedChanges}
+        saving={saving}
+        saveDisabled={!!branchPrefixError}
+        saveLabel={t('settings.general.save.button')}
+        unsavedMessage={t('settings.general.save.unsavedChanges')}
+        discardLabel={t('settings.general.save.discard')}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+      />
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
+import { PrimaryButton } from '../../primitives/PrimaryButton';
 
 // SettingsCard - A card container for a settings subsection
 export function SettingsCard({
@@ -208,5 +209,59 @@ export function SettingsTextarea({
         disabled && 'opacity-50 cursor-not-allowed'
       )}
     />
+  );
+}
+
+// SettingsSaveBar - A sticky save bar for unsaved changes
+export function SettingsSaveBar({
+  show,
+  saving,
+  saveDisabled,
+  saveLabel,
+  unsavedMessage,
+  discardLabel,
+  onSave,
+  onDiscard,
+}: {
+  show: boolean;
+  saving: boolean;
+  saveDisabled?: boolean;
+  saveLabel: string;
+  unsavedMessage?: string;
+  discardLabel?: string;
+  onSave: () => void;
+  onDiscard?: () => void;
+}) {
+  if (!show) return null;
+
+  return (
+    <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
+      <div
+        className={cn(
+          'flex items-center',
+          unsavedMessage && onDiscard ? 'justify-between' : 'justify-end'
+        )}
+      >
+        {unsavedMessage && onDiscard && (
+          <span className="text-sm text-low">{unsavedMessage}</span>
+        )}
+        <div className="flex gap-2">
+          {onDiscard && discardLabel && (
+            <PrimaryButton
+              variant="tertiary"
+              value={discardLabel}
+              onClick={onDiscard}
+              disabled={saving}
+            />
+          )}
+          <PrimaryButton
+            value={saveLabel}
+            onClick={onSave}
+            disabled={saving || saveDisabled}
+            actionIcon={saving ? 'spinner' : undefined}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
