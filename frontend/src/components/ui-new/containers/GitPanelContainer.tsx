@@ -86,6 +86,7 @@ export function GitPanelContainer({
           name: repo.display_name || repo.name,
           targetBranch: repo.target_branch || 'main',
           commitsAhead: repoStatus?.commits_ahead ?? 0,
+          commitsBehind: repoStatus?.commits_behind ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
           filesChanged,
           linesAdded,

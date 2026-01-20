@@ -5,6 +5,7 @@ import {
   ArrowsClockwiseIcon,
   FileTextIcon,
   ArrowUpIcon,
+  ArrowDownIcon,
   CrosshairIcon,
   ArrowRightIcon,
   CodeIcon,
@@ -49,6 +50,7 @@ interface RepoCardProps {
   name: string;
   targetBranch: string;
   commitsAhead?: number;
+  commitsBehind?: number;
   filesChanged?: number;
   linesAdded?: number;
   linesRemoved?: number;
@@ -74,6 +76,7 @@ export function RepoCard({
   name,
   targetBranch,
   commitsAhead = 0,
+  commitsBehind = 0,
   filesChanged = 0,
   linesAdded,
   linesRemoved,
@@ -125,35 +128,37 @@ export function RepoCard({
         <div className="flex items-center justify-center">
           <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
         </div>
-        <div className="flex-1 min-w-0 flex">
-          <DropdownMenu>
-            <DropdownMenuTriggerButton
-              label={targetBranch}
-              className="max-w-full"
-            />
-            <DropdownMenuContent>
-              {branchDropdownContent ?? (
-                <>
-                  <DropdownMenuItem
-                    icon={CrosshairIcon}
-                    onClick={onChangeTarget}
-                  >
-                    {t('git.actions.changeTarget')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    icon={ArrowsClockwiseIcon}
-                    onClick={onRebase}
-                  >
-                    {t('rebase.common.action')}
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex-1 min-w-0 flex items-center">
+          <div className="min-w-0 flex-1">
+            <DropdownMenu>
+              <DropdownMenuTriggerButton
+                label={targetBranch}
+                className="max-w-full"
+              />
+              <DropdownMenuContent>
+                {branchDropdownContent ?? (
+                  <>
+                    <DropdownMenuItem
+                      icon={CrosshairIcon}
+                      onClick={onChangeTarget}
+                    >
+                      {t('git.actions.changeTarget')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={ArrowsClockwiseIcon}
+                      onClick={onRebase}
+                    >
+                      {t('rebase.common.action')}
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors"
+                className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors shrink-0"
                 title="Repo actions"
               >
                 <DotsThreeIcon className="size-icon-base" weight="bold" />
@@ -172,20 +177,31 @@ export function RepoCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {/* Commits badge */}
-        {commitsAhead > 0 && (
-          <div className="flex items-center py-half">
-            <span className="text-sm font-medium text-brand-secondary">
-              {commitsAhead}
-            </span>
-            <ArrowUpIcon
-              className="size-icon-xs text-brand-secondary"
-              weight="bold"
-            />
-          </div>
-        )}
       </div>
+
+      {/* Branch status row - commits ahead/behind */}
+      {(commitsAhead > 0 || commitsBehind > 0) && (
+        <div className="flex items-center gap-base text-xs">
+          {commitsAhead > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-brand-secondary/10 text-brand-secondary">
+              <ArrowUpIcon className="size-icon-xs" weight="bold" />
+              <span className="font-medium">{commitsAhead}</span>
+              <span className="text-brand-secondary/80">
+                {t('git.status.ahead')}
+              </span>
+            </span>
+          )}
+          {commitsBehind > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">
+              <ArrowDownIcon className="size-icon-xs" weight="bold" />
+              <span className="font-medium">{commitsBehind}</span>
+              <span className="text-amber-500/80">
+                {t('git.status.behind')}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Files changed row */}
       <div className="flex items-center justify-between w-full">
