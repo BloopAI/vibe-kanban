@@ -127,7 +127,7 @@ export function createEntityCollection<
     ? {
         onInsert: async ({ transaction }: TransactionParam): Promise<void> => {
           const data = transaction.mutations[0].data;
-          const response = await makeRequest(entity.mutations!.url, {
+          const response = await makeRequest(`/v1${entity.mutations!.url}`, {
             method: 'POST',
             body: JSON.stringify(data),
           });
@@ -139,7 +139,7 @@ export function createEntityCollection<
         onUpdate: async ({ transaction }: TransactionParam): Promise<void> => {
           const { key, changes } = transaction.mutations[0];
           const response = await makeRequest(
-            `${entity.mutations!.url}/${key}`,
+            `/v1${entity.mutations!.url}/${key}`,
             {
               method: 'PATCH',
               body: JSON.stringify(changes),
@@ -153,7 +153,7 @@ export function createEntityCollection<
         onDelete: async ({ transaction }: TransactionParam): Promise<void> => {
           const { key } = transaction.mutations[0];
           const response = await makeRequest(
-            `${entity.mutations!.url}/${key}`,
+            `/v1${entity.mutations!.url}/${key}`,
             {
               method: 'DELETE',
             }
