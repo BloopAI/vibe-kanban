@@ -172,6 +172,61 @@ function DataTable<T extends Record<string, unknown>>({
   );
 }
 
+function MutationPanel({
+  onCreate,
+  onUpdate,
+  onDelete,
+  selectedId,
+  disabled,
+  children,
+}: {
+  onCreate?: () => void;
+  onUpdate?: () => void;
+  onDelete?: () => void;
+  selectedId?: string | null;
+  disabled?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="mt-base p-base bg-secondary rounded-sm space-y-base">
+      <h4 className="text-sm font-medium text-normal">Mutations (Optimistic)</h4>
+      {children}
+      <div className="flex gap-base flex-wrap">
+        {onCreate && (
+          <button
+            onClick={onCreate}
+            disabled={disabled}
+            className="px-base py-half text-sm bg-success text-white rounded-sm hover:bg-success/80 disabled:bg-panel disabled:text-low disabled:cursor-not-allowed"
+          >
+            Create
+          </button>
+        )}
+        {onUpdate && (
+          <button
+            onClick={onUpdate}
+            disabled={disabled || !selectedId}
+            className="px-base py-half text-sm bg-brand text-on-brand rounded-sm hover:bg-brand-hover disabled:bg-panel disabled:text-low disabled:cursor-not-allowed"
+          >
+            Update Selected
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            disabled={disabled || !selectedId}
+            className="px-base py-half text-sm bg-error text-white rounded-sm hover:bg-error/80 disabled:bg-panel disabled:text-low disabled:cursor-not-allowed"
+          >
+            Delete Selected
+          </button>
+        )}
+      </div>
+      {selectedId && (
+        <p className="text-xs text-low">Selected: {truncateId(selectedId)}</p>
+      )}
+    </div>
+  );
+}
+
 // ============================================================================
 // Collection List Components (using generic hook)
 // ============================================================================
@@ -380,9 +435,37 @@ function StatusesList({ projectId }: { projectId: string }) {
 }
 
 function TagsList({ projectId }: { projectId: string }) {
-  const { data, isLoading, error, retry } = useEntity(TAG_ENTITY, {
-    project_id: projectId,
-  });
+  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
+    TAG_ENTITY,
+    { project_id: projectId }
+  );
+
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3b82f6');
+
+  const handleCreate = () => {
+    if (!newTagName.trim()) return;
+    insert({ project_id: projectId, name: newTagName.trim(), color: newTagColor });
+    setNewTagName('');
+  };
+
+  const handleUpdate = () => {
+    if (!selectedTagId || !newTagName.trim()) return;
+    update(selectedTagId, { name: newTagName.trim() });
+  };
+
+  const handleDelete = () => {
+    if (!selectedTagId) return;
+    remove(selectedTagId);
+    setSelectedTagId(null);
+  };
+
+  const handleRowClick = (tag: { id: string; name: string; color: string }) => {
+    setSelectedTagId(tag.id);
+    setNewTagName(tag.name);
+    setNewTagColor(tag.color);
+  };
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -394,6 +477,8 @@ function TagsList({ projectId }: { projectId: string }) {
       <DataTable
         data={data}
         getRowId={(t) => t.id}
+        selectedId={selectedTagId ?? undefined}
+        onRowClick={handleRowClick}
         columns={[
           {
             key: 'name',
@@ -411,6 +496,36 @@ function TagsList({ projectId }: { projectId: string }) {
           { key: 'id', label: 'ID', render: (t) => truncateId(t.id) },
         ]}
       />
+
+      <MutationPanel
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        selectedId={selectedTagId}
+        disabled={isLoading}
+      >
+        <div className="flex gap-base items-end flex-wrap">
+          <div>
+            <label className="block text-xs text-low mb-half">Name</label>
+            <input
+              type="text"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="Tag name"
+              className="px-base py-half text-sm border rounded-sm bg-primary text-normal focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-low mb-half">Color</label>
+            <input
+              type="color"
+              value={newTagColor}
+              onChange={(e) => setNewTagColor(e.target.value)}
+              className="w-10 h-8 border rounded-sm cursor-pointer"
+            />
+          </div>
+        </div>
+      </MutationPanel>
     </div>
   );
 }
@@ -555,9 +670,38 @@ function DependenciesList({ projectId }: { projectId: string }) {
 }
 
 function CommentsList({ issueId }: { issueId: string }) {
-  const { data, isLoading, error, retry } = useEntity(ISSUE_COMMENT_ENTITY, {
-    issue_id: issueId,
-  });
+  const { data, isLoading, error, retry, insert, update, remove } = useEntity(
+    ISSUE_COMMENT_ENTITY,
+    { issue_id: issueId }
+  );
+
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(
+    null
+  );
+  const [newMessage, setNewMessage] = useState('');
+
+  const handleCreate = () => {
+    if (!newMessage.trim()) return;
+    insert({ issue_id: issueId, message: newMessage.trim() });
+    setNewMessage('');
+  };
+
+  const handleUpdate = () => {
+    if (!selectedCommentId || !newMessage.trim()) return;
+    update(selectedCommentId, { message: newMessage.trim() });
+  };
+
+  const handleDelete = () => {
+    if (!selectedCommentId) return;
+    remove(selectedCommentId);
+    setSelectedCommentId(null);
+    setNewMessage('');
+  };
+
+  const handleRowClick = (comment: { id: string; message: string }) => {
+    setSelectedCommentId(comment.id);
+    setNewMessage(comment.message);
+  };
 
   if (error)
     return <ErrorState syncError={error} title="Sync Error" onRetry={retry} />;
@@ -569,6 +713,8 @@ function CommentsList({ issueId }: { issueId: string }) {
       <DataTable
         data={data}
         getRowId={(c) => c.id}
+        selectedId={selectedCommentId ?? undefined}
+        onRowClick={handleRowClick}
         columns={[
           {
             key: 'message',
@@ -591,6 +737,25 @@ function CommentsList({ issueId }: { issueId: string }) {
           },
         ]}
       />
+
+      <MutationPanel
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        selectedId={selectedCommentId}
+        disabled={isLoading}
+      >
+        <div>
+          <label className="block text-xs text-low mb-half">Message</label>
+          <textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Enter comment message..."
+            rows={2}
+            className="w-full px-base py-half text-sm border rounded-sm bg-primary text-normal focus:outline-none focus:ring-1 focus:ring-brand resize-none"
+          />
+        </div>
+      </MutationPanel>
     </div>
   );
 }
