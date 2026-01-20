@@ -231,7 +231,7 @@ export function SettingsSaveBar({
   const { t } = useTranslation(['settings', 'common']);
 
   if (!show) {
-    return <div className="sticky bottom-0 z-10 py-4 -mx-6 px-6 -mb-6" />;
+    return <div />;
   }
 
   return (
