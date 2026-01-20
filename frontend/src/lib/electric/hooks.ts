@@ -107,13 +107,15 @@ export function useEntity<
     return createEntityCollection(entity, stableParams, config);
   }, [entity, handleError, retryKey, stableParams]);
 
-  const { data, isLoading } = useLiveQuery((query) =>
-    query.from({ item: collection })
+  const { data, isLoading } = useLiveQuery(
+    (query) => query.from({ item: collection }),
+    [collection]
   );
 
   // Debug: log data and isLoading state, including first item's project_id if available
+  const firstItem = data?.[0] as Record<string, unknown> | undefined;
   const firstItemProjectId =
-    data?.[0]?.project_id ?? data?.[0]?.organization_id ?? 'N/A';
+    firstItem?.project_id ?? firstItem?.organization_id ?? 'N/A';
   console.log(
     `[useEntity ${entity.name}] #${renderNum} paramsKey=${paramsKey.slice(0, 50)}, isLoading=${isLoading}, dataLength=${data?.length ?? 'null'}, firstItemScope=${firstItemProjectId}`
   );
