@@ -1,19 +1,6 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-/**
- * Type guard to check if a message is a change message from Electric sync.
- * Change messages have a `headers` object with an `operation` field.
- */
-function isChangeMessage(
-  msg: unknown
-): msg is { headers: { operation: string }; value: Record<string, unknown> } {
-  if (typeof msg !== 'object' || msg === null) return false;
-  const m = msg as Record<string, unknown>;
-  if (typeof m.headers !== 'object' || m.headers === null) return false;
-  const headers = m.headers as Record<string, unknown>;
-  return typeof headers.operation === 'string';
-}
 import { oauthApi } from '../api';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
@@ -49,6 +36,34 @@ function getRowKey(item: Record<string, unknown>): string {
     .sort(([a], [b]) => a.localeCompare(b)) // Consistent ordering
     .map(([, value]) => String(value))
     .join('-');
+}
+
+type SyncOperation = 'insert' | 'update' | 'delete';
+
+// Electric change message shape (from @electric-sql/client)
+type ChangeMessage = {
+  headers: { operation: SyncOperation };
+  value: Record<string, unknown>;
+};
+
+function isChangeMessage(msg: unknown): msg is ChangeMessage {
+  if (typeof msg !== 'object' || msg === null) return false;
+  const m = msg as { headers?: { operation?: unknown } };
+  return typeof m.headers?.operation === 'string';
+}
+
+/**
+ * Creates a match function for awaitMatch that waits for a specific
+ * operation on a row identified by key.
+ */
+function createSyncMatcher(
+  operation: SyncOperation,
+  key: string
+): (msg: unknown) => boolean {
+  return (msg: unknown) => {
+    if (!isChangeMessage(msg)) return false;
+    return msg.headers.operation === operation && getRowKey(msg.value) === key;
+  };
 }
 
 /**
@@ -167,19 +182,8 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to create ${entity.name}`);
           }
-          // Wait for the synced row to arrive using ID matching
           const key = getRowKey(data);
-          await collection.utils.awaitMatch((msg: unknown) => {
-            if (!isChangeMessage(msg)) return false;
-            const changeMsg = msg as {
-              value: Record<string, unknown>;
-              headers: { operation: string };
-            };
-            return (
-              changeMsg.headers.operation === 'insert' &&
-              getRowKey(changeMsg.value) === key
-            );
-          }, 5000);
+          await collection.utils.awaitMatch(createSyncMatcher('insert', key), 5000);
         },
         onUpdate: async ({
           transaction,
@@ -197,18 +201,7 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to update ${entity.name}`);
           }
-          // Wait for the synced update
-          await collection.utils.awaitMatch((msg: unknown) => {
-            if (!isChangeMessage(msg)) return false;
-            const changeMsg = msg as {
-              value: Record<string, unknown>;
-              headers: { operation: string };
-            };
-            return (
-              changeMsg.headers.operation === 'update' &&
-              getRowKey(changeMsg.value) === key
-            );
-          }, 5000);
+          await collection.utils.awaitMatch(createSyncMatcher('update', key!), 5000);
         },
         onDelete: async ({
           transaction,
@@ -225,18 +218,7 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to delete ${entity.name}`);
           }
-          // Wait for the synced delete
-          await collection.utils.awaitMatch((msg: unknown) => {
-            if (!isChangeMessage(msg)) return false;
-            const changeMsg = msg as {
-              value: Record<string, unknown>;
-              headers: { operation: string };
-            };
-            return (
-              changeMsg.headers.operation === 'delete' &&
-              getRowKey(changeMsg.value) === key
-            );
-          }, 5000);
+          await collection.utils.awaitMatch(createSyncMatcher('delete', key!), 5000);
         },
       }
     : {};
