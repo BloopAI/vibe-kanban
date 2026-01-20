@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import type { EntityDefinition } from 'shared/remote-types';
@@ -83,16 +83,15 @@ export function useEntity<
     [paramsKey]
   );
 
-  // Track parameter changes to clear stale data during transitions
+  // Track previous params key to detect changes synchronously during render
+  // This avoids race conditions with useEffect-based approaches
   const prevParamsKeyRef = useRef(paramsKey);
-  const [isParamsChanging, setIsParamsChanging] = useState(false);
+  const isParamsChanged = prevParamsKeyRef.current !== paramsKey;
 
-  useEffect(() => {
-    if (prevParamsKeyRef.current !== paramsKey) {
-      setIsParamsChanging(true);
-      prevParamsKeyRef.current = paramsKey;
-    }
-  }, [paramsKey]);
+  // Update ref after using it (during render, not in effect)
+  if (isParamsChanged) {
+    prevParamsKeyRef.current = paramsKey;
+  }
 
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
@@ -105,19 +104,12 @@ export function useEntity<
     query.from({ item: collection })
   );
 
-  // Reset params changing flag once new data has loaded
-  useEffect(() => {
-    if (!isLoading && isParamsChanging) {
-      setIsParamsChanging(false);
-    }
-  }, [isLoading, isParamsChanging]);
-
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
-  // Return empty array when params are changing to avoid showing stale data
+  // Return empty array on the render where params changed to avoid showing stale data
   const items = useMemo(() => {
-    if (!data || isParamsChanging) return [];
+    if (!data || isParamsChanged) return [];
     return data as unknown as EntityRowType<E>[];
-  }, [data, isParamsChanging]);
+  }, [data, isParamsChanged]);
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
@@ -162,7 +154,7 @@ export function useEntity<
 
   return {
     data: items,
-    isLoading: isLoading || isParamsChanging,
+    isLoading: isLoading || isParamsChanged,
     error,
     retry,
     insert,
