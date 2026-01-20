@@ -30,86 +30,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
+import { SettingsCard, SettingsField, SettingsCheckbox } from './SettingsComponents';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
-
-// Reusable settings components
-function SettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
-      <div>
-        <h3 className="text-base font-medium text-high">{title}</h3>
-        {description && <p className="text-sm text-low mt-1">{description}</p>}
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function SettingsField({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-normal">{label}</label>
-      {children}
-      {description && <p className="text-sm text-low">{description}</p>}
-    </div>
-  );
-}
-
-function SettingsCheckbox({
-  id,
-  label,
-  checked,
-  onChange,
-  disabled,
-}: {
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      <input
-        type="checkbox"
-        id={id}
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled}
-        className={cn(
-          'h-4 w-4 rounded border-border bg-secondary text-brand focus:ring-brand focus:ring-offset-0',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-      />
-      <label
-        htmlFor={id}
-        className={cn(
-          'text-sm font-medium text-normal cursor-pointer',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-      >
-        {label}
-      </label>
-    </div>
-  );
-}
 
 function AgentAvailabilityIndicator({
   availability,

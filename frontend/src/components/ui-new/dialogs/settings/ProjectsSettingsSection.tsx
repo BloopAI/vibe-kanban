@@ -19,68 +19,11 @@ import {
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
 import { IconButton } from '../../primitives/IconButton';
-
-// Reusable settings components
-function SettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
-      <div>
-        <h3 className="text-base font-medium text-high">{title}</h3>
-        {description && <p className="text-sm text-low mt-1">{description}</p>}
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function SettingsField({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-normal">{label}</label>
-      {children}
-      {description && <p className="text-sm text-low">{description}</p>}
-    </div>
-  );
-}
-
-function SettingsInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={cn(
-        'w-full bg-secondary border border-border rounded-sm px-base py-half text-base text-high',
-        'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand'
-      )}
-    />
-  );
-}
+import {
+  SettingsCard,
+  SettingsField,
+  SettingsInput,
+} from './SettingsComponents';
 
 interface ProjectFormState {
   name: string;
