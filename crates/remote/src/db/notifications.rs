@@ -3,10 +3,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::{Executor, Postgres, Type};
 use thiserror::Error;
+use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
+#[ts(export)]
 pub enum NotificationType {
     IssueCommentAdded,
     IssueStatusChanged,
@@ -14,7 +16,8 @@ pub enum NotificationType {
     IssueDeleted,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Notification {
     pub id: Uuid,
     pub organization_id: Uuid,

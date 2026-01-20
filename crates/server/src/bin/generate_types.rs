@@ -11,7 +11,6 @@ fn generate_types_content() -> String {
 // If you are an AI, and you absolutely have to edit this file, please confirm with the user first.";
 
     let decls: Vec<String> = vec![
-        remote::db::users::UserData::decl(),
         db::models::project::Project::decl(),
         db::models::project::CreateProject::decl(),
         db::models::project::UpdateProject::decl(),
@@ -374,15 +373,13 @@ fn main() {
             std::process::exit(1);
         }
     } else {
-        // Wipe existing shared
-        fs::remove_dir_all(shared_path).ok();
-
-        // Recreate folder
         fs::create_dir_all(shared_path).expect("cannot create shared");
 
-        // Write the file as before
+        fs::remove_file(&types_path).ok();
+        fs::remove_dir_all(&schemas_path).ok();
+
         fs::write(&types_path, generated_types).expect("unable to write types.ts");
-        println!("✅ TypeScript types generated in shared/");
+        println!("✅ TypeScript types generated in shared/types.ts");
 
         write_schemas(&schemas_path, schema_content).expect("unable to write schemas");
 

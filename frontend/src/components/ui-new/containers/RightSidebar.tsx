@@ -10,6 +10,8 @@ import { CreateModeAddReposSectionContainer } from '@/components/ui-new/containe
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { Workspace, RepoWithTargetBranch } from 'shared/types';
 import {
   RIGHT_MAIN_PANEL_MODES,
@@ -20,7 +22,10 @@ import {
   useUiPreferencesStore,
   PersistKey,
 } from '@/stores/useUiPreferencesStore';
-import { CollapsibleSectionHeader } from '../primitives/CollapsibleSectionHeader';
+import {
+  CollapsibleSectionHeader,
+  type SectionAction,
+} from '../primitives/CollapsibleSectionHeader';
 
 type SectionDef = {
   title: string;
@@ -28,6 +33,7 @@ type SectionDef = {
   visible: boolean;
   expanded: boolean;
   content: React.ReactNode;
+  actions: SectionAction[];
 };
 
 export interface RightSidebarProps {
@@ -48,6 +54,7 @@ export function RightSidebar({
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
+  const { expandTerminal, isTerminalExpanded } = useLogsPanel();
 
   const [changesExpanded] = usePersistedExpanded(
     PERSIST_KEYS.changesSection,
@@ -99,6 +106,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeProjectSectionContainer />,
+          actions: [],
         },
         {
           title: t('common:sections.repositories'),
@@ -106,6 +114,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeReposSectionContainer />,
+          actions: [],
         },
         {
           title: t('common:sections.addRepositories'),
@@ -113,6 +122,7 @@ export function RightSidebar({
           visible: true,
           expanded: true,
           content: <CreateModeAddReposSectionContainer />,
+          actions: [],
         },
       ]
     : buildWorkspaceSections();
@@ -131,13 +141,15 @@ export function RightSidebar({
             diffs={diffs}
           />
         ),
+        actions: [],
       },
       {
         title: 'Terminal',
         persistKey: PERSIST_KEYS.terminalSection,
-        visible: isTerminalVisible,
+        visible: isTerminalVisible && !isTerminalExpanded,
         expanded: terminalExpanded,
         content: <TerminalPanelContainer />,
+        actions: [{ icon: ArrowsOutSimpleIcon, onClick: expandTerminal }],
       },
       {
         title: t('common:sections.notes'),
@@ -145,6 +157,7 @@ export function RightSidebar({
         visible: true,
         expanded: notesExpanded,
         content: <WorkspaceNotesContainer />,
+        actions: [],
       },
     ];
 
@@ -168,6 +181,7 @@ export function RightSidebar({
                 className=""
               />
             ),
+            actions: [],
           });
         }
         break;
@@ -178,6 +192,7 @@ export function RightSidebar({
           visible: hasUpperContent,
           expanded: upperExpanded,
           content: <ProcessListContainer />,
+          actions: [],
         });
         break;
       case RIGHT_MAIN_PANEL_MODES.PREVIEW:
@@ -193,6 +208,7 @@ export function RightSidebar({
                 className=""
               />
             ),
+            actions: [],
           });
         }
         break;
@@ -206,21 +222,25 @@ export function RightSidebar({
   return (
     <div className="h-full border-l bg-secondary overflow-y-auto">
       <div className="divide-y border-b">
-        {sections.map((section) => (
-          <div
-            key={section.persistKey}
-            className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
-          >
-            <CollapsibleSectionHeader
-              title={section.title}
-              persistKey={section.persistKey}
+        {sections
+          .filter((section) => section.visible)
+          .map((section) => (
+            <div
+              key={section.persistKey}
+              className="max-h-[max(50vh,400px)] flex flex-col overflow-hidden"
             >
-              <div className="flex flex-1 border-t min-h-[200px]">
-                {section.content}
-              </div>
-            </CollapsibleSectionHeader>
-          </div>
-        ))}
+              <CollapsibleSectionHeader
+                title={section.title}
+                persistKey={section.persistKey}
+                defaultExpanded={section.expanded}
+                actions={section.actions}
+              >
+                <div className="flex-1 border-t min-h-[200px] w-full">
+                  {section.content}
+                </div>
+              </CollapsibleSectionHeader>
+            </div>
+          ))}
       </div>
     </div>
   );

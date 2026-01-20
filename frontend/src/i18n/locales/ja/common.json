@@ -193,7 +193,8 @@
     "repoSettings": "リポジトリ設定",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "collapse": "折りたたむ"
   },
   "comments": {
     "addReviewComment": "レビューコメントを追加",
@@ -285,7 +286,8 @@
     "selectProcessToView": "プロセスを選択してログを表示"
   },
   "processes": {
-    "noProcesses": "プロセスがありません"
+    "noProcesses": "プロセスがありません",
+    "terminal": "ターミナル"
   },
   "search": {
     "matchCount": "{{current}} / {{total}}",

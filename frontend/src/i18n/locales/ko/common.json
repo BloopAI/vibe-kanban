@@ -193,7 +193,8 @@
     "repoSettings": "저장소 설정",
     "cancel": "취소",
     "saveChanges": "변경사항 저장",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "collapse": "접기"
   },
   "comments": {
     "addReviewComment": "리뷰 코멘트 추가",
@@ -285,7 +286,8 @@
     "selectProcessToView": "로그를 보려면 프로세스를 선택하세요"
   },
   "processes": {
-    "noProcesses": "프로세스 없음"
+    "noProcesses": "프로세스 없음",
+    "terminal": "터미널"
   },
   "search": {
     "matchCount": "{{current}} / {{total}}",

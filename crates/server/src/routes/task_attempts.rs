@@ -1191,7 +1191,7 @@ pub async fn abort_conflicts_task_attempt(
 pub async fn start_dev_server(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcess>>>, ApiError> {
     let pool = &deployment.db().pool;
 
     // Get parent task
@@ -1265,6 +1265,7 @@ pub async fn start_dev_server(
         }
     };
 
+    let mut execution_processes = Vec::new();
     for repo in repos_with_dev_script {
         let executor_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -1276,7 +1277,7 @@ pub async fn start_dev_server(
             None,
         );
 
-        deployment
+        let execution_process = deployment
             .container()
             .start_execution(
                 &workspace,
@@ -1285,6 +1286,7 @@ pub async fn start_dev_server(
                 &ExecutionProcessRunReason::DevServer,
             )
             .await?;
+        execution_processes.push(execution_process);
     }
 
     deployment
@@ -1298,7 +1300,7 @@ pub async fn start_dev_server(
         )
         .await;
 
-    Ok(ResponseJson(ApiResponse::success(())))
+    Ok(ResponseJson(ApiResponse::success(execution_processes)))
 }
 
 pub async fn get_task_attempt_children(

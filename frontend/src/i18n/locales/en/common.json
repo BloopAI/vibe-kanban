@@ -193,7 +193,8 @@
     "repoSettings": "Repository settings",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
-    "copied": "Copied"
+    "copied": "Copied",
+    "collapse": "Collapse"
   },
   "comments": {
     "addReviewComment": "Add Review Comment",
@@ -285,7 +286,8 @@
     "selectProcessToView": "Select a process to view logs"
   },
   "processes": {
-    "noProcesses": "No processes"
+    "noProcesses": "No processes",
+    "terminal": "Terminal"
   },
   "search": {
     "matchCount": "{{current}} of {{total}}",

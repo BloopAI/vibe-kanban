@@ -193,7 +193,8 @@
     "repoSettings": "Configuración del repositorio",
     "cancel": "Cancelar",
     "saveChanges": "Guardar cambios",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "collapse": "Contraer"
   },
   "comments": {
     "addReviewComment": "Agregar comentario de revisión",
@@ -285,7 +286,8 @@
     "selectProcessToView": "Seleccione un proceso para ver los registros"
   },
   "processes": {
-    "noProcesses": "Sin procesos"
+    "noProcesses": "Sin procesos",
+    "terminal": "Terminal"
   },
   "search": {
     "matchCount": "{{current}} de {{total}}",

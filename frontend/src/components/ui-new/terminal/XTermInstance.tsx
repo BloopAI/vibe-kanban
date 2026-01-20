@@ -4,26 +4,35 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
-import { useTerminalWebSocket } from '@/hooks/useTerminalWebSocket';
 import { useTheme } from '@/components/ThemeProvider';
 import { getTerminalTheme } from '@/utils/terminalTheme';
+import { useTerminal } from '@/contexts/TerminalContext';
 
 interface XTermInstanceProps {
+  tabId: string;
   workspaceId: string;
   isActive: boolean;
   onClose?: () => void;
 }
 
 export function XTermInstance({
+  tabId,
   workspaceId,
   isActive,
   onClose,
 }: XTermInstanceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initialSizeRef = useRef({ cols: 80, rows: 24 });
   const { theme } = useTheme();
+  const {
+    registerTerminalInstance,
+    getTerminalInstance,
+    createTerminalConnection,
+    getTerminalConnection,
+  } = useTerminal();
 
   const onData = useCallback((data: string) => {
     terminalRef.current?.write(data);
@@ -35,14 +44,34 @@ export function XTermInstance({
     return `${protocol}//${host}/api/terminal/ws?workspace_id=${workspaceId}&cols=${initialSizeRef.current.cols}&rows=${initialSizeRef.current.rows}`;
   }, [workspaceId]);
 
-  const { send, resize } = useTerminalWebSocket({
-    endpoint,
-    onData,
-    onExit: onClose,
-  });
+  const fitTerminal = useCallback(() => {
+    fitAddonRef.current?.fit();
+    if (terminalRef.current) {
+      const conn = getTerminalConnection(tabId);
+      conn?.resize(terminalRef.current.cols, terminalRef.current.rows);
+    }
+  }, [tabId, getTerminalConnection]);
 
   useEffect(() => {
-    if (!containerRef.current || terminalRef.current) return;
+    if (!containerRef.current) return;
+
+    const existing = getTerminalInstance(tabId);
+    if (existing) {
+      const { terminal, fitAddon } = existing;
+      if (terminal.element) {
+        containerRef.current.appendChild(terminal.element);
+        fitAddon.fit();
+      }
+      terminalRef.current = terminal;
+      fitAddonRef.current = fitAddon;
+      return;
+    }
+
+    if (terminalRef.current) return;
+
+    if (!getTerminalConnection(tabId)) {
+      createTerminalConnection(tabId, endpoint, onData, onClose);
+    }
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -64,46 +93,42 @@ export function XTermInstance({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
+    registerTerminalInstance(tabId, terminal, fitAddon);
+
     terminal.onData((data) => {
-      send(data);
+      const conn = getTerminalConnection(tabId);
+      conn?.send(data);
     });
 
     return () => {
-      terminal.dispose();
+      if (terminal.element && terminal.element.parentNode) {
+        terminal.element.parentNode.removeChild(terminal.element);
+      }
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [send]);
+  }, [
+    tabId,
+    endpoint,
+    onData,
+    onClose,
+    getTerminalInstance,
+    registerTerminalInstance,
+    createTerminalConnection,
+    getTerminalConnection,
+  ]);
 
   useEffect(() => {
-    if (!isActive || !fitAddonRef.current) return;
-
-    const handleResize = () => {
-      fitAddonRef.current?.fit();
-      if (terminalRef.current) {
-        resize(terminalRef.current.cols, terminalRef.current.rows);
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    handleResize();
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [isActive, resize]);
+    if (!resizeRef.current) return;
+    const observer = new ResizeObserver(fitTerminal);
+    observer.observe(resizeRef.current);
+    return () => observer.disconnect();
+  }, [fitTerminal]);
 
   useEffect(() => {
-    if (isActive) {
-      terminalRef.current?.focus();
-    }
+    if (isActive) terminalRef.current?.focus();
   }, [isActive]);
 
-  // Update terminal theme when app theme changes
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.options.theme = getTerminalTheme();
@@ -111,10 +136,8 @@ export function XTermInstance({
   }, [theme]);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ display: isActive ? 'block' : 'none' }}
-    />
+    <div ref={resizeRef} className="w-full h-full">
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
   );
 }

@@ -9,7 +9,7 @@ members = [
     "crates/local-deployment",
     "crates/deployment",
     "crates/remote",
-    "crates/review"
+    "crates/review",
 ]
 
 [workspace.dependencies]

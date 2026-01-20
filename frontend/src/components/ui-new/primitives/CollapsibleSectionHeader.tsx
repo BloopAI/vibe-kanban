@@ -6,7 +6,7 @@ import {
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
 
-export type HeaderActionIcon = {
+export type SectionAction = {
   icon: Icon;
   onClick: () => void;
   isActive?: boolean;
@@ -17,9 +17,7 @@ interface CollapsibleSectionHeaderProps {
   title: string;
   defaultExpanded?: boolean;
   collapsible?: boolean;
-  icon?: Icon;
-  onIconClick?: () => void;
-  actionIcons?: HeaderActionIcon[];
+  actions?: SectionAction[];
   children?: React.ReactNode;
   className?: string;
 }
@@ -29,9 +27,7 @@ export function CollapsibleSectionHeader({
   title,
   defaultExpanded = true,
   collapsible = true,
-  icon: IconComponent,
-  onIconClick,
-  actionIcons,
+  actions = [],
   children,
   className,
 }: CollapsibleSectionHeaderProps) {
@@ -40,9 +36,9 @@ export function CollapsibleSectionHeader({
     defaultExpanded
   );
 
-  const handleIconClick = (e: React.MouseEvent, callback?: () => void) => {
+  const handleActionClick = (e: React.MouseEvent, onClick: () => void) => {
     e.stopPropagation();
-    callback?.();
+    onClick();
   };
 
   const isExpanded = collapsible ? expanded : true;
@@ -51,18 +47,18 @@ export function CollapsibleSectionHeader({
     <>
       <span className="font-medium truncate text-normal">{title}</span>
       <div className="flex items-center gap-half">
-        {actionIcons?.map((action, index) => {
+        {actions.map((action, index) => {
           const ActionIcon = action.icon;
           return (
             <span
               key={index}
               role="button"
               tabIndex={0}
-              onClick={(e) => handleIconClick(e, action.onClick)}
+              onClick={(e) => handleActionClick(e, action.onClick)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleIconClick(
+                  handleActionClick(
                     e as unknown as React.MouseEvent,
                     action.onClick
                   );
@@ -77,22 +73,6 @@ export function CollapsibleSectionHeader({
             </span>
           );
         })}
-        {IconComponent && onIconClick && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => handleIconClick(e, onIconClick)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleIconClick(e as unknown as React.MouseEvent, onIconClick);
-              }
-            }}
-            className="text-low hover:text-normal"
-          >
-            <IconComponent className="size-icon-xs" weight="bold" />
-          </span>
-        )}
         {collapsible && (
           <CaretDownIcon
             weight="fill"

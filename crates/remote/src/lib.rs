@@ -6,8 +6,8 @@ pub mod github_app;
 pub mod mail;
 pub mod r2;
 pub mod routes;
+pub mod shapes;
 mod state;
-pub mod validated_where;
 
 use std::{env, sync::OnceLock};
 

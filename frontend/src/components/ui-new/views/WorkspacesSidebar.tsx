@@ -11,7 +11,7 @@ import { InputField } from '@/components/ui-new/primitives/InputField';
 import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
 import {
   CollapsibleSectionHeader,
-  type HeaderActionIcon,
+  type SectionAction,
 } from '../primitives/CollapsibleSectionHeader';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContainer';
@@ -120,7 +120,7 @@ export function WorkspacesSidebar({
       };
     }, [filteredWorkspaces]);
 
-  const headerActionIcons: HeaderActionIcon[] = [
+  const headerActions: SectionAction[] = [
     {
       icon: StackIcon,
       onClick: () => onToggleLayoutMode?.(),
@@ -139,7 +139,7 @@ export function WorkspacesSidebar({
         <CollapsibleSectionHeader
           title={t('common:workspaces.title')}
           collapsible={false}
-          actionIcons={headerActionIcons}
+          actions={headerActions}
           className="border-b"
         />
         <div className="px-base">

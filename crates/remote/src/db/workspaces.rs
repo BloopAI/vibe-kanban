@@ -1,12 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::types::WorkspacePrStatus;
 
 /// Workspace metadata pushed from local clients
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
+#[ts(export)]
 pub struct Workspace {
     pub id: Uuid,
     pub project_id: Uuid,
