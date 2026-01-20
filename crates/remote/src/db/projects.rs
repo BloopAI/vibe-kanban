@@ -121,11 +121,13 @@ impl ProjectRepository {
         Ok(records)
     }
 
+    /// Update a project with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
     pub async fn update<'e, E>(
         executor: E,
         id: Uuid,
-        name: String,
-        color: String,
+        name: Option<String>,
+        color: Option<String>,
     ) -> Result<Project, ProjectError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -136,8 +138,8 @@ impl ProjectRepository {
             r#"
             UPDATE projects
             SET
-                name = $1,
-                color = $2,
+                name = COALESCE($1, name),
+                color = COALESCE($2, color),
                 updated_at = $3
             WHERE id = $4
             RETURNING

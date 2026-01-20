@@ -36,6 +36,10 @@ export type WorkspacePrStatus = "open" | "merged" | "closed";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
+export type CreateProjectRequest = { organization_id: string, name: string, color: string, };
+
+export type UpdateProjectRequest = { name: string | null, color: string | null, };
+
 export type CreateTagRequest = { project_id: string, name: string, color: string, };
 
 export type UpdateTagRequest = { name: string | null, color: string | null, };

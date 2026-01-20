@@ -7,8 +7,16 @@
 
 use crate::db::{
     issue_comment_reactions::IssueCommentReaction, issue_comments::IssueComment,
-    project_statuses::ProjectStatus, tags::Tag,
+    project_statuses::ProjectStatus, projects::Project, tags::Tag,
 };
+
+// Organization-scoped mutations
+crate::define_mutation_types!(
+    Project,
+    table: "projects",
+    scope: Organization,
+    fields: [name: String, color: String],
+);
 
 // Project-scoped mutations
 crate::define_mutation_types!(
