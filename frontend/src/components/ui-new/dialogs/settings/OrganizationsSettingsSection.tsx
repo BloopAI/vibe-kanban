@@ -259,7 +259,7 @@ export function OrganizationsSettingsSection() {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="pb-4 border-b border-border/50">
+        <div className="pb-4 border-b border-border">
           <h2 className="text-lg font-semibold text-high">
             {t('settings.layout.nav.organizations', { ns: 'settings' })}
           </h2>
@@ -311,7 +311,7 @@ export function OrganizationsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="pb-4 border-b border-border/50">
+      <div className="pb-4 border-b border-border">
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.organizations', { ns: 'settings' })}
         </h2>
