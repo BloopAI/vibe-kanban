@@ -112,14 +112,14 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         &msg_store,
                     );
                 }
-                OpencodeExecutorEvent::UserMessage { content } => {
+                OpencodeExecutorEvent::SystemMessage { content } => {
                     let idx = entry_index.next();
                     msg_store.push_patch(
                         crate::logs::utils::ConversationPatch::add_normalized_entry(
                             idx,
                             NormalizedEntry {
                                 timestamp: None,
-                                entry_type: NormalizedEntryType::UserMessage,
+                                entry_type: NormalizedEntryType::SystemMessage,
                                 content,
                                 metadata: None,
                             },

@@ -390,9 +390,9 @@ async fn run_session_inner(
 
             tracing::debug!("Sending commit reminder prompt to OpenCode session");
 
-            // Log the user message so it's visible in the UI
+            // Log as system message so it's visible in the UI (user_message gets filtered out)
             let _ = log_writer
-                .log_event(&OpencodeExecutorEvent::UserMessage {
+                .log_event(&OpencodeExecutorEvent::SystemMessage {
                     content: reminder_prompt.clone(),
                 })
                 .await;
