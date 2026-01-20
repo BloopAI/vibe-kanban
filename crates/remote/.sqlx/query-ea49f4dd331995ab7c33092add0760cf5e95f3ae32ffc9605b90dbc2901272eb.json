@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE project_statuses\n            SET\n                name = $1,\n                color = $2,\n                sort_order = $3\n            WHERE id = $4\n            RETURNING\n                id              AS \"id!: Uuid\",\n                project_id      AS \"project_id!: Uuid\",\n                name            AS \"name!\",\n                color           AS \"color!\",\n                sort_order      AS \"sort_order!\",\n                created_at      AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n            UPDATE project_statuses\n            SET\n                name = COALESCE($1, name),\n                color = COALESCE($2, color),\n                sort_order = COALESCE($3, sort_order)\n            WHERE id = $4\n            RETURNING\n                id              AS \"id!: Uuid\",\n                project_id      AS \"project_id!: Uuid\",\n                name            AS \"name!\",\n                color           AS \"color!\",\n                sort_order      AS \"sort_order!\",\n                created_at      AS \"created_at!: DateTime<Utc>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -51,5 +51,5 @@
       false
     ]
   },
-  "hash": "79cc45ae58ea9d7bf0129db0ea767871d49cb6d10d9984b936ab8210db6b4af7"
+  "hash": "ea49f4dd331995ab7c33092add0760cf5e95f3ae32ffc9605b90dbc2901272eb"
 }

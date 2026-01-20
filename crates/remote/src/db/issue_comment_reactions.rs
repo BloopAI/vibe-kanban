@@ -86,6 +86,39 @@ impl IssueCommentReactionRepository {
         Ok(record)
     }
 
+    /// Update an issue comment reaction with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
+    pub async fn update<'e, E>(
+        executor: E,
+        id: Uuid,
+        emoji: Option<String>,
+    ) -> Result<IssueCommentReaction, IssueCommentReactionError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let record = sqlx::query_as!(
+            IssueCommentReaction,
+            r#"
+            UPDATE issue_comment_reactions
+            SET
+                emoji = COALESCE($1, emoji)
+            WHERE id = $2
+            RETURNING
+                id          AS "id!: Uuid",
+                comment_id  AS "comment_id!: Uuid",
+                user_id     AS "user_id!: Uuid",
+                emoji       AS "emoji!",
+                created_at  AS "created_at!: DateTime<Utc>"
+            "#,
+            emoji,
+            id
+        )
+        .fetch_one(executor)
+        .await?;
+
+        Ok(record)
+    }
+
     pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<(), IssueCommentReactionError>
     where
         E: Executor<'e, Database = Postgres>,

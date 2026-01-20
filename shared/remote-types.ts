@@ -40,6 +40,18 @@ export type CreateTagRequest = { project_id: string, name: string, color: string
 
 export type UpdateTagRequest = { name: string | null, color: string | null, };
 
+export type CreateProjectStatusRequest = { project_id: string, name: string, color: string, sort_order: number, };
+
+export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
+
+export type CreateIssueCommentRequest = { issue_id: string, message: string, };
+
+export type UpdateIssueCommentRequest = { message: string | null, };
+
+export type CreateIssueCommentReactionRequest = { comment_id: string, emoji: string, };
+
+export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;

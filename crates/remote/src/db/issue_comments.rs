@@ -90,10 +90,12 @@ impl IssueCommentRepository {
         Ok(record)
     }
 
+    /// Update an issue comment with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
     pub async fn update<'e, E>(
         executor: E,
         id: Uuid,
-        message: String,
+        message: Option<String>,
     ) -> Result<IssueComment, IssueCommentError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -104,7 +106,7 @@ impl IssueCommentRepository {
             r#"
             UPDATE issue_comments
             SET
-                message = $1,
+                message = COALESCE($1, message),
                 updated_at = $2
             WHERE id = $3
             RETURNING

@@ -101,12 +101,14 @@ impl ProjectStatusRepository {
         Ok(record)
     }
 
+    /// Update a project status with partial fields. Uses COALESCE to preserve existing values
+    /// when None is provided.
     pub async fn update<'e, E>(
         executor: E,
         id: Uuid,
-        name: String,
-        color: String,
-        sort_order: i32,
+        name: Option<String>,
+        color: Option<String>,
+        sort_order: Option<i32>,
     ) -> Result<ProjectStatus, ProjectStatusError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -116,9 +118,9 @@ impl ProjectStatusRepository {
             r#"
             UPDATE project_statuses
             SET
-                name = $1,
-                color = $2,
-                sort_order = $3
+                name = COALESCE($1, name),
+                color = COALESCE($2, color),
+                sort_order = COALESCE($3, sort_order)
             WHERE id = $4
             RETURNING
                 id              AS "id!: Uuid",

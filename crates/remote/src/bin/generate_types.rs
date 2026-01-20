@@ -17,7 +17,14 @@ use remote::{
         users::UserData,
         workspaces::Workspace,
     },
-    routes::tags::{CreateTagRequest, UpdateTagRequest},
+    routes::{
+        issue_comment_reactions::{
+            CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest,
+        },
+        issue_comments::{CreateIssueCommentRequest, UpdateIssueCommentRequest},
+        project_statuses::{CreateProjectStatusRequest, UpdateProjectStatusRequest},
+        tags::{CreateTagRequest, UpdateTagRequest},
+    },
     shapes::all_shapes,
 };
 use ts_rs::TS;
@@ -88,6 +95,12 @@ fn export_shapes() -> String {
         // Mutation request types
         CreateTagRequest::decl(),
         UpdateTagRequest::decl(),
+        CreateProjectStatusRequest::decl(),
+        UpdateProjectStatusRequest::decl(),
+        CreateIssueCommentRequest::decl(),
+        UpdateIssueCommentRequest::decl(),
+        CreateIssueCommentReactionRequest::decl(),
+        UpdateIssueCommentReactionRequest::decl(),
     ];
 
     for decl in type_decls {
