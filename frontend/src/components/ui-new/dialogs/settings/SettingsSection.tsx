@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { XIcon } from '@phosphor-icons/react';
 
 import { GeneralSettingsSectionContent } from './GeneralSettingsSection';
 import { ProjectsSettingsSectionContent } from './ProjectsSettingsSection';
@@ -17,9 +18,10 @@ export type SettingsSectionType =
 
 interface SettingsSectionProps {
   type: SettingsSectionType;
+  onClose?: () => void;
 }
 
-export function SettingsSection({ type }: SettingsSectionProps) {
+export function SettingsSection({ type, onClose }: SettingsSectionProps) {
   const { t } = useTranslation('settings');
 
   const renderContent = () => {
@@ -42,12 +44,21 @@ export function SettingsSection({ type }: SettingsSectionProps) {
   };
 
   return (
-    <div className="">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
+    <div className="flex flex-col h-full">
+      {/* Header - sticky */}
+      <div className="sticky top-0 z-10 p-4 border-b border-border bg-panel/95 backdrop-blur-sm flex items-center justify-between">
         <h2 className="text-lg font-semibold text-high">
           {t(`settings.layout.nav.${type}`)}
         </h2>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
+          >
+            <XIcon className="h-4 w-4 text-normal" weight="bold" />
+            <span className="sr-only">{t('close', { ns: 'common' })}</span>
+          </button>
+        )}
       </div>
 
       {/* Content */}
