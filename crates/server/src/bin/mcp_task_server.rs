@@ -42,6 +42,7 @@ fn main() -> anyhow::Result<()> {
                 // Get port from environment variables or fall back to port file
                 let port = match std::env::var("MCP_PORT")
                     .or_else(|_| std::env::var("BACKEND_PORT"))
+                    .or_else(|_| std::env::var("VIBE_KANBAN_PORT"))
                     .or_else(|_| std::env::var("PORT"))
                 {
                     Ok(port_str) => {

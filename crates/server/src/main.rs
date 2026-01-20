@@ -86,6 +86,7 @@ async fn main() -> Result<(), VibeKanbanError> {
     let app_router = routes::router(deployment.clone());
 
     let port = std::env::var("BACKEND_PORT")
+        .or_else(|_| std::env::var("VIBE_KANBAN_PORT"))
         .or_else(|_| std::env::var("PORT"))
         .ok()
         .and_then(|s| {
