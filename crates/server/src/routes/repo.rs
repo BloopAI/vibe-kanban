@@ -13,10 +13,8 @@ use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
-    git::GitBranch,
-    git_host::{
-        GitHostError, GitHostProvider, GitHostService, GitRemote, OpenPrInfo, ProviderKind,
-    },
+    git::{GitBranch, GitRemote},
+    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;

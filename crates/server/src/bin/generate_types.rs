@@ -139,7 +139,7 @@ fn generate_types_content() -> String {
         services::services::git_host::UnifiedPrComment::decl(),
         services::services::git_host::ProviderKind::decl(),
         services::services::git_host::OpenPrInfo::decl(),
-        services::services::git_host::GitRemote::decl(),
+        services::services::git::GitRemote::decl(),
         server::routes::repo::ListPrsError::decl(),
         server::routes::task_attempts::pr::CreateWorkspaceFromPrBody::decl(),
         server::routes::task_attempts::pr::CreateWorkspaceFromPrResponse::decl(),

@@ -15,7 +15,7 @@ mod cli;
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
-use super::{file_ranker::FileStat, git_host::GitRemote};
+use super::file_ranker::FileStat;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -66,6 +66,13 @@ pub struct GitBranch {
     pub is_remote: bool,
     #[ts(type = "Date")]
     pub last_commit_date: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct GitRemote {
+    pub name: String,
+    pub url: String,
+    pub is_default: bool,
 }
 
 #[derive(Debug, Clone)]
