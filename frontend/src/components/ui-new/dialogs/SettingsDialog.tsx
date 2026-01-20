@@ -156,7 +156,7 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
                 <span className="sr-only">{t('close', { ns: 'common' })}</span>
               </button>
               {/* Section content */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto px-6 py-4">
                 {renderSectionContent()}
               </div>
             </div>
