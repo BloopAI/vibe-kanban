@@ -1,5 +1,19 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
+
+/**
+ * Type guard to check if a message is a change message from Electric sync.
+ * Change messages have a `headers` object with an `operation` field.
+ */
+function isChangeMessage(
+  msg: unknown
+): msg is { headers: { operation: string }; value: Record<string, unknown> } {
+  if (typeof msg !== 'object' || msg === null) return false;
+  const m = msg as Record<string, unknown>;
+  if (typeof m.headers !== 'object' || m.headers === null) return false;
+  const headers = m.headers as Record<string, unknown>;
+  return typeof headers.operation === 'string';
+}
 import { oauthApi } from '../api';
 import { makeRequest, REMOTE_API_URL } from '@/lib/remoteApi';
 import type { EntityDefinition, ShapeDefinition } from 'shared/remote-types';
@@ -113,11 +127,10 @@ export function createEntityCollection<
 
   // Build mutation handlers if entity supports mutations
   //
-  // Note: We return void from handlers because our remote API doesn't return
-  // Postgres transaction IDs. Electric sync will still work - it just won't
-  // be able to use txid-based matching. The optimistic state will be replaced
-  // once Electric syncs the actual data from the database.
-  type TransactionParam = {
+  // Handlers use `collection.utils.awaitMatch` to wait for the synced data
+  // to arrive from Electric before resolving. This prevents flicker where
+  // the optimistic state gets replaced by synced state.
+  type MutationFnParams = {
     transaction: {
       mutations: Array<{
         modified?: unknown; // For inserts - the new data
@@ -126,12 +139,24 @@ export function createEntityCollection<
         changes?: unknown; // For updates - the changed fields
       }>;
     };
+    collection: {
+      utils: {
+        awaitMatch: (
+          matchFn: (msg: unknown) => boolean,
+          timeout?: number
+        ) => Promise<boolean>;
+      };
+    };
   };
 
   const mutationHandlers = entity.mutations
     ? {
-        onInsert: async ({ transaction }: TransactionParam): Promise<void> => {
-          const data = transaction.mutations[0].modified;
+        onInsert: async ({
+          transaction,
+          collection,
+        }: MutationFnParams): Promise<void> => {
+          const data = transaction.mutations[0]
+            .modified as Record<string, unknown>;
           const response = await makeRequest(`/v1${entity.mutations!.url}`, {
             method: 'POST',
             body: JSON.stringify(data),
@@ -140,8 +165,24 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to create ${entity.name}`);
           }
+          // Wait for the synced row to arrive using ID matching
+          const key = getRowKey(data);
+          await collection.utils.awaitMatch((msg: unknown) => {
+            if (!isChangeMessage(msg)) return false;
+            const changeMsg = msg as {
+              value: Record<string, unknown>;
+              headers: { operation: string };
+            };
+            return (
+              changeMsg.headers.operation === 'insert' &&
+              getRowKey(changeMsg.value) === key
+            );
+          }, 5000);
         },
-        onUpdate: async ({ transaction }: TransactionParam): Promise<void> => {
+        onUpdate: async ({
+          transaction,
+          collection,
+        }: MutationFnParams): Promise<void> => {
           const { key, changes } = transaction.mutations[0];
           const response = await makeRequest(
             `/v1${entity.mutations!.url}/${key}`,
@@ -154,8 +195,23 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to update ${entity.name}`);
           }
+          // Wait for the synced update
+          await collection.utils.awaitMatch((msg: unknown) => {
+            if (!isChangeMessage(msg)) return false;
+            const changeMsg = msg as {
+              value: Record<string, unknown>;
+              headers: { operation: string };
+            };
+            return (
+              changeMsg.headers.operation === 'update' &&
+              getRowKey(changeMsg.value) === key
+            );
+          }, 5000);
         },
-        onDelete: async ({ transaction }: TransactionParam): Promise<void> => {
+        onDelete: async ({
+          transaction,
+          collection,
+        }: MutationFnParams): Promise<void> => {
           const { key } = transaction.mutations[0];
           const response = await makeRequest(
             `/v1${entity.mutations!.url}/${key}`,
@@ -167,10 +223,26 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to delete ${entity.name}`);
           }
+          // Wait for the synced delete
+          await collection.utils.awaitMatch((msg: unknown) => {
+            if (!isChangeMessage(msg)) return false;
+            const changeMsg = msg as {
+              value: Record<string, unknown>;
+              headers: { operation: string };
+            };
+            return (
+              changeMsg.headers.operation === 'delete' &&
+              getRowKey(changeMsg.value) === key
+            );
+          }, 5000);
         },
       }
     : {};
 
+  // Type assertion needed because our MutationFnParams includes Electric-specific
+  // utils (awaitMatch) that the base @tanstack/db types don't know about.
+  // The actual runtime behavior is correct - electricCollectionOptions adds these utils.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const options = electricCollectionOptions({
     id: collectionId,
     shapeOptions: shapeOptions as unknown as Parameters<
@@ -178,7 +250,7 @@ export function createEntityCollection<
     >[0]['shapeOptions'],
     getKey: (item: ElectricRow) => getRowKey(item),
     ...mutationHandlers,
-  });
+  } as any);
 
   return createCollection(options) as unknown as ReturnType<
     typeof createCollection
