@@ -6,7 +6,10 @@ use serde_json::{from_value, json, to_value};
 use ts_rs::TS;
 use workspace_utils::{diff::Diff, msg_store::MsgStore};
 
-use crate::logs::{NormalizedEntry, utils::EntryIndexProvider};
+use crate::{
+    executors::SlashCommandDescription,
+    logs::{NormalizedEntry, utils::EntryIndexProvider},
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
@@ -174,4 +177,17 @@ pub fn replace_normalized_entry(
     normalized_entry: NormalizedEntry,
 ) {
     upsert_normalized_entry(msg_store, index, normalized_entry, false);
+}
+
+pub fn slash_commands(
+    commands: Vec<SlashCommandDescription>,
+    discovering: bool,
+    error: Option<String>,
+) -> Patch {
+    serde_json::from_value(json!([
+        {"op": "replace", "path": "/commands", "value": commands},
+        {"op": "replace", "path": "/discovering", "value": discovering},
+        {"op": "replace", "path": "/error", "value": error},
+    ]))
+    .unwrap_or_default()
 }

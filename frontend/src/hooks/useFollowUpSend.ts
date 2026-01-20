@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { sessionsApi } from '@/lib/api';
 import type { BaseCodingAgent, CreateFollowUpAttempt } from 'shared/types';
+import { buildAgentPrompt } from '@/utils/promptMessage';
 
 type Args = {
   sessionId?: string;
@@ -33,28 +34,28 @@ export function useFollowUpSend({
   const onSendFollowUp = useCallback(async () => {
     if (!sessionId || !executor) return;
     const extraMessage = message.trim();
-    const finalPrompt = [
+    const { prompt, isSlashCommand } = buildAgentPrompt(extraMessage, [
       conflictMarkdown,
       clickedMarkdown?.trim(),
       reviewMarkdown?.trim(),
-      extraMessage,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-    if (!finalPrompt) return;
+    ]);
+
+    if (!prompt) return;
     try {
       setIsSendingFollowUp(true);
       setFollowUpError(null);
       const body: CreateFollowUpAttempt = {
-        prompt: finalPrompt,
+        prompt: prompt,
         executor_profile_id: { executor, variant },
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
       };
       await sessionsApi.followUp(sessionId, body);
-      clearComments();
-      clearClickedElements?.();
+      if (!isSlashCommand) {
+        clearComments();
+        clearClickedElements?.();
+      }
       onAfterSendCleanup();
       // Don't call jumpToLogsTab() - preserves focus on the follow-up editor
     } catch (error: unknown) {

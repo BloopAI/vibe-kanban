@@ -6,6 +6,7 @@ import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { useUserSystem } from '@/components/ConfigProvider';
+import type { BaseCodingAgent } from 'shared/types';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
 import {
   DropdownMenuItem,
@@ -46,6 +47,7 @@ interface ChatBoxBaseProps {
   disabled?: boolean;
   workspaceId?: string;
   projectId?: string;
+  executor?: BaseCodingAgent | null;
   autoFocus?: boolean;
 
   // Variant selection
@@ -99,6 +101,7 @@ export function ChatBoxBase({
   disabled,
   workspaceId,
   projectId,
+  executor,
   autoFocus,
   variant,
   error,
@@ -187,6 +190,7 @@ export function ChatBoxBase({
           className="min-h-double max-h-[50vh] overflow-y-auto"
           workspaceId={workspaceId}
           projectId={projectId}
+          executor={executor ?? null}
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
           localImages={localImages}

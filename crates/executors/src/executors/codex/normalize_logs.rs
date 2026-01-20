@@ -653,6 +653,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 EventMsg::StreamError(StreamErrorEvent {
                     message,
                     codex_error_info,
+                    ..
                 }) => {
                     add_normalized_entry(
                         &msg_store,
@@ -1007,7 +1008,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::AgentReasoningRawContent(..)
                 | EventMsg::AgentReasoningRawContentDelta(..)
-                | EventMsg::TaskStarted(..)
+                | EventMsg::ThreadRolledBack(..)
+                | EventMsg::TurnStarted(..)
                 | EventMsg::UserMessage(..)
                 | EventMsg::TurnDiff(..)
                 | EventMsg::GetHistoryEntryResponse(..)
@@ -1024,13 +1026,23 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::ReasoningContentDelta(..)
                 | EventMsg::ReasoningRawContentDelta(..)
                 | EventMsg::ListCustomPromptsResponse(..)
+                | EventMsg::ListSkillsResponse(..)
+                | EventMsg::SkillsUpdateAvailable
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
-                | EventMsg::TaskComplete(..) => {}
+                | EventMsg::TurnComplete(..)
+                | EventMsg::CollabAgentSpawnBegin(..)
+                | EventMsg::CollabAgentSpawnEnd(..)
+                | EventMsg::CollabAgentInteractionBegin(..)
+                | EventMsg::CollabAgentInteractionEnd(..)
+                | EventMsg::CollabWaitingBegin(..)
+                | EventMsg::CollabWaitingEnd(..)
+                | EventMsg::CollabCloseBegin(..)
+                | EventMsg::CollabCloseEnd(..) => {}
             }
         }
     });
