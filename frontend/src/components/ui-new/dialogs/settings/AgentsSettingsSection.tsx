@@ -43,6 +43,8 @@ function AgentAvailabilityIndicator({
 }: {
   availability: AgentAvailabilityState;
 }) {
+  const { t } = useTranslation('settings');
+
   if (availability === null) {
     return null;
   }
@@ -51,7 +53,7 @@ function AgentAvailabilityIndicator({
     return (
       <div className="flex items-center gap-2 text-sm text-low">
         <SpinnerIcon className="size-icon-xs animate-spin" />
-        <span>Checking availability...</span>
+        <span>{t('settings.agents.availability.checkingAvailability')}</span>
       </div>
     );
   }
@@ -70,12 +72,12 @@ function AgentAvailabilityIndicator({
       {isAvailable ? (
         <>
           <CheckIcon className="size-icon-xs" weight="bold" />
-          <span>Agent available</span>
+          <span>{t('settings.agents.availability.available')}</span>
         </>
       ) : (
         <>
           <WarningIcon className="size-icon-xs" weight="bold" />
-          <span>Agent not found</span>
+          <span>{t('settings.agents.availability.notFoundSimple')}</span>
         </>
       )}
     </div>

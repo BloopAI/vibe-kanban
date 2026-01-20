@@ -29,12 +29,18 @@
     "create": "作成",
     "delete": "削除",
     "disconnect": "切断",
+    "discard": "破棄",
     "edit": "編集",
     "manage": "管理",
     "replay": "再生",
     "reset": "リセット",
     "save": "保存",
-    "send": "送信"
+    "send": "送信",
+    "addItem": "項目を追加"
+  },
+  "form": {
+    "notSpecified": "指定なし",
+    "selectOption": "オプションを選択..."
   },
   "conversation": {
     "args": "引数",

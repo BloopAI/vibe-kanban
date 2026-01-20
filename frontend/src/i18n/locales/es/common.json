@@ -29,12 +29,18 @@
     "create": "Crear",
     "delete": "Eliminar",
     "disconnect": "Desconectar",
+    "discard": "Descartar",
     "edit": "Editar",
     "manage": "Gestionar",
     "replay": "Reproducir",
     "reset": "Restablecer",
     "save": "Guardar",
-    "send": "Enviar"
+    "send": "Enviar",
+    "addItem": "Añadir elemento"
+  },
+  "form": {
+    "notSpecified": "No especificado",
+    "selectOption": "Seleccionar una opción..."
   },
   "conversation": {
     "args": "Argumentos",

@@ -41,6 +41,8 @@ function EditorAvailabilityIndicator({
 }: {
   availability: EditorAvailabilityState;
 }) {
+  const { t } = useTranslation('settings');
+
   if (availability === null) {
     return null;
   }
@@ -49,7 +51,7 @@ function EditorAvailabilityIndicator({
     return (
       <div className="flex items-center gap-2 text-sm text-low">
         <SpinnerIcon className="size-icon-xs animate-spin" />
-        <span>Checking availability...</span>
+        <span>{t('settings.general.editor.availability.checking')}</span>
       </div>
     );
   }
@@ -64,12 +66,12 @@ function EditorAvailabilityIndicator({
       {availability === 'available' ? (
         <>
           <CheckIcon className="size-icon-xs" weight="bold" />
-          <span>Editor available</span>
+          <span>{t('settings.general.editor.availability.available')}</span>
         </>
       ) : (
         <>
           <WarningIcon className="size-icon-xs" weight="bold" />
-          <span>Editor not found</span>
+          <span>{t('settings.general.editor.availability.notFound')}</span>
         </>
       )}
     </div>

@@ -12,7 +12,13 @@
     "connect": "Connecter",
     "disconnect": "Déconnecter",
     "close": "Fermer",
-    "replay": "Rejouer"
+    "replay": "Rejouer",
+    "discard": "Abandonner",
+    "addItem": "Ajouter un élément"
+  },
+  "form": {
+    "notSpecified": "Non spécifié",
+    "selectOption": "Sélectionner une option..."
   },
   "states": {
     "loading": "Chargement...",

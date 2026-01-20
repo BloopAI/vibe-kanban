@@ -1,5 +1,7 @@
 import { WidgetProps } from '@rjsf/utils';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +73,7 @@ export const SelectWidget = (props: WidgetProps) => {
     placeholder,
   } = props;
 
+  const { t } = useTranslation('common');
   const { enumOptions } = options;
 
   const handleChange = (newValue: string) => {
@@ -82,12 +85,15 @@ export const SelectWidget = (props: WidgetProps) => {
 
   // Handle nullable types
   const isNullable = Array.isArray(schema.type) && schema.type.includes('null');
-  const allOptions = isNullable
-    ? [
-        { value: '__null__', label: 'Not specified' },
+  const allOptions = useMemo(() => {
+    if (isNullable) {
+      return [
+        { value: '__null__', label: t('form.notSpecified') },
         ...selectOptions.filter((opt) => opt.value !== null),
-      ]
-    : selectOptions;
+      ];
+    }
+    return selectOptions;
+  }, [isNullable, selectOptions, t]);
 
   const currentValue = value === null ? '__null__' : (value ?? '');
   const selectedOption = allOptions.find(
@@ -99,7 +105,7 @@ export const SelectWidget = (props: WidgetProps) => {
       <DropdownMenuTrigger asChild>
         <DropdownMenuTriggerButton
           id={id}
-          label={selectedOption?.label || placeholder || 'Select an option...'}
+          label={selectedOption?.label || placeholder || t('form.selectOption')}
           className="w-full justify-between"
           disabled={disabled || readonly}
         />

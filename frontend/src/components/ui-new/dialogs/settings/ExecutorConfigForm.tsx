@@ -99,7 +99,7 @@ export function ExecutorConfigForm({
   if (!schema) {
     return (
       <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
-        Schema not found for executor type: {executor}
+        {t('settings.agents.errors.schemaNotFound', { executor })}
       </div>
     );
   }

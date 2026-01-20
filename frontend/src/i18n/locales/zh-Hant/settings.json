@@ -1,5 +1,8 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 您有未儲存的變更"
+    },
     "layout": {
       "nav": {
         "title": "設定",
@@ -260,10 +263,14 @@
       "loading": "載入代理設定中...",
       "save": {
         "button": "儲存代理設定",
-        "success": "✓ 執行器設定儲存成功！"
+        "success": "✓ 執行器設定儲存成功！",
+        "unsavedChanges": "• 您有未儲存的變更"
       },
       "availability": {
         "checking": "檢查中...",
+        "checkingAvailability": "正在檢查可用性...",
+        "available": "代理可用",
+        "notFoundSimple": "找不到代理",
         "loginDetected": "偵測到最近使用",
         "loginDetectedTooltip": "找到此代理的最近驗證憑證",
         "installationFound": "偵測到曾使用",
@@ -287,7 +294,8 @@
       "errors": {
         "deleteFailed": "刪除設定失敗。請重試。",
         "saveFailed": "儲存代理設定失敗。請重試。",
-        "saveConfigFailed": "儲存設定失敗。請重試。"
+        "saveConfigFailed": "儲存設定失敗。請重試。",
+        "schemaNotFound": "找不到執行器類型 {{executor}} 的結構描述"
       }
     },
     "mcp": {
@@ -323,7 +331,8 @@
         "button": "儲存 MCP 設定",
         "success": "設定已儲存！",
         "successMessage": "✓ MCP 設定儲存成功！",
-        "loading": "載入目前 MCP 伺服器設定..."
+        "loading": "載入目前 MCP 伺服器設定...",
+        "unsavedChanges": "• 您有未儲存的變更"
       }
     },
     "projects": {
@@ -358,6 +367,12 @@
         "unsavedChanges": "• 您有未儲存的變更",
         "discard": "放棄",
         "confirmSwitch": "您有未儲存的變更。確定要切換專案嗎？您的變更將會遺失。"
+      },
+      "repositories": {
+        "title": "儲存庫",
+        "description": "管理此專案中的 Git 儲存庫",
+        "noRepositories": "未設定儲存庫",
+        "addRepository": "新增儲存庫"
       }
     },
     "repos": {

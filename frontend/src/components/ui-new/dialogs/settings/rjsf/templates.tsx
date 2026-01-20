@@ -6,6 +6,7 @@ import type {
 } from '@rjsf/utils';
 import { PlusIcon, XIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 // FieldTemplate - Two-column layout matching settings dialog styling
 export const FieldTemplate = (props: FieldTemplateProps) => {
@@ -76,6 +77,7 @@ export const ObjectFieldTemplate = (props: ObjectFieldTemplateProps) => {
 
 // ArrayFieldTemplate - Array field with add button
 export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
+  const { t } = useTranslation('common');
   const { canAdd, items, onAddClick, disabled, readonly } = props;
 
   if (!items || (items.length === 0 && !canAdd)) {
@@ -99,7 +101,7 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
           )}
         >
           <PlusIcon className="size-icon-xs" weight="bold" />
-          Add Item
+          {t('buttons.addItem')}
         </button>
       )}
     </div>
