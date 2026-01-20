@@ -921,7 +921,7 @@ export const Actions = {
   // === Repo-specific Actions (for command bar when selecting a repo) ===
   RepoCopyPath: {
     id: 'repo-copy-path',
-    label: 'Copy Path',
+    label: 'Copy Repo Path',
     icon: CopyIcon,
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
@@ -940,7 +940,7 @@ export const Actions = {
 
   RepoOpenInIDE: {
     id: 'repo-open-in-ide',
-    label: 'Open in IDE',
+    label: 'Open Repo in IDE',
     icon: DesktopIcon,
     requiresTarget: 'git',
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
