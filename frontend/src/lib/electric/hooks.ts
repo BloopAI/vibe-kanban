@@ -112,7 +112,8 @@ export function useEntity<
   );
 
   // Debug: log data and isLoading state, including first item's project_id if available
-  const firstItemProjectId = data?.[0]?.project_id ?? data?.[0]?.organization_id ?? 'N/A';
+  const firstItemProjectId =
+    data?.[0]?.project_id ?? data?.[0]?.organization_id ?? 'N/A';
   console.log(
     `[useEntity ${entity.name}] #${renderNum} paramsKey=${paramsKey.slice(0, 50)}, isLoading=${isLoading}, dataLength=${data?.length ?? 'null'}, firstItemScope=${firstItemProjectId}`
   );
