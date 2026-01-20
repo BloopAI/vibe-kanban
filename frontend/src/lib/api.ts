@@ -910,7 +910,9 @@ export const repoApi = {
     repoId: string,
     remoteName?: string
   ): Promise<Result<OpenPrInfo[], ListPrsError>> => {
-    const params = remoteName ? `?remote=${encodeURIComponent(remoteName)}` : '';
+    const params = remoteName
+      ? `?remote=${encodeURIComponent(remoteName)}`
+      : '';
     const response = await makeRequest(`/api/repos/${repoId}/prs${params}`);
     return handleApiResponseAsResult<OpenPrInfo[], ListPrsError>(response);
   },

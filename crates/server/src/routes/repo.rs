@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
     git::GitBranch,
-    git_host::{GitHostError, GitHostProvider, GitHostService, GitRemote, OpenPrInfo, ProviderKind},
+    git_host::{
+        GitHostError, GitHostProvider, GitHostService, GitRemote, OpenPrInfo, ProviderKind,
+    },
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -251,9 +253,7 @@ pub async fn list_open_prs(
         Some(name) => name,
         None => deployment.git().get_default_remote_name(&repo.path)?,
     };
-    let remote_url = deployment
-        .git()
-        .get_remote_url(&repo.path, &remote_name)?;
+    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,

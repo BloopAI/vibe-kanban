@@ -643,9 +643,7 @@ pub async fn create_workspace_from_pr(
         Some(ref name) => name.clone(),
         None => deployment.git().get_default_remote_name(&repo.path)?,
     };
-    let remote_url = deployment
-        .git()
-        .get_remote_url(&repo.path, &remote_name)?;
+    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,

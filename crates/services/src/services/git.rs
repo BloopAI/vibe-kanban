@@ -15,8 +15,7 @@ mod cli;
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
-use super::file_ranker::FileStat;
-use super::git_host::GitRemote;
+use super::{file_ranker::FileStat, git_host::GitRemote};
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
