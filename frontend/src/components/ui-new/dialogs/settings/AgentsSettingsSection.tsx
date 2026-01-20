@@ -401,42 +401,6 @@ export function AgentsSettingsSection() {
     }
   };
 
-  // Unified save handler for both subsections
-  const handleUnifiedSave = async () => {
-    // Save executor profile if dirty
-    if (executorDirty) {
-      await handleSaveExecutorProfile();
-    }
-    // Save agent configuration if dirty
-    if (isDirty) {
-      if (useFormEditor && localParsedProfiles) {
-        const executorsMap =
-          localParsedProfiles.executors as unknown as ExecutorsMap;
-        const formData =
-          executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-            selectedExecutorType
-          ];
-        if (formData) {
-          await handleExecutorConfigSave(formData);
-        }
-      } else {
-        await handleJsonEditorSave();
-      }
-    }
-  };
-
-  // Unified discard handler for both subsections
-  const handleUnifiedDiscard = () => {
-    // Discard executor profile changes
-    if (executorDirty && config?.executor_profile) {
-      setExecutorDraft(cloneDeep(config.executor_profile));
-    }
-    // Discard agent configuration changes
-    if (isDirty) {
-      handleJsonEditorDiscard();
-    }
-  };
-
   if (profilesLoading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2">
@@ -706,7 +670,11 @@ export function AgentsSettingsSection() {
                         formData
                       )
                     }
+                    onSave={handleExecutorConfigSave}
+                    onDiscard={handleJsonEditorDiscard}
                     disabled={profilesSaving}
+                    saving={profilesSaving}
+                    isDirty={isDirty}
                   />
                 )
               );
@@ -751,17 +719,29 @@ export function AgentsSettingsSection() {
                 <span className="font-mono text-xs">{profilesPath}</span>
               </p>
             )}
+
+            <SettingsSaveBar
+              show={isDirty}
+              saving={profilesSaving}
+              saveDisabled={!!profilesError}
+              unsavedMessage={t('settings.agents.save.unsavedChanges')}
+              onSave={handleJsonEditorSave}
+              onDiscard={handleJsonEditorDiscard}
+            />
           </div>
         )}
       </SettingsCard>
 
       <SettingsSaveBar
-        show={executorDirty || isDirty}
-        saving={executorSaving || profilesSaving}
-        saveDisabled={!!profilesError}
+        show={executorDirty}
+        saving={executorSaving}
         unsavedMessage={t('settings.agents.save.unsavedChanges')}
-        onSave={handleUnifiedSave}
-        onDiscard={handleUnifiedDiscard}
+        onSave={handleSaveExecutorProfile}
+        onDiscard={() => {
+          if (config?.executor_profile) {
+            setExecutorDraft(cloneDeep(config.executor_profile));
+          }
+        }}
       />
     </>
   );
