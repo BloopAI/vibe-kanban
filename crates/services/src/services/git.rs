@@ -16,6 +16,7 @@ use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
 use super::file_ranker::FileStat;
+use super::git_host::GitRemote;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1619,6 +1620,29 @@ impl GitService {
     pub fn get_default_remote_name(&self, repo_path: &Path) -> Result<String, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         Ok(self.default_remote_name(&repo))
+    }
+
+    pub fn list_remotes(&self, repo_path: &Path) -> Result<Vec<GitRemote>, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let default_remote = self.default_remote_name(&repo);
+        let cli = GitCli::new();
+
+        let remotes = repo.remotes()?;
+        let mut result = Vec::new();
+
+        for remote_name in remotes.iter().flatten() {
+            let url = cli
+                .get_remote_url(repo_path, remote_name)
+                .unwrap_or_default();
+
+            result.push(GitRemote {
+                name: remote_name.to_string(),
+                url,
+                is_default: remote_name == default_remote,
+            });
+        }
+
+        Ok(result)
     }
 
     pub fn check_remote_branch_exists(

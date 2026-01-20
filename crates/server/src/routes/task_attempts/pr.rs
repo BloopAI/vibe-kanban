@@ -589,6 +589,7 @@ pub struct CreateWorkspaceFromPrBody {
     pub pr_number: i64,
     #[serde(default = "default_true")]
     pub run_setup: bool,
+    pub remote_name: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -638,10 +639,13 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
+    let remote_name = match payload.remote_name {
+        Some(ref name) => name.clone(),
+        None => deployment.git().get_default_remote_name(&repo.path)?,
+    };
     let remote_url = deployment
         .git()
-        .get_remote_url(&repo.path, &default_remote)?;
+        .get_remote_url(&repo.path, &remote_name)?;
 
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,
@@ -734,7 +738,7 @@ pub async fn create_workspace_from_pr(
         workspace.id,
         &[CreateWorkspaceRepo {
             repo_id: payload.repo_id,
-            target_branch: format!("{}/{}", default_remote, pr_info.base_branch),
+            target_branch: format!("{}/{}", remote_name, pr_info.base_branch),
         }],
     )
     .await?;
@@ -761,7 +765,7 @@ pub async fn create_workspace_from_pr(
         pool,
         workspace.id,
         payload.repo_id,
-        &format!("{}/{}", default_remote, pr_info.base_branch),
+        &format!("{}/{}", remote_name, pr_info.base_branch),
         pr_info.number,
         &pr_info.url,
     )

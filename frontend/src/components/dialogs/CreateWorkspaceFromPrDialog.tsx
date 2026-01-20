@@ -25,7 +25,7 @@ import { defineModal } from '@/lib/modals';
 import { attemptsApi, repoApi } from '@/lib/api';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
-import type { OpenPrInfo } from 'shared/types';
+import type { OpenPrInfo, GitRemote } from 'shared/types';
 
 export interface CreateWorkspaceFromPrDialogProps {}
 
@@ -40,6 +40,7 @@ const CreateWorkspaceFromPrDialogImpl =
     const currentWorkspaceRepoId = workspaceContext?.repos[0]?.id ?? null;
 
     const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+    const [selectedRemote, setSelectedRemote] = useState<string | null>(null);
     const [selectedPrNumber, setSelectedPrNumber] = useState<number | null>(
       null
     );
@@ -63,17 +64,33 @@ const CreateWorkspaceFromPrDialogImpl =
       }
     }, [repos, selectedRepoId, currentWorkspaceRepoId]);
 
+    const { data: remotes = [], isLoading: isLoadingRemotes } = useQuery({
+      queryKey: ['repo-remotes', selectedRepoId],
+      queryFn: async () => {
+        if (!selectedRepoId) return [];
+        return repoApi.listRemotes(selectedRepoId);
+      },
+      enabled: modal.visible && !!selectedRepoId,
+    });
+
+    useEffect(() => {
+      if (remotes.length > 0 && !selectedRemote) {
+        const defaultRemote = remotes.find((r: GitRemote) => r.is_default);
+        setSelectedRemote(defaultRemote?.name ?? remotes[0].name);
+      }
+    }, [remotes, selectedRemote]);
+
     const {
       data: prsResult,
       isLoading: isLoadingPrs,
       error: prsError,
     } = useQuery({
-      queryKey: ['open-prs', selectedRepoId],
+      queryKey: ['open-prs', selectedRepoId, selectedRemote],
       queryFn: async () => {
-        if (!selectedRepoId) return null;
-        return repoApi.listOpenPrs(selectedRepoId);
+        if (!selectedRepoId || !selectedRemote) return null;
+        return repoApi.listOpenPrs(selectedRepoId, selectedRemote);
       },
-      enabled: modal.visible && !!selectedRepoId,
+      enabled: modal.visible && !!selectedRepoId && !!selectedRemote,
     });
 
     const openPrs: OpenPrInfo[] =
@@ -106,13 +123,14 @@ const CreateWorkspaceFromPrDialogImpl =
 
     const createMutation = useMutation({
       mutationFn: async () => {
-        if (!selectedRepoId || !selectedPrNumber) {
+        if (!selectedRepoId || !selectedPrNumber || !selectedRemote) {
           throw new Error('Missing required fields');
         }
         const result = await attemptsApi.createFromPr({
           repo_id: selectedRepoId,
           pr_number: selectedPrNumber as unknown as bigint,
           run_setup: runSetup,
+          remote_name: selectedRemote,
         });
         if (!result.success) {
           switch (result.error?.type) {
@@ -156,6 +174,7 @@ const CreateWorkspaceFromPrDialogImpl =
     useEffect(() => {
       if (!modal.visible) {
         setSelectedRepoId(null);
+        setSelectedRemote(null);
         setSelectedPrNumber(null);
         setRunSetup(true);
       }
@@ -167,6 +186,7 @@ const CreateWorkspaceFromPrDialogImpl =
 
     const canCreate =
       selectedRepoId &&
+      selectedRemote &&
       selectedPrNumber &&
       !createMutation.isPending &&
       !isLoadingPrs;
@@ -203,6 +223,7 @@ const CreateWorkspaceFromPrDialogImpl =
                   value={selectedRepoId ?? undefined}
                   onValueChange={(value) => {
                     setSelectedRepoId(value);
+                    setSelectedRemote(null);
                     setSelectedPrNumber(null);
                   }}
                 >
@@ -222,9 +243,43 @@ const CreateWorkspaceFromPrDialogImpl =
               )}
             </div>
 
+            {selectedRepoId && remotes.length > 1 && (
+              <div className="space-y-2">
+                <Label>{t('createWorkspaceFromPr.remoteLabel')}</Label>
+                {isLoadingRemotes ? (
+                  <div className="text-sm text-muted-foreground">
+                    {t('createWorkspaceFromPr.loadingRemotes')}
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedRemote ?? undefined}
+                    onValueChange={(value) => {
+                      setSelectedRemote(value);
+                      setSelectedPrNumber(null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={t('createWorkspaceFromPr.selectRemote')}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {remotes.map((remote: GitRemote) => (
+                        <SelectItem key={remote.name} value={remote.name}>
+                          {remote.name}
+                          {remote.is_default &&
+                            ` (${t('createWorkspaceFromPr.default')})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>{t('createWorkspaceFromPr.pullRequestLabel')}</Label>
-              {isLoadingPrs ? (
+              {isLoadingPrs || isLoadingRemotes ? (
                 <div className="text-sm text-muted-foreground">
                   {t('createWorkspaceFromPr.loadingPullRequests')}
                 </div>

@@ -144,3 +144,10 @@ pub struct OpenPrInfo {
     pub base_branch: String,
     pub head_repo_url: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct GitRemote {
+    pub name: String,
+    pub url: String,
+    pub is_default: bool,
+}

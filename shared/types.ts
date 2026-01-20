@@ -280,27 +280,13 @@ export type UnifiedPrComment = { "comment_type": "general", id: string, author: 
 
 export type ProviderKind = "git_hub" | "azure_dev_ops" | "unknown";
 
-export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, 
-/**
- * URL of the repo containing the head branch (for fork PRs)
- */
-head_repo_url: string | null, };
+export type OpenPrInfo = { number: bigint, url: string, title: string, head_branch: string, base_branch: string, head_repo_url: string | null, };
+
+export type GitRemote = { name: string, url: string, is_default: boolean, };
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
 
-export type CreateWorkspaceFromPrBody = { 
-/**
- * The repo that has the PR
- */
-repo_id: string, 
-/**
- * The PR number to use
- */
-pr_number: bigint, 
-/**
- * Whether to run setup scripts (default: true)
- */
-run_setup: boolean, };
+export type CreateWorkspaceFromPrBody = { repo_id: string, pr_number: bigint, run_setup: boolean, remote_name: string | null, };
 
 export type CreateWorkspaceFromPrResponse = { workspace: Workspace, task: Task, };
 

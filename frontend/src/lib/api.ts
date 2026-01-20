@@ -90,6 +90,7 @@ import {
   StartReviewRequest,
   ReviewError,
   OpenPrInfo,
+  GitRemote,
   ListPrsError,
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
@@ -906,10 +907,17 @@ export const repoApi = {
   },
 
   listOpenPrs: async (
-    repoId: string
+    repoId: string,
+    remoteName?: string
   ): Promise<Result<OpenPrInfo[], ListPrsError>> => {
-    const response = await makeRequest(`/api/repos/${repoId}/prs`);
+    const params = remoteName ? `?remote=${encodeURIComponent(remoteName)}` : '';
+    const response = await makeRequest(`/api/repos/${repoId}/prs${params}`);
     return handleApiResponseAsResult<OpenPrInfo[], ListPrsError>(response);
+  },
+
+  listRemotes: async (repoId: string): Promise<GitRemote[]> => {
+    const response = await makeRequest(`/api/repos/${repoId}/remotes`);
+    return handleApiResponse<GitRemote[]>(response);
   },
 };
 

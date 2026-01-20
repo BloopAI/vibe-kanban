@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     file_search::SearchQuery,
     git::GitBranch,
-    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
+    git_host::{GitHostError, GitHostProvider, GitHostService, GitRemote, OpenPrInfo, ProviderKind},
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -90,6 +90,19 @@ pub async fn get_repo_branches(
 
     let branches = deployment.git().get_all_branches(&repo.path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
+}
+
+pub async fn get_repo_remotes(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitRemote>>>, ApiError> {
+    let repo = deployment
+        .repo()
+        .get_by_id(&deployment.db().pool, repo_id)
+        .await?;
+
+    let remotes = deployment.git().list_remotes(&repo.path)?;
+    Ok(ResponseJson(ApiResponse::success(remotes)))
 }
 
 pub async fn get_repos_batch(
@@ -219,19 +232,28 @@ pub enum ListPrsError {
     UnsupportedProvider,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ListPrsQuery {
+    pub remote: Option<String>,
+}
+
 pub async fn list_open_prs(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
+    Query(query): Query<ListPrsQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<OpenPrInfo>, ListPrsError>>, ApiError> {
     let repo = deployment
         .repo()
         .get_by_id(&deployment.db().pool, repo_id)
         .await?;
 
-    let default_remote = deployment.git().get_default_remote_name(&repo.path)?;
+    let remote_name = match query.remote {
+        Some(name) => name,
+        None => deployment.git().get_default_remote_name(&repo.path)?,
+    };
     let remote_url = deployment
         .git()
-        .get_remote_url(&repo.path, &default_remote)?;
+        .get_remote_url(&repo.path, &remote_name)?;
 
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,
@@ -271,6 +293,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/batch", post(get_repos_batch))
         .route("/repos/{repo_id}", get(get_repo).put(update_repo))
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
+        .route("/repos/{repo_id}/remotes", get(get_repo_remotes))
         .route("/repos/{repo_id}/prs", get(list_open_prs))
         .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
