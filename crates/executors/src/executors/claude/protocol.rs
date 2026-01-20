@@ -71,10 +71,19 @@ impl ProtocolPeer {
                                     request_id,
                                     request,
                                 }) => {
+                                    // Log control request (won't render in frontend)
+                                    let _ = client.on_non_control(line).await;
                                     self.handle_control_request(&client, request_id, request)
                                         .await;
                                 }
-                                Ok(CLIMessage::ControlResponse { .. }) => {}
+                                Ok(CLIMessage::ControlResponse { .. }) => {
+                                    // Log control response (won't render in frontend)
+                                    let _ = client.on_non_control(line).await;
+                                }
+                                Ok(CLIMessage::ControlCancelRequest { .. }) => {
+                                    // Log control cancel request (won't render in frontend)
+                                    let _ = client.on_non_control(line).await;
+                                }
                                 Ok(CLIMessage::Result(_)) => {
                                     client.on_non_control(line).await?;
                                     break;
