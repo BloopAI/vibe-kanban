@@ -167,7 +167,7 @@ function ImageComponent({
 
   return (
     <span
-      className="group relative inline-flex items-center gap-1.5 pl-1.5 pr-5 py-1 bg-muted rounded border cursor-pointer border-border hover:border-muted-foreground transition-colors align-bottom"
+      className="group relative inline-flex items-center gap-1.5 pl-1.5 pr-5 py-1 ml-0.5 mr-0.5 bg-muted rounded border cursor-pointer border-border hover:border-muted-foreground transition-colors align-bottom"
       onClick={handleClick}
       onDoubleClick={onDoubleClickEdit}
       role="button"
@@ -208,6 +208,13 @@ const config: DecoratorNodeConfig<ImageData> = {
     deserialize: (match) => ({ src: match[2], altText: match[1] }),
   },
   component: ImageComponent,
+  domStyle: {
+    display: 'inline-block',
+    paddingLeft: '2px',
+    paddingRight: '2px',
+    verticalAlign: 'bottom',
+  },
+  keyboardSelectable: false,
   importDOM: (createNode) => ({
     img: () => ({
       conversion: (el: HTMLElement) => {
