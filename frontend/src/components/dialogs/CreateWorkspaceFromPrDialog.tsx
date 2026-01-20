@@ -126,9 +126,20 @@ const CreateWorkspaceFromPrDialogImpl =
         if (!selectedRepoId || !selectedPrNumber || !selectedRemote) {
           throw new Error('Missing required fields');
         }
+        const selectedPr = openPrs.find(
+          (pr) => Number(pr.number) === selectedPrNumber
+        );
+        if (!selectedPr) {
+          throw new Error('Selected PR not found');
+        }
         const result = await attemptsApi.createFromPr({
           repo_id: selectedRepoId,
           pr_number: selectedPrNumber as unknown as bigint,
+          pr_title: selectedPr.title,
+          pr_url: selectedPr.url,
+          head_branch: selectedPr.head_branch,
+          base_branch: selectedPr.base_branch,
+          head_repo_url: selectedPr.head_repo_url,
           run_setup: runSetup,
           remote_name: selectedRemote,
         });

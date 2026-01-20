@@ -25,8 +25,8 @@ use services::services::{
     container::ContainerService,
     git::{GitCliError, GitServiceError},
     git_host::{
-        self, CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind,
-        UnifiedPrComment, github::GhCli,
+        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
+        github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -587,6 +587,11 @@ pub async fn get_pr_comments(
 pub struct CreateWorkspaceFromPrBody {
     pub repo_id: Uuid,
     pub pr_number: i64,
+    pub pr_title: String,
+    pub pr_url: String,
+    pub head_branch: String,
+    pub base_branch: String,
+    pub head_repo_url: Option<String>,
     #[serde(default = "default_true")]
     pub run_setup: bool,
     pub remote_name: Option<String>,
@@ -645,55 +650,10 @@ pub async fn create_workspace_from_pr(
     };
     let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
-    let git_host = match GitHostService::from_url(&remote_url) {
-        Ok(host) => host,
-        Err(GitHostError::UnsupportedProvider) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::UnsupportedProvider,
-            )));
-        }
-        Err(e) => {
-            tracing::error!("Failed to create git host service: {}", e);
-            return Err(ApiError::BadRequest(e.to_string()));
-        }
-    };
-
-    let prs = match git_host.list_open_prs(&repo.path, &remote_url).await {
-        Ok(prs) => prs,
-        Err(GitHostError::CliNotInstalled { provider }) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::CliNotInstalled { provider },
-            )));
-        }
-        Err(GitHostError::AuthFailed(message)) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::AuthFailed { message },
-            )));
-        }
-        Err(GitHostError::UnsupportedProvider) => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::UnsupportedProvider,
-            )));
-        }
-        Err(e) => {
-            tracing::error!("Failed to list open PRs: {}", e);
-            return Err(ApiError::BadRequest(e.to_string()));
-        }
-    };
-
-    let pr_info = match prs.into_iter().find(|pr| pr.number == payload.pr_number) {
-        Some(pr_info) => pr_info,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::PrNotFound,
-            )));
-        }
-    };
-
-    let fetch_url = pr_info.head_repo_url.as_deref().unwrap_or(&remote_url);
+    let fetch_url = payload.head_repo_url.as_deref().unwrap_or(&remote_url);
     if let Err(e) = deployment
         .git()
-        .fetch_branch(&repo.path, fetch_url, &pr_info.head_branch)
+        .fetch_branch(&repo.path, fetch_url, &payload.head_branch)
     {
         tracing::error!("Failed to fetch PR branch: {}", e);
         return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -706,10 +666,10 @@ pub async fn create_workspace_from_pr(
     let task_id = Uuid::new_v4();
     let create_task = CreateTask {
         project_id,
-        title: pr_info.title.clone(),
+        title: payload.pr_title.clone(),
         description: Some(format!(
             "Created from PR #{}: {}",
-            pr_info.number, pr_info.url
+            payload.pr_number, payload.pr_url
         )),
         status: Some(TaskStatus::InProgress),
         parent_workspace_id: None,
@@ -723,7 +683,7 @@ pub async fn create_workspace_from_pr(
     let workspace = Workspace::create(
         pool,
         &CreateWorkspace {
-            branch: pr_info.head_branch.clone(),
+            branch: payload.head_branch.clone(),
             agent_working_dir,
         },
         workspace_id,
@@ -736,7 +696,7 @@ pub async fn create_workspace_from_pr(
         workspace.id,
         &[CreateWorkspaceRepo {
             repo_id: payload.repo_id,
-            target_branch: format!("{}/{}", remote_name, pr_info.base_branch),
+            target_branch: format!("{}/{}", remote_name, payload.base_branch),
         }],
     )
     .await?;
@@ -763,9 +723,9 @@ pub async fn create_workspace_from_pr(
         pool,
         workspace.id,
         payload.repo_id,
-        &format!("{}/{}", remote_name, pr_info.base_branch),
-        pr_info.number,
-        &pr_info.url,
+        &format!("{}/{}", remote_name, payload.base_branch),
+        payload.pr_number,
+        &payload.pr_url,
     )
     .await?;
 
