@@ -15,9 +15,6 @@ export interface RepoInfo {
   commitsAhead: number;
   commitsBehind: number;
   remoteCommitsAhead?: number;
-  filesChanged: number;
-  linesAdded: number;
-  linesRemoved: number;
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
@@ -72,9 +69,6 @@ export function GitPanel({
             targetBranch={repo.targetBranch}
             commitsAhead={repo.commitsAhead}
             commitsBehind={repo.commitsBehind}
-            filesChanged={repo.filesChanged}
-            linesAdded={repo.linesAdded}
-            linesRemoved={repo.linesRemoved}
             prNumber={repo.prNumber}
             prUrl={repo.prUrl}
             prStatus={repo.prStatus}

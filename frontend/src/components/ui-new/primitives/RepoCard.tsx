@@ -3,11 +3,9 @@ import {
   GitBranchIcon,
   GitPullRequestIcon,
   ArrowsClockwiseIcon,
-  FileTextIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   CrosshairIcon,
-  ArrowRightIcon,
   CodeIcon,
   ArrowSquareOutIcon,
   CopyIcon,
@@ -51,9 +49,6 @@ interface RepoCardProps {
   targetBranch: string;
   commitsAhead?: number;
   commitsBehind?: number;
-  filesChanged?: number;
-  linesAdded?: number;
-  linesRemoved?: number;
   prNumber?: number;
   prUrl?: string;
   prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
@@ -77,9 +72,6 @@ export function RepoCard({
   targetBranch,
   commitsAhead = 0,
   commitsBehind = 0,
-  filesChanged = 0,
-  linesAdded,
-  linesRemoved,
   prNumber,
   prUrl,
   prStatus,
@@ -119,111 +111,69 @@ export function RepoCard({
       <div className="font-medium">{name}</div>
       {/* Branch row */}
       <div className="flex items-center gap-base">
-        <div className="flex items-center justify-center">
-          <GitBranchIcon className="size-icon-base text-base" weight="fill" />
-        </div>
-        <div className="flex items-center justify-center">
-          <ArrowRightIcon className="size-icon-sm text-low" weight="bold" />
-        </div>
-        <div className="flex items-center justify-center">
-          <CrosshairIcon className="size-icon-sm text-low" weight="bold" />
-        </div>
-        <div className="flex-1 min-w-0 flex items-center">
-          <div className="min-w-0 flex-1">
-            <DropdownMenu>
-              <DropdownMenuTriggerButton
-                label={targetBranch}
-                className="max-w-full"
-              />
-              <DropdownMenuContent>
-                {branchDropdownContent ?? (
-                  <>
-                    <DropdownMenuItem
-                      icon={CrosshairIcon}
-                      onClick={onChangeTarget}
-                    >
-                      {t('git.actions.changeTarget')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      icon={ArrowsClockwiseIcon}
-                      onClick={onRebase}
-                    >
-                      {t('rebase.common.action')}
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <div className="min-w-0 flex-1">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors shrink-0"
-                title="Repo actions"
-              >
-                <DotsThreeIcon className="size-icon-base" weight="bold" />
-              </button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTriggerButton
+              icon={GitBranchIcon}
+              label={targetBranch}
+              className="max-w-full"
+            />
             <DropdownMenuContent>
-              <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
-                {tCommon('actions.copyPath')}
-              </DropdownMenuItem>
-              <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
-                {tCommon('actions.openInIde')}
-              </DropdownMenuItem>
-              <DropdownMenuItem icon={GearIcon} onClick={onOpenSettings}>
-                {tCommon('actions.repoSettings')}
-              </DropdownMenuItem>
+              {branchDropdownContent ?? (
+                <>
+                  <DropdownMenuItem
+                    icon={CrosshairIcon}
+                    onClick={onChangeTarget}
+                  >
+                    {t('git.actions.changeTarget')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    icon={ArrowsClockwiseIcon}
+                    onClick={onRebase}
+                  >
+                    {t('rebase.common.action')}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
 
-      {/* Branch status row - commits ahead/behind */}
-      {(commitsAhead > 0 || commitsBehind > 0) && (
-        <div className="flex items-center gap-base text-xs">
-          {commitsAhead > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
-              <ArrowUpIcon className="size-icon-xs" weight="bold" />
-              <span className="font-medium">{commitsAhead}</span>
-              <span className="text-success/80">{t('git.status.ahead')}</span>
-            </span>
-          )}
-          {commitsBehind > 0 && (
-            <>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error">
-                <ArrowDownIcon className="size-icon-xs" weight="bold" />
-                <span className="font-medium">{commitsBehind}</span>
-                <span className="text-error/80">{t('git.status.behind')}</span>
-              </span>
-              <button
-                onClick={onRebase}
-                className="inline-flex items-center gap-1 text-low hover:text-normal transition-colors"
-              >
-                <ArrowsClockwiseIcon className="size-icon-xs" />
-                <span>{t('rebase.common.action')}</span>
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Files changed row */}
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-half">
-          <FileTextIcon className="size-icon-xs text-low" />
-          <span className="text-sm font-medium text-low truncate">
-            {t('diff.filesChanged', { count: filesChanged })}
+        {/* Commits ahead/behind indicators */}
+        {commitsAhead > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-success shrink-0">
+            <ArrowUpIcon className="size-icon-xs" weight="bold" />
+            <span className="font-medium">{commitsAhead}</span>
           </span>
-        </div>
-        <span className="text-sm font-semibold text-right">
-          {linesAdded !== undefined && (
-            <span className="text-success">+{linesAdded} </span>
-          )}
-          {linesRemoved !== undefined && (
-            <span className="text-error">-{linesRemoved}</span>
-          )}
-        </span>
+        )}
+        {commitsBehind > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-error shrink-0">
+            <ArrowDownIcon className="size-icon-xs" weight="bold" />
+            <span className="font-medium">{commitsBehind}</span>
+          </span>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors shrink-0"
+              title="Repo actions"
+            >
+              <DotsThreeIcon className="size-icon-base" weight="bold" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
+              {tCommon('actions.copyPath')}
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
+              {tCommon('actions.openInIde')}
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={GearIcon} onClick={onOpenSettings}>
+              {tCommon('actions.repoSettings')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* PR status row */}

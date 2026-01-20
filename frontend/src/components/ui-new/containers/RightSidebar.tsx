@@ -138,7 +138,6 @@ export function RightSidebar({
           <GitPanelContainer
             selectedWorkspace={selectedWorkspace}
             repos={repos}
-            diffs={diffs}
           />
         ),
         actions: [],

@@ -10,17 +10,11 @@ import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
-import type {
-  Workspace,
-  RepoWithTargetBranch,
-  Diff,
-  Merge,
-} from 'shared/types';
+import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 
 export interface GitPanelContainerProps {
   selectedWorkspace: Workspace | undefined;
   repos: RepoWithTargetBranch[];
-  diffs: Diff[];
 }
 
 type PushState = 'idle' | 'pending' | 'success' | 'error';
@@ -28,7 +22,6 @@ type PushState = 'idle' | 'pending' | 'success' | 'error';
 export function GitPanelContainer({
   selectedWorkspace,
   repos,
-  diffs,
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
   const navigate = useNavigate();
@@ -70,17 +63,6 @@ export function GitPanelContainer({
           }
         }
 
-        const repoDiffs = diffs.filter((d) => d.repoId === repo.id);
-        const filesChanged = repoDiffs.length;
-        const linesAdded = repoDiffs.reduce(
-          (sum, d) => sum + (d.additions ?? 0),
-          0
-        );
-        const linesRemoved = repoDiffs.reduce(
-          (sum, d) => sum + (d.deletions ?? 0),
-          0
-        );
-
         return {
           id: repo.id,
           name: repo.display_name || repo.name,
@@ -88,15 +70,12 @@ export function GitPanelContainer({
           commitsAhead: repoStatus?.commits_ahead ?? 0,
           commitsBehind: repoStatus?.commits_behind ?? 0,
           remoteCommitsAhead: repoStatus?.remote_commits_ahead ?? 0,
-          filesChanged,
-          linesAdded,
-          linesRemoved,
           prNumber,
           prUrl,
           prStatus,
         };
       }),
-    [repos, diffs, branchStatus]
+    [repos, branchStatus]
   );
 
   // Track push state per repo: idle, pending, success, or error
