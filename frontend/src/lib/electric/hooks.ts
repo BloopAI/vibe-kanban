@@ -114,7 +114,13 @@ export function useEntity<
 
   const insert = useCallback(
     (insertData: EntityCreateType<E>) => {
-      typedCollection.insert(insertData);
+      // Auto-generate ID for optimistic inserts
+      // TanStack DB requires client-generated IDs for stable optimistic rendering
+      const dataWithId = {
+        id: crypto.randomUUID(),
+        ...(insertData as Record<string, unknown>),
+      };
+      typedCollection.insert(dataWithId);
     },
     [typedCollection]
   );
