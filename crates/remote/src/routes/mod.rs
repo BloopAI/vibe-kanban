@@ -20,6 +20,7 @@ mod github_app;
 mod identity;
 mod issue_comment_reactions;
 mod issue_comments;
+mod issues;
 mod notifications;
 mod oauth;
 pub(crate) mod organization_members;
@@ -71,6 +72,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tags::router())
         .merge(issue_comments::router())
         .merge(issue_comment_reactions::router())
+        .merge(issues::router())
         .merge(notifications::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),

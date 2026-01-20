@@ -52,6 +52,10 @@ export type CreateProjectStatusRequest = { project_id: string, name: string, col
 
 export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
 
+export type CreateIssueRequest = { project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
+
+export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, extension_metadata: JsonValue | null, };
+
 export type CreateIssueCommentRequest = { issue_id: string, message: string, };
 
 export type UpdateIssueCommentRequest = { message: string | null, };
