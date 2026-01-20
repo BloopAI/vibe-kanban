@@ -12,8 +12,8 @@ use db::models::{
 use fst::{Map, MapBuilder};
 use ignore::WalkBuilder;
 use moka::future::Cache;
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_full::{DebounceEventResult, new_debouncer};
+use notify::RecursiveMode;
+use notify_debouncer_full::{DebounceEventResult, Debouncer, RecommendedCache, new_debouncer};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -97,24 +97,28 @@ pub struct FileSearchCache {
     git_service: GitService,
     file_ranker: FileRanker,
     build_queue: mpsc::UnboundedSender<PathBuf>,
-    watchers: DashMap<PathBuf, RecommendedWatcher>,
+    watchers: Arc<DashMap<PathBuf, Debouncer<notify::RecommendedWatcher, RecommendedCache>>>,
 }
 
 impl FileSearchCache {
     pub fn new() -> Self {
         let (build_sender, build_receiver) = mpsc::unbounded_channel();
 
-        // Create cache with 100MB limit and 1 hour TTL
+        let watchers = Arc::new(DashMap::new());
+        let watchers_for_eviction = watchers.clone();
+
         let cache = Cache::builder()
-            .max_capacity(50) // Max 50 repos
-            .time_to_live(Duration::from_secs(3600)) // 1 hour TTL
+            .max_capacity(50)
+            .time_to_live(Duration::from_secs(3600))
+            .eviction_listener(move |key: Arc<PathBuf>, _value, _cause| {
+                watchers_for_eviction.remove(key.as_ref());
+            })
             .build();
 
         let cache_for_worker = cache.clone();
         let git_service = GitService::new();
         let file_ranker = FileRanker::new();
 
-        // Spawn background worker
         let worker_git_service = git_service.clone();
         let worker_file_ranker = file_ranker.clone();
         tokio::spawn(async move {
@@ -132,7 +136,7 @@ impl FileSearchCache {
             git_service,
             file_ranker,
             build_queue: build_sender,
-            watchers: DashMap::new(),
+            watchers,
         }
     }
 
@@ -591,7 +595,7 @@ impl FileSearchCache {
                 git_service: git_service.clone(),
                 file_ranker: file_ranker.clone(),
                 build_queue: mpsc::unbounded_channel().0, // Dummy sender
-                watchers: DashMap::new(),
+                watchers: Arc::new(DashMap::new()),
             };
 
             match cache_builder.build_repo_cache(&repo_path).await {
@@ -649,7 +653,8 @@ impl FileSearchCache {
             .watch(git_dir.join("HEAD"), RecursiveMode::NonRecursive)
             .map_err(|e| format!("Failed to watch HEAD file: {e}"))?;
 
-        // Spawn task to handle HEAD changes
+        self.watchers.insert(repo_path_buf, debouncer);
+
         tokio::spawn(async move {
             while rx.recv().await.is_some() {
                 info!("HEAD changed for repo: {:?}", watched_path);
