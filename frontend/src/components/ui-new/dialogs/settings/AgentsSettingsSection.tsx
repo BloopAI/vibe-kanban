@@ -44,7 +44,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
       <div>
         <h3 className="text-base font-medium text-high">{title}</h3>
         {description && <p className="text-sm text-low mt-1">{description}</p>}

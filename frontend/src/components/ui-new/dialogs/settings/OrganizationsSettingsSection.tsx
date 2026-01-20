@@ -48,7 +48,7 @@ function SettingsCard({
   headerAction?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
       <div className="flex items-start justify-between">
         <div>
           <h3 className="text-base font-medium text-high">{title}</h3>
