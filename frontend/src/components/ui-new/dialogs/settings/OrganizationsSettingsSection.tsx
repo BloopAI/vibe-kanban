@@ -5,6 +5,7 @@ import {
   PlusIcon,
   UserPlusIcon,
   TrashIcon,
+  SignInIcon,
 } from '@phosphor-icons/react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
@@ -13,7 +14,7 @@ import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { CreateOrganizationDialog } from '@/components/dialogs/org/CreateOrganizationDialog';
 import { InviteMemberDialog } from '@/components/dialogs/org/InviteMemberDialog';
 import type {
@@ -256,12 +257,35 @@ export function OrganizationsSettingsSection() {
 
   if (!isSignedIn) {
     return (
-      <div className="py-8">
-        <LoginRequiredPrompt
-          title={t('loginRequired.title')}
-          description={t('loginRequired.description')}
-          actionLabel={t('loginRequired.action')}
-        />
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="pb-4 border-b border-border/50">
+          <h2 className="text-lg font-semibold text-high">
+            {t('settings.layout.nav.organizations', { ns: 'settings' })}
+          </h2>
+          <p className="text-sm text-low">
+            {t('settings.layout.nav.organizationsDesc', { ns: 'settings' })}
+          </p>
+        </div>
+
+        {/* Login required */}
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-medium text-high">
+              {t('loginRequired.title')}
+            </h3>
+            <p className="text-sm text-low mt-1">
+              {t('loginRequired.description')}
+            </p>
+          </div>
+          <PrimaryButton
+            variant="secondary"
+            value={t('loginRequired.action')}
+            onClick={() => void OAuthDialog.show()}
+          >
+            <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+          </PrimaryButton>
+        </div>
       </div>
     );
   }
@@ -289,9 +313,11 @@ export function OrganizationsSettingsSection() {
       {/* Header */}
       <div className="pb-4 border-b border-border/50">
         <h2 className="text-lg font-semibold text-high">
-          {t('settings.title')}
+          {t('settings.layout.nav.organizations', { ns: 'settings' })}
         </h2>
-        <p className="text-sm text-low">{t('settings.description')}</p>
+        <p className="text-sm text-low">
+          {t('settings.layout.nav.organizationsDesc', { ns: 'settings' })}
+        </p>
       </div>
 
       {/* Status messages */}
