@@ -484,9 +484,6 @@ export function AgentsSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.agents')}
         </h2>
-        <p className="text-sm text-low">
-          {t('settings.layout.nav.agentsDesc')}
-        </p>
       </div>
 
       {/* Status messages */}

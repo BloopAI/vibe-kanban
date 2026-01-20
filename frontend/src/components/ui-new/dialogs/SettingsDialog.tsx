@@ -113,9 +113,9 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
             )}
           >
             {/* Sidebar */}
-            <div className="w-56 bg-secondary/80 border-r border-border/50 flex flex-col">
+            <div className="w-56 bg-secondary/80 border-r border-border flex flex-col">
               {/* Header */}
-              <div className="p-4 border-b border-border/50">
+              <div className="p-4 border-b border-border">
                 <h2 className="text-lg font-semibold text-high">
                   {t('settings.layout.nav.title')}
                 </h2>

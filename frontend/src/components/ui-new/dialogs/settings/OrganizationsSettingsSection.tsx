@@ -263,9 +263,6 @@ export function OrganizationsSettingsSection() {
           <h2 className="text-lg font-semibold text-high">
             {t('settings.layout.nav.organizations', { ns: 'settings' })}
           </h2>
-          <p className="text-sm text-low">
-            {t('settings.layout.nav.organizationsDesc', { ns: 'settings' })}
-          </p>
         </div>
 
         {/* Login required */}
@@ -315,9 +312,6 @@ export function OrganizationsSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.organizations', { ns: 'settings' })}
         </h2>
-        <p className="text-sm text-low">
-          {t('settings.layout.nav.organizationsDesc', { ns: 'settings' })}
-        </p>
       </div>
 
       {/* Status messages */}

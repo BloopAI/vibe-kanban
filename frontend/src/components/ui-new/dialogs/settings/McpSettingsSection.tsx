@@ -267,7 +267,6 @@ export function McpSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.mcp')}
         </h2>
-        <p className="text-sm text-low">{t('settings.layout.nav.mcpDesc')}</p>
       </div>
 
       {/* Status messages */}

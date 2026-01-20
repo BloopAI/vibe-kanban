@@ -415,9 +415,6 @@ export function GeneralSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.general')}
         </h2>
-        <p className="text-sm text-low">
-          {t('settings.layout.nav.generalDesc')}
-        </p>
       </div>
 
       {/* Status messages */}
