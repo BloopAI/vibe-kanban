@@ -77,6 +77,7 @@ async fn create_issue(
 
     let issue = IssueRepository::create(
         state.pool(),
+        payload.id,
         payload.project_id,
         payload.status_id,
         payload.title,

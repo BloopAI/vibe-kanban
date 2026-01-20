@@ -86,6 +86,7 @@ async fn create_project_status(
 
     let status = ProjectStatusRepository::create(
         state.pool(),
+        payload.id,
         payload.project_id,
         payload.name,
         payload.color,

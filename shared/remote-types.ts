@@ -38,47 +38,102 @@ export type WorkspacePrStatus = "open" | "merged" | "closed";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type CreateProjectRequest = { organization_id: string, name: string, color: string, };
+export type CreateProjectRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, organization_id: string, name: string, color: string, };
 
 export type UpdateProjectRequest = { name: string | null, color: string | null, };
 
-export type CreateNotificationRequest = { organization_id: string, seen: boolean, };
+export type CreateNotificationRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, organization_id: string, seen: boolean, };
 
 export type UpdateNotificationRequest = { seen: boolean | null, };
 
-export type CreateTagRequest = { project_id: string, name: string, color: string, };
+export type CreateTagRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, name: string, color: string, };
 
 export type UpdateTagRequest = { name: string | null, color: string | null, };
 
-export type CreateProjectStatusRequest = { project_id: string, name: string, color: string, sort_order: number, };
+export type CreateProjectStatusRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, name: string, color: string, sort_order: number, };
 
 export type UpdateProjectStatusRequest = { name: string | null, color: string | null, sort_order: number | null, };
 
-export type CreateIssueRequest = { project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
+export type CreateIssueRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
 
 export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, extension_metadata: JsonValue | null, };
 
-export type CreateIssueAssigneeRequest = { issue_id: string, user_id: string, };
+export type CreateIssueAssigneeRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, user_id: string, };
 
 export type UpdateIssueAssigneeRequest = { user_id: string | null, };
 
-export type CreateIssueFollowerRequest = { issue_id: string, user_id: string, };
+export type CreateIssueFollowerRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, user_id: string, };
 
 export type UpdateIssueFollowerRequest = { user_id: string | null, };
 
-export type CreateIssueTagRequest = { issue_id: string, tag_id: string, };
+export type CreateIssueTagRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, tag_id: string, };
 
 export type UpdateIssueTagRequest = { tag_id: string | null, };
 
-export type CreateIssueRelationshipRequest = { issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
+export type CreateIssueRelationshipRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
 
 export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
 
-export type CreateIssueCommentRequest = { issue_id: string, message: string, };
+export type CreateIssueCommentRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, issue_id: string, message: string, };
 
 export type UpdateIssueCommentRequest = { message: string | null, };
 
-export type CreateIssueCommentReactionRequest = { comment_id: string, emoji: string, };
+export type CreateIssueCommentReactionRequest = { 
+/**
+ * Optional client-generated ID. If not provided, server generates one.
+ * Using client-generated IDs enables stable optimistic updates.
+ */
+id?: string, comment_id: string, emoji: string, };
 
 export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
 
@@ -187,6 +242,10 @@ export const ALL_SHAPES = [
   ISSUE_COMMENTS_SHAPE,
   ISSUE_COMMENT_REACTIONS_SHAPE,
 ] as const;
+
+// Backward compatibility aliases (deprecated, use new names)
+/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */
+export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;
 
 // Type helper to extract row type from a shape
 export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];

@@ -86,6 +86,7 @@ async fn create_issue_comment(
 
     let comment = IssueCommentRepository::create(
         state.pool(),
+        payload.id,
         payload.issue_id,
         ctx.user.id,
         payload.message,

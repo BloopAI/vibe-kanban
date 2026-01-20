@@ -88,6 +88,7 @@ async fn create_project(
 
     let project = ProjectRepository::create(
         &mut *tx,
+        payload.id,
         payload.organization_id,
         payload.name,
         payload.color,

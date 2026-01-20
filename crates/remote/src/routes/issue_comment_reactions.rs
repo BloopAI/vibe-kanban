@@ -114,6 +114,7 @@ async fn create_issue_comment_reaction(
 
     let reaction = IssueCommentReactionRepository::create(
         state.pool(),
+        payload.id,
         payload.comment_id,
         ctx.user.id,
         payload.emoji,

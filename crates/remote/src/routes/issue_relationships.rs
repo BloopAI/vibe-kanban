@@ -91,6 +91,7 @@ async fn create_issue_relationship(
 
     let relationship = IssueRelationshipRepository::create(
         state.pool(),
+        payload.id,
         payload.issue_id,
         payload.related_issue_id,
         payload.relationship_type,

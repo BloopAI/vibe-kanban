@@ -83,7 +83,8 @@ async fn create_issue_tag(
 ) -> Result<Json<IssueTag>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let issue_tag = IssueTagRepository::create(state.pool(), payload.issue_id, payload.tag_id)
+    let issue_tag =
+        IssueTagRepository::create(state.pool(), payload.id, payload.issue_id, payload.tag_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to create issue tag");

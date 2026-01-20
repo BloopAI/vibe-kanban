@@ -73,13 +73,14 @@ impl IssueFollowerRepository {
 
     pub async fn create<'e, E>(
         executor: E,
+        id: Option<Uuid>,
         issue_id: Uuid,
         user_id: Uuid,
     ) -> Result<IssueFollower, IssueFollowerError>
     where
         E: Executor<'e, Database = Postgres>,
     {
-        let id = Uuid::new_v4();
+        let id = id.unwrap_or_else(Uuid::new_v4);
         let record = sqlx::query_as!(
             IssueFollower,
             r#"

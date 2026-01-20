@@ -84,7 +84,8 @@ async fn create_issue_assignee(
 ) -> Result<Json<IssueAssignee>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
-    let assignee = IssueAssigneeRepository::create(state.pool(), payload.issue_id, payload.user_id)
+    let assignee =
+        IssueAssigneeRepository::create(state.pool(), payload.id, payload.issue_id, payload.user_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to create issue assignee");

@@ -77,6 +77,7 @@ async fn create_tag(
 
     let tag = TagRepository::create(
         state.pool(),
+        payload.id,
         payload.project_id,
         payload.name,
         payload.color,

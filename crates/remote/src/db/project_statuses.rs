@@ -65,6 +65,7 @@ impl ProjectStatusRepository {
 
     pub async fn create<'e, E>(
         executor: E,
+        id: Option<Uuid>,
         project_id: Uuid,
         name: String,
         color: String,
@@ -73,7 +74,7 @@ impl ProjectStatusRepository {
     where
         E: Executor<'e, Database = Postgres>,
     {
-        let id = Uuid::new_v4();
+        let id = id.unwrap_or_else(Uuid::new_v4);
         let created_at = Utc::now();
         let record = sqlx::query_as!(
             ProjectStatus,

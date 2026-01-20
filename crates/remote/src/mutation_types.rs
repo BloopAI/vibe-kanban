@@ -118,10 +118,15 @@ macro_rules! define_mutation_types {
             // URL constant derived from table name (e.g., "tags" -> "/tags")
             pub const [<$entity:snake:upper _URL>]: &str = concat!("/", $table);
 
-            // Create request - includes parent_id based on scope, all fields required
+            // Create request - includes optional id for client-generated UUIDs,
+            // parent_id based on scope, and all fields required
             #[derive(Debug, serde::Deserialize, ts_rs::TS)]
             #[ts(export)]
             pub struct [<Create $entity Request>] {
+                /// Optional client-generated ID. If not provided, server generates one.
+                /// Using client-generated IDs enables stable optimistic updates.
+                #[ts(optional)]
+                pub id: Option<uuid::Uuid>,
                 pub $parent_field: uuid::Uuid,
                 $(pub $field: $ty,)*
             }
