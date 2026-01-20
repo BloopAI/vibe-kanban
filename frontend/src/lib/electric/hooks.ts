@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createEntityCollection } from './collections';
 import type { EntityDefinition } from 'shared/remote-types';
@@ -83,6 +83,17 @@ export function useEntity<
     [paramsKey]
   );
 
+  // Track parameter changes to clear stale data during transitions
+  const prevParamsKeyRef = useRef(paramsKey);
+  const [isParamsChanging, setIsParamsChanging] = useState(false);
+
+  useEffect(() => {
+    if (prevParamsKeyRef.current !== paramsKey) {
+      setIsParamsChanging(true);
+      prevParamsKeyRef.current = paramsKey;
+    }
+  }, [paramsKey]);
+
   // Create collection with mutation handlers - retryKey forces recreation on retry
   const collection = useMemo(() => {
     const config = { onError: handleError };
@@ -94,11 +105,19 @@ export function useEntity<
     query.from({ item: collection })
   );
 
+  // Reset params changing flag once new data has loaded
+  useEffect(() => {
+    if (!isLoading && isParamsChanging) {
+      setIsParamsChanging(false);
+    }
+  }, [isLoading, isParamsChanging]);
+
   // useLiveQuery returns data as flat objects directly, not wrapped in { item: {...} }
+  // Return empty array when params are changing to avoid showing stale data
   const items = useMemo(() => {
-    if (!data) return [];
+    if (!data || isParamsChanging) return [];
     return data as unknown as EntityRowType<E>[];
-  }, [data]);
+  }, [data, isParamsChanging]);
 
   // Expose collection mutation methods with stable callbacks
   // Type assertion needed because TanStack DB collection types are complex
@@ -143,7 +162,7 @@ export function useEntity<
 
   return {
     data: items,
-    isLoading,
+    isLoading: isLoading || isParamsChanging,
     error,
     retry,
     insert,
