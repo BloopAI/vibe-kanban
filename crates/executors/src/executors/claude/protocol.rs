@@ -65,7 +65,6 @@ impl ProtocolPeer {
                             if line.is_empty() {
                                 continue;
                             }
-                            // Log all messages (control messages won't render in frontend)
                             client.log_message(line).await?;
 
                             // Parse and handle control messages
