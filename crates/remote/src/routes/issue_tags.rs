@@ -85,11 +85,11 @@ async fn create_issue_tag(
 
     let issue_tag =
         IssueTagRepository::create(state.pool(), payload.id, payload.issue_id, payload.tag_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to create issue tag");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to create issue tag");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     Ok(Json(issue_tag))
 }
