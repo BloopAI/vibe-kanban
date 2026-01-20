@@ -247,11 +247,16 @@ pub async fn list_open_prs(
         .get_by_id(&deployment.db().pool, repo_id)
         .await?;
 
-    let remote_name = match query.remote {
-        Some(name) => name,
-        None => deployment.git().get_default_remote_name(&repo.path)?,
+    let remote = match query.remote {
+        Some(name) => deployment.git().get_remote(&repo.path, &name)?,
+        None => deployment
+            .git()
+            .list_remotes(&repo.path)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| ApiError::BadRequest("No remotes configured".to_string()))?,
     };
-    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
+    let remote_url = remote.url;
 
     let git_host = match GitHostService::from_url(&remote_url) {
         Ok(host) => host,
