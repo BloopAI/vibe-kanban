@@ -155,8 +155,10 @@ export function createEntityCollection<
           transaction,
           collection,
         }: MutationFnParams): Promise<void> => {
-          const data = transaction.mutations[0]
-            .modified as Record<string, unknown>;
+          const data = transaction.mutations[0].modified as Record<
+            string,
+            unknown
+          >;
           const response = await makeRequest(`/v1${entity.mutations!.url}`, {
             method: 'POST',
             body: JSON.stringify(data),
@@ -242,15 +244,13 @@ export function createEntityCollection<
   // Type assertion needed because our MutationFnParams includes Electric-specific
   // utils (awaitMatch) that the base @tanstack/db types don't know about.
   // The actual runtime behavior is correct - electricCollectionOptions adds these utils.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
   const options = electricCollectionOptions({
     id: collectionId,
-    shapeOptions: shapeOptions as unknown as Parameters<
-      typeof electricCollectionOptions
-    >[0]['shapeOptions'],
+    shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
     getKey: (item: ElectricRow) => getRowKey(item),
     ...mutationHandlers,
-  } as any);
+  } as unknown as ElectricConfig);
 
   return createCollection(options) as unknown as ReturnType<
     typeof createCollection
