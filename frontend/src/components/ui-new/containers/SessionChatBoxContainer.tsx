@@ -26,6 +26,7 @@ import { useMessageEditRetry } from '@/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { buildAgentPrompt } from '@/utils/promptMessage';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -377,16 +378,19 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   });
 
   const handleSend = useCallback(async () => {
-    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
-    const combinedMessage = messageParts.join('\n\n');
+    const { prompt, isSlashCommand } = buildAgentPrompt(localMessage, [
+      reviewMarkdown,
+    ]);
 
-    const success = await send(combinedMessage, selectedVariant);
+    const success = await send(prompt, selectedVariant);
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
       clearUploadedImages();
       if (isNewSessionMode) await clearDraft();
-      reviewContext?.clearComments();
+      if (!isSlashCommand) {
+        reviewContext?.clearComments();
+      }
       onScrollToBottom();
     }
   }, [
@@ -428,16 +432,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     // Allow queueing if there's a message OR review comments, and we have an executor
     if ((!localMessage.trim() && !reviewMarkdown) || !effectiveExecutor) return;
 
-    // Combine review comments with user message
-    const messageParts = [reviewMarkdown, localMessage].filter(Boolean);
-    const combinedMessage = messageParts.join('\n\n');
+    const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
     cancelDebouncedSave();
     await saveToScratch(localMessage, {
       executor: effectiveExecutor,
       variant: selectedVariant,
     });
-    await queueMessage(combinedMessage, {
+    await queueMessage(prompt, {
       executor: effectiveExecutor,
       variant: selectedVariant,
     });

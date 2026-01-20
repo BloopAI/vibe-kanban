@@ -12,6 +12,9 @@ pub enum OpencodeExecutorEvent {
     SessionStart {
         session_id: String,
     },
+    SlashCommandResult {
+        message: String,
+    },
     SdkEvent {
         event: serde_json::Value,
     },

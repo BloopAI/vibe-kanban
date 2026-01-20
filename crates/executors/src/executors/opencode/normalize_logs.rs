@@ -89,6 +89,18 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         },
                     );
                 }
+                OpencodeExecutorEvent::SlashCommandResult { message } => {
+                    let idx = entry_index.next();
+                    state.add_normalized_entry_with_index(
+                        idx,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::AssistantMessage,
+                            content: message,
+                            metadata: None,
+                        },
+                    );
+                }
                 OpencodeExecutorEvent::ApprovalResponse {
                     tool_call_id,
                     status,

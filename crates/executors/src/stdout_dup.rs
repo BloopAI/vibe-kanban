@@ -8,13 +8,13 @@ use std::os::unix::io::{FromRawFd, IntoRawFd, OwnedFd};
 #[cfg(windows)]
 use std::os::windows::io::{FromRawHandle, IntoRawHandle, OwnedHandle};
 
-use command_group::AsyncGroupChild;
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use futures::{StreamExt, stream::BoxStream};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::io::ReaderStream;
 
-use crate::executors::ExecutorError;
+use crate::executors::{ExecutorError, SpawnedChild};
 
 /// Duplicate stdout from AsyncGroupChild.
 ///
@@ -181,6 +181,58 @@ pub fn create_stdout_pipe_writer<'b>(
 
     // Return async writer to the caller
     wrap_fd_as_tokio_writer(pipe_writer)
+}
+
+/// Create a helper child process to be used only for stdout duplication.
+pub fn spawn_local_output_process()
+-> Result<(SpawnedChild, impl AsyncWrite + Send + Unpin), ExecutorError> {
+    let (pipe_reader, pipe_writer) = os_pipe::pipe().map_err(|e| {
+        ExecutorError::Io(std::io::Error::other(format!(
+            "Failed to create stdout pipe: {e}"
+        )))
+    })?;
+
+    #[cfg(unix)]
+    let mut cmd = {
+        let mut cmd = tokio::process::Command::new("/bin/sh");
+        cmd.args(["-c", "while :; do sleep 3600; done"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        cmd
+    };
+
+    #[cfg(windows)]
+    let mut cmd = {
+        let mut cmd = tokio::process::Command::new("powershell.exe");
+        cmd.args([
+            "-NoLogo",
+            "-NonInteractive",
+            "-Command",
+            "[System.Threading.Thread]::Sleep([int]::MaxValue)",
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+        cmd
+    };
+
+    cmd.kill_on_drop(true);
+
+    let mut child = cmd.group_spawn()?;
+
+    // Replace stdout with our pipe
+    child.inner().stdout = Some(wrap_fd_as_child_stdout(pipe_reader)?);
+
+    let writer = wrap_fd_as_tokio_writer(pipe_writer)?;
+
+    let spawned = SpawnedChild {
+        child,
+        exit_signal: None,
+        interrupt_sender: None,
+    };
+
+    Ok((spawned, writer))
 }
 
 // =========================================

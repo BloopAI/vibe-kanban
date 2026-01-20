@@ -21,6 +21,7 @@ import {
   type LocalImageMetadata,
 } from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
+import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
@@ -44,6 +45,7 @@ import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';
+import type { BaseCodingAgent } from 'shared/types';
 
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
@@ -61,6 +63,8 @@ type WysiwygProps = {
   workspaceId?: string;
   /** Project ID for file search in typeahead (fallback if workspaceId not provided) */
   projectId?: string;
+  /** Enables `/` command autocomplete (agent-specific). */
+  executor?: BaseCodingAgent | null;
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
@@ -93,6 +97,7 @@ function WYSIWYGEditor({
   className,
   workspaceId,
   projectId,
+  executor = null,
   onCmdEnter,
   onShiftCmdEnter,
   sendShortcut,
@@ -263,6 +268,7 @@ function WYSIWYGEditor({
                     workspaceId={workspaceId}
                     projectId={projectId}
                   />
+                  {executor && <SlashCommandTypeaheadPlugin agent={executor} />}
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}
                     onShiftCmdEnter={onShiftCmdEnter}

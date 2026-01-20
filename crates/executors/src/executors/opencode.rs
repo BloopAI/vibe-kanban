@@ -1,8 +1,9 @@
 use std::{path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
 use derivative::Derivative;
+use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -18,15 +19,18 @@ use crate::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
         StandardCodingAgentExecutor, opencode::types::OpencodeExecutorEvent,
     },
+    logs::utils::patch,
     stdout_dup::create_stdout_pipe_writer,
 };
 
 mod models;
 mod normalize_logs;
 mod sdk;
+mod slash_commands;
 mod types;
 
-use sdk::{LogWriter, RunConfig, generate_server_password, run_session};
+use sdk::{LogWriter, RunConfig, generate_server_password, run_session, run_slash_command};
+use slash_commands::{OpencodeSlashCommand, hardcoded_slash_commands};
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -53,6 +57,16 @@ pub struct Opencode {
     pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
+/// Represents a spawned OpenCode server with its base URL
+struct OpencodeServer {
+    #[allow(unused)]
+    child: AsyncGroupChild,
+    base_url: String,
+    server_password: ServerPassword,
+}
+
+type ServerPassword = String;
+
 impl Opencode {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         let builder = CommandBuilder::new("npx -y opencode-ai@1.1.25")
@@ -67,15 +81,12 @@ impl Opencode {
         serde_json::to_string(&self.cmd).unwrap_or_default()
     }
 
-    async fn spawn_inner(
+    /// Common boilerplate for spawning an OpenCode server process.
+    async fn spawn_server_process(
         &self,
         current_dir: &Path,
-        prompt: &str,
-        resume_session: Option<&str>,
         env: &ExecutionEnv,
-    ) -> Result<SpawnedChild, ExecutorError> {
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
+    ) -> Result<(AsyncGroupChild, ServerPassword), ExecutorError> {
         let command_parts = self.build_command_builder()?.build_initial()?;
         let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -98,11 +109,48 @@ impl Opencode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let child = command.group_spawn()?;
+
+        Ok((child, server_password))
+    }
+
+    /// Handles process spawning, waiting for the server URL
+    async fn spawn_server(
+        &self,
+        current_dir: &Path,
+        env: &ExecutionEnv,
+    ) -> Result<OpencodeServer, ExecutorError> {
+        let (mut child, server_password) = self.spawn_server_process(current_dir, env).await?;
         let server_stdout = child.inner().stdout.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::other(
-                "OpenCode server missing stdout (needed to parse listening URL)",
-            ))
+            ExecutorError::Io(std::io::Error::other("OpenCode server missing stdout"))
+        })?;
+
+        let base_url = wait_for_server_url(server_stdout, None).await?;
+
+        Ok(OpencodeServer {
+            child,
+            base_url,
+            server_password,
+        })
+    }
+
+    async fn spawn_inner(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        resume_session: Option<&str>,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let slash_command = OpencodeSlashCommand::parse(prompt);
+        let combined_prompt = if slash_command.is_some() {
+            prompt.to_string()
+        } else {
+            self.append_prompt.combine_prompt(prompt)
+        };
+
+        let (mut child, server_password) = self.spawn_server_process(current_dir, env).await?;
+        let server_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("OpenCode server missing stdout"))
         })?;
 
         let stdout = create_stdout_pipe_writer(&mut child)?;
@@ -127,7 +175,8 @@ impl Opencode {
 
         tokio::spawn(async move {
             // Wait for server to print listening URL
-            let base_url = match wait_for_server_url(server_stdout, log_writer.clone()).await {
+            let base_url = match wait_for_server_url(server_stdout, Some(log_writer.clone())).await
+            {
                 Ok(url) => url,
                 Err(err) => {
                     let _ = log_writer
@@ -152,7 +201,12 @@ impl Opencode {
                 models_cache_key,
             };
 
-            let result = run_session(config, log_writer.clone(), interrupt_rx).await;
+            let result = match slash_command {
+                Some(command) => {
+                    run_slash_command(config, log_writer.clone(), command, interrupt_rx).await
+                }
+                None => run_session(config, log_writer.clone(), interrupt_rx).await,
+            };
             let exit_result = match result {
                 Ok(()) => ExecutorExitResult::Success,
                 Err(err) => {
@@ -187,7 +241,7 @@ fn format_tail(captured: Vec<String>) -> String {
 
 async fn wait_for_server_url(
     stdout: tokio::process::ChildStdout,
-    log_writer: LogWriter,
+    log_writer: Option<LogWriter>,
 ) -> Result<String, ExecutorError> {
     let mut lines = tokio::io::BufReader::new(stdout).lines();
     let deadline = tokio::time::Instant::now() + Duration::from_secs(180);
@@ -213,12 +267,13 @@ async fn wait_for_server_url(
             Err(_) => continue,
         };
 
-        log_writer
-            .log_event(&OpencodeExecutorEvent::StartupLog {
-                message: line.clone(),
-            })
-            .await?;
-
+        if let Some(log_writer) = &log_writer {
+            log_writer
+                .log_event(&OpencodeExecutorEvent::StartupLog {
+                    message: line.clone(),
+                })
+                .await?;
+        }
         if captured.len() < 64 {
             captured.push(line.clone());
         }
@@ -238,6 +293,31 @@ async fn wait_for_server_url(
 impl StandardCodingAgentExecutor for Opencode {
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
+    }
+
+    async fn available_slash_commands(
+        &self,
+        current_dir: &Path,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let defaults = hardcoded_slash_commands();
+        let this = self.clone();
+        let current_dir = current_dir.to_path_buf();
+
+        let initial = patch::slash_commands(defaults.clone(), true, None);
+
+        let discovery_stream = futures::stream::once(async move {
+            match this.discover_slash_commands(&current_dir).await {
+                Ok(commands) => patch::slash_commands(commands, false, None),
+                Err(e) => {
+                    tracing::warn!("Failed to discover OpenCode slash commands: {}", e);
+                    patch::slash_commands(defaults, false, Some(e.to_string()))
+                }
+            }
+        });
+
+        Ok(Box::pin(
+            futures::stream::once(async move { initial }).chain(discovery_stream),
+        ))
     }
 
     async fn spawn(

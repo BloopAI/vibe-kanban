@@ -170,6 +170,7 @@ fn generate_types_content() -> String {
         executors::actions::script::ScriptRequestLanguage::decl(),
         executors::executors::BaseCodingAgent::decl(),
         executors::executors::CodingAgent::decl(),
+        executors::executors::SlashCommandDescription::decl(),
         executors::executors::AvailabilityInfo::decl(),
         executors::command::CommandBuilder::decl(),
         executors::profile::ExecutorProfileId::decl(),
