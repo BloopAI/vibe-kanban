@@ -1,6 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
-import { createElectricCollection, createEntityCollection } from './collections';
+import {
+  createElectricCollection,
+  createEntityCollection,
+} from './collections';
 import type {
   ShapeDefinition,
   ShapeRowType,
@@ -77,24 +80,17 @@ export function useElectricCollection<S extends ShapeDefinition<unknown>>(
 }
 
 // Type helpers for extracting types from EntityDefinition
-type EntityRowType<E> = E extends EntityDefinition<infer R, unknown, unknown>
-  ? R
-  : never;
-type EntityCreateType<E> = E extends EntityDefinition<unknown, infer C, unknown>
-  ? C
-  : never;
-type EntityUpdateType<E> = E extends EntityDefinition<unknown, unknown, infer U>
-  ? U
-  : never;
+type EntityRowType<E> =
+  E extends EntityDefinition<infer R, unknown, unknown> ? R : never;
+type EntityCreateType<E> =
+  E extends EntityDefinition<unknown, infer C, unknown> ? C : never;
+type EntityUpdateType<E> =
+  E extends EntityDefinition<unknown, unknown, infer U> ? U : never;
 
 /**
  * Result type returned by useEntity hook.
  */
-export interface UseEntityResult<
-  TRow,
-  TCreate = unknown,
-  TUpdate = unknown,
-> {
+export interface UseEntityResult<TRow, TCreate = unknown, TUpdate = unknown> {
   /** The synced data array */
   data: TRow[];
   /** Whether the initial sync is still loading */
@@ -183,7 +179,10 @@ export function useEntity<
   // Type assertion needed because TanStack DB collection types are complex
   type CollectionWithMutations = {
     insert: (data: unknown) => void;
-    update: (id: string, updater: (draft: Record<string, unknown>) => void) => void;
+    update: (
+      id: string,
+      updater: (draft: Record<string, unknown>) => void
+    ) => void;
     delete: (id: string) => void;
   };
   const typedCollection = collection as unknown as CollectionWithMutations;

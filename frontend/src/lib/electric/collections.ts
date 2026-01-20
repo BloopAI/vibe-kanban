@@ -139,7 +139,11 @@ export function createEntityCollection<
   }
 
   const collectionId = `${entity.table}-${Object.values(params).join('-')}`;
-  const shapeOptions = getAuthenticatedShapeOptions(entity.shape, params, config);
+  const shapeOptions = getAuthenticatedShapeOptions(
+    entity.shape,
+    params,
+    config
+  );
 
   // Build mutation handlers if entity supports mutations
   //
@@ -148,7 +152,9 @@ export function createEntityCollection<
   // be able to use txid-based matching. The optimistic state will be replaced
   // once Electric syncs the actual data from the database.
   type TransactionParam = {
-    transaction: { mutations: Array<{ data?: unknown; key?: string; changes?: unknown }> };
+    transaction: {
+      mutations: Array<{ data?: unknown; key?: string; changes?: unknown }>;
+    };
   };
 
   const mutationHandlers = entity.mutations
@@ -166,10 +172,13 @@ export function createEntityCollection<
         },
         onUpdate: async ({ transaction }: TransactionParam): Promise<void> => {
           const { key, changes } = transaction.mutations[0];
-          const response = await makeRequest(`${entity.mutations!.url}/${key}`, {
-            method: 'PATCH',
-            body: JSON.stringify(changes),
-          });
+          const response = await makeRequest(
+            `${entity.mutations!.url}/${key}`,
+            {
+              method: 'PATCH',
+              body: JSON.stringify(changes),
+            }
+          );
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.message || `Failed to update ${entity.name}`);
@@ -177,9 +186,12 @@ export function createEntityCollection<
         },
         onDelete: async ({ transaction }: TransactionParam): Promise<void> => {
           const { key } = transaction.mutations[0];
-          const response = await makeRequest(`${entity.mutations!.url}/${key}`, {
-            method: 'DELETE',
-          });
+          const response = await makeRequest(
+            `${entity.mutations!.url}/${key}`,
+            {
+              method: 'DELETE',
+            }
+          );
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.message || `Failed to delete ${entity.name}`);
