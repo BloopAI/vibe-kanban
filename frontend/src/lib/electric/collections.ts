@@ -119,14 +119,19 @@ export function createEntityCollection<
   // once Electric syncs the actual data from the database.
   type TransactionParam = {
     transaction: {
-      mutations: Array<{ data?: unknown; key?: string; changes?: unknown }>;
+      mutations: Array<{
+        modified?: unknown; // For inserts - the new data
+        original?: unknown; // For updates/deletes - the original item
+        key?: string; // The ID/key of the item
+        changes?: unknown; // For updates - the changed fields
+      }>;
     };
   };
 
   const mutationHandlers = entity.mutations
     ? {
         onInsert: async ({ transaction }: TransactionParam): Promise<void> => {
-          const data = transaction.mutations[0].data;
+          const data = transaction.mutations[0].modified;
           const response = await makeRequest(`/v1${entity.mutations!.url}`, {
             method: 'POST',
             body: JSON.stringify(data),
