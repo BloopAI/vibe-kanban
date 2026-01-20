@@ -14,7 +14,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-import { SettingsCard, SettingsField, SettingsSaveBar } from './SettingsComponents';
+import {
+  SettingsCard,
+  SettingsField,
+  SettingsSaveBar,
+} from './SettingsComponents';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
@@ -388,7 +392,11 @@ export function McpSettingsSection() {
         show={!mcpError?.includes('does not support MCP')}
         saving={mcpApplying}
         saveDisabled={mcpLoading || !!mcpError || success}
-        saveLabel={success ? t('settings.mcp.save.success') : t('settings.mcp.save.button')}
+        saveLabel={
+          success
+            ? t('settings.mcp.save.success')
+            : t('settings.mcp.save.button')
+        }
         onSave={handleApplyMcpServers}
       />
     </>
