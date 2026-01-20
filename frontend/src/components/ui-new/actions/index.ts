@@ -58,6 +58,7 @@ import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectio
 import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -370,8 +371,8 @@ export const Actions = {
     label: 'Settings',
     icon: GearIcon,
     requiresTarget: false,
-    execute: (ctx) => {
-      ctx.navigate('/settings');
+    execute: async () => {
+      await SettingsDialog.show();
     },
   },
 
