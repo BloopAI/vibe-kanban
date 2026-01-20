@@ -10,10 +10,7 @@ import type { CollectionConfig, SyncError } from './types';
  * e.g., "/shape/project/{project_id}/issues" with { project_id: "123" }
  * becomes "/shape/project/123/issues"
  */
-function buildUrl(
-  baseUrl: string,
-  params: Record<string, string>
-): string {
+function buildUrl(baseUrl: string, params: Record<string, string>): string {
   let url = baseUrl;
   for (const [key, value] of Object.entries(params)) {
     url = url.replace(`{${key}}`, encodeURIComponent(value));
