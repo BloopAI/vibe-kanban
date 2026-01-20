@@ -436,6 +436,7 @@ async fn fork_session(
     Ok(session.id)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn prompt(
     client: &reqwest::Client,
     base_url: &str,
