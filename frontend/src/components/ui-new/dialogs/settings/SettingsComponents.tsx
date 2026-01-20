@@ -229,7 +229,10 @@ export function SettingsSaveBar({
   onDiscard?: () => void;
 }) {
   const { t } = useTranslation(['settings', 'common']);
-  if (!show) return null;
+
+  if (!show) {
+    return <div className="sticky bottom-0 z-10 py-4 -mx-6 px-6 -mb-6" />;
+  }
 
   return (
     <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
