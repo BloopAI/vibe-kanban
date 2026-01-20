@@ -632,7 +632,6 @@ export function GeneralSettingsSection() {
         show={hasUnsavedChanges}
         saving={saving}
         saveDisabled={!!branchPrefixError}
-        unsavedMessage={t('settings.general.save.unsavedChanges')}
         onSave={handleSave}
         onDiscard={handleDiscard}
       />

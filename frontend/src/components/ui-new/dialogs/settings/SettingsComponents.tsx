@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -217,7 +218,6 @@ export function SettingsSaveBar({
   show,
   saving,
   saveDisabled,
-  unsavedMessage,
   onSave,
   onDiscard,
 }: {
@@ -228,6 +228,7 @@ export function SettingsSaveBar({
   onSave: () => void;
   onDiscard?: () => void;
 }) {
+  const { t } = useTranslation(['settings', 'common']);
   if (!show) return null;
 
   return (
@@ -235,11 +236,11 @@ export function SettingsSaveBar({
       <div
         className={cn(
           'flex items-center',
-          unsavedMessage && onDiscard ? 'justify-between' : 'justify-end'
+          onDiscard ? 'justify-between' : 'justify-end'
         )}
       >
-        {unsavedMessage && onDiscard && (
-          <span className="text-sm text-low">{unsavedMessage}</span>
+        {onDiscard && (
+          <span className="text-sm text-low">{t('settings.common.unsavedChanges')}</span>
         )}
         <div className="flex gap-2">
           {onDiscard && (

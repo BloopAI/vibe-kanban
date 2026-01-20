@@ -1,5 +1,8 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• You have unsaved changes"
+    },
     "layout": {
       "nav": {
         "title": "Settings",
