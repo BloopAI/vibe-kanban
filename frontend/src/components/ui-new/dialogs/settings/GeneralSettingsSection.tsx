@@ -48,9 +48,7 @@ function SettingsCard({
     <div className="bg-secondary/50 border border-border/50 rounded-sm p-4 space-y-4">
       <div>
         <h3 className="text-base font-medium text-high">{title}</h3>
-        {description && (
-          <p className="text-sm text-low mt-1">{description}</p>
-        )}
+        {description && <p className="text-sm text-low mt-1">{description}</p>}
       </div>
       <div className="space-y-4">{children}</div>
     </div>
@@ -70,7 +68,9 @@ function SettingsField({
 }) {
   return (
     <div className="space-y-2">
-      {label && <label className="text-sm font-medium text-normal">{label}</label>}
+      {label && (
+        <label className="text-sm font-medium text-normal">{label}</label>
+      )}
       {children}
       {error && <p className="text-sm text-error">{error}</p>}
       {description && !error && (
@@ -103,12 +103,13 @@ function SettingsCheckbox({
         className="mt-0.5 h-4 w-4 rounded border-border bg-secondary text-brand focus:ring-brand focus:ring-offset-0"
       />
       <div className="space-y-0.5">
-        <label htmlFor={id} className="text-sm font-medium text-normal cursor-pointer">
+        <label
+          htmlFor={id}
+          className="text-sm font-medium text-normal cursor-pointer"
+        >
           {label}
         </label>
-        {description && (
-          <p className="text-sm text-low">{description}</p>
-        )}
+        {description && <p className="text-sm text-low">{description}</p>}
       </div>
     </div>
   );
@@ -373,7 +374,10 @@ export function GeneralSettingsSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 gap-2">
-        <SpinnerIcon className="size-icon-lg animate-spin text-brand" weight="bold" />
+        <SpinnerIcon
+          className="size-icon-lg animate-spin text-brand"
+          weight="bold"
+        />
         <span className="text-normal">{t('settings.general.loading')}</span>
       </div>
     );
@@ -488,7 +492,9 @@ export function GeneralSettingsSection() {
                   },
                 })
               }
-              placeholder={t('settings.general.editor.customCommand.placeholder')}
+              placeholder={t(
+                'settings.general.editor.customCommand.placeholder'
+              )}
             />
           </SettingsField>
         )}
@@ -513,7 +519,9 @@ export function GeneralSettingsSection() {
                     },
                   })
                 }
-                placeholder={t('settings.general.editor.remoteSsh.host.placeholder')}
+                placeholder={t(
+                  'settings.general.editor.remoteSsh.host.placeholder'
+                )}
               />
             </SettingsField>
 
@@ -532,7 +540,9 @@ export function GeneralSettingsSection() {
                       },
                     })
                   }
-                  placeholder={t('settings.general.editor.remoteSsh.user.placeholder')}
+                  placeholder={t(
+                    'settings.general.editor.remoteSsh.user.placeholder'
+                  )}
                 />
               </SettingsField>
             )}
@@ -592,7 +602,9 @@ export function GeneralSettingsSection() {
         <SettingsCheckbox
           id="pr-auto-description"
           label={t('settings.general.pullRequests.autoDescription.label')}
-          description={t('settings.general.pullRequests.autoDescription.helper')}
+          description={t(
+            'settings.general.pullRequests.autoDescription.helper'
+          )}
           checked={draft?.pr_auto_description_enabled ?? false}
           onChange={(checked) =>
             updateDraft({ pr_auto_description_enabled: checked })
@@ -668,7 +680,9 @@ export function GeneralSettingsSection() {
                       },
                     })
                   }
-                  placeholder={t('settings.general.notifications.sound.filePlaceholder')}
+                  placeholder={t(
+                    'settings.general.notifications.sound.filePlaceholder'
+                  )}
                 />
               </div>
               <IconButton

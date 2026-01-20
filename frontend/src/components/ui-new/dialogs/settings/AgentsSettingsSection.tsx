@@ -19,9 +19,7 @@ export function AgentsSettingsSection() {
       </div>
 
       <div className="bg-secondary/50 border border-border/50 rounded-sm p-8 text-center">
-        <p className="text-normal">
-          Agent settings will be available here.
-        </p>
+        <p className="text-normal">Agent settings will be available here.</p>
         <p className="text-sm text-low mt-2">
           Configure AI agent behavior, models, and execution preferences.
         </p>
