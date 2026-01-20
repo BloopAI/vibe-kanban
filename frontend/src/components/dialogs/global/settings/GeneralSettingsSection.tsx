@@ -46,11 +46,7 @@ export function GeneralSettingsSection() {
       defaultValue: 'Browser Default',
     })
   );
-  const {
-    config,
-    loading,
-    updateAndSaveConfig,
-  } = useUserSystem();
+  const { config, loading, updateAndSaveConfig } = useUserSystem();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
   const [dirty, setDirty] = useState(false);

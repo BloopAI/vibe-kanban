@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal, type NoProps } from '@/lib/modals';
+import { defineModal } from '@/lib/modals';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Settings section components
@@ -85,7 +85,10 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
     };
 
     return (
-      <Dialog open={modal.visible} onOpenChange={(open) => !open && handleClose()}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(open) => !open && handleClose()}
+      >
         <DialogContent className="sm:max-w-[900px] h-[80vh] max-h-[700px] p-0 overflow-hidden">
           <div className="flex h-full">
             {/* Left sidebar navigation */}
