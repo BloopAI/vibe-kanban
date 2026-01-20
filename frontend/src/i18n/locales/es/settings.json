@@ -1,5 +1,8 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• Tienes cambios sin guardar"
+    },
     "layout": {
       "nav": {
         "title": "Configuración",
@@ -252,7 +255,8 @@
       "loading": "Cargando configuraciones de agentes...",
       "save": {
         "button": "Guardar Configuraciones de Agentes",
-        "success": "✓ ¡Configuración guardada con éxito!"
+        "success": "✓ ¡Configuración guardada con éxito!",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       },
       "availability": {
         "checking": "Comprobando...",
@@ -315,7 +319,8 @@
         "button": "Guardar Configuración MCP",
         "success": "¡Configuración Guardada!",
         "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
-        "loading": "Cargando configuración actual del servidor MCP..."
+        "loading": "Cargando configuración actual del servidor MCP...",
+        "unsavedChanges": "• Tienes cambios sin guardar"
       }
     },
     "projects": {
