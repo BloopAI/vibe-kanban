@@ -75,8 +75,7 @@ const CreateWorkspaceFromPrDialogImpl =
 
     useEffect(() => {
       if (remotes.length > 0 && !selectedRemote) {
-        const defaultRemote = remotes.find((r: GitRemote) => r.is_default);
-        setSelectedRemote(defaultRemote?.name ?? remotes[0].name);
+        setSelectedRemote(remotes[0].name);
       }
     }, [remotes, selectedRemote]);
 
@@ -275,10 +274,10 @@ const CreateWorkspaceFromPrDialogImpl =
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {remotes.map((remote: GitRemote) => (
+                      {remotes.map((remote: GitRemote, index: number) => (
                         <SelectItem key={remote.name} value={remote.name}>
                           {remote.name}
-                          {remote.is_default &&
+                          {index === 0 &&
                             ` (${t('createWorkspaceFromPr.default')})`}
                         </SelectItem>
                       ))}
