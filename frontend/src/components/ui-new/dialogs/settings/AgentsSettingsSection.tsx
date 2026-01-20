@@ -706,10 +706,7 @@ export function AgentsSettingsSection() {
                         formData
                       )
                     }
-                    onSave={handleExecutorConfigSave}
                     disabled={profilesSaving}
-                    isSaving={profilesSaving}
-                    isDirty={isDirty}
                   />
                 )
               );
