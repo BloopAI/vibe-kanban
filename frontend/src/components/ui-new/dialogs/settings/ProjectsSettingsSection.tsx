@@ -2,12 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
-import {
-  SpinnerIcon,
-  PlusIcon,
-  TrashIcon,
-  FolderIcon,
-} from '@phosphor-icons/react';
+import { SpinnerIcon, PlusIcon, TrashIcon } from '@phosphor-icons/react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
@@ -36,7 +31,7 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-secondary/50 border border-border/50 rounded-sm p-4 space-y-4">
+    <div className="border border-border/50 rounded-sm p-4 space-y-4">
       <div>
         <h3 className="text-base font-medium text-high">{title}</h3>
         {description && <p className="text-sm text-low mt-1">{description}</p>}
@@ -343,16 +338,13 @@ export function ProjectsSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <FolderIcon className="size-icon-lg text-brand" weight="duotone" />
-        <div>
-          <h2 className="text-lg font-semibold text-high">
-            {t('settings.layout.nav.projects')}
-          </h2>
-          <p className="text-sm text-low">
-            {t('settings.layout.nav.projectsDesc')}
-          </p>
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-high">
+          {t('settings.layout.nav.projects')}
+        </h2>
+        <p className="text-sm text-low">
+          {t('settings.layout.nav.projectsDesc')}
+        </p>
       </div>
 
       {/* Status messages */}
@@ -449,7 +441,7 @@ export function ProjectsSettingsSection() {
                 {repositories.map((repo) => (
                   <div
                     key={repo.id}
-                    className="flex items-center justify-between p-3 bg-secondary/50 border border-border/50 rounded-sm hover:bg-secondary transition-colors"
+                    className="flex items-center justify-between p-3 border border-border/50 rounded-sm hover:bg-secondary/50 transition-colors"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-normal">
