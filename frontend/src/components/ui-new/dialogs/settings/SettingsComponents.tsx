@@ -217,18 +217,14 @@ export function SettingsSaveBar({
   show,
   saving,
   saveDisabled,
-  saveLabel,
   unsavedMessage,
-  discardLabel,
   onSave,
   onDiscard,
 }: {
   show: boolean;
   saving: boolean;
   saveDisabled?: boolean;
-  saveLabel: string;
   unsavedMessage?: string;
-  discardLabel?: string;
   onSave: () => void;
   onDiscard?: () => void;
 }) {
@@ -246,16 +242,16 @@ export function SettingsSaveBar({
           <span className="text-sm text-low">{unsavedMessage}</span>
         )}
         <div className="flex gap-2">
-          {onDiscard && discardLabel && (
+          {onDiscard && (
             <PrimaryButton
               variant="tertiary"
-              value={discardLabel}
+              value="Discard"
               onClick={onDiscard}
               disabled={saving}
             />
           )}
           <PrimaryButton
-            value={saveLabel}
+            value="Save"
             onClick={onSave}
             disabled={saving || saveDisabled}
             actionIcon={saving ? 'spinner' : undefined}

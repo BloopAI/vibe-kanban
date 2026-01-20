@@ -392,11 +392,6 @@ export function McpSettingsSection() {
         show={!mcpError?.includes('does not support MCP')}
         saving={mcpApplying}
         saveDisabled={mcpLoading || !!mcpError || success}
-        saveLabel={
-          success
-            ? t('settings.mcp.save.success')
-            : t('buttons.save', { ns: 'common' })
-        }
         onSave={handleApplyMcpServers}
       />
     </>

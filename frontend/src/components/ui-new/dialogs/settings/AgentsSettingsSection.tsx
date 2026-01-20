@@ -733,9 +733,7 @@ export function AgentsSettingsSection() {
               show={isDirty}
               saving={profilesSaving}
               saveDisabled={!!profilesError}
-              saveLabel={t('buttons.save', { ns: 'common' })}
               unsavedMessage={t('settings.agents.save.unsavedChanges')}
-              discardLabel={t('buttons.discard', { ns: 'common' })}
               onSave={handleJsonEditorSave}
               onDiscard={handleJsonEditorDiscard}
             />
