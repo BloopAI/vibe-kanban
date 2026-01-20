@@ -324,9 +324,7 @@ export function ReposSettingsSection() {
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.repos')}
         </h2>
-        <p className="text-sm text-low">
-          {t('settings.layout.nav.reposDesc')}
-        </p>
+        <p className="text-sm text-low">{t('settings.layout.nav.reposDesc')}</p>
       </div>
 
       {/* Status messages */}
