@@ -15,7 +15,10 @@ import {
   type ResolvedGroupItem,
   type RepoItem,
 } from '@/components/ui-new/actions/pages';
-import type { ActionVisibilityContext } from '@/components/ui-new/actions';
+import {
+  Actions,
+  type ActionVisibilityContext,
+} from '@/components/ui-new/actions';
 import {
   isActionVisible,
   isPageVisible,
@@ -70,6 +73,17 @@ function buildPageGroups(
     .filter((g): g is ResolvedGroup => g !== null);
 }
 
+// Actions available in repo actions page
+const REPO_ACTIONS = [
+  Actions.RepoCopyPath,
+  Actions.RepoOpenInIDE,
+  Actions.RepoSettings,
+  Actions.GitCreatePR,
+  Actions.GitMerge,
+  Actions.GitRebase,
+  Actions.GitChangeTarget,
+];
+
 export function useResolvedPage(
   pageId: PageId,
   search: string,
@@ -86,6 +100,27 @@ export function useResolvedPage(
           {
             label: 'Repositories',
             items: repos.map((r) => ({ type: 'repo' as const, repo: r })),
+          },
+        ],
+      };
+    }
+
+    // Handle repoActions page - shows repo-specific actions
+    if (pageId === 'repoActions') {
+      const visibleActions = REPO_ACTIONS.filter((action) =>
+        isActionVisible(action, ctx)
+      );
+
+      return {
+        id: 'repoActions',
+        title: 'Repository Actions',
+        groups: [
+          {
+            label: 'Actions',
+            items: visibleActions.map((action) => ({
+              type: 'action' as const,
+              action,
+            })),
           },
         ],
       };

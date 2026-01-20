@@ -10,6 +10,7 @@ export type PageId =
   | 'diffOptions'
   | 'viewOptions'
   | 'gitActions'
+  | 'repoActions' // Page for repo-specific actions (opened from repo card)
   | 'selectRepo'; // Dynamic page for repo selection (not in Pages record)
 
 // Items that can appear inside a group
@@ -56,7 +57,8 @@ export interface CommandBarPage {
 }
 
 // Static page IDs (excludes dynamic pages like selectRepo)
-export type StaticPageId = Exclude<PageId, 'selectRepo'>;
+// Note: repoActions is also treated specially since it requires a repoId
+export type StaticPageId = Exclude<PageId, 'selectRepo' | 'repoActions'>;
 
 export const Pages: Record<StaticPageId, CommandBarPage> = {
   // Root page - shown when opening via CMD+K

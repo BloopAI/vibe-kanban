@@ -6,20 +6,16 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   CrosshairIcon,
-  CodeIcon,
   ArrowSquareOutIcon,
-  CopyIcon,
   GitMergeIcon,
   CheckCircleIcon,
   SpinnerGapIcon,
   WarningCircleIcon,
   DotsThreeIcon,
-  GearIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -61,9 +57,7 @@ interface RepoCardProps {
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
   onPushClick?: () => void;
-  onOpenInEditor?: () => void;
-  onCopyPath?: () => void;
-  onOpenSettings?: () => void;
+  onMoreClick?: () => void;
 }
 
 export function RepoCard({
@@ -84,9 +78,7 @@ export function RepoCard({
   onRebase,
   onActionsClick,
   onPushClick,
-  onOpenInEditor,
-  onCopyPath,
-  onOpenSettings,
+  onMoreClick,
 }: RepoCardProps) {
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
@@ -153,27 +145,13 @@ export function RepoCard({
           </span>
         )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors shrink-0"
-              title="Repo actions"
-            >
-              <DotsThreeIcon className="size-icon-base" weight="bold" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem icon={CopyIcon} onClick={onCopyPath}>
-              {tCommon('actions.copyPath')}
-            </DropdownMenuItem>
-            <DropdownMenuItem icon={CodeIcon} onClick={onOpenInEditor}>
-              {tCommon('actions.openInIde')}
-            </DropdownMenuItem>
-            <DropdownMenuItem icon={GearIcon} onClick={onOpenSettings}>
-              {tCommon('actions.repoSettings')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          onClick={onMoreClick}
+          className="flex items-center justify-center p-1.5 rounded hover:bg-tertiary text-low hover:text-base transition-colors shrink-0"
+          title={tCommon('workspaces.more')}
+        >
+          <DotsThreeIcon className="size-icon-base" weight="bold" />
+        </button>
       </div>
 
       {/* PR status row */}

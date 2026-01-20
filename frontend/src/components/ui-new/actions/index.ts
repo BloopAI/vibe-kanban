@@ -918,6 +918,59 @@ export const Actions = {
     },
   },
 
+  // === Repo-specific Actions (for command bar when selecting a repo) ===
+  RepoCopyPath: {
+    id: 'repo-copy-path',
+    label: 'Copy Path',
+    icon: CopyIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (_ctx, _workspaceId, repoId) => {
+      try {
+        const repo = await repoApi.getById(repoId);
+        if (repo?.path) {
+          await navigator.clipboard.writeText(repo.path);
+        }
+      } catch (err) {
+        console.error('Failed to copy repo path:', err);
+        throw new Error('Failed to copy repository path');
+      }
+    },
+  },
+
+  RepoOpenInIDE: {
+    id: 'repo-open-in-ide',
+    label: 'Open in IDE',
+    icon: DesktopIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: async (_ctx, _workspaceId, repoId) => {
+      try {
+        const response = await repoApi.openEditor(repoId, {
+          editor_type: null,
+          file_path: null,
+        });
+        if (response.url) {
+          window.open(response.url, '_blank');
+        }
+      } catch (err) {
+        console.error('Failed to open repo in editor:', err);
+        throw new Error('Failed to open repository in IDE');
+      }
+    },
+  },
+
+  RepoSettings: {
+    id: 'repo-settings',
+    label: 'Repository Settings',
+    icon: GearIcon,
+    requiresTarget: 'git',
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
+    execute: (ctx, _workspaceId, repoId) => {
+      ctx.navigate(`/settings/repos?repoId=${repoId}`);
+    },
+  },
+
   // === Script Actions ===
   RunSetupScript: {
     id: 'run-setup-script',
