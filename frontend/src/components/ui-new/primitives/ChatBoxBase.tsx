@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { Toolbar, ToolbarDropdown } from './Toolbar';
 import {
   DropdownMenuItem,
@@ -114,6 +115,7 @@ export function ChatBoxBase({
   dropzone,
 }: ChatBoxBaseProps) {
   const { t } = useTranslation(['common', 'tasks']);
+  const { config } = useUserSystem();
   const variantLabel = toPrettyCase(variant?.selected || 'DEFAULT');
   const variantOptions = variant?.options ?? [];
 
@@ -185,6 +187,7 @@ export function ChatBoxBase({
           autoFocus={autoFocus}
           onPasteFiles={onPasteFiles}
           localImages={localImages}
+          sendShortcut={config?.send_message_shortcut}
         />
 
         {/* Footer - Controls */}

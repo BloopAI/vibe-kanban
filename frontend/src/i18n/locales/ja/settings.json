@@ -175,6 +175,15 @@
           "helper": "タスク試行の実行が完了したときにシステム通知を表示します。"
         }
       },
+      "messageInput": {
+        "title": "メッセージ入力",
+        "description": "チャット入力でメッセージを送信する方法を設定します。",
+        "shortcut": {
+          "label": "メッセージ送信キー",
+          "helper": "メッセージを送信するキーボードショートカットを選択してください。",
+          "enterLabel": "Enter（Shift+Enterで改行）"
+        }
+      },
       "privacy": {
         "title": "プライバシー",
         "description": "匿名の使用データを共有してVibe-Kanbanの改善にご協力ください。",

@@ -175,6 +175,15 @@
           "helper": "Afficher les notifications système lorsque les tentatives de tâches sont terminées."
         }
       },
+      "messageInput": {
+        "title": "Saisie des messages",
+        "description": "Configurez comment les messages sont envoyés dans le chat.",
+        "shortcut": {
+          "label": "Envoyer le message avec",
+          "helper": "Choisissez le raccourci clavier pour envoyer des messages.",
+          "enterLabel": "Entrée (Maj+Entrée pour nouvelle ligne)"
+        }
+      },
       "privacy": {
         "title": "Confidentialité",
         "description": "Aidez à améliorer Vibe-Kanban en partageant des données d'utilisation anonymes.",

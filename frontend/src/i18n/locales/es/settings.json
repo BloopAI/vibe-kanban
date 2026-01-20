@@ -175,6 +175,15 @@
           "helper": "Muestra notificaciones del sistema cuando las tareas terminan de ejecutarse."
         }
       },
+      "messageInput": {
+        "title": "Entrada de mensajes",
+        "description": "Configura cómo se envían los mensajes en el chat.",
+        "shortcut": {
+          "label": "Enviar mensaje con",
+          "helper": "Elige el atajo de teclado para enviar mensajes.",
+          "enterLabel": "Enter (Shift+Enter para nueva línea)"
+        }
+      },
       "privacy": {
         "title": "Privacidad",
         "description": "Ayuda a mejorar Vibe-Kanban compartiendo datos de uso anónimos.",

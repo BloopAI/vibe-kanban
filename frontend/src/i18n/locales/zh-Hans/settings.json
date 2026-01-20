@@ -175,6 +175,15 @@
           "helper": "任务尝试完成运行时显示系统通知。"
         }
       },
+      "messageInput": {
+        "title": "消息输入",
+        "description": "配置在聊天输入中发送消息的方式。",
+        "shortcut": {
+          "label": "发送消息快捷键",
+          "helper": "选择发送消息的键盘快捷键。",
+          "enterLabel": "Enter（Shift+Enter 换行）"
+        }
+      },
       "privacy": {
         "title": "隐私",
         "description": "通过共享匿名使用数据帮助改进 Vibe-Kanban。",

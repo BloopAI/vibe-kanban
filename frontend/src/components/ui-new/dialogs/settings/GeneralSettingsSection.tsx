@@ -13,7 +13,9 @@ import {
   SoundFile,
   ThemeMode,
   UiLanguage,
+  type SendMessageShortcut,
 } from 'shared/types';
+import { getModifierKey } from '@/utils/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
 import {
@@ -547,6 +549,34 @@ export function GeneralSettingsSection() {
             })
           }
         />
+      </SettingsCard>
+
+      {/* Message Input */}
+      <SettingsCard
+        title={t('settings.general.messageInput.title')}
+        description={t('settings.general.messageInput.description')}
+      >
+        <SettingsField
+          label={t('settings.general.messageInput.shortcut.label')}
+          description={t('settings.general.messageInput.shortcut.helper')}
+        >
+          <SettingsSelect
+            value={draft?.send_message_shortcut ?? 'ModifierEnter'}
+            options={[
+              {
+                value: 'ModifierEnter' as SendMessageShortcut,
+                label: `${getModifierKey()}+Enter`,
+              },
+              {
+                value: 'Enter' as SendMessageShortcut,
+                label: t('settings.general.messageInput.shortcut.enterLabel'),
+              },
+            ]}
+            onChange={(value: SendMessageShortcut) =>
+              updateDraft({ send_message_shortcut: value })
+            }
+          />
+        </SettingsField>
       </SettingsCard>
 
       {/* Privacy */}

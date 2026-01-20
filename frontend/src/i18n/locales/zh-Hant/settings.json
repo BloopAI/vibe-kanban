@@ -175,6 +175,15 @@
           "helper": "任務嘗試完成執行時顯示系統通知。"
         }
       },
+      "messageInput": {
+        "title": "訊息輸入",
+        "description": "設定在聊天輸入中傳送訊息的方式。",
+        "shortcut": {
+          "label": "傳送訊息快捷鍵",
+          "helper": "選擇傳送訊息的鍵盤快捷鍵。",
+          "enterLabel": "Enter（Shift+Enter 換行）"
+        }
+      },
       "privacy": {
         "title": "隱私",
         "description": "透過分享匿名使用資料來協助改善 Vibe Kanban。",

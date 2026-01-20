@@ -175,6 +175,15 @@
           "helper": "Show system notifications when task attempts finish running."
         }
       },
+      "messageInput": {
+        "title": "Message Input",
+        "description": "Configure how messages are sent in the chat input.",
+        "shortcut": {
+          "label": "Send message with",
+          "helper": "Choose the keyboard shortcut to send messages.",
+          "enterLabel": "Enter (Shift+Enter for new line)"
+        }
+      },
       "privacy": {
         "title": "Privacy",
         "description": "Help improve Vibe-Kanban by sharing anonymous usage data.",
