@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              agent_working_dir,\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\",\n                              archived AS \"archived!: bool\",\n                              pinned AS \"pinned!: bool\",\n                              name\n                       FROM workspaces\n                       WHERE task_id = $1\n                       ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              agent_working_dir,\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\",\n                              archived AS \"archived!: bool\",\n                              pinned AS \"pinned!: bool\",\n                              name,\n                              owner_user_id AS \"owner_user_id: Uuid\"\n                       FROM workspaces\n                       WHERE task_id = $1\n                       ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "owner_user_id: Uuid",
+        "ordinal": 11,
+        "type_info": "Blob"
       }
     ],
     "parameters": {
@@ -73,8 +78,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "c4619cdaa3e646384c40aa5e73571b7012d15d53d9e3c96bf154259e369448d6"
+  "hash": "3cc59675afc2b6bd29eecadf368ddbd2ce5eb834b854c94389677391fbcda0a6"
 }

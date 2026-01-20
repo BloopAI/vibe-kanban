@@ -39,7 +39,7 @@ pub async fn run_gh_cli_setup(
         .ensure_container_exists(workspace)
         .await?;
 
-    // Get or create a session for setup scripts
+    // Get or create a session for setup scripts (system-initiated)
     let session =
         match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
             Some(s) => s,
@@ -51,6 +51,7 @@ pub async fn run_gh_cli_setup(
                     },
                     Uuid::new_v4(),
                     workspace.id,
+                    None, // System-initiated session
                 )
                 .await?
             }

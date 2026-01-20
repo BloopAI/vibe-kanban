@@ -5,6 +5,8 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::user::User;
+
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error(transparent)]
@@ -22,6 +24,42 @@ pub struct Session {
     pub executor: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub initiated_by_user_id: Option<Uuid>,
+}
+
+/// Compact representation of a user for session API responses
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct SessionUser {
+    pub id: Uuid,
+    pub username: String,
+    pub avatar_url: Option<String>,
+}
+
+impl From<User> for SessionUser {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            avatar_url: user.avatar_url,
+        }
+    }
+}
+
+/// Session with initiator information for API responses
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct SessionWithInitiator {
+    #[serde(flatten)]
+    pub session: Session,
+    pub initiated_by: Option<SessionUser>,
+}
+
+impl SessionWithInitiator {
+    pub fn new(session: Session, initiated_by: Option<User>) -> Self {
+        Self {
+            session,
+            initiated_by: initiated_by.map(SessionUser::from),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -37,7 +75,8 @@ impl Session {
                       workspace_id AS "workspace_id!: Uuid",
                       executor,
                       created_at AS "created_at!: DateTime<Utc>",
-                      updated_at AS "updated_at!: DateTime<Utc>"
+                      updated_at AS "updated_at!: DateTime<Utc>",
+                      initiated_by_user_id AS "initiated_by_user_id: Uuid"
                FROM sessions
                WHERE id = $1"#,
             id
@@ -59,7 +98,8 @@ impl Session {
                       s.workspace_id AS "workspace_id!: Uuid",
                       s.executor,
                       s.created_at AS "created_at!: DateTime<Utc>",
-                      s.updated_at AS "updated_at!: DateTime<Utc>"
+                      s.updated_at AS "updated_at!: DateTime<Utc>",
+                      s.initiated_by_user_id AS "initiated_by_user_id: Uuid"
                FROM sessions s
                LEFT JOIN (
                    SELECT ep.session_id, MAX(ep.created_at) as last_used
@@ -88,7 +128,8 @@ impl Session {
                       s.workspace_id AS "workspace_id!: Uuid",
                       s.executor,
                       s.created_at AS "created_at!: DateTime<Utc>",
-                      s.updated_at AS "updated_at!: DateTime<Utc>"
+                      s.updated_at AS "updated_at!: DateTime<Utc>",
+                      s.initiated_by_user_id AS "initiated_by_user_id: Uuid"
                FROM sessions s
                LEFT JOIN (
                    SELECT ep.session_id, MAX(ep.created_at) as last_used
@@ -110,21 +151,41 @@ impl Session {
         data: &CreateSession,
         id: Uuid,
         workspace_id: Uuid,
+        initiated_by_user_id: Option<Uuid>,
     ) -> Result<Self, SessionError> {
         Ok(sqlx::query_as!(
             Session,
-            r#"INSERT INTO sessions (id, workspace_id, executor)
-               VALUES ($1, $2, $3)
+            r#"INSERT INTO sessions (id, workspace_id, executor, initiated_by_user_id)
+               VALUES ($1, $2, $3, $4)
                RETURNING id AS "id!: Uuid",
                          workspace_id AS "workspace_id!: Uuid",
                          executor,
                          created_at AS "created_at!: DateTime<Utc>",
-                         updated_at AS "updated_at!: DateTime<Utc>""#,
+                         updated_at AS "updated_at!: DateTime<Utc>",
+                         initiated_by_user_id AS "initiated_by_user_id: Uuid""#,
             id,
             workspace_id,
-            data.executor
+            data.executor,
+            initiated_by_user_id
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    /// Fetch the initiator user for this session, if one exists
+    pub async fn get_initiator(&self, pool: &SqlitePool) -> Result<Option<User>, sqlx::Error> {
+        match self.initiated_by_user_id {
+            Some(user_id) => User::find_by_id(pool, user_id).await,
+            None => Ok(None),
+        }
+    }
+
+    /// Convert this session to a SessionWithInitiator, fetching initiator if available
+    pub async fn with_initiator(
+        self,
+        pool: &SqlitePool,
+    ) -> Result<SessionWithInitiator, sqlx::Error> {
+        let initiator = self.get_initiator(pool).await?;
+        Ok(SessionWithInitiator::new(self, initiator))
     }
 }

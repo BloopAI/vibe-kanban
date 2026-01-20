@@ -122,7 +122,7 @@ async fn trigger_pr_description_follow_up(
 
     drop(config); // Release the lock before async operations
 
-    // Get or create a session for this follow-up
+    // Get or create a session for this follow-up (system-initiated)
     let session =
         match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
             Some(s) => s,
@@ -132,6 +132,7 @@ async fn trigger_pr_description_follow_up(
                     &CreateSession { executor: None },
                     Uuid::new_v4(),
                     workspace.id,
+                    None, // System-initiated session
                 )
                 .await?
             }

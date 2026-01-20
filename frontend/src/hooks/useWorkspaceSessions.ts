@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { sessionsApi } from '@/lib/api';
-import type { Session } from 'shared/types';
+import type { SessionWithInitiator } from 'shared/types';
 
 interface UseWorkspaceSessionsOptions {
   enabled?: boolean;
@@ -13,8 +13,8 @@ export type SessionSelection =
   | { mode: 'new' };
 
 interface UseWorkspaceSessionsResult {
-  sessions: Session[];
-  selectedSession: Session | undefined;
+  sessions: SessionWithInitiator[];
+  selectedSession: SessionWithInitiator | undefined;
   selectedSessionId: string | undefined;
   selectSession: (sessionId: string) => void;
   selectLatestSession: () => void;
@@ -39,7 +39,7 @@ export function useWorkspaceSessions(
     undefined
   );
 
-  const { data: sessions = [], isLoading } = useQuery<Session[]>({
+  const { data: sessions = [], isLoading } = useQuery<SessionWithInitiator[]>({
     queryKey: ['workspaceSessions', workspaceId],
     queryFn: () => sessionsApi.getByWorkspace(workspaceId!),
     enabled: enabled && !!workspaceId,

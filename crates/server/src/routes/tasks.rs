@@ -215,6 +215,7 @@ pub async fn create_task_and_start(
         },
         attempt_id,
         task.id,
+        creator_user_id,
     )
     .await?;
 

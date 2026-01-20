@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   type Session,
+  type SessionWithInitiator,
   type ToolStatus,
   type BaseCodingAgent,
 } from 'shared/types';
@@ -68,7 +69,7 @@ interface SessionChatBoxContainerProps {
   /** Callback to view code changes (toggle ChangesPanel) */
   onViewCode?: () => void;
   /** Available sessions for this workspace */
-  sessions?: Session[];
+  sessions?: SessionWithInitiator[];
   /** Called when a session is selected */
   onSelectSession?: (sessionId: string) => void;
   /** Project ID for file search in typeahead */

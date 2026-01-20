@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/utils/date';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { RunningDots } from './RunningDots';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
+import type { WorkspaceUser } from 'shared/types';
 
 interface WorkspaceSummaryProps {
   name: string;
@@ -34,6 +36,8 @@ interface WorkspaceSummaryProps {
   summary?: boolean;
   /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
   isDraft?: boolean;
+  /** Owner of the workspace */
+  owner?: WorkspaceUser | null;
 }
 
 export function WorkspaceSummary({
@@ -55,6 +59,7 @@ export function WorkspaceSummary({
   className,
   summary = false,
   isDraft = false,
+  owner,
 }: WorkspaceSummaryProps) {
   const { t } = useTranslation('common');
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
@@ -142,6 +147,15 @@ export function WorkspaceSummary({
               <PushPinIcon
                 className="size-icon-xs text-brand shrink-0"
                 weight="fill"
+              />
+            )}
+
+            {/* Owner avatar */}
+            {owner && (
+              <UserAvatar
+                username={owner.username}
+                imageUrl={owner.avatar_url}
+                className="size-4 shrink-0"
               />
             )}
 

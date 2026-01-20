@@ -94,11 +94,17 @@ export type Image = { id: string, file_path: string, original_name: string, mime
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
 
-export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
+export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, owner_user_id: string | null, };
 
-export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, };
+export type WorkspaceUser = { id: string, username: string, avatar_url: string | null, };
 
-export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, };
+export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, owner: WorkspaceUser | null, id: string, task_id: string, container_ref: string | null, branch: string, agent_working_dir: string | null, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, owner_user_id: string | null, };
+
+export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, initiated_by_user_id: string | null, };
+
+export type SessionUser = { id: string, username: string, avatar_url: string | null, };
+
+export type SessionWithInitiator = { initiated_by: SessionUser | null, id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, initiated_by_user_id: string | null, };
 
 export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**

@@ -146,9 +146,11 @@ Tasks are the core work unit. Knowing who created and who is responsible for a t
 
 ---
 
-## Phase 4: Workspace & Session Ownership
+## Phase 4: Workspace & Session Ownership ✅ COMPLETED
 
 **Duration**: 2 days
+
+**Status**: Completed
 
 ### What
 Workspaces and sessions track which user initiated them.
@@ -169,13 +171,13 @@ When an agent runs, we need to know which user triggered it. This enables showin
 ### Changes Required
 
 **Backend**
-- Migration to add `owner_user_id` to workspaces, `initiated_by_user_id` to sessions
-- Update Workspace and Session models
-- Update workspace/session routes for auth and user attribution
+- ~~Migration to add `owner_user_id` to workspaces, `initiated_by_user_id` to sessions~~ ✅
+- ~~Update Workspace and Session models~~ ✅
+- ~~Update workspace/session routes for auth and user attribution~~ ✅
 
 **Frontend**
-- Display workspace owner in workspace views
-- Show session initiator in session/execution views
+- ~~Display workspace owner in workspace views~~ ✅
+- ~~Show session initiator in session/execution views~~ ✅
 
 ---
 
@@ -318,8 +320,8 @@ Users need visual confirmation of who they're logged in as and a way to sign out
 | Phase 1: User Authentication Flow | 4-5 days | None | ✅ Completed |
 | Phase 2: Project Ownership | 2-3 days | Phase 1 | ✅ Completed |
 | Phase 3: Task Attribution & Assignment | 2-3 days | Phase 1 | ✅ Completed |
-| Phase 4: Workspace & Session Ownership | 2 days | Phase 1 | Ready |
-| Phase 5: Chat Message Attribution | 3-4 days | Phase 4 | Blocked |
+| Phase 4: Workspace & Session Ownership | 2 days | Phase 1 | ✅ Completed |
+| Phase 5: Chat Message Attribution | 3-4 days | Phase 4 | Ready |
 | Phase 6: User Menu & Profile Display | 1-2 days | Phase 1 | Ready |
 | **Total** | **~2-3 weeks** | | |
 

@@ -891,7 +891,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Create a session for this workspace
+        // Create a session for this workspace (system-initiated, no specific user)
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
@@ -899,6 +899,7 @@ pub trait ContainerService {
             },
             Uuid::new_v4(),
             workspace.id,
+            None, // System-initiated session
         )
         .await?;
 

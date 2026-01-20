@@ -22,7 +22,7 @@ import {
 import { attemptsApi } from '@/lib/api';
 import type {
   Workspace as ApiWorkspace,
-  Session,
+  SessionWithInitiator,
   RepoWithTargetBranch,
   UnifiedPrComment,
 } from 'shared/types';
@@ -42,8 +42,8 @@ interface WorkspaceContextValue {
   selectWorkspace: (id: string) => void;
   navigateToCreate: () => void;
   /** Sessions for the current workspace */
-  sessions: Session[];
-  selectedSession: Session | undefined;
+  sessions: SessionWithInitiator[];
+  selectedSession: SessionWithInitiator | undefined;
   selectedSessionId: string | undefined;
   selectSession: (sessionId: string) => void;
   selectLatestSession: () => void;
