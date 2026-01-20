@@ -132,7 +132,8 @@ export function CreateChatBox({
         <>
           <ToolbarIconButton
             icon={PaperclipIcon}
-            aria-label="Attach file"
+            aria-label={t('tasks:taskFormDialog.attachImage')}
+            title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
             disabled={isSending}
           />

@@ -346,7 +346,7 @@ export const Actions = {
     icon: HighlighterIcon,
     requiresTarget: true,
     isVisible: (ctx) => ctx.hasWorkspace,
-    getTooltip: () => 'Ask the agent to review your changes',
+    getTooltip: () => 'Review changes with agent',
     execute: async (_ctx, workspaceId) => {
       await StartReviewDialog.show({
         workspaceId,

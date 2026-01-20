@@ -34,7 +34,10 @@ import {
   type ActionVisibilityContext,
   isSpecialIcon,
 } from '../actions';
-import { isActionEnabled } from '../actions/useActionVisibility';
+import {
+  isActionEnabled,
+  getActionTooltip,
+} from '../actions/useActionVisibility';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -642,7 +645,8 @@ export function SessionChatBox({
         <>
           <ToolbarIconButton
             icon={PaperclipIcon}
-            aria-label="Attach file"
+            aria-label={t('tasks:taskFormDialog.attachImage')}
+            title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
             disabled={isDisabled || isRunning}
           />
@@ -667,11 +671,13 @@ export function SessionChatBox({
               typeof action.label === 'function'
                 ? action.label()
                 : action.label;
+            const tooltip = getActionTooltip(action, toolbarActions.context);
             return (
               <ToolbarIconButton
                 key={action.id}
                 icon={icon}
                 aria-label={label}
+                title={tooltip}
                 onClick={() => toolbarActions.onExecuteAction(action)}
                 disabled={isButtonDisabled}
               />
