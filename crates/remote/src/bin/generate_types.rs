@@ -18,9 +18,9 @@ use remote::{
         workspaces::Workspace,
     },
     mutations::{
-        CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
-        CreateProjectStatusRequest, CreateTagRequest, UpdateIssueCommentReactionRequest,
-        UpdateIssueCommentRequest, UpdateProjectStatusRequest, UpdateTagRequest,
+        CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateProjectStatusRequest,
+        CreateTagRequest, UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest,
+        UpdateProjectStatusRequest, UpdateTagRequest,
     },
     shapes::all_shapes,
 };
