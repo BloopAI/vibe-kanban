@@ -183,22 +183,27 @@ export function RepoCard({
       {(commitsAhead > 0 || commitsBehind > 0) && (
         <div className="flex items-center gap-base text-xs">
           {commitsAhead > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-brand-secondary/10 text-brand-secondary">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-success/10 text-success">
               <ArrowUpIcon className="size-icon-xs" weight="bold" />
               <span className="font-medium">{commitsAhead}</span>
-              <span className="text-brand-secondary/80">
-                {t('git.status.ahead')}
-              </span>
+              <span className="text-success/80">{t('git.status.ahead')}</span>
             </span>
           )}
           {commitsBehind > 0 && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">
-              <ArrowDownIcon className="size-icon-xs" weight="bold" />
-              <span className="font-medium">{commitsBehind}</span>
-              <span className="text-amber-500/80">
-                {t('git.status.behind')}
+            <>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-error/10 text-error">
+                <ArrowDownIcon className="size-icon-xs" weight="bold" />
+                <span className="font-medium">{commitsBehind}</span>
+                <span className="text-error/80">{t('git.status.behind')}</span>
               </span>
-            </span>
+              <button
+                onClick={onRebase}
+                className="inline-flex items-center gap-1 text-low hover:text-normal transition-colors"
+              >
+                <ArrowsClockwiseIcon className="size-icon-xs" />
+                <span>{t('rebase.common.action')}</span>
+              </button>
+            </>
           )}
         </div>
       )}
