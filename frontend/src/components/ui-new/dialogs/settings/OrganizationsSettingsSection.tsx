@@ -34,52 +34,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-
-// Reusable settings components
-function SettingsCard({
-  title,
-  description,
-  children,
-  headerAction,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-  headerAction?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-base font-medium text-high">{title}</h3>
-          {description && (
-            <p className="text-sm text-low mt-1">{description}</p>
-          )}
-        </div>
-        {headerAction}
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function SettingsField({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-normal">{label}</label>
-      {children}
-      {description && <p className="text-sm text-low">{description}</p>}
-    </div>
-  );
-}
+import { SettingsCard, SettingsField } from './SettingsComponents';
 
 export function OrganizationsSettingsSection() {
   const { t } = useTranslation('organization');

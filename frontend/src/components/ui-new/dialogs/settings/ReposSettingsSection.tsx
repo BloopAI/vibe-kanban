@@ -6,7 +6,6 @@ import { SpinnerIcon } from '@phosphor-icons/react';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { repoApi } from '@/lib/api';
 import type { Repo, UpdateRepo } from 'shared/types';
-import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
 import {
   DropdownMenu,
@@ -15,138 +14,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-
-// Reusable settings components
-function SettingsCard({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-4 pb-6 border-b border-border last:border-b-0 last:pb-0">
-      <div>
-        <h3 className="text-base font-medium text-high">{title}</h3>
-        {description && <p className="text-sm text-low mt-1">{description}</p>}
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function SettingsField({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-normal">{label}</label>
-      {children}
-      {description && <p className="text-sm text-low">{description}</p>}
-    </div>
-  );
-}
-
-function SettingsInput({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={cn(
-        'w-full bg-secondary border border-border rounded-sm px-base py-half text-base text-high',
-        'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand'
-      )}
-    />
-  );
-}
-
-function SettingsTextarea({
-  value,
-  onChange,
-  placeholder,
-  rows = 4,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={rows}
-      className={cn(
-        'w-full bg-secondary border border-border rounded-sm px-base py-half text-base text-high font-mono',
-        'placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand',
-        'resize-y'
-      )}
-    />
-  );
-}
-
-function SettingsCheckbox({
-  id,
-  label,
-  description,
-  checked,
-  onChange,
-  disabled,
-}: {
-  id: string;
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <input
-        type="checkbox"
-        id={id}
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled}
-        className={cn(
-          'mt-0.5 h-4 w-4 rounded border-border bg-secondary text-brand focus:ring-brand focus:ring-offset-0',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-      />
-      <div className="space-y-0.5">
-        <label
-          htmlFor={id}
-          className={cn(
-            'text-sm font-medium text-normal cursor-pointer',
-            disabled && 'opacity-50 cursor-not-allowed'
-          )}
-        >
-          {label}
-        </label>
-        {description && <p className="text-sm text-low">{description}</p>}
-      </div>
-    </div>
-  );
-}
+import {
+  SettingsCard,
+  SettingsField,
+  SettingsInput,
+  SettingsTextarea,
+  SettingsCheckbox,
+} from './SettingsComponents';
 
 interface RepoScriptsFormState {
   display_name: string;
@@ -414,6 +288,7 @@ export function ReposSettingsSection() {
                 value={draft.dev_server_script}
                 onChange={(value) => updateDraft({ dev_server_script: value })}
                 placeholder={placeholders.dev}
+                monospace
               />
             </SettingsField>
 
@@ -425,6 +300,7 @@ export function ReposSettingsSection() {
                 value={draft.setup_script}
                 onChange={(value) => updateDraft({ setup_script: value })}
                 placeholder={placeholders.setup}
+                monospace
               />
             </SettingsField>
 
@@ -447,6 +323,7 @@ export function ReposSettingsSection() {
                 value={draft.cleanup_script}
                 onChange={(value) => updateDraft({ cleanup_script: value })}
                 placeholder={placeholders.cleanup}
+                monospace
               />
             </SettingsField>
 
