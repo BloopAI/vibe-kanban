@@ -411,7 +411,7 @@ export function GeneralSettingsSection() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="pb-4 border-b border-border/50">
+      <div className="pb-4 border-b border-border">
         <h2 className="text-lg font-semibold text-high">
           {t('settings.layout.nav.general')}
         </h2>
