@@ -24,6 +24,7 @@ export function McpSettingsSection() {
   const { t } = useTranslation('settings');
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
+  const [originalMcpServers, setOriginalMcpServers] = useState('{}');
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpLoading, setMcpLoading] = useState(true);
@@ -33,6 +34,8 @@ export function McpSettingsSection() {
   const [mcpApplying, setMcpApplying] = useState(false);
   const [mcpConfigPath, setMcpConfigPath] = useState<string>('');
   const [success, setSuccess] = useState(false);
+
+  const isDirty = mcpServers !== originalMcpServers;
 
   // Initialize selected profile when config loads
   useEffect(() => {
@@ -70,6 +73,7 @@ export function McpSettingsSection() {
         );
         const configJson = JSON.stringify(fullConfig, null, 2);
         setMcpServers(configJson);
+        setOriginalMcpServers(configJson);
         setMcpConfigPath(result.config_path);
       } catch (err: unknown) {
         if (
@@ -145,6 +149,7 @@ export function McpSettingsSection() {
             { servers: mcpServersConfig }
           );
 
+          setOriginalMcpServers(mcpServers);
           setSuccess(true);
           setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
@@ -165,6 +170,11 @@ export function McpSettingsSection() {
     } finally {
       setMcpApplying(false);
     }
+  };
+
+  const handleDiscard = () => {
+    setMcpServers(originalMcpServers);
+    setMcpError(null);
   };
 
   const addServer = (key: string) => {
@@ -389,10 +399,12 @@ export function McpSettingsSection() {
       </SettingsCard>
 
       <SettingsSaveBar
-        show={!mcpError?.includes('does not support MCP')}
+        show={isDirty && !mcpError?.includes('does not support MCP')}
         saving={mcpApplying}
-        saveDisabled={mcpLoading || !!mcpError || success}
+        saveDisabled={!!mcpError}
+        unsavedMessage={t('settings.mcp.save.unsavedChanges')}
         onSave={handleApplyMcpServers}
+        onDiscard={handleDiscard}
       />
     </>
   );
