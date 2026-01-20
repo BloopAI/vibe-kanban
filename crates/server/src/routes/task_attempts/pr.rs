@@ -720,7 +720,9 @@ pub async fn create_workspace_from_pr(
             }
         }
         Err(e) => {
-            tracing::warn!("Failed to get repo info for PR tracking (gh CLI may not be installed): {e}");
+            tracing::warn!(
+                "Failed to get repo info for PR tracking (gh CLI may not be installed): {e}"
+            );
         }
     }
 
