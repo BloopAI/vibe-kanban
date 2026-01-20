@@ -4,8 +4,8 @@ use ts_rs::TS;
 
 use crate::db::{
     issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
-    issue_comments::IssueComment, issue_dependencies::IssueDependency,
-    issue_followers::IssueFollower, issue_tags::IssueTag, issues::Issue,
+    issue_comments::IssueComment, issue_followers::IssueFollower,
+    issue_relationships::IssueRelationship, issue_tags::IssueTag, issues::Issue,
     notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
     workspaces::Workspace,
 };
@@ -170,10 +170,10 @@ define_shape!(
 );
 
 define_shape!(
-    ISSUE_DEPENDENCIES, IssueDependency,
-    table: "issue_dependencies",
-    where_clause: r#""blocking_issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
-    url: "/shape/project/{project_id}/issue_dependencies",
+    ISSUE_RELATIONSHIPS, IssueRelationship,
+    table: "issue_relationships",
+    where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
+    url: "/shape/project/{project_id}/issue_relationships",
     params: ["project_id"]
 );
 
@@ -206,7 +206,7 @@ pub fn all_shapes() -> Vec<&'static dyn ShapeExport> {
         &ISSUE_ASSIGNEES,
         &ISSUE_FOLLOWERS,
         &ISSUE_TAGS,
-        &ISSUE_DEPENDENCIES,
+        &ISSUE_RELATIONSHIPS,
         &ISSUE_COMMENTS,
         &ISSUE_COMMENT_REACTIONS,
     ]

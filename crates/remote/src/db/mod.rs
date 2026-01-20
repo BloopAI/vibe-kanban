@@ -5,7 +5,7 @@ pub mod invitations;
 pub mod issue_assignees;
 pub mod issue_comment_reactions;
 pub mod issue_comments;
-pub mod issue_dependencies;
+pub mod issue_relationships;
 pub mod issue_followers;
 pub mod issue_tags;
 pub mod issues;

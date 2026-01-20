@@ -18,13 +18,15 @@ export type Tag = { id: string, project_id: string, name: string, color: string,
 
 export type Issue = { id: string, project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, created_at: string, updated_at: string, };
 
-export type IssueAssignee = { issue_id: string, user_id: string, assigned_at: string, };
+export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
 
-export type IssueFollower = { issue_id: string, user_id: string, };
+export type IssueFollower = { id: string, issue_id: string, user_id: string, };
 
-export type IssueTag = { issue_id: string, tag_id: string, };
+export type IssueTag = { id: string, issue_id: string, tag_id: string, };
 
-export type IssueDependency = { blocking_issue_id: string, blocked_issue_id: string, created_at: string, };
+export type IssueRelationship = { id: string, issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, created_at: string, };
+
+export type IssueRelationshipType = "blocking" | "related" | "has_duplicate";
 
 export type IssueComment = { id: string, issue_id: string, author_id: string, message: string, created_at: string, updated_at: string, };
 
@@ -55,6 +57,22 @@ export type UpdateProjectStatusRequest = { name: string | null, color: string | 
 export type CreateIssueRequest = { project_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, extension_metadata: JsonValue, };
 
 export type UpdateIssueRequest = { status_id: string | null, title: string | null, description: string | null | null, priority: IssuePriority | null, start_date: string | null | null, target_date: string | null | null, completed_at: string | null | null, sort_order: number | null, parent_issue_id: string | null | null, extension_metadata: JsonValue | null, };
+
+export type CreateIssueAssigneeRequest = { issue_id: string, user_id: string, };
+
+export type UpdateIssueAssigneeRequest = { user_id: string | null, };
+
+export type CreateIssueFollowerRequest = { issue_id: string, user_id: string, };
+
+export type UpdateIssueFollowerRequest = { user_id: string | null, };
+
+export type CreateIssueTagRequest = { issue_id: string, tag_id: string, };
+
+export type UpdateIssueTagRequest = { tag_id: string | null, };
+
+export type CreateIssueRelationshipRequest = { issue_id: string, related_issue_id: string, relationship_type: IssueRelationshipType, };
+
+export type UpdateIssueRelationshipRequest = { related_issue_id: string | null, relationship_type: IssueRelationshipType | null, };
 
 export type CreateIssueCommentRequest = { issue_id: string, message: string, };
 
@@ -136,10 +154,10 @@ export const ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   '/shape/project/{project_id}/issue_tags'
 );
 
-export const ISSUE_DEPENDENCIES_SHAPE = defineShape<IssueDependency>(
-  'issue_dependencies',
+export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
+  'issue_relationships',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_dependencies'
+  '/shape/project/{project_id}/issue_relationships'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
@@ -165,7 +183,7 @@ export const ALL_SHAPES = [
   ISSUE_ASSIGNEES_SHAPE,
   ISSUE_FOLLOWERS_SHAPE,
   ISSUE_TAGS_SHAPE,
-  ISSUE_DEPENDENCIES_SHAPE,
+  ISSUE_RELATIONSHIPS_SHAPE,
   ISSUE_COMMENTS_SHAPE,
   ISSUE_COMMENT_REACTIONS_SHAPE,
 ] as const;

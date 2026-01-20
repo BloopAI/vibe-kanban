@@ -9,9 +9,11 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 use crate::db::{
-    issue_comment_reactions::IssueCommentReaction, issue_comments::IssueComment, issues::Issue,
+    issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
+    issue_comments::IssueComment, issue_followers::IssueFollower,
+    issue_relationships::IssueRelationship, issue_tags::IssueTag, issues::Issue,
     notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
-    types::IssuePriority,
+    types::{IssuePriority, IssueRelationshipType},
 };
 
 // Organization-scoped mutations
@@ -68,6 +70,34 @@ crate::define_mutation_types!(
     table: "issue_comments",
     scope: Issue,
     fields: [message: String],
+);
+
+crate::define_mutation_types!(
+    IssueAssignee,
+    table: "issue_assignees",
+    scope: Issue,
+    fields: [user_id: uuid::Uuid],
+);
+
+crate::define_mutation_types!(
+    IssueFollower,
+    table: "issue_followers",
+    scope: Issue,
+    fields: [user_id: uuid::Uuid],
+);
+
+crate::define_mutation_types!(
+    IssueTag,
+    table: "issue_tags",
+    scope: Issue,
+    fields: [tag_id: uuid::Uuid],
+);
+
+crate::define_mutation_types!(
+    IssueRelationship,
+    table: "issue_relationships",
+    scope: Issue,
+    fields: [related_issue_id: uuid::Uuid, relationship_type: IssueRelationshipType],
 );
 
 // Comment-scoped mutations

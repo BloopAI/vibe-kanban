@@ -18,8 +18,12 @@ mod electric_proxy;
 mod error;
 mod github_app;
 mod identity;
+mod issue_assignees;
 mod issue_comment_reactions;
 mod issue_comments;
+mod issue_followers;
+mod issue_relationships;
+mod issue_tags;
 mod issues;
 mod notifications;
 mod oauth;
@@ -73,6 +77,10 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_comments::router())
         .merge(issue_comment_reactions::router())
         .merge(issues::router())
+        .merge(issue_assignees::router())
+        .merge(issue_followers::router())
+        .merge(issue_tags::router())
+        .merge(issue_relationships::router())
         .merge(notifications::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),

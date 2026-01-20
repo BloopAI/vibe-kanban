@@ -46,8 +46,8 @@ pub fn router() -> Router<AppState> {
         .route(shapes::ISSUE_FOLLOWERS.url, get(proxy_issue_followers))
         .route(shapes::ISSUE_TAGS.url, get(proxy_issue_tags))
         .route(
-            shapes::ISSUE_DEPENDENCIES.url,
-            get(proxy_issue_dependencies),
+            shapes::ISSUE_RELATIONSHIPS.url,
+            get(proxy_issue_relationships),
         )
         // Issue-scoped
         .route(shapes::ISSUE_COMMENTS.url, get(proxy_issue_comments))
@@ -245,7 +245,7 @@ async fn proxy_issue_comments(
     .await
 }
 
-async fn proxy_issue_dependencies(
+async fn proxy_issue_relationships(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(project_id): Path<Uuid>,
@@ -257,7 +257,7 @@ async fn proxy_issue_dependencies(
 
     proxy_table(
         &state,
-        &shapes::ISSUE_DEPENDENCIES,
+        &shapes::ISSUE_RELATIONSHIPS,
         &query.params,
         &[project_id.to_string()],
     )
