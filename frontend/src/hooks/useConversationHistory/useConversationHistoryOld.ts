@@ -193,16 +193,14 @@ export const useConversationHistoryOld = ({
                   e.content.entry_type.type !== 'token_usage_info')
             );
 
-            const hasPendingApprovalEntry = filteredEntries.some(
-              (entry) => {
-                if (entry.type !== 'NORMALIZED_ENTRY') return false;
-                const entryType = entry.content.entry_type;
-                return (
-                  entryType.type === 'tool_use' &&
-                  entryType.status.status === 'pending_approval'
-                );
-              }
-            );
+            const hasPendingApprovalEntry = filteredEntries.some((entry) => {
+              if (entry.type !== 'NORMALIZED_ENTRY') return false;
+              const entryType = entry.content.entry_type;
+              return (
+                entryType.type === 'tool_use' &&
+                entryType.status.status === 'pending_approval'
+              );
+            });
 
             if (hasPendingApprovalEntry) {
               hasPendingApproval = true;
