@@ -51,9 +51,7 @@ export function SettingsSection({ type }: SettingsSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="space-y-6 px-6 py-4">
-      {renderContent()}
-    </div>
+      <div className="space-y-6 px-6 py-4">{renderContent()}</div>
     </div>
   );
 }
