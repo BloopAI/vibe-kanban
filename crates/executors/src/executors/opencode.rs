@@ -172,6 +172,8 @@ impl Opencode {
         let auto_approve = self.auto_approve;
         let resume_session_id = resume_session.map(|s| s.to_string());
         let models_cache_key = self.compute_models_cache_key();
+        let commit_reminder = env.commit_reminder;
+        let repo_context = env.repo_context.clone();
 
         tokio::spawn(async move {
             // Wait for server to print listening URL
@@ -199,6 +201,8 @@ impl Opencode {
                 auto_approve,
                 server_password,
                 models_cache_key,
+                commit_reminder,
+                repo_context,
             };
 
             let result = match slash_command {
