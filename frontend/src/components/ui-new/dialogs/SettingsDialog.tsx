@@ -15,25 +15,11 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
-
-// Settings section components
-import { GeneralSettingsSection } from './settings/GeneralSettingsSection';
-import { ProjectsSettingsSection } from './settings/ProjectsSettingsSection';
-import { ReposSettingsSection } from './settings/ReposSettingsSection';
-import { OrganizationsSettingsSection } from './settings/OrganizationsSettingsSection';
-import { AgentsSettingsSection } from './settings/AgentsSettingsSection';
-import { McpSettingsSection } from './settings/McpSettingsSection';
-
-type SettingsSection =
-  | 'general'
-  | 'projects'
-  | 'repos'
-  | 'organizations'
-  | 'agents'
-  | 'mcp';
+import { SettingsSection } from './settings/SettingsSection';
+import type { SettingsSectionType } from './settings/SettingsSection';
 
 const SETTINGS_SECTIONS: {
-  id: SettingsSection;
+  id: SettingsSectionType;
   icon: Icon;
 }[] = [
   { id: 'general', icon: GearIcon },
@@ -45,7 +31,7 @@ const SETTINGS_SECTIONS: {
 ];
 
 export interface SettingsDialogProps {
-  initialSection?: SettingsSection;
+  initialSection?: SettingsSectionType;
 }
 
 const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
@@ -53,7 +39,7 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
     const modal = useModal();
     const container = usePortalContainer();
     const { t } = useTranslation('settings');
-    const [activeSection, setActiveSection] = useState<SettingsSection>(
+    const [activeSection, setActiveSection] = useState<SettingsSectionType>(
       initialSection || 'general'
     );
 
@@ -73,25 +59,6 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }, [handleClose]);
-
-    const renderSectionContent = () => {
-      switch (activeSection) {
-        case 'general':
-          return <GeneralSettingsSection />;
-        case 'projects':
-          return <ProjectsSettingsSection />;
-        case 'repos':
-          return <ReposSettingsSection />;
-        case 'organizations':
-          return <OrganizationsSettingsSection />;
-        case 'agents':
-          return <AgentsSettingsSection />;
-        case 'mcp':
-          return <McpSettingsSection />;
-        default:
-          return <GeneralSettingsSection />;
-      }
-    };
 
     if (!container) return null;
 
@@ -157,7 +124,7 @@ const SettingsDialogImpl = NiceModal.create<SettingsDialogProps>(
               </button>
               {/* Section content */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                {renderSectionContent()}
+                <SettingsSection type={activeSection} />
               </div>
             </div>
           </div>

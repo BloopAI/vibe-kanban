@@ -409,14 +409,7 @@ export function GeneralSettingsSection() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="pb-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-high">
-          {t('settings.layout.nav.general')}
-        </h2>
-      </div>
-
+    <>
       {/* Status messages */}
       {error && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
@@ -825,6 +818,9 @@ export function GeneralSettingsSection() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
+
+// Alias for backwards compatibility
+export { GeneralSettingsSection as GeneralSettingsSectionContent };

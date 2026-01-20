@@ -257,32 +257,22 @@ export function OrganizationsSettingsSection() {
 
   if (!isSignedIn) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="pb-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-high">
-            {t('settings.layout.nav.organizations', { ns: 'settings' })}
-          </h2>
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-medium text-high">
+            {t('loginRequired.title')}
+          </h3>
+          <p className="text-sm text-low mt-1">
+            {t('loginRequired.description')}
+          </p>
         </div>
-
-        {/* Login required */}
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-medium text-high">
-              {t('loginRequired.title')}
-            </h3>
-            <p className="text-sm text-low mt-1">
-              {t('loginRequired.description')}
-            </p>
-          </div>
-          <PrimaryButton
-            variant="secondary"
-            value={t('loginRequired.action')}
-            onClick={() => void OAuthDialog.show()}
-          >
-            <SignInIcon className="size-icon-xs mr-1" weight="bold" />
-          </PrimaryButton>
-        </div>
+        <PrimaryButton
+          variant="secondary"
+          value={t('loginRequired.action')}
+          onClick={() => void OAuthDialog.show()}
+        >
+          <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+        </PrimaryButton>
       </div>
     );
   }
@@ -306,14 +296,7 @@ export function OrganizationsSettingsSection() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="pb-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-high">
-          {t('settings.layout.nav.organizations', { ns: 'settings' })}
-        </h2>
-      </div>
-
+    <>
       {/* Status messages */}
       {error && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
@@ -492,6 +475,9 @@ export function OrganizationsSettingsSection() {
           </div>
         </SettingsCard>
       )}
-    </div>
+    </>
   );
 }
+
+// Alias for backwards compatibility
+export { OrganizationsSettingsSection as OrganizationsSettingsSectionContent };
