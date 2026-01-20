@@ -46,7 +46,7 @@ export function SettingsSection({ type, onClose }: SettingsSectionProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header - sticky */}
-      <div className="sticky top-0 z-10 p-4 border-b border-border bg-panel/95 backdrop-blur-sm flex items-center justify-between">
+      <div className="p-4 border-b border-border bg-panel/95 backdrop-blur-sm flex items-center justify-between">
         <h2 className="text-lg font-semibold text-high">
           {t(`settings.layout.nav.${type}`)}
         </h2>
@@ -62,7 +62,7 @@ export function SettingsSection({ type, onClose }: SettingsSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="space-y-6 px-6 py-4">{renderContent()}</div>
+      <div className="space-y-6 px-6 py-4 overflow-y-auto">{renderContent()}</div>
     </div>
   );
 }

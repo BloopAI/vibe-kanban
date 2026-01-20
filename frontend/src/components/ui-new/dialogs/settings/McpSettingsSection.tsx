@@ -7,7 +7,6 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 import { cn } from '@/lib/utils';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-import { SettingsCard, SettingsField } from './SettingsComponents';
+import { SettingsCard, SettingsField, SettingsSaveBar } from './SettingsComponents';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
@@ -385,23 +384,13 @@ export function McpSettingsSection() {
         )}
       </SettingsCard>
 
-      {/* Sticky Save Button */}
-      {!mcpError?.includes('does not support MCP') && (
-        <div className="sticky bottom-0 z-10 bg-panel/80 backdrop-blur-sm border-t border-border/50 py-4 -mx-6 px-6 -mb-6">
-          <div className="flex justify-end">
-            <PrimaryButton
-              value={
-                success
-                  ? t('settings.mcp.save.success')
-                  : t('settings.mcp.save.button')
-              }
-              onClick={handleApplyMcpServers}
-              disabled={mcpApplying || mcpLoading || !!mcpError || success}
-              actionIcon={mcpApplying ? 'spinner' : undefined}
-            />
-          </div>
-        </div>
-      )}
+      <SettingsSaveBar
+        show={!mcpError?.includes('does not support MCP')}
+        saving={mcpApplying}
+        saveDisabled={mcpLoading || !!mcpError || success}
+        saveLabel={success ? t('settings.mcp.save.success') : t('settings.mcp.save.button')}
+        onSave={handleApplyMcpServers}
+      />
     </>
   );
 }
