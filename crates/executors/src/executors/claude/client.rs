@@ -1,6 +1,6 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
-use tokio::{process::Command, sync::Mutex};
+use tokio::process::Command;
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::types::PermissionMode;
@@ -30,8 +30,6 @@ pub struct ClaudeAgentClient {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
     repo_context: RepoContext,
-    /// Track sessions that have already had their git check performed (commit reminder)
-    git_checked_sessions: Mutex<HashSet<String>>,
 }
 
 impl ClaudeAgentClient {
@@ -47,7 +45,6 @@ impl ClaudeAgentClient {
             approvals,
             auto_approve,
             repo_context,
-            git_checked_sessions: Mutex::new(HashSet::new()),
         })
     }
 
@@ -160,13 +157,9 @@ impl ClaudeAgentClient {
     ) -> Result<serde_json::Value, ExecutorError> {
         // Stop hook git check - uses `decision` (approve/block) and `reason` fields
         if callback_id == STOP_GIT_CHECK_CALLBACK_ID {
-            // Only run git check once per session (BaseHookInput contains session_id)
-            if let Some(session_id) = input.get("session_id").and_then(|v| v.as_str()) {
-                let mut checked = self.git_checked_sessions.lock().await;
-                if !checked.insert(session_id.to_string()) {
-                    // Already checked this session, approve the stop
-                    return Ok(serde_json::json!({"decision": "approve"}));
-                }
+            // If stop_hook_active is true, we already showed the reminder - just approve
+            if input.get("stop_hook_active").and_then(|v| v.as_bool()).unwrap_or(false) {
+                return Ok(serde_json::json!({"decision": "approve"}));
             }
             return Ok(check_git_status(&self.repo_context).await);
         }
