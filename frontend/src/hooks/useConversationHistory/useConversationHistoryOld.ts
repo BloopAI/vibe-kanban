@@ -185,14 +185,15 @@ export const useConversationHistoryOld = ({
             );
             entries.push(userPatchTypeWithKey);
 
-            // Remove all coding agent added user messages, replace with our custom one
-            const entriesExcludingUser = p.entries.filter(
+            // Remove user messages (replaced with custom one) and token usage info (displayed separately)
+            const filteredEntries = p.entries.filter(
               (e) =>
                 e.type !== 'NORMALIZED_ENTRY' ||
-                e.content.entry_type.type !== 'user_message'
+                (e.content.entry_type.type !== 'user_message' &&
+                  e.content.entry_type.type !== 'token_usage_info')
             );
 
-            const hasPendingApprovalEntry = entriesExcludingUser.some(
+            const hasPendingApprovalEntry = filteredEntries.some(
               (entry) => {
                 if (entry.type !== 'NORMALIZED_ENTRY') return false;
                 const entryType = entry.content.entry_type;
@@ -207,7 +208,7 @@ export const useConversationHistoryOld = ({
               hasPendingApproval = true;
             }
 
-            entries.push(...entriesExcludingUser);
+            entries.push(...filteredEntries);
 
             const liveProcessStatus = getLiveExecutionProcess(
               p.executionProcess.id
@@ -229,7 +230,7 @@ export const useConversationHistoryOld = ({
               lastProcessFailedOrKilled = true;
 
               // Check if this failed process has a SetupRequired entry
-              const hasSetupRequired = entriesExcludingUser.some((entry) => {
+              const hasSetupRequired = filteredEntries.some((entry) => {
                 if (entry.type !== 'NORMALIZED_ENTRY') return false;
                 if (
                   entry.content.entry_type.type === 'error_message' &&
