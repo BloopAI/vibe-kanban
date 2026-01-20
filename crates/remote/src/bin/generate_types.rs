@@ -137,7 +137,9 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
-    output.push_str("  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n");
+    output.push_str(
+        "  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n",
+    );
     output.push_str("}\n\n");
 
     // Helper function
