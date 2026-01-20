@@ -1,7 +1,7 @@
 /**
  * Electric SDK - Type-safe collections for real-time data sync.
  *
- * Usage:
+ * Usage (read-only sync):
  * ```typescript
  * import { useElectricCollection } from '@/lib/electric';
  * import { PROJECTS_SHAPE } from 'shared/remote-types';
@@ -11,17 +11,42 @@
  *   { organization_id: orgId }
  * );
  * ```
+ *
+ * Usage (sync + optimistic mutations):
+ * ```typescript
+ * import { useEntity } from '@/lib/electric';
+ * import { ISSUE_ENTITY } from 'shared/remote-types';
+ *
+ * const { data, isLoading, insert, update, remove } = useEntity(
+ *   ISSUE_ENTITY,
+ *   { project_id: projectId }
+ * );
+ *
+ * // Create (instant optimistic update)
+ * insert({ project_id, status_id, title: 'New Issue', ... });
+ *
+ * // Update (instant optimistic update)
+ * update(issueId, { title: 'Updated Title' });
+ *
+ * // Delete (instant optimistic removal)
+ * remove(issueId);
+ * ```
  */
 
 // Types
 export type { SyncError, CollectionConfig } from './types';
-export type { UseElectricCollectionResult } from './hooks';
+export type { UseElectricCollectionResult, UseEntityResult } from './hooks';
 
-// Generic hook (recommended for most use cases)
-export { useElectricCollection } from './hooks';
+// Hooks
+export { useElectricCollection, useEntity } from './hooks';
 
-// Generic factory (for advanced usage)
-export { createElectricCollection, getRowKey, buildUrl } from './collections';
+// Generic factories (for advanced usage)
+export {
+  createElectricCollection,
+  createEntityCollection,
+  getRowKey,
+  buildUrl,
+} from './collections';
 
-// Re-export shapes for convenience
+// Re-export shapes and entities for convenience
 export * from 'shared/remote-types';

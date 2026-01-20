@@ -537,17 +537,17 @@ function DependenciesList({ projectId }: { projectId: string }) {
       <p className="text-sm text-low mb-base">{data.length} synced</p>
       <DataTable
         data={data}
-        getRowId={(d) => `${d.blocking_issue_id}-${d.blocked_issue_id}`}
+        getRowId={(d) => `${d.issue_id}-${d.related_issue_id}`}
         columns={[
           {
-            key: 'blocking_issue_id',
-            label: 'Blocking',
-            render: (d) => truncateId(d.blocking_issue_id),
+            key: 'issue_id',
+            label: 'Issue',
+            render: (d) => truncateId(d.issue_id),
           },
           {
-            key: 'blocked_issue_id',
-            label: 'Blocked',
-            render: (d) => truncateId(d.blocked_issue_id),
+            key: 'related_issue_id',
+            label: 'Related Issue',
+            render: (d) => truncateId(d.related_issue_id),
           },
           {
             key: 'created_at',
