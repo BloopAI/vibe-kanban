@@ -131,16 +131,13 @@ async fn update_issue_comment(
 
     ensure_issue_access(state.pool(), ctx.user.id, comment.issue_id).await?;
 
-    let updated_comment = IssueCommentRepository::update(
-        state.pool(),
-        issue_comment_id,
-        payload.message,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, "failed to update issue comment");
-        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-    })?;
+    let updated_comment =
+        IssueCommentRepository::update(state.pool(), issue_comment_id, payload.message)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to update issue comment");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     Ok(Json(updated_comment))
 }
