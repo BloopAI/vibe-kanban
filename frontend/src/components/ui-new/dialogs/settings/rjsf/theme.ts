@@ -4,15 +4,15 @@ import {
   SelectWidget,
   CheckboxWidget,
   TextareaWidget,
-} from './widgets';
+} from './Widgets';
 import {
   FieldTemplate,
   ObjectFieldTemplate,
   ArrayFieldTemplate,
   ArrayFieldItemTemplate,
   FormTemplate,
-} from './templates';
-import { KeyValueField } from './fields';
+} from './Templates';
+import { KeyValueField } from './Fields';
 
 export const settingsWidgets: RegistryWidgetsType = {
   TextWidget,
