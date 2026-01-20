@@ -188,10 +188,6 @@ export const ALL_SHAPES = [
   ISSUE_COMMENT_REACTIONS_SHAPE,
 ] as const;
 
-// Backward compatibility aliases (deprecated, use new names)
-/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */
-export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;
-
 // Type helper to extract row type from a shape
 export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];
 

@@ -10,7 +10,7 @@ import type { CollectionConfig, SyncError } from './types';
  * e.g., "/shape/project/{project_id}/issues" with { project_id: "123" }
  * becomes "/shape/project/123/issues"
  */
-export function buildUrl(
+function buildUrl(
   baseUrl: string,
   params: Record<string, string>
 ): string {
@@ -26,7 +26,7 @@ export function buildUrl(
  * - If entity has an 'id' field, use it
  * - Otherwise, concatenate all *_id fields (for junction tables)
  */
-export function getRowKey(item: Record<string, unknown>): string {
+function getRowKey(item: Record<string, unknown>): string {
   // Most entities have an 'id' field as primary key
   if ('id' in item && item.id) {
     return String(item.id);
@@ -43,7 +43,7 @@ export function getRowKey(item: Record<string, unknown>): string {
 /**
  * Get authenticated shape options for an Electric shape.
  */
-export function getAuthenticatedShapeOptions(
+function getAuthenticatedShapeOptions(
   shape: ShapeDefinition<unknown>,
   params: Record<string, string>,
   config?: CollectionConfig
@@ -77,8 +77,8 @@ type ElectricRow = Record<string, unknown> & { [key: string]: unknown };
 /**
  * Create an Electric collection for an entity with mutation support.
  *
- * Unlike `createElectricCollection`, this function adds `onInsert`, `onUpdate`,
- * and `onDelete` handlers that call the remote API and support optimistic updates.
+ * Adds `onInsert`, `onUpdate`, and `onDelete` handlers that call the remote API
+ * and support optimistic updates.
  *
  * When you call `collection.insert()`, `collection.update()`, or `collection.delete()`:
  * 1. The optimistic state is immediately applied locally
