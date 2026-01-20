@@ -16,7 +16,7 @@ use crate::{
         tags::TagRepository,
     },
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateProjectRequest, ListProjectsQuery, ListProjectsResponse, UpdateProjectRequest,
     },
 };

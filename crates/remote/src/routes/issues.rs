@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::issues::{Issue, IssueRepository},
     define_mutation_router,
-    mutations::{CreateIssueRequest, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest},
+    entities::{CreateIssueRequest, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest},
 };
 
 // Generate router that references handlers below

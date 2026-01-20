@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::issue_comments::{IssueComment, IssueCommentRepository},
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateIssueCommentRequest, ListIssueCommentsQuery, ListIssueCommentsResponse,
         UpdateIssueCommentRequest,
     },

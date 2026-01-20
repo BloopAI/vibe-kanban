@@ -15,7 +15,7 @@ use crate::{
         issue_comments::IssueCommentRepository,
     },
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateIssueCommentReactionRequest, ListIssueCommentReactionsQuery,
         ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
     },

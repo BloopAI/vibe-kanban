@@ -13,7 +13,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::notifications::{Notification, NotificationRepository},
-    mutations::UpdateNotificationRequest,
+    entities::UpdateNotificationRequest,
 };
 
 #[derive(Debug, Serialize)]

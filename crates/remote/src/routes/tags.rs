@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::tags::{Tag, TagRepository},
     define_mutation_router,
-    mutations::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
+    entities::{CreateTagRequest, ListTagsQuery, ListTagsResponse, UpdateTagRequest},
 };
 
 // Generate router that references handlers below

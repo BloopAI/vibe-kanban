@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::issue_tags::{IssueTag, IssueTagRepository},
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateIssueTagRequest, ListIssueTagsQuery, ListIssueTagsResponse, UpdateIssueTagRequest,
     },
 };

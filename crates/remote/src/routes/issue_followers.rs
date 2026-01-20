@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::issue_followers::{IssueFollower, IssueFollowerRepository},
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateIssueFollowerRequest, ListIssueFollowersQuery, ListIssueFollowersResponse,
         UpdateIssueFollowerRequest,
     },

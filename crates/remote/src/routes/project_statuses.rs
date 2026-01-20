@@ -12,7 +12,7 @@ use crate::{
     auth::RequestContext,
     db::project_statuses::{ProjectStatus, ProjectStatusRepository},
     define_mutation_router,
-    mutations::{
+    entities::{
         CreateProjectStatusRequest, ListProjectStatussQuery, ListProjectStatussResponse,
         UpdateProjectStatusRequest,
     },
