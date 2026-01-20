@@ -94,7 +94,14 @@ export function KeyboardCommandsPlugin({
       unregisterModifier();
       unregisterEnter();
     };
-  }, [editor, onCmdEnter, onShiftCmdEnter, onChange, transformers, sendShortcut]);
+  }, [
+    editor,
+    onCmdEnter,
+    onShiftCmdEnter,
+    onChange,
+    transformers,
+    sendShortcut,
+  ]);
 
   return null;
 }
