@@ -11,7 +11,11 @@ import {
   WarningIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { SessionWithInitiator, BaseCodingAgent, TodoItem } from 'shared/types';
+import type {
+  SessionWithInitiator,
+  BaseCodingAgent,
+  TodoItem,
+} from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
