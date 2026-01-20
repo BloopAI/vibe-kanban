@@ -594,8 +594,8 @@ export function SessionChatBox({
           {!isNewSessionMode && (
             <AgentIcon agent={agent} className="size-icon-xl" />
           )}
-          {/* Todo progress popup - only show when there are todos */}
-          {todos && todos.length > 0 && <TodoProgressPopup todos={todos} />}
+          {/* Todo progress popup - always rendered, disabled when no todos */}
+          <TodoProgressPopup todos={todos ?? []} />
           <ContextUsageGauge tokenUsageInfo={tokenUsageInfo} />
           <ToolbarDropdown
             label={sessionLabel}

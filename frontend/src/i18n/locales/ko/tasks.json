@@ -444,7 +444,8 @@
   },
   "todoPopup": {
     "title": "작업",
-    "progress": "{{completed}}/{{total}} 완료"
+    "progress": "{{completed}}/{{total}} 완료",
+    "noTasks": "작업 없음"
   },
   "toolbar": {
     "actions": "Actions",

@@ -444,7 +444,8 @@
   },
   "todoPopup": {
     "title": "Tareas",
-    "progress": "{{completed}}/{{total}} completadas"
+    "progress": "{{completed}}/{{total}} completadas",
+    "noTasks": "Sin tareas"
   },
   "projects": {
     "create": {

@@ -233,7 +233,8 @@
   },
   "todoPopup": {
     "title": "任務",
-    "progress": "{{completed}}/{{total}} 已完成"
+    "progress": "{{completed}}/{{total}} 已完成",
+    "noTasks": "暫無任務"
   },
   "projects": {
     "create": {

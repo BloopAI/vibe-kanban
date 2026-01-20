@@ -220,7 +220,8 @@
   },
   "todoPopup": {
     "title": "Tasks",
-    "progress": "{{completed}}/{{total}} completed"
+    "progress": "{{completed}}/{{total}} completed",
+    "noTasks": "No tasks"
   },
   "projects": {
     "create": {

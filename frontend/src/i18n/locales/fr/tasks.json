@@ -220,7 +220,8 @@
   },
   "todoPopup": {
     "title": "Tâches",
-    "progress": "{{completed}}/{{total}} terminées"
+    "progress": "{{completed}}/{{total}} terminées",
+    "noTasks": "Aucune tâche"
   },
   "projects": {
     "create": {

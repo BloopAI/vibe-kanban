@@ -29,6 +29,8 @@ export function TodoProgressPopup({
 }: TodoProgressPopupProps) {
   const { t } = useTranslation('tasks');
 
+  const isEmpty = todos.length === 0;
+
   const { completed, total, percentage } = useMemo(() => {
     const total = todos.length;
     const completed = todos.filter(
@@ -38,12 +40,29 @@ export function TodoProgressPopup({
     return { completed, total, percentage };
   }, [todos]);
 
-  // Don't render if no todos
-  if (todos.length === 0) {
-    return null;
-  }
+  const tooltipText = isEmpty
+    ? t('todoPopup.noTasks')
+    : t('todoPopup.progress', { completed, total });
 
-  const tooltipText = t('todoPopup.progress', { completed, total });
+  // When empty, render just a disabled icon without popover
+  if (isEmpty) {
+    return (
+      <Tooltip content={tooltipText} side="bottom">
+        <span className="inline-flex">
+          <button
+            disabled
+            className={cn(
+              'flex items-center justify-center text-lowest opacity-40 cursor-not-allowed',
+              className
+            )}
+            aria-label={t('todoPopup.title')}
+          >
+            <ListChecksIcon className="size-icon-base" />
+          </button>
+        </span>
+      </Tooltip>
+    );
+  }
 
   return (
     <Popover>
@@ -60,7 +79,7 @@ export function TodoProgressPopup({
             >
               <div className="relative">
                 <ListChecksIcon className="size-icon-base" />
-                {/* Progress indicator dot */}
+                {/* Progress indicator dot - only shown when there are todos */}
                 {percentage < 100 && (
                   <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500" />
                 )}

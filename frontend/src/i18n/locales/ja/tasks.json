@@ -444,7 +444,8 @@
   },
   "todoPopup": {
     "title": "タスク",
-    "progress": "{{completed}}/{{total}} 完了"
+    "progress": "{{completed}}/{{total}} 完了",
+    "noTasks": "タスクなし"
   },
   "projects": {
     "create": {
