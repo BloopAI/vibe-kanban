@@ -1,5 +1,8 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• Vous avez des modifications non enregistrées"
+    },
     "layout": {
       "nav": {
         "title": "Paramètres",
@@ -252,10 +255,14 @@
       "loading": "Chargement des configurations d'agents...",
       "save": {
         "button": "Enregistrer les configurations d'agents",
-        "success": "✓ Configurations d'exécuteurs enregistrées avec succès !"
+        "success": "✓ Configurations d'exécuteurs enregistrées avec succès !",
+        "unsavedChanges": "• Vous avez des modifications non enregistrées"
       },
       "availability": {
         "checking": "Vérification...",
+        "checkingAvailability": "Vérification de la disponibilité...",
+        "available": "Agent disponible",
+        "notFoundSimple": "Agent non trouvé",
         "loginDetected": "Utilisation récente détectée",
         "loginDetectedTooltip": "Identifiants d'authentification récents trouvés pour cet agent",
         "installationFound": "Utilisation précédente détectée",
@@ -279,7 +286,8 @@
       "errors": {
         "deleteFailed": "Échec de la suppression de la configuration. Veuillez réessayer.",
         "saveFailed": "Échec de l'enregistrement des configurations d'agents. Veuillez réessayer.",
-        "saveConfigFailed": "Échec de l'enregistrement de la configuration. Veuillez réessayer."
+        "saveConfigFailed": "Échec de l'enregistrement de la configuration. Veuillez réessayer.",
+        "schemaNotFound": "Schéma non trouvé pour le type d'exécuteur : {{executor}}"
       }
     },
     "mcp": {
@@ -315,7 +323,8 @@
         "button": "Enregistrer la configuration MCP",
         "success": "Paramètres enregistrés !",
         "successMessage": "✓ Configuration MCP enregistrée avec succès !",
-        "loading": "Chargement de la configuration actuelle des serveurs MCP..."
+        "loading": "Chargement de la configuration actuelle des serveurs MCP...",
+        "unsavedChanges": "• Vous avez des modifications non enregistrées"
       }
     },
     "projects": {
@@ -350,6 +359,12 @@
         "unsavedChanges": "• Vous avez des modifications non enregistrées",
         "discard": "Abandonner",
         "confirmSwitch": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir changer de projet ? Vos modifications seront perdues."
+      },
+      "repositories": {
+        "title": "Dépôts",
+        "description": "Gérer les dépôts git dans ce projet",
+        "noRepositories": "Aucun dépôt configuré",
+        "addRepository": "Ajouter un dépôt"
       }
     },
     "repos": {

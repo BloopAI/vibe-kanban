@@ -12,7 +12,13 @@
     "connect": "Connect",
     "disconnect": "Disconnect",
     "close": "Close",
-    "replay": "Replay"
+    "replay": "Replay",
+    "discard": "Discard",
+    "addItem": "Add Item"
+  },
+  "form": {
+    "notSpecified": "Not specified",
+    "selectOption": "Select an option..."
   },
   "states": {
     "loading": "Loading...",

@@ -353,8 +353,8 @@ export function ProjectsSettingsSection() {
 
           {/* Repositories */}
           <SettingsCard
-            title="Repositories"
-            description="Manage the git repositories in this project"
+            title={t('settings.projects.repositories.title')}
+            description={t('settings.projects.repositories.description')}
           >
             {repoError && (
               <div className="bg-error/10 border border-error/50 rounded-sm p-3 text-error text-sm">
@@ -398,7 +398,7 @@ export function ProjectsSettingsSection() {
 
                 {repositories.length === 0 && !loadingRepos && (
                   <div className="text-center py-4 text-sm text-low">
-                    No repositories configured
+                    {t('settings.projects.repositories.noRepositories')}
                   </div>
                 )}
 
@@ -416,7 +416,7 @@ export function ProjectsSettingsSection() {
                   ) : (
                     <PlusIcon className="size-icon-sm" weight="bold" />
                   )}
-                  Add Repository
+                  {t('settings.projects.repositories.addRepository')}
                 </button>
               </div>
             )}

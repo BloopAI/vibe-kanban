@@ -12,7 +12,13 @@
     "connect": "连接",
     "disconnect": "断开连接",
     "close": "关闭",
-    "replay": "重播"
+    "replay": "重播",
+    "discard": "放弃",
+    "addItem": "添加项目"
+  },
+  "form": {
+    "notSpecified": "未指定",
+    "selectOption": "选择一个选项..."
   },
   "states": {
     "loading": "加载中...",

@@ -1,5 +1,8 @@
 {
   "settings": {
+    "common": {
+      "unsavedChanges": "• 未保存の変更があります"
+    },
     "layout": {
       "nav": {
         "title": "設定",
@@ -252,10 +255,14 @@
       "loading": "エージェント設定を読み込み中...",
       "save": {
         "button": "エージェント設定を保存",
-        "success": "✓ 実行設定が正常に保存されました！"
+        "success": "✓ 実行設定が正常に保存されました！",
+        "unsavedChanges": "• 未保存の変更があります"
       },
       "availability": {
         "checking": "確認中...",
+        "checkingAvailability": "利用可能性を確認中...",
+        "available": "エージェント利用可能",
+        "notFoundSimple": "エージェントが見つかりません",
         "loginDetected": "最近の使用を検出",
         "loginDetectedTooltip": "このエージェントの最近の認証情報が見つかりました",
         "installationFound": "以前の使用を検出",
@@ -279,7 +286,8 @@
       "errors": {
         "deleteFailed": "設定の削除に失敗しました。もう一度お試しください。",
         "saveFailed": "エージェント設定の保存に失敗しました。もう一度お試しください。",
-        "saveConfigFailed": "設定の保存に失敗しました。もう一度お試しください。"
+        "saveConfigFailed": "設定の保存に失敗しました。もう一度お試しください。",
+        "schemaNotFound": "実行タイプ {{executor}} のスキーマが見つかりません"
       }
     },
     "mcp": {
@@ -315,7 +323,8 @@
         "button": "MCP設定を保存",
         "success": "設定が保存されました！",
         "successMessage": "✓ MCP設定が正常に保存されました！",
-        "loading": "現在のMCPサーバー設定を読み込み中..."
+        "loading": "現在のMCPサーバー設定を読み込み中...",
+        "unsavedChanges": "• 未保存の変更があります"
       }
     },
     "projects": {
@@ -350,6 +359,12 @@
         "unsavedChanges": "• 未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。"
+      },
+      "repositories": {
+        "title": "リポジトリ",
+        "description": "このプロジェクトのGitリポジトリを管理",
+        "noRepositories": "リポジトリが設定されていません",
+        "addRepository": "リポジトリを追加"
       }
     },
     "repos": {

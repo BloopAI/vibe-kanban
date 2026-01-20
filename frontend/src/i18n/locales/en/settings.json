@@ -260,6 +260,9 @@
       },
       "availability": {
         "checking": "Checking...",
+        "checkingAvailability": "Checking availability...",
+        "available": "Agent available",
+        "notFoundSimple": "Agent not found",
         "loginDetected": "Recent Usage Detected",
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
         "installationFound": "Previous Usage Detected",
@@ -283,7 +286,8 @@
       "errors": {
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
-        "saveConfigFailed": "Failed to save configuration. Please try again."
+        "saveConfigFailed": "Failed to save configuration. Please try again.",
+        "schemaNotFound": "Schema not found for executor type: {{executor}}"
       }
     },
     "mcp": {
@@ -355,6 +359,12 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      },
+      "repositories": {
+        "title": "Repositories",
+        "description": "Manage the git repositories in this project",
+        "noRepositories": "No repositories configured",
+        "addRepository": "Add Repository"
       }
     },
     "repos": {

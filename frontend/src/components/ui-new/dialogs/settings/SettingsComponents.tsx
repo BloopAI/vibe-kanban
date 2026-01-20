@@ -251,13 +251,13 @@ export function SettingsSaveBar({
           {onDiscard && (
             <PrimaryButton
               variant="tertiary"
-              value="Discard"
+              value={t('common:buttons.discard')}
               onClick={onDiscard}
               disabled={saving}
             />
           )}
           <PrimaryButton
-            value="Save"
+            value={t('common:buttons.save')}
             onClick={onSave}
             disabled={saving || saveDisabled}
             actionIcon={saving ? 'spinner' : undefined}
