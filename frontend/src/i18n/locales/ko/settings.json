@@ -167,6 +167,15 @@
           "helper": "작업 시도가 완료되면 시스템 알림을 표시합니다."
         }
       },
+      "messageInput": {
+        "title": "메시지 입력",
+        "description": "채팅 입력에서 메시지를 보내는 방법을 구성합니다.",
+        "shortcut": {
+          "label": "메시지 보내기 키",
+          "helper": "메시지를 보내는 키보드 단축키를 선택하세요.",
+          "enterLabel": "Enter (Shift+Enter로 새 줄)"
+        }
+      },
       "privacy": {
         "title": "개인정보 보호",
         "description": "익명 사용 데이터를 공유하여 Vibe-Kanban 개선에 도움을 주세요.",

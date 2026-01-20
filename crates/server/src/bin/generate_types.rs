@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
-use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
+use schemars::{generate::SchemaSettings, JsonSchema, Schema, SchemaGenerator};
 use server::routes::task_attempts::pr::DEFAULT_PR_DESCRIPTION_PROMPT;
 use ts_rs::TS;
 
@@ -158,6 +158,7 @@ fn generate_types_content() -> String {
         services::services::config::SoundFile::decl(),
         services::services::config::UiLanguage::decl(),
         services::services::config::ShowcaseState::decl(),
+        services::services::config::SendMessageShortcut::decl(),
         services::services::git::GitBranch::decl(),
         services::services::queued_message::QueuedMessage::decl(),
         services::services::queued_message::QueueStatus::decl(),
