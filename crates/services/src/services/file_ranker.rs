@@ -2,11 +2,12 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
-use dashmap::DashMap;
 use db::models::project::{SearchMatchType, SearchResult};
+use moka::future::Cache;
 use once_cell::sync::Lazy;
 use tokio::task;
 
@@ -33,8 +34,13 @@ struct RepoHistoryCache {
     stats: Arc<FileStats>,
 }
 
-/// Global cache for file ranking statistics
-static FILE_STATS_CACHE: Lazy<DashMap<PathBuf, RepoHistoryCache>> = Lazy::new(DashMap::new);
+/// Global cache for file ranking statistics (30 min TTL, max 100 entries)
+static FILE_STATS_CACHE: Lazy<Cache<PathBuf, RepoHistoryCache>> = Lazy::new(|| {
+    Cache::builder()
+        .max_capacity(100)
+        .time_to_live(Duration::from_secs(30 * 60))
+        .build()
+});
 
 /// Configuration constants for ranking algorithm
 const DEFAULT_COMMIT_LIMIT: usize = 100;
@@ -68,7 +74,7 @@ impl FileRanker {
         let repo_path = repo_path.to_path_buf();
 
         // Check if we have a valid cache entry
-        if let Some(cache_entry) = FILE_STATS_CACHE.get(&repo_path) {
+        if let Some(cache_entry) = FILE_STATS_CACHE.get(&repo_path).await {
             // Verify cache is still valid by checking HEAD
             if let Ok(head_info) = self.git_service.get_head_info(&repo_path)
                 && head_info.oid == cache_entry.head_sha
@@ -141,13 +147,15 @@ impl FileRanker {
 
         // Update cache
         if let Ok(head_info) = self.git_service.get_head_info(&repo_path_for_error) {
-            FILE_STATS_CACHE.insert(
-                repo_path_for_error,
-                RepoHistoryCache {
-                    head_sha: head_info.oid,
-                    stats: Arc::clone(&stats_arc),
-                },
-            );
+            FILE_STATS_CACHE
+                .insert(
+                    repo_path_for_error,
+                    RepoHistoryCache {
+                        head_sha: head_info.oid,
+                        stats: Arc::clone(&stats_arc),
+                    },
+                )
+                .await;
         }
 
         Ok(stats_arc)
