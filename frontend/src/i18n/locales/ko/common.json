@@ -205,6 +205,10 @@
     "defaultConfirm": "확인",
     "defaultCancel": "취소"
   },
+  "dialogs": {
+    "selectGitRepository": "Git 저장소 선택",
+    "chooseExistingRepo": "파일 시스템에서 기존 저장소를 선택하세요"
+  },
   "empty": {
     "noChanges": "표시할 변경사항이 없습니다"
   },

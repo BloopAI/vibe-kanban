@@ -205,6 +205,10 @@
     "defaultConfirm": "确认",
     "defaultCancel": "取消"
   },
+  "dialogs": {
+    "selectGitRepository": "选择 Git 仓库",
+    "chooseExistingRepo": "从文件系统中选择现有仓库"
+  },
   "empty": {
     "noChanges": "没有要显示的更改"
   },
