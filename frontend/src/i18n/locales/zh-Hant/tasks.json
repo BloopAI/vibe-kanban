@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "將圖片拖放到這裡",
+    "supportedFormats": "支援 PNG、JPG、GIF、WebP、SVG 格式"
+  },
   "gitPanel": {
     "create": {
       "warnings": {

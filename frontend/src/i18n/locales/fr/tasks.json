@@ -1,4 +1,8 @@
 {
+  "dropzone": {
+    "dropImagesHere": "Déposez les images ici",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG supportés"
+  },
   "gitPanel": {
     "create": {
       "warnings": {
