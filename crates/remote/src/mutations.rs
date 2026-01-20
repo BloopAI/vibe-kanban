@@ -9,10 +9,17 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 use crate::db::{
-    issue_assignees::IssueAssignee, issue_comment_reactions::IssueCommentReaction,
-    issue_comments::IssueComment, issue_followers::IssueFollower,
-    issue_relationships::IssueRelationship, issue_tags::IssueTag, issues::Issue,
-    notifications::Notification, project_statuses::ProjectStatus, projects::Project, tags::Tag,
+    issue_assignees::IssueAssignee,
+    issue_comment_reactions::IssueCommentReaction,
+    issue_comments::IssueComment,
+    issue_followers::IssueFollower,
+    issue_relationships::IssueRelationship,
+    issue_tags::IssueTag,
+    issues::Issue,
+    notifications::Notification,
+    project_statuses::ProjectStatus,
+    projects::Project,
+    tags::Tag,
     types::{IssuePriority, IssueRelationshipType},
 };
 

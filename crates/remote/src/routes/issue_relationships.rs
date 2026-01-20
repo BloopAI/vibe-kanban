@@ -33,16 +33,18 @@ async fn list_issue_relationships(
 ) -> Result<Json<ListIssueRelationshipsResponse>, ErrorResponse> {
     ensure_issue_access(state.pool(), ctx.user.id, query.issue_id).await?;
 
-    let issue_relationships =
-        IssueRelationshipRepository::list_by_issue(state.pool(), query.issue_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue relationships");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to list issue relationships",
-                )
-            })?;
+    let issue_relationships = IssueRelationshipRepository::list_by_issue(
+        state.pool(),
+        query.issue_id,
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue relationships");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list issue relationships",
+        )
+    })?;
 
     Ok(Json(ListIssueRelationshipsResponse {
         issue_relationships,
@@ -59,19 +61,16 @@ async fn get_issue_relationship(
     Extension(ctx): Extension<RequestContext>,
     Path(issue_relationship_id): Path<Uuid>,
 ) -> Result<Json<IssueRelationship>, ErrorResponse> {
-    let relationship =
-        IssueRelationshipRepository::find_by_id(state.pool(), issue_relationship_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, %issue_relationship_id, "failed to load issue relationship");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to load issue relationship",
-                )
-            })?
-            .ok_or_else(|| {
-                ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found")
-            })?;
+    let relationship = IssueRelationshipRepository::find_by_id(state.pool(), issue_relationship_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %issue_relationship_id, "failed to load issue relationship");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to load issue relationship",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found"))?;
 
     ensure_issue_access(state.pool(), ctx.user.id, relationship.issue_id).await?;
 
@@ -132,19 +131,16 @@ async fn delete_issue_relationship(
     Extension(ctx): Extension<RequestContext>,
     Path(issue_relationship_id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
-    let relationship =
-        IssueRelationshipRepository::find_by_id(state.pool(), issue_relationship_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, %issue_relationship_id, "failed to load issue relationship");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to load issue relationship",
-                )
-            })?
-            .ok_or_else(|| {
-                ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found")
-            })?;
+    let relationship = IssueRelationshipRepository::find_by_id(state.pool(), issue_relationship_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %issue_relationship_id, "failed to load issue relationship");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to load issue relationship",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue relationship not found"))?;
 
     ensure_issue_access(state.pool(), ctx.user.id, relationship.issue_id).await?;
 

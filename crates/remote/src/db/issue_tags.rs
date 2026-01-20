@@ -21,10 +21,7 @@ pub enum IssueTagError {
 pub struct IssueTagRepository;
 
 impl IssueTagRepository {
-    pub async fn find_by_id<'e, E>(
-        executor: E,
-        id: Uuid,
-    ) -> Result<Option<IssueTag>, IssueTagError>
+    pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<IssueTag>, IssueTagError>
     where
         E: Executor<'e, Database = Postgres>,
     {
