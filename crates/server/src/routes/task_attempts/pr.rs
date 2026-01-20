@@ -644,17 +644,11 @@ pub async fn create_workspace_from_pr(
         }
     };
 
-    let remote = match &payload.remote_name {
-        Some(name) => deployment.git().get_remote(&repo.path, name)?,
-        None => deployment
-            .git()
-            .list_remotes(&repo.path)?
-            .into_iter()
-            .next()
-            .ok_or_else(|| ApiError::BadRequest("No remotes configured".to_string()))?,
+    let remote_name = match payload.remote_name {
+        Some(ref name) => name.clone(),
+        None => deployment.git().get_default_remote_name(&repo.path)?,
     };
-    let remote_name = remote.name;
-    let remote_url = remote.url;
+    let remote_url = deployment.git().get_remote_url(&repo.path, &remote_name)?;
 
     let fetch_url = payload.head_repo_url.as_deref().unwrap_or(&remote_url);
     if let Err(e) = deployment
