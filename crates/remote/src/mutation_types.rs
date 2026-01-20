@@ -1,7 +1,6 @@
 /// Macro to define mutation types with compile-time SQL validation.
 ///
 /// This macro generates:
-/// - URL constant derived from table name (e.g., `TAG_URL = "/tags"`)
 /// - `Create{Entity}Request` struct with parent_id (based on scope) and all fields required
 /// - `Update{Entity}Request` struct with all fields optional (for partial updates)
 /// - `List{Entity}sQuery` struct with parent_id for filtering
@@ -114,9 +113,6 @@ macro_rules! define_mutation_types {
                     );
                 }
             };
-
-            // URL constant derived from table name (e.g., "tags" -> "/tags")
-            pub const [<$entity:snake:upper _URL>]: &str = concat!("/", $table);
 
             // Create request - includes optional id for client-generated UUIDs,
             // parent_id based on scope, and all fields required

@@ -77,7 +77,7 @@ function getAuthenticatedShapeOptions(
   const url = buildUrl(shape.url, params);
 
   return {
-    url: `${REMOTE_API_URL}/v1${url}`,
+    url: `${REMOTE_API_URL}${url}`,
     params,
     headers: {
       Authorization: async () => {
@@ -174,7 +174,7 @@ export function createEntityCollection<
             string,
             unknown
           >;
-          const response = await makeRequest(`/v1${entity.mutations!.url}`, {
+          const response = await makeRequest(entity.mutations!.url, {
             method: 'POST',
             body: JSON.stringify(data),
           });
@@ -183,7 +183,10 @@ export function createEntityCollection<
             throw new Error(error.message || `Failed to create ${entity.name}`);
           }
           const key = getRowKey(data);
-          await collection.utils.awaitMatch(createSyncMatcher('insert', key), 5000);
+          await collection.utils.awaitMatch(
+            createSyncMatcher('insert', key),
+            5000
+          );
         },
         onUpdate: async ({
           transaction,
@@ -191,7 +194,7 @@ export function createEntityCollection<
         }: MutationFnParams): Promise<void> => {
           const { key, changes } = transaction.mutations[0];
           const response = await makeRequest(
-            `/v1${entity.mutations!.url}/${key}`,
+            `${entity.mutations!.url}/${key}`,
             {
               method: 'PATCH',
               body: JSON.stringify(changes),
@@ -201,7 +204,10 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to update ${entity.name}`);
           }
-          await collection.utils.awaitMatch(createSyncMatcher('update', key!), 5000);
+          await collection.utils.awaitMatch(
+            createSyncMatcher('update', key!),
+            5000
+          );
         },
         onDelete: async ({
           transaction,
@@ -209,7 +215,7 @@ export function createEntityCollection<
         }: MutationFnParams): Promise<void> => {
           const { key } = transaction.mutations[0];
           const response = await makeRequest(
-            `/v1${entity.mutations!.url}/${key}`,
+            `${entity.mutations!.url}/${key}`,
             {
               method: 'DELETE',
             }
@@ -218,7 +224,10 @@ export function createEntityCollection<
             const error = await response.json();
             throw new Error(error.message || `Failed to delete ${entity.name}`);
           }
-          await collection.utils.awaitMatch(createSyncMatcher('delete', key!), 5000);
+          await collection.utils.awaitMatch(
+            createSyncMatcher('delete', key!),
+            5000
+          );
         },
       }
     : {};

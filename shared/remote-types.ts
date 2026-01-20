@@ -158,100 +158,74 @@ function defineShape<T>(
 export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
-  '/shape/projects'
+  '/v1/shape/projects'
 );
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
-  '/shape/notifications'
+  '/v1/shape/notifications'
 );
 
 export const TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
-  '/shape/project/{project_id}/tags'
+  '/v1/shape/project/{project_id}/tags'
 );
 
 export const PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
-  '/shape/project/{project_id}/project_statuses'
+  '/v1/shape/project/{project_id}/project_statuses'
 );
 
 export const ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issues'
+  '/v1/shape/project/{project_id}/issues'
 );
 
 export const WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
-  '/shape/project/{project_id}/workspaces'
+  '/v1/shape/project/{project_id}/workspaces'
 );
 
 export const ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_assignees'
+  '/v1/shape/project/{project_id}/issue_assignees'
 );
 
 export const ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_followers'
+  '/v1/shape/project/{project_id}/issue_followers'
 );
 
 export const ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_tags'
+  '/v1/shape/project/{project_id}/issue_tags'
 );
 
 export const ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
-  '/shape/project/{project_id}/issue_relationships'
+  '/v1/shape/project/{project_id}/issue_relationships'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
-  '/shape/issue/{issue_id}/comments'
+  '/v1/shape/issue/{issue_id}/comments'
 );
 
 export const ISSUE_COMMENT_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
-  '/shape/issue/{issue_id}/reactions'
+  '/v1/shape/issue/{issue_id}/reactions'
 );
-
-// All shapes as an array for iteration and factory building
-export const ALL_SHAPES = [
-  PROJECTS_SHAPE,
-  NOTIFICATIONS_SHAPE,
-  TAGS_SHAPE,
-  PROJECT_STATUSES_SHAPE,
-  ISSUES_SHAPE,
-  WORKSPACES_SHAPE,
-  ISSUE_ASSIGNEES_SHAPE,
-  ISSUE_FOLLOWERS_SHAPE,
-  ISSUE_TAGS_SHAPE,
-  ISSUE_RELATIONSHIPS_SHAPE,
-  ISSUE_COMMENTS_SHAPE,
-  ISSUE_COMMENT_REACTIONS_SHAPE,
-] as const;
-
-// Backward compatibility aliases (deprecated, use new names)
-/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */
-export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;
-
-// Type helper to extract row type from a shape
-export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];
-
-// Union of all shape types
-export type AnyShape = typeof ALL_SHAPES[number];
 
 // =============================================================================
 // Entity Definitions for SDK Generation
@@ -281,7 +255,7 @@ export const PROJECT_ENTITY: EntityDefinition<Project, CreateProjectRequest, Upd
   mutationScope: 'Organization',
   shapeScope: 'Organization',
   shape: PROJECTS_SHAPE,
-  mutations: { url: '/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
+  mutations: { url: '/v1/projects' } as EntityDefinition<Project, CreateProjectRequest, UpdateProjectRequest>['mutations'],
 };
 
 export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest> = {
@@ -290,7 +264,7 @@ export const NOTIFICATION_ENTITY: EntityDefinition<Notification, CreateNotificat
   mutationScope: 'Organization',
   shapeScope: 'Organization',
   shape: NOTIFICATIONS_SHAPE,
-  mutations: { url: '/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
+  mutations: { url: '/v1/notifications' } as EntityDefinition<Notification, CreateNotificationRequest, UpdateNotificationRequest>['mutations'],
 };
 
 export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest> = {
@@ -299,7 +273,7 @@ export const TAG_ENTITY: EntityDefinition<Tag, CreateTagRequest, UpdateTagReques
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: TAGS_SHAPE,
-  mutations: { url: '/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
+  mutations: { url: '/v1/tags' } as EntityDefinition<Tag, CreateTagRequest, UpdateTagRequest>['mutations'],
 };
 
 export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> = {
@@ -308,7 +282,7 @@ export const PROJECT_STATUS_ENTITY: EntityDefinition<ProjectStatus, CreateProjec
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: PROJECT_STATUSES_SHAPE,
-  mutations: { url: '/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
+  mutations: { url: '/v1/project_statuses' } as EntityDefinition<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest>['mutations'],
 };
 
 export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest> = {
@@ -317,7 +291,7 @@ export const ISSUE_ENTITY: EntityDefinition<Issue, CreateIssueRequest, UpdateIss
   mutationScope: 'Project',
   shapeScope: 'Project',
   shape: ISSUES_SHAPE,
-  mutations: { url: '/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
+  mutations: { url: '/v1/issues' } as EntityDefinition<Issue, CreateIssueRequest, UpdateIssueRequest>['mutations'],
 };
 
 export const WORKSPACE_ENTITY: EntityDefinition<Workspace> = {
@@ -335,7 +309,7 @@ export const ISSUE_ASSIGNEE_ENTITY: EntityDefinition<IssueAssignee, CreateIssueA
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_ASSIGNEES_SHAPE,
-  mutations: { url: '/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
+  mutations: { url: '/v1/issue_assignees' } as EntityDefinition<IssueAssignee, CreateIssueAssigneeRequest, UpdateIssueAssigneeRequest>['mutations'],
 };
 
 export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest> = {
@@ -344,7 +318,7 @@ export const ISSUE_FOLLOWER_ENTITY: EntityDefinition<IssueFollower, CreateIssueF
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_FOLLOWERS_SHAPE,
-  mutations: { url: '/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
+  mutations: { url: '/v1/issue_followers' } as EntityDefinition<IssueFollower, CreateIssueFollowerRequest, UpdateIssueFollowerRequest>['mutations'],
 };
 
 export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest> = {
@@ -353,7 +327,7 @@ export const ISSUE_TAG_ENTITY: EntityDefinition<IssueTag, CreateIssueTagRequest,
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_TAGS_SHAPE,
-  mutations: { url: '/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
+  mutations: { url: '/v1/issue_tags' } as EntityDefinition<IssueTag, CreateIssueTagRequest, UpdateIssueTagRequest>['mutations'],
 };
 
 export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest> = {
@@ -362,7 +336,7 @@ export const ISSUE_RELATIONSHIP_ENTITY: EntityDefinition<IssueRelationship, Crea
   mutationScope: 'Issue',
   shapeScope: 'Project',
   shape: ISSUE_RELATIONSHIPS_SHAPE,
-  mutations: { url: '/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
+  mutations: { url: '/v1/issue_relationships' } as EntityDefinition<IssueRelationship, CreateIssueRelationshipRequest, UpdateIssueRelationshipRequest>['mutations'],
 };
 
 export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> = {
@@ -371,7 +345,7 @@ export const ISSUE_COMMENT_ENTITY: EntityDefinition<IssueComment, CreateIssueCom
   mutationScope: 'Issue',
   shapeScope: 'Issue',
   shape: ISSUE_COMMENTS_SHAPE,
-  mutations: { url: '/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
+  mutations: { url: '/v1/issue_comments' } as EntityDefinition<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>['mutations'],
 };
 
 export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest> = {
@@ -380,27 +354,8 @@ export const ISSUE_COMMENT_REACTION_ENTITY: EntityDefinition<IssueCommentReactio
   mutationScope: 'Comment',
   shapeScope: 'Comment',
   shape: ISSUE_COMMENT_REACTIONS_SHAPE,
-  mutations: { url: '/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
+  mutations: { url: '/v1/issue_comment_reactions' } as EntityDefinition<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>['mutations'],
 };
-
-// All entities as an array for SDK generation
-export const ALL_ENTITIES = [
-  PROJECT_ENTITY,
-  NOTIFICATION_ENTITY,
-  TAG_ENTITY,
-  PROJECT_STATUS_ENTITY,
-  ISSUE_ENTITY,
-  WORKSPACE_ENTITY,
-  ISSUE_ASSIGNEE_ENTITY,
-  ISSUE_FOLLOWER_ENTITY,
-  ISSUE_TAG_ENTITY,
-  ISSUE_RELATIONSHIP_ENTITY,
-  ISSUE_COMMENT_ENTITY,
-  ISSUE_COMMENT_REACTION_ENTITY,
-] as const;
 
 // Type helper to extract row type from an entity
 export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;
-
-// Union of all entity types
-export type AnyEntity = typeof ALL_ENTITIES[number];

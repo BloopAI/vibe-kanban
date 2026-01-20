@@ -164,7 +164,7 @@ fn export_shapes() -> String {
             .join(", ");
 
         output.push_str(&format!(
-            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '{}'\n);\n\n",
+            "export const {}_SHAPE = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
             const_name,
             shape.ts_type_name(),
             shape.table(),
@@ -172,27 +172,6 @@ fn export_shapes() -> String {
             shape.url()
         ));
     }
-
-    // Generate ALL_SHAPES array
-    output.push_str("// All shapes as an array for iteration and factory building\n");
-    output.push_str("export const ALL_SHAPES = [\n");
-    for shape in &shapes {
-        let const_name = shape.table().to_uppercase();
-        output.push_str(&format!("  {}_SHAPE,\n", const_name));
-    }
-    output.push_str("] as const;\n\n");
-
-    // Backward compatibility aliases
-    output.push_str("// Backward compatibility aliases (deprecated, use new names)\n");
-    output.push_str("/** @deprecated Use ISSUE_RELATIONSHIPS_SHAPE instead */\n");
-    output.push_str("export const ISSUE_DEPENDENCIES_SHAPE = ISSUE_RELATIONSHIPS_SHAPE;\n\n");
-
-    // Type helpers
-    output.push_str("// Type helper to extract row type from a shape\n");
-    output
-        .push_str("export type ShapeRowType<S extends ShapeDefinition<unknown>> = S['_type'];\n\n");
-    output.push_str("// Union of all shape types\n");
-    output.push_str("export type AnyShape = typeof ALL_SHAPES[number];\n\n");
 
     // Generate EntityDefinition interface for SDK generation
     output.push_str(
@@ -241,7 +220,7 @@ fn export_shapes() -> String {
         let has_mutations = entity.mutation_scope().is_some() && !entity.fields().is_empty();
         let mutations_str = if has_mutations {
             format!(
-                "{{ url: '/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
+                "{{ url: '/v1/{table}' }} as EntityDefinition<{ts_type}, Create{name}Request, Update{name}Request>['mutations']",
                 table = entity.table(),
                 ts_type = entity.ts_type_name(),
                 name = entity.name()
@@ -273,20 +252,9 @@ fn export_shapes() -> String {
         output.push_str("};\n\n");
     }
 
-    // Generate ALL_ENTITIES array
-    output.push_str("// All entities as an array for SDK generation\n");
-    output.push_str("export const ALL_ENTITIES = [\n");
-    for entity in &entities {
-        let const_name = to_screaming_snake_case(entity.name());
-        output.push_str(&format!("  {}_ENTITY,\n", const_name));
-    }
-    output.push_str("] as const;\n\n");
-
     // Type helpers for entities
     output.push_str("// Type helper to extract row type from an entity\n");
-    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n\n");
-    output.push_str("// Union of all entity types\n");
-    output.push_str("export type AnyEntity = typeof ALL_ENTITIES[number];\n");
+    output.push_str("export type EntityRowType<E extends EntityDefinition<unknown>> = E extends EntityDefinition<infer R> ? R : never;\n");
 
     output
 }
